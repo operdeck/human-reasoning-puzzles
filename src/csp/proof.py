@@ -15,6 +15,8 @@ to matter.
    * a consequence of a placement: that placement;
    * a relation's ruling: for each way the relation could still have held,
      one of the values involved ruled out (the earliest);
+     * count propagation: prior true/false facts that establish the feasible
+         allowed totals;
    * subsumption and cover: the ruled-out options of the constraints that
      were found to fit inside the others.
 
@@ -35,6 +37,7 @@ from .core import (
     StepCallback,
     cover,
     follow_chain,
+    propagate_count,
     prune_relation,
     refute,
     rule_single,
@@ -42,7 +45,15 @@ from .core import (
 
 type Key = tuple[int, int]  # (0, i): main log step i; (1, j): step j of a trail
 
-HARDEST_FIRST = ("what_if", "chains", "cover3", "cover2", "relations", "subsumption")
+HARDEST_FIRST = (
+    "what_if",
+    "chains",
+    "cover3",
+    "cover2",
+    "subsumption",
+    "relations",
+    "count",
+)
 
 
 @dataclass(frozen=True)
@@ -69,9 +80,16 @@ class Move:
             return refute(model, model.literal(*self.target))
         if self.chain:
             return follow_chain(model, [model.literal(*pair) for pair in self.chain])
+        if self.rule == "count":
+            constraint_index = next(c.index for c in model.constraints if c.name == self.sources[0])
+            return propagate_count(model, constraint_index)
         if self.scope:
-            index = {c.name: c.index for c in model.constraints}
-            return cover(model, [index[n] for n in self.sources], [index[n] for n in self.scope])
+            constraint_indices = {c.name: c.index for c in model.constraints}
+            return cover(
+                model,
+                [constraint_indices[n] for n in self.sources],
+                [constraint_indices[n] for n in self.scope],
+            )
         (relation,) = (r for r in model.relations if r.name == self.sources[0])
         return prune_relation(model, relation)
 
@@ -177,6 +195,12 @@ class _Replay:
                 if x not in outside
             )  # fmt: skip
         (source,) = step.sources[:1]
+        if (
+            source in self.constraints
+            and self.constraints[source].kind is Kind.COUNT
+            and step.rule in ("count", "single")
+        ):
+            return self._constraint_state(source)
         if source in self.relations:
             return self._unsupported(source, lit)
         if source in self.constraints and step.asserted:
@@ -185,6 +209,16 @@ class _Replay:
 
     def _out_of(self, literals: Iterable[LiteralId]) -> set[Key]:
         return {self.out[x] for x in literals if x in self.out}
+
+    def _constraint_state(self, name: str) -> set[Key]:
+        """All prior placements/eliminations that establish this count state."""
+        constraint = self.constraints[name]
+        literals = set(constraint.literals)
+        if constraint.reified_by is not None:
+            literals.add(constraint.reified_by)
+        return {self.out[x] for x in literals if x in self.out} | {
+            self.placed[x] for x in literals if x in self.placed
+        }
 
     def _unsupported(self, name: str, lit: LiteralId) -> set[Key]:
         """For each way `name` could hold with `lit`, the earliest ruling that ended it."""
@@ -218,8 +252,10 @@ class _Replay:
         if source in self.constraints:
             constraint = self.constraints[source]
             true = {self.placed[x] for x in constraint.literals if x in self.placed}
-            if len(true) > 1:
+            if constraint.kind is not Kind.COUNT and len(true) > 1:
                 return true
+            if constraint.kind is Kind.COUNT and not self._count_feasible(constraint):
+                return self._constraint_state(source)
             if constraint.kind is Kind.EXACTLY_ONE:
                 return self._out_of(constraint.literals)
         if source in self.relations:
@@ -230,3 +266,19 @@ class _Replay:
                     needs |= {key} | self._unsupported(source, x)
             return needs
         return {(1, j) for j in range(trail_length)}
+
+    def _count_feasible(self, constraint: Any) -> bool:
+        """Whether the replayed true/false facts leave an allowed count."""
+        true = sum(lit in self.placed for lit in constraint.literals)
+        open_count = sum(
+            lit not in self.placed and lit not in self.out for lit in constraint.literals
+        )
+        allowed = constraint.allowed_counts
+        if constraint.reified_by is not None:
+            if constraint.reified_by in self.placed:
+                pass
+            elif constraint.reified_by in self.out:
+                allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
+            else:
+                allowed = frozenset(range(len(constraint.literals) + 1))
+        return any(count in allowed for count in range(true, true + open_count + 1))
