@@ -160,6 +160,37 @@ def test_story_can_name_a_boundary_door():
     assert story._clue_text("at", ["Ada", "gate"], ("Ada",)) == "Ada is bij de deur"
 
 
+def test_story_words_cell_mark_clues_in_english_and_dutch():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Marks:
+safe_zone: r1c2
+Clues:
+on_mark Ada safe_zone
+not_on_mark Ben safe_zone
+"""
+    board, clues = load_board(text)
+    english = Story(board, clues, Wording())
+    dutch = Story(board, clues, Wording("nl"))
+
+    assert english._clue_text("on_mark", ["Ada", "safe_zone"], ("Ada",)) == (
+        "Ada is on the safe zone"
+    )
+    assert english._clue_text("not_on_mark", ["Ben", "safe_zone"], ("Ben",)) == (
+        "Ben is not on the safe zone"
+    )
+    assert dutch._clue_text("on_mark", ["Ada", "safe_zone"], ("Ada",)) == (
+        "Ada staat op de safe zone"
+    )
+
+
 def test_story_explains_a_reified_count_constraint():
     square = murdoku.Square
     board = murdoku.Board(
@@ -188,6 +219,30 @@ def test_story_explains_a_reified_count_constraint():
         "The allowed counts for west occupancy are zero, so the literal west_empty=yes must hold."
         in story.tell()
     )
+
+
+def test_mark_occupant_story_hides_internal_auxiliary_variables():
+    text = """Size: 2
+Regions:
+a: room
+b: garden
+Grid:
+a b
+a b
+People:
+Ada
+Ben
+Marks:
+quiet: r1c1 ; alone
+Clues:
+on_mark Ada quiet
+outside Ben room
+"""
+    story = explain(text)
+
+    assert "Ada on r1c1" in story
+    assert "Ben on r2c2" in story
+    assert "__occupant_" not in story
 
 
 def test_story_explains_complementary_reified_counts():

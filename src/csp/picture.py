@@ -33,6 +33,8 @@ WHITE = (255, 255, 255)
 SOLVED = (33, 90, 200)  # numbers the solver filled in
 EXTRA = (214, 214, 214)  # extra houses, grey as NRC prints them
 THIN = (190, 190, 190)
+MARK_FILL = (246, 249, 229)
+MARK_INK = (57, 89, 66)
 # Used for regions the puzzle file gives no colour.
 PALETTE = ["#F3C8C0", "#FADFB5", "#CBE6B9", "#D8D2F0", "#C4DCF2", "#BEE5D6", "#F3EDA2",
            "#DCDCDC", "#E0A79C", "#A9D6F0"]  # fmt: skip
@@ -116,6 +118,23 @@ def murdoku_picture(
             (x - radius, y - radius, x + radius, y + radius),
             cell,
         )
+    marks_by_cell: dict[Square, list[str]] = {}
+    for mark in board.marks:
+        for square in mark.cells:
+            marks_by_cell.setdefault(square, []).append(mark.name)
+    for square, names in marks_by_cell.items():
+        x0, y0, _, _ = box(square)
+        pad = max(3, cell // 24)
+        area = (x0 + pad, y0 + pad, x0 + pad + cell // 3, y0 + pad + cell // 4)
+        draw.rounded_rectangle(
+            area,
+            radius=max(2, cell // 30),
+            fill=MARK_FILL,
+            outline=MARK_INK,
+            width=max(1, cell // 50),
+        )
+        initials = "/".join(name[0].upper() for name in sorted(names))
+        _centred_text(draw, initials, area, max(8, cell // 12), MARK_INK, max_width=cell // 3)
     standable = board.squares_of(obj.name for obj in board.standable_objects)
     for person, sq in (placed or {}).items():
         _name_tag(draw, person, box(sq), cell, low=sq in standable)
@@ -569,7 +588,10 @@ class _Legend:
         self.line = int(self.swatch * 1.6)
         self.rows = (len(board.region_names) + 1) // 2
         self.item_names = sorted(board.edge_item_names | board.corner_object_names)
-        self.height = (self.rows + len(self.item_names)) * self.line + cell // 2
+        self.mark_names = sorted(board.mark_names)
+        self.height = (
+            self.rows + len(self.item_names) + len(self.mark_names)
+        ) * self.line + cell // 2
 
     def draw(self, image: Image.Image, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
         fills = _fills(self.board)
@@ -608,6 +630,33 @@ class _Legend:
             draw.text(
                 (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
                 label,
+                fill=INK,
+                font=font,
+                anchor="lm",
+            )
+        for i, name in enumerate(self.mark_names):
+            top = y + (self.rows + len(self.item_names) + i) * self.line
+            area = (x, top, x + self.swatch, top + self.swatch)
+            draw.rounded_rectangle(
+                area,
+                radius=max(2, self.swatch // 8),
+                fill=MARK_FILL,
+                outline=MARK_INK,
+                width=2,
+            )
+            _centred_text(
+                draw,
+                name[:2].upper(),
+                area,
+                max(8, self.cell // 6),
+                MARK_INK,
+                max_width=self.swatch - 4,
+            )
+            mark = next(item for item in self.board.marks if item.name == name)
+            condition = f" ({mark.occupant_condition})" if mark.occupant_condition else ""
+            draw.text(
+                (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
+                f"Mark: {name}{condition}",
                 fill=INK,
                 font=font,
                 anchor="lm",
