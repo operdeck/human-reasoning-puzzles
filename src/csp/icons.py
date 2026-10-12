@@ -1,4 +1,4 @@
-"""Pictures for Murdoku objects and furniture, referenced rather than bundled.
+"""Pictures for Murdoku object types, referenced rather than bundled.
 
 Every object name maps to a Unicode emoji code point; the picture for a code
 point comes from Google's Noto Emoji (image resources under the Apache License

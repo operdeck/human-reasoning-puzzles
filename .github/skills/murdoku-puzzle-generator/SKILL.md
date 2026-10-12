@@ -31,8 +31,8 @@ resolution and zoom or crop when useful; do not rely on OCR alone for grid
 lines, region boundaries, colors, or small clue text. Do not search the web
 for a source image or substitute another version.
 2. Record the board size and coordinates, each region's name and cells, object
-and furniture placements, people, board-wide rules, and numbered clues in
-their printed order. Distinguish blocking objects from usable furniture.
+footprints and their explicit kinds, people, board-wide rules, and numbered
+clues in their printed order. Never infer an object's kind from its name or icon.
 3. Map each clue to the supported syntax below without changing its meaning.
    If a clue is not expressible by this solver, explain the gap and ask whether
   the user wants a partial transcription or a separate solver enhancement.
@@ -122,18 +122,20 @@ it.
   there are `N` people, every row and column is occupied. Squares may remain
   empty.
 - Every region ID in `Grid:` must be declared in `Regions:`. Use single-token
-  identifiers for people, regions, groups, objects, and furniture; use
+  identifiers for people, regions, groups, and object types; use
   `Words:` for display wording where needed.
-- `Objects:` block their squares. `Furniture:` does not. Do not place an
-  object and furniture on the same square. All placements must be within the
-  board.
+- `Objects:` declares each footprint as `name: blocking|standable square...`.
+  The kind is required and independent of the name and icon. Each line is one
+  connected footprint; repeat a name on another line for another instance of
+  that type. Footprints may not overlap, and all cells must be on the board.
+  Standable objects are valid `on`, `not_on`, and `only_on` targets.
 - `Doors:` are named edges between orthogonally neighboring cells in
   different regions, for example `gate: r4c5-r4c6`. They are not cells; either
   adjacent cell is next to the door.
 - Put board-wide, unnumbered clues in `Rules:` and numbered puzzle clues in
    `Clues:`. Required sections are `Size:`, `Regions:`, `Grid:`, and `People:`.
   `Clues:`, `Language:`, `Words:`, `Groups:`, `Hatched:`, `Objects:`,
-  `Furniture:`, `Doors:`, and `Rules:` are optional.
+  `Doors:`, and `Rules:` are optional.
 - Keep clues concise and non-duplicative. Avoid clues that directly reveal
   every person's square unless the user requests a very easy puzzle.
 - For role restrictions such as nobles who must stay in special areas and
@@ -157,12 +159,12 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 |---|---|
 | `in_region <person> <region-or-group>...` | Person is in one of the named regions. |
 | `outside <person> <region-or-group>...` | Person is in none of the named regions. |
-| `next_to <person> <object-or-furniture-or-door>...` | Person is orthogonally beside any named object or furniture in the same region; for a door edge, either adjoining cell counts. |
-| `not_next_to <person> <object-or-furniture>...` | Person is not next to any named thing. |
-| `knight_from <person> <object-or-furniture>...` | Person is a chess-knight move from any named thing; region boundaries do not matter. |
-| `on <person> <furniture>...` | Person occupies one of the named furniture squares. |
-| `not_on <person> <furniture>...` | Person occupies none of the named furniture squares. |
-| `only_on <person> <furniture>...` | Person occupies one of the named furniture squares, and nobody else occupies any of them. |
+| `next_to <person> <object-or-door>...` | Person is orthogonally beside any named object in the same region; for a door edge, either adjoining cell counts. |
+| `not_next_to <person> <object>...` | Person is not next to any named thing. |
+| `knight_from <person> <object>...` | Person is a chess-knight move from any named thing; region boundaries do not matter. |
+| `on <person> <standable-object>...` | Person occupies one of the named standable-object squares. |
+| `not_on <person> <standable-object>...` | Person occupies none of the named standable-object squares. |
+| `only_on <person> <standable-object>...` | Person occupies one of the named standable-object squares, and nobody else occupies any of them. |
 | `in_corner <person>` | Person occupies one of the board's four corner squares. |
 | `same_region <person-a> <person-b>` | Both people are in the same region. |
 | `different_region <person-a> <person-b>` | People are in different regions. |
@@ -175,7 +177,7 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `furthest <person-a> <person-b>` | A is strictly farther from B than every other person. |
 | `exactly <n> <clue> ; <clue> ...` | Exactly `n` of the listed simple, one- or two-person clues hold. At most three distinct people may be named across them; `only_on` cannot be nested here. |
 
-`next_to` stays within a region for objects and furniture. A `Doors:` entry
+`next_to` stays within a region for objects. A `Doors:` entry
 names an edge between two neighboring cells in different regions; either cell
 on that edge satisfies `next_to`. Direction, distance, and `knight_from` may
 cross region boundaries. There is no person-to-person adjacency clue: at most

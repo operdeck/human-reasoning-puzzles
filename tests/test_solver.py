@@ -375,10 +375,84 @@ def test_nobody_stands_on_an_object(prrrdoku1):
     assert not set(result.assignment.values()) & board.blocked
 
 
-def _one_region_board(size: int, people: list[str], objects=None, **extra) -> murdoku.Board:
+def _one_region_board(
+    size: int, people: list[str], objects: list[murdoku.BoardObject] | None = None
+) -> murdoku.Board:
     """A size x size board that is all region 'a', called 'here'."""
     grid = [["a"] * size for _ in range(size)]
-    return murdoku.Board(size, grid, {"a": "here"}, objects or {}, people, **extra)
+    return murdoku.Board(size, grid, {"a": "here"}, objects or [], people)
+
+
+def test_objects_declare_kind_and_standable_objects_are_on_targets():
+    text = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+Objects:
+wall: blocking r1c1
+rug: standable r2c1 r2c2
+chair: standable r3c1
+chair: standable r3c3
+People:
+A
+B
+"""
+    board, _ = load_board(text)
+    rug_squares = {murdoku.Square(1, 0), murdoku.Square(1, 1)}
+
+    assert board.blocked == {murdoku.Square(0, 0)}
+    assert board.squares_of(["chair"]) == {murdoku.Square(2, 0), murdoku.Square(2, 2)}
+    model = murdoku.compile_puzzle(board, [("on", ["A", "rug"])])
+    assert {model.value_of(lit) for lit in model.options("A")} == rug_squares
+
+    with pytest.raises(ValueError, match="standable"):
+        murdoku.compile_puzzle(board, [("on", ["A", "wall"])])
+
+
+def test_object_kind_is_required_and_each_footprint_is_connected():
+    base = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+Objects:
+rug: standable r1c1 r1c2
+People:
+A
+"""
+    with pytest.raises(ValueError, match="kind"):
+        load_board(base.replace("rug: standable", "rug:"))
+    with pytest.raises(ValueError, match="connected"):
+        load_board(base.replace("r1c1 r1c2", "r1c1 r3c3"))
+    with pytest.raises(ValueError, match="Furniture: is no longer supported"):
+        load_board(base.replace("Objects:", "Furniture:"))
+
+
+def test_object_footprints_cannot_overlap_or_change_kind():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+wall: blocking r1c1
+mat: standable r1c1
+People:
+A
+B
+"""
+    with pytest.raises(ValueError, match="overlap"):
+        load_board(text)
+
+    conflicting = text.replace("mat: standable r1c1", "wall: standable r2c2")
+    with pytest.raises(ValueError, match="conflicting kinds"):
+        load_board(conflicting)
 
 
 def test_people_count_cannot_exceed_board_size():
@@ -673,10 +747,15 @@ def test_follow_chain_refuses_a_broken_chain():
     assert not m.log
 
 
-def test_furniture_can_be_stood_on_and_objects_cannot():
+def test_standable_objects_can_be_stood_on_and_blocking_objects_cannot():
     sq = murdoku.Square
     board = _one_region_board(
-        2, ["A", "B"], {"rock": [sq(0, 0)]}, furniture={"bank": [sq(1, 0), sq(1, 1)]}
+        2,
+        ["A", "B"],
+        [
+            murdoku.BoardObject("rock", "blocking", (sq(0, 0),)),
+            murdoku.BoardObject("bank", "standable", (sq(1, 0), sq(1, 1))),
+        ],
     )
     assert board.free == [sq(0, 1), sq(1, 0), sq(1, 1)]
     model = murdoku.compile_puzzle(board, [("on", ["A", "bank"])])
@@ -708,22 +787,30 @@ next_to A gate
     }
 
 
-def test_not_on_excludes_a_furniture_set():
+def test_not_on_excludes_a_standable_object_set():
     sq = murdoku.Square
-    board = _one_region_board(3, ["A", "B", "C"], furniture={"chair": [sq(0, 0), sq(0, 1)]})
+    board = _one_region_board(
+        3,
+        ["A", "B", "C"],
+        [murdoku.BoardObject("chair", "standable", (sq(0, 0), sq(0, 1)))],
+    )
     model = murdoku.compile_puzzle(board, [("not_on", ["A", "chair"])])
-    assert all(model.value_of(lit) not in board.furniture["chair"] for lit in model.options("A"))
+    chair = board.squares_of(["chair"])
+    assert all(model.value_of(lit) not in chair for lit in model.options("A"))
 
 
-def test_only_on_furniture_excludes_everyone_else_from_the_set():
+def test_only_on_standable_object_excludes_everyone_else_from_the_set():
     sq = murdoku.Square
-    board = _one_region_board(3, ["A", "B", "C"], furniture={"bed": [sq(0, 0), sq(0, 1)]})
+    board = _one_region_board(
+        3,
+        ["A", "B", "C"],
+        [murdoku.BoardObject("bed", "standable", (sq(0, 0), sq(0, 1)))],
+    )
     model = murdoku.compile_puzzle(board, [("only_on", ["A", "bed"])])
-    assert {model.value_of(lit) for lit in model.options("A")} == set(board.furniture["bed"])
+    bed = board.squares_of(["bed"])
+    assert {model.value_of(lit) for lit in model.options("A")} == bed
     assert all(
-        model.value_of(lit) not in board.furniture["bed"]
-        for person in ("B", "C")
-        for lit in model.options(person)
+        model.value_of(lit) not in bed for person in ("B", "C") for lit in model.options(person)
     )
 
 
@@ -748,7 +835,14 @@ def test_left_of_can_require_an_exact_column_gap():
 
 def test_knight_move_and_shared_object_names():
     sq = murdoku.Square
-    board = _one_region_board(3, ["A", "B", "C"], {"koffer": [sq(0, 0), sq(2, 2)]})
+    board = _one_region_board(
+        3,
+        ["A", "B", "C"],
+        [
+            murdoku.BoardObject("koffer", "blocking", (sq(0, 0),)),
+            murdoku.BoardObject("koffer", "blocking", (sq(2, 2),)),
+        ],
+    )
     model = murdoku.compile_puzzle(board, [("knight_from", ["A", "koffer"])])
     reachable = sorted(model.value_of(lit) for lit in model.options("A"))
     assert reachable == [sq(0, 1), sq(1, 0), sq(1, 2), sq(2, 1)]
@@ -776,7 +870,9 @@ def test_unknown_region_name_is_rejected():
 
 def test_not_next_to_rules_out_the_squares_beside_a_thing():
     sq = murdoku.Square
-    board = _one_region_board(3, ["A", "B", "C"], {"vaas": [sq(1, 1)]})
+    board = _one_region_board(
+        3, ["A", "B", "C"], [murdoku.BoardObject("vaas", "blocking", (sq(1, 1),))]
+    )
     model = murdoku.compile_puzzle(board, [("not_next_to", ["A", "vaas"])])
     left = sorted(model.value_of(lit) for lit in model.options("A"))
     assert left == [sq(0, 0), sq(0, 2), sq(2, 0), sq(2, 2)]
@@ -802,7 +898,7 @@ def test_counting_clue_holds_when_exactly_n_parts_do():
 
 def test_counting_clue_about_one_person_filters_at_compile_time():
     sq = murdoku.Square
-    board = _one_region_board(2, ["A", "B"], {"vaas": [sq(0, 0)]})
+    board = _one_region_board(2, ["A", "B"], [murdoku.BoardObject("vaas", "blocking", (sq(0, 0),))])
     clue = ("exactly", ["1", "next_to", "A", "vaas", ";", "not_next_to", "A", "vaas"])
     model = murdoku.compile_puzzle(board, [clue])
     assert not model.relations and len(model.options("A")) == 3

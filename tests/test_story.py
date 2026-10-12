@@ -128,9 +128,11 @@ def test_new_murdoku_clues_have_dutch_wording():
         3,
         [["a"] * 3 for _ in range(3)],
         {"a": "zaal"},
-        {},
+        [
+            murdoku.BoardObject("stoel", "standable", (square(0, 0),)),
+            murdoku.BoardObject("bed", "standable", (square(0, 1),)),
+        ],
         ["Anna", "Betsy", "Eli"],
-        furniture={"stoel": [square(0, 0)], "bed": [square(0, 1)]},
     )
     story = Story(board, [], Wording("nl", {"stoel": "de stoel", "bed": "het bed"}))
     assert story._clue_text("not_on", ["Anna", "stoel"], ("Anna",)) == "Anna zit niet op de stoel"
@@ -149,7 +151,7 @@ def test_story_can_name_a_boundary_door():
         2,
         [["west", "east"], ["west", "east"]],
         {"west": "west", "east": "east"},
-        {},
+        [],
         ["Ada", "Ben"],
         doors={"gate": [(square(0, 0), square(0, 1))]},
     )
