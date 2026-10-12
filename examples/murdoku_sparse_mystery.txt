@@ -44,8 +44,8 @@ chair: standable r2c3 r2c4
 carpet: standable r4c4 r4c5
 horse: standable r5c4 r5c5
 
-Doors:
-gate: r1c2-r1c3
+EdgeItems:
+gate: door r1c2 r1c3
 
 People:
 Mara

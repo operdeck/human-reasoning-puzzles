@@ -153,10 +153,11 @@ def test_story_can_name_a_boundary_door():
         {"west": "west", "east": "east"},
         [],
         ["Ada", "Ben"],
-        doors={"gate": [(square(0, 0), square(0, 1))]},
+        edge_items=[murdoku.EdgeItem("gate", "door", (square(0, 0), square(0, 1)))],
     )
     story = Story(board, [], Wording("nl", {"gate": "de deur"}))
     assert story._clue_text("next_to", ["Ada", "gate"], ("Ada",)) == "Ada zit naast de deur"
+    assert story._clue_text("at", ["Ada", "gate"], ("Ada",)) == "Ada is bij de deur"
 
 
 @pytest.mark.parametrize(

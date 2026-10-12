@@ -8,7 +8,7 @@ PIL = pytest.importorskip("PIL")
 from PIL import Image, ImageDraw  # noqa: E402
 
 from csp import bruteforce, icons, picture  # noqa: E402
-from csp.murdoku import Board, BoardObject, Square  # noqa: E402
+from csp.murdoku import Board, BoardObject, CornerObject, EdgeItem, Square  # noqa: E402
 from csp.puzzlefile import load_board  # noqa: E402
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -38,6 +38,7 @@ def test_icon_names_map_to_code_points():
     assert icons.code_for("paard") == "1f40e"
     assert icons.code_for("ton") == icons.code_for("barrel") == "1f6e2"
     assert icons.code_for("stoel") == icons.code_for("chair")
+    assert icons.code_for("window") == "1fa9f"
     assert icons.code_for("zeppelin") is None
     assert icons.NOTO_COMMIT in icons.SOURCE
 
@@ -115,6 +116,52 @@ def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
     assert len(calls) == 2
     assert all(name == "stoel" and area[2] - area[0] == CELL for name, area, _ in calls)
     assert all(area[3] - area[1] == CELL for _, area, _ in calls)
+
+
+def test_edge_items_and_corner_objects_render_at_their_anchors(monkeypatch):
+    board = Board(
+        3,
+        [["west", "east", "east"], ["west", "east", "east"], ["west", "east", "east"]],
+        {"west": "west", "east": "east"},
+        [],
+        ["A", "B"],
+        edge_items=[
+            EdgeItem("gate", "door", (Square(0, 0), Square(0, 1))),
+            EdgeItem("window", "window", (Square(2, 2),)),
+        ],
+        corner_objects=[
+            CornerObject(
+                "critter",
+                (Square(0, 0), Square(0, 1), Square(1, 0), Square(1, 1)),
+            )
+        ],
+    )
+    calls = []
+
+    def capture(image, draw, name, area, cell, **kwargs):
+        calls.append((name, area))
+
+    monkeypatch.setattr(picture, "_icon", capture)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+    margin = CELL // 6
+
+    assert image.getpixel((margin + CELL, margin + CELL // 2)) == (117, 75, 47)
+    assert calls == [
+        ("window", (margin + 2 * CELL, margin + 2 * CELL, margin + 3 * CELL, margin + 3 * CELL)),
+        (
+            "critter",
+            (
+                margin + CELL - CELL // 4,
+                margin + CELL - CELL // 4,
+                margin + CELL + CELL // 4,
+                margin + CELL + CELL // 4,
+            ),
+        ),
+    ]
+    with_legend = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    assert with_legend.height > image.height
+    assert picture.unknown_object_icons(board) == ["critter"]
+    assert len(board.free) == 9
 
 
 def test_vertical_bed_icon_is_rotated(monkeypatch):

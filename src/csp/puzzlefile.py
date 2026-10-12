@@ -7,7 +7,16 @@ one-line section can be written inline before the first header, as in
 
 import re
 
-from .murdoku import Board, BoardObject, Clue, ObjectKind, Square
+from .murdoku import (
+    Board,
+    BoardObject,
+    Clue,
+    CornerObject,
+    EdgeItem,
+    EdgeItemKind,
+    ObjectKind,
+    Square,
+)
 
 KINDS = ("sudoku", "murdoku", "calcudoku", "futoshiki")
 
@@ -90,8 +99,11 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
 
     if "Furniture" in section:
         raise ValueError("Furniture: is no longer supported; use Objects: with kind 'standable'")
+    if "Doors" in section:
+        raise ValueError("Doors: is no longer supported; use EdgeItems:")
     objects = _object_placements(section.get("Objects", []))
-    doors = _door_placements(section.get("Doors", []))
+    edge_items = _edge_item_placements(section.get("EdgeItems", []))
+    corner_objects = _corner_object_placements(section.get("CornerObjects", []))
 
     people = list(section["People"])
 
@@ -105,7 +117,8 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         people,
         area_tags=area_tags,
         colours=colours,
-        doors=doors,
+        edge_items=edge_items,
+        corner_objects=corner_objects,
     )
     board.hatched = board.area_ids(
         name for line in section.get("Hatched", []) for name in line.split()
@@ -140,17 +153,30 @@ def _object_placements(lines: list[str]) -> list[BoardObject]:
     return objects
 
 
-def _door_placements(lines: list[str]) -> dict[str, list[tuple[Square, Square]]]:
-    """Read edges such as 'front: r2c3-r2c4 r5c1-r5c2'."""
-    doors: dict[str, list[tuple[Square, Square]]] = {}
+def _edge_item_placements(lines: list[str]) -> list[EdgeItem]:
+    """Read named door pairs and window inside-cells; repeated names compose simple items."""
+    items: list[EdgeItem] = []
+    for line in lines:
+        name, separator, definition = line.partition(":")
+        parts = definition.split()
+        if not separator or not name.strip():
+            raise ValueError(f"bad edge item {line!r}, expected 'name: door|window r1c1 ...'")
+        if not parts or parts[0] not in ("door", "window"):
+            raise ValueError(f"edge item {name.strip()!r} must declare kind 'door' or 'window'")
+        kind: EdgeItemKind = parts[0]  # type: ignore[assignment]
+        cells = tuple(parse_square(token) for token in parts[1:])
+        items.append(EdgeItem(name.strip(), kind, cells))
+    return items
+
+
+def _corner_object_placements(lines: list[str]) -> list[CornerObject]:
+    """Read corner objects by listing their four surrounding cells."""
+    items: list[CornerObject] = []
     for line in lines:
         name, separator, positions = line.partition(":")
         if not separator or not name.strip():
-            raise ValueError(f"bad door {line!r}, expected 'name: r1c1-r1c2'")
-        edges = doors.setdefault(name.strip(), [])
-        for token in positions.split():
-            first, edge, second = token.partition("-")
-            if not edge or not first or not second:
-                raise ValueError(f"bad door edge {token!r}, expected 'r1c1-r1c2'")
-            edges.append((parse_square(first), parse_square(second)))
-    return doors
+            raise ValueError(f"bad corner object {line!r}, expected 'name: r1c1 r1c2 r2c1 r2c2'")
+        items.append(
+            CornerObject(name.strip(), tuple(parse_square(token) for token in positions.split()))
+        )
+    return items
