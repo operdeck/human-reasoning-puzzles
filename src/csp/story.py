@@ -102,6 +102,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.knight_from": "{a} is a knight's move from {things}",
         "clue.on": "{a} is on {things}",
         "clue.not_on": "{a} is not on {things}",
+        "clue.on_mark": "{a} is on {things}",
+        "clue.not_on_mark": "{a} is not on {things}",
         "clue.only_on": "{a} is the only person on {things}",
         "clue.in_corner": "{a} is in a corner of the grid",
         "clue.same_region": "{a} and {b} are in the same region",
@@ -184,6 +186,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.knight_from": "{a} staat een paardensprong van {things}",
         "clue.on": "{a} ligt op {things}",
         "clue.not_on": "{a} zit niet op {things}",
+        "clue.on_mark": "{a} staat op {things}",
+        "clue.not_on_mark": "{a} staat niet op {things}",
         "clue.only_on": "alleen {a} zit op {things}",
         "clue.in_corner": "{a} staat in een hoek van het raster",
         "clue.same_region": "{a} en {b} zijn in hetzelfde gebied",
@@ -282,7 +286,11 @@ class Places:
     def thing(self, name: str) -> str:
         if name in self.say.words:
             return self.say.words[name]
-        if name in self.board.edge_item_names or name in self.board.corner_object_names:
+        if (
+            name in self.board.edge_item_names
+            or name in self.board.corner_object_names
+            or name in self.board.mark_names
+        ):
             many = False
         else:
             many = len(_pieces(self.board.squares_of([name]))) > 1
@@ -390,6 +398,9 @@ class Places:
         for name in sorted(board.corner_object_names):
             cells = board.corner_object_cells([name])
             areas.append((self.say("next_to", what=self.thing(name)), cells.__contains__))
+        for name in sorted(board.mark_names):
+            cells = board.mark_cells([name])
+            areas.append((self.say("on", what=self.thing(name)), cells.__contains__))
         return areas
 
     def _region_of(self, chosen: set[Square]) -> tuple[str, Callable[[Square], bool]]:
@@ -448,6 +459,11 @@ class Story:
         self.about = {rule.name: rule.about for rule in board_rules(board)}
         self.conditions = {c.label: c for c in conditions(board, clues)}
         self.model = compile_puzzle(board, clues)
+        self.auxiliary_variables = {
+            self.model.var_of(constraint.reified_by)
+            for constraint in self.model.constraints
+            if constraint.family == "conditional occupancy" and constraint.reified_by is not None
+        }
 
     def tell(self) -> str:
         start = self.model.clone()
@@ -524,6 +540,8 @@ class Story:
         before = {p: set(s) for p, s in state.options.items()}
         state.apply(steps)
         if rule == "single":
+            if steps[0].var in self.auxiliary_variables:
+                return ""
             source = steps[0].sources[0] if steps[0].sources else ""
             constraint = next((c for c in self.model.constraints if c.name == source), None)
             if constraint is not None and constraint.kind is Kind.COUNT:
@@ -577,6 +595,8 @@ class Story:
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
     ) -> str:
+        if step.var in self.auxiliary_variables:
+            return ""
         constraint = next(c for c in self.model.constraints if c.name == step.sources[0])
         allowed = constraint.allowed_counts
         if constraint.reified_by is not None:
@@ -646,8 +666,8 @@ class Story:
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
     ) -> str:
         """Some people fill some rows (or columns), or some rows only fit some people."""
-        inner = [self.about[n] for n in step.sources]
-        outer = [self.about[n] for n in step.scope]
+        inner = [self.about.get(name, ("constraint", name)) for name in step.sources]
+        outer = [self.about.get(name, ("constraint", name)) for name in step.scope]
         kinds_in = {k for k, _ in inner}
         kinds_out = {k for k, _ in outer}
         if len(kinds_in) == 1 and len(kinds_out) == 1 and kinds_out <= {"row", "col"}:

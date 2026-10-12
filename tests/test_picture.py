@@ -164,6 +164,29 @@ def test_edge_items_and_corner_objects_render_at_their_anchors(monkeypatch):
     assert len(board.free) == 9
 
 
+def test_overlapping_marks_render_badges_and_condition_labels():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Marks:
+quiet: r1c1 ; alone
+social: r1c1 ; not_alone
+"""
+    board, _ = load_board(text)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    margin = CELL // 6
+    pad = max(3, CELL // 24)
+    assert image.getpixel((margin + pad + 5, margin + pad + 5)) == picture.MARK_FILL
+    assert picture._Legend(board, CELL).mark_names == ["quiet", "social"]
+    assert image.height > 2 * CELL + 2 * margin
+
+
 def test_vertical_bed_icon_is_rotated(monkeypatch):
     board = Board(
         2,
