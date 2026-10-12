@@ -494,7 +494,114 @@ def test_sparse_murdoku_mystery_example_solves_unique_murderer():
     assert len({square.col for square in result.assignment.values()}) == 4
 
 
-def test_region_groups_and_board_rules_encode_character_roles():
+def test_area_tags_cover_disconnected_regions_and_tagged_clues():
+    text = """Size: 2
+Regions:
+a: island
+b: sea
+Grid:
+a b
+b a
+AreaTags:
+water: island sea
+islands: island
+Hatched:
+islands
+People:
+A
+B
+Clues:
+in_tagged A islands
+same_region A B
+"""
+    board, _ = load_board(text)
+    solutions = bruteforce.solutions(text, limit=3)
+
+    assert board.area_tags == {"water": ["island", "sea"], "islands": ["island"]}
+    assert board.hatched == {"a"}
+    assert len(solutions) == 2
+    assert all(
+        board.region_of(solution["A"]) == board.region_of(solution["B"]) == "a"
+        for solution in solutions
+    )
+
+
+def test_next_to_does_not_cross_an_overlay_area_boundary_with_shared_tag():
+    text = """Size: 3
+Regions:
+a: water
+b: island
+Grid:
+a b a
+a b a
+a b a
+AreaTags:
+water_areas: water island
+Objects:
+post: blocking r2c2
+People:
+A
+B
+Clues:
+next_to A post
+"""
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+    options = {model.value_of(lit) for lit in model.options("A")}
+
+    assert options == {murdoku.Square(0, 1), murdoku.Square(2, 1)}
+    assert board.region_ids(["water"]) == {"a"}
+    assert board.tagged_region_ids(["water_areas"]) == {"a", "b"}
+
+
+def test_rules_can_restrict_people_by_area_tag():
+    text = """Size: 2
+Regions:
+a: island
+b: sea
+Grid:
+a b
+b a
+AreaTags:
+water: island
+People:
+A
+B
+Rules:
+only_in_tagged A water
+not_in_tagged B water
+"""
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+
+    assert {model.value_of(lit) for lit in model.options("A")} == {
+        murdoku.Square(0, 0),
+        murdoku.Square(1, 1),
+    }
+    assert {model.value_of(lit) for lit in model.options("B")} == {
+        murdoku.Square(0, 1),
+        murdoku.Square(1, 0),
+    }
+
+
+def test_legacy_groups_section_is_rejected():
+    text = """Size: 2
+Regions:
+a: island
+Grid:
+a a
+a a
+Groups:
+water: island
+People:
+A
+B
+"""
+    with pytest.raises(ValueError, match="Groups: is no longer supported"):
+        load_board(text)
+
+
+def test_area_tags_and_board_rules_restrict_people():
     text = "\n".join(
         [
             "Size: 4",
@@ -510,16 +617,17 @@ def test_region_groups_and_board_rules_encode_character_roles():
             "Anna",
             "Betsy",
             "Eli",
-            "Groups:",
+            "AreaTags:",
             "noble_areas: noble",
             "Rules:",
-            "in_region Anna noble_areas",
-            "outside Betsy noble_areas",
+            "only_in_tagged Anna noble_areas",
+            "not_in_tagged Betsy noble_areas",
             "",
         ]
     )
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
+    assert board.area_tags == {"noble_areas": ["noble"]}
     assert all(board.region_of(model.value_of(lit)) == "b" for lit in model.options("Anna"))
     assert all(board.region_of(model.value_of(lit)) != "b" for lit in model.options("Betsy"))
     assert len(model.options("Eli")) == len(board.free)
