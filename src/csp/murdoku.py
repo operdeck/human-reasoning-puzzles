@@ -19,7 +19,7 @@ Otto", "Luna is furthest from Mao").
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from .core import Kind, Model, Step
 
@@ -57,14 +57,52 @@ def knight_move(a: Square, b: Square) -> bool:
     return {abs(a.row - b.row), abs(a.col - b.col)} == {1, 2}
 
 
+type ObjectKind = Literal["blocking", "standable"]
+
+
+@dataclass(frozen=True)
+class BoardObject:
+    """One connected footprint of a named object type and explicit occupancy kind."""
+
+    name: str
+    kind: ObjectKind
+    squares: tuple[Square, ...]
+
+    def __post_init__(self) -> None:
+        if not self.name or any(char.isspace() for char in self.name):
+            raise ValueError(f"object name {self.name!r} must be a single token")
+        if self.kind not in ("blocking", "standable"):
+            raise ValueError(f"object {self.name!r} kind must be 'blocking' or 'standable'")
+        cells = set(self.squares)
+        if not cells:
+            raise ValueError(f"object {self.name!r} needs at least one cell")
+        if len(cells) != len(self.squares):
+            raise ValueError(f"object {self.name!r} footprint repeats a cell")
+        reached = {next(iter(cells))}
+        pending = list(reached)
+        while pending:
+            square = pending.pop()
+            for neighbor in (
+                Square(square.row - 1, square.col),
+                Square(square.row + 1, square.col),
+                Square(square.row, square.col - 1),
+                Square(square.row, square.col + 1),
+            ):
+                if neighbor in cells and neighbor not in reached:
+                    reached.add(neighbor)
+                    pending.append(neighbor)
+        if reached != cells:
+            raise ValueError(f"object {self.name!r} footprint must be connected")
+
+
 @dataclass
 class Board:
     """The fixed layout: regions, things on the board, and who is playing.
 
     `regions` holds a short region id per square (a letter, say) and
-    `region_names` maps each id to its name. `objects` block their squares;
-    `furniture` (such as a bank to lie on) does not. Several things may share
-    a name, like three suitcases. `doors` maps names to edges between adjacent
+    `region_names` maps each id to its name. `objects` lists connected object
+    footprints with explicit blocking or standable kinds. Multiple instances
+    of one type may share a name. `doors` maps names to edges between adjacent
     cells in different regions; a door is not itself a square. `colours`
     (region id -> '#RRGGBB') and `hatched` (region ids) only affect pictures.
 
@@ -75,10 +113,9 @@ class Board:
     size: int
     regions: list[list[str]]
     region_names: dict[str, str]
-    objects: dict[str, list[Square]]
+    objects: list[BoardObject]
     people: list[str]
     groups: dict[str, list[str]] = field(default_factory=dict)
-    furniture: dict[str, list[Square]] = field(default_factory=dict)
     colours: dict[str, str] = field(default_factory=dict)
     hatched: set[str] = field(default_factory=set)
     rules: list["Clue"] = field(default_factory=list)
@@ -92,6 +129,20 @@ class Board:
                 f"{len(self.people)} people on a {self.size}x{self.size} board; "
                 f"the number of people must be between 1 and {self.size}"
             )
+        names: dict[str, ObjectKind] = {}
+        occupied: set[Square] = set()
+        for obj in self.objects:
+            if obj.name in names and names[obj.name] != obj.kind:
+                raise ValueError(f"object type {obj.name!r} has conflicting kinds")
+            names[obj.name] = obj.kind
+            if any(
+                square.row not in range(self.size) or square.col not in range(self.size)
+                for square in obj.squares
+            ):
+                raise ValueError(f"object {obj.name!r} has a cell off the grid")
+            if overlap := occupied & set(obj.squares):
+                raise ValueError(f"objects overlap at {sorted(overlap)}")
+            occupied.update(obj.squares)
         squares = [Square(r, c) for r in range(self.size) for c in range(self.size)]
         self.free = [sq for sq in squares if sq not in self.blocked]
         self.borders = {
@@ -102,8 +153,8 @@ class Board:
             and nb.col < self.size
             and self.region_of(sq) != self.region_of(nb)
         }
-        if door_names := set(self.doors) & (set(self.objects) | set(self.furniture)):
-            raise ValueError(f"door names overlap objects or furniture: {sorted(door_names)}")
+        if door_names := set(self.doors) & self.object_names:
+            raise ValueError(f"door names overlap objects: {sorted(door_names)}")
         for name, edges in self.doors.items():
             if not edges:
                 raise ValueError(f"door {name!r} has no edges")
@@ -139,17 +190,25 @@ class Board:
 
     @property
     def blocked(self) -> set[Square]:
-        return {sq for squares in self.objects.values() for sq in squares}
+        return {square for obj in self.objects if obj.kind == "blocking" for square in obj.squares}
+
+    @property
+    def object_names(self) -> set[str]:
+        return {obj.name for obj in self.objects}
+
+    @property
+    def standable_objects(self) -> list[BoardObject]:
+        return [obj for obj in self.objects if obj.kind == "standable"]
 
     def squares_of(self, names: Iterable[str]) -> set[Square]:
-        """Every square holding an object or piece of furniture of these names."""
-        found: set[Square] = set()
-        for name in names:
-            if name not in self.objects and name not in self.furniture:
-                known = sorted([*self.objects, *self.furniture])
-                raise ValueError(f"nothing called {name!r} on the board; have {known}")
-            found.update(self.objects.get(name, []), self.furniture.get(name, []))
-        return found
+        """Every square occupied by an object of one of these types."""
+        names = set(names)
+        unknown = names - self.object_names
+        if unknown:
+            raise ValueError(
+                f"nothing called {sorted(unknown)} on the board; have {sorted(self.object_names)}"
+            )
+        return {square for obj in self.objects if obj.name in names for square in obj.squares}
 
 
 # --- clue vocabulary ------------------------------------------------------
@@ -273,8 +332,8 @@ FILTERS: dict[str, Callable[..., SquareTest]] = {
     "next_to": _next_to,  # next_to <person> <thing>...: beside any of them
     "not_next_to": _not_next_to,  # not_next_to <person> <thing>...: beside none of them
     "knight_from": _knight_from,  # knight_from <person> <thing>...: a knight's move away
-    "on": _on,  # on <person> <furniture>...
-    "not_on": _not_on,  # not_on <person> <furniture>...
+    "on": _on,  # on <person> <standable object>...
+    "not_on": _not_on,  # not_on <person> <standable object>...
     "in_corner": _in_corner,  # in_corner <person>
 }
 
@@ -350,16 +409,21 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
 def _conditions(board: Board, kind: str, args: list[str], number: int | None) -> list[Condition]:
     if kind == COUNTING:
         return [_counting(board, args, number)]
+    if kind in ("on", "not_on"):
+        if len(args) < 2:
+            raise ValueError(f"clue {kind!r} expects a person and at least one object")
+        person, *names = args
+        if person not in board.people:
+            raise ValueError(f"clue {kind!r} names unknown person {person!r}")
+        _validate_standable_objects(board, kind, names)
     if kind == "only_on":
         if len(args) < 2:
-            raise ValueError("only_on needs a person and at least one furniture name")
-        person, *furniture = args
+            raise ValueError("only_on needs a person and at least one standable object")
+        person, *objects = args
         if person not in board.people:
             raise ValueError(f"clue only_on {' '.join(args)} names unknown person {person!r}")
-        unknown = set(furniture) - set(board.furniture)
-        if unknown:
-            raise ValueError(f"only_on needs furniture; unknown furniture {sorted(unknown)}")
-        targets = board.squares_of(furniture)
+        _validate_standable_objects(board, kind, objects)
+        targets = board.squares_of(objects)
         label = " ".join([kind, *args])
         conditions = [
             Condition(label, (person,), lambda sq: sq in targets, kind, tuple(args), number)
@@ -399,6 +463,15 @@ def _conditions(board: Board, kind: str, args: list[str], number: int | None) ->
         for p in board.people
         if p not in (a, b)
     ]
+
+
+def _validate_standable_objects(board: Board, clue: str, names: Sequence[str]) -> None:
+    unknown = set(names) - board.object_names
+    if unknown:
+        raise ValueError(f"clue {clue!r} names unknown objects {sorted(unknown)}")
+    blocking = {obj.name for obj in board.objects if obj.name in names and obj.kind == "blocking"}
+    if blocking:
+        raise ValueError(f"clue {clue!r} needs standable objects; {sorted(blocking)} are blocking")
 
 
 def _further(a: Square, b: Square, other: Square) -> bool:
@@ -536,7 +609,7 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
     placed, squares newly crossed out, and whose options narrowed.
     """
     blocked = board.blocked
-    furnished = board.squares_of(board.furniture)
+    standable = board.squares_of(obj.name for obj in board.standable_objects)
     reachable = _reachable(board, model)
     shade = {rid: PALETTE[i % len(PALETTE)] for i, rid in enumerate(board.region_names)}
     placed = {s.var for s in steps if s.asserted}
@@ -564,7 +637,7 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
             elif sq not in reachable and not finished:
                 tint = f"{BOLD}{NEW}" if sq in eliminated else FADED
                 body = f"{tint} x  "
-            elif sq in furnished:
+            elif sq in standable:
                 body = f"{INK} =  "
             else:
                 body = f"{INK} .  "
@@ -581,15 +654,19 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
     for rid, name in board.region_names.items():
         swatch = _bg(shade[rid]) + "   " + RESET
         out.append(f"  {swatch} {name}")
-    out.append(f"\n  {INK}##{RESET} object   =  furniture   .  open   x  nobody can stand here")
+    out.append(f"\n  {INK}##{RESET} blocking   =  standable   .  open   x  nobody can stand here")
     out.append(f"  {NEW}blue{RESET}: changed by this step")
-    for label, things in (("objects", board.objects), ("furniture", board.furniture)):
-        if things:
+    for kind in ("blocking", "standable"):
+        by_name: dict[str, set[Square]] = {}
+        for obj in board.objects:
+            if obj.kind == kind:
+                by_name.setdefault(obj.name, set()).update(obj.squares)
+        if by_name:
             listed = ", ".join(
                 f"{name} {' '.join(map(str, sorted(squares)))}"
-                for name, squares in sorted(things.items())
+                for name, squares in sorted(by_name.items())
             )
-            out.append(f"  {label}: {listed}")
+            out.append(f"  {kind}: {listed}")
     if board.doors:
         listed = ", ".join(
             f"{name} {' '.join(f'{first}-{second}' for first, second in edges)}"
