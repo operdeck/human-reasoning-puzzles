@@ -10,11 +10,13 @@ import re
 from .murdoku import (
     Board,
     BoardObject,
+    CellMark,
     Clue,
     CornerObject,
     EdgeItem,
     EdgeItemKind,
     ObjectKind,
+    OccupantCondition,
     Square,
 )
 
@@ -104,6 +106,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     objects = _object_placements(section.get("Objects", []))
     edge_items = _edge_item_placements(section.get("EdgeItems", []))
     corner_objects = _corner_object_placements(section.get("CornerObjects", []))
+    marks = _mark_placements(section.get("Marks", []))
 
     people = list(section["People"])
 
@@ -119,6 +122,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         colours=colours,
         edge_items=edge_items,
         corner_objects=corner_objects,
+        marks=marks,
     )
     board.hatched = board.area_ids(
         name for line in section.get("Hatched", []) for name in line.split()
@@ -180,3 +184,23 @@ def _corner_object_placements(lines: list[str]) -> list[CornerObject]:
             CornerObject(name.strip(), tuple(parse_square(token) for token in positions.split()))
         )
     return items
+
+
+def _mark_placements(lines: list[str]) -> list[CellMark]:
+    """Read named cell sets with optional `; alone` or `; not_alone` conditions."""
+    marks: list[CellMark] = []
+    for line in lines:
+        name, separator, definition = line.partition(":")
+        cells_text, condition_separator, condition_text = definition.partition(";")
+        tokens = cells_text.split()
+        condition: OccupantCondition | None = None
+        if condition_separator:
+            if condition_text.strip() not in ("alone", "not_alone"):
+                raise ValueError(f"bad occupant condition in mark {line!r}; use alone or not_alone")
+            condition = condition_text.strip()  # type: ignore[assignment]
+        if not separator or not name.strip() or not tokens:
+            raise ValueError(f"bad mark {line!r}, expected 'name: r1c1 ... [; alone|not_alone]'")
+        marks.append(
+            CellMark(name.strip(), tuple(parse_square(token) for token in tokens), condition)
+        )
+    return marks
