@@ -1,4 +1,4 @@
-"""Murdoku expressed as exact cover.
+"""Murdoku expressed as exact cover, count constraints, and relations.
 
 The variables are *people*, not squares: each person picks one square. That
 is the shape the puzzle actually has: at most one figure per row and column.
@@ -59,6 +59,7 @@ def knight_move(a: Square, b: Square) -> bool:
 
 type ObjectKind = Literal["blocking", "standable"]
 type EdgeItemKind = Literal["door", "window"]
+type OccupantCondition = Literal["alone", "not_alone"]
 
 
 @dataclass(frozen=True)
@@ -140,6 +141,25 @@ class CornerObject:
             raise ValueError(f"corner object {self.name!r} cells must surround one grid corner")
 
 
+@dataclass(frozen=True)
+class CellMark:
+    """A named set of marked cells and an optional condition on their occupants."""
+
+    name: str
+    cells: tuple[Square, ...]
+    occupant_condition: OccupantCondition | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name or any(char.isspace() for char in self.name):
+            raise ValueError(f"mark name {self.name!r} must be a single token")
+        if not self.cells:
+            raise ValueError(f"mark {self.name!r} needs at least one cell")
+        if len(set(self.cells)) != len(self.cells):
+            raise ValueError(f"mark {self.name!r} repeats a cell")
+        if self.occupant_condition not in (None, "alone", "not_alone"):
+            raise ValueError(f"mark {self.name!r} condition must be 'alone' or 'not_alone'")
+
+
 @dataclass
 class Board:
     """The fixed layout: regions, things on the board, and who is playing.
@@ -148,7 +168,8 @@ class Board:
     `region_names` maps each id to its name. `objects` lists connected object
     footprints with explicit blocking or standable kinds. Multiple instances
     of one type may share a name. `edge_items` and `corner_objects` are named
-    cell sets that occupy no square. `colours`
+    cell sets that occupy no square. `marks` are named cell sets that may
+    overlap and optionally carry an occupant condition. `colours`
     (region id -> '#RRGGBB') and `hatched` (region ids) only affect pictures.
 
     `area_tags` map reusable tags to named regions. `rules` are clues that come
@@ -167,6 +188,7 @@ class Board:
     rules: list["Clue"] = field(default_factory=list)
     edge_items: list[EdgeItem] = field(default_factory=list)
     corner_objects: list[CornerObject] = field(default_factory=list)
+    marks: list[CellMark] = field(default_factory=list)
     free: list[Square] = field(init=False)
     borders: set[frozenset[str]] = field(init=False)
 
@@ -236,6 +258,16 @@ class Board:
                 for square in corner.cells
             ):
                 raise ValueError(f"corner object {corner.name!r} is off the grid")
+        mark_names: set[str] = set()
+        for mark in self.marks:
+            if mark.name in mark_names:
+                raise ValueError(f"mark {mark.name!r} is defined more than once")
+            mark_names.add(mark.name)
+            if any(
+                square.row not in range(self.size) or square.col not in range(self.size)
+                for square in mark.cells
+            ):
+                raise ValueError(f"mark {mark.name!r} has a cell off the grid")
 
     def region_of(self, square: Square) -> str:
         return self.regions[square.row][square.col]
@@ -289,6 +321,10 @@ class Board:
         return {item.name for item in self.corner_objects}
 
     @property
+    def mark_names(self) -> set[str]:
+        return {mark.name for mark in self.marks}
+
+    @property
     def standable_objects(self) -> list[BoardObject]:
         return [obj for obj in self.objects if obj.kind == "standable"]
 
@@ -328,6 +364,14 @@ class Board:
             )
         return {cell for item in self.corner_objects if item.name in names for cell in item.cells}
 
+    def mark_cells(self, names: Iterable[str]) -> set[Square]:
+        """Cells carrying any of the named marks."""
+        names = set(names)
+        unknown = names - self.mark_names
+        if unknown:
+            raise ValueError(f"unknown marks {sorted(unknown)}; have {sorted(self.mark_names)}")
+        return {cell for mark in self.marks if mark.name in names for cell in mark.cells}
+
 
 # --- clue vocabulary ------------------------------------------------------
 # A filter narrows one person's squares; a relation links two people's.
@@ -361,6 +405,16 @@ def _at(board: Board, *items: str) -> SquareTest:
 def _not_in_tagged(board: Board, *tags: str) -> SquareTest:
     ids = board.tagged_region_ids(tags)
     return lambda sq: board.region_of(sq) not in ids
+
+
+def _on_mark(board: Board, *names: str) -> SquareTest:
+    cells = board.mark_cells(names)
+    return lambda square: square in cells
+
+
+def _not_on_mark(board: Board, *names: str) -> SquareTest:
+    cells = board.mark_cells(names)
+    return lambda square: square not in cells
 
 
 def _next_to(board: Board, *things: str) -> SquareTest:
@@ -464,6 +518,8 @@ FILTERS: dict[str, Callable[..., SquareTest]] = {
     "in_tagged": _in_tagged,  # in_tagged <person> <area tag>...
     "only_in_tagged": _in_tagged,  # only_in_tagged <person> <area tag>...
     "not_in_tagged": _not_in_tagged,  # not_in_tagged <person> <area tag>...
+    "on_mark": _on_mark,  # on_mark <person> <mark>...
+    "not_on_mark": _not_on_mark,  # not_on_mark <person> <mark>...
     "at": _at,  # at <person> <edge item>...
     "next_to": _next_to,  # next_to <person> <thing>...: beside any of them
     "not_next_to": _not_next_to,  # not_next_to <person> <thing>...: beside none of them
@@ -516,7 +572,7 @@ def counted(args: Sequence[str]) -> tuple[int, list[Clue]]:
 
 @dataclass(frozen=True)
 class Condition:
-    """What one clue requires: `test(*squares)` of `people`, in order.
+    """What one clue or board effect requires: `test(*squares)` of `people`.
 
     This is the puzzle's meaning, independent of how it is solved: the
     compiler turns it into the model, the brute-force checker tests it
@@ -533,13 +589,129 @@ class Condition:
 
 
 def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
-    """The board's rules and every clue, as conditions on one, two or three people."""
+    """Board rules, mark effects, and clues as predicates over their people."""
     out: list[Condition] = []
     for kind, args in board.rules:
         out += _conditions(board, kind, args, None)
+    out.extend(
+        _mark_occupant_condition(board, mark) for mark in board.marks if mark.occupant_condition
+    )
     for number, (kind, args) in enumerate(clues, 1):
         out += _conditions(board, kind, args, number)
     return out
+
+
+def _mark_occupant_condition(board: Board, mark: CellMark) -> Condition:
+    """The mark's occupant rule as one independent all-person predicate."""
+    assert mark.occupant_condition is not None
+    marked = set(mark.cells)
+    regions = {board.region_of(square) for square in mark.cells}
+    allowed = _occupant_counts(mark.occupant_condition, len(board.people))
+
+    def test(*squares: Square) -> bool:
+        for region in regions:
+            triggered = any(
+                square in marked and board.region_of(square) == region for square in squares
+            )
+            occupants = sum(board.region_of(square) == region for square in squares)
+            if triggered and occupants not in allowed:
+                return False
+        return True
+
+    return Condition(
+        f"mark {mark.name} occupant {mark.occupant_condition}",
+        tuple(board.people),
+        test,
+        "occupant_condition",
+        (mark.name, mark.occupant_condition),
+    )
+
+
+def _occupant_counts(condition: OccupantCondition, people_count: int) -> frozenset[int]:
+    if condition == "alone":
+        return frozenset((0, 1))
+    return frozenset(range(2, people_count + 1))
+
+
+def _auxiliary_variable(model: Model, prefix: str) -> str:
+    name = f"__{prefix}"
+    suffix = 2
+    while name in model.variables:
+        name = f"__{prefix}_{suffix}"
+        suffix += 1
+    return name
+
+
+def apply_occupant_condition(
+    model: Model,
+    name: str,
+    trigger_literals: Iterable[int],
+    occupant_literals: Iterable[int],
+    allowed_counts: Iterable[int],
+) -> None:
+    """Require an occupant count only when at least one trigger literal holds.
+
+    Cell marks use this helper; other occupancy effects can share the same
+    trigger/count interface instead of adding a separate rule system.
+    """
+    triggers = tuple(dict.fromkeys(trigger_literals))
+    occupants = tuple(dict.fromkeys(occupant_literals))
+    allowed = frozenset(allowed_counts)
+    if not triggers:
+        return
+    if not allowed:
+        model.constrain(
+            f"{name} cannot be satisfied",
+            Kind.COUNT,
+            triggers,
+            allowed_counts={0},
+            family="conditional occupancy",
+        )
+        return
+
+    trigger_var = _auxiliary_variable(model, "occupant_trigger")
+    active = model.literal(trigger_var, True)
+    inactive = model.literal(trigger_var, False)
+    model.constrain(
+        f"{name} trigger state",
+        Kind.EXACTLY_ONE,
+        [active, inactive],
+        defines=trigger_var,
+        family="conditional occupancy",
+    )
+    model.constrain(
+        f"{name} trigger count",
+        Kind.COUNT,
+        triggers,
+        allowed_counts=range(1, len(triggers) + 1),
+        reified_by=active,
+        family="conditional occupancy",
+    )
+
+    condition_var = _auxiliary_variable(model, "occupant_condition")
+    valid = model.literal(condition_var, True)
+    invalid = model.literal(condition_var, False)
+    model.constrain(
+        f"{name} condition state",
+        Kind.EXACTLY_ONE,
+        [valid, invalid],
+        defines=condition_var,
+        family="conditional occupancy",
+    )
+    model.constrain(
+        f"{name} occupant count",
+        Kind.COUNT,
+        occupants,
+        allowed_counts=allowed,
+        reified_by=valid,
+        family="conditional occupancy",
+    )
+    model.constrain(
+        f"{name} applies only when triggered",
+        Kind.AT_MOST_ONE,
+        [active, invalid],
+        family="conditional occupancy",
+    )
 
 
 def _conditions(board: Board, kind: str, args: list[str], number: int | None) -> list[Condition]:
@@ -552,6 +724,10 @@ def _conditions(board: Board, kind: str, args: list[str], number: int | None) ->
         if person not in board.people:
             raise ValueError(f"clue 'at {' '.join(args)}' names unknown person {person!r}")
         board.edge_item_cells(items)
+    if kind in ("on_mark", "not_on_mark"):
+        if len(args) < 2:
+            raise ValueError(f"clue {kind!r} expects a person and at least one mark")
+        board.mark_cells(args[1:])
     if kind in ("on", "not_on"):
         if len(args) < 2:
             raise ValueError(f"clue {kind!r} expects a person and at least one object")
@@ -649,12 +825,19 @@ def _counting(board: Board, args: list[str], number: int | None) -> Condition:
 def compile_puzzle(board: Board, clues: Iterable[Clue]) -> Model:
     """The model for a Murdoku board and its clues.
 
-    A condition on one person is applied straight away, ruling out the
-    squares that fail it; a condition on several people becomes a relation.
+    A condition on one person is applied straight away, ruling out squares
+    that fail it. Clues about several people become relations; conditional
+    mark effects are compiled to reified counts over their logical areas.
     """
     model = Model()
     _add_board_rules(model, board)
     for condition in conditions(board, clues):
+        if condition.kind == "occupant_condition":
+            (mark_name, _) = condition.args
+            mark = next(mark for mark in board.marks if mark.name == mark_name)
+            assert mark.occupant_condition is not None
+            _compile_mark_occupant_condition(model, board, mark, mark.occupant_condition)
+            continue
         if len(condition.people) == 1:
             (person,) = condition.people
             for sq in board.free:
@@ -668,6 +851,32 @@ def compile_puzzle(board: Board, clues: Iterable[Clue]) -> Model:
         else:
             model.relate(condition.label, condition.people, condition.test)
     return model
+
+
+def _compile_mark_occupant_condition(
+    model: Model, board: Board, mark: CellMark, condition: OccupantCondition
+) -> None:
+    marked = set(mark.cells)
+    for region in sorted({board.region_of(square) for square in mark.cells}):
+        triggers = [
+            model.literal(person, square)
+            for person in board.people
+            for square in board.free
+            if square in marked and board.region_of(square) == region
+        ]
+        occupants = [
+            model.literal(person, square)
+            for person in board.people
+            for square in board.free
+            if board.region_of(square) == region
+        ]
+        apply_occupant_condition(
+            model,
+            f"mark {mark.name} {condition} in {board.region_names[region]}",
+            triggers,
+            occupants,
+            _occupant_counts(condition, len(board.people)),
+        )
 
 
 @dataclass(frozen=True)
@@ -820,6 +1029,13 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
             f"{item.name} {' '.join(map(str, item.cells))}" for item in board.corner_objects
         )
         out.append(f"  corner objects: {listed}")
+    if board.marks:
+        listed = ", ".join(
+            f"{mark.name} {' '.join(map(str, mark.cells))}"
+            + (f" ; {mark.occupant_condition}" if mark.occupant_condition else "")
+            for mark in board.marks
+        )
+        out.append(f"  marks: {listed}")
     return "\n".join(out)
 
 

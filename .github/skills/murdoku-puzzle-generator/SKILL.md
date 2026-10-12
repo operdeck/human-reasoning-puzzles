@@ -138,12 +138,17 @@ it.
 - `CornerObjects:` declares an object at an interior grid vertex by listing
   its four surrounding cells, for example
   `fountain: r3c3 r3c4 r4c3 r4c4`. These cells are touched, not occupied.
+- `Marks:` declares named cell sets independently of areas and objects, for
+  example `quiet: r2c3 r2c4 ; alone`. Mark sets may overlap and never occupy
+  or block cells. An optional `alone` or `not_alone` condition applies only
+  when a marked cell is occupied, then counts people in that cell's logical
+  area; `alone` allows one occupant and `not_alone` requires at least two.
 - `AreaTags:` maps a tag to one or more named regions. Tags may overlap and may
   cover disconnected regions. `Hatched:` accepts either region names or tags.
 - Put board-wide, unnumbered clues in `Rules:` and numbered puzzle clues in
    `Clues:`. Required sections are `Size:`, `Regions:`, `Grid:`, and `People:`.
   `Clues:`, `Language:`, `Words:`, `AreaTags:`, `Hatched:`, `Objects:`,
-  `EdgeItems:`, `CornerObjects:`, and `Rules:` are optional.
+  `EdgeItems:`, `CornerObjects:`, `Marks:`, and `Rules:` are optional.
 - Keep clues concise and non-duplicative. Avoid clues that directly reveal
   every person's square unless the user requests a very easy puzzle.
 - Use `only_in_tagged <person> <tag>` and `not_in_tagged <person> <tag>` in
@@ -173,6 +178,8 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `next_to <person> <object-or-edge-item-or-corner-object>...` | Ordinary objects use same-area adjacency; door and corner item touched cells count, including across an area boundary. |
 | `not_next_to <person> <object-or-edge-item-or-corner-object>...` | Person is not next to any named thing. |
 | `at <person> <edge-item>...` | Person occupies a cell listed by any named door or window. |
+| `on_mark <person> <mark>...` | Person occupies one of the cells carrying any named mark. |
+| `not_on_mark <person> <mark>...` | Person occupies none of the cells carrying any named mark. |
 | `knight_from <person> <object>...` | Person is a chess-knight move from any named thing; region boundaries do not matter. |
 | `on <person> <standable-object>...` | Person occupies one of the named standable-object squares. |
 | `not_on <person> <standable-object>...` | Person occupies none of the named standable-object squares. |

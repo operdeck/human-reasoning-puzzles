@@ -1131,6 +1131,153 @@ next_to C critter
     assert "corner objects: critter r1c1 r1c2 r2c1 r2c2" in rendered
 
 
+def test_named_cell_marks_can_overlap_and_filter_occupants():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Marks:
+quiet: r1c1 r1c2
+social: r1c2
+Clues:
+on_mark A quiet
+not_on_mark B social
+"""
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+
+    assert board.mark_names == {"quiet", "social"}
+    assert board.mark_cells(["quiet", "social"]) == {
+        murdoku.Square(0, 0),
+        murdoku.Square(0, 1),
+    }
+    assert len(board.free) == 4
+    assert {model.value_of(lit) for lit in model.options("A")} == board.mark_cells(["quiet"])
+    assert murdoku.Square(0, 1) not in {model.value_of(lit) for lit in model.options("B")}
+    rendered = _plain(murdoku.render(board, model, "marks"))
+    assert "marks: quiet r1c1 r1c2, social r1c2" in rendered
+
+
+def test_mark_names_cells_and_conditions_are_validated():
+    base = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+"""
+    with pytest.raises(ValueError, match="off the grid"):
+        load_board(base + "Marks:\nquiet: r1c3\n")
+    with pytest.raises(ValueError, match="defined more than once"):
+        load_board(base + "Marks:\nquiet: r1c1\nquiet: r2c2\n")
+    with pytest.raises(ValueError, match="use alone or not_alone"):
+        load_board(base + "Marks:\nquiet: r1c1 ; crowded\n")
+
+    board, _ = load_board(base + "Marks:\nquiet: r1c1\n")
+    with pytest.raises(ValueError, match="unknown marks"):
+        murdoku.compile_puzzle(board, [("on_mark", ["A", "missing"])])
+
+
+def test_mark_occupant_conditions_are_conditional_and_match_brute_force():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Marks:
+quiet: r1c1 ; alone
+social: r1c2 ; not_alone
+Clues:
+on_mark A social
+not_on_mark B quiet
+"""
+    (expected,) = bruteforce.solutions(text, "murdoku", limit=10)
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+    result = Solver(model).solve()
+    quiet = board.mark_cells(["quiet"])
+
+    assert result.solved
+    assert {person: result.assignment[person] for person in board.people} == expected
+    assert not set(expected.values()) & quiet
+    for step in model.log:
+        if step.var not in board.people:
+            continue
+        if step.asserted:
+            assert expected[step.var] == step.value, step
+        else:
+            assert expected[step.var] != step.value, step
+
+
+def test_triggered_alone_mark_allows_other_regions_to_be_occupied():
+    text = """Size: 2
+Regions:
+a: room
+b: garden
+Grid:
+a b
+a b
+People:
+A
+B
+Marks:
+quiet: r1c1 ; alone
+plain: r2c2
+Clues:
+on_mark A quiet
+outside B room
+"""
+    (expected,) = bruteforce.solutions(text, "murdoku", limit=5)
+    board, clues = load_board(text)
+    result = Solver(murdoku.compile_puzzle(board, clues)).solve()
+
+    assert result.solved
+    assert {person: result.assignment[person] for person in board.people} == expected
+    assert expected["A"] == murdoku.Square(0, 0)
+    assert expected["B"] == murdoku.Square(1, 1)
+
+
+def test_mark_occupant_conditions_only_count_the_marked_logical_area():
+    text = """Size: 3
+Regions:
+a: room
+b: garden
+Grid:
+a a b
+a a b
+a a b
+People:
+A
+B
+C
+Marks:
+quiet: r1c1 ; alone
+social: r2c1 ; not_alone
+"""
+    board, _ = load_board(text)
+    alone, not_alone = murdoku.conditions(board, [])
+    square = murdoku.Square
+
+    assert not alone.test(square(0, 0), square(1, 1), square(0, 2))
+    assert alone.test(square(0, 0), square(0, 2), square(1, 2))
+    assert alone.test(square(0, 1), square(1, 1), square(0, 2))
+    assert not_alone.test(square(1, 0), square(0, 1), square(2, 2))
+    assert not not_alone.test(square(1, 0), square(0, 2), square(2, 2))
+    assert not_alone.test(square(0, 0), square(0, 2), square(2, 2))
+
+
 def test_edge_item_geometry_is_validated():
     base = """Size: 3
 Regions:

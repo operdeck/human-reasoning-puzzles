@@ -471,6 +471,9 @@ EdgeItems:      # optional; doors touch two cells, windows one; neither occupies
   window: window r2c3
 CornerObjects:  # optional; object touches the four cells around an interior grid corner
   fountain: r3c3 r3c4 r4c3 r4c4
+Marks:          # optional; named cell sets may overlap and never block a cell
+  quiet: r2c3 r2c4 ; alone
+  gathering: r3c1 r3c2 ; not_alone
 People:         # one per line, from 1 through Size
 Rules:          # optional; clues that come with the board, not numbered
   outside Tim water
@@ -479,6 +482,8 @@ Clues:          # numbered 1, 2, ... in the order given
   not_next_to Ben lamp               # beside none of them
   at Tim window                      # exactly a cell touched by a door or window
   next_to Jos fountain               # one of the four cells around a corner object
+  on_mark Ada quiet                  # Ada occupies a cell marked quiet
+  not_on_mark Ben gathering          # Ben occupies no gathering cell
   knight_from Tim klimwand boulder   # a knight's move from any of them
   on Jos bank                        # on a standable object
   not_on Clarence stoel              # not on any square in that standable set
@@ -504,6 +509,13 @@ Clues:          # numbered 1, 2, ... in the order given
 Every object declaration must say `blocking` or `standable`; names and icons do
 not imply occupancy. Repeat a name to place multiple instances of one object
 type. Each declaration is one connected, non-overlapping footprint.
+
+`Marks:` gives names to cell sets independently of regions and objects. Marks
+may overlap, and marked cells remain open for people. `on_mark` and
+`not_on_mark` query a mark set. An optional `; alone` or `; not_alone` condition
+applies only if someone occupies a marked cell; it then counts all occupants
+of that cell's logical area. `alone` allows one occupant, while `not_alone`
+requires at least two.
 
 `alone` and `furthest` expand to one relation per other person; `furthest`
 is a three-way relation (Luna, Mao, that person).
@@ -562,8 +574,8 @@ It is built in three layers that never reach into each other:
 `--png` draws a Murdoku board from the puzzle file in the style of a printed
 Murdoku: region colours (from `Regions:`, or a default palette), a darker shade
 under objects, hatching where `Hatched:` says, thick lines between regions,
-icons for named objects, door marks, window and corner-object icons, name tags for people,
-coordinates and a
+icons for named objects, door marks, window and corner-object icons, marked-cell
+badges and legend entries, name tags for people, coordinates and a
 legend. Because it is drawn from the same file the solver reads, the picture
 cannot disagree with the puzzle. Sudoku, Calcudoku and Futoshiki pictures
 share the look: thick lines around boxes or cages, alternate boxes shaded,
