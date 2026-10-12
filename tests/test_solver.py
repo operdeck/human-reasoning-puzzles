@@ -870,29 +870,116 @@ def test_standable_objects_can_be_stood_on_and_blocking_objects_cannot():
     assert sorted(model.value_of(lit) for lit in model.options("A")) == [sq(1, 0), sq(1, 1)]
 
 
-def test_next_to_door_allows_either_cell_on_its_boundary():
-    text = """Size: 2
+def test_edge_items_and_corner_objects_expose_touched_cells():
+    text = """Size: 3
 Regions:
 a: west
 b: east
 Grid:
-a b
-a b
+a b a
+a b a
+a b a
 People:
 A
 B
-Doors:
-gate: r1c1-r1c2
+ C
+EdgeItems:
+gate: door r1c1 r1c2
+gate: door r2c1 r2c2
+window: window r3c3
+CornerObjects:
+critter: r1c1 r1c2 r2c1 r2c2
 Clues:
 next_to A gate
+at A gate
+at B window
+next_to B window
+next_to C critter
 """
     board, clues = load_board(text)
-    model = murdoku.compile_puzzle(board, clues)
-    assert board.doors["gate"] == [(murdoku.Square(0, 0), murdoku.Square(0, 1))]
-    assert {model.value_of(lit) for lit in model.options("A")} == {
-        murdoku.Square(0, 0),
-        murdoku.Square(0, 1),
+    square = murdoku.Square
+
+    assert len(board.edge_items) == 3
+    assert board.edge_item_cells(["gate"]) == {
+        square(0, 0),
+        square(0, 1),
+        square(1, 0),
+        square(1, 1),
     }
+    assert board.edge_item_cells(["window"]) == {square(2, 2)}
+    assert board.corner_object_cells(["critter"]) == {
+        square(0, 0),
+        square(0, 1),
+        square(1, 0),
+        square(1, 1),
+    }
+    assert len(board.free) == 9
+    conditions = murdoku.conditions(board, clues)
+    at_gate = next(condition for condition in conditions if condition.label == "at A gate")
+    at_window = next(condition for condition in conditions if condition.label == "at B window")
+    next_to_window = next(
+        condition for condition in conditions if condition.label == "next_to B window"
+    )
+    next_to_gate = next(
+        condition for condition in conditions if condition.label == "next_to A gate"
+    )
+    next_to_corner = next(
+        condition for condition in conditions if condition.label == "next_to C critter"
+    )
+    assert {sq for sq in board.free if at_window.test(sq)} == {square(2, 2)}
+    assert {sq for sq in board.free if at_gate.test(sq)} == board.edge_item_cells(["gate"])
+    assert {sq for sq in board.free if next_to_window.test(sq)} == {square(2, 2)}
+    assert {sq for sq in board.free if next_to_gate.test(sq)} == board.edge_item_cells(["gate"])
+    assert {sq for sq in board.free if next_to_corner.test(sq)} == board.corner_object_cells(
+        ["critter"]
+    )
+    rendered = _plain(murdoku.render(board, murdoku.compile_puzzle(board, clues), "t"))
+    assert "edge items: gate door r1c1 r1c2, gate door r2c1 r2c2, window window r3c3" in rendered
+    assert "corner objects: critter r1c1 r1c2 r2c1 r2c2" in rendered
+
+
+def test_edge_item_geometry_is_validated():
+    base = """Size: 3
+Regions:
+a: west
+b: east
+Grid:
+a b a
+a b a
+a b a
+People:
+A
+B
+"""
+    with pytest.raises(ValueError, match="two neighboring cells"):
+        load_board(base + "EdgeItems:\ngate: door r1c1\n")
+    with pytest.raises(ValueError, match="one inside cell"):
+        load_board(base + "EdgeItems:\nwindow: window r1c1 r1c2\n")
+    with pytest.raises(ValueError, match="neighboring cells"):
+        load_board(base + "EdgeItems:\ngate: door r1c1 r3c2\n")
+    with pytest.raises(ValueError, match="area boundary"):
+        load_board(base + "EdgeItems:\ngate: door r1c1 r2c1\n")
+    with pytest.raises(ValueError, match="four cells around one corner"):
+        load_board(base + "CornerObjects:\ncritter: r1c1 r1c2 r2c1\n")
+
+
+def test_next_to_objects_stays_in_area_but_edge_items_cross_boundaries():
+    square = murdoku.Square
+    board = murdoku.Board(
+        2,
+        [["west", "east"], ["west", "east"]],
+        {"west": "west", "east": "east"},
+        [murdoku.BoardObject("lamp", "blocking", (square(0, 0),))],
+        ["A", "B"],
+        edge_items=[murdoku.EdgeItem("gate", "door", (square(1, 0), square(1, 1)))],
+    )
+    object_condition, door_condition = murdoku.conditions(
+        board, [("next_to", ["A", "lamp"]), ("next_to", ["B", "gate"])]
+    )
+
+    assert object_condition.test(square(1, 0))
+    assert not object_condition.test(square(0, 1))
+    assert door_condition.test(square(1, 0)) and door_condition.test(square(1, 1))
 
 
 def test_not_on_excludes_a_standable_object_set():
