@@ -219,9 +219,11 @@ Three ingredients, defined in `src/csp/core.py`:
 
 - **Literals** — atomic choices. `r3c4=7` for Sudoku or Calcudoku,
   `Tim=r1c1` for Murdoku.
-- **Constraints** — a set of literals tagged `EXACTLY_ONE` or `AT_MOST_ONE`,
-  optionally labelled with the *family* it belongs to ("each digit once per
-  row"); the label only serves explanations.
+- **Constraints** — a set of literals with allowed true counts. The named
+  `EXACTLY_ONE` and `AT_MOST_ONE` kinds retain their existing meanings;
+  `COUNT` accepts any set of allowed totals and can be reified by a literal.
+  Constraints may be labelled with the *family* they belong to ("each digit
+  once per row"); the label only serves explanations.
 - **Relations** — a predicate over two or more variables' choices, for clues
   like "Jos is somewhere left of Otto" or "Luna is furthest from Mao", and
   for Calcudoku cages ("these three cells add up to 12").
@@ -229,11 +231,14 @@ Three ingredients, defined in `src/csp/core.py`:
 A *variable* is just a constraint flagged as owning a whole domain, so
 `model.chosen("Tim")` can report what Tim settled on.
 
-The `EXACTLY_ONE` / `AT_MOST_ONE` split is load-bearing, not decoration.
-`AT_MOST_ONE` forbids a second truth but never forces a first. Collapsing the
-two is exactly the bug that made an earlier version of this code unsound on
-Murdoku: with 7 people over 43 squares, most squares stay empty, so "this
-square is only possible for Vladimir" says nothing at all.
+The `EXACTLY_ONE` / `AT_MOST_ONE` split is load-bearing, not decoration:
+`AT_MOST_ONE` forbids a second truth but never forces a first. `COUNT` makes
+the permitted true totals explicit with `allowed_counts`; it covers exact,
+at-least, at-most, odd and even counts. With `reified_by`, a literal is true
+exactly when the count is in that allowed set. Collapsing the legacy kinds
+was the bug that made an earlier version unsound on Murdoku: with 7 people
+over 43 squares, most squares stay empty, so "this square is only possible
+for Vladimir" says nothing at all.
 
 ## How the puzzles map
 
@@ -267,21 +272,26 @@ Applied cheapest-first; any success restarts the ladder.
 
 | Rule | What it does |
 |---|---|
-| `single` | An `EXACTLY_ONE` with one option left forces it. |
+| `single` | A final option in `EXACTLY_ONE`, or one remaining `COUNT` literal with a single feasible total, is forced true or false. |
+| `count` | Propagate allowed true totals, including bounds, parity and reified counts. |
 | `relations` | Arc consistency: drop every value of a relation that no combination of the other variables' values supports. |
-| `subsumption` | If `live(A) ⊆ live(B)` and A is `EXACTLY_ONE`, every B-literal outside A is false. |
-| `cover2`, `cover3` | The same over *k* constraints: *k* disjoint `EXACTLY_ONE`s whose live literals fit inside *k* others use those others up. |
-| `chains` | Alternating inference chains. A *strong* link joins the last two options of an `EXACTLY_ONE` (one of them holds); a *weak* link joins two options that cannot both hold (they share a constraint, or a two-variable relation forbids the pair). Assume a start option false and follow strong and weak links in turn: an option reached as true means "the start or this one" holds, so anything weakly linked to both is false. |
-| `what_if` | Assume a literal on a copy, run `single`/`relations`/`subsumption`; if that contradicts, the literal is false. Of the options it can refute, it takes the one with the shortest refutation. |
+| `subsumption` | A constraint requiring one additional true literal fills an outer constraint's remaining capacity and rules out its other options. |
+| `cover2`, `cover3` | Disjoint inner constraints with total guaranteed demand *k* use up outer constraints with total remaining capacity *k*. |
+| `chains` | Alternating inference chains. A *strong* link means a pair cannot both be false under the allowed counts; a *weak* link means they cannot both be true. Assume a start option false and follow strong and weak links in turn: an option reached as true means "the start or this one" holds, so anything weakly linked to both is false. Links come from actual count support or a two-variable relation. |
+| `what_if` | Assume a literal on a copy, run `single`/`count`/`relations`/`subsumption`; if that contradicts, the literal is false. Of the options it can refute, it takes the one with the shortest refutation. |
 
 `single` covers Sudoku's naked single *and* hidden single with no
 special-casing — they are the same statement about different constraints
-("this cell holds one digit" vs "this digit sits once in this row").
-`subsumption` is likewise pointing-pairs and box/line reduction at once.
+("this cell holds one digit" vs "this digit sits once in this row"). For a
+general `COUNT`, `single` handles the last undecided literal and `count`
+propagates the wider allowed set. `subsumption` is likewise pointing-pairs
+and box/line reduction at once.
 
 `cover`*k* is naked subsets (As are cells), hidden subsets (As are
 digit-in-house), X-Wing (*k*=2) and Swordfish (*k*=3) (As are digit-in-row,
-Bs digit-in-column) — one rule, again with no special-casing.
+Bs digit-in-column) — one rule, again, with no special-casing. Its count
+capacity proof also works when an inner constraint guarantees more than one
+true literal.
 
 `chains` is simple colouring, X- and XY-chains, Y- and W-wings and 3D
 Medusa in one rule. Weak links from two-person clues and two-cell cages make
@@ -305,7 +315,7 @@ philosophy: logic only, every step named and explained. It implements 20
 technique families, each written for Sudoku's cells, rows and boxes, and it
 inspired several things here: the `chains` rule, the step-by-step soundness
 test, grading and the benchmark. Because this engine sees only literals and
-exactly-one / at-most-one groups, many of those families are one rule here:
+count constraints and relations as generic primitives, many of those families are one rule here:
 
 | Sudoku techniques | Here |
 |---|---|
@@ -628,20 +638,6 @@ with `--explain`, which reads each clue back in words, and with
 several. A hand-written sentence parser is not planned.
 
 ### Possible improvements
-
-- **Counting constraints: the bigger investment, and the one that opens the
-  most new puzzles.** The engine only knows "exactly one" and "at most one".
-  Many grid puzzles count to other numbers: Star Battle (two stars per row,
-  column and region), Binairo/Takuzu (as many 0s as 1s per line), Tents,
-  Minesweeper ("three mines around this cell"), Nurikabe-style clues. A
-  general `EXACTLY_K` / `AT_MOST_K` kind, with `single` generalised (k
-  options left for k: all true; k already true: the rest false) and `cover`
-  generalised to count capacities instead of one-each, would bring those in
-  without any per-puzzle rule. Arc consistency over a relation can do it
-  today in principle, but tries every combination and does not scale to a
-  whole row. The work is in core: the new kind, its rules, chains' strong
-  and weak links for it (a count of k gives no strong links unless k options
-  remain), `proof` and the wording of `story` and `report`.
 - **Big sum cages.** A Calcudoku cage is checked by trying every
   combination of its cells' numbers, which slows down sharply for cages of
   six or seven cells. Cheaper, human-style steps would help: *bounds*
