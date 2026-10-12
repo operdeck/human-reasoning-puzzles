@@ -24,6 +24,7 @@ Words:
 klimgebied_noord: in klimgebied noord
 klimgebied_zuid: in klimgebied zuid
 klimgebied: in een klimgebied
+klimgebied_en_kantoor: in een klimgebied of op kantoor
 helmholtzstraat: in de Helmholtzstraat
 bankastraat: in de Bankastraat
 kantoor: op kantoor
@@ -42,9 +43,10 @@ f: kantoor #DCDCDC
 g: woonboot #C79A6A
 h: water #A9D6F0
 
-Groups:
+AreaTags:
 klimgebied: klimgebied_noord klimgebied_zuid
 amsterdam: helmholtzstraat bankastraat kantoor woonboot water
+klimgebied_en_kantoor: klimgebied_noord klimgebied_zuid kantoor
 
 # Amsterdam is hatched on the printed board.
 Hatched:
@@ -107,7 +109,7 @@ outside Mao water
 # Clue 15 is the question being asked.
 Clues:
 knight_from Tim klimwand boulder
-in_region Otto klimgebied kantoor
+in_tagged Otto klimgebied_en_kantoor
 on Jos bank
 next_to Anna koffer
 in_region Luna woonboot water

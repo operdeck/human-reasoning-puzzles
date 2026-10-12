@@ -92,6 +92,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "n_rows": "{n} rows",
         "clue.in_region": "{a} is {where}",
         "clue.outside": "{a} is not {where}",
+        "clue.in_tagged": "{a} is {where}",
+        "clue.not_in_tagged": "{a} is not {where}",
+        "clue.only_in_tagged": "{a} is only {where}",
         "clue.next_to": "{a} is next to {things}",
         "clue.not_next_to": "{a} is not next to {things}",
         "clue.knight_from": "{a} is a knight's move from {things}",
@@ -166,6 +169,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "n_rows": "{n} rijen",
         "clue.in_region": "{a} is {where}",
         "clue.outside": "{a} is niet {where}",
+        "clue.in_tagged": "{a} is {where}",
+        "clue.not_in_tagged": "{a} is niet {where}",
+        "clue.only_in_tagged": "{a} is alleen {where}",
         "clue.next_to": "{a} zit naast {things}",
         "clue.not_next_to": "{a} zit niet naast {things}",
         "clue.knight_from": "{a} staat een paardensprong van {things}",
@@ -276,13 +282,13 @@ class Places:
         return self.say.join([self.region(n) for n in names], "or")
 
     def regions(self, ids: set[str]) -> str:
-        """'in the moestuin or on kantoor', using a group's name where it fits."""
+        """Name candidate areas compactly, using an area tag where it fits."""
         names: list[str] = []
         left = set(ids)
-        for group, members in self.board.groups.items():
-            inside = self.board.region_ids(members)
+        for tag in self.board.area_tags:
+            inside = self.board.tagged_region_ids([tag])
             if inside <= left:
-                names.append(group)
+                names.append(tag)
                 left -= inside
         names += [self.board.region_names[i] for i in sorted(left)]
         return self.where_regions(names)
@@ -748,6 +754,8 @@ class Story:
         rest = args[1:] if kind in FILTERS or kind == "only_on" else ()
         if kind in ("in_region", "outside"):
             fields["where"] = self.places.where_regions(rest)
+        elif kind in ("in_tagged", "not_in_tagged", "only_in_tagged"):
+            fields["where"] = self.places.regions(self.board.tagged_region_ids(rest))
         elif rest:
             fields["things"] = self.say.join([self.places.thing(t) for t in rest], "or")
         if kind == "only_on":

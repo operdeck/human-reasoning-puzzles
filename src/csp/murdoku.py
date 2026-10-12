@@ -106,8 +106,9 @@ class Board:
     cells in different regions; a door is not itself a square. `colours`
     (region id -> '#RRGGBB') and `hatched` (region ids) only affect pictures.
 
-    `rules` are clues that come with the board rather than the puzzle, such
-    as "only Luna can be in the water"; they are not numbered.
+    `area_tags` map reusable tags to named regions. `rules` are clues that come
+    with the board rather than the puzzle, such as "only Luna can be in the
+    water"; they are not numbered.
     """
 
     size: int
@@ -115,7 +116,7 @@ class Board:
     region_names: dict[str, str]
     objects: list[BoardObject]
     people: list[str]
-    groups: dict[str, list[str]] = field(default_factory=dict)
+    area_tags: dict[str, list[str]] = field(default_factory=dict)
     colours: dict[str, str] = field(default_factory=dict)
     hatched: set[str] = field(default_factory=set)
     rules: list["Clue"] = field(default_factory=list)
@@ -153,6 +154,14 @@ class Board:
             and nb.col < self.size
             and self.region_of(sq) != self.region_of(nb)
         }
+        for tag, members in self.area_tags.items():
+            if not tag or any(char.isspace() for char in tag):
+                raise ValueError(f"area tag {tag!r} must be a single token")
+            if tag in self.region_names or tag in self.region_names.values():
+                raise ValueError(f"area tag {tag!r} conflicts with a region identifier or name")
+            if not members:
+                raise ValueError(f"area tag {tag!r} needs at least one region")
+            self.region_ids(members)
         if door_names := set(self.doors) & self.object_names:
             raise ValueError(f"door names overlap objects: {sorted(door_names)}")
         for name, edges in self.doors.items():
@@ -179,10 +188,26 @@ class Board:
         raise ValueError(f"unknown region {name!r}; have {sorted(self.region_names.values())}")
 
     def region_ids(self, names: Iterable[str]) -> set[str]:
-        """Region ids for a mix of region names and group names."""
-        return {
-            self.region_id(member) for name in names for member in self.groups.get(name, [name])
-        }
+        """Region ids for named regions; disconnected cells share the same id."""
+        return {self.region_id(name) for name in names}
+
+    def tagged_region_ids(self, tags: Iterable[str]) -> set[str]:
+        """Region ids carrying any of the named area tags."""
+        tags = set(tags)
+        unknown = tags - set(self.area_tags)
+        if unknown:
+            raise ValueError(f"unknown area tags {sorted(unknown)}; have {sorted(self.area_tags)}")
+        return {self.region_id(region) for tag in tags for region in self.area_tags[tag]}
+
+    def area_ids(self, names: Iterable[str]) -> set[str]:
+        """Region ids named directly or through an area tag, for area-wide styling."""
+        ids: set[str] = set()
+        for name in names:
+            if name in self.area_tags:
+                ids.update(self.tagged_region_ids([name]))
+            else:
+                ids.add(self.region_id(name))
+        return ids
 
     def regions_touch(self, a: str, b: str) -> bool:
         """Share a side somewhere; a shared corner does not count."""
@@ -227,6 +252,16 @@ def _in_region(board: Board, *names: str) -> SquareTest:
 
 def _outside(board: Board, *names: str) -> SquareTest:
     ids = board.region_ids(names)
+    return lambda sq: board.region_of(sq) not in ids
+
+
+def _in_tagged(board: Board, *tags: str) -> SquareTest:
+    ids = board.tagged_region_ids(tags)
+    return lambda sq: board.region_of(sq) in ids
+
+
+def _not_in_tagged(board: Board, *tags: str) -> SquareTest:
+    ids = board.tagged_region_ids(tags)
     return lambda sq: board.region_of(sq) not in ids
 
 
@@ -327,8 +362,11 @@ def _at_least(board: Board, steps: str) -> PairTest:
 
 
 FILTERS: dict[str, Callable[..., SquareTest]] = {
-    "in_region": _in_region,  # in_region <person> <region or group>...
-    "outside": _outside,  # outside <person> <region or group>...
+    "in_region": _in_region,  # in_region <person> <region>...
+    "outside": _outside,  # outside <person> <region>...
+    "in_tagged": _in_tagged,  # in_tagged <person> <area tag>...
+    "only_in_tagged": _in_tagged,  # only_in_tagged <person> <area tag>...
+    "not_in_tagged": _not_in_tagged,  # not_in_tagged <person> <area tag>...
     "next_to": _next_to,  # next_to <person> <thing>...: beside any of them
     "not_next_to": _not_next_to,  # not_next_to <person> <thing>...: beside none of them
     "knight_from": _knight_from,  # knight_from <person> <thing>...: a knight's move away
