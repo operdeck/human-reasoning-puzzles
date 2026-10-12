@@ -7,7 +7,7 @@ one-line section can be written inline before the first header, as in
 
 import re
 
-from .murdoku import Board, Clue, Square
+from .murdoku import Board, BoardObject, Clue, ObjectKind, Square
 
 KINDS = ("sudoku", "murdoku", "calcudoku", "futoshiki")
 
@@ -76,10 +76,9 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     if unknown:
         raise ValueError(f"Grid uses region ids with no name: {sorted(unknown)}")
 
-    objects = _placements(section.get("Objects", []))
-    furniture = _placements(section.get("Furniture", []))
-    if overlap := _overlap(objects, furniture):
-        raise ValueError(f"furniture placed on an object at {sorted(overlap)}")
+    if "Furniture" in section:
+        raise ValueError("Furniture: is no longer supported; use Objects: with kind 'standable'")
+    objects = _object_placements(section.get("Objects", []))
     doors = _door_placements(section.get("Doors", []))
 
     people = list(section["People"])
@@ -92,7 +91,14 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     clues = _clues(section.get("Clues", []))
 
     board = Board(
-        size, grid, region_names, objects, people, groups, furniture, colours, doors=doors
+        size,
+        grid,
+        region_names,
+        objects,
+        people,
+        groups=groups,
+        colours=colours,
+        doors=doors,
     )
     board.region_ids(groups)  # fails now, not mid-solve, if a group names an unknown region
     board.hatched = board.region_ids(
@@ -107,13 +113,25 @@ def _clues(lines: list[str]) -> list[Clue]:
     return [(kind, args) for kind, *args in (line.split() for line in lines)]
 
 
-def _placements(lines: list[str]) -> dict[str, list[Square]]:
-    """'koffer: r1c5 r4c7' lines -> {'koffer': [Square(0, 4), Square(3, 6)]}."""
-    placed: dict[str, list[Square]] = {}
+def _object_placements(lines: list[str]) -> list[BoardObject]:
+    """Read explicit object kinds and one connected footprint per declaration."""
+    objects: list[BoardObject] = []
+    kinds: dict[str, ObjectKind] = {}
     for line in lines:
-        name, _, where = line.partition(":")
-        placed.setdefault(name.strip(), []).extend(parse_square(t) for t in where.split())
-    return placed
+        name, separator, definition = line.partition(":")
+        parts = definition.split()
+        if not separator or not name.strip():
+            raise ValueError(f"bad object {line!r}, expected 'name: kind r1c1 ...'")
+        if not parts or parts[0] not in ("blocking", "standable"):
+            raise ValueError(f"object {name.strip()!r} must declare kind 'blocking' or 'standable'")
+        kind: ObjectKind = parts[0]  # type: ignore[assignment]
+        if name.strip() in kinds and kinds[name.strip()] != kind:
+            raise ValueError(f"object type {name.strip()!r} has conflicting kinds")
+        kinds[name.strip()] = kind
+        if len(parts) == 1:
+            raise ValueError(f"object {name.strip()!r} needs at least one cell")
+        objects.append(BoardObject(name.strip(), kind, tuple(parse_square(t) for t in parts[1:])))
+    return objects
 
 
 def _door_placements(lines: list[str]) -> dict[str, list[tuple[Square, Square]]]:
@@ -130,14 +148,3 @@ def _door_placements(lines: list[str]) -> dict[str, list[tuple[Square, Square]]]
                 raise ValueError(f"bad door edge {token!r}, expected 'r1c1-r1c2'")
             edges.append((parse_square(first), parse_square(second)))
     return doors
-
-
-def _overlap(*layers: dict[str, list[Square]]) -> set[Square]:
-    """Squares claimed by more than one layer."""
-    seen: set[Square] = set()
-    overlap: set[Square] = set()
-    for layer in layers:
-        squares = {sq for group in layer.values() for sq in group}
-        overlap |= seen & squares
-        seen |= squares
-    return overlap

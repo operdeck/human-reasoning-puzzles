@@ -14,7 +14,7 @@
 # never crosses a region boundary, that left the puzzle without a solution; the
 # document now has r1c5 in Helmholtzstraat, which keeps the published solution.
 #
-# Banks are 1x2 furniture you can lie on, so they do not block their squares.
+# Banks are 1x2 standable objects, so they do not block their squares.
 
 Size: 9
 Language: nl
@@ -62,18 +62,24 @@ h g g g h b b b b
 h h h h h b b b b
 
 Objects:
-koffer: r1c5 r4c7 r9c7
-boom: r2c7 r3c9 r4c9 r6c6 r9c9
-lantaarn: r2c2
-klimwand: r2c8
-bureau: r4c3
-vuurtje: r5c1
-kas: r5c6
-kombuis: r7c3
-boulder: r8c8
-
-Furniture:
-bank: r1c2 r1c3 r3c4 r3c5 r8c3 r8c4
+koffer: blocking r1c5
+koffer: blocking r4c7
+koffer: blocking r9c7
+boom: blocking r2c7
+boom: blocking r3c9
+boom: blocking r4c9
+boom: blocking r6c6
+boom: blocking r9c9
+lantaarn: blocking r2c2
+klimwand: blocking r2c8
+bureau: blocking r4c3
+vuurtje: blocking r5c1
+kas: blocking r5c6
+kombuis: blocking r7c3
+boulder: blocking r8c8
+bank: standable r1c2 r1c3
+bank: standable r3c4 r3c5
+bank: standable r8c3 r8c4
 
 People:
 Tim

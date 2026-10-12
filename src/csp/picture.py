@@ -2,8 +2,8 @@
 
 Murdoku follows the style of the printed puzzles: region fills (darker where
 an object stands), optional diagonal hatching, thick dark lines between
-regions and thin white lines inside them, an icon per object or piece of
-furniture, name tags for people, and a legend. Icons come from `csp.icons`;
+regions and thin white lines inside them, an icon per object, name tags for
+people, and a legend. Icons come from `csp.icons`;
 an object without one gets its name written in the square.
 
 Sudoku and Calcudoku share the look: thick lines around boxes or cages, thin
@@ -13,7 +13,7 @@ pastel fills, no two touching cages alike, and their target in the corner.
 Needs Pillow (`uv sync --extra png`).
 """
 
-from collections.abc import Callable, Hashable, Iterable, Mapping
+from collections.abc import Callable, Hashable, Mapping
 from typing import Any
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
@@ -82,41 +82,46 @@ def murdoku_picture(
     )
     _door_edges(draw, board, margin, cell)
 
-    for name, squares in board.objects.items():
-        if name == "waterput":
-            for piece in _pieces(squares):
-                x0, y0, _, _ = box(min(piece))
-                _, _, x1, y1 = box(max(piece))
-                _draw_water_well(draw, (x0, y0, x1, y1))
-        else:
-            for sq in squares:
-                _icon(image, draw, name, box(sq), cell)
     occupied = set((placed or {}).values())
-    for name, squares in board.furniture.items():
-        pieces = (
-            [[sq] for sq in squares]
-            if icons.code_for(name) == icons.code_for("chair")
-            else _pieces(squares)
-        )
-        for piece in pieces:
-            x0, y0, _, _ = box(min(piece))
-            _, _, x1, y1 = box(max(piece))
-            stretch = len(piece) > 1
+    for obj in board.objects:
+        name = obj.name
+        piece = obj.squares
+        x0, y0, _, _ = box(min(piece))
+        _, _, x1, y1 = box(max(piece))
+        stretch = len(piece) > 1
+        if name.rstrip("0123456789").rstrip("_").lower() in {"waterput", "well"}:
+            _draw_water_well(draw, (x0, y0, x1, y1))
+        elif obj.kind == "standable":
             rotate = name.rstrip("0123456789").rstrip("_").lower() == "bed" and y1 - y0 > x1 - x0
             if occupied & set(piece) and not stretch:
                 y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
                 _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
             else:
                 _icon(image, draw, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
-    furnished = board.squares_of(board.furniture)
+        else:
+            _icon(image, draw, name, (x0, y0, x1, y1), cell, stretch=stretch)
+    standable = board.squares_of(obj.name for obj in board.standable_objects)
     for person, sq in (placed or {}).items():
-        _name_tag(draw, person, box(sq), cell, low=sq in furnished)
+        _name_tag(draw, person, box(sq), cell, low=sq in standable)
 
     if coordinates:
         _coordinates(draw, board.size, margin, cell)
     if key:
         key.draw(image, draw, margin, margin + side + cell // 3)
     return image
+
+
+def unknown_object_icons(board: Board) -> list[str]:
+    """Object types that render with a text fallback instead of a picture icon."""
+    custom = {"tapijt", "waterput", "well"}
+    return sorted(
+        {
+            obj.name
+            for obj in board.objects
+            if icons.code_for(obj.name) is None
+            and obj.name.rstrip("0123456789").rstrip("_").lower() not in custom
+        }
+    )
 
 
 def sudoku_picture(
@@ -362,25 +367,6 @@ def _door_edges(draw: ImageDraw.ImageDraw, board: Board, margin: int, cell: int)
                 x = margin + first.col * cell + cell // 2
                 y = margin + max(first.row, second.row) * cell
                 draw.line((x - cell // 4, y, x + cell // 4, y), fill=wood, width=width)
-
-
-def _pieces(squares: Iterable[Square]) -> list[list[Square]]:
-    """Group squares of one furniture name into connected pieces."""
-    remaining = set(squares)
-    pieces = []
-    while remaining:
-        frontier = [remaining.pop()]
-        piece = []
-        while frontier:
-            sq = frontier.pop()
-            piece.append(sq)
-            for nb in (Square(sq.row + 1, sq.col), Square(sq.row - 1, sq.col),
-                       Square(sq.row, sq.col + 1), Square(sq.row, sq.col - 1)):  # fmt: skip
-                if nb in remaining:
-                    remaining.remove(nb)
-                    frontier.append(nb)
-        pieces.append(piece)
-    return pieces
 
 
 # --- things on the board --------------------------------------------------

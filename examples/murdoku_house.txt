@@ -22,15 +22,14 @@ s s h h k
 s s s h h
 
 Objects:
-tree: r1c1
-oven: r1c5
-desk: r4c1
-lamp: r2c3
+tree: blocking r1c1
+oven: blocking r1c5
+desk: blocking r4c1
+lamp: blocking r2c3
 
-# The sofa is 1x2; both it and the chair can be sat on.
-Furniture:
-sofa: r3c3 r3c4
-chair: r5c2
+# The sofa is a 1x2 standable object; so is the chair.
+sofa: standable r3c3 r3c4
+chair: standable r5c2
 
 People:
 Ada

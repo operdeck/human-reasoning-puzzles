@@ -38,13 +38,13 @@ e e d d d f f f g
 e e e d d d f f g
 
 Objects:
-klimwand: r2c2
-kookeiland: r2c5
-kas: r1c8
-vijver: r5c8
-bank: r6c6
-vuurtje: r6c2
-glijbaan: r8c4
+klimwand: blocking r2c2
+kookeiland: blocking r2c5
+kas: blocking r1c8
+vijver: blocking r5c8
+bank: blocking r6c6
+vuurtje: blocking r6c2
+glijbaan: blocking r8c4
 
 People:
 Tim

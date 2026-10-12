@@ -196,7 +196,7 @@ file cannot be read.
 | `futoshiki_5x5.txt` | `chains`: no givens, eight signs |
 | `murdoku_intro.txt` | `single` only: the 4×4 first case above |
 | `murdoku_house.txt` | `relations`, `subsumption`: a 5×5 using "not next to" and a counting clue |
-| `murdoku_sparse_mystery.txt` | `single`: a sparse 5×5 with role areas, furniture, a door edge, and one murderer |
+| `murdoku_sparse_mystery.txt` | `single`: a sparse 5×5 with role areas, standable objects, a door edge, and one murderer |
 | `prrrdoku1.txt` | `relations`, `subsumption` |
 | `prrrdoku2.txt` | `what_if` |
 | `prrrdoku3.txt` | `what_if` |
@@ -447,13 +447,15 @@ Size: 7
 Language: nl    # optional; language of --explain (en or nl, default en)
 Words:          # optional; how --explain names things
   water: in het water     # a region or group: where it is
-  vuurtje: het vuurtje    # an object or furniture: what it is called
+  vuurtje: het vuurtje    # an object type: what it is called
 Regions:        # id: name [#RRGGBB], e.g. "a: keukenwinkel #FADFB5" (name without spaces)
 Groups:         # optional; name: region region ...
 Hatched:        # optional; regions or groups drawn hatched in pictures
 Grid:           # region id per square, e.g. "a a b b c c c"
-Objects:        # name: square... — blocks those squares; names may repeat
-Furniture:      # optional; name: square... — can be stood on
+Objects:        # name: blocking|standable square...; repeat a name for more instances
+  tree: blocking r1c1
+  rug: standable r3c2 r3c3  # a connected multi-cell footprint
+  chair: standable r4c4    # another instance of the same object type
 Doors:          # optional; name: edge... — door between adjacent cells, not a cell
   gate: r4c5-r4c6
 People:         # one per line, from 1 through Size
@@ -463,8 +465,8 @@ Clues:          # numbered 1, 2, ... in the order given
   next_to Tim klimwand               # beside any of the named things, same region
   not_next_to Ben lamp               # beside none of them
   knight_from Tim klimwand boulder   # a knight's move from any of them
-  on Jos bank                        # on a piece of furniture
-  not_on Clarence stoel              # not on any square in that furniture set
+  on Jos bank                        # on a standable object
+  not_on Clarence stoel              # not on any square in that standable set
   only_on Anna bed                   # Anna is on it; nobody else is
   in_corner Henriette                # one of the four grid corners
   in_region Jos keukenwinkel         # any number of regions or groups
@@ -481,6 +483,10 @@ Clues:          # numbered 1, 2, ... in the order given
   furthest Luna Mao             # Luna is strictly further from Mao than anyone
   exactly 1 in_region Ada study ; in_region Ben hall   # exactly n of these hold
 ```
+
+Every object declaration must say `blocking` or `standable`; names and icons do
+not imply occupancy. Repeat a name to place multiple instances of one object
+type. Each declaration is one connected, non-overlapping footprint.
 
 `alone` and `furthest` expand to one relation per other person; `furthest`
 is a three-way relation (Luna, Mao, that person).
@@ -533,7 +539,7 @@ It is built in three layers that never reach into each other:
 `--png` draws a Murdoku board from the puzzle file in the style of a printed
 Murdoku: region colours (from `Regions:`, or a default palette), a darker shade
 under objects, hatching where `Hatched:` says, thick lines between regions,
-icons for objects and furniture, name tags for people, coordinates and a
+icons for named objects, name tags for people, coordinates and a
 legend. Because it is drawn from the same file the solver reads, the picture
 cannot disagree with the puzzle. Sudoku, Calcudoku and Futoshiki pictures
 share the look: thick lines around boxes or cages, alternate boxes shaded,
