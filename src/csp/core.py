@@ -1,9 +1,10 @@
-"""Exact-cover constraint engine.
+"""Exact-cover and cardinality constraint engine.
 
 A puzzle is compiled into a `Model` of
 
 * literals    - atomic choices, such as ``r3c4=7`` or ``Tim=r1c2``,
-* constraints - sets of literals of which exactly one, or at most one, holds,
+* constraints - sets of literals with allowed counts of true members; exactly-one
+    and at-most-one are the common special cases,
 * relations   - predicates over the values of two or more variables.
 
 `Solver` applies named deduction `Rule`s until nothing more follows. Every
@@ -14,6 +15,7 @@ Nothing in this module knows about any particular puzzle.
 
 import copy
 import itertools
+from bisect import bisect_left
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from enum import Enum
@@ -31,10 +33,11 @@ class Truth(Enum):
 
 
 class Kind(Enum):
-    """Whether a constraint must be satisfied, or merely may not be violated."""
+    """How a constraint counts its true literals."""
 
     EXACTLY_ONE = "exactly one"
     AT_MOST_ONE = "at most one"
+    COUNT = "count"
 
 
 class Contradiction(Exception):
@@ -62,7 +65,10 @@ class Literal:
 
 @dataclass(frozen=True)
 class Constraint:
-    """A set of literals of which exactly one, or at most one, may hold.
+    """A set of literals with an allowed set of true counts.
+
+    If `reified_by` is set, that literal is true exactly when the count is
+    allowed; otherwise the complementary counts are allowed.
 
     `family` names the rule of the puzzle it is one instance of, such as
     "each digit once per row"; it only matters for explaining the model.
@@ -72,6 +78,8 @@ class Constraint:
     name: str
     kind: Kind
     literals: tuple[LiteralId, ...]
+    allowed_counts: frozenset[int]
+    reified_by: LiteralId | None = None
     family: str | None = None
 
 
@@ -118,7 +126,7 @@ class Step:
 
 
 class Model:
-    """Literals, the constraints over them, and their current truth state.
+    """Literals, count constraints and relations, plus their current truth state.
 
     Build it with `literal`, `constrain` and `relate`; rules then read it
     through the inspection methods and change it only via `assign` and
@@ -155,15 +163,53 @@ class Model:
         kind: Kind,
         literals: Iterable[LiteralId],
         *,
+        allowed_counts: Iterable[int] | None = None,
+        reified_by: LiteralId | None = None,
         defines: str | None = None,
         family: str | None = None,
     ) -> ConstraintId:
-        """Add a constraint. `defines` marks it as that variable's whole domain."""
+        """Add a constraint over literals.
+
+        `EXACTLY_ONE` and `AT_MOST_ONE` retain their familiar meanings.
+        `COUNT` requires `allowed_counts`, the permitted numbers of true
+        literals. With `reified_by`, that literal is true iff the count is in
+        `allowed_counts`. `defines` marks the constraint as a variable's domain.
+        """
+        literals = tuple(literals)
+        if kind is Kind.EXACTLY_ONE:
+            if allowed_counts is not None or reified_by is not None:
+                raise ValueError("EXACTLY_ONE does not take allowed_counts or reified_by")
+            counts = frozenset((1,))
+        elif kind is Kind.AT_MOST_ONE:
+            if allowed_counts is not None or reified_by is not None:
+                raise ValueError("AT_MOST_ONE does not take allowed_counts or reified_by")
+            counts = frozenset((0, 1))
+        else:
+            if allowed_counts is None:
+                raise ValueError("COUNT needs a non-empty allowed_counts set")
+            counts = frozenset(allowed_counts)
+            if not counts:
+                raise ValueError("COUNT needs a non-empty allowed_counts set")
+            if any(
+                not isinstance(count, int)
+                or isinstance(count, bool)
+                or not 0 <= count <= len(literals)
+                for count in counts
+            ):
+                raise ValueError(f"COUNT values must be between 0 and {len(literals)}")
+            if len(set(literals)) != len(literals):
+                raise ValueError("COUNT cannot contain a literal more than once")
+            if reified_by is not None and (
+                reified_by not in range(len(self._literals)) or reified_by in literals
+            ):
+                raise ValueError("reified_by must be a separate literal in this model")
         index = len(self._constraints)
-        constraint = Constraint(index, name, kind, tuple(literals), family)
+        constraint = Constraint(index, name, kind, literals, counts, reified_by, family)
         self._constraints.append(constraint)
         for lit in constraint.literals:
             self._in_constraints[lit].append(index)
+        if reified_by is not None:
+            self._in_constraints[reified_by].append(index)
         if defines is not None:
             self._domain_of[defines] = index
         return index
@@ -220,6 +266,7 @@ class Model:
         return self._state[lit] is Truth.FALSE
 
     def constraints_of(self, lit: LiteralId) -> Sequence[ConstraintId]:
+        """Constraints that count this literal or use it as a reifier."""
         return self._in_constraints[lit]
 
     def live(self, constraint: ConstraintId) -> list[LiteralId]:
@@ -227,8 +274,40 @@ class Model:
         literals = self._constraints[constraint].literals
         return [lit for lit in literals if self._state[lit] is Truth.UNKNOWN]
 
+    def active_counts(self, constraint: ConstraintId) -> frozenset[int]:
+        """Counts allowed by the constraint and its reifier's current truth."""
+        item = self._constraints[constraint]
+        if item.reified_by is None or self.is_true(item.reified_by):
+            return item.allowed_counts
+        if self.is_false(item.reified_by):
+            return frozenset(range(len(item.literals) + 1)) - item.allowed_counts
+        return frozenset(range(len(item.literals) + 1))
+
+    def feasible_counts(self, constraint: ConstraintId) -> frozenset[int]:
+        """Allowed totals between the number already true and the live maximum.
+
+        If the reifier is undecided, either truth value remains possible, so
+        every total is provisionally feasible.
+        """
+        item = self._constraints[constraint]
+        already_true = sum(self.is_true(lit) for lit in item.literals)
+        maximum = already_true + len(self.live(constraint))
+        return frozenset(
+            count for count in self.active_counts(constraint) if already_true <= count <= maximum
+        )
+
     def satisfied(self, constraint: ConstraintId) -> bool:
-        return any(self.is_true(lit) for lit in self._constraints[constraint].literals)
+        """Whether every remaining completion satisfies this constraint."""
+        item = self._constraints[constraint]
+        if item.reified_by is not None and not (
+            self.is_true(item.reified_by) or self.is_false(item.reified_by)
+        ):
+            return False
+        already_true = sum(self.is_true(lit) for lit in item.literals)
+        maximum = already_true + len(self.live(constraint))
+        return all(
+            count in self.active_counts(constraint) for count in range(already_true, maximum + 1)
+        )
 
     def options(self, var: str) -> list[LiteralId]:
         """Literals for `var` that are not ruled out (undecided or true)."""
@@ -300,7 +379,12 @@ class Model:
     def assign(
         self, lit: LiteralId, rule: str, reason: str, *, sources: tuple[str, ...] = ()
     ) -> bool:
-        """Make `lit` true and rule out every literal it shares a constraint with."""
+        """Make `lit` true and apply any immediate upper-count consequences.
+
+        Other literals are removed only when no currently allowed count can
+        accommodate another true member. Lower bounds and count-set gaps are
+        propagated by `rule_count`.
+        """
         match self._state[lit]:
             case Truth.TRUE:
                 return False
@@ -312,11 +396,17 @@ class Model:
         self._state[lit] = Truth.TRUE
         literal = self._literals[lit]
         self.log.append(Step(literal.var, literal.value, True, rule, reason, sources))
-        # Both kinds cap a constraint at one truth, so siblings go either way.
         for ci in self._in_constraints[lit]:
             constraint = self._constraints[ci]
-            for other in constraint.literals:
-                if other != lit and self._state[other] is Truth.UNKNOWN:
+            true_count = sum(self.is_true(item) for item in constraint.literals)
+            open_literals = self.live(ci)
+            if not self.feasible_counts(ci):
+                raise Contradiction(f"{constraint.name}: no allowed count remains", constraint.name)
+            if not any(
+                count > true_count and count <= true_count + len(open_literals)
+                for count in self.active_counts(ci)
+            ):
+                for other in open_literals:
                     self.eliminate(
                         other,
                         rule,
@@ -327,15 +417,19 @@ class Model:
         return True
 
     def check(self) -> None:
-        """Raise Contradiction if the state is already unsatisfiable."""
+        """Raise Contradiction if a constraint has no feasible true count."""
         for constraint in self._constraints:
             states = [self._state[lit] for lit in constraint.literals]
-            if states.count(Truth.TRUE) > 1:
+            if constraint.kind is not Kind.COUNT and states.count(Truth.TRUE) > 1:
                 raise Contradiction(
                     f"{constraint.name}: more than one literal true", constraint.name
                 )
-            if constraint.kind is Kind.EXACTLY_ONE and all(s is Truth.FALSE for s in states):
-                raise Contradiction(f"{constraint.name}: every option eliminated", constraint.name)
+            if not self.feasible_counts(constraint.index):
+                if constraint.kind is Kind.EXACTLY_ONE and all(s is Truth.FALSE for s in states):
+                    raise Contradiction(
+                        f"{constraint.name}: every option eliminated", constraint.name
+                    )
+                raise Contradiction(f"{constraint.name}: no allowed count remains", constraint.name)
 
 
 # --- rules ----------------------------------------------------------------
@@ -351,17 +445,18 @@ class Rule(NamedTuple):
 
 
 def rule_single(model: Model) -> bool:
-    """An EXACTLY_ONE constraint with one option left forces that option.
+    """Force a lone option in EXACTLY_ONE or a count with one feasible total.
 
     This covers Sudoku's naked single (the constraint is "this cell holds one
     digit") and its hidden single (the constraint is "this digit sits once in
-    this row") with no special-casing.
+    this row") with no special-casing. A COUNT with one live literal also
+    forces it true or false when only one total remains feasible.
     """
     for constraint in model.constraints:
-        if constraint.kind is not Kind.EXACTLY_ONE or model.satisfied(constraint.index):
+        if model.satisfied(constraint.index):
             continue
         live = model.live(constraint.index)
-        if len(live) == 1:
+        if constraint.kind is Kind.EXACTLY_ONE and len(live) == 1:
             model.assign(
                 live[0],
                 "single",
@@ -369,6 +464,25 @@ def rule_single(model: Model) -> bool:
                 sources=(constraint.name,),
             )
             return True
+        if constraint.kind is Kind.COUNT and len(live) == 1:
+            feasible = model.feasible_counts(constraint.index)
+            true_count = sum(model.is_true(lit) for lit in constraint.literals)
+            if feasible == {true_count}:
+                model.eliminate(
+                    live[0],
+                    "single",
+                    f"{constraint.name} must stay at {true_count} true literals",
+                    sources=(constraint.name,),
+                )
+                return True
+            if feasible == {true_count + 1}:
+                model.assign(
+                    live[0],
+                    "single",
+                    f"{constraint.name} must reach {true_count + 1} true literals",
+                    sources=(constraint.name,),
+                )
+                return True
     return False
 
 
@@ -381,6 +495,74 @@ def rule_relations(model: Model) -> bool:
     options never creates support.
     """
     return any(prune_relation(model, relation) for relation in model.relations)
+
+
+def rule_count(model: Model) -> bool:
+    """Propagate allowed counts, including parity and reified count constraints."""
+    return any(
+        propagate_count(model, constraint.index)
+        for constraint in model.constraints
+        if constraint.kind is Kind.COUNT
+    )
+
+
+def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
+    """Make one sound deduction from a count constraint; whether it changed state."""
+    constraint = model.constraints[constraint_id]
+    if constraint.kind is not Kind.COUNT or model.satisfied(constraint_id):
+        return False
+
+    live = model.live(constraint_id)
+    already_true = sum(model.is_true(lit) for lit in constraint.literals)
+    possible = range(already_true, already_true + len(live) + 1)
+    if constraint.reified_by is not None and not (
+        model.is_true(constraint.reified_by) or model.is_false(constraint.reified_by)
+    ):
+        can_be_true = any(count in constraint.allowed_counts for count in possible)
+        can_be_false = any(count not in constraint.allowed_counts for count in possible)
+        if not can_be_true:
+            model.eliminate(
+                constraint.reified_by,
+                "count",
+                f"{constraint.name} cannot reach an allowed count",
+                sources=(constraint.name,),
+            )
+            return True
+        if not can_be_false:
+            model.assign(
+                constraint.reified_by,
+                "count",
+                f"{constraint.name} can reach only allowed counts",
+                sources=(constraint.name,),
+            )
+            return True
+        return False
+
+    allowed = model.active_counts(constraint_id)
+    can_be_true = any(
+        total in allowed for total in range(already_true + 1, already_true + len(live) + 1)
+    )
+    can_be_false = any(total in allowed for total in range(already_true, already_true + len(live)))
+    eliminate: list[LiteralId] = []
+    for lit in live:
+        if not can_be_true:
+            eliminate.append(lit)
+        elif not can_be_false:
+            model.assign(
+                lit,
+                "count",
+                f"{constraint.name} requires this literal to reach an allowed count",
+                sources=(constraint.name,),
+            )
+            return True
+    for lit in eliminate:
+        model.eliminate(
+            lit,
+            "count",
+            f"{constraint.name} cannot reach an allowed count with this literal true",
+            sources=(constraint.name,),
+        )
+    return bool(eliminate)
 
 
 def prune_relation(model: Model, relation: Relation) -> bool:
@@ -416,17 +598,17 @@ def _unsupported(
 
 
 def rule_subsumption(model: Model) -> bool:
-    """If one constraint's options all sit inside another's, prune the rest.
+    """If one required true literal fills an outer constraint's remaining capacity.
 
-    Let A be EXACTLY_ONE with live(A) contained in live(B). Exactly one
-    literal of A holds, it also belongs to B, and B admits at most one
-    truth - so every literal of B outside A is false.
+    The inner constraint guarantees one additional true literal, and all of
+    its live options are inside the outer constraint. If the outer has room
+    for exactly one more true literal, every other outer option is false.
 
     In Sudoku this is the pointing pair and box/line reduction at once; in
     Murdoku it prunes rows against regions. Nothing here is puzzle-specific.
     """
     for a in model.constraints:
-        if a.kind is not Kind.EXACTLY_ONE or model.satisfied(a.index):
+        if model.satisfied(a.index) or _minimum_additional(model, a.index) != 1:
             continue
         candidates: set[ConstraintId] = set()
         for lit in model.live(a.index):
@@ -437,46 +619,71 @@ def rule_subsumption(model: Model) -> bool:
     return False
 
 
-def cover(model: Model, inner: Sequence[ConstraintId], outer: Sequence[ConstraintId]) -> bool:
-    """If the `inner` EXACTLY_ONE constraints, with disjoint options, fit
-    inside as many `outer` ones, rule out the rest of `outer`.
+def _minimum_additional(model: Model, constraint: ConstraintId) -> int:
+    """The fewest more literals this constraint requires to become true."""
+    counts = model.feasible_counts(constraint)
+    if not counts:
+        return 0
+    already_true = sum(model.is_true(lit) for lit in model.constraints[constraint].literals)
+    return min(counts) - already_true
 
-    Whether anything was ruled out. This is the step behind both
-    `rule_subsumption` (one of each) and `rule_cover`; see those for why it
-    is sound.
+
+def _maximum_additional(model: Model, constraint: ConstraintId) -> int:
+    """The most more literals this constraint can allow to become true."""
+    counts = model.feasible_counts(constraint)
+    if not counts:
+        return 0
+    already_true = sum(model.is_true(lit) for lit in model.constraints[constraint].literals)
+    return max(counts) - already_true
+
+
+def cover(model: Model, inner: Sequence[ConstraintId], outer: Sequence[ConstraintId]) -> bool:
+    """If disjoint inner options use all aggregate capacity of the outer set,
+    rule out the rest of the outer options.
+
+    Each inner constraint contributes its minimum guaranteed number of
+    additional truths. If those totals equal the outer constraints' combined
+    maximum additional capacity, any outer literal outside the inner union
+    would exceed that capacity. Whether anything was ruled out.
     """
     constraints = model.constraints
-    if len(outer) > len(inner) or any(constraints[a].kind is not Kind.EXACTLY_ONE for a in inner):
+    if not inner or not outer:
         return False
     if any(model.satisfied(ci) for ci in (*inner, *outer)):
         return False
     lives = [set(model.live(a)) for a in inner]
     union = set().union(*lives)
-    if not all(lives) or len(union) != sum(map(len, lives)):
+    if (
+        not all(lives)
+        or len(union) != sum(map(len, lives))
+        or any(_minimum_additional(model, ci) < 1 for ci in inner)
+    ):
         return False
     around = set().union(*(model.live(b) for b in outer))
     if not union < around:
         return False
+    required = sum(_minimum_additional(model, ci) for ci in inner)
+    capacity = sum(_maximum_additional(model, ci) for ci in outer)
+    if required != capacity:
+        return False
     a_names = tuple(constraints[a].name for a in inner)
     b_names = tuple(constraints[b].name for b in outer)
-    if len(inner) == 1:
+    if required == 1:
         rule, reason = "subsumption", f"{a_names[0]} already uses one of {b_names[0]}"
     else:
-        rule, reason = f"cover{len(inner)}", f"{', '.join(a_names)} use up {', '.join(b_names)}"
+        rule, reason = f"cover{required}", f"{', '.join(a_names)} use up {', '.join(b_names)}"
     for lit in sorted(around - union):
         model.eliminate(lit, rule, reason, sources=a_names, scope=b_names)
     return True
 
 
 def rule_cover(k: int) -> Callable[[Model], bool]:
-    """Subsumption over k constraints at once: if k disjoint EXACTLY_ONE
-    constraints fit inside k others, those others are used up.
+    """Find covers whose inner constraints guarantee `k` additional truths.
 
-    Let A1..Ak be EXACTLY_ONE with pairwise disjoint live sets, and B1..Bk be
-    other constraints whose live literals together contain every live literal
-    of the As. The As make k distinct literals true, each lying in some B.
-    The Bs hold at most k truths between them, so those k use up every B -
-    any B-literal outside the As is false.
+    The inner constraints have pairwise-disjoint live sets. Their lower bounds
+    sum to `k`, and their live literals fit inside outer constraints whose
+    combined remaining capacity is also `k`. Those outer constraints are full;
+    every option outside the inner union is false.
 
     In Sudoku, As as cells and Bs as digit-in-house give naked subsets;
     swapped, hidden subsets; As as digit-in-row and Bs as digit-in-column
@@ -486,12 +693,12 @@ def rule_cover(k: int) -> Callable[[Model], bool]:
     def apply(model: Model) -> bool:
         return _CoverSearch(model, k).run()
 
-    apply.__doc__ = (rule_cover.__doc__ or "").replace(" k ", f" {k} ")
+    apply.__doc__ = (rule_cover.__doc__ or "").replace("`k`", f"`{k}`")
     return apply
 
 
 class _CoverSearch:
-    """One pass of `rule_cover(k)`: grow groups of As, look for covering Bs.
+    """One pass of `rule_cover(k)`: grow inner groups with total demand `k`.
 
     Only connected groups of As are grown: a disconnected group splits into
     smaller ones that a lower k already handles.
@@ -505,11 +712,8 @@ class _CoverSearch:
             for c in model.constraints
             if not model.satisfied(c.index)
         }
-        self.anchors = {
-            ci
-            for ci, lits in self.live.items()
-            if lits and model.constraints[ci].kind is Kind.EXACTLY_ONE
-        }
+        self.required = {ci: _minimum_additional(model, ci) for ci in self.live}
+        self.anchors = {ci for ci, lits in self.live.items() if lits and self.required[ci] > 0}
         self.seen: set[frozenset[ConstraintId]] = set()
 
     def run(self) -> bool:
@@ -521,12 +725,16 @@ class _CoverSearch:
         if group in self.seen:
             return False
         self.seen.add(group)
+        demand = sum(self.required[ci] for ci in group)
+        if demand > self.k:
+            return False
         if next(self._covers(union, (), group), None) is None:
             return False
-        if len(group) < self.k:
+        if demand < self.k:
             return any(
                 self._grow(group | {ci}, union | self.live[ci], first)
                 for ci in self._neighbours(group, union, first)
+                if demand + self.required[ci] <= self.k
             )
         return any(cover(self.model, sorted(group), bs) for bs in self._covers(union, (), group))
 
@@ -566,19 +774,21 @@ class _CoverSearch:
         )
 
 
-_WHAT_IF_INNER = (rule_single, rule_relations, rule_subsumption)
+_WHAT_IF_INNER = (rule_single, rule_count, rule_relations, rule_subsumption)
 
 
 def rule_chains(model: Model) -> bool:
     """If one of two options must hold, anything that excludes both is false.
 
-    A strong link joins the last two options of an EXACTLY_ONE constraint:
-    if one is false, the other is true. A weak link joins two options that
-    cannot both hold: they share a constraint, or a two-variable relation
-    has no satisfying pair with both. Assume a start option false and follow
-    strong and weak links in turn; each option reached as true makes "the
-    start or this one" certain, so every option weakly linked to both is
-    false. Each link is a valid implication, so this is sound for any model.
+    A strong link joins two options that cannot both be false under a
+    constraint's allowed counts; a weak link joins two that cannot both be
+    true. The links are checked against actual count support, not inferred
+    from an EXACTLY_ONE assumption. For example, an even-count constraint may
+    allow both options true and both false, so it creates neither link.
+    Assume a start option false and follow strong and weak links in turn;
+    each option reached as true makes "the start or this one" certain, so
+    every option weakly linked to both is false. Each link is a valid
+    implication, so this is sound for any model.
 
     In Sudoku this is simple colouring, X- and XY-chains, Y- and W-wings
     and 3D Medusa: alternating inference chains. The shortest chain that
@@ -615,25 +825,35 @@ def follow_chain(model: Model, chain: Sequence[LiteralId], links: "_Links | None
 
 
 class _Links:
-    """Strong and weak links between the open options, for `rule_chains`, and
-    `why` each holds: the name of a constraint or relation behind it."""
+    """Pair implications with support-based reasons for `rule_chains`.
+
+    Strong links forbid both options being false; weak links forbid both
+    being true. `why` records the constraint or relation establishing each.
+    """
 
     def __init__(self, model: Model) -> None:
         self.model = model
         self.strong: dict[LiteralId, set[LiteralId]] = {}
         self.weak: dict[LiteralId, set[LiteralId]] = {}
         self.why: dict[frozenset[LiteralId], str] = {}
+        self._ordered_counts: dict[tuple[int, bool], tuple[int, ...]] = {}
         for c in model.constraints:
             if model.satisfied(c.index):
                 continue
             live = model.live(c.index)
-            if c.kind is Kind.EXACTLY_ONE and len(live) == 2:
-                a, b = live
-                self.strong.setdefault(a, set()).add(b)
-                self.strong.setdefault(b, set()).add(a)
-                self.why.setdefault(frozenset((a, b)), c.name)
-            for a, b in itertools.combinations(live, 2):
-                self._weak(a, b, c.name)
+            true_count = sum(model.is_true(lit) for lit in c.literals)
+            reifier = c.reified_by
+            if reifier is not None and not (model.is_true(reifier) or model.is_false(reifier)):
+                pairs: Iterable[tuple[LiteralId, LiteralId]] = ((reifier, lit) for lit in live)
+            else:
+                pairs = itertools.combinations(live, 2)
+            for a, b in pairs:
+                if not self._supports(c, {a: True, b: True}, live, true_count):
+                    self._weak(a, b, c.name)
+                if not self._supports(c, {a: False, b: False}, live, true_count):
+                    self.strong.setdefault(a, set()).add(b)
+                    self.strong.setdefault(b, set()).add(a)
+                    self.why.setdefault(frozenset((a, b)), c.name)
         for relation in model.relations:
             if len(relation.variables) != 2:
                 continue
@@ -649,6 +869,41 @@ class _Links:
         self.weak.setdefault(a, set()).add(b)
         self.weak.setdefault(b, set()).add(a)
         self.why.setdefault(frozenset((a, b)), why)
+
+    def _supports(
+        self,
+        constraint: Constraint,
+        forced: dict[LiteralId, bool],
+        live: Sequence[LiteralId],
+        true_count: int,
+    ) -> bool:
+        """Whether a pair assumption leaves an allowed count in its live interval."""
+        forced_true = sum(forced.get(lit) is True for lit in live)
+        forced_false = sum(forced.get(lit) is False for lit in live)
+        minimum = true_count + forced_true
+        maximum = true_count + len(live) - forced_false
+        if minimum > maximum:
+            return False
+        reifier = constraint.reified_by
+        if reifier is None:
+            complement = False
+        elif reifier in forced:
+            complement = not forced[reifier]
+        elif self.model.is_true(reifier):
+            complement = False
+        elif self.model.is_false(reifier):
+            complement = True
+        else:
+            return True
+        key = (constraint.index, complement)
+        if key not in self._ordered_counts:
+            allowed = constraint.allowed_counts
+            if complement:
+                allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
+            self._ordered_counts[key] = tuple(sorted(allowed))
+        counts = self._ordered_counts[key]
+        index = bisect_left(counts, minimum)
+        return index < len(counts) and counts[index] <= maximum
 
     def shortest_from(self, start: LiteralId, longest: int | None) -> list[LiteralId] | None:
         """The shortest chain from `start` (assumed false) that rules something
@@ -743,6 +998,7 @@ def _refute(model: Model, lit: LiteralId) -> tuple[str, tuple[Step, ...], str | 
 
 DEFAULT_RULES: tuple[Rule, ...] = (
     Rule("single", rule_single),
+    Rule("count", rule_count),
     Rule("relations", rule_relations),
     Rule("subsumption", rule_subsumption),
     Rule("cover2", rule_cover(2)),

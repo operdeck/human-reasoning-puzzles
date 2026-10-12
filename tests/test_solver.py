@@ -6,7 +6,9 @@ solving some other puzzle.
 """
 
 import re
+from itertools import product
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -20,12 +22,14 @@ from csp.core import (
     Solver,
     follow_chain,
     rule_chains,
+    rule_count,
     rule_cover,
     rule_relations,
     rule_single,
     rule_subsumption,
     rule_what_if,
 )
+from csp.proof import Move, replay
 from csp.puzzlefile import load_board, parse_square
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -87,6 +91,195 @@ def _variable(m: Model, var: str, values) -> list[int]:
     lits = [m.literal(var, v) for v in values]
     m.constrain(f"{var} picks one", Kind.EXACTLY_ONE, lits, defines=var)
     return lits
+
+
+def _brute_force_count_solutions(model: Model) -> list[dict[str, Any]]:
+    """Enumerate domain assignments and evaluate allowed counts without solver rules."""
+    variables = model.variables
+    domains = [
+        [model.value_of(lit) for lit in model.constraints[model.domain_of(var)].literals]
+        for var in variables
+    ]
+    solutions = []
+    for values in product(*domains):
+        assignment = dict(zip(variables, values, strict=True))
+        if any(
+            (model.is_true(lit) and assignment[model.var_of(lit)] != model.value_of(lit))
+            or (model.is_false(lit) and assignment[model.var_of(lit)] == model.value_of(lit))
+            for lit in range(model.num_literals)
+        ):
+            continue
+        valid = True
+        for constraint in model.constraints:
+            count = sum(
+                assignment[model.var_of(lit)] == model.value_of(lit) for lit in constraint.literals
+            )
+            allowed = count in constraint.allowed_counts
+            if constraint.reified_by is not None:
+                output = assignment[model.var_of(constraint.reified_by)] == model.value_of(
+                    constraint.reified_by
+                )
+                if output != allowed:
+                    valid = False
+                    break
+            elif not allowed:
+                valid = False
+                break
+        if valid:
+            solutions.append(assignment)
+    return solutions
+
+
+def _assert_logged_steps_preserve_solutions(model: Model, solutions: list[dict[str, Any]]) -> None:
+    for step in model.log:
+        for solution in solutions:
+            if step.asserted:
+                assert solution[step.var] == step.value, step
+            else:
+                assert solution[step.var] != step.value, step
+
+
+def test_count_constraint_propagates_an_exact_count_boundary():
+    m = Model()
+    a, b, c = (_variable(m, var, ("yes", "no"))[0] for var in "abc")
+    m.constrain("two of three", Kind.COUNT, [a, b, c], allowed_counts={2})
+
+    m.assign(a, "test", "chosen")
+    solutions = _brute_force_count_solutions(m)
+    assert rule_count(m) is False
+    assert not m.is_false(b) and not m.is_false(c)
+    m.assign(b, "test", "chosen")
+    solutions = _brute_force_count_solutions(m)
+    assert m.is_false(c)
+    _assert_logged_steps_preserve_solutions(m, solutions)
+    m.check()
+
+
+def test_count_constraint_handles_even_parity():
+    m = Model()
+    a, b = (_variable(m, var, ("yes", "no"))[0] for var in "ab")
+    m.constrain("an even number", Kind.COUNT, [a, b], allowed_counts={0, 2})
+    m.assign(a, "test", "chosen")
+    solutions = _brute_force_count_solutions(m)
+
+    assert rule_count(m) is True
+    assert m.is_true(b)
+    _assert_logged_steps_preserve_solutions(m, solutions)
+    m.check()
+
+
+def test_single_propagates_a_count_with_one_live_literal():
+    model = Model()
+    first_false, first = (model.literal("first", value) for value in (False, True))
+    last_false, last = (model.literal("last", value) for value in (False, True))
+    model.constrain("exactly one", Kind.COUNT, [first, last], allowed_counts={1})
+    model.constrain("first domain", Kind.EXACTLY_ONE, [first_false, first], defines="first")
+    model.constrain("last domain", Kind.EXACTLY_ONE, [last_false, last], defines="last")
+    model.eliminate(first, "test", "not selected")
+    solutions = _brute_force_count_solutions(model)
+
+    assert rule_single(model) is True
+    assert model.is_true(last)
+    _assert_logged_steps_preserve_solutions(model, solutions)
+    model.check()
+
+
+def test_cover2_uses_count_demand_and_outer_capacity():
+    m = Model()
+    a, b, c, extra_a, extra_b = (_variable(m, var, (False, True))[1] for var in "abcde")
+    inner = m.constrain("two of three", Kind.COUNT, [a, b, c], allowed_counts={2})
+    outer_a = m.constrain("first capacity", Kind.AT_MOST_ONE, [a, b, extra_a])
+    outer_b = m.constrain("second capacity", Kind.AT_MOST_ONE, [b, c, extra_b])
+    solutions = _brute_force_count_solutions(m)
+
+    assert len(solutions) == 1
+    changed = False
+    while rule_cover(2)(m):
+        changed = True
+        m.check()
+    assert changed
+    assert m.is_false(extra_a) and m.is_false(extra_b)
+    assert m.constraints[inner].kind is Kind.COUNT
+    assert m.constraints[outer_a].kind is m.constraints[outer_b].kind is Kind.AT_MOST_ONE
+    _assert_logged_steps_preserve_solutions(m, solutions)
+    m.check()
+
+
+def test_count_constraints_create_only_supported_chain_links():
+    model = Model()
+    a, b, candidate = (_variable(model, var, (False, True))[1] for var in "abc")
+    model.constrain("one of a or b", Kind.COUNT, [a, b], allowed_counts={1})
+    model.constrain("a excludes candidate", Kind.AT_MOST_ONE, [a, candidate])
+    model.constrain("b excludes candidate", Kind.AT_MOST_ONE, [b, candidate])
+    solutions = _brute_force_count_solutions(model)
+
+    assert rule_chains(model) is True
+    assert model.is_false(candidate)
+    _assert_logged_steps_preserve_solutions(model, solutions)
+    model.check()
+
+    parity = Model()
+    a, b, candidate = (_variable(parity, var, (False, True))[1] for var in "abc")
+    parity.constrain("an even number of a and b", Kind.COUNT, [a, b], allowed_counts={0, 2})
+    parity.constrain("a excludes candidate", Kind.AT_MOST_ONE, [a, candidate])
+    parity.constrain("b excludes candidate", Kind.AT_MOST_ONE, [b, candidate])
+    parity_solutions = _brute_force_count_solutions(parity)
+
+    assert rule_chains(parity) is False
+    assert not parity.is_false(candidate)
+    _assert_logged_steps_preserve_solutions(parity, parity_solutions)
+    parity.check()
+
+
+def test_count_move_replays_its_propagation():
+    model = Model()
+    literal = model.literal("occupied", True)
+    model.constrain("room empty", Kind.COUNT, [literal], allowed_counts={0})
+    start = model.clone()
+
+    assert rule_count(model) is True
+    move = Move.of("count", model.log)
+    assert move is not None
+    replayed = replay(start, [move])
+
+    assert replayed.is_false(literal)
+
+
+def test_reified_zero_count_tracks_empty_and_nonempty():
+    empty_model = Model()
+    first, second = (_variable(empty_model, var, ("yes", "no"))[0] for var in "ab")
+    is_empty, _ = _variable(empty_model, "room", ("empty", "occupied"))
+    empty_model.constrain(
+        "room has no occupants",
+        Kind.COUNT,
+        [first, second],
+        allowed_counts={0},
+        reified_by=is_empty,
+    )
+    empty_model.eliminate(first, "test", "not present")
+    empty_model.eliminate(second, "test", "not present")
+    empty_solutions = _brute_force_count_solutions(empty_model)
+
+    assert rule_count(empty_model) is True
+    assert empty_model.is_true(is_empty)
+    _assert_logged_steps_preserve_solutions(empty_model, empty_solutions)
+
+    occupied_model = Model()
+    first, second = (_variable(occupied_model, var, ("yes", "no"))[0] for var in "ab")
+    is_empty, _ = _variable(occupied_model, "room", ("empty", "occupied"))
+    occupied_model.constrain(
+        "room has no occupants",
+        Kind.COUNT,
+        [first, second],
+        allowed_counts={0},
+        reified_by=is_empty,
+    )
+    occupied_model.assign(first, "test", "present")
+    occupied_solutions = _brute_force_count_solutions(occupied_model)
+
+    assert rule_count(occupied_model) is True
+    assert occupied_model.is_false(is_empty)
+    _assert_logged_steps_preserve_solutions(occupied_model, occupied_solutions)
 
 
 def _naked_pair_model():
@@ -1369,7 +1562,30 @@ def test_report_describes_prrrdoku1_as_the_engine_sees_it():
     assert re.search(r"next_to Tim klimwand\s+40 ruled out", text)
     assert re.search(r"Otto above Tjitske 1\s+12 of 86", text)
     assert all(re.search(rf"\d\. {rule.name}\s", text) for rule in DEFAULT_RULES)
-    assert "cover2       Subsumption over 2 constraints" in text
+    assert re.search(
+        r"cover2\s+Find covers whose inner constraints guarantee `2` additional\s+truths", text
+    )
+
+
+def test_report_describes_count_constraints_and_reifiers():
+    model = Model()
+    first = model.literal("person_a", "west")
+    second = model.literal("person_b", "west")
+    empty = model.literal("west_empty", True)
+    model.constrain(
+        "west occupancy",
+        Kind.COUNT,
+        [first, second],
+        allowed_counts={0, 2},
+        reified_by=empty,
+        family="area occupancy",
+    )
+
+    text = report.describe(model)
+
+    assert "COUNT (1 here):" in text
+    assert "COUNT {0, 2}" in text
+    assert "allowed counts 0, 2; reified by west_empty=True" in text
 
 
 def test_report_groups_unlabelled_constraints_by_name():

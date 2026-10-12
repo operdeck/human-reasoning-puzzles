@@ -70,7 +70,9 @@ def _overview(model: Model) -> str:
         "constraint",
         f"a set of literals. EXACTLY_ONE ({kinds[Kind.EXACTLY_ONE]} here): exactly one of "
         f"them must end up true. AT_MOST_ONE ({kinds[Kind.AT_MOST_ONE]} here): no two may "
-        "be true, but none is fine.",
+        f"be true, but none is fine. COUNT ({kinds[Kind.COUNT]} here): the number of true "
+        "literals must be one of its allowed counts; a reified count also names the literal "
+        "that is true exactly when the count is allowed.",
     )
     lines += _define("relation", "a yes/no test on the values of two or more variables.")
     lines.append("")
@@ -116,24 +118,35 @@ def _constraints(model: Model) -> str:
 
     lines = _heading(f"Constraints ({len(model.constraints)}) in {len(families)} families")
     width = max(len(f) for f in families)
-    lines.append(f"  {'family':<{width}}  {'kind':<11}  count  size")
+    kind_width = max(11, max(len(_kind_label(c)) for c in model.constraints))
+    lines.append(f"  {'family':<{width}}  {'kind':<{kind_width}}  count  size")
     for family, members in families.items():
         sizes = sorted({len(c.literals) for c in members})
         size = str(sizes[0]) if len(sizes) == 1 else f"{sizes[0]}-{sizes[-1]}"
         mark = "*" if all(c.index in domains for c in members) else " "
-        kind = members[0].kind.name
-        lines.append(f"{mark} {family:<{width}}  {kind:<11}  {len(members):>5}  {size}")
+        kind = _kind_label(members[0])
+        lines.append(f"{mark} {family:<{width}}  {kind:<{kind_width}}  {len(members):>5}  {size}")
     lines.append("* defines the variables. size = literals per constraint.")
     lines += ["", "One example of each:"]
     for members in families.values():
         c = members[0]
-        lines.append(_fit(f"  {c.name}: ", [model.describe(lit) for lit in c.literals]))
+        details = []
+        if c.kind is Kind.COUNT:
+            details.append(f"allowed counts {_count_label(c)}")
+            if c.reified_by is not None:
+                details.append(f"reified by {model.describe(c.reified_by)}")
+        label = f"{c.name} ({'; '.join(details)})" if details else c.name
+        lines.append(_fit(f"  {label}: ", [model.describe(lit) for lit in c.literals]))
     return "\n".join(lines)
 
 
 def _connections(model: Model) -> str:
     """How constraints overlap: the part that makes deduction possible."""
-    membership = Counter(lit for c in model.constraints for lit in c.literals)
+    membership: Counter[LiteralId] = Counter()
+    for constraint in model.constraints:
+        membership.update(constraint.literals)
+        if constraint.reified_by is not None:
+            membership[constraint.reified_by] += 1
     spread = Counter(membership.values())
     lines = _heading("How literals and constraints connect")
     if len(spread) == 1:
@@ -151,14 +164,18 @@ def _connections(model: Model) -> str:
     for ci in model.constraints_of(lit):
         c = model.constraints[ci]
         live = model.live(ci)
+        if c.reified_by is not None and not (
+            model.is_true(c.reified_by) or model.is_false(c.reified_by)
+        ):
+            live.append(c.reified_by)
         rivals.update(other for other in live if other != lit)
-        lines.append(f"  {c.kind.name:<11}  {c.name:<30} {len(live):>3} literals open")
+        lines.append(f"  {_kind_label(c):<16}  {c.name:<30} {len(live):>3} literals open")
     lines.append("")
     lines += _wrap(
-        f"Making it true rules out the {len(rivals)} other open literals in those "
-        "constraints. Ruling it out leaves each of them one option fewer, and an "
-        "EXACTLY_ONE left with one option forces it. Every rule is a way of "
-        "exploiting these overlaps."
+        f"Making it true can rule out some of the {len(rivals)} other open literals, "
+        "or use some of a count constraint's remaining capacity. Ruling it out narrows "
+        "the possible true counts. An EXACTLY_ONE left with one option forces it. "
+        "Every rule exploits these overlaps or count bounds."
     )
     return "\n".join(lines)
 
@@ -240,6 +257,16 @@ def _algorithm(rules: Sequence[Rule]) -> str:
 
 def _heading(title: str) -> list[str]:
     return [title, "-" * len(title)]
+
+
+def _kind_label(constraint: Constraint) -> str:
+    if constraint.kind is not Kind.COUNT:
+        return constraint.kind.name
+    return f"COUNT {{{_count_label(constraint)}}}"
+
+
+def _count_label(constraint: Constraint) -> str:
+    return ", ".join(map(str, sorted(constraint.allowed_counts)))
 
 
 def _wrap(text: str) -> list[str]:

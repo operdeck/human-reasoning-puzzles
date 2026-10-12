@@ -12,7 +12,7 @@ import pytest
 
 import csp
 from csp import bruteforce, cli, murdoku
-from csp.core import Model, Solver
+from csp.core import Kind, Model, Solver
 from csp.proof import Move, replay, shortest
 from csp.puzzlefile import load_board
 from csp.story import Story, Wording, explain
@@ -158,6 +158,68 @@ def test_story_can_name_a_boundary_door():
     story = Story(board, [], Wording("nl", {"gate": "de deur"}))
     assert story._clue_text("next_to", ["Ada", "gate"], ("Ada",)) == "Ada zit naast de deur"
     assert story._clue_text("at", ["Ada", "gate"], ("Ada",)) == "Ada is bij de deur"
+
+
+def test_story_explains_a_reified_count_constraint():
+    square = murdoku.Square
+    board = murdoku.Board(
+        2,
+        [["west", "east"], ["west", "east"]],
+        {"west": "west", "east": "east"},
+        [],
+        ["Ada", "Ben"],
+    )
+    story = Story(board, [("outside", ["Ada", "west"])], Wording())
+    west_cells = [story.model.literal("Ada", square(row, 0)) for row in range(2)]
+    is_empty = story.model.literal("west_empty", "yes")
+    is_occupied = story.model.literal("west_empty", "no")
+    story.model.constrain(
+        "west occupancy",
+        Kind.COUNT,
+        west_cells,
+        allowed_counts={0},
+        reified_by=is_empty,
+    )
+    story.model.constrain(
+        "west empty state", Kind.EXACTLY_ONE, [is_empty, is_occupied], defines="west_empty"
+    )
+
+    assert (
+        "The allowed counts for west occupancy are zero, so the literal west_empty=yes must hold."
+        in story.tell()
+    )
+
+
+def test_story_explains_complementary_reified_counts():
+    square = murdoku.Square
+    board = murdoku.Board(
+        2,
+        [["west", "east"], ["west", "east"]],
+        {"west": "west", "east": "east"},
+        [],
+        ["Ada", "Ben"],
+    )
+    story = Story(board, [], Wording())
+    first, second = square(0, 0), square(1, 0)
+    first_literal = story.model.literal("Ada", first)
+    second_literal = story.model.literal("Ada", second)
+    empty = story.model.literal("west_empty", True)
+    occupied = story.model.literal("west_empty", False)
+    story.model.constrain(
+        "west empty state", Kind.EXACTLY_ONE, [empty, occupied], defines="west_empty"
+    )
+    story.model.constrain(
+        "west occupancy",
+        Kind.COUNT,
+        [first_literal, second_literal],
+        allowed_counts={0},
+        reified_by=empty,
+    )
+    story.model.eliminate(empty, "setup", "known occupied")
+    story.model.eliminate(first_literal, "setup", "not this square")
+    story.model.log.clear()
+
+    assert "The allowed counts for west occupancy are one or two" in story.tell()
 
 
 @pytest.mark.parametrize(

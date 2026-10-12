@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any
 
-from .core import Solver, Step
+from .core import Kind, Solver, Step
 from .murdoku import (
     COUNTING,
     FILTERS,
@@ -111,6 +111,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.left_of_one": "{a} is exactly one column left of {b}",
         "clue.left_of_n": "{a} is exactly {n} columns left of {b}",
         "clue.exactly": "exactly {n} of these is true: {list}",
+        "count_reason": "the allowed counts for {name} are {counts}",
+        "literal_true": "the literal {literal} must hold",
+        "literal_false": "the literal {literal} cannot hold",
         "clue.above": "{a} is somewhere above {b}",
         "clue.above_n": "{a} is exactly {rows} above {b}",
         "clue.within": "{a} is at most {n} squares from {b}",
@@ -190,6 +193,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.left_of_one": "{a} is precies één kolom links van {b}",
         "clue.left_of_n": "{a} is precies {n} kolommen links van {b}",
         "clue.exactly": "precies {n} hiervan klopt: {list}",
+        "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
+        "literal_true": "de letterlijke keuze {literal} moet gelden",
+        "literal_false": "de letterlijke keuze {literal} kan niet gelden",
         "clue.above": "{a} is ergens boven {b}",
         "clue.above_n": "{a} is precies {rows} boven {b}",
         "clue.within": "{a} is hooguit {n} vakjes van {b}",
@@ -422,6 +428,8 @@ class _State:
     def apply(self, steps: Sequence[Step]) -> None:
         for step in steps:
             self.history.append(step)
+            if step.var not in self.options:
+                continue
             if step.asserted:
                 self.options[step.var] = {step.value}
                 self.placed[step.var] = step.value
@@ -471,7 +479,7 @@ class Story:
                 said = self._firing(rule, steps, state)
                 if said:
                     sentences.append(said)
-                    if rule == "single":
+                    if rule == "single" and steps[0].asserted and steps[0].var in self.board.people:
                         placed.append(steps[0].var)
             last = i + 1 == len(firings)
             if placed and (last or firings[i + 1][0] != "single"):
@@ -516,8 +524,17 @@ class Story:
         before = {p: set(s) for p, s in state.options.items()}
         state.apply(steps)
         if rule == "single":
+            source = steps[0].sources[0] if steps[0].sources else ""
+            constraint = next((c for c in self.model.constraints if c.name == source), None)
+            if constraint is not None and constraint.kind is Kind.COUNT:
+                changed = [p for p in self.board.people if state.options[p] != before[p]]
+                return self._count(steps[0], changed, before, state)
+            if steps[0].var not in self.board.people:
+                return self.say("literal_true", literal=steps[0].literal)
             return self._placement(steps[0], state)
         changed = [p for p in self.board.people if state.options[p] != before[p]]
+        if rule == "count":
+            return self._count(steps[0], changed, before, state)
         if rule == "relations":
             outcome = self._outcome(changed, before, state)
             return self._relation(steps[0], before, changed, outcome)
@@ -556,6 +573,38 @@ class Story:
         if len(step.chain) == 2:
             return _cap(self.say("chain_either", ends=ends, outcome=self.say.join(outcome)))
         return f"{', '.join(parts)}. {so}"
+
+    def _count(
+        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
+    ) -> str:
+        constraint = next(c for c in self.model.constraints if c.name == step.sources[0])
+        allowed = constraint.allowed_counts
+        if constraint.reified_by is not None:
+            var = self.model.var_of(constraint.reified_by)
+            value = self.model.value_of(constraint.reified_by)
+            known = next(
+                (
+                    item.asserted
+                    for item in reversed(state.history)
+                    if item.var == var and item.value == value
+                ),
+                None,
+            )
+            if known is None:
+                if self.model.is_true(constraint.reified_by):
+                    known = True
+                elif self.model.is_false(constraint.reified_by):
+                    known = False
+            if known is False:
+                allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
+        counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
+        reason = self.say("count_reason", name=constraint.name, counts=counts)
+        if changed:
+            outcome = self._outcome(changed, before, state)
+        else:
+            key = "literal_true" if step.asserted else "literal_false"
+            outcome = self.say(key, literal=step.literal)
+        return f"{_cap(reason)}, {self.say('so')} {outcome}."
 
     def _link_reason(self, source: str) -> str:
         """' (row 8)' or ' (7)' after a chain link; nothing when it is one person
