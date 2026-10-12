@@ -11,7 +11,7 @@ Wording comes from two optional sections of the puzzle file:
     Language: nl
     Words:
     water: in het water        # a region or group: where it is
-    vuurtje: het vuurtje       # an object or furniture: what it is called
+    vuurtje: het vuurtje       # an object type: what it is called
 
 Everything here reads the public `Model` API, `Step` provenance and
 `murdoku`'s board and clue meaning; nothing here is needed to solve.
@@ -305,7 +305,7 @@ class Places:
 
     def where(self, chosen: set[Square], within: set[Square], most: int = 2) -> str | None:
         """A short exact description of `chosen` among `within`, if there is one:
-        up to `most` of region, row, column, furniture or next-to-object."""
+        up to `most` of region, row, column, standable object or next-to-object."""
         tests = [(name, test) for name, test in self._tests(chosen) if all(map(test, chosen))]
         found: list[str] = []
         for size in range(1, most + 1):
@@ -356,10 +356,10 @@ class Places:
     def _areas(self) -> list[tuple[str, Callable[[Square], bool]]]:
         board = self.board
         areas: list[tuple[str, Callable[[Square], bool]]] = []
-        for name in board.furniture:
+        for name in sorted({obj.name for obj in board.standable_objects}):
             spots = board.squares_of([name])
             areas.append((self.say("on", what=self.thing(name)), spots.__contains__))
-        for name in board.objects:
+        for name in sorted(board.object_names):
             near = {
                 sq
                 for t in board.squares_of([name])

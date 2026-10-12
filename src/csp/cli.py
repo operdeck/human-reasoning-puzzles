@@ -97,6 +97,11 @@ def write_picture(kind: str, text: str, path: Path, solution: dict[str, Any] | N
         image = picture.futoshiki_picture(futoshiki.parse(text), solution)
     else:
         board, _ = load_board(text)
+        if solution is None and (unknown := picture.unknown_object_icons(board)):
+            print(
+                f"warning: no icon for {', '.join(unknown)}; using text labels",
+                file=sys.stderr,
+            )
         image = picture.murdoku_picture(board, solution)
     image.save(path)
     print(f"wrote {path}")

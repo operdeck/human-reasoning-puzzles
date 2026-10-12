@@ -8,7 +8,7 @@ PIL = pytest.importorskip("PIL")
 from PIL import Image, ImageDraw  # noqa: E402
 
 from csp import bruteforce, icons, picture  # noqa: E402
-from csp.murdoku import Board, Square  # noqa: E402
+from csp.murdoku import Board, BoardObject, Square  # noqa: E402
 from csp.puzzlefile import load_board  # noqa: E402
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -37,6 +37,7 @@ def test_icon_names_map_to_code_points():
     assert icons.code_for("kruik") == "1f3fa"
     assert icons.code_for("paard") == "1f40e"
     assert icons.code_for("ton") == icons.code_for("barrel") == "1f6e2"
+    assert icons.code_for("stoel") == icons.code_for("chair")
     assert icons.code_for("zeppelin") is None
     assert icons.NOTO_COMMIT in icons.SOURCE
 
@@ -55,11 +56,14 @@ def _cache_icon(code: str, image: Image.Image) -> None:
     image.save(path)
 
 
-def test_two_square_furniture_is_stretched_across_both_squares():
+def test_two_square_standable_object_is_stretched_across_both_squares():
     _cache_icon("1f6cb", Image.new("RGBA", (40, 40), (0, 0, 255, 255)))  # a blue block
     board = Board(
-        2, [["a", "a"], ["a", "a"]], {"a": "here"}, {}, ["A", "B"],
-        furniture={"bank": [Square(1, 0), Square(1, 1)]},
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "here"},
+        [BoardObject("bank", "standable", (Square(1, 0), Square(1, 1)))],
+        ["A", "B"],
     )  # fmt: skip
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
@@ -68,10 +72,38 @@ def test_two_square_furniture_is_stretched_across_both_squares():
     assert blue[0] < margin + CELL // 4 and blue[-1] > margin + 2 * CELL - CELL // 4
 
 
+def test_two_square_blocking_object_uses_one_spanning_icon(monkeypatch):
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "here"},
+        [BoardObject("crate", "blocking", (Square(0, 0), Square(0, 1)))],
+        ["A", "B"],
+    )
+    calls = []
+
+    def capture(image, draw, name, area, cell, **kwargs):
+        calls.append((name, area, kwargs))
+
+    monkeypatch.setattr(picture, "_icon", capture)
+    picture.murdoku_picture(board, cell=CELL, coordinates=False)
+
+    assert len(calls) == 1
+    name, area, options = calls[0]
+    assert name == "crate" and area[2] - area[0] == 2 * CELL
+    assert options["stretch"] is True
+
+
 def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
     board = Board(
-        2, [["a", "a"], ["a", "a"]], {"a": "here"}, {}, ["A", "B"],
-        furniture={"stoel": [Square(0, 0), Square(1, 0)]},
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "here"},
+        [
+            BoardObject("stoel", "standable", (Square(0, 0),)),
+            BoardObject("stoel", "standable", (Square(1, 0),)),
+        ],
+        ["A", "B"],
     )  # fmt: skip
     calls = []
 
@@ -87,8 +119,11 @@ def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
 
 def test_vertical_bed_icon_is_rotated(monkeypatch):
     board = Board(
-        2, [["a", "a"], ["a", "a"]], {"a": "here"}, {}, ["A", "B"],
-        furniture={"bed": [Square(0, 0), Square(1, 0)]},
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "here"},
+        [BoardObject("bed", "standable", (Square(0, 0), Square(1, 0)))],
+        ["A", "B"],
     )  # fmt: skip
     rotations = []
 
@@ -172,7 +207,7 @@ def test_solution_picture_puts_name_tags_on_squares():
 
 
 def test_default_palette_when_no_colours_given():
-    board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, {}, ["A", "B"])
+    board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     assert _centre(image, board, 0, 0, coordinates=False)[:3] == picture._rgb(picture.PALETTE[0])
     assert _centre(image, board, 0, 1, coordinates=False)[:3] == picture._rgb(picture.PALETTE[1])
@@ -180,7 +215,11 @@ def test_default_palette_when_no_colours_given():
 
 def test_unknown_object_gets_a_text_label():
     board = Board(
-        2, [["a", "a"], ["a", "a"]], {"a": "here"}, {"zeppelin": [Square(0, 0)]}, ["A", "B"]
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "here"},
+        [BoardObject("zeppelin", "blocking", (Square(0, 0),))],
+        ["A", "B"],
     )
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
@@ -188,6 +227,29 @@ def test_unknown_object_gets_a_text_label():
     pixels = square.load()
     dark = sum(1 for x in range(CELL) for y in range(CELL) if sum(pixels[x, y][:3]) < 150)
     assert dark > 20  # the word is drawn
+    assert picture.unknown_object_icons(board) == ["zeppelin"]
+
+
+def test_png_warns_when_an_object_icon_is_missing(tmp_path, capsys):
+    from csp import cli
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+zeppelin: blocking r1c1
+People:
+A
+B
+"""
+    target = tmp_path / "puzzle.png"
+
+    assert cli.write_picture("murdoku", text, target)
+    assert target.exists()
+    assert "warning: no icon for zeppelin; using text labels" in capsys.readouterr().err
 
 
 def test_bad_region_colour_is_rejected():
