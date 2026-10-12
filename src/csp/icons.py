@@ -44,6 +44,7 @@ CATALOGUE: dict[str, str] = {
     # indoors
     "bank": "1f6cb", "bankje": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bench": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",
+    "window": "1fa9f",
     "bed": "1f6cf",
     "bad": "1f6c1", "bathtub": "1f6c1",
     "douche": "1f6bf", "shower": "1f6bf",

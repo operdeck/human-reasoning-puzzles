@@ -53,6 +53,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "through": "{a} to {b}",
         "in": "in {what}",
         "on": "on {what}",
+        "at": "at {what}",
         "next_to": "next to {what}",
         "is": "{who} is {where}",
         "is_not": "{who} is not {where}",
@@ -92,6 +93,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "n_rows": "{n} rows",
         "clue.in_region": "{a} is {where}",
         "clue.outside": "{a} is not {where}",
+        "clue.at": "{a} is at {things}",
         "clue.in_tagged": "{a} is {where}",
         "clue.not_in_tagged": "{a} is not {where}",
         "clue.only_in_tagged": "{a} is only {where}",
@@ -130,6 +132,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "through": "{a} t/m {b}",
         "in": "in {what}",
         "on": "op {what}",
+        "at": "bij {what}",
         "next_to": "naast {what}",
         "is": "{who} zit {where}",
         "is_not": "{who} zit niet {where}",
@@ -169,6 +172,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "n_rows": "{n} rijen",
         "clue.in_region": "{a} is {where}",
         "clue.outside": "{a} is niet {where}",
+        "clue.at": "{a} is bij {things}",
         "clue.in_tagged": "{a} is {where}",
         "clue.not_in_tagged": "{a} is niet {where}",
         "clue.only_in_tagged": "{a} is alleen {where}",
@@ -272,8 +276,8 @@ class Places:
     def thing(self, name: str) -> str:
         if name in self.say.words:
             return self.say.words[name]
-        if name in self.board.doors:
-            many = len(self.board.doors[name]) > 1
+        if name in self.board.edge_item_names or name in self.board.corner_object_names:
+            many = False
         else:
             many = len(_pieces(self.board.squares_of([name]))) > 1
         return self.say("a" if many else "the", name=name.replace("_", " "))
@@ -374,6 +378,12 @@ class Places:
                 and board.region_of(sq) == board.region_of(t)
             }
             areas.append((self.say("next_to", what=self.thing(name)), near.__contains__))
+        for name in sorted(board.edge_item_names):
+            cells = board.edge_item_cells([name])
+            areas.append((self.say("at", what=self.thing(name)), cells.__contains__))
+        for name in sorted(board.corner_object_names):
+            cells = board.corner_object_cells([name])
+            areas.append((self.say("next_to", what=self.thing(name)), cells.__contains__))
         return areas
 
     def _region_of(self, chosen: set[Square]) -> tuple[str, Callable[[Square], bool]]:

@@ -80,7 +80,7 @@ def murdoku_picture(
         cell,
         lambda a, b: board.regions[a[0]][a[1]] == board.regions[b[0]][b[1]],
     )
-    _door_edges(draw, board, margin, cell)
+    _draw_edge_item_doors(draw, board, margin, cell)
 
     occupied = set((placed or {}).values())
     for obj in board.objects:
@@ -100,6 +100,22 @@ def murdoku_picture(
                 _icon(image, draw, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
         else:
             _icon(image, draw, name, (x0, y0, x1, y1), cell, stretch=stretch)
+    for item in board.edge_items:
+        if item.kind == "window":
+            _icon(image, draw, item.name, box(item.cells[0]), cell, scale=0.42)
+    for corner in board.corner_objects:
+        anchor_row = max(square.row for square in corner.cells)
+        anchor_col = max(square.col for square in corner.cells)
+        x = margin + anchor_col * cell
+        y = margin + anchor_row * cell
+        radius = cell // 4
+        _icon(
+            image,
+            draw,
+            corner.name,
+            (x - radius, y - radius, x + radius, y + radius),
+            cell,
+        )
     standable = board.squares_of(obj.name for obj in board.standable_objects)
     for person, sq in (placed or {}).items():
         _name_tag(draw, person, box(sq), cell, low=sq in standable)
@@ -116,10 +132,14 @@ def unknown_object_icons(board: Board) -> list[str]:
     custom = {"tapijt", "waterput", "well"}
     return sorted(
         {
-            obj.name
-            for obj in board.objects
-            if icons.code_for(obj.name) is None
-            and obj.name.rstrip("0123456789").rstrip("_").lower() not in custom
+            name
+            for name in (
+                {obj.name for obj in board.objects}
+                | {item.name for item in board.edge_items if item.kind == "window"}
+                | board.corner_object_names
+            )
+            if icons.code_for(name) is None
+            and name.rstrip("0123456789").rstrip("_").lower() not in custom
         }
     )
 
@@ -353,20 +373,22 @@ def _walls(
     draw.rectangle((low, low, high, high), outline=INK, width=thick)
 
 
-def _door_edges(draw: ImageDraw.ImageDraw, board: Board, margin: int, cell: int) -> None:
-    """Mark each door on the shared edge between its two cells."""
+def _draw_edge_item_doors(draw: ImageDraw.ImageDraw, board: Board, margin: int, cell: int) -> None:
+    """Mark each simple door on the shared edge between its two cells."""
     wood = (117, 75, 47)
     width = max(4, cell // 10)
-    for edges in board.doors.values():
-        for first, second in edges:
-            if first.row == second.row:
-                x = margin + max(first.col, second.col) * cell
-                y = margin + first.row * cell + cell // 2
-                draw.line((x, y - cell // 4, x, y + cell // 4), fill=wood, width=width)
-            else:
-                x = margin + first.col * cell + cell // 2
-                y = margin + max(first.row, second.row) * cell
-                draw.line((x - cell // 4, y, x + cell // 4, y), fill=wood, width=width)
+    for item in board.edge_items:
+        if item.kind != "door":
+            continue
+        first, second = item.cells
+        if first.row == second.row:
+            x = margin + max(first.col, second.col) * cell
+            y = margin + first.row * cell + cell // 2
+            draw.line((x, y - cell // 4, x, y + cell // 4), fill=wood, width=width)
+        else:
+            x = margin + first.col * cell + cell // 2
+            y = margin + max(first.row, second.row) * cell
+            draw.line((x - cell // 4, y, x + cell // 4, y), fill=wood, width=width)
 
 
 # --- things on the board --------------------------------------------------
@@ -546,8 +568,8 @@ class _Legend:
         self.swatch = cell // 3
         self.line = int(self.swatch * 1.6)
         self.rows = (len(board.region_names) + 1) // 2
-        self.door_rows = len(board.doors)
-        self.height = (self.rows + self.door_rows) * self.line + cell // 2
+        self.item_names = sorted(board.edge_item_names | board.corner_object_names)
+        self.height = (self.rows + len(self.item_names)) * self.line + cell // 2
 
     def draw(self, image: Image.Image, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
         fills = _fills(self.board)
@@ -568,16 +590,24 @@ class _Legend:
             label = name.replace("_", " ").capitalize()
             draw.text((left + self.swatch + self.swatch // 2, top + self.swatch / 2),
                       label, fill=INK, font=font, anchor="lm")  # fmt: skip
-        for i, name in enumerate(sorted(self.board.doors)):
+        for i, name in enumerate(self.item_names):
             top = y + (self.rows + i) * self.line
-            draw.line(
-                (x, top + self.swatch // 2, x + self.swatch, top + self.swatch // 2),
-                fill=(117, 75, 47),
-                width=max(4, self.swatch // 5),
-            )
+            area = (x, top, x + self.swatch, top + self.swatch)
+            if name in self.board.edge_item_names and self.board.edge_item_kind(name) == "door":
+                draw.line(
+                    (x, top + self.swatch // 2, x + self.swatch, top + self.swatch // 2),
+                    fill=(117, 75, 47),
+                    width=max(4, self.swatch // 5),
+                )
+                label = f"Door: {name}"
+            else:
+                _icon(image, draw, name, area, self.cell, scale=0.8)
+                label = (
+                    f"Window: {name}" if name in self.board.edge_item_names else f"Corner: {name}"
+                )
             draw.text(
                 (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
-                f"Door: {name}",
+                label,
                 fill=INK,
                 font=font,
                 anchor="lm",

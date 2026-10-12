@@ -456,14 +456,19 @@ Objects:        # name: blocking|standable square...; repeat a name for more ins
   tree: blocking r1c1
   rug: standable r3c2 r3c3  # a connected multi-cell footprint
   chair: standable r4c4    # another instance of the same object type
-Doors:          # optional; name: edge... — door between adjacent cells, not a cell
-  gate: r4c5-r4c6
+EdgeItems:      # optional; doors touch two cells, windows one; neither occupies a cell
+  gate: door r4c5 r4c6
+  window: window r2c3
+CornerObjects:  # optional; object touches the four cells around an interior grid corner
+  fountain: r3c3 r3c4 r4c3 r4c4
 People:         # one per line, from 1 through Size
 Rules:          # optional; clues that come with the board, not numbered
   outside Tim water
 Clues:          # numbered 1, 2, ... in the order given
   next_to Tim klimwand               # beside any of the named things, same region
   not_next_to Ben lamp               # beside none of them
+  at Tim window                      # exactly a cell touched by a door or window
+  next_to Jos fountain               # one of the four cells around a corner object
   knight_from Tim klimwand boulder   # a knight's move from any of them
   on Jos bank                        # on a standable object
   not_on Clarence stoel              # not on any square in that standable set
@@ -508,10 +513,14 @@ nested inside `exactly`.
 There is no "two people next to each other" clue: with at most one person per
 row and column, two people never share a side, so it could never hold.
 
-`next_to` normally stays in the same region. A named door is an edge between
-two regions; either cell on that edge counts as next to the door. Distance
-(`within`, `at_least`, `furthest`), direction (`above`, `left_of`) and
-`knight_from` may cross region boundaries.
+Ordinary-object `next_to` stays in the same logical area. A door lists two
+orthogonally neighboring cells in different areas; either cell satisfies
+`next_to` or `at`, including across the boundary. Wider openings are multiple
+simple doors with the same name. A window lists one cell for `at`; a corner
+object lists the four cells around its interior grid vertex for `next_to`.
+These items touch cells but do not occupy or block them. Distance (`within`,
+`at_least`, `furthest`), direction (`above`, `left_of`) and `knight_from` may
+cross region boundaries.
 
 ### Worked solutions
 
@@ -543,7 +552,8 @@ It is built in three layers that never reach into each other:
 `--png` draws a Murdoku board from the puzzle file in the style of a printed
 Murdoku: region colours (from `Regions:`, or a default palette), a darker shade
 under objects, hatching where `Hatched:` says, thick lines between regions,
-icons for named objects, name tags for people, coordinates and a
+icons for named objects, door marks, window and corner-object icons, name tags for people,
+coordinates and a
 legend. Because it is drawn from the same file the solver reads, the picture
 cannot disagree with the puzzle. Sudoku, Calcudoku and Futoshiki pictures
 share the look: thick lines around boxes or cages, alternate boxes shaded,
