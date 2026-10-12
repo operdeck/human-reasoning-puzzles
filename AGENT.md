@@ -1,3 +1,7 @@
+`COUNT` constraints list allowed totals of true literals. Their optional
+`reified_by` literal is true exactly when the total is allowed. Keep count
+propagation sound for gaps and parity as well as interval bounds; a count
+constraint creates a strong link only when both-false support is impossible.
 # Notes for agents working on this repo
 
 Read `README.md` first for the model and how the puzzles map onto it.
@@ -18,8 +22,9 @@ Explainability is a goal, not a side effect: every deduction lands in
 ## Invariants — do not break these
 
 **`AT_MOST_ONE` must never force a value.** It forbids a second truth; it does
-not require a first. Only `EXACTLY_ONE` licenses "one option left, therefore
-it holds". An earlier version of this code had one `Group` type doing both
+not require a first. `EXACTLY_ONE` forces its final option; `COUNT` forces a
+literal only when its allowed totals leave one feasible completion. An earlier
+version of this code had one `Group` type doing both
 jobs, which is sound for Sudoku (9 cells, 9 digits, each used once) and
 unsound for Murdoku (7 people, 43 squares, most empty). It concluded things
 like "square 37 only fits Vladimir, so Vladimir is there". There is a
@@ -121,17 +126,17 @@ Candidates, roughly in order of value:
   fiendish Calcudoku. Next: weak links from relations over three or more
   variables, and keeping links between runs (chains are the slow rung).
 - ~~Bounded what-if~~ — done as `rule_what_if`, using `Model.clone()`. It
-  runs only `single`/`relations`/`subsumption` on the copy, never itself,
+  runs only `single`/`count`/`relations`/`subsumption` on the copy, never itself,
   so it stays one level deep. Within the first variable (fewest options)
   that has a refutable value, it keeps the refutation with the shortest
   trail. Searching *all* variables for the globally shortest one was tried
   and reverted: the fiendish Calcudoku went from 3 what-ifs in 0.15 s to 27
   in 10 s.
-- **Counting constraints** (`EXACTLY_K` / `AT_MOST_K`) — the bigger
-  investment, and the one that opens the most new puzzle types (Star
-  Battle, Binairo, Tents, Minesweeper). See the README's Possible
-  improvements. Touches `Kind`, `single`, `cover`, chains' links, `proof`,
-  `story` and `report`; each must stay sound for k > 1.
+- ~~Counting constraints~~ — `Kind.COUNT` accepts an allowed set of true
+  counts and an optional `reified_by` literal. `rule_count` handles bounds and
+  gaps, while `single`, `cover2`/`cover3`, and support-checked chain links
+  generalize the existing deductions. Proof replay, story narration, and
+  model reports include count deductions.
 
 A new rule also needs: a case in `proof.Move` so `--explain` can replay it,
 wording in `story`, and a place in `proof.HARDEST_FIRST`.
