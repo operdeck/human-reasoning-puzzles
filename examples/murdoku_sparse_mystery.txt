@@ -26,7 +26,7 @@ d: study #FADFB5
 e: well_court #C4DCF2
 f: stable #BEE5D6
 
-Groups:
+AreaTags:
 noble_areas: maras_house blue_hall
 
 Grid:
@@ -55,10 +55,10 @@ Tomas
 
 # Mara and Nico are nobles. Ria and Tomas are commoners; no knights here.
 Rules:
-in_region Mara noble_areas
-in_region Nico noble_areas
-outside Ria noble_areas
-outside Tomas noble_areas
+only_in_tagged Mara noble_areas
+only_in_tagged Nico noble_areas
+not_in_tagged Ria noble_areas
+not_in_tagged Tomas noble_areas
 
 # Tomas is the victim. Exactly one of Mara or Ria shares his region; who did it?
 Clues:

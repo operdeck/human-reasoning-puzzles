@@ -446,11 +446,11 @@ Murdoku uses named sections — see `examples/prrrdoku*.txt`:
 Size: 7
 Language: nl    # optional; language of --explain (en or nl, default en)
 Words:          # optional; how --explain names things
-  water: in het water     # a region or group: where it is
+  water: in het water     # a region or area tag: where it is
   vuurtje: het vuurtje    # an object type: what it is called
 Regions:        # id: name [#RRGGBB], e.g. "a: keukenwinkel #FADFB5" (name without spaces)
-Groups:         # optional; name: region region ...
-Hatched:        # optional; regions or groups drawn hatched in pictures
+AreaTags:       # optional; tag: region_name region_name ...
+Hatched:        # optional; regions or area tags drawn hatched in pictures
 Grid:           # region id per square, e.g. "a a b b c c c"
 Objects:        # name: blocking|standable square...; repeat a name for more instances
   tree: blocking r1c1
@@ -469,8 +469,10 @@ Clues:          # numbered 1, 2, ... in the order given
   not_on Clarence stoel              # not on any square in that standable set
   only_on Anna bed                   # Anna is on it; nobody else is
   in_corner Henriette                # one of the four grid corners
-  in_region Jos keukenwinkel         # any number of regions or groups
-  outside Pip water                  # none of the given regions or groups
+  in_region Jos keukenwinkel         # any number of named regions
+  outside Pip water                  # none of the given regions
+  in_tagged Ada shoreline            # any region carrying this area tag
+  not_in_tagged Ben restricted       # none of the regions with this tag
   same_region Anna Jos
   different_region Anna Pip
   apart Luna Mao                # different regions that do not share a side
@@ -491,9 +493,11 @@ type. Each declaration is one connected, non-overlapping footprint.
 `alone` and `furthest` expand to one relation per other person; `furthest`
 is a three-way relation (Luna, Mao, that person).
 
-Role restrictions can reuse `Groups:` and `Rules:`. For example, group the
-noble areas and put nobles `in_region` and commoners `outside` that group;
-knights need no area restriction. A puzzle can omit knights entirely.
+`AreaTags:` assigns reusable tags to named regions. Tags may overlap, and a
+tag may cover disconnected regions. `in_tagged` and `not_in_tagged` are clue
+filters; use `only_in_tagged` and `not_in_tagged` in `Rules:` for per-person
+required, forbidden, or unrestricted area policies. `Hatched:` accepts either
+region names or area tags.
 
 `exactly n <clue> ; <clue> ...` counts simple clues (any of the one- and
 two-person clues above). Together they may name at most three people: the

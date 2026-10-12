@@ -76,17 +76,24 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     if unknown:
         raise ValueError(f"Grid uses region ids with no name: {sorted(unknown)}")
 
+    if "Groups" in section:
+        raise ValueError("Groups: is no longer supported; use AreaTags:")
+    area_tags: dict[str, list[str]] = {}
+    for line in section.get("AreaTags", []):
+        tag, separator, names = line.partition(":")
+        members = names.split()
+        if not separator or not tag.strip() or not members:
+            raise ValueError(f"bad area tag {line!r}, expected 'tag: region_name ...'")
+        if tag.strip() in area_tags:
+            raise ValueError(f"area tag {tag.strip()!r} is defined more than once")
+        area_tags[tag.strip()] = members
+
     if "Furniture" in section:
         raise ValueError("Furniture: is no longer supported; use Objects: with kind 'standable'")
     objects = _object_placements(section.get("Objects", []))
     doors = _door_placements(section.get("Doors", []))
 
     people = list(section["People"])
-
-    groups = {}
-    for line in section.get("Groups", []):
-        name, _, members = line.partition(":")
-        groups[name.strip()] = members.split()
 
     clues = _clues(section.get("Clues", []))
 
@@ -96,12 +103,11 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         region_names,
         objects,
         people,
-        groups=groups,
+        area_tags=area_tags,
         colours=colours,
         doors=doors,
     )
-    board.region_ids(groups)  # fails now, not mid-solve, if a group names an unknown region
-    board.hatched = board.region_ids(
+    board.hatched = board.area_ids(
         name for line in section.get("Hatched", []) for name in line.split()
     )
     board.rules = _clues(section.get("Rules", []))

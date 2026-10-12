@@ -120,10 +120,11 @@ it.
 - For a board of size `N`, provide between 1 and `N` people and an `N` by `N`
   region grid. At most one person may occupy each row, column, and square; if
   there are `N` people, every row and column is occupied. Squares may remain
-  empty.
+  empty. Repeated region IDs denote one logical area even when disconnected;
+  overlay areas use a different ID.
 - Every region ID in `Grid:` must be declared in `Regions:`. Use single-token
-  identifiers for people, regions, groups, and object types; use
-  `Words:` for display wording where needed.
+  identifiers for people, regions, area tags, and object types; use `Words:`
+  for display wording where needed.
 - `Objects:` declares each footprint as `name: blocking|standable square...`.
   The kind is required and independent of the name and icon. Each line is one
   connected footprint; repeat a name on another line for another instance of
@@ -132,16 +133,18 @@ it.
 - `Doors:` are named edges between orthogonally neighboring cells in
   different regions, for example `gate: r4c5-r4c6`. They are not cells; either
   adjacent cell is next to the door.
+- `AreaTags:` maps a tag to one or more named regions. Tags may overlap and may
+  cover disconnected regions. `Hatched:` accepts either region names or tags.
 - Put board-wide, unnumbered clues in `Rules:` and numbered puzzle clues in
    `Clues:`. Required sections are `Size:`, `Regions:`, `Grid:`, and `People:`.
-  `Clues:`, `Language:`, `Words:`, `Groups:`, `Hatched:`, `Objects:`,
+  `Clues:`, `Language:`, `Words:`, `AreaTags:`, `Hatched:`, `Objects:`,
   `Doors:`, and `Rules:` are optional.
 - Keep clues concise and non-duplicative. Avoid clues that directly reveal
   every person's square unless the user requests a very easy puzzle.
-- For role restrictions such as nobles who must stay in special areas and
-  commoners who must stay out, define the area set in `Groups:` and express the
-  restrictions with `in_region` or `outside` lines in `Rules:`. Do not add a
-  new solver feature when the existing clue vocabulary expresses the rule.
+- Use `only_in_tagged <person> <tag>` and `not_in_tagged <person> <tag>` in
+  `Rules:` for required-inside and forbidden-inside per-person policies. A
+  person with neither policy is unrestricted. `in_tagged` and `not_in_tagged`
+  are also available as numbered clues.
 - **Late-reveal mystery rule:** when the question asks who shares a region with
   a named mystery person (for example, Vladimir), keep that person's square
   open to at least two candidates until every other person is placed. Keep at
@@ -157,8 +160,11 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 
 | Form | Meaning |
 |---|---|
-| `in_region <person> <region-or-group>...` | Person is in one of the named regions. |
-| `outside <person> <region-or-group>...` | Person is in none of the named regions. |
+| `in_region <person> <region>...` | Person is in one of the named regions. |
+| `outside <person> <region>...` | Person is in none of the named regions. |
+| `in_tagged <person> <tag>...` | Person is in a region carrying any named tag. |
+| `not_in_tagged <person> <tag>...` | Person is in no region carrying any named tag. |
+| `only_in_tagged <person> <tag>...` | Person is restricted to regions carrying any named tag; intended for `Rules:`. |
 | `next_to <person> <object-or-door>...` | Person is orthogonally beside any named object in the same region; for a door edge, either adjoining cell counts. |
 | `not_next_to <person> <object>...` | Person is not next to any named thing. |
 | `knight_from <person> <object>...` | Person is a chess-knight move from any named thing; region boundaries do not matter. |
@@ -177,7 +183,7 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `furthest <person-a> <person-b>` | A is strictly farther from B than every other person. |
 | `exactly <n> <clue> ; <clue> ...` | Exactly `n` of the listed simple, one- or two-person clues hold. At most three distinct people may be named across them; `only_on` cannot be nested here. |
 
-`next_to` stays within a region for objects. A `Doors:` entry
+`next_to` stays within a logical area. A `Doors:` entry
 names an edge between two neighboring cells in different regions; either cell
 on that edge satisfies `next_to`. Direction, distance, and `knight_from` may
 cross region boundaries. There is no person-to-person adjacency clue: at most
