@@ -58,6 +58,7 @@ def knight_move(a: Square, b: Square) -> bool:
 
 
 type ObjectKind = Literal["blocking", "standable"]
+type EdgeItemKind = Literal["door", "window"]
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,50 @@ class BoardObject:
             raise ValueError(f"object {self.name!r} footprint must be connected")
 
 
+@dataclass(frozen=True)
+class EdgeItem:
+    """A referenceable boundary item represented by the cells it touches."""
+
+    name: str
+    kind: EdgeItemKind
+    cells: tuple[Square, ...]
+
+    def __post_init__(self) -> None:
+        if not self.name or any(char.isspace() for char in self.name):
+            raise ValueError(f"edge item name {self.name!r} must be a single token")
+        if self.kind not in ("door", "window"):
+            raise ValueError(f"edge item {self.name!r} kind must be 'door' or 'window'")
+        if self.kind == "door" and len(self.cells) != 2:
+            raise ValueError(f"door {self.name!r} must touch exactly two neighboring cells")
+        if self.kind == "window" and len(self.cells) != 1:
+            raise ValueError(f"window {self.name!r} must list exactly one inside cell")
+        if len(set(self.cells)) != len(self.cells):
+            raise ValueError(f"edge item {self.name!r} repeats a touched cell")
+
+
+@dataclass(frozen=True)
+class CornerObject:
+    """An object anchored at the common corner of its four surrounding cells."""
+
+    name: str
+    cells: tuple[Square, ...]
+
+    def __post_init__(self) -> None:
+        if not self.name or any(char.isspace() for char in self.name):
+            raise ValueError(f"corner object name {self.name!r} must be a single token")
+        cells = set(self.cells)
+        if len(cells) != 4:
+            raise ValueError(f"corner object {self.name!r} must list four cells around one corner")
+        rows = {square.row for square in cells}
+        cols = {square.col for square in cells}
+        if (
+            len(rows) != 2
+            or len(cols) != 2
+            or cells != {Square(row, col) for row in rows for col in cols}
+        ):
+            raise ValueError(f"corner object {self.name!r} cells must surround one grid corner")
+
+
 @dataclass
 class Board:
     """The fixed layout: regions, things on the board, and who is playing.
@@ -102,8 +147,8 @@ class Board:
     `regions` holds a short region id per square (a letter, say) and
     `region_names` maps each id to its name. `objects` lists connected object
     footprints with explicit blocking or standable kinds. Multiple instances
-    of one type may share a name. `doors` maps names to edges between adjacent
-    cells in different regions; a door is not itself a square. `colours`
+    of one type may share a name. `edge_items` and `corner_objects` are named
+    cell sets that occupy no square. `colours`
     (region id -> '#RRGGBB') and `hatched` (region ids) only affect pictures.
 
     `area_tags` map reusable tags to named regions. `rules` are clues that come
@@ -120,7 +165,8 @@ class Board:
     colours: dict[str, str] = field(default_factory=dict)
     hatched: set[str] = field(default_factory=set)
     rules: list["Clue"] = field(default_factory=list)
-    doors: dict[str, list[tuple[Square, Square]]] = field(default_factory=dict)
+    edge_items: list[EdgeItem] = field(default_factory=list)
+    corner_objects: list[CornerObject] = field(default_factory=list)
     free: list[Square] = field(init=False)
     borders: set[frozenset[str]] = field(init=False)
 
@@ -162,21 +208,34 @@ class Board:
             if not members:
                 raise ValueError(f"area tag {tag!r} needs at least one region")
             self.region_ids(members)
-        if door_names := set(self.doors) & self.object_names:
-            raise ValueError(f"door names overlap objects: {sorted(door_names)}")
-        for name, edges in self.doors.items():
-            if not edges:
-                raise ValueError(f"door {name!r} has no edges")
-            for first, second in edges:
-                if any(
-                    square.row not in range(self.size) or square.col not in range(self.size)
-                    for square in (first, second)
-                ):
-                    raise ValueError(f"door {name!r} is off the grid: {first}-{second}")
+        edge_kinds: dict[str, EdgeItemKind] = {}
+        for item in self.edge_items:
+            corner_names = {obj.name for obj in self.corner_objects}
+            if item.name in self.object_names or item.name in corner_names:
+                raise ValueError(f"edge item name {item.name!r} overlaps another item name")
+            if item.name in edge_kinds and edge_kinds[item.name] != item.kind:
+                raise ValueError(f"edge item {item.name!r} has conflicting kinds")
+            edge_kinds[item.name] = item.kind
+            if any(
+                square.row not in range(self.size) or square.col not in range(self.size)
+                for square in item.cells
+            ):
+                raise ValueError(f"edge item {item.name!r} is off the grid")
+            if item.kind == "door":
+                first, second = item.cells
                 if steps_between(first, second) != 1:
-                    raise ValueError(f"door {name!r} must separate neighboring squares")
+                    raise ValueError(f"door {item.name!r} must touch neighboring cells")
                 if self.region_of(first) == self.region_of(second):
-                    raise ValueError(f"door {name!r} must be on a region boundary")
+                    raise ValueError(f"door {item.name!r} must be on an area boundary")
+        object_names = self.object_names
+        for corner in self.corner_objects:
+            if corner.name in object_names or corner.name in edge_kinds:
+                raise ValueError(f"corner object name {corner.name!r} overlaps another item name")
+            if any(
+                square.row not in range(self.size) or square.col not in range(self.size)
+                for square in corner.cells
+            ):
+                raise ValueError(f"corner object {corner.name!r} is off the grid")
 
     def region_of(self, square: Square) -> str:
         return self.regions[square.row][square.col]
@@ -222,6 +281,14 @@ class Board:
         return {obj.name for obj in self.objects}
 
     @property
+    def edge_item_names(self) -> set[str]:
+        return {item.name for item in self.edge_items}
+
+    @property
+    def corner_object_names(self) -> set[str]:
+        return {item.name for item in self.corner_objects}
+
+    @property
     def standable_objects(self) -> list[BoardObject]:
         return [obj for obj in self.objects if obj.kind == "standable"]
 
@@ -234,6 +301,32 @@ class Board:
                 f"nothing called {sorted(unknown)} on the board; have {sorted(self.object_names)}"
             )
         return {square for obj in self.objects if obj.name in names for square in obj.squares}
+
+    def edge_item_cells(self, names: Iterable[str]) -> set[Square]:
+        """Cells touched by named doors or windows."""
+        names = set(names)
+        unknown = names - self.edge_item_names
+        if unknown:
+            raise ValueError(
+                f"unknown edge items {sorted(unknown)}; have {sorted(self.edge_item_names)}"
+            )
+        return {cell for item in self.edge_items if item.name in names for cell in item.cells}
+
+    def edge_item_kind(self, name: str) -> EdgeItemKind:
+        """The kind shared by all simple edge items with this reference name."""
+        if name not in self.edge_item_names:
+            raise ValueError(f"unknown edge item {name!r}; have {sorted(self.edge_item_names)}")
+        return next(item.kind for item in self.edge_items if item.name == name)
+
+    def corner_object_cells(self, names: Iterable[str]) -> set[Square]:
+        """Cells surrounding named corner-anchored objects."""
+        names = set(names)
+        unknown = names - self.corner_object_names
+        if unknown:
+            raise ValueError(
+                f"unknown corner objects {sorted(unknown)}; have {sorted(self.corner_object_names)}"
+            )
+        return {cell for item in self.corner_objects if item.name in names for cell in item.cells}
 
 
 # --- clue vocabulary ------------------------------------------------------
@@ -260,31 +353,35 @@ def _in_tagged(board: Board, *tags: str) -> SquareTest:
     return lambda sq: board.region_of(sq) in ids
 
 
+def _at(board: Board, *items: str) -> SquareTest:
+    cells = board.edge_item_cells(items)
+    return lambda square: square in cells
+
+
 def _not_in_tagged(board: Board, *tags: str) -> SquareTest:
     ids = board.tagged_region_ids(tags)
     return lambda sq: board.region_of(sq) not in ids
 
 
 def _next_to(board: Board, *things: str) -> SquareTest:
-    """Beside one of the things, in the same region: Murdoku's general rule is
-    that 'next to' never crosses a region boundary. A door is an edge, so
-    either square on its sides counts, even across a region boundary."""
+    """Beside objects in the same area, or on a boundary/corner item's cells."""
     targets: set[Square] = set()
-    doors: set[tuple[Square, Square]] = set()
+    touched: set[Square] = set()
     for thing in things:
-        if thing in board.doors:
-            doors.update(board.doors[thing])
+        if thing in board.edge_item_names:
+            touched.update(board.edge_item_cells([thing]))
+        elif thing in board.corner_object_names:
+            touched.update(board.corner_object_cells([thing]))
         else:
             targets.update(board.squares_of([thing]))
 
     def test(square: Square) -> bool:
-        beside_door = any(square in edge for edge in doors)
         beside_thing = any(
             steps_between(square, target) == 1
             and board.region_of(target) == board.region_of(square)
             for target in targets
         )
-        return beside_door or beside_thing
+        return square in touched or beside_thing
 
     return test
 
@@ -367,6 +464,7 @@ FILTERS: dict[str, Callable[..., SquareTest]] = {
     "in_tagged": _in_tagged,  # in_tagged <person> <area tag>...
     "only_in_tagged": _in_tagged,  # only_in_tagged <person> <area tag>...
     "not_in_tagged": _not_in_tagged,  # not_in_tagged <person> <area tag>...
+    "at": _at,  # at <person> <edge item>...
     "next_to": _next_to,  # next_to <person> <thing>...: beside any of them
     "not_next_to": _not_next_to,  # not_next_to <person> <thing>...: beside none of them
     "knight_from": _knight_from,  # knight_from <person> <thing>...: a knight's move away
@@ -447,6 +545,13 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
 def _conditions(board: Board, kind: str, args: list[str], number: int | None) -> list[Condition]:
     if kind == COUNTING:
         return [_counting(board, args, number)]
+    if kind == "at":
+        if len(args) < 2:
+            raise ValueError("clue 'at' expects a person and at least one edge item")
+        person, *items = args
+        if person not in board.people:
+            raise ValueError(f"clue 'at {' '.join(args)}' names unknown person {person!r}")
+        board.edge_item_cells(items)
     if kind in ("on", "not_on"):
         if len(args) < 2:
             raise ValueError(f"clue {kind!r} expects a person and at least one object")
@@ -705,12 +810,16 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
                 for name, squares in sorted(by_name.items())
             )
             out.append(f"  {kind}: {listed}")
-    if board.doors:
+    if board.edge_items:
         listed = ", ".join(
-            f"{name} {' '.join(f'{first}-{second}' for first, second in edges)}"
-            for name, edges in sorted(board.doors.items())
+            f"{item.name} {item.kind} {' '.join(map(str, item.cells))}" for item in board.edge_items
         )
-        out.append(f"  doors (between cells): {listed}")
+        out.append(f"  edge items: {listed}")
+    if board.corner_objects:
+        listed = ", ".join(
+            f"{item.name} {' '.join(map(str, item.cells))}" for item in board.corner_objects
+        )
+        out.append(f"  corner objects: {listed}")
     return "\n".join(out)
 
 

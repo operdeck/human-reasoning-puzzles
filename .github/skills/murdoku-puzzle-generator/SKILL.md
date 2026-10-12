@@ -130,15 +130,20 @@ it.
   connected footprint; repeat a name on another line for another instance of
   that type. Footprints may not overlap, and all cells must be on the board.
   Standable objects are valid `on`, `not_on`, and `only_on` targets.
-- `Doors:` are named edges between orthogonally neighboring cells in
-  different regions, for example `gate: r4c5-r4c6`. They are not cells; either
-  adjacent cell is next to the door.
+- `EdgeItems:` declares named doors and windows without occupying cells.
+  A simple door lists two orthogonally neighboring cells in different areas,
+  for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider
+  opening. A window lists exactly one inside cell, for example
+  `window: window r2c3`.
+- `CornerObjects:` declares an object at an interior grid vertex by listing
+  its four surrounding cells, for example
+  `fountain: r3c3 r3c4 r4c3 r4c4`. These cells are touched, not occupied.
 - `AreaTags:` maps a tag to one or more named regions. Tags may overlap and may
   cover disconnected regions. `Hatched:` accepts either region names or tags.
 - Put board-wide, unnumbered clues in `Rules:` and numbered puzzle clues in
    `Clues:`. Required sections are `Size:`, `Regions:`, `Grid:`, and `People:`.
   `Clues:`, `Language:`, `Words:`, `AreaTags:`, `Hatched:`, `Objects:`,
-  `Doors:`, and `Rules:` are optional.
+  `EdgeItems:`, `CornerObjects:`, and `Rules:` are optional.
 - Keep clues concise and non-duplicative. Avoid clues that directly reveal
   every person's square unless the user requests a very easy puzzle.
 - Use `only_in_tagged <person> <tag>` and `not_in_tagged <person> <tag>` in
@@ -165,8 +170,9 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `in_tagged <person> <tag>...` | Person is in a region carrying any named tag. |
 | `not_in_tagged <person> <tag>...` | Person is in no region carrying any named tag. |
 | `only_in_tagged <person> <tag>...` | Person is restricted to regions carrying any named tag; intended for `Rules:`. |
-| `next_to <person> <object-or-door>...` | Person is orthogonally beside any named object in the same region; for a door edge, either adjoining cell counts. |
-| `not_next_to <person> <object>...` | Person is not next to any named thing. |
+| `next_to <person> <object-or-edge-item-or-corner-object>...` | Ordinary objects use same-area adjacency; door and corner item touched cells count, including across an area boundary. |
+| `not_next_to <person> <object-or-edge-item-or-corner-object>...` | Person is not next to any named thing. |
+| `at <person> <edge-item>...` | Person occupies a cell listed by any named door or window. |
 | `knight_from <person> <object>...` | Person is a chess-knight move from any named thing; region boundaries do not matter. |
 | `on <person> <standable-object>...` | Person occupies one of the named standable-object squares. |
 | `not_on <person> <standable-object>...` | Person occupies none of the named standable-object squares. |
@@ -183,12 +189,15 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `furthest <person-a> <person-b>` | A is strictly farther from B than every other person. |
 | `exactly <n> <clue> ; <clue> ...` | Exactly `n` of the listed simple, one- or two-person clues hold. At most three distinct people may be named across them; `only_on` cannot be nested here. |
 
-`next_to` stays within a logical area. A `Doors:` entry
-names an edge between two neighboring cells in different regions; either cell
-on that edge satisfies `next_to`. Direction, distance, and `knight_from` may
-cross region boundaries. There is no person-to-person adjacency clue: at most
-one person per row and column makes it impossible for two people to share a
-side.
+Ordinary-object `next_to` stays within a logical area. A door lists two
+orthogonally neighboring cells in different areas; either cell satisfies
+`next_to` or `at`, including across the boundary. Wider openings are multiple
+simple doors with the same name. A window lists one cell for `at`; a corner
+object lists the four cells around its interior vertex for `next_to`. These
+items do not occupy or block cells. Direction, distance, and `knight_from`
+may cross region boundaries. There is no person-to-person adjacency clue: at
+most one person per row and column makes it impossible for two people to
+share a side.
 
 ## Verification Notes
 
