@@ -23,6 +23,7 @@ def describe(model: Model, rules: Sequence[Rule] = DEFAULT_RULES) -> str:
     """The model, then the algorithm that will run on it."""
     sections = (
         _overview(model),
+        _contradictions(model),
         _variables(model),
         _constraints(model),
         _connections(model),
@@ -86,6 +87,21 @@ def _overview(model: Model) -> str:
         "Solving only ever marks literals true or false. Nothing below knows what "
         "puzzle it came from."
     )
+    return "\n".join(lines)
+
+
+def _contradictions(model: Model) -> str:
+    empty = [v for v in model.variables if not model.options(v)]
+    if not empty:
+        return ""
+    lines = _heading("Invalid model: contradiction")
+    lines += _wrap(
+        f"{len(empty)} variable(s) have no live options, so the clues contradict "
+        "each other and no solution exists."
+    )
+    lines += [f"  {v}" for v in empty[:10]]
+    if len(empty) > 10:
+        lines.append(f"  ... and {len(empty) - 10} more")
     return "\n".join(lines)
 
 
@@ -318,6 +334,6 @@ def _family(constraint: Constraint) -> str:
 def _example_literal(model: Model) -> LiteralId | None:
     """An open literal of the most constrained open variable."""
     for var in sorted(model.variables, key=lambda v: len(model.options(v))):
-        if model.chosen(var) is None:
+        if model.chosen(var) is None and model.options(var):
             return model.options(var)[0]
     return None
