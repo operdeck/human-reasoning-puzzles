@@ -1,6 +1,10 @@
 # Release Notes
 
 ## Unreleased
+**Bug Fix(es)**
+* [#26 Handle empty domains in --show-model](https://github.com/operdeck/human-reasoning-puzzles/issues/26)
+    * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
+
 **New Feature(s)**
 * [#12 Murdoku: Migrate the format and verify feature composition](https://github.com/operdeck/human-reasoning-puzzles/issues/12)
     * `src/csp`: Added Murdoku lint and forward-only checks, optional default PNG paths, and 16x16 count/chain benchmark coverage.
