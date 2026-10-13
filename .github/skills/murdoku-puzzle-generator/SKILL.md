@@ -143,12 +143,18 @@ it.
   or block cells. An optional `alone` or `not_alone` condition applies only
   when a marked cell is occupied, then counts people in that cell's logical
   area; `alone` allows one occupant and `not_alone` requires at least two.
+- `Roles:` declares theme-neutral roles with an optional exact count, such as
+  `bandit: 4 different_regions`; use `any` for an unconstrained count.
+  `different_regions` requires holders to occupy distinct logical areas.
+  `RoleEligibility:` optionally lists the people eligible for each role.
+  Roles overlap by default; use `at_most_one_role <person>` only when needed.
 - `AreaTags:` maps a tag to one or more named regions. Tags may overlap and may
   cover disconnected regions. `Hatched:` accepts either region names or tags.
 - Put board-wide, unnumbered clues in `Rules:` and numbered puzzle clues in
    `Clues:`. Required sections are `Size:`, `Regions:`, `Grid:`, and `People:`.
   `Clues:`, `Language:`, `Words:`, `AreaTags:`, `Hatched:`, `Objects:`,
-  `EdgeItems:`, `CornerObjects:`, `Marks:`, and `Rules:` are optional.
+  `EdgeItems:`, `CornerObjects:`, `Marks:`, `Roles:`, `RoleEligibility:`,
+  and `Rules:` are optional.
 - Keep clues concise and non-duplicative. Avoid clues that directly reveal
   every person's square unless the user requests a very easy puzzle.
 - Use `only_in_tagged <person> <tag>` and `not_in_tagged <person> <tag>` in
@@ -180,6 +186,16 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `at <person> <edge-item>...` | Person occupies a cell listed by any named door or window. |
 | `on_mark <person> <mark>...` | Person occupies one of the cells carrying any named mark. |
 | `not_on_mark <person> <mark>...` | Person occupies none of the cells carrying any named mark. |
+| `has_role <person> <role>` / `not_role <person> <role>` | Assert membership in or explicit absence from a role. |
+| `some_role <person>` / `roleless <person>` | Require at least one role or no roles. |
+| `at_most_one_role <person>` | Limit the person to at most one role. |
+| `role_subset <role-a> <role-b>` | Every holder of role A must also hold role B. |
+| `role_in_tagged <person> <role> <tag>` / `role_not_in_tagged <person> <role> <tag>` | If the person has the role, require them inside or outside the tagged areas. |
+| `min_role_in_tagged <role> <tag> <n>` | Require at least `n` holders in each logical region carrying the tag. |
+| `role_on`, `role_not_on`, `role_next_to` `<person> <role> <target>...` | Apply the cell/object/mark condition only when that person has the role. |
+| `role_below <person> <role> [n]` | Person is below a holder of the role; with `n`, exactly `n` rows below. |
+| `sole_role_companion <person> <role>` | Person has exactly one same-area companion, and that person has the role. |
+| `role_occupant <role> alone|not_alone` | Apply the occupant condition in each area containing a holder of the role. |
 | `knight_from <person> <object>...` | Person is a chess-knight move from any named thing; region boundaries do not matter. |
 | `on <person> <standable-object>...` | Person occupies one of the named standable-object squares. |
 | `not_on <person> <standable-object>...` | Person occupies none of the named standable-object squares. |

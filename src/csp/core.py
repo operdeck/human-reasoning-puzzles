@@ -141,6 +141,7 @@ class Model:
         self._constraints: list[Constraint] = []
         self._relations: list[Relation] = []
         self._domain_of: dict[str, ConstraintId] = {}
+        self._hidden_variables: set[str] = set()
         self.log: list[Step] = []
 
     # --- construction -----------------------------------------------------
@@ -166,6 +167,7 @@ class Model:
         allowed_counts: Iterable[int] | None = None,
         reified_by: LiteralId | None = None,
         defines: str | None = None,
+        hidden: bool = False,
         family: str | None = None,
     ) -> ConstraintId:
         """Add a constraint over literals.
@@ -173,8 +175,12 @@ class Model:
         `EXACTLY_ONE` and `AT_MOST_ONE` retain their familiar meanings.
         `COUNT` requires `allowed_counts`, the permitted numbers of true
         literals. With `reified_by`, that literal is true iff the count is in
-        `allowed_counts`. `defines` marks the constraint as a variable's domain.
+        `allowed_counts`. `defines` marks the constraint as a variable's domain;
+        `hidden` keeps that domain out of solution assignments while retaining
+        it for propagation and relations.
         """
+        if hidden and defines is None:
+            raise ValueError("hidden constraints must define a variable")
         literals = tuple(literals)
         if kind is Kind.EXACTLY_ONE:
             if allowed_counts is not None or reified_by is not None:
@@ -212,6 +218,8 @@ class Model:
             self._in_constraints[reified_by].append(index)
         if defines is not None:
             self._domain_of[defines] = index
+            if hidden:
+                self._hidden_variables.add(defines)
         return index
 
     def relate(self, name: str, variables: Iterable[str], holds: Callable[..., bool]) -> None:
@@ -244,6 +252,12 @@ class Model:
 
     @property
     def variables(self) -> list[str]:
+        """Visible variables whose values appear in `solution()` assignments."""
+        return [var for var in self._domain_of if var not in self._hidden_variables]
+
+    @property
+    def all_variables(self) -> list[str]:
+        """Every variable domain, including hidden auxiliary domains."""
         return list(self._domain_of)
 
     def domain_of(self, var: str) -> ConstraintId:
@@ -324,13 +338,13 @@ class Model:
 
     def assignment(self) -> dict[str, Any]:
         """Variables decided so far."""
-        decided = {var: self.chosen(var) for var in self._domain_of}
+        decided = {var: self.chosen(var) for var in self.variables}
         return {var: value for var, value in decided.items() if value is not None}
 
     def solution(self) -> dict[str, Any] | None:
         """The full assignment, or None if any variable is still open."""
         decided = self.assignment()
-        return decided if len(decided) == len(self._domain_of) else None
+        return decided if len(decided) == len(self.variables) else None
 
     # --- mutation ---------------------------------------------------------
 

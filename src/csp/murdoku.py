@@ -160,6 +160,22 @@ class CellMark:
             raise ValueError(f"mark {self.name!r} condition must be 'alone' or 'not_alone'")
 
 
+@dataclass(frozen=True)
+class RoleSpec:
+    """A data-defined role's allowed holder counts and optional eligibility."""
+
+    name: str
+    allowed_counts: frozenset[int]
+    different_regions: bool = False
+    eligible_people: frozenset[str] | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name or any(char.isspace() for char in self.name):
+            raise ValueError(f"role name {self.name!r} must be a single token")
+        if not self.allowed_counts:
+            raise ValueError(f"role {self.name!r} needs at least one allowed count")
+
+
 @dataclass
 class Board:
     """The fixed layout: regions, things on the board, and who is playing.
@@ -189,6 +205,7 @@ class Board:
     edge_items: list[EdgeItem] = field(default_factory=list)
     corner_objects: list[CornerObject] = field(default_factory=list)
     marks: list[CellMark] = field(default_factory=list)
+    roles: list[RoleSpec] = field(default_factory=list)
     free: list[Square] = field(init=False)
     borders: set[frozenset[str]] = field(init=False)
 
@@ -268,6 +285,21 @@ class Board:
                 for square in mark.cells
             ):
                 raise ValueError(f"mark {mark.name!r} has a cell off the grid")
+        role_names: set[str] = set()
+        for role in self.roles:
+            if role.name in role_names:
+                raise ValueError(f"role {role.name!r} is defined more than once")
+            role_names.add(role.name)
+            if any(count < 0 or count > len(self.people) for count in role.allowed_counts):
+                raise ValueError(
+                    f"role {role.name!r} count must be between 0 and {len(self.people)}"
+                )
+            if role.eligible_people is not None:
+                unknown = role.eligible_people - set(self.people)
+                if unknown:
+                    raise ValueError(
+                        f"role {role.name!r} eligibility names unknown people {sorted(unknown)}"
+                    )
 
     def region_of(self, square: Square) -> str:
         return self.regions[square.row][square.col]
@@ -323,6 +355,17 @@ class Board:
     @property
     def mark_names(self) -> set[str]:
         return {mark.name for mark in self.marks}
+
+    @property
+    def role_names(self) -> set[str]:
+        return {role.name for role in self.roles}
+
+    def role_variable(self, person: str, role: str) -> str:
+        if person not in self.people:
+            raise ValueError(f"unknown person {person!r}; have {self.people}")
+        if role not in self.role_names:
+            raise ValueError(f"unknown role {role!r}; have {sorted(self.role_names)}")
+        return f"{person} has role {role}"
 
     @property
     def standable_objects(self) -> list[BoardObject]:
@@ -426,6 +469,12 @@ def _next_to(board: Board, *things: str) -> SquareTest:
             touched.update(board.edge_item_cells([thing]))
         elif thing in board.corner_object_names:
             touched.update(board.corner_object_cells([thing]))
+        elif thing in board.mark_names:
+            targets.update(board.mark_cells([thing]))
+        elif thing in ("blocking", "standable"):
+            targets.update(
+                square for obj in board.objects if obj.kind == thing for square in obj.squares
+            )
         else:
             targets.update(board.squares_of([thing]))
 
@@ -588,17 +637,176 @@ class Condition:
     number: int | None = None
 
 
+@dataclass(frozen=True)
+class RoleCondition:
+    """A generic role constraint from a board rule or numbered clue."""
+
+    label: str
+    kind: str
+    args: tuple[str, ...]
+    number: int | None = None
+
+
+ROLE_CONDITION_KINDS = frozenset(
+    {
+        "has_role",
+        "not_role",
+        "some_role",
+        "roleless",
+        "at_most_one_role",
+        "role_subset",
+        "role_in_tagged",
+        "role_not_in_tagged",
+        "min_role_in_tagged",
+        "role_occupant",
+        "role_on",
+        "role_not_on",
+        "role_next_to",
+        "role_below",
+        "sole_role_companion",
+    }
+)
+
+
 def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
     """Board rules, mark effects, and clues as predicates over their people."""
     out: list[Condition] = []
     for kind, args in board.rules:
+        if kind in ROLE_CONDITION_KINDS:
+            continue
         out += _conditions(board, kind, args, None)
     out.extend(
         _mark_occupant_condition(board, mark) for mark in board.marks if mark.occupant_condition
     )
     for number, (kind, args) in enumerate(clues, 1):
+        if kind in ROLE_CONDITION_KINDS:
+            continue
         out += _conditions(board, kind, args, number)
     return out
+
+
+def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
+    """Role rules and clues, validated against declared people and roles."""
+    rules: list[tuple[str, list[str], int | None]] = [
+        (kind, args, None) for kind, args in board.rules
+    ]
+    rules.extend((kind, args, number) for number, (kind, args) in enumerate(clues, 1))
+    roles = board.role_names
+    role_positions = {
+        "has_role": (1,),
+        "not_role": (1,),
+        "role_in_tagged": (1,),
+        "role_not_in_tagged": (1,),
+        "role_on": (1,),
+        "role_not_on": (1,),
+        "role_next_to": (1,),
+        "role_below": (1,),
+        "sole_role_companion": (1,),
+        "role_subset": (0, 1),
+        "min_role_in_tagged": (0,),
+        "role_occupant": (0,),
+    }
+    minimum_arity = {
+        "has_role": 2,
+        "not_role": 2,
+        "some_role": 1,
+        "roleless": 1,
+        "at_most_one_role": 1,
+        "role_subset": 2,
+        "role_in_tagged": 3,
+        "role_not_in_tagged": 3,
+        "min_role_in_tagged": 3,
+        "role_occupant": 2,
+        "role_on": 3,
+        "role_not_on": 3,
+        "role_next_to": 3,
+        "role_below": 3,
+        "sole_role_companion": 2,
+    }
+    out: list[RoleCondition] = []
+    for kind, args, number in rules:
+        if kind not in ROLE_CONDITION_KINDS:
+            continue
+        if len(args) < minimum_arity[kind] or (kind == "role_below" and len(args) > 4):
+            raise ValueError(f"role rule {kind!r} has the wrong number of arguments: {args}")
+        if kind == "some_role" and not roles:
+            raise ValueError("some_role requires at least one declared role")
+        for index in role_positions.get(kind, ()):
+            if args[index] not in roles:
+                raise ValueError(f"role rule {kind!r} names unknown role {args[index]!r}")
+        person_kinds = {
+            "has_role",
+            "not_role",
+            "some_role",
+            "roleless",
+            "at_most_one_role",
+            "role_in_tagged",
+            "role_not_in_tagged",
+            "role_on",
+            "role_not_on",
+            "role_next_to",
+            "role_below",
+            "sole_role_companion",
+        }
+        if kind in person_kinds and args[0] not in board.people:
+            raise ValueError(f"role rule {kind!r} names unknown person {args[0]!r}")
+        if kind in ("role_in_tagged", "role_not_in_tagged"):
+            board.tagged_region_ids([args[2]])
+        if kind == "role_occupant" and args[1] not in ("alone", "not_alone"):
+            raise ValueError("role_occupant condition must be 'alone' or 'not_alone'")
+        if kind == "min_role_in_tagged":
+            board.tagged_region_ids([args[1]])
+            try:
+                minimum = int(args[2])
+            except ValueError as exc:
+                raise ValueError(f"min_role_in_tagged needs a non-negative count: {args}") from exc
+            if minimum < 0 or minimum > len(board.people):
+                raise ValueError(
+                    f"min_role_in_tagged count must be between 0 and {len(board.people)}"
+                )
+        if kind in ("role_on", "role_not_on", "role_next_to"):
+            _role_target_cells(board, args[2:])
+        if kind == "role_below" and len(args) == 4:
+            try:
+                gap = int(args[3])
+            except ValueError as exc:
+                raise ValueError(f"role_below needs an optional positive row gap: {args}") from exc
+            if gap < 1:
+                raise ValueError("role_below row gap must be at least 1")
+        out.append(RoleCondition(" ".join((kind, *args)), kind, tuple(args), number))
+    for role in board.roles:
+        if role.eligible_people is not None:
+            out.extend(
+                RoleCondition(
+                    f"{person} not eligible for role {role.name}",
+                    "not_role",
+                    (person, role.name),
+                )
+                for person in board.people
+                if person not in role.eligible_people
+            )
+    return out
+
+
+def _role_target_cells(board: Board, names: Iterable[str]) -> set[Square]:
+    """Cell targets for role bindings: objects, object kinds, edge items, corners or marks."""
+    cells: set[Square] = set()
+    for name in names:
+        if name in ("blocking", "standable"):
+            cells.update(
+                square for obj in board.objects if obj.kind == name for square in obj.squares
+            )
+        elif name in board.mark_names:
+            cells.update(board.mark_cells([name]))
+        elif name in board.object_names:
+            cells.update(board.squares_of([name]))
+        elif name in board.edge_item_names:
+            cells.update(board.edge_item_cells([name]))
+        elif name in board.corner_object_names:
+            cells.update(board.corner_object_cells([name]))
+        else:
+            raise ValueError(f"unknown role target {name!r}")
+    return cells
 
 
 def _mark_occupant_condition(board: Board, mark: CellMark) -> Condition:
@@ -636,7 +844,7 @@ def _occupant_counts(condition: OccupantCondition, people_count: int) -> frozens
 def _auxiliary_variable(model: Model, prefix: str) -> str:
     name = f"__{prefix}"
     suffix = 2
-    while name in model.variables:
+    while name in model.all_variables:
         name = f"__{prefix}_{suffix}"
         suffix += 1
     return name
@@ -829,8 +1037,12 @@ def compile_puzzle(board: Board, clues: Iterable[Clue]) -> Model:
     that fail it. Clues about several people become relations; conditional
     mark effects are compiled to reified counts over their logical areas.
     """
+    clues = tuple(clues)
     model = Model()
     _add_board_rules(model, board)
+    role_literals = _add_roles(model, board)
+    role_rules = role_conditions(board, clues)
+    _compile_role_conditions(model, board, role_literals, role_rules)
     for condition in conditions(board, clues):
         if condition.kind == "occupant_condition":
             (mark_name, _) = condition.args
@@ -944,10 +1156,319 @@ def _add_board_rules(model: Model, board: Board) -> None:
         model.constrain(
             rule.name,
             rule.kind,
-            [model.literal(p, sq) for p, sq in rule.options],
+            [model.literal(person_name, square) for person_name, square in rule.options],
             defines=person,
             family=rule.family,
         )
+
+
+def _add_roles(model: Model, board: Board) -> dict[tuple[str, str], tuple[int, int]]:
+    """Create independent Boolean membership variables and role-wide counts."""
+    membership: dict[tuple[str, str], tuple[int, int]] = {}
+    for role in board.roles:
+        true_literals: list[int] = []
+        for person in board.people:
+            variable = board.role_variable(person, role.name)
+            is_role = model.literal(variable, True)
+            not_role = model.literal(variable, False)
+            membership[person, role.name] = (is_role, not_role)
+            model.constrain(
+                f"{person} role state {role.name}",
+                Kind.EXACTLY_ONE,
+                [is_role, not_role],
+                defines=variable,
+                hidden=True,
+                family="role membership",
+            )
+            true_literals.append(is_role)
+            if role.eligible_people is not None and person not in role.eligible_people:
+                model.assign(
+                    not_role,
+                    "clue",
+                    f"{person} is not eligible for role {role.name}",
+                    sources=(f"{person} not eligible for {role.name}",),
+                )
+        if role.allowed_counts != frozenset(range(len(board.people) + 1)):
+            model.constrain(
+                f"role {role.name} cardinality",
+                Kind.COUNT,
+                true_literals,
+                allowed_counts=role.allowed_counts,
+                family="role cardinality",
+            )
+        if role.different_regions:
+            for index, first in enumerate(board.people):
+                for second in board.people[index + 1 :]:
+                    first_var = board.role_variable(first, role.name)
+                    second_var = board.role_variable(second, role.name)
+                    model.relate(
+                        f"{first} and {second} {role.name} in different regions",
+                        (first_var, first, second_var, second),
+                        lambda a, x, b, y: (
+                            not (a and b) or board.region_of(x) != board.region_of(y)
+                        ),
+                    )
+    return membership
+
+
+def _compile_role_conditions(
+    model: Model,
+    board: Board,
+    membership: dict[tuple[str, str], tuple[int, int]],
+    role_rules: Sequence[RoleCondition],
+) -> None:
+    for rule in role_rules:
+        kind, args = rule.kind, rule.args
+        if kind in ("has_role", "not_role"):
+            person, role = args[:2]
+            is_role = membership[person, role][0]
+            if kind == "has_role":
+                model.assign(is_role, "clue", f"{person} has role {role}", sources=(rule.label,))
+            else:
+                model.assign(
+                    membership[person, role][1],
+                    "clue",
+                    f"{person} is not role {role}",
+                    sources=(rule.label,),
+                )
+        elif kind in ("some_role", "roleless", "at_most_one_role"):
+            (person,) = args
+            literals = [membership[person, role.name][0] for role in board.roles]
+            if kind == "some_role" and not literals:
+                raise ValueError(f"some_role names {person}, but no roles are declared")
+            counts = {
+                "some_role": frozenset(range(1, len(literals) + 1)),
+                "roleless": frozenset((0,)),
+                "at_most_one_role": frozenset((0, 1)),
+            }[kind]
+            if literals:
+                model.constrain(
+                    rule.label,
+                    Kind.COUNT,
+                    literals,
+                    allowed_counts=counts,
+                    family="person role cardinality",
+                )
+        elif kind == "role_subset":
+            subset, superset = args
+            for person in board.people:
+                model.constrain(
+                    f"{person} {subset} implies {superset}",
+                    Kind.AT_MOST_ONE,
+                    [membership[person, subset][0], membership[person, superset][1]],
+                    family="role implication",
+                )
+        elif kind in ("role_in_tagged", "role_not_in_tagged"):
+            person, role, tag = args[:3]
+            ids = board.tagged_region_ids([tag])
+            inside = kind == "role_in_tagged"
+            variable = board.role_variable(person, role)
+
+            def holds(
+                has_role: bool,
+                square: Square,
+                role_regions: set[str] = ids,
+                must_be_inside: bool = inside,
+            ) -> bool:
+                return not has_role or (board.region_of(square) in role_regions) == must_be_inside
+
+            model.relate(
+                rule.label,
+                (variable, person),
+                holds,
+            )
+        elif kind in ("role_on", "role_not_on", "role_next_to"):
+            person, role, *targets = args
+            role_variable = board.role_variable(person, role)
+            if kind == "role_next_to":
+                test = _next_to(board, *targets)
+            else:
+                cells = _role_target_cells(board, targets)
+                on = kind == "role_on"
+
+                def test(square: Square, cells: set[Square] = cells, on_target: bool = on) -> bool:
+                    return (square in cells) == on_target
+
+            def role_location_test(
+                has_role: bool, square: Square, target_test: SquareTest = test
+            ) -> bool:
+                return not has_role or target_test(square)
+
+            model.relate(
+                rule.label,
+                (role_variable, person),
+                role_location_test,
+            )
+        elif kind == "min_role_in_tagged":
+            role, tag, minimum_text = args
+            minimum = int(minimum_text)
+            for region in sorted(board.tagged_region_ids([tag])):
+                holders = [
+                    _role_in_region_literal(model, board, membership, person, role, region)
+                    for person in board.people
+                ]
+                if minimum:
+                    model.constrain(
+                        f"{rule.label} in {board.region_names[region]}",
+                        Kind.COUNT,
+                        holders,
+                        allowed_counts=range(minimum, len(holders) + 1),
+                        family="role area cardinality",
+                    )
+        elif kind == "role_below":
+            person, role, *gap_arg = args
+            gap = int(gap_arg[0]) if gap_arg else None
+            qualifying: list[int] = []
+            for other in board.people:
+                if other == person:
+                    continue
+                indicator = _auxiliary_variable(model, "role_below")
+                is_below = model.literal(indicator, True)
+                not_below = model.literal(indicator, False)
+                model.constrain(
+                    f"{rule.label} witness {other}",
+                    Kind.EXACTLY_ONE,
+                    [is_below, not_below],
+                    defines=indicator,
+                    hidden=True,
+                    family="role witness",
+                )
+                other_role = board.role_variable(other, role)
+                model.relate(
+                    f"{rule.label} witness {other}",
+                    (person, other_role, other, indicator),
+                    lambda subject, has_role, candidate, witness, gap=gap: (
+                        witness
+                        == (
+                            has_role
+                            and candidate.row < subject.row
+                            and (gap is None or subject.row - candidate.row == gap)
+                        )
+                    ),
+                )
+                qualifying.append(is_below)
+            if qualifying:
+                model.constrain(
+                    rule.label,
+                    Kind.COUNT,
+                    qualifying,
+                    allowed_counts=range(1, len(qualifying) + 1),
+                    family="role position",
+                )
+            else:
+                raise ValueError(f"role_below {person} has no other people to compare")
+        elif kind == "sole_role_companion":
+            person, role = args
+            companions: list[int] = []
+            for other in board.people:
+                if other == person:
+                    continue
+                witness = _auxiliary_variable(model, "role_companion")
+                same_region = model.literal(witness, True)
+                different_region = model.literal(witness, False)
+                model.constrain(
+                    f"{rule.label} companion state {other}",
+                    Kind.EXACTLY_ONE,
+                    [same_region, different_region],
+                    defines=witness,
+                    hidden=True,
+                    family="role witness",
+                )
+                model.relate(
+                    f"{rule.label} companion {other}",
+                    (person, other, witness),
+                    lambda first, second, same: (
+                        same == (board.region_of(first) == board.region_of(second))
+                    ),
+                )
+                model.constrain(
+                    f"{rule.label} companion has role {role} {other}",
+                    Kind.AT_MOST_ONE,
+                    [same_region, membership[other, role][1]],
+                    family="role companion",
+                )
+                companions.append(same_region)
+            model.constrain(
+                rule.label,
+                Kind.COUNT,
+                companions,
+                allowed_counts={1},
+                family="role companion",
+            )
+        elif kind == "role_occupant":
+            role, condition = args
+            occupant_condition: OccupantCondition = "alone" if condition == "alone" else "not_alone"
+            allowed = _occupant_counts(occupant_condition, len(board.people))
+            for region in sorted(board.region_names):
+                triggers = [
+                    _role_in_region_literal(model, board, membership, person, role, region)
+                    for person in board.people
+                ]
+                occupants = [
+                    model.literal(person, square)
+                    for person in board.people
+                    for square in board.free
+                    if board.region_of(square) == region
+                ]
+                apply_occupant_condition(
+                    model,
+                    f"role {role} {condition} in {board.region_names[region]}",
+                    triggers,
+                    occupants,
+                    allowed,
+                )
+
+
+def _role_in_region_literal(
+    model: Model,
+    board: Board,
+    membership: dict[tuple[str, str], tuple[int, int]],
+    person: str,
+    role: str,
+    region: str,
+) -> int:
+    """Hidden Boolean: this person has `role` and occupies `region`."""
+    variable = _auxiliary_variable(model, f"role_in_{person}_{role}_{region}")
+    in_region = model.literal(variable, True)
+    outside_region = model.literal(variable, False)
+    model.constrain(
+        f"{variable} state",
+        Kind.EXACTLY_ONE,
+        [in_region, outside_region],
+        defines=variable,
+        hidden=True,
+        family="role area membership",
+    )
+    locations = [
+        model.literal(person, square) for square in board.free if board.region_of(square) == region
+    ]
+    if locations:
+        model.constrain(
+            f"{variable} role and area",
+            Kind.COUNT,
+            [membership[person, role][0], *locations],
+            allowed_counts={2},
+            reified_by=in_region,
+            family="role area membership",
+        )
+    else:
+        model.eliminate(
+            in_region,
+            "clue",
+            f"{variable} has no free squares in its area",
+            sources=(f"{variable} no free area cells",),
+        )
+    return in_region
+
+
+def role_statuses(board: Board, model: Model) -> dict[tuple[str, str], bool | None]:
+    """Known role membership per person; None means the status remains unknown."""
+    statuses: dict[tuple[str, str], bool | None] = {}
+    for role in board.roles:
+        for person in board.people:
+            value = model.chosen(board.role_variable(person, role.name))
+            statuses[person, role.name] = value if isinstance(value, bool) else None
+    return statuses
 
 
 # --- rendering ------------------------------------------------------------
@@ -1036,6 +1557,28 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
             for mark in board.marks
         )
         out.append(f"  marks: {listed}")
+    if board.roles:
+        statuses = role_statuses(board, model)
+        role_variables = {
+            board.role_variable(person, role.name)
+            for role in board.roles
+            for person in board.people
+        }
+        changed = {
+            step.var: step.value if step.asserted else not step.value
+            for step in steps
+            if step.var in role_variables
+        }
+        out.append("\n  role membership (+ present, - absent, ? unknown):")
+        for role in board.roles:
+            entries = []
+            for person in board.people:
+                state = statuses[person, role.name]
+                marker = "+" if state is True else "-" if state is False else "?"
+                entry = f"{person}{marker}"
+                variable = board.role_variable(person, role.name)
+                entries.append(f"{NEW}{entry}{RESET}" if variable in changed else entry)
+            out.append(f"    {role.name}: {' '.join(entries)}")
     return "\n".join(out)
 
 
