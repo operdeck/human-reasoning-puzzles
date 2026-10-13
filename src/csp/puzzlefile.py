@@ -17,6 +17,7 @@ from .murdoku import (
     EdgeItemKind,
     ObjectKind,
     OccupantCondition,
+    PronounSet,
     RoleSpec,
     Square,
 )
@@ -110,7 +111,9 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     marks = _mark_placements(section.get("Marks", []))
 
     people = list(section["People"])
-    role_eligibility = _role_eligibility(section.get("RoleEligibility", []))
+    attributes = _attribute_placements(section.get("Attributes", []), people)
+    pronouns = _pronoun_placements(section.get("Pronouns", []), people)
+    role_eligibility = _role_eligibility(section.get("RoleEligibility", []), attributes)
     roles = _role_placements(section.get("Roles", []), people, role_eligibility)
 
     clues = _clues(section.get("Clues", []))
@@ -127,6 +130,8 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         corner_objects=corner_objects,
         marks=marks,
         roles=roles,
+        attributes=attributes,
+        pronouns=pronouns,
     )
     board.hatched = board.area_ids(
         name for line in section.get("Hatched", []) for name in line.split()
@@ -199,9 +204,13 @@ def _mark_placements(lines: list[str]) -> list[CellMark]:
         tokens = cells_text.split()
         condition: OccupantCondition | None = None
         if condition_separator:
-            if condition_text.strip() not in ("alone", "not_alone"):
+            condition_text = condition_text.strip()
+            if condition_text == "alone":
+                condition = "alone"
+            elif condition_text == "not_alone":
+                condition = "not_alone"
+            else:
                 raise ValueError(f"bad occupant condition in mark {line!r}; use alone or not_alone")
-            condition = condition_text.strip()  # type: ignore[assignment]
         if not separator or not name.strip() or not tokens:
             raise ValueError(f"bad mark {line!r}, expected 'name: r1c1 ... [; alone|not_alone]'")
         marks.append(
@@ -210,18 +219,68 @@ def _mark_placements(lines: list[str]) -> list[CellMark]:
     return marks
 
 
-def _role_eligibility(lines: list[str]) -> dict[str, frozenset[str]]:
-    """Read optional `role: eligible_person ...` overrides."""
+def _role_eligibility(
+    lines: list[str], attributes: dict[str, frozenset[str]]
+) -> dict[str, frozenset[str]]:
+    """Read eligibility lists, expanding `attribute:name` selectors."""
     eligibility: dict[str, frozenset[str]] = {}
     for line in lines:
         role, separator, people = line.partition(":")
-        names = frozenset(people.split())
+        names: set[str] = set()
+        for token in people.split():
+            if token.startswith("attribute:"):
+                attribute = token.partition(":")[2]
+                if attribute not in attributes:
+                    raise ValueError(f"RoleEligibility names unknown attribute {attribute!r}")
+                names.update(attributes[attribute])
+            elif token.startswith("person:"):
+                names.add(token.partition(":")[2])
+            else:
+                names.add(token)
         if not separator or not role.strip() or not names:
-            raise ValueError(f"bad RoleEligibility entry {line!r}, expected 'role: person ...'")
+            raise ValueError(
+                f"bad RoleEligibility entry {line!r}, expected 'role: person ...' "
+                "or 'attribute:name'"
+            )
         if role.strip() in eligibility:
             raise ValueError(f"role {role.strip()!r} eligibility is defined more than once")
-        eligibility[role.strip()] = names
+        eligibility[role.strip()] = frozenset(names)
     return eligibility
+
+
+def _attribute_placements(lines: list[str], people: list[str]) -> dict[str, frozenset[str]]:
+    """Read `attribute: person ...` declarations; unlisted people do not have it."""
+    attributes: dict[str, frozenset[str]] = {}
+    for line in lines:
+        attribute, separator, members = line.partition(":")
+        holders = frozenset(members.split())
+        if not separator or not attribute.strip() or not holders:
+            raise ValueError(f"bad attribute {line!r}, expected 'attribute: person ...'")
+        if attribute.strip() in attributes:
+            raise ValueError(f"attribute {attribute.strip()!r} is defined more than once")
+        unknown = holders - set(people)
+        if unknown:
+            raise ValueError(
+                f"attribute {attribute.strip()!r} names unknown people {sorted(unknown)}"
+            )
+        attributes[attribute.strip()] = holders
+    return attributes
+
+
+def _pronoun_placements(lines: list[str], people: list[str]) -> dict[str, PronounSet]:
+    """Read `person: subject object possessive` wording overrides."""
+    pronouns: dict[str, PronounSet] = {}
+    for line in lines:
+        person, separator, forms = line.partition(":")
+        tokens = forms.split()
+        if not separator or not person.strip() or len(tokens) != 3:
+            raise ValueError(f"bad pronouns {line!r}, expected 'person: subject object possessive'")
+        if person.strip() not in people:
+            raise ValueError(f"pronouns name unknown person {person.strip()!r}")
+        if person.strip() in pronouns:
+            raise ValueError(f"pronouns for {person.strip()!r} are defined more than once")
+        pronouns[person.strip()] = PronounSet(*tokens)
+    return pronouns
 
 
 def _role_placements(
