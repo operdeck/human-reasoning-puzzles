@@ -29,12 +29,15 @@ from .murdoku import (
     Board,
     Clue,
     Condition,
+    QuantifiedCondition,
     RoleCondition,
     Square,
+    TargetSelector,
     board_rules,
     compile_puzzle,
     conditions,
     counted,
+    quantified_conditions,
     role_conditions,
 )
 from .proof import Move, essential, replay, shortest
@@ -108,6 +111,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_on_mark": "{a} is not on {things}",
         "clue.only_on": "{a} is the only person on {things}",
         "clue.in_corner": "{a} is in a corner of the grid",
+        "clue.in_row": "{a} is in {line}",
+        "clue.not_in_row": "{a} is not in {line}",
+        "clue.in_column": "{a} is in {line}",
+        "clue.not_in_column": "{a} is not in {line}",
+        "clue.in_area_corner": "{a} is in a corner, {where}",
+        "clue.has_attribute": "{a} has the {attribute} attribute",
+        "clue.not_attribute": "{a} does not have the {attribute} attribute",
+        "clue.unique_attribute": "exactly one of {people} has the {attribute} attribute",
+        "clue.adjacent_regions": "{a} and {b} are in neighboring regions",
+        "clue.alone_with": "{a} shares a region with exactly one other person: {target}",
         "clue.same_region": "{a} and {b} are in the same region",
         "clue.different_region": "{a} and {b} are in different regions",
         "clue.apart": "{a} and {b} are in regions that do not touch",
@@ -123,16 +136,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_some": "{who} has at least one role",
         "roleless": "{who} has no roles",
         "role_at_most_one": "{who} has at most one role",
-        "role_subset": "every {role} holder is also a {other_role} holder",
+        "role_subset": "anyone matching {left} also matches {right}",
         "role_in_tagged": "{who} has role {role} only in {area}",
         "role_not_in_tagged": "{who} has role {role} only outside {area}",
         "min_role_in_tagged": "at least {n} {role} holders are in {area}",
-        "role_on": "if {who} has role {role}, they must be on {things}",
-        "role_not_on": "if {who} has role {role}, they must not be on {things}",
-        "role_next_to": "if {who} has role {role}, they must be next to {things}",
+        "role_on": "if {who} has role {role}, {subject} must be on {things}",
+        "role_not_on": "if {who} has role {role}, {subject} must not be on {things}",
+        "role_next_to": "if {who} has role {role}, {subject} must be next to {things}",
         "role_below": "{who} is below a {role} holder",
         "role_below_n": "{who} is {n} rows below a {role} holder",
-        "sole_role_companion": "{who}'s sole region companion has role {role}",
+        "sole_role_companion": "{possessive} sole region companion has role {role}",
         "role_occupant": (
             "when a {role} holder is in an area, its occupant condition is {condition}"
         ),
@@ -142,6 +155,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.at_least": "{a} is at least {n} squares from {b}",
         "clue.alone": "nobody else is in {a}'s region",
         "clue.furthest": "{a} is further from {b} than {c} is",
+        "target.attribute": "someone with {name}",
+        "target.role": "a {name} holder",
+        "target.area": "someone {where}",
+        "target.on": "someone on {what}",
+        "target.at": "someone at {what}",
+        "target.corner": "someone in the cells around {what}",
+        "target.kind": "someone on {what}",
     },
     "nl": {
         "square": "r{row}k{col}",
@@ -210,6 +230,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_on_mark": "{a} staat niet op {things}",
         "clue.only_on": "alleen {a} zit op {things}",
         "clue.in_corner": "{a} staat in een hoek van het raster",
+        "clue.in_row": "{a} staat in {line}",
+        "clue.not_in_row": "{a} staat niet in {line}",
+        "clue.in_column": "{a} staat in {line}",
+        "clue.not_in_column": "{a} staat niet in {line}",
+        "clue.in_area_corner": "{a} staat in een hoek, {where}",
+        "clue.has_attribute": "{a} heeft het kenmerk {attribute}",
+        "clue.not_attribute": "{a} heeft het kenmerk {attribute} niet",
+        "clue.unique_attribute": "precies één van {people} heeft het kenmerk {attribute}",
+        "clue.adjacent_regions": "{a} en {b} zijn in aangrenzende gebieden",
+        "clue.alone_with": "{a} deelt een gebied met precies één ander persoon: {target}",
         "clue.same_region": "{a} en {b} zijn in hetzelfde gebied",
         "clue.different_region": "{a} en {b} zijn in verschillende gebieden",
         "clue.apart": "{a} en {b} zijn in gebieden die niet aan elkaar grenzen",
@@ -225,16 +255,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_some": "{who} heeft minstens één rol",
         "roleless": "{who} heeft geen rollen",
         "role_at_most_one": "{who} heeft hoogstens één rol",
-        "role_subset": "iedere {role}-drager is ook {other_role}-drager",
+        "role_subset": "wie aan {left} voldoet, voldoet ook aan {right}",
         "role_in_tagged": "{who} heeft de rol {role} alleen in {area}",
         "role_not_in_tagged": "{who} heeft de rol {role} alleen buiten {area}",
         "min_role_in_tagged": "minstens {n} {role}-dragers zijn in {area}",
-        "role_on": "als {who} de rol {role} heeft, staat diegene op {things}",
-        "role_not_on": "als {who} de rol {role} heeft, staat diegene niet op {things}",
-        "role_next_to": "als {who} de rol {role} heeft, staat diegene naast {things}",
+        "role_on": "als {who} de rol {role} heeft, staat {subject} op {things}",
+        "role_not_on": "als {who} de rol {role} heeft, staat {subject} niet op {things}",
+        "role_next_to": "als {who} de rol {role} heeft, staat {subject} naast {things}",
         "role_below": "{who} staat onder een {role}-drager",
         "role_below_n": "{who} staat {n} rijen onder een {role}-drager",
-        "sole_role_companion": "de enige gebiedsgenoot van {who} heeft de rol {role}",
+        "sole_role_companion": "{possessive} enige gebiedsgenoot heeft de rol {role}",
         "role_occupant": "als een {role}-drager in een gebied is, geldt daar: {condition}",
         "clue.above": "{a} is ergens boven {b}",
         "clue.above_n": "{a} is precies {rows} boven {b}",
@@ -242,6 +272,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.at_least": "{a} is minstens {n} vakjes van {b}",
         "clue.alone": "niemand anders is in het gebied van {a}",
         "clue.furthest": "{a} is verder van {b} dan {c}",
+        "target.attribute": "iemand met {name}",
+        "target.role": "een {name}-drager",
+        "target.area": "iemand {where}",
+        "target.on": "iemand op {what}",
+        "target.at": "iemand bij {what}",
+        "target.corner": "iemand in de vakjes rond {what}",
+        "target.kind": "iemand op {what}",
     },
 }
 
@@ -491,19 +528,23 @@ class Story:
 
     def __init__(self, board: Board, clues: Sequence[Clue], say: Wording) -> None:
         self.board = board
+        self.clues = tuple(clues)
         self.say = say
         self.places = Places(board, say)
         self.about = {rule.name: rule.about for rule in board_rules(board)}
-        self.conditions = {c.label: c for c in conditions(board, clues)}
+        self.conditions = {c.label: c for c in conditions(board, self.clues)}
         self.role_conditions: dict[str, RoleCondition] = {
-            rule.label: rule for rule in role_conditions(board, clues)
+            rule.label: rule for rule in role_conditions(board, self.clues)
+        }
+        self.quantified_conditions: dict[str, QuantifiedCondition] = {
+            condition.label: condition for condition in quantified_conditions(board, self.clues)
         }
         self.role_variables = {
             board.role_variable(person, role.name): (person, role.name)
             for role in board.roles
             for person in board.people
         }
-        self.model = compile_puzzle(board, clues)
+        self.model = compile_puzzle(board, self.clues)
         self.auxiliary_variables = (
             set(self.model.all_variables) - set(self.board.people) - set(self.role_variables)
         )
@@ -572,8 +613,10 @@ class Story:
     def _opening(self, compiled: Sequence[Step], state: _State) -> str:
         """Each clue about one person, with where that leaves them right after it."""
         said: list[str] = []
+        seen_sources: set[str] = set()
         left = {p: set(self.places.free) for p in self.board.people}
         for label, group in groupby(compiled, key=lambda s: s.sources[0]):
+            seen_sources.add(label)
             steps = list(group)
             for step in steps:
                 if step.var in left:
@@ -585,6 +628,12 @@ class Story:
                 if role_rule.kind in ("has_role", "not_role"):
                     person, role = role_rule.args
                     state.role_told[person, role] = role_rule.kind == "has_role"
+                continue
+            quantified = self.quantified_conditions.get(label)
+            if quantified is not None:
+                said.append(
+                    f"{_cap(self._quantified_text(quantified))}{self._quantified_ref(quantified)}."
+                )
                 continue
             condition = self.conditions.get(label)
             if condition is None:
@@ -606,6 +655,12 @@ class Story:
             else:
                 where = self.say("squares", n=self.say.number(len(squares)))
             said.append(f"{_cap(self._clue(condition))} ({condition.number}): {where}.")
+        for number, (kind, args) in enumerate(self.clues, 1):
+            if kind not in ("has_attribute", "not_attribute", "unique_attribute"):
+                continue
+            label = " ".join((kind, *args))
+            if label not in seen_sources:
+                said.append(f"{_cap(self._clue_text(kind, args, args[:1]))} ({number}).")
         return f"**{self.say('direct')}.** {' '.join(said)}"
 
     def _firing(self, rule: str, steps: Sequence[Step], state: _State) -> str:
@@ -618,6 +673,18 @@ class Story:
             if (text := self._role_step_text(step, state))
         ]
         if role_sentences:
+            quantified = next(
+                (
+                    condition
+                    for step in steps
+                    for source in step.sources
+                    if (condition := self._quantified_condition_for_source(source)) is not None
+                ),
+                None,
+            )
+            if quantified is not None:
+                clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
+                return f"{clue}, {self.say('so')} {self.say.join(role_sentences)}."
             changed = [p for p in self.board.people if state.options[p] != before[p]]
             if changed:
                 return (
@@ -684,6 +751,16 @@ class Story:
     ) -> str:
         if step.var in self.auxiliary_variables:
             return ""
+        if step.sources and (condition := self._quantified_condition_for_source(step.sources[0])):
+            clue = _cap(self._quantified_text(condition)) + self._quantified_ref(condition)
+            outcome = (
+                self._outcome(changed, before, state)
+                if changed
+                else self.say(
+                    "literal_true" if step.asserted else "literal_false", literal=step.literal
+                )
+            )
+            return f"{clue}, {self.say('so')} {outcome}."
         constraint = next(c for c in self.model.constraints if c.name == step.sources[0])
         allowed = constraint.allowed_counts
         if constraint.reified_by is not None:
@@ -718,6 +795,8 @@ class Story:
         or one square, which the sentence already makes plain."""
         if source in self.conditions:
             return self._ref(self.conditions[source])
+        if (quantified := self._quantified_condition_for_source(source)) is not None:
+            return self._quantified_ref(quantified)
         kind, what = self.about.get(source, ("", None))
         if kind in ("row", "col"):
             return f" ({self.places.line(kind, what)})"
@@ -738,6 +817,9 @@ class Story:
         source = step.sources[0]
         if (role_rule := self._role_condition_for_source(source)) is not None:
             clue = _cap(self._role_condition_text(role_rule))
+            return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
+        if (quantified := self._quantified_condition_for_source(source)) is not None:
+            clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
             return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
         condition = self.conditions[source]
         clue = _cap(self._clue(condition)) + self._ref(condition)
@@ -937,6 +1019,28 @@ class Story:
             None,
         )
 
+    def _pronoun(self, person: str, form: str) -> str:
+        pronouns = self.board.pronouns.get(person)
+        if pronouns is None:
+            return {"subject": "they", "object": "them", "possessive": "their"}[form]
+        return {
+            "subject": pronouns.subject,
+            "object": pronouns.object,
+            "possessive": pronouns.possessive,
+        }[form]
+
+    def _membership_text(self, token: str) -> str:
+        kind, separator, name = token.partition(":")
+        if not separator:
+            kind, name = "role", token
+        if kind == "role":
+            return self.say("target.role", name=self.say.words.get(name, name.replace("_", " ")))
+        if kind == "attribute":
+            return self.say(
+                "target.attribute", name=self.say.words.get(name, name.replace("_", " "))
+            )
+        return name
+
     def _role_condition_text(self, rule: RoleCondition) -> str:
         kind, args = rule.kind, rule.args
 
@@ -957,7 +1061,11 @@ class Story:
             }[kind]
             return self.say(key, who=args[0])
         if kind == "role_subset":
-            return self.say("role_subset", role=role(args[0]), other_role=role(args[1]))
+            return self.say(
+                "role_subset",
+                left=self._membership_text(args[0]),
+                right=self._membership_text(args[1]),
+            )
         if kind in ("role_in_tagged", "role_not_in_tagged"):
             area = self.places.regions(self.board.tagged_region_ids([args[2]]))
             return self.say(kind, who=args[0], role=role(args[1]), area=area)
@@ -971,7 +1079,13 @@ class Story:
             )
         if kind in ("role_on", "role_not_on", "role_next_to"):
             what = self.say.join([self._role_target_name(name) for name in args[2:]], "or")
-            return self.say(kind, who=args[0], role=role(args[1]), things=what)
+            return self.say(
+                kind,
+                who=args[0],
+                role=role(args[1]),
+                things=what,
+                subject=self._pronoun(args[0], "subject"),
+            )
         if kind == "role_below":
             if len(args) == 4:
                 key = "role_below_n"
@@ -983,7 +1097,12 @@ class Story:
                 )
             return self.say("role_below", who=args[0], role=role(args[1]))
         if kind == "sole_role_companion":
-            return self.say(kind, who=args[0], role=role(args[1]))
+            return self.say(
+                kind,
+                who=args[0],
+                role=role(args[1]),
+                possessive=self._pronoun(args[0], "possessive"),
+            )
         condition = "alone" if args[1] == "alone" else "not alone"
         return self.say("role_occupant", role=role(args[0]), condition=condition)
 
@@ -1008,11 +1127,28 @@ class Story:
             )
             return self.say("clue.exactly", n=self.say.number(n), list=listed)
         fields: dict[str, Any] = dict(zip("abc", people, strict=False))
-        rest = args[1:] if kind in FILTERS or kind == "only_on" else ()
+        line_clues = ("in_row", "not_in_row", "in_column", "not_in_column")
+        has_filter_args = kind in FILTERS or kind == "only_on" or kind in line_clues
+        rest = args[1:] if has_filter_args else ()
         if kind in ("in_region", "outside"):
             fields["where"] = self.places.where_regions(rest)
         elif kind in ("in_tagged", "not_in_tagged", "only_in_tagged"):
             fields["where"] = self.places.regions(self.board.tagged_region_ids(rest))
+        elif kind in ("in_row", "not_in_row"):
+            fields["line"] = self.places.line("row", int(args[1]) - 1)
+        elif kind in ("in_column", "not_in_column"):
+            fields["line"] = self.places.line("col", int(args[1]) - 1)
+        elif kind == "in_area_corner":
+            fields["where"] = (
+                self.places.regions(self.board.area_ids(rest))
+                if rest
+                else ("within an area" if self.say.language == "en" else "binnen een gebied")
+            )
+        elif kind in ("has_attribute", "not_attribute"):
+            fields["attribute"] = self.say.words.get(args[1], args[1].replace("_", " "))
+        elif kind == "unique_attribute":
+            fields["people"] = self.say.join(list(args[1:]))
+            fields["attribute"] = self.say.words.get(args[0], args[0].replace("_", " "))
         elif rest:
             fields["things"] = self.say.join([self.places.thing(t) for t in rest], "or")
         if kind == "only_on":
@@ -1028,6 +1164,70 @@ class Story:
         elif kind in ("within", "at_least"):
             fields["n"] = self.say.number(int(args[2]))
         return self.say(f"clue.{kind}", **fields)
+
+    def _target_text(self, selector: TargetSelector) -> str:
+        if selector.kind == "person":
+            return selector.name
+        if selector.kind == "attribute":
+            name = self.say.words.get(selector.name, selector.name.replace("_", " "))
+            return self.say("target.attribute", name=name)
+        if selector.kind == "role":
+            name = self.say.words.get(selector.name, selector.name.replace("_", " "))
+            return self.say("target.role", name=name)
+        if selector.kind in ("area", "tag"):
+            ids = (
+                self.board.area_ids([selector.name])
+                if selector.kind == "area"
+                else self.board.tagged_region_ids([selector.name])
+            )
+            return self.say("target.area", where=self.places.regions(ids))
+        if selector.kind == "object_kind":
+            names = {
+                "en": {"blocking": "blocking objects", "standable": "standable objects"},
+                "nl": {"blocking": "blokkerende objecten", "standable": "begaanbare objecten"},
+            }
+            return self.say("target.kind", what=names[self.say.language][selector.name])
+        what = self.places.thing(selector.name)
+        if selector.kind in ("object", "mark"):
+            return self.say("target.on", what=what)
+        if selector.kind == "edge_item":
+            return self.say("target.at", what=what)
+        return self.say("target.corner", what=what)
+
+    def _quantified_text(self, condition: QuantifiedCondition) -> str:
+        target = self._target_text(condition.selector)
+        if condition.kind == "alone_with":
+            return self.say("clue.alone_with", a=condition.subject, target=target)
+        fields: dict[str, Any] = {"a": condition.subject, "b": target}
+        if condition.kind == "above" and condition.rest:
+            rows = int(condition.rest[0])
+            fields["rows"] = self.say("one_row") if rows == 1 else self.say("n_rows", n=rows)
+            return self.say("clue.above_n", **fields)
+        if condition.kind == "left_of" and condition.rest:
+            distance = int(condition.rest[0])
+            fields["n"] = self.say.number(distance)
+            return self.say("clue.left_of_one" if distance == 1 else "clue.left_of_n", **fields)
+        if condition.kind in ("within", "at_least") and condition.rest:
+            fields["n"] = self.say.number(int(condition.rest[0]))
+        if condition.kind in ("same_region", "different_region", "apart", "adjacent_regions"):
+            return self.say(f"clue.{condition.kind}_target", a=condition.subject, target=target)
+        return self.say(f"clue.{condition.kind}", **fields)
+
+    def _quantified_condition_for_source(self, source: str) -> QuantifiedCondition | None:
+        return next(
+            (
+                condition
+                for label, condition in sorted(
+                    self.quantified_conditions.items(), key=lambda pair: len(pair[0]), reverse=True
+                )
+                if source == label or source.startswith(label + " ")
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _quantified_ref(condition: QuantifiedCondition) -> str:
+        return "" if condition.number is None else f" ({condition.number})"
 
     def _ref(self, condition: Condition) -> str:
         return "" if condition.number is None else f" ({condition.number})"

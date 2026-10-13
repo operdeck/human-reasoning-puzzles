@@ -460,6 +460,10 @@ Words:          # optional; how --explain names things
   vuurtje: het vuurtje    # an object type: what it is called
 Regions:        # id: name [#RRGGBB], e.g. "a: keukenwinkel #FADFB5" (name without spaces)
 AreaTags:       # optional; tag: region_name region_name ...
+Attributes:     # optional; attribute: person ...; unlisted people do not have it
+  glasses: Anja Blake
+Pronouns:       # optional; person: subject object possessive
+  Anja: she her her
 Hatched:        # optional; regions or area tags drawn hatched in pictures
 Grid:           # region id per square, e.g. "a a b b c c c"
 Objects:        # name: blocking|standable square...; repeat a name for more instances
@@ -480,6 +484,7 @@ Roles:          # optional; roles overlap unless a rule says otherwise
   scout: any
 RoleEligibility: # optional; restrict a role to these people
   bandit: Anja Blake Colin
+  scout: attribute:glasses
 People:         # one per line, from 1 through Size
 Rules:          # optional; clues that come with the board, not numbered
   outside Tim water
@@ -490,12 +495,17 @@ Clues:          # numbered 1, 2, ... in the order given
   next_to Jos fountain               # one of the four cells around a corner object
   on_mark Ada quiet                  # Ada occupies a cell marked quiet
   not_on_mark Ben gathering          # Ben occupies no gathering cell
+  not_on_mark Eli quiet gathering    # no cell carrying either mark
+  has_attribute Anja glasses
+  not_attribute Colin glasses
+  unique_attribute glasses Anja Blake Colin
   has_role Ada bandit                # known membership
   not_role Ben bandit                # explicitly absent membership
   some_role Eli                      # at least one role, not yet named
   roleless Faith                     # no roles
   at_most_one_role Gerald            # explicit per-person limit
   role_subset bandit bearded         # every bandit is bearded
+  role_subset scout attribute:glasses # typed person-attribute selector
   role_in_tagged Anja bandit inside  # this role requires the tagged area
   role_not_in_tagged Blake bandit inside
   min_role_in_tagged bandit inside 1 # every region in the tag has a holder
@@ -504,6 +514,17 @@ Clues:          # numbered 1, 2, ... in the order given
   role_below Colin bandit 1          # exactly one row below a role holder
   sole_role_companion Daryl bandit
   role_occupant bandit not_alone      # condition in each area with a bandit
+  in_row Tim 3
+  not_in_row Jos 1
+  in_column Ada 4
+  not_in_column Ben 2
+  in_area_corner Anja inside         # corner cell of a region carrying the tag
+  adjacent_regions Ada Ben           # different regions that share a side
+  alone_with Ada role:bandit         # exactly one companion, who holds the role
+  above Ada area:kitchen             # Ada is above someone in the named area
+  left_of Ben tag:inside             # quantified targets can name area tags
+  within Cal object_kind:standable 3
+  same_region Eli mark:quiet         # quantified targets can name cell sets
   knight_from Tim klimwand boulder   # a knight's move from any of them
   on Jos bank                        # on a standable object
   not_on Clarence stoel              # not on any square in that standable set
@@ -537,6 +558,26 @@ to its listed people. Role membership is independent by default, so a person
 may have several roles or none; use `at_most_one_role` only when required.
 Undecided membership remains unknown until a clue or constraint determines it.
 
+`Attributes:` declares fixed person traits as `attribute: person ...`; unlisted
+people do not have the attribute. Use `has_attribute` or `not_attribute` for a
+direct clue, and `unique_attribute <attribute> <people...>` to require exactly
+one selected person to have it. `RoleEligibility:` accepts `attribute:name`,
+and `role_subset` accepts bare role names or typed `attribute:name` and
+`person:name` selectors.
+
+`Pronouns:` optionally gives each person subject, object, and possessive forms
+for `--explain`, such as `Ada: she her her`. People without an entry use
+`they them their`.
+
+Quantified targets use an explicit prefix to avoid confusing people, roles,
+traits, and places: `person:name`, `attribute:name`, `role:name`, `area:name`,
+`tag:name`, `object_kind:standable`, `object:name`, `mark:name`,
+`edge_item:name`, or `corner_object:name`. A bare known person is also accepted.
+`alone_with <person> <target>` requires exactly one other person in the same
+region, and that companion must match the target. Pair clues such as
+`above <person> <target>`, `left_of`, `within`, and `adjacent_regions` can use
+the same target selectors.
+
 `Marks:` gives names to cell sets independently of regions and objects. Marks
 may overlap, and marked cells remain open for people. `on_mark` and
 `not_on_mark` query a mark set. An optional `; alone` or `; not_alone` condition
@@ -553,11 +594,17 @@ filters; use `only_in_tagged` and `not_in_tagged` in `Rules:` for per-person
 required, forbidden, or unrestricted area policies. `Hatched:` accepts either
 region names or area tags.
 
-`exactly n <clue> ; <clue> ...` counts simple clues (any of the one- and
-two-person clues above). Together they may name at most three people: the
-engine checks a relation by trying every combination of its people's
-squares, which grows quickly. `only_on` is a group restriction and cannot be
-nested inside `exactly`.
+`exactly n <clue> ; <clue> ...` counts simple, named-person clues. Together they
+may name at most three people: the engine checks a relation by trying every
+combination of its people's squares, which grows quickly. Quantified-target
+clues and `alone_with` cannot be nested inside `exactly`; `only_on` is also a
+group restriction and cannot be nested.
+
+Quantified location clues stay bounded: each target is checked against one
+candidate person at a time, with at most four variables in a relation (subject,
+candidate, role membership, and witness). The compiler adds at most one such
+relation per other person plus one count constraint; it does not build a
+relation over every person's square at once.
 
 There is no "two people next to each other" clue: with at most one person per
 row and column, two people never share a side, so it could never hold.
