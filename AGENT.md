@@ -146,6 +146,25 @@ it logs on every example.
 Keep the ladder honest: if a rule never fires on any example, say so rather
 than listing it as working.
 
+## Murdoku global counts
+
+`count` clues are Murdoku vocabulary, not new engine rules. Compile them to
+`Kind.COUNT` constraints using `murdoku.global_count_conditions`, and call the
+same semantic tally from the independent brute-force solver. Reified empty
+areas/cells must be true exactly when their occupant count is zero; reuse one
+empty Boolean per logical area or cell even when tagged selectors overlap.
+Count people across every entry in `People:` (there is no implicit victim or
+suspect subset), and count only unblocked/free cells for empty-cell selectors.
+Attributes are fixed puzzle facts: a count over an attribute can reject an
+inconsistent clue but cannot force a person's location. Benchmark changes with
+`benchmark/murdoku_global_counts.py`; it isolates `single`/`count` propagation
+on 12x12 and 16x16 boards. Three-run Python 3.12 medians: 12x12 parse/compile/
+propagate 0.21/3.67/1.71 ms (211 constraints, 904 literals); 16x16
+0.31/8.55/3.57 ms (337 constraints, 2096 literals).
+The text board and `--step` show true/open totals, additional demand, and
+feasible totals; active location scopes are highlighted without adding
+puzzle-specific behavior to `core.py`.
+
 ## Adding a puzzle family
 
 1. New module with `compile_puzzle(...) -> Model`.

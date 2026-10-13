@@ -20,7 +20,7 @@ Everything here reads the public `Model` API, `Step` provenance and
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from itertools import combinations, groupby
-from typing import Any
+from typing import Any, Literal
 
 from .core import Kind, Solver, Step
 from .murdoku import (
@@ -29,6 +29,7 @@ from .murdoku import (
     Board,
     Clue,
     Condition,
+    GlobalCountCondition,
     QuantifiedCondition,
     RoleCondition,
     Square,
@@ -37,6 +38,9 @@ from .murdoku import (
     compile_puzzle,
     conditions,
     counted,
+    global_count_conditions,
+    global_count_unit_prefix,
+    line_indices,
     quantified_conditions,
     role_conditions,
 )
@@ -129,6 +133,26 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.left_of_n": "{a} is exactly {n} columns left of {b}",
         "clue.exactly": "exactly {n} of these is true: {list}",
         "count_reason": "the allowed counts for {name} are {counts}",
+        "global_count.exact": "exactly {n}",
+        "global_count.at_most": "at most {n}",
+        "global_count.at_least": "at least {n}",
+        "global_count.odd": "an odd number of",
+        "global_count.even": "an even number of",
+        "global_count.range": "between {low} and {high}",
+        "global_count.people_on": "{quantity} {noun} {verb} on {target}",
+        "global_count.people_in": "{quantity} {noun} {verb} {where}",
+        "global_count.people_with": "{quantity} {noun} {have} {target}",
+        "global_count.empty_areas": "{quantity} {noun} {verb} empty{where}",
+        "global_count.no_empty_areas": "no area is empty{where}",
+        "global_count.empty_cells": "{quantity} {noun} {verb} empty {where}",
+        "global_count.no_empty_cells": "no free cell is empty {where}",
+        "global_count.capacity": "region capacity",
+        "global_count.breaks": "which the global count {clue} does not allow",
+        "global_count.area_empty": "nobody is {where}",
+        "global_count.area_occupied": "someone is {where}",
+        "global_count.cell_empty": "{square} is empty",
+        "global_count.cell_occupied": "{square} is occupied",
+        "global_count.object_kind": "{kind} objects",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
         "role_has": "{who} has the {role} role",
@@ -248,6 +272,26 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.left_of_n": "{a} is precies {n} kolommen links van {b}",
         "clue.exactly": "precies {n} hiervan klopt: {list}",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
+        "global_count.exact": "precies {n}",
+        "global_count.at_most": "hoogstens {n}",
+        "global_count.at_least": "minstens {n}",
+        "global_count.odd": "een oneven aantal",
+        "global_count.even": "een even aantal",
+        "global_count.range": "tussen {low} en {high}",
+        "global_count.people_on": "{quantity} {noun} {verb} op {target}",
+        "global_count.people_in": "{quantity} {noun} {verb} {where}",
+        "global_count.people_with": "{quantity} {noun} {have} {target}",
+        "global_count.empty_areas": "{quantity} {noun} {verb} leeg{where}",
+        "global_count.no_empty_areas": "geen gebied is leeg{where}",
+        "global_count.empty_cells": "{quantity} {noun} {verb} leeg {where}",
+        "global_count.no_empty_cells": "geen vrij vakje is leeg {where}",
+        "global_count.capacity": "gebiedscapaciteit",
+        "global_count.breaks": "wat niet mag volgens de globale telling: {clue}",
+        "global_count.area_empty": "niemand is {where}",
+        "global_count.area_occupied": "iemand is {where}",
+        "global_count.cell_empty": "{square} is leeg",
+        "global_count.cell_occupied": "{square} is bezet",
+        "global_count.object_kind": "{kind} objecten",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
         "role_has": "{who} heeft de rol {role}",
@@ -539,6 +583,9 @@ class Story:
         self.quantified_conditions: dict[str, QuantifiedCondition] = {
             condition.label: condition for condition in quantified_conditions(board, self.clues)
         }
+        self.global_counts: dict[str, GlobalCountCondition] = {
+            condition.label: condition for condition in global_count_conditions(board, self.clues)
+        }
         self.role_variables = {
             board.role_variable(person, role.name): (person, role.name)
             for role in board.roles
@@ -548,6 +595,36 @@ class Story:
         self.auxiliary_variables = (
             set(self.model.all_variables) - set(self.board.people) - set(self.role_variables)
         )
+        self.global_empty_units = self._global_empty_unit_variables()
+
+    def _global_empty_unit_variables(self) -> dict[str, tuple[str, str | Square]]:
+        units: dict[str, tuple[str, str | Square]] = {}
+        for condition in self.global_counts.values():
+            if condition.kind == "empty_areas":
+                targets: Iterable[tuple[Literal["area", "cell"], str | Square]] = (
+                    ("area", region) for region in condition.regions(self.board)
+                )
+            elif condition.kind == "empty_cells":
+                targets = (("cell", square) for square in sorted(condition.cells(self.board)))
+            else:
+                continue
+            for kind, unit in targets:
+                prefix = (
+                    "__" + global_count_unit_prefix("area", str(unit))
+                    if kind == "area"
+                    else "__" + global_count_unit_prefix("cell", str(unit))
+                )
+                variable = next(
+                    (
+                        name
+                        for name in self.model.all_variables
+                        if name == prefix or name.startswith(prefix + "_")
+                    ),
+                    None,
+                )
+                if variable is not None:
+                    units[variable] = (kind, unit)
+        return units
 
     def tell(self) -> str:
         start = self.model.clone()
@@ -562,6 +639,7 @@ class Story:
                     step.var in self.role_variables
                     or step.var.startswith("__role_")
                     or any("role" in source for source in step.sources)
+                    or self._global_count_for_sources(step.sources) is not None
                     for step in steps
                 ):
                     role_moves.add(id(move))
@@ -585,7 +663,17 @@ class Story:
         refuted: list[tuple[str, Square, str]] = []  # what_ifs waiting to be said together
         for i, (rule, steps) in enumerate(firings):
             if rule == "what_if":
-                refuted.append(self._what_if(steps[0], state))
+                step = steps[0]
+                if step.var in self.board.people:
+                    refuted.append(self._what_if(step, state))
+                else:
+                    state.apply(steps)
+                    if step.var in self.global_empty_units:
+                        sentences.append(f"{self._global_empty_unit_text(step)}.")
+                    elif step.var in self.role_variables and (
+                        text := self._role_step_text(step, state)
+                    ):
+                        sentences.append(f"{_cap(text)}.")
             else:
                 sentences += self._refuted(refuted)
                 refuted = []
@@ -661,6 +749,10 @@ class Story:
             label = " ".join((kind, *args))
             if label not in seen_sources:
                 said.append(f"{_cap(self._clue_text(kind, args, args[:1]))} ({number}).")
+        said.extend(
+            f"{_cap(self._global_count_text(condition))}{self._global_count_ref(condition)}."
+            for condition in self.global_counts.values()
+        )
         return f"**{self.say('direct')}.** {' '.join(said)}"
 
     def _firing(self, rule: str, steps: Sequence[Step], state: _State) -> str:
@@ -673,17 +765,28 @@ class Story:
             if (text := self._role_step_text(step, state))
         ]
         if role_sentences:
-            quantified = next(
+            global_condition = self._global_count_for_sources(
+                source for step in steps for source in step.sources
+            )
+            if global_condition is not None:
+                clue = self._global_count_reason(global_condition) + self._global_count_ref(
+                    global_condition
+                )
+                return f"{_cap(clue)}, {self.say('so')} {self.say.join(role_sentences)}."
+            quantified_condition = next(
                 (
-                    condition
+                    target_condition
                     for step in steps
                     for source in step.sources
-                    if (condition := self._quantified_condition_for_source(source)) is not None
+                    if (target_condition := self._quantified_condition_for_source(source))
+                    is not None
                 ),
                 None,
             )
-            if quantified is not None:
-                clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
+            if quantified_condition is not None:
+                clue = _cap(self._quantified_text(quantified_condition)) + self._quantified_ref(
+                    quantified_condition
+                )
                 return f"{clue}, {self.say('so')} {self.say.join(role_sentences)}."
             changed = [p for p in self.board.people if state.options[p] != before[p]]
             if changed:
@@ -695,6 +798,15 @@ class Story:
             return f"{self.say.join(role_sentences)}."
         if rule == "single":
             if steps[0].var in self.auxiliary_variables:
+                if (
+                    global_condition := self._global_count_for_sources(steps[0].sources)
+                ) is not None:
+                    changed = [p for p in self.board.people if state.options[p] != before[p]]
+                    return self._global_count_deduction(
+                        global_condition, steps[0], changed, before, state
+                    )
+                if steps[0].var in self.global_empty_units:
+                    return self._global_empty_unit_text(steps[0])
                 return ""
             source = steps[0].sources[0] if steps[0].sources else ""
             constraint = next((c for c in self.model.constraints if c.name == source), None)
@@ -749,10 +861,18 @@ class Story:
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
     ) -> str:
+        if (global_condition := self._global_count_for_sources(step.sources)) is not None:
+            return self._global_count_deduction(global_condition, step, changed, before, state)
+        if step.var in self.global_empty_units:
+            return self._global_empty_unit_text(step)
         if step.var in self.auxiliary_variables:
             return ""
-        if step.sources and (condition := self._quantified_condition_for_source(step.sources[0])):
-            clue = _cap(self._quantified_text(condition)) + self._quantified_ref(condition)
+        if step.sources and (
+            target_condition := self._quantified_condition_for_source(step.sources[0])
+        ):
+            clue = _cap(self._quantified_text(target_condition)) + self._quantified_ref(
+                target_condition
+            )
             outcome = (
                 self._outcome(changed, before, state)
                 if changed
@@ -789,6 +909,194 @@ class Story:
             key = "literal_true" if step.asserted else "literal_false"
             outcome = self.say(key, literal=step.literal)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
+
+    def _global_count_for_sources(self, sources: Iterable[str]) -> GlobalCountCondition | None:
+        for source in sources:
+            for label, condition in self.global_counts.items():
+                if source == label or source.startswith(label + " "):
+                    return condition
+        return None
+
+    @staticmethod
+    def _global_count_ref(condition: GlobalCountCondition) -> str:
+        return "" if condition.number is None else f" ({condition.number})"
+
+    def _global_count_quantity(self, condition: GlobalCountCondition) -> str:
+        comparison = condition.comparison
+        if comparison == "=":
+            return self.say("global_count.exact", n=self.say.number(condition.operands[0]))
+        if comparison == "<=":
+            return self.say("global_count.at_most", n=self.say.number(condition.operands[0]))
+        if comparison == ">=":
+            return self.say("global_count.at_least", n=self.say.number(condition.operands[0]))
+        if comparison in ("odd", "even"):
+            return self.say(f"global_count.{comparison}")
+        low, high = condition.operands
+        return self.say("global_count.range", low=self.say.number(low), high=self.say.number(high))
+
+    def _global_count_where(self, condition: GlobalCountCondition) -> str:
+        selector = condition.selector
+        if selector is None:
+            return ""
+        if selector.kind in ("area", "tag"):
+            return self.places.regions(condition.regions(self.board))
+        if selector.kind == "rows":
+            lines = self.places.lines("row", line_indices(selector.name, self.board.size), "or")
+            return self.say("in", what=lines)
+        if selector.kind == "columns":
+            lines = self.places.lines("col", line_indices(selector.name, self.board.size), "or")
+            return self.say("in", what=lines)
+        return self.say("on", what=self.places.thing(selector.name))
+
+    def _global_count_text(self, condition: GlobalCountCondition) -> str:
+        quantity = self._global_count_quantity(condition)
+        singular = (condition.comparison in ("=", "<=", ">=") and condition.operands == (1,)) or (
+            condition.comparison == "range" and condition.operands == (1, 1)
+        )
+        if condition.kind.startswith("people_"):
+            noun = (
+                ("person" if singular else "people")
+                if self.say.language == "en"
+                else ("persoon" if singular else "mensen")
+            )
+            verb = (
+                ("is" if singular else "are")
+                if self.say.language == "en"
+                else ("is" if singular else "zijn")
+            )
+        elif condition.kind == "empty_areas":
+            noun = (
+                ("area" if singular else "areas")
+                if self.say.language == "en"
+                else ("gebied" if singular else "gebieden")
+            )
+            verb = (
+                ("is" if singular else "are")
+                if self.say.language == "en"
+                else ("is" if singular else "zijn")
+            )
+        else:
+            noun = (
+                ("free cell" if singular else "free cells")
+                if self.say.language == "en"
+                else ("vrij vakje" if singular else "vrije vakjes")
+            )
+            verb = (
+                ("is" if singular else "are")
+                if self.say.language == "en"
+                else ("is" if singular else "zijn")
+            )
+
+        if condition.kind == "people_on":
+            assert condition.selector is not None
+            if condition.selector.kind == "object_kind":
+                labels = {
+                    "en": {"blocking": "blocking", "standable": "standable"},
+                    "nl": {"blocking": "blokkerende", "standable": "begaanbare"},
+                }
+                kind_label = labels[self.say.language][condition.selector.name]
+                target = self.say("global_count.object_kind", kind=kind_label)
+            else:
+                target = self.places.thing(condition.selector.name)
+            on_verb = verb if self.say.language == "en" else ("staat" if singular else "staan")
+            return self.say(
+                "global_count.people_on",
+                quantity=quantity,
+                noun=noun,
+                verb=on_verb,
+                target=target,
+            )
+        if condition.kind == "people_in":
+            return self.say(
+                "global_count.people_in",
+                quantity=quantity,
+                noun=noun,
+                verb=verb,
+                where=self._global_count_where(condition),
+            )
+        if condition.kind == "people_with":
+            assert condition.selector is not None
+            name = self.say.words.get(
+                condition.selector.name, condition.selector.name.replace("_", " ")
+            )
+            if condition.selector.kind == "role":
+                target = f"the {name} role" if self.say.language == "en" else f"de rol {name}"
+            else:
+                target = (
+                    f"the {name} attribute" if self.say.language == "en" else f"het kenmerk {name}"
+                )
+            return self.say(
+                "global_count.people_with",
+                quantity=quantity,
+                noun=noun,
+                have=("has" if singular else "have")
+                if self.say.language == "en"
+                else ("heeft" if singular else "hebben"),
+                target=target,
+            )
+        where = self._global_count_where(condition)
+        if condition.kind == "empty_areas":
+            if condition.comparison == "=" and condition.operands == (0,):
+                return self.say("global_count.no_empty_areas", where=f" {where}" if where else "")
+            return self.say(
+                "global_count.empty_areas",
+                quantity=quantity,
+                noun=noun,
+                verb=verb,
+                where=f" {where}" if where else "",
+            )
+        if condition.comparison == "=" and condition.operands == (0,):
+            return self.say("global_count.no_empty_cells", where=where)
+        return self.say(
+            "global_count.empty_cells",
+            quantity=quantity,
+            noun=noun,
+            verb=verb,
+            where=where,
+        )
+
+    def _global_count_reason(self, condition: GlobalCountCondition) -> str:
+        text = self._global_count_text(condition)
+        area_capacity = condition.kind == "empty_areas" or (
+            condition.kind == "people_in"
+            and condition.selector is not None
+            and condition.selector.kind in ("area", "tag")
+        )
+        return f"{self.say('global_count.capacity')}: {text}" if area_capacity else text
+
+    def _global_count_deduction(
+        self,
+        condition: GlobalCountCondition,
+        step: Step,
+        changed: list[str],
+        before: dict[str, set[Square]],
+        state: _State,
+    ) -> str:
+        clue = _cap(self._global_count_reason(condition)) + self._global_count_ref(condition)
+        if step.var in self.global_empty_units:
+            outcome = self._global_empty_unit_text(step)
+        elif changed:
+            outcome = self._outcome(changed, before, state)
+        else:
+            outcome = self.say(
+                "literal_true" if step.asserted else "literal_false", literal=step.literal
+            )
+        return f"{clue}, {self.say('so')} {outcome}."
+
+    def _global_empty_unit_text(self, step: Step) -> str:
+        kind, unit = self.global_empty_units[step.var]
+        is_empty = step.value if step.asserted else not step.value
+        if kind == "area":
+            where = self.places.region(self.board.region_names[str(unit)])
+            return self.say(
+                "global_count.area_empty" if is_empty else "global_count.area_occupied",
+                where=where,
+            )
+        assert isinstance(unit, Square)
+        return self.say(
+            "global_count.cell_empty" if is_empty else "global_count.cell_occupied",
+            square=self.places.square(unit),
+        )
 
     def _link_reason(self, source: str) -> str:
         """' (row 8)' or ' (7)' after a chain link; nothing when it is one person
@@ -839,6 +1147,8 @@ class Story:
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
     ) -> str:
         """Some people fill some rows (or columns), or some rows only fit some people."""
+        if (condition := self._global_count_for_sources(step.sources)) is not None:
+            return self._global_count_deduction(condition, step, changed, before, state)
         inner = [self.about.get(name, ("constraint", name)) for name in step.sources]
         outer = [self.about.get(name, ("constraint", name)) for name in step.scope]
         kinds_in = {k for k, _ in inner}
@@ -934,7 +1244,7 @@ class Story:
         refs: list[int] = []
         for j in needed:
             inner = step.trail[j]
-            if inner.asserted and j > 0:
+            if inner.asserted and j > 0 and inner.var in self.board.people:
                 parts.append(
                     self.say("then_on", who=inner.var, square=self.places.square(inner.value))
                 )
@@ -942,9 +1252,20 @@ class Story:
                 condition = self.conditions.get(name)
                 if condition is not None and condition.number is not None:
                     refs.append(condition.number)
+                global_count = self.global_counts.get(name)
+                if global_count is not None and global_count.number is not None:
+                    refs.append(global_count.number)
         parts.append(self._broken(step, first=not parts))
         broken = self.conditions.get(step.sources[0]) if step.sources else None
-        cited = sorted(set(refs) - {broken.number if broken else None})
+        broken_global = self._global_count_for_sources(step.sources)
+        broken_number = (
+            broken.number
+            if broken is not None
+            else broken_global.number
+            if broken_global is not None
+            else None
+        )
+        cited = sorted(set(refs) - {broken_number})
         if not cited:
             return who, square, ", ".join(parts)
         listed = self.say.join([str(n) for n in cited])
@@ -965,6 +1286,8 @@ class Story:
     def _broken(self, step: Step, first: bool) -> str:
         """The contradiction a what_if ran into."""
         source = step.sources[0] if step.sources else None
+        if (global_count := self._global_count_for_sources(step.sources)) is not None:
+            return self.say("global_count.breaks", clue=self._global_count_text(global_count))
         if source in self.conditions:
             condition = self.conditions[source]
             suffix = "_first" if first else ""

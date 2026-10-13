@@ -223,6 +223,36 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `alone <person>` | Nobody else is in that person's region. |
 | `furthest <person-a> <person-b>` | A is strictly farther from B than every other person. |
 | `exactly <n> <clue> ; <clue> ...` | Exactly `n` of the listed simple, named-person clues hold. At most three distinct people may be named across them; quantified targets and `only_on` cannot be nested here. |
+| `count people on <object-selector> <comparison>` | Count occupants of a declared object type or occupancy kind. |
+| `count people in <area-or-cell-selector> <comparison>` | Count people in an area, tag, row/column list or range, object, or mark. |
+| `count people with <membership-selector> <comparison>` | Count holders of a role or people with a declared attribute. |
+| `count empty areas all <comparison>` / `count empty areas in <area-or-tag> <comparison>` | Count unoccupied logical regions, deduplicating overlaps. |
+| `count empty cells in <cell-selector> <comparison>` | Count unoccupied, non-blocked cells in a selected set. |
+| `<comparison>` | `= n`, `<= n`, `>= n`, `odd`, `even`, or inclusive `low..high`. |
+
+Global count semantics and authoring checks:
+
+- `people` counts every entry in `People:`, including a victim if listed; there
+  is no implicit suspects-only subset. `object:name` selects that declared
+  object type; `object_kind:blocking` and `object_kind:standable` select all
+  objects by occupancy kind.
+- `rows:` and `columns:` use 1-based lists/ranges, such as `rows:1,3` or
+  `columns:2-4`. Cell-set selectors such as `mark:name` count only free cells.
+- Empty areas are logical regions. `all` means every declared region; a tag
+  selects the regions carrying that tag, with each region counted once even if
+  tags overlap. Sparse boards may leave areas empty; full boards may imply some
+  row/column counts from the placement rules.
+- Attributes in `Attributes:` are fixed facts. A people-with-attribute count
+  checks consistency but cannot deduce a location; do not claim it makes a
+  puzzle unique. Role counts can constrain membership and role-bound locations.
+- Global clues compile to the generic `COUNT` primitive, not a new engine rule.
+  Empty-area and empty-cell counts use reified zero-occupancy indicators. Keep
+  authored examples small and verify uniqueness plus per-step soundness; never
+  copy a published puzzle.
+- Record 12x12 and 16x16 timings with
+  `uv run python benchmark/murdoku_global_counts.py --runs 3`. The text board
+  and `--step` show true/open totals, how many more are needed, and feasible
+  totals; `--show-model` lists each set and its allowed counts.
 
 Typed target selectors are `person:name`, `attribute:name`, `role:name`,
 `area:name`, `tag:name`, `object_kind:blocking|standable`, `object:name`,
