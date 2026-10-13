@@ -9,7 +9,16 @@ from collections.abc import Sequence
 from itertools import combinations
 from typing import Any
 
-from ..murdoku import Board, Condition, RoleCondition, Square, conditions, role_conditions
+from ..murdoku import (
+    Board,
+    Condition,
+    QuantifiedCondition,
+    RoleCondition,
+    Square,
+    conditions,
+    quantified_conditions,
+    role_conditions,
+)
 from ..puzzlefile import load_board
 
 
@@ -17,6 +26,7 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
     board, clues = load_board(text)
     checks = conditions(board, clues)
     role_checks = role_conditions(board, clues)
+    target_checks = quantified_conditions(board, clues)
     allowed = {
         person: [
             sq for sq in board.free if all(c.test(sq) for c in checks if c.people == (person,))
@@ -32,7 +42,7 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
             due[max(check.people, key=later.__getitem__)].append(check)
 
     found: list[dict[str, Any]] = []
-    _search(board, order, allowed, due, role_checks, {}, found, limit)
+    _search(board, order, allowed, due, role_checks, target_checks, {}, found, limit)
     return found
 
 
@@ -42,12 +52,15 @@ def _search(
     allowed: dict[str, list[Square]],
     due: dict[str, list[Condition]],
     role_checks: list[RoleCondition],
+    target_checks: list[QuantifiedCondition],
     placed: dict[str, Square],
     found: list[dict[str, Any]],
     limit: int,
 ) -> None:
     if len(placed) == len(order):
-        for roles in _role_assignments(board, role_checks, placed, limit - len(found)):
+        for roles in _role_assignments(
+            board, role_checks, target_checks, placed, limit - len(found)
+        ):
             found.append({**placed, **roles})
             if len(found) >= limit:
                 return
@@ -60,7 +73,7 @@ def _search(
             continue
         placed[person] = sq
         if all(check.test(*(placed[p] for p in check.people)) for check in due[person]):
-            _search(board, order, allowed, due, role_checks, placed, found, limit)
+            _search(board, order, allowed, due, role_checks, target_checks, placed, found, limit)
         del placed[person]
         if len(found) >= limit:
             return
@@ -69,6 +82,7 @@ def _search(
 def _role_assignments(
     board: Board,
     rules: Sequence[RoleCondition],
+    target_checks: Sequence[QuantifiedCondition],
     placed: dict[str, Square],
     limit: int,
 ) -> list[dict[str, bool]]:
@@ -80,7 +94,9 @@ def _role_assignments(
         if len(found) >= limit:
             return
         if index == len(board.roles):
-            if _role_rules_hold(board, rules, placed, selected):
+            if _role_rules_hold(board, rules, placed, selected) and all(
+                check.holds(board, placed, selected) for check in target_checks
+            ):
                 found.append(
                     {
                         board.role_variable(person, role.name): selected[person, role.name]
@@ -134,7 +150,9 @@ def _role_rules_hold(
         if kind == "at_most_one_role" and sum(has(args[0], role.name) for role in board.roles) > 1:
             return False
         if kind == "role_subset" and any(
-            has(person, args[0]) and not has(person, args[1]) for person in board.people
+            _membership_matches(board, args[0], person, roles)
+            and not _membership_matches(board, args[1], person, roles)
+            for person in board.people
         ):
             return False
         if kind in ("role_in_tagged", "role_not_in_tagged") and has(args[0], args[1]):
@@ -214,6 +232,21 @@ def _target_cells(board: Board, names: Sequence[str]) -> set[Square]:
         elif name in board.corner_object_names:
             cells.update(board.corner_object_cells([name]))
     return cells
+
+
+def _membership_matches(
+    board: Board, selector: str, person: str, roles: dict[tuple[str, str], bool]
+) -> bool:
+    kind, separator, name = selector.partition(":")
+    if not separator:
+        kind, name = "role", selector
+    if kind == "role":
+        return roles.get((person, name), False)
+    if kind == "attribute":
+        return board.has_attribute(person, name)
+    if kind == "person":
+        return person == name
+    raise ValueError(f"invalid membership selector {selector!r}")
 
 
 def _next_to(board: Board, square: Square, names: Sequence[str]) -> bool:

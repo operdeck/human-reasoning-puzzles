@@ -1480,6 +1480,167 @@ not_on_mark B social
     assert "marks: quiet r1c1 r1c2, social r1c2" in rendered
 
 
+def test_person_attributes_drive_uniqueness_and_role_membership():
+    text = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Ben
+Cal
+Attributes:
+glasses: Ada
+Roles:
+scout: 1
+RoleEligibility:
+scout: attribute:glasses
+Rules:
+role_subset attribute:glasses scout
+role_subset scout attribute:glasses
+Clues:
+has_attribute Ada glasses
+not_attribute Ben glasses
+unique_attribute glasses Ada Ben Cal
+"""
+    board, clues = load_board(text)
+    assert board.attributes["glasses"] == frozenset({"Ada"})
+    assert board.pronouns == {}
+    assert board.roles[0].eligible_people == frozenset({"Ada"})
+
+    solutions = bruteforce.solutions(text, "murdoku", limit=10)
+    assert solutions
+    assert all(solution[board.role_variable("Ada", "scout")] for solution in solutions)
+    assert all(
+        not solution[board.role_variable(person, "scout")]
+        for solution in solutions
+        for person in ("Ben", "Cal")
+    )
+
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, solutions)
+
+    repeated = text.replace("glasses: Ada", "glasses: Ada Ben")
+    assert bruteforce.solutions(repeated, "murdoku", limit=2) == []
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        "person:Ben",
+        "attribute:bearded",
+        "role:bandit",
+        "area:east",
+        "tag:inside",
+        "object_kind:standable",
+        "object:chair",
+        "mark:seat",
+    ],
+)
+@pytest.mark.parametrize("role_is_known", [False, True])
+def test_alone_with_quantified_targets_match_brute_force(selector, role_is_known):
+    known_role = "has_role Ben bandit\n" if role_is_known else ""
+    text = f"""Size: 3
+Regions:
+a: west
+b: east
+Grid:
+a b b
+a b b
+a b b
+People:
+Ada
+Ben
+Attributes:
+bearded: Ben
+AreaTags:
+inside: east
+Objects:
+chair: standable r1c2
+Roles:
+bandit: any
+Marks:
+seat: r1c2
+Rules:
+{known_role}Clues:
+alone_with Ada {selector}
+"""
+    solutions = bruteforce.solutions(text, "murdoku", limit=20)
+    assert solutions
+    board, clues = load_board(text)
+    (condition,) = murdoku.quantified_conditions(board, clues)
+    assert all(
+        condition.holds(
+            board,
+            {person: solution[person] for person in board.people},
+            {
+                (person, role.name): solution[board.role_variable(person, role.name)]
+                for person in board.people
+                for role in board.roles
+            },
+        )
+        for solution in solutions
+    )
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, solutions)
+
+
+def test_row_column_area_corner_adjacency_and_mark_set_semantics_match_brute_force():
+    text = """Size: 3
+Regions:
+a: kitchen
+b: hall
+Grid:
+a a b
+a b b
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r2c3
+social: r3c3
+Clues:
+in_row Ada 2
+in_area_corner Ada kitchen
+not_in_row Ben 1
+not_in_column Ben 1
+in_column Cal 3
+not_on_mark Cal quiet social
+adjacent_regions Ada Ben
+"""
+    board, clues = load_board(text)
+    checks = murdoku.conditions(board, clues)
+    square = murdoku.Square
+    in_row = next(check for check in checks if check.kind == "in_row")
+    in_area_corner = next(check for check in checks if check.kind == "in_area_corner")
+    adjacent = next(check for check in checks if check.kind == "adjacent_regions")
+    not_on_marks = next(check for check in checks if check.kind == "not_on_mark")
+    assert in_row.test(square(1, 0)) and not in_row.test(square(0, 0))
+    assert in_area_corner.test(square(1, 0)) and not in_area_corner.test(square(1, 1))
+    assert adjacent.test(square(1, 0), square(2, 1))
+    assert not not_on_marks.test(square(1, 2))
+    assert not not_on_marks.test(square(2, 2))
+    assert not_on_marks.test(square(0, 2))
+    assert not_on_marks.test(square(0, 1))
+
+    solutions = bruteforce.solutions(text, "murdoku", limit=10)
+    assert len(solutions) == 1
+    (solution,) = solutions
+    assert solution["Ada"] == square(1, 0)
+    assert solution["Ben"] == square(2, 1)
+    assert solution["Cal"] == square(0, 2)
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, solutions)
+
+
 def test_mark_names_cells_and_conditions_are_validated():
     base = """Size: 2
 Regions:
@@ -1762,12 +1923,44 @@ def test_counting_clue_about_one_person_filters_at_compile_time():
         (["3", "left_of", "A", "B", ";", "above", "A", "B"], "can never hold"),
         (["1", "alone", "A", ";", "above", "A", "B"], "simple clues only"),
         (["1", "left_of", "A", "B", ";", "left_of", "C", "D"], "at most 3"),
+        (["1", "above", "A", "role:guide"], "cannot count quantified target clues"),
     ],
 )
 def test_counting_clue_rejects_what_it_cannot_do(args, problem):
     board = _one_region_board(4, ["A", "B", "C", "D"])
     with pytest.raises(ValueError, match=problem):
         murdoku.compile_puzzle(board, [("exactly", args)])
+
+
+@pytest.mark.parametrize("role_is_known", [False, True])
+def test_quantified_position_relation_can_target_a_role(role_is_known):
+    known_role = "has_role Ben guide\n" if role_is_known else ""
+    text = f"""Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Ben
+Roles:
+guide: any
+Rules:
+{known_role}Clues:
+above Ada role:guide
+"""
+    solutions = bruteforce.solutions(text, "murdoku", limit=10)
+    assert solutions
+    board, clues = load_board(text)
+    assert all(solution["Ada"].row < solution["Ben"].row for solution in solutions)
+    assert all(solution[board.role_variable("Ben", "guide")] for solution in solutions)
+
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    assert murdoku.role_statuses(board, model)[("Ben", "guide")] is True
+    _assert_logged_steps_preserve_solutions(model, solutions)
 
 
 def test_numeric_region_ids_still_read():

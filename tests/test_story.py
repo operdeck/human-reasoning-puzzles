@@ -191,6 +191,185 @@ not_on_mark Ben safe_zone
     )
 
 
+def test_new_clues_targets_names_and_pronouns_are_worded_in_english_and_dutch():
+    english_text = """Language: en
+Size: 3
+Regions:
+a: kitchen
+b: hall
+Grid:
+a a b
+a b b
+b b b
+People:
+Ada
+Ben
+Cal
+Attributes:
+glasses: Ben
+Pronouns:
+Ada: she her her
+AreaTags:
+inside: kitchen
+Objects:
+chair: standable r2c3
+Roles:
+guide: any
+Marks:
+altar: r1c3
+quiet: r1c1
+social: r1c2
+Words:
+glasses: glasses
+guide: guide
+inside: in the kitchen
+chair: the chair
+altar: the altar
+quiet: the quiet square
+social: the social square
+Rules:
+role_subset guide attribute:glasses
+Clues:
+alone_with Ada role:guide
+above Ada tag:inside
+role_on Ada guide altar
+"""
+    dutch_text = english_text.replace("Language: en", "Language: nl")
+    dutch_text = dutch_text.replace("a: kitchen", "a: keuken").replace("b: hall", "b: gang")
+    dutch_text = dutch_text.replace("inside: kitchen", "inside: keuken")
+    dutch_text = dutch_text.replace("Ada: she her her", "Ada: zij haar haar")
+    dutch_text = dutch_text.replace("glasses: glasses", "glasses: bril")
+    dutch_text = dutch_text.replace("guide: guide", "guide: gids")
+    dutch_text = dutch_text.replace("inside: in the kitchen", "inside: in de keuken")
+    dutch_text = dutch_text.replace("altar: the altar", "altar: het altaar")
+    dutch_text = dutch_text.replace("quiet: the quiet square", "quiet: het stille vakje")
+    dutch_text = dutch_text.replace("social: the social square", "social: het sociale vakje")
+
+    stories = []
+    for text in (english_text, dutch_text):
+        board, clues = load_board(text)
+        stories.append(Story(board, clues, Wording.read(text)))
+    english, dutch = stories
+
+    assert english._clue_text("in_row", ["Ada", "2"], ("Ada",)) == "Ada is in row 2"
+    assert english._clue_text("not_in_row", ["Ben", "1"], ("Ben",)) == "Ben is not in row 1"
+    assert english._clue_text("in_column", ["Cal", "3"], ("Cal",)) == "Cal is in column 3"
+    assert english._clue_text("not_in_column", ["Ada", "1"], ("Ada",)) == ("Ada is not in column 1")
+    assert english._clue_text("in_area_corner", ["Ada", "kitchen"], ("Ada",)) == (
+        "Ada is in a corner, in the kitchen"
+    )
+    assert english._clue_text("adjacent_regions", ["Ada", "Ben"], ("Ada", "Ben")) == (
+        "Ada and Ben are in neighboring regions"
+    )
+    assert english._clue_text("not_on_mark", ["Cal", "quiet", "social"], ("Cal",)) == (
+        "Cal is not on the quiet square or the social square"
+    )
+    assert english._clue_text("has_attribute", ["Ben", "glasses"], ("Ben",)) == (
+        "Ben has the glasses attribute"
+    )
+    assert english._clue_text("not_attribute", ["Ada", "glasses"], ("Ada",)) == (
+        "Ada does not have the glasses attribute"
+    )
+    assert (
+        english._clue_text("unique_attribute", ["glasses", "Ada", "Ben", "Cal"], ("Ada",))
+        == "exactly one of Ada, Ben and Cal has the glasses attribute"
+    )
+    assert english._quantified_text(english.quantified_conditions["alone_with Ada role:guide"]) == (
+        "Ada shares a region with exactly one other person: a guide holder"
+    )
+    assert english._quantified_text(english.quantified_conditions["above Ada tag:inside"]) == (
+        "Ada is somewhere above someone in the kitchen"
+    )
+    assert english._target_text(murdoku.TargetSelector("object_kind", "standable")) == (
+        "someone on standable objects"
+    )
+    assert "she must be on the altar" in english._role_condition_text(
+        next(rule for rule in english.role_conditions.values() if rule.kind == "role_on")
+    )
+
+    assert dutch._clue_text("in_row", ["Ada", "2"], ("Ada",)) == "Ada staat in rij 2"
+    assert dutch._clue_text("not_in_column", ["Ada", "1"], ("Ada",)) == (
+        "Ada staat niet in kolom 1"
+    )
+    assert dutch._clue_text("in_area_corner", ["Ada", "keuken"], ("Ada",)) == (
+        "Ada staat in een hoek, in de keuken"
+    )
+    assert dutch._clue_text("has_attribute", ["Ben", "glasses"], ("Ben",)) == (
+        "Ben heeft het kenmerk bril"
+    )
+    assert dutch._quantified_text(dutch.quantified_conditions["alone_with Ada role:guide"]) == (
+        "Ada deelt een gebied met precies één ander persoon: een gids-drager"
+    )
+    assert "iemand in de keuken" in dutch._quantified_text(
+        dutch.quantified_conditions["above Ada tag:inside"]
+    )
+    assert "zij" in dutch._role_condition_text(
+        next(rule for rule in dutch.role_conditions.values() if rule.kind == "role_on")
+    )
+
+
+def test_explain_names_quantified_clue_that_determines_a_role():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Pronouns:
+Ada: she her her
+Roles:
+guide: any
+Marks:
+altar: r1c1
+Rules:
+has_role Ada guide
+Clues:
+alone_with Ada role:guide
+role_on Ada guide altar
+"""
+    story = explain(text)
+
+    assert "Ada shares a region with exactly one other person: a guide holder (1)" in story
+    assert "she must be on the altar" in story
+
+
+def test_explain_includes_static_attribute_and_uniqueness_clues():
+    text = """Language: en
+Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Attributes:
+glasses: Ben
+Words:
+glasses: glasses
+Clues:
+has_attribute Ben glasses
+not_attribute Ada glasses
+unique_attribute glasses Ada Ben
+"""
+    story = explain(text)
+    assert "Ben has the glasses attribute (1)" in story
+    assert "Ada does not have the glasses attribute (2)" in story
+    assert "Exactly one of Ada and Ben has the glasses attribute (3)" in story
+
+    dutch_text = text.replace("Language: en", "Language: nl").replace(
+        "glasses: glasses", "glasses: bril"
+    )
+    dutch = explain(dutch_text)
+    assert "Ben heeft het kenmerk bril (1)" in dutch
+    assert "Ada heeft het kenmerk bril niet (2)" in dutch
+    assert "Precies één van Ada en Ben heeft het kenmerk bril (3)" in dutch
+
+
 def test_story_explains_known_and_absent_roles():
     text = """Size: 2
 Regions:
