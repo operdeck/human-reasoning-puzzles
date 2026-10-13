@@ -6,6 +6,7 @@
 **New Feature(s)**
 * [#11 Murdoku: Add person attributes and quantified clue targets](https://github.com/operdeck/prrrove/issues/11)
     * `src/csp`: Added fixed person attributes and pronoun forms, typed targets, bounded quantified clues, new row/column/area-corner and region-adjacency predicates, bilingual explanations, and brute-force verification.
+    * Example: `unique_attribute engineer Ada Ben Cal` requires exactly one selected person to have the engineer attribute.
 
 ## 0.2.0
 **New Feature(s)**
@@ -14,11 +15,16 @@
     * Example: `Roles: engineer: 2` requires exactly two people to have the engineer role; roles can overlap unless constrained.
 * [#9 Murdoku: Add optional cell marks and occupant conditions](https://github.com/operdeck/prrrove/issues/9)
     * `src/csp`: Added overlapping named cell sets and conditional `alone`/`not_alone` area occupancy rules, such as `quiet: r2c3 ; alone`.
+    * Example: `quiet: r2c3 ; alone` applies only when someone occupies r2c3.
 * [#8 Murdoku: Add general counting constraints to the core](https://github.com/operdeck/prrrove/issues/8)
     * `src/csp/core.py`: Added allowed-count constraints and reified counts for exact, ranged, and other count-based rules.
+    * Example: `exactly 2 in_region Ada kitchen ; in_region Ben kitchen ; in_region Cal kitchen` requires exactly two of those clues to hold.
 * [#7 Murdoku: Model edge items and corner-anchored objects](https://github.com/operdeck/prrrove/issues/7)
     * `src/csp`: Added doors, windows, and corner objects as touched-cell sets, enabling clues to refer to boundaries without occupying cells.
+    * Example: `gate: door r2c3 r2c4` lets `at Ada gate` match either cell touched by the door.
 * [#6 Murdoku: Add tagged and overlay-area semantics](https://github.com/operdeck/prrrove/issues/6)
     * `src/csp`: Added reusable area tags that can overlap or span disconnected regions for location clues and area policies.
+    * Example: `inside: kitchen hall` lets `in_tagged Ada inside` target either region.
 * [#5 Murdoku: Declare object kinds and footprints explicitly](https://github.com/operdeck/prrrove/issues/5)
     * `src/csp`: Required each object footprint to declare `blocking` or `standable` and validated connected, non-overlapping cells.
+    * Example: `wall: blocking r1c1` and `bench: standable r2c2 r2c3` distinguish an obstacle from a surface people can occupy.
