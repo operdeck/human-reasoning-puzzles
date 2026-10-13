@@ -78,7 +78,7 @@ as that rule's summary, so keep it to one plain sentence.
 
 ## Committing and publishing
 
-The repo is **public** (`origin` = `github.com/operdeck/prrrove`).
+The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`).
 
 - **Branch, check, merge.** Work on a feature branch in small,
   single-purpose commits. Before merging into `main` (fast-forward only), all
@@ -146,6 +146,28 @@ it logs on every example.
 Keep the ladder honest: if a rule never fires on any example, say so rather
 than listing it as working.
 
+## Murdoku format and occupancy
+
+The reader accepts the final sectioned format only. `Regions:` defines logical
+areas; repeated IDs may be disconnected. `AreaTags:` defines separate,
+overlapping sets of areas. Legacy `Groups:`, `Furniture:`, and `Doors:`
+sections, and object declarations without an explicit kind, are rejected.
+
+Every object footprint declares `blocking` or `standable`, is connected, and
+does not overlap another footprint. Blocking cells are unavailable; standable
+cells remain occupiable. A person occupies exactly one free square, with at
+most one person in any square, row, or column. On an `N` by `N` board with `N`
+people, every row and column is occupied; otherwise, lines and free squares
+may remain empty. Edge items and corner objects touch cells without occupying
+them. Marks may overlap and do not change cell occupancy. Roles overlap unless
+the puzzle explicitly constrains them; attributes are fixed person facts.
+
+`--lint` reports malformed declarations as errors and missing icons,
+unreachable areas, or unused roles as warnings. `--require-forward` also
+requires a solve without `what_if`. `--png` without a path writes
+`<puzzle-stem>.png` beside the input, and the solved image adds `-solution`;
+an explicit path overrides the default.
+
 ## Murdoku global counts
 
 `count` clues are Murdoku vocabulary, not new engine rules. Compile them to
@@ -153,14 +175,17 @@ than listing it as working.
 same semantic tally from the independent brute-force solver. Reified empty
 areas/cells must be true exactly when their occupant count is zero; reuse one
 empty Boolean per logical area or cell even when tagged selectors overlap.
-Count people across every entry in `People:` (there is no implicit victim or
-suspect subset), and count only unblocked/free cells for empty-cell selectors.
+Count every entry in `People:`; no subset is implicit. Count only unblocked
+free cells for empty-cell selectors.
 Attributes are fixed puzzle facts: a count over an attribute can reject an
 inconsistent clue but cannot force a person's location. Benchmark changes with
-`benchmark/murdoku_global_counts.py`; it isolates `single`/`count` propagation
-on 12x12 and 16x16 boards. Three-run Python 3.12 medians: 12x12 parse/compile/
-propagate 0.21/3.67/1.71 ms (211 constraints, 904 literals); 16x16
-0.31/8.55/3.57 ms (337 constraints, 2096 literals).
+`benchmark/murdoku_global_counts.py`; it compares `single`/`count` with
+`single`/`count`/`chains` on 12x12 and 16x16 boards. Three-run Python 3.12
+medians (parse/compile/count/count+chains, ms): 12x12
+0.23/3.62/2.12/15,336.98 (211 constraints, 904 literals); 16x16
+0.31/8.19/4.58/187,982.30 (337 constraints, 2096 literals). The synthetic
+16x16 chain run takes about 3.1 minutes; keep that cost visible when changing
+the chain rule or this workload.
 The text board and `--step` show true/open totals, additional demand, and
 feasible totals; active location scopes are highlighted without adding
 puzzle-specific behavior to `core.py`.
@@ -214,6 +239,8 @@ Numbers from actual runs, not estimates:
 | `murdoku_intro.txt` | solved, 5 iterations | `single` 4 |
 | `murdoku_house.txt` | solved, 11 iterations | `single` 5, `relations` 4, `subsumption` 1 |
 | `murdoku_sparse_mystery.txt` | solved, 5 iterations | `single` 4 |
+| `murdoku_global_counts.txt` | solved, 13 iterations | `single` 9, `count` 3 |
+| `murdoku_composition.txt` | solved, 38 iterations | `single` 20, `count` 14, `relations` 3 |
 | `prrrdoku1.txt` | solved, 14 iterations | `single` 7, `relations` 4, `subsumption` 2 |
 | `prrrdoku2.txt` | solved, 27 iterations | `single` 9, `relations` 14, `chains` 2, `what_if` 1 |
 | `prrrdoku3.txt` | solved, 40 iterations | `single` 9, `relations` 18, `subsumption` 5, `cover2` 2, `what_if` 5 |
