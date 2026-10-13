@@ -191,6 +191,78 @@ not_on_mark Ben safe_zone
     )
 
 
+def test_story_explains_known_and_absent_roles():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Roles:
+seer: any
+Rules:
+has_role Ada seer
+Clues:
+not_role Ben seer
+"""
+    story = explain(text)
+
+    assert "Ada has the seer role" in story
+    assert "Ben does not have the seer role (1)" in story
+    assert "__occupant" not in story
+
+
+def test_story_explains_role_deduced_from_eligibility_and_count():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Roles:
+bandit: 1
+RoleEligibility:
+bandit: Ada
+"""
+    story = explain(text)
+
+    assert "Ada has the bandit role" in story
+    assert "Ben does not have the bandit role" in story
+    assert "__occupant" not in story
+
+
+def test_story_explains_role_conditioned_location_rule():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Roles:
+captain: 1
+Marks:
+altar: r1c1
+Rules:
+has_role Ada captain
+Clues:
+role_on Ada captain altar
+"""
+    story = explain(text)
+
+    assert "Ada has the captain role" in story
+    assert "Ada's" not in story
+    assert "If Ada has role captain, they must be on the altar" in story
+
+
 def test_story_explains_a_reified_count_constraint():
     square = murdoku.Square
     board = murdoku.Board(

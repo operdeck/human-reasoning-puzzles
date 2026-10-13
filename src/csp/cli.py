@@ -49,9 +49,18 @@ def narrate(rule: str, steps: Sequence[Step]) -> None:
     dropped = [s for s in steps if not s.asserted]
     print(f"\n{rule}")
     for s in placed:
-        print(f"  = {s.literal}  ({s.reason})")
+        prefix, message = "=", s.literal
+        if " has role " in s.var and isinstance(s.value, bool):
+            person, _, role = s.var.partition(" has role ")
+            message = f"{person} {'has' if s.value else 'does not have'} role {role}"
+        print(f"  {prefix} {message}  ({s.reason})")
     if dropped and not placed:
-        print(f"  x {dropped[0].literal}  ({dropped[0].reason})")
+        step = dropped[0]
+        message = step.literal
+        if " has role " in step.var and isinstance(step.value, bool):
+            person, _, role = step.var.partition(" has role ")
+            message = f"{person} {'has' if step.value else 'does not have'} role {role}"
+        print(f"  x {message}  ({step.reason})")
     if dropped:
         print(f"  ... {len(dropped)} option{'s' if len(dropped) != 1 else ''} ruled out")
 
@@ -82,7 +91,13 @@ def brute_force(puzzle: Puzzle, text: str) -> int:
     return 1
 
 
-def write_picture(kind: str, text: str, path: Path, solution: dict[str, Any] | None = None) -> bool:
+def write_picture(
+    kind: str,
+    text: str,
+    path: Path,
+    solution: dict[str, Any] | None = None,
+    role_statuses: dict[tuple[str, str], bool | None] | None = None,
+) -> bool:
     """Save the puzzle as a PNG, with `solution` drawn in if given."""
     try:
         from . import picture
@@ -102,7 +117,7 @@ def write_picture(kind: str, text: str, path: Path, solution: dict[str, Any] | N
                 f"warning: no icon for {', '.join(unknown)}; using text labels",
                 file=sys.stderr,
             )
-        image = picture.murdoku_picture(board, solution)
+        image = picture.murdoku_picture(board, solution, role_statuses=role_statuses)
     image.save(path)
     print(f"wrote {path}")
     return True
@@ -202,8 +217,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.track_person:
         assert track_board is not None
         print(murdoku.track_person_status(track_board, model, args.track_person))
-    if args.png and not write_picture(kind, text, args.png):
-        return 2
+    if args.png:
+        role_statuses = None
+        if kind == "murdoku":
+            role_board = track_board
+            if role_board is None:
+                role_board, _ = load_board(text)
+            role_statuses = murdoku.role_statuses(role_board, model)
+        if not write_picture(kind, text, args.png, role_statuses=role_statuses):
+            return 2
 
     if args.show_model:
         print(f"\n{report.describe(model)}")
@@ -242,7 +264,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(puzzle.draw("Solved"))
         if args.png:
             solved = args.png.with_stem(f"{args.png.stem}-solution")
-            write_picture(kind, text, solved, result.assignment)
+            roles = None
+            if kind == "murdoku":
+                board, _ = load_board(text)
+                roles = murdoku.role_statuses(board, model)
+            write_picture(kind, text, solved, result.assignment, roles)
     elif result.contradiction:
         print(puzzle.draw("Stuck"))
         print(f"\ncontradiction: {result.contradiction}")

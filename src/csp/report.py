@@ -57,8 +57,14 @@ def rules_used(fired: Iterable[str], rules: Sequence[Rule] = DEFAULT_RULES) -> s
 def _overview(model: Model) -> str:
     kinds = Counter(c.kind for c in model.constraints)
     lines = _heading("The model")
+    hidden = len(model.all_variables) - len(model.variables)
+    variable_count = (
+        f"{len(model.variables)} variables"
+        if not hidden
+        else f"{len(model.variables)} variables, {hidden} hidden role/helper variables"
+    )
     lines.append(
-        f"{len(model.variables)} variables, {model.num_literals} literals, "
+        f"{variable_count}, {model.num_literals} literals, "
         f"{len(model.constraints)} constraints, {len(model.relations)} relations."
     )
     lines.append("")
@@ -107,6 +113,20 @@ def _variables(model: Model) -> str:
             lines.append(_fit(prefix, [str(model.value_of(lit)) for lit in options]))
         if len(undecided) > ROWS:
             lines.append(f"  ... and {len(undecided) - ROWS} more")
+    hidden_roles = [
+        var
+        for var in model.all_variables
+        if var not in model.variables
+        and model.constraints[model.domain_of(var)].family == "role membership"
+    ]
+    if hidden_roles:
+        lines.append(f"Role membership ({len(hidden_roles)}):")
+        for var in hidden_roles[:ROWS]:
+            value = model.chosen(var)
+            status = "unknown" if value is None else "present" if value else "absent"
+            lines.append(f"  {var}: {status}")
+        if len(hidden_roles) > ROWS:
+            lines.append(f"  ... and {len(hidden_roles) - ROWS} more")
     return "\n".join(lines)
 
 
@@ -114,7 +134,7 @@ def _constraints(model: Model) -> str:
     families: dict[str, list[Constraint]] = {}
     for c in model.constraints:
         families.setdefault(_family(c), []).append(c)
-    domains = {model.domain_of(v) for v in model.variables}
+    domains = {model.domain_of(v) for v in model.all_variables}
 
     lines = _heading(f"Constraints ({len(model.constraints)}) in {len(families)} families")
     width = max(len(f) for f in families)

@@ -17,6 +17,7 @@ from .murdoku import (
     EdgeItemKind,
     ObjectKind,
     OccupantCondition,
+    RoleSpec,
     Square,
 )
 
@@ -109,6 +110,8 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     marks = _mark_placements(section.get("Marks", []))
 
     people = list(section["People"])
+    role_eligibility = _role_eligibility(section.get("RoleEligibility", []))
+    roles = _role_placements(section.get("Roles", []), people, role_eligibility)
 
     clues = _clues(section.get("Clues", []))
 
@@ -123,6 +126,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         edge_items=edge_items,
         corner_objects=corner_objects,
         marks=marks,
+        roles=roles,
     )
     board.hatched = board.area_ids(
         name for line in section.get("Hatched", []) for name in line.split()
@@ -204,3 +208,48 @@ def _mark_placements(lines: list[str]) -> list[CellMark]:
             CellMark(name.strip(), tuple(parse_square(token) for token in tokens), condition)
         )
     return marks
+
+
+def _role_eligibility(lines: list[str]) -> dict[str, frozenset[str]]:
+    """Read optional `role: eligible_person ...` overrides."""
+    eligibility: dict[str, frozenset[str]] = {}
+    for line in lines:
+        role, separator, people = line.partition(":")
+        names = frozenset(people.split())
+        if not separator or not role.strip() or not names:
+            raise ValueError(f"bad RoleEligibility entry {line!r}, expected 'role: person ...'")
+        if role.strip() in eligibility:
+            raise ValueError(f"role {role.strip()!r} eligibility is defined more than once")
+        eligibility[role.strip()] = names
+    return eligibility
+
+
+def _role_placements(
+    lines: list[str], people: list[str], eligibility: dict[str, frozenset[str]]
+) -> list[RoleSpec]:
+    """Read role cardinalities and the optional distinct-region modifier."""
+    roles: list[RoleSpec] = []
+    names = {line.partition(":")[0].strip() for line in lines}
+    unknown = set(eligibility) - names
+    if unknown:
+        raise ValueError(f"RoleEligibility names unknown roles {sorted(unknown)}")
+    for line in lines:
+        name, separator, definition = line.partition(":")
+        tokens = definition.split()
+        if not separator or not name.strip():
+            raise ValueError(f"bad role {line!r}, expected 'name: [count] [different_regions]'")
+        allowed_counts = frozenset(range(len(people) + 1))
+        if tokens and tokens[0] in ("any", "*"):
+            tokens.pop(0)
+        elif tokens and tokens[0].isdigit():
+            allowed_counts = frozenset((int(tokens.pop(0)),))
+        different_regions = False
+        for token in tokens:
+            if token == "different_regions" and not different_regions:
+                different_regions = True
+            else:
+                raise ValueError(f"unknown role option {token!r} in {line!r}")
+        roles.append(
+            RoleSpec(name.strip(), allowed_counts, different_regions, eligibility.get(name.strip()))
+        )
+    return roles
