@@ -699,6 +699,7 @@ GROUP_CLUES = {
 # listed clue is a filter or a relation; together they may name at most
 # COUNTED_PEOPLE people, since the engine tries every combination of their squares.
 COUNTING = "exactly"
+GLOBAL_COUNTING = "count"
 COUNTED_PEOPLE = 3
 ATTRIBUTE_FILTERS = frozenset(("has_attribute", "not_attribute"))
 
@@ -759,6 +760,8 @@ type TargetKind = Literal[
     "mark",
     "edge_item",
     "corner_object",
+    "rows",
+    "columns",
 ]
 
 
@@ -766,6 +769,227 @@ type TargetKind = Literal[
 class TargetSelector:
     kind: TargetKind
     name: str
+
+
+type GlobalCountKind = Literal[
+    "people_on", "people_in", "people_with", "empty_areas", "empty_cells"
+]
+
+
+@dataclass(frozen=True)
+class GlobalCountCondition:
+    """A count over named people, cells, or logical areas on the whole board."""
+
+    label: str
+    kind: GlobalCountKind
+    selector: TargetSelector | None
+    comparison: str
+    operands: tuple[int, ...]
+    allowed_counts: frozenset[int]
+    number: int | None
+    index: int
+    tokens: tuple[str, ...]
+
+    @property
+    def description(self) -> str:
+        return " ".join((GLOBAL_COUNTING, *self.tokens))
+
+    def cells(self, board: Board) -> set[Square]:
+        if self.selector is None:
+            return set()
+        return _selector_cells(board, self.selector) & set(board.free)
+
+    def scope_cells(self, board: Board) -> set[Square]:
+        if self.kind == "empty_areas":
+            regions = self.regions(board)
+            return {square for square in board.free if board.region_of(square) in regions}
+        if self.kind == "people_with":
+            return set()
+        return self.cells(board)
+
+    def regions(self, board: Board) -> set[str]:
+        if self.selector is None:
+            return set(board.region_names)
+        if self.selector.kind == "area":
+            return board.area_ids([self.selector.name])
+        if self.selector.kind == "tag":
+            return board.tagged_region_ids([self.selector.name])
+        raise ValueError(f"selector {self.selector.kind!r} does not identify areas")
+
+    def maximum(self, board: Board) -> int:
+        if self.kind in ("people_on", "people_in"):
+            return min(len(board.people), len(self.cells(board)))
+        if self.kind == "people_with":
+            assert self.selector is not None
+            if self.selector.kind == "attribute":
+                return len(board.attributes[self.selector.name])
+            role = next(role for role in board.roles if role.name == self.selector.name)
+            return len(board.people) if role.eligible_people is None else len(role.eligible_people)
+        if self.kind == "empty_areas":
+            return len(self.regions(board))
+        return len(self.cells(board))
+
+    def count(
+        self,
+        board: Board,
+        placed: dict[str, Square],
+        roles: dict[tuple[str, str], bool],
+    ) -> int:
+        if self.kind in ("people_on", "people_in"):
+            cells = self.cells(board)
+            return sum(square in cells for square in placed.values())
+        if self.kind == "people_with":
+            assert self.selector is not None
+            if self.selector.kind == "role":
+                return sum(
+                    roles.get((person, self.selector.name), False) for person in board.people
+                )
+            return sum(board.has_attribute(person, self.selector.name) for person in board.people)
+        if self.kind == "empty_areas":
+            occupied = {board.region_of(square) for square in placed.values()}
+            return sum(region not in occupied for region in self.regions(board))
+        cells = self.cells(board)
+        return len(cells - set(placed.values()))
+
+
+def global_count_conditions(board: Board, clues: Iterable[Clue]) -> list[GlobalCountCondition]:
+    """Parse and validate whole-board count clues in rules and numbered clues."""
+    rules: list[tuple[str, list[str], int | None]] = [
+        (kind, args, None) for kind, args in board.rules
+    ]
+    rules.extend((kind, args, number) for number, (kind, args) in enumerate(clues, 1))
+    out: list[GlobalCountCondition] = []
+    for kind, args, number in rules:
+        if kind != GLOBAL_COUNTING:
+            continue
+        selector_kind, selector, comparison_tokens = _global_count_selector(board, args)
+        maximum = _global_count_maximum(board, selector_kind, selector)
+        comparison, operands, allowed = _parse_count_comparison(comparison_tokens, maximum)
+        source = f"rule {len(out) + 1}" if number is None else f"clue {number}"
+        label = f"{source} global count: {' '.join(args)}"
+        out.append(
+            GlobalCountCondition(
+                label,
+                selector_kind,
+                selector,
+                comparison,
+                operands,
+                allowed,
+                number,
+                len(out),
+                tuple(args),
+            )
+        )
+    return out
+
+
+def _global_count_selector(
+    board: Board, args: list[str]
+) -> tuple[GlobalCountKind, TargetSelector | None, list[str]]:
+    if len(args) >= 3 and args[0:2] in (["people", "on"], ["people", "in"]):
+        kind: GlobalCountKind = "people_on" if args[1] == "on" else "people_in"
+        selector = _target_selector(board, args[2])
+        allowed = (
+            ("object", "object_kind", "mark", "edge_item", "corner_object")
+            if kind == "people_on"
+            else (
+                "area",
+                "tag",
+                "rows",
+                "columns",
+                "object",
+                "object_kind",
+                "mark",
+                "edge_item",
+                "corner_object",
+            )
+        )
+        if selector.kind not in allowed:
+            raise ValueError(f"count people {args[1]} needs a cell, area, row, or column selector")
+        return kind, selector, args[3:]
+    if len(args) >= 3 and args[:2] == ["people", "with"]:
+        selector = _target_selector(board, args[2])
+        if selector.kind not in ("role", "attribute"):
+            raise ValueError("count people with requires a role:name or attribute:name selector")
+        return "people_with", selector, args[3:]
+    if len(args) >= 3 and args[:2] == ["empty", "areas"]:
+        if args[2] == "all":
+            return "empty_areas", None, args[3:]
+        if len(args) >= 4 and args[2] == "in":
+            selector = _target_selector(board, args[3])
+            if selector.kind not in ("area", "tag"):
+                raise ValueError("count empty areas in requires area:name or tag:name")
+            return "empty_areas", selector, args[4:]
+    if len(args) >= 4 and args[:3] == ["empty", "cells", "in"]:
+        selector = _target_selector(board, args[3])
+        if selector.kind not in (
+            "area",
+            "tag",
+            "rows",
+            "columns",
+            "object",
+            "object_kind",
+            "mark",
+            "edge_item",
+            "corner_object",
+        ):
+            raise ValueError("count empty cells in requires a cell-set selector")
+        return "empty_cells", selector, args[4:]
+    raise ValueError(
+        "count expects 'people on|in|with ...', 'empty areas all|in ...', or 'empty cells in ...'"
+    )
+
+
+def _global_count_maximum(
+    board: Board, kind: GlobalCountKind, selector: TargetSelector | None
+) -> int:
+    condition = GlobalCountCondition("", kind, selector, "=", (0,), frozenset({0}), None, 0, ())
+    return condition.maximum(board)
+
+
+def global_count_unit_prefix(kind: Literal["area", "cell"], unit: str) -> str:
+    """Reserved base name for the hidden empty-area/cell Boolean of one unit."""
+    return f"global_empty_{kind}_{unit}"
+
+
+def _parse_count_comparison(
+    tokens: list[str], maximum: int
+) -> tuple[str, tuple[int, ...], frozenset[int]]:
+    operands: tuple[int, ...]
+    if len(tokens) == 2 and tokens[0] in ("=", "<=", ">="):
+        if not tokens[1].isdigit():
+            raise ValueError(f"count comparison needs a non-negative integer: {tokens}")
+        operands = (int(tokens[1]),)
+        value = operands[0]
+        if tokens[0] == "=":
+            allowed = {value}
+        elif tokens[0] == "<=":
+            allowed = set(range(0, min(value, maximum) + 1))
+        else:
+            allowed = set(range(value, maximum + 1))
+        comparison = tokens[0]
+    elif len(tokens) == 1 and tokens[0] in ("odd", "even"):
+        comparison = tokens[0]
+        operands = ()
+        parity = 1 if comparison == "odd" else 0
+        allowed = {count for count in range(maximum + 1) if count % 2 == parity}
+    elif len(tokens) == 1 and ".." in tokens[0]:
+        lower_text, separator, upper_text = tokens[0].partition("..")
+        if not separator or not lower_text.isdigit() or not upper_text.isdigit():
+            raise ValueError(f"count range must use inclusive low..high integers: {tokens[0]!r}")
+        lower, upper = int(lower_text), int(upper_text)
+        if lower > upper:
+            raise ValueError(f"count range lower bound exceeds upper bound: {tokens[0]!r}")
+        comparison, operands = "range", (lower, upper)
+        allowed = set(range(lower, min(upper, maximum) + 1))
+    else:
+        raise ValueError(
+            f"bad count comparison {tokens}; use = n, <= n, >= n, odd, even, or lo..hi"
+        )
+    feasible = frozenset(count for count in allowed if 0 <= count <= maximum)
+    if not feasible:
+        raise ValueError(f"count comparison {tokens} has no possible value from 0 to {maximum}")
+    return comparison, operands, feasible
 
 
 @dataclass(frozen=True)
@@ -847,12 +1071,16 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
     for kind, args in board.rules:
         if kind in ROLE_CONDITION_KINDS or _is_quantified_target(kind, args):
             continue
+        if kind == GLOBAL_COUNTING:
+            continue
         out += _conditions(board, kind, args, None)
     out.extend(
         _mark_occupant_condition(board, mark) for mark in board.marks if mark.occupant_condition
     )
     for number, (kind, args) in enumerate(clues, 1):
         if kind in ROLE_CONDITION_KINDS or _is_quantified_target(kind, args):
+            continue
+        if kind == GLOBAL_COUNTING:
             continue
         out += _conditions(board, kind, args, number)
     return out
@@ -901,7 +1129,7 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
         return TargetSelector("person", token)
     if not separator or not name or any(char.isspace() for char in name):
         raise ValueError(f"bad target selector {token!r}; use kind:name")
-    kind = {"cells": "mark", "cellset": "mark"}.get(kind, kind)
+    kind = {"cells": "mark", "cellset": "mark", "row": "rows", "column": "columns"}.get(kind, kind)
     supported = {
         "person",
         "attribute",
@@ -913,6 +1141,8 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
         "mark",
         "edge_item",
         "corner_object",
+        "rows",
+        "columns",
     }
     if kind not in supported:
         raise ValueError(f"unknown target kind {kind!r}; have {sorted(supported)}")
@@ -937,7 +1167,26 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
         board.edge_item_cells([name])
     if kind == "corner_object":
         board.corner_object_cells([name])
+    if kind in ("rows", "columns"):
+        line_indices(name, board.size)
     return selector
+
+
+def line_indices(spec: str, size: int) -> set[int]:
+    """Parse 1-based line lists/ranges such as `1,3-5` to zero-based indices."""
+    indices: set[int] = set()
+    for part in spec.split(","):
+        start_text, separator, end_text = part.partition("-")
+        if not start_text.isdigit() or (separator and not end_text.isdigit()):
+            raise ValueError(f"bad line selector {spec!r}; use values like 1,3-5")
+        start = int(start_text)
+        end = int(end_text) if separator else start
+        if start < 1 or end < start or end > size:
+            raise ValueError(f"line selector {spec!r} must be between 1 and {size}")
+        indices.update(range(start - 1, end))
+    if not indices:
+        raise ValueError("line selector cannot be empty")
+    return indices
 
 
 def _membership_selector(board: Board, token: str) -> TargetSelector:
@@ -966,6 +1215,12 @@ def _membership_literals(
 
 
 def _selector_cells(board: Board, selector: TargetSelector) -> set[Square]:
+    if selector.kind == "rows":
+        rows = line_indices(selector.name, board.size)
+        return {square for square in board.free if square.row in rows}
+    if selector.kind == "columns":
+        columns = line_indices(selector.name, board.size)
+        return {square for square in board.free if square.col in columns}
     if selector.kind == "area":
         ids = board.area_ids([selector.name])
         return {square for square in board.free if board.region_of(square) in ids}
@@ -1407,6 +1662,9 @@ def compile_puzzle(board: Board, clues: Iterable[Clue]) -> Model:
     role_literals = _add_roles(model, board)
     role_rules = role_conditions(board, clues)
     _compile_role_conditions(model, board, role_literals, role_rules)
+    count_conditions = global_count_conditions(board, clues)
+    attribute_membership = _global_attribute_membership(model, board, count_conditions)
+    _compile_global_counts(model, board, count_conditions, role_literals, attribute_membership)
     for target_condition in quantified_conditions(board, clues):
         _compile_quantified_condition(model, board, target_condition)
     for location_condition in conditions(board, clues):
@@ -1446,6 +1704,116 @@ def _hidden_boolean(model: Model, prefix: str, name: str, family: str) -> tuple[
         family=family,
     )
     return variable, is_true, is_false
+
+
+def _global_attribute_membership(
+    model: Model, board: Board, conditions: Sequence[GlobalCountCondition]
+) -> dict[tuple[str, str], tuple[int, int]]:
+    """Expose fixed attributes as hidden Booleans for generic count constraints."""
+    attributes = {
+        condition.selector.name
+        for condition in conditions
+        if condition.kind == "people_with"
+        and condition.selector is not None
+        and condition.selector.kind == "attribute"
+    }
+    membership: dict[tuple[str, str], tuple[int, int]] = {}
+    for attribute in sorted(attributes):
+        for person in board.people:
+            _, present, absent = _hidden_boolean(
+                model,
+                "global_attribute",
+                f"{person} attribute {attribute}",
+                "attribute membership",
+            )
+            membership[person, attribute] = (present, absent)
+            model.assign(
+                present if board.has_attribute(person, attribute) else absent,
+                "clue",
+                f"{person} has attribute {attribute}"
+                if board.has_attribute(person, attribute)
+                else f"{person} does not have attribute {attribute}",
+                sources=(f"attribute {attribute} for {person}",),
+            )
+    return membership
+
+
+def _compile_global_counts(
+    model: Model,
+    board: Board,
+    conditions: Sequence[GlobalCountCondition],
+    roles: dict[tuple[str, str], tuple[int, int]],
+    attributes: dict[tuple[str, str], tuple[int, int]],
+) -> None:
+    empty_areas: dict[str, int] = {}
+    empty_cells: dict[Square, int] = {}
+    for condition in conditions:
+        if condition.kind in ("people_on", "people_in"):
+            cells = condition.cells(board)
+            literals = [
+                model.literal(person, square) for person in board.people for square in sorted(cells)
+            ]
+        elif condition.kind == "people_with":
+            assert condition.selector is not None
+            name = condition.selector.name
+            literals = [
+                (roles if condition.selector.kind == "role" else attributes)[person, name][0]
+                for person in board.people
+            ]
+        elif condition.kind == "empty_areas":
+            literals = []
+            for region in sorted(condition.regions(board)):
+                if region not in empty_areas:
+                    _, is_empty, _ = _hidden_boolean(
+                        model,
+                        global_count_unit_prefix("area", region),
+                        f"area {board.region_names[region]} is empty",
+                        "global empty area",
+                    )
+                    occupants = [
+                        model.literal(person, square)
+                        for person in board.people
+                        for square in board.free
+                        if board.region_of(square) == region
+                    ]
+                    model.constrain(
+                        f"area {board.region_names[region]} empty state",
+                        Kind.COUNT,
+                        occupants,
+                        allowed_counts={0},
+                        reified_by=is_empty,
+                        family="global empty area",
+                    )
+                    empty_areas[region] = is_empty
+                literals.append(empty_areas[region])
+        else:
+            literals = []
+            for square in sorted(condition.cells(board)):
+                if square not in empty_cells:
+                    _, is_empty, _ = _hidden_boolean(
+                        model,
+                        global_count_unit_prefix("cell", str(square)),
+                        f"cell {square} is empty",
+                        "global empty cell",
+                    )
+                    occupants = [model.literal(person, square) for person in board.people]
+                    model.constrain(
+                        f"cell {square} empty state",
+                        Kind.COUNT,
+                        occupants,
+                        allowed_counts={0},
+                        reified_by=is_empty,
+                        family="global empty cell",
+                    )
+                    empty_cells[square] = is_empty
+                literals.append(empty_cells[square])
+        model.constrain(
+            condition.label,
+            Kind.COUNT,
+            literals,
+            allowed_counts=condition.allowed_counts,
+            family=f"global count clue {condition.number or condition.index + 1}: {condition.kind}",
+        )
 
 
 def _compile_quantified_condition(
@@ -1928,7 +2296,14 @@ def role_statuses(board: Board, model: Model) -> dict[tuple[str, str], bool | No
 # --- rendering ------------------------------------------------------------
 
 
-def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -> str:
+def render(
+    board: Board,
+    model: Model,
+    title: str,
+    steps: Sequence[Step] = (),
+    *,
+    global_counts: Sequence[GlobalCountCondition] = (),
+) -> str:
     """Draw the board, one colour per region, 4 columns per square.
 
     A square nobody can stand on any more is crossed out, as a person would
@@ -1941,6 +2316,13 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
     shade = {rid: PALETTE[i % len(PALETTE)] for i, rid in enumerate(board.region_names)}
     placed = {s.var for s in steps if s.asserted}
     eliminated = {s.value for s in steps if not s.asserted}
+    active_sources = {source for step in steps for source in step.sources}
+    count_scope = {
+        square
+        for condition in global_counts
+        if condition.label in active_sources
+        for square in condition.scope_cells(board)
+    }
     at: dict[Square, str] = {}
     for person in board.people:
         square = model.chosen(person)
@@ -1959,8 +2341,10 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
                 body = f"{INK} ## "
             elif sq in at:
                 person = at[sq]
-                tint = NEW if person in placed else INK
+                tint = NEW if person in placed or sq in count_scope else INK
                 body = f"{tint}{person[:3]:^4}"
+            elif sq in count_scope:
+                body = f"{NEW}*   "
             elif sq not in reachable and not finished:
                 tint = f"{BOLD}{NEW}" if sq in eliminated else FADED
                 body = f"{tint} x  "
@@ -1976,6 +2360,9 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
         empty_count = len(board.free) - len(at)
         out.append(f"\n  {open_count} of {empty_count} empty squares still possible for someone")
     out += _narrowed(board, model, steps)
+    out += _global_count_progress(model, global_counts, active_sources)
+    if count_scope:
+        out.append(f"  {NEW}*{RESET} cells in the global count scope for this step")
 
     out.append("")
     for rid, name in board.region_names.items():
@@ -2039,6 +2426,38 @@ def render(board: Board, model: Model, title: str, steps: Sequence[Step] = ()) -
 def _reachable(board: Board, model: Model) -> set[Square]:
     """Squares at least one person can still stand on."""
     return {model.value_of(lit) for p in board.people for lit in model.options(p)}
+
+
+def _global_count_progress(
+    model: Model, conditions: Sequence[GlobalCountCondition], active_sources: set[str]
+) -> list[str]:
+    if not conditions:
+        return []
+    lines = ["  global counts:"]
+    for condition in conditions:
+        constraint = next(c for c in model.constraints if c.name == condition.label)
+        current = sum(model.is_true(literal) for literal in constraint.literals)
+        undecided = sum(
+            not model.is_true(literal) and not model.is_false(literal)
+            for literal in constraint.literals
+        )
+        feasible = model.feasible_counts(constraint.index)
+        possible = ",".join(map(str, sorted(feasible))) or "none"
+        additional = sorted(count - current for count in feasible)
+        if not additional:
+            needed = "none"
+        elif additional[0] == additional[-1]:
+            needed = f"{additional[0]} more"
+        else:
+            needed = f"{additional[0]}..{additional[-1]} more"
+        allowed = ",".join(map(str, sorted(condition.allowed_counts)))
+        marker = NEW if condition.label in active_sources else INK
+        reference = f" ({condition.number})" if condition.number is not None else ""
+        lines.append(
+            f"    {marker}{condition.description}{reference}: {current} true, "
+            f"{undecided} open; need {needed}, possible {possible}, allowed {allowed}{RESET}"
+        )
+    return lines
 
 
 def _narrowed(board: Board, model: Model, steps: Sequence[Step]) -> list[str]:

@@ -370,6 +370,116 @@ unique_attribute glasses Ada Ben
     assert "Precies één van Ada en Ben heeft het kenmerk bril (3)" in dutch
 
 
+def test_region_capacity_count_explains_the_placement_it_forces():
+    text = """Size: 2
+Regions:
+a: alcove
+b: room
+Grid:
+a b
+b b
+People:
+Ada
+Ben
+Clues:
+in_row Ada 1
+in_row Ben 2
+count people in area:alcove = 1
+"""
+    solutions = bruteforce.solutions(text, "murdoku", limit=5)
+    assert len(solutions) == 1
+    assert solutions[0]["Ada"] == murdoku.Square(0, 0)
+
+    story = explain(text)
+    assert "Region capacity: exactly one person is in the alcove (3)" in story
+    assert "Ada on r1c1" in story
+
+
+def test_global_count_clues_are_explained_in_english_and_dutch():
+    english_text = """Language: en
+Size: 3
+Regions:
+a: west
+b: east
+c: garden
+Grid:
+a b c
+a b c
+a b c
+People:
+Ada
+Ben
+Roles:
+bandit: any
+Attributes:
+glasses: Ben
+AreaTags:
+inside: east garden
+Objects:
+bed: standable r1c1
+Marks:
+seats: r1c2 r2c2
+Words:
+bed: the bed
+inside: in the east or garden
+glasses: glasses
+bandit: bandit
+seats: the seats
+Clues:
+count people on object:bed = 1
+count people in rows:1,3 = 2
+count people with role:bandit odd
+count people with attribute:glasses = 1
+count empty areas all = 1
+count empty areas in tag:inside <= 1
+count empty cells in mark:seats 1..2
+count people in area:west = 1
+count people in tag:inside odd
+count people in columns:1-2 = 2
+count people in mark:seats = 1
+"""
+    english = explain(english_text)
+    assert "__global_" not in english
+    assert "Exactly one person is on the bed (1)" in english
+    assert "Exactly two people are in row 1 or 3 (2)" in english
+    assert "An odd number of people have the bandit role (3)" in english
+    assert "Exactly one person has the glasses attribute (4)" in english
+    assert "Exactly one area is empty (5)" in english
+    assert "At most one area is empty in the east or garden (6)" in english
+    assert "Between one and two free cells are empty on the seats (7)" in english
+    assert "Exactly one person is in the west (8)" in english
+    assert "An odd number of people are in the east or garden (9)" in english
+    assert "Exactly two people are in column 1 or 2 (10)" in english
+    assert "Exactly one person is on the seats (11)" in english
+
+    dutch_text = english_text.replace("Language: en", "Language: nl")
+    dutch_text = dutch_text.replace("a: west", "a: westen").replace("b: east", "b: oosten")
+    dutch_text = dutch_text.replace("c: garden", "c: tuin")
+    dutch_text = dutch_text.replace("area:west", "area:westen")
+    dutch_text = dutch_text.replace("inside: east garden", "inside: oosten tuin")
+    dutch_text = dutch_text.replace(
+        "Words:\n", "Words:\nwesten: in het westen\noosten: in het oosten\ntuin: in de tuin\n"
+    )
+    dutch_text = dutch_text.replace(
+        "inside: in the east or garden", "inside: in het oosten of de tuin"
+    )
+    dutch_text = dutch_text.replace("bed: the bed", "bed: het bed")
+    dutch_text = dutch_text.replace("glasses: glasses", "glasses: bril")
+    dutch_text = dutch_text.replace("bandit: bandit", "bandit: bandiet")
+    dutch_text = dutch_text.replace("seats: the seats", "seats: de stoelen")
+    dutch = explain(dutch_text)
+    assert "__global_" not in dutch
+    assert "Precies één persoon staat op het bed (1)" in dutch
+    assert "Precies twee mensen" in dutch
+    assert "Een oneven aantal mensen" in dutch
+    assert "Precies één persoon heeft het kenmerk bril (4)" in dutch
+    assert "Precies één gebied is leeg (5)" in dutch
+    assert "Precies één persoon is in het westen (8)" in dutch
+    assert "Een oneven aantal mensen zijn in het oosten of de tuin (9)" in dutch
+    assert "Precies twee mensen zijn in kolom 1 of 2 (10)" in dutch
+    assert "Precies één persoon is op de stoelen (11)" in dutch
+
+
 def test_story_explains_known_and_absent_roles():
     text = """Size: 2
 Regions:

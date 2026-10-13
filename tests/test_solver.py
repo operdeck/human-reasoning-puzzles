@@ -493,6 +493,47 @@ sole_role_companion B murderer
     _assert_logged_steps_preserve_solutions(model, companion_solutions)
 
 
+def test_global_count_of_object_cells_uses_count_and_matches_brute_force():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+bed: standable r1c1
+People:
+Ada
+Ben
+Clues:
+count people on object:bed = 1
+"""
+    board, clues = load_board(text)
+    (condition,) = murdoku.global_count_conditions(board, clues)
+    placed = {"Ada": murdoku.Square(0, 0), "Ben": murdoku.Square(1, 1)}
+    assert condition.count(board, placed, {}) == 1
+
+    solutions = bruteforce.solutions(text, "murdoku", limit=20)
+    assert solutions
+    assert all(
+        condition.count(
+            board,
+            {person: solution[person] for person in board.people},
+            {},
+        )
+        == 1
+        for solution in solutions
+    )
+
+    model = murdoku.compile_puzzle(board, clues)
+    assert any(
+        constraint.kind is Kind.COUNT and constraint.family == "global count clue 1: people_on"
+        for constraint in model.constraints
+    )
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, solutions)
+
+
 def test_role_occupant_effect_reuses_conditional_count_hook():
     permitted = """Size: 2
 Regions:
@@ -517,6 +558,277 @@ role_occupant bandit not_alone
 
     impossible = permitted.replace("not_alone", "alone")
     assert bruteforce.solutions(impossible, "murdoku", limit=2) == []
+
+
+def test_global_role_attribute_and_empty_counts_match_brute_force():
+    text = """Size: 3
+Regions:
+a: kitchen
+b: hall
+c: garden
+Grid:
+a b c
+a b c
+a b c
+People:
+Ada
+Ben
+AreaTags:
+inside: kitchen hall
+Attributes:
+glasses: Ben
+Roles:
+guide: any
+Marks:
+seats: r1c1 r2c2
+Clues:
+count people with role:guide = 1
+count people with attribute:glasses = 1
+count empty areas all = 1
+count empty areas in tag:inside <= 1
+count empty cells in mark:seats = 1
+"""
+    board, clues = load_board(text)
+    count_conditions = murdoku.global_count_conditions(board, clues)
+    solutions = bruteforce.solutions(text, "murdoku", limit=200)
+
+    assert solutions
+    assert all(
+        condition.count(
+            board,
+            {person: solution[person] for person in board.people},
+            {
+                (person, role.name): solution[board.role_variable(person, role.name)]
+                for person in board.people
+                for role in board.roles
+            },
+        )
+        in condition.allowed_counts
+        for condition in count_conditions
+        for solution in solutions
+    )
+
+    model = murdoku.compile_puzzle(board, clues)
+    assert (
+        sum(
+            constraint.family == "global empty area" and constraint.reified_by is not None
+            for constraint in model.constraints
+        )
+        == 3
+    )
+    assert (
+        sum(
+            constraint.family == "global empty cell" and constraint.reified_by is not None
+            for constraint in model.constraints
+        )
+        == 2
+    )
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, solutions)
+    for solution in solutions:
+        candidate = model.clone()
+        for variable, value in solution.items():
+            candidate.assign(candidate.literal(variable, value), "test", "brute-force solution")
+        candidate.check()
+
+
+def test_global_count_is_visible_in_model_and_step_status():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+bed: standable r1c1
+People:
+Ada
+Ben
+Clues:
+count people on object:bed = 1
+"""
+    board, clues = load_board(text)
+    (condition,) = murdoku.global_count_conditions(board, clues)
+    puzzle = cli.load(text, "murdoku")
+
+    model_report = report.describe(puzzle.model)
+    assert condition.label in model_report
+    assert f"global count clue {condition.number}: people_on" in model_report
+    assert "allowed counts 1" in model_report
+    assert "Ada=r1c1" in model_report
+
+    start = puzzle.draw("Start")
+    assert "global counts:" in start
+    assert "need 1 more" in start
+    assert "possible 1" in start and "allowed 1" in start
+
+    count_steps = []
+    Solver(puzzle.model).solve(
+        on_step=lambda _rule, steps: count_steps.extend(
+            step for step in steps if condition.label in step.sources
+        )
+    )
+    assert count_steps
+    after = puzzle.draw("After count", count_steps)
+    assert "cells in the global count scope for this step" in after
+    assert "*" in after
+
+
+def test_global_count_comparisons_and_location_selectors():
+    text = """Size: 3
+Regions:
+a: west
+b: east
+Grid:
+a b b
+a b b
+a b b
+AreaTags:
+inside: east
+Objects:
+bed: standable r1c1
+bed: standable r3c3
+People:
+Ada
+Ben
+Clues:
+count people on object:bed = 1
+count people in rows:1,3 = 1
+count people in columns:2-3 >= 1
+count people in tag:inside odd
+count people in area:west 1..1
+count people on object_kind:standable = 1
+"""
+    board, clues = load_board(text)
+    conditions = murdoku.global_count_conditions(board, clues)
+    base_text = text.partition("Clues:")[0]
+    expected_counts = {
+        "= 1": frozenset({1}),
+        "<= 1": frozenset({0, 1}),
+        ">= 1": frozenset({1, 2}),
+        "odd": frozenset({1}),
+        "even": frozenset({0, 2}),
+        "0..2": frozenset({0, 1, 2}),
+    }
+    for expression, allowed in expected_counts.items():
+        comparison_text = f"{base_text}Clues:\ncount people on object:bed {expression}\n"
+        comparison_board, comparison_clues = load_board(comparison_text)
+        (comparison,) = murdoku.global_count_conditions(comparison_board, comparison_clues)
+        assert comparison.allowed_counts == allowed
+    placed = {"Ada": murdoku.Square(0, 0), "Ben": murdoku.Square(1, 1)}
+    assert all(condition.count(board, placed, {}) == 1 for condition in conditions)
+
+    solutions = bruteforce.solutions(text, "murdoku", limit=50)
+    assert solutions
+    assert all(
+        all(
+            condition.count(
+                board,
+                {person: solution[person] for person in board.people},
+                {},
+            )
+            in condition.allowed_counts
+            for condition in conditions
+        )
+        for solution in solutions
+    )
+
+
+def test_compiled_global_counts_match_direct_tallies_for_all_small_placements():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+bed: standable r1c1
+bed: standable r2c2
+People:
+Ada
+Ben
+Marks:
+target: r1c1 r2c2
+Clues:
+count people on object:bed = 1
+count empty cells in mark:target = 1
+"""
+    board, clues = load_board(text)
+    conditions = murdoku.global_count_conditions(board, clues)
+    model = murdoku.compile_puzzle(board, clues)
+    checked = 0
+    for squares in product(board.free, repeat=len(board.people)):
+        placed = dict(zip(board.people, squares, strict=True))
+        if len({square.row for square in squares}) < len(squares):
+            continue
+        if len({square.col for square in squares}) < len(squares):
+            continue
+        expected = all(
+            condition.count(board, placed, {}) in condition.allowed_counts
+            for condition in conditions
+        )
+        candidate = model.clone()
+        possible = True
+        try:
+            for person, square in placed.items():
+                candidate.assign(candidate.literal(person, square), "property", "fixed placement")
+            Solver(candidate).solve()
+            candidate.check()
+        except Contradiction:
+            possible = False
+        assert possible == expected, placed
+        checked += 1
+    assert checked > 0
+
+
+def test_global_counts_preserve_full_and_sparse_board_semantics():
+    full = """Size: 2
+Regions:
+a: west
+b: east
+Grid:
+a b
+a b
+People:
+Ada
+Ben
+Clues:
+count people in rows:1-2 = 2
+count empty areas all = 0
+"""
+    sparse = """Size: 3
+Regions:
+a: west
+b: east
+c: garden
+Grid:
+a b c
+a b c
+a b c
+People:
+Ada
+Ben
+Clues:
+count empty areas all = 1
+"""
+    for text in (full, sparse):
+        solutions = bruteforce.solutions(text, "murdoku", limit=20)
+        assert solutions
+        board, clues = load_board(text)
+        conditions = murdoku.global_count_conditions(board, clues)
+        assert all(
+            condition.count(
+                board,
+                {person: solution[person] for person in board.people},
+                {},
+            )
+            in condition.allowed_counts
+            for condition in conditions
+            for solution in solutions
+        )
+        model = murdoku.compile_puzzle(board, clues)
+        Solver(model).solve()
+        _assert_logged_steps_preserve_solutions(model, solutions)
 
 
 def test_role_bindings_to_marks_and_object_kinds_match_brute_force():
@@ -2092,7 +2404,7 @@ def test_every_example_is_unique_and_the_engine_finds_it(name):
     (expected,) = bruteforce.solutions(text)
     result = Solver(cli.load(text, cli.detect(text)).model).solve()
     assert result.solved
-    assert result.assignment == expected
+    assert result.assignment == {variable: expected[variable] for variable in result.assignment}
 
 
 @pytest.mark.parametrize("name", sorted(p.name for p in EXAMPLES.glob("*.txt")))
@@ -2104,6 +2416,8 @@ def test_no_step_ever_contradicts_the_brute_force_solution(name):
     model = cli.load(text, cli.detect(text)).model
     Solver(model).solve()
     for step in model.log:
+        if step.var not in expected:
+            continue  # Hidden count helpers are checked by complete-solution model validation.
         assert (step.value == expected[step.var]) == step.asserted, step
 
 

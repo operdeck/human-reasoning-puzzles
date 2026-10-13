@@ -40,7 +40,8 @@ def load(text: str, kind: str) -> Puzzle:
         return Puzzle(kind, model, partial(futoshiki.render, signs))
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
-    return Puzzle(kind, model, partial(murdoku.render, board))
+    global_counts = murdoku.global_count_conditions(board, clues)
+    return Puzzle(kind, model, partial(murdoku.render, board, global_counts=global_counts))
 
 
 def narrate(rule: str, steps: Sequence[Step]) -> None:
@@ -111,13 +112,19 @@ def write_picture(
     elif kind == "futoshiki":
         image = picture.futoshiki_picture(futoshiki.parse(text), solution)
     else:
-        board, _ = load_board(text)
+        board, clues = load_board(text)
+        global_counts = murdoku.global_count_conditions(board, clues)
         if solution is None and (unknown := picture.unknown_object_icons(board)):
             print(
                 f"warning: no icon for {', '.join(unknown)}; using text labels",
                 file=sys.stderr,
             )
-        image = picture.murdoku_picture(board, solution, role_statuses=role_statuses)
+        image = picture.murdoku_picture(
+            board,
+            solution,
+            role_statuses=role_statuses,
+            global_counts=global_counts,
+        )
     image.save(path)
     print(f"wrote {path}")
     return True

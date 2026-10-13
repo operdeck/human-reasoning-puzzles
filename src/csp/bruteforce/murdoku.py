@@ -12,10 +12,12 @@ from typing import Any
 from ..murdoku import (
     Board,
     Condition,
+    GlobalCountCondition,
     QuantifiedCondition,
     RoleCondition,
     Square,
     conditions,
+    global_count_conditions,
     quantified_conditions,
     role_conditions,
 )
@@ -27,6 +29,7 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
     checks = conditions(board, clues)
     role_checks = role_conditions(board, clues)
     target_checks = quantified_conditions(board, clues)
+    global_checks = global_count_conditions(board, clues)
     allowed = {
         person: [
             sq for sq in board.free if all(c.test(sq) for c in checks if c.people == (person,))
@@ -42,7 +45,7 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
             due[max(check.people, key=later.__getitem__)].append(check)
 
     found: list[dict[str, Any]] = []
-    _search(board, order, allowed, due, role_checks, target_checks, {}, found, limit)
+    _search(board, order, allowed, due, role_checks, target_checks, global_checks, {}, found, limit)
     return found
 
 
@@ -53,13 +56,14 @@ def _search(
     due: dict[str, list[Condition]],
     role_checks: list[RoleCondition],
     target_checks: list[QuantifiedCondition],
+    global_checks: list[GlobalCountCondition],
     placed: dict[str, Square],
     found: list[dict[str, Any]],
     limit: int,
 ) -> None:
     if len(placed) == len(order):
         for roles in _role_assignments(
-            board, role_checks, target_checks, placed, limit - len(found)
+            board, role_checks, target_checks, global_checks, placed, limit - len(found)
         ):
             found.append({**placed, **roles})
             if len(found) >= limit:
@@ -72,17 +76,56 @@ def _search(
         if sq.row in rows or sq.col in cols:
             continue
         placed[person] = sq
-        if all(check.test(*(placed[p] for p in check.people)) for check in due[person]):
-            _search(board, order, allowed, due, role_checks, target_checks, placed, found, limit)
+        if all(
+            check.test(*(placed[p] for p in check.people)) for check in due[person]
+        ) and _global_counts_possible(board, global_checks, placed, len(order) - len(placed)):
+            _search(
+                board,
+                order,
+                allowed,
+                due,
+                role_checks,
+                target_checks,
+                global_checks,
+                placed,
+                found,
+                limit,
+            )
         del placed[person]
         if len(found) >= limit:
             return
+
+
+def _global_counts_possible(
+    board: Board,
+    conditions: Sequence[GlobalCountCondition],
+    placed: dict[str, Square],
+    remaining: int,
+) -> bool:
+    for condition in conditions:
+        if (
+            condition.kind == "people_with"
+            and condition.selector is not None
+            and condition.selector.kind == "role"
+        ):
+            continue
+        current = condition.count(board, placed, {})
+        if condition.kind in ("people_on", "people_in"):
+            minimum, maximum = current, min(condition.maximum(board), current + remaining)
+        elif condition.kind in ("empty_areas", "empty_cells"):
+            minimum, maximum = max(0, current - remaining), current
+        else:
+            minimum = maximum = current
+        if not any(minimum <= count <= maximum for count in condition.allowed_counts):
+            return False
+    return True
 
 
 def _role_assignments(
     board: Board,
     rules: Sequence[RoleCondition],
     target_checks: Sequence[QuantifiedCondition],
+    global_checks: Sequence[GlobalCountCondition],
     placed: dict[str, Square],
     limit: int,
 ) -> list[dict[str, bool]]:
@@ -94,8 +137,13 @@ def _role_assignments(
         if len(found) >= limit:
             return
         if index == len(board.roles):
-            if _role_rules_hold(board, rules, placed, selected) and all(
-                check.holds(board, placed, selected) for check in target_checks
+            if (
+                _role_rules_hold(board, rules, placed, selected)
+                and all(check.holds(board, placed, selected) for check in target_checks)
+                and all(
+                    check.count(board, placed, selected) in check.allowed_counts
+                    for check in global_checks
+                )
             ):
                 found.append(
                     {

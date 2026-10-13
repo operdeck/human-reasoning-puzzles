@@ -240,6 +240,50 @@ not_role B bandit
     assert target.exists()
 
 
+def test_png_global_count_legend_highlights_scope_and_cli_passes_counts(tmp_path, monkeypatch):
+    from csp import cli, murdoku
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+bed: standable r1c1
+People:
+Ada
+Ben
+Clues:
+count people on object:bed = 1
+"""
+    board, clues = load_board(text)
+    (condition,) = murdoku.global_count_conditions(board, clues)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, global_counts=[condition])
+    tiny = picture.murdoku_picture(board, cell=12, coordinates=False, global_counts=[condition])
+    plain = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    margin = CELL // 6
+    assert image.height > plain.height
+    assert tiny.width > 0 and tiny.height > 0
+    assert image.getpixel((margin + 1, margin + 1)) == picture.COUNT_SCOPE
+
+    puzzle = tmp_path / "global-count.txt"
+    target = tmp_path / "global-count.png"
+    puzzle.write_text(text)
+    seen = []
+    original = picture.murdoku_picture
+
+    def capture(board, placed=None, **kwargs):
+        seen.append(kwargs.get("global_counts"))
+        return original(board, placed, **kwargs)
+
+    monkeypatch.setattr(picture, "murdoku_picture", capture)
+    cli.main([str(puzzle), "--png", str(target)])
+
+    assert seen and seen[0]
+    assert target.exists()
+
+
 def test_vertical_bed_icon_is_rotated(monkeypatch):
     board = Board(
         2,
