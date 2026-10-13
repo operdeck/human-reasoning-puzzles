@@ -1,7 +1,6 @@
 # Murdoku 0 - "The first case"  (4x4, three regions)
 #
-# A first, tiny Murdoku to show how the puzzle works. The layout follows the
-# opening example of a Murdoku book; people and rooms are renamed.
+# A first, tiny Murdoku to show how the puzzle works.
 #
 # Three suspects and one victim, one per row and column. Ingrid, Joost and
 # Lotte each have a clue; Wouter, the victim, takes the last free square.

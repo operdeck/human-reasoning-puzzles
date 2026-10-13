@@ -24,6 +24,13 @@ Before persistent edits, follow `AGENT.md`, including the branch and
 originality requirements. Honor a requested output path, but never overwrite
 an existing file.
 
+Before transcribing a third-party puzzle, establish that the user has
+permission to reproduce its board, clues, and solution. A user-provided image
+or a git-ignored destination does not itself grant that permission. If the
+source is unlicensed or permission is unclear, stop before creating a
+transcription and ask; a non-reproductive inventory of the source files is
+still possible.
+
 ## Transcribe an Image
 
 1. Inspect the actual user-supplied image. Use visual inspection at full
@@ -51,6 +58,17 @@ clues in their printed order. Never infer an object's kind from its name or icon
    Then run the solution-count and grade checks under [Validation](#validation).
    For transcription, report those results faithfully; do not alter the
    transcribed clues just to force uniqueness or a desired grade.
+
+### Paired Solution Evidence
+
+When a source includes a solved board or walkthrough, record its placements
+and stated answer separately from the puzzle clues. Cross-check those claims
+against row/column occupancy, areas, object kinds, and the playable source when
+available. If the screenshot, walkthrough, or live interaction disagree,
+preserve the discrepancy and report it; do not change clues or object kinds to
+force agreement. A coherent person-on-object placement is positive evidence
+that the object is standable, but an unoccupied icon does not prove it is
+blocking. If a kind remains unclear, ask rather than silently defaulting.
 
 ## Build from Constraints
 
