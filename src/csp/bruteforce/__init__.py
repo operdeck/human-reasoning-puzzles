@@ -7,9 +7,11 @@ same file reader and tests the same rule definitions as the engine does
 own: nothing here imports from `csp.core`, so no literal, constraint or
 deduction rule is involved.
 
-Every `solutions` function returns up to `limit` solutions, each as a dict
-from variable name to value - the same shape as the engine's
-`Result.assignment` - so the two can be compared directly.
+Every `solutions` function returns up to `limit` solutions as dictionaries.
+For Sudoku, Calcudoku, and Futoshiki they match the engine's
+`Result.assignment`. Murdoku results also include each role membership as a
+Boolean key such as `"Ada has role bandit"`; the engine keeps hidden role
+states separate from its visible person-placement assignment.
 """
 
 from collections.abc import Callable

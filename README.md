@@ -474,6 +474,12 @@ CornerObjects:  # optional; object touches the four cells around an interior gri
 Marks:          # optional; named cell sets may overlap and never block a cell
   quiet: r2c3 r2c4 ; alone
   gathering: r3c1 r3c2 ; not_alone
+Roles:          # optional; roles overlap unless a rule says otherwise
+  bandit: 4 different_regions
+  bearded: 6
+  scout: any
+RoleEligibility: # optional; restrict a role to these people
+  bandit: Anja Blake Colin
 People:         # one per line, from 1 through Size
 Rules:          # optional; clues that come with the board, not numbered
   outside Tim water
@@ -484,6 +490,20 @@ Clues:          # numbered 1, 2, ... in the order given
   next_to Jos fountain               # one of the four cells around a corner object
   on_mark Ada quiet                  # Ada occupies a cell marked quiet
   not_on_mark Ben gathering          # Ben occupies no gathering cell
+  has_role Ada bandit                # known membership
+  not_role Ben bandit                # explicitly absent membership
+  some_role Eli                      # at least one role, not yet named
+  roleless Faith                     # no roles
+  at_most_one_role Gerald            # explicit per-person limit
+  role_subset bandit bearded         # every bandit is bearded
+  role_in_tagged Anja bandit inside  # this role requires the tagged area
+  role_not_in_tagged Blake bandit inside
+  min_role_in_tagged bandit inside 1 # every region in the tag has a holder
+  role_on Anja bandit chair          # role binding to object or mark cells
+  role_next_to Blake bandit blocking # role binding to an object kind
+  role_below Colin bandit 1          # exactly one row below a role holder
+  sole_role_companion Daryl bandit
+  role_occupant bandit not_alone      # condition in each area with a bandit
   knight_from Tim klimwand boulder   # a knight's move from any of them
   on Jos bank                        # on a standable object
   not_on Clarence stoel              # not on any square in that standable set
@@ -509,6 +529,13 @@ Clues:          # numbered 1, 2, ... in the order given
 Every object declaration must say `blocking` or `standable`; names and icons do
 not imply occupancy. Repeat a name to place multiple instances of one object
 type. Each declaration is one connected, non-overlapping footprint.
+
+`Roles:` declares theme-neutral role names with optional exact holder counts;
+use `any` when the role has no global count. `different_regions` requires role
+holders to occupy distinct logical areas. `RoleEligibility:` restricts a role
+to its listed people. Role membership is independent by default, so a person
+may have several roles or none; use `at_most_one_role` only when required.
+Undecided membership remains unknown until a clue or constraint determines it.
 
 `Marks:` gives names to cell sets independently of regions and objects. Marks
 may overlap, and marked cells remain open for people. `on_mark` and
