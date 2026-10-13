@@ -1,0 +1,71 @@
+# Neutral 4x4 example composing the Murdoku format features.
+
+Size: 4
+Regions:
+a: Atrium
+b: Gallery
+c: Studio
+d: Courtyard
+Grid:
+a a b b
+a c b b
+c c d d
+c d d d
+AreaTags:
+north: Atrium Gallery
+west: Atrium Studio
+daylight: Gallery Courtyard
+Hatched:
+west
+Objects:
+tree: blocking r1c4 r2c4
+bench: standable r4c2
+EdgeItems:
+archway: door r2c2 r2c3
+window: window r3c4
+CornerObjects:
+fountain: r3c1 r3c2 r4c1 r4c2
+Marks:
+quiet: r1c1 r2c1 ; alone
+People:
+Ada
+Bo
+Cal
+Dee
+Attributes:
+trained: Cal Dee
+Roles:
+navigator: 1 different_regions
+recorder: 3 different_regions
+RoleEligibility:
+navigator: attribute:trained
+Clues:
+in_row Ada 1
+in_column Ada 1
+in_row Bo 2
+in_column Bo 3
+in_row Cal 3
+in_column Cal 4
+in_row Dee 4
+in_column Dee 2
+at Bo archway
+at Cal window
+next_to Dee fountain
+on Dee bench
+on_mark Ada quiet
+above Bo attribute:trained
+has_role Cal navigator
+has_role Ada recorder
+has_role Bo recorder
+has_role Cal recorder
+role_subset role:navigator role:recorder
+role_in_tagged Cal navigator daylight
+count people on object:bench = 1
+count people in tag:north = 2
+count people with role:navigator = 1
+count people with role:recorder = 3
+count people with attribute:trained = 2
+count empty areas all = 1
+count empty areas in tag:west = 1
+count empty cells in mark:quiet = 1
+count empty cells in rows:1-4 = 10

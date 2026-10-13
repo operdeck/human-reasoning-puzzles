@@ -4,7 +4,8 @@
 
 The generated boards use four logical areas and exercise object, area/tag, row,
 column, role, attribute, empty-area, and empty-cell counts. Propagation is
-measured with the generic `single` and `count` rules, not puzzle search.
+measured with `single`/`count` and then `single`/`count`/`chains`, not puzzle
+search.
 """
 
 import argparse
@@ -16,6 +17,9 @@ from csp.murdoku import compile_puzzle
 from csp.puzzlefile import load_board
 
 COUNT_RULES = tuple(rule for rule in DEFAULT_RULES if rule.name in ("single", "count"))
+COUNT_CHAIN_RULES = tuple(
+    rule for rule in DEFAULT_RULES if rule.name in ("single", "count", "chains")
+)
 
 
 def puzzle_text(size: int) -> str:
@@ -68,10 +72,11 @@ def puzzle_text(size: int) -> str:
     )
 
 
-def measure(size: int, runs: int) -> tuple[float, float, float, int, int]:
+def measure(size: int, runs: int) -> tuple[float, float, float, float, int, int]:
     parsing: list[float] = []
     compiling: list[float] = []
-    propagating: list[float] = []
+    count_only: list[float] = []
+    count_chains: list[float] = []
     constraints = 0
     literals = 0
     text = puzzle_text(size)
@@ -87,13 +92,18 @@ def measure(size: int, runs: int) -> tuple[float, float, float, int, int]:
         literals = model.num_literals
 
         start = time.perf_counter()
-        Solver(model, COUNT_RULES).solve()
-        propagating.append((time.perf_counter() - start) * 1000)
+        Solver(model.clone(), COUNT_RULES).solve()
+        count_only.append((time.perf_counter() - start) * 1000)
+
+        start = time.perf_counter()
+        Solver(model.clone(), COUNT_CHAIN_RULES).solve()
+        count_chains.append((time.perf_counter() - start) * 1000)
 
     return (
         statistics.median(parsing),
         statistics.median(compiling),
-        statistics.median(propagating),
+        statistics.median(count_only),
+        statistics.median(count_chains),
         constraints,
         literals,
     )
@@ -106,14 +116,16 @@ def main() -> None:
     if args.runs < 1:
         parser.error("--runs must be at least 1")
 
-    print(f"Murdoku global counts; median of {args.runs} runs; single/count propagation only")
-    print("| Size | Parse ms | Compile ms | Propagate ms | Constraints | Literals |")
-    print("|---:|---:|---:|---:|---:|---:|")
+    print(f"Murdoku global counts; median of {args.runs} runs")
+    print("| Size | Parse ms | Compile ms | Count ms | Count+chains ms | Constraints | Literals |")
+    print("|---:|---:|---:|---:|---:|---:|---:|")
     for size in (12, 16):
-        parsing, compiling, propagating, constraints, literals = measure(size, args.runs)
+        parsing, compiling, count_only, count_chains, constraints, literals = measure(
+            size, args.runs
+        )
         print(
-            f"| {size}x{size} | {parsing:.2f} | {compiling:.2f} | "
-            f"{propagating:.2f} | {constraints} | {literals} |"
+            f"| {size}x{size} | {parsing:.2f} | {compiling:.2f} | {count_only:.2f} | "
+            f"{count_chains:.2f} | {constraints} | {literals} |"
         )
 
 

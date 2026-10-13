@@ -425,6 +425,34 @@ def test_bad_region_colour_is_rejected():
         load_board(text)
 
 
+def test_cli_png_defaults_to_puzzle_stem(tmp_path, capsys):
+    from csp import cli
+
+    puzzle = tmp_path / "default.txt"
+    puzzle.write_text(
+        """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Clues:
+in_row Ada 1
+in_column Ada 1
+in_row Ben 2
+in_column Ben 2
+"""
+    )
+    target = tmp_path / "default.png"
+
+    assert cli.main([str(puzzle), "--png"]) == 0
+    assert target.exists()
+    assert (tmp_path / "default-solution.png").exists()
+
+
 def test_cli_png_writes_board_and_solution(tmp_path, capsys):
     from csp import cli
 
