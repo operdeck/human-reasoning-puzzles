@@ -8,7 +8,7 @@ PIL = pytest.importorskip("PIL")
 from PIL import Image, ImageDraw  # noqa: E402
 
 from csp import bruteforce, icons, picture  # noqa: E402
-from csp.murdoku import Board, BoardObject, CornerObject, EdgeItem, Square  # noqa: E402
+from csp.murdoku import Board, BoardObject, CornerObject, EdgeItem, RoleSpec, Square  # noqa: E402
 from csp.puzzlefile import load_board  # noqa: E402
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -185,6 +185,59 @@ social: r1c1 ; not_alone
     assert image.getpixel((margin + pad + 5, margin + pad + 5)) == picture.MARK_FILL
     assert picture._Legend(board, CELL).mark_names == ["quiet", "social"]
     assert image.height > 2 * CELL + 2 * margin
+
+
+def test_png_legend_lists_role_membership_states():
+    board = Board(
+        3,
+        [["a"] * 3 for _ in range(3)],
+        {"a": "room"},
+        [],
+        ["A", "B", "C"],
+        roles=[RoleSpec("bandit", frozenset({1}))],
+    )
+    states = {("A", "bandit"): True, ("B", "bandit"): False, ("C", "bandit"): None}
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, role_statuses=states)
+    legend = picture._Legend(board, CELL, states)
+
+    assert legend.role_names == ["bandit"]
+    assert image.height > 3 * CELL + CELL // 3
+
+
+def test_cli_initial_png_receives_compile_time_role_states(tmp_path, monkeypatch):
+    from csp import cli
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Roles:
+bandit: any
+Rules:
+has_role A bandit
+not_role B bandit
+"""
+    puzzle = tmp_path / "roles.txt"
+    target = tmp_path / "roles.png"
+    puzzle.write_text(text)
+    seen = []
+    original = picture.murdoku_picture
+
+    def capture(board, placed=None, **kwargs):
+        seen.append(kwargs.get("role_statuses"))
+        return original(board, placed, **kwargs)
+
+    monkeypatch.setattr(picture, "murdoku_picture", capture)
+    cli.main([str(puzzle), "--png", str(target)])
+
+    assert seen
+    assert seen[0] == {("A", "bandit"): True, ("B", "bandit"): False}
+    assert target.exists()
 
 
 def test_vertical_bed_icon_is_rotated(monkeypatch):

@@ -29,11 +29,13 @@ from .murdoku import (
     Board,
     Clue,
     Condition,
+    RoleCondition,
     Square,
     board_rules,
     compile_puzzle,
     conditions,
     counted,
+    role_conditions,
 )
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, read_sections
@@ -116,6 +118,24 @@ PHRASES: dict[str, dict[str, str]] = {
         "count_reason": "the allowed counts for {name} are {counts}",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
+        "role_has": "{who} has the {role} role",
+        "role_not": "{who} does not have the {role} role",
+        "role_some": "{who} has at least one role",
+        "roleless": "{who} has no roles",
+        "role_at_most_one": "{who} has at most one role",
+        "role_subset": "every {role} holder is also a {other_role} holder",
+        "role_in_tagged": "{who} has role {role} only in {area}",
+        "role_not_in_tagged": "{who} has role {role} only outside {area}",
+        "min_role_in_tagged": "at least {n} {role} holders are in {area}",
+        "role_on": "if {who} has role {role}, they must be on {things}",
+        "role_not_on": "if {who} has role {role}, they must not be on {things}",
+        "role_next_to": "if {who} has role {role}, they must be next to {things}",
+        "role_below": "{who} is below a {role} holder",
+        "role_below_n": "{who} is {n} rows below a {role} holder",
+        "sole_role_companion": "{who}'s sole region companion has role {role}",
+        "role_occupant": (
+            "when a {role} holder is in an area, its occupant condition is {condition}"
+        ),
         "clue.above": "{a} is somewhere above {b}",
         "clue.above_n": "{a} is exactly {rows} above {b}",
         "clue.within": "{a} is at most {n} squares from {b}",
@@ -200,6 +220,22 @@ PHRASES: dict[str, dict[str, str]] = {
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
+        "role_has": "{who} heeft de rol {role}",
+        "role_not": "{who} heeft de rol {role} niet",
+        "role_some": "{who} heeft minstens één rol",
+        "roleless": "{who} heeft geen rollen",
+        "role_at_most_one": "{who} heeft hoogstens één rol",
+        "role_subset": "iedere {role}-drager is ook {other_role}-drager",
+        "role_in_tagged": "{who} heeft de rol {role} alleen in {area}",
+        "role_not_in_tagged": "{who} heeft de rol {role} alleen buiten {area}",
+        "min_role_in_tagged": "minstens {n} {role}-dragers zijn in {area}",
+        "role_on": "als {who} de rol {role} heeft, staat diegene op {things}",
+        "role_not_on": "als {who} de rol {role} heeft, staat diegene niet op {things}",
+        "role_next_to": "als {who} de rol {role} heeft, staat diegene naast {things}",
+        "role_below": "{who} staat onder een {role}-drager",
+        "role_below_n": "{who} staat {n} rijen onder een {role}-drager",
+        "sole_role_companion": "de enige gebiedsgenoot van {who} heeft de rol {role}",
+        "role_occupant": "als een {role}-drager in een gebied is, geldt daar: {condition}",
         "clue.above": "{a} is ergens boven {b}",
         "clue.above_n": "{a} is precies {rows} boven {b}",
         "clue.within": "{a} is hooguit {n} vakjes van {b}",
@@ -431,6 +467,7 @@ class _State:
     order: list[str] = field(default_factory=list)
     history: list[Step] = field(default_factory=list)
     announced: list[str] = field(default_factory=list)  # placed in bold so far, in order
+    role_told: dict[tuple[str, str], bool] = field(default_factory=dict)
 
     def announce(self, person: str) -> None:
         if person not in self.announced:
@@ -458,25 +495,44 @@ class Story:
         self.places = Places(board, say)
         self.about = {rule.name: rule.about for rule in board_rules(board)}
         self.conditions = {c.label: c for c in conditions(board, clues)}
-        self.model = compile_puzzle(board, clues)
-        self.auxiliary_variables = {
-            self.model.var_of(constraint.reified_by)
-            for constraint in self.model.constraints
-            if constraint.family == "conditional occupancy" and constraint.reified_by is not None
+        self.role_conditions: dict[str, RoleCondition] = {
+            rule.label: rule for rule in role_conditions(board, clues)
         }
+        self.role_variables = {
+            board.role_variable(person, role.name): (person, role.name)
+            for role in board.roles
+            for person in board.people
+        }
+        self.model = compile_puzzle(board, clues)
+        self.auxiliary_variables = (
+            set(self.model.all_variables) - set(self.board.people) - set(self.role_variables)
+        )
 
     def tell(self) -> str:
         start = self.model.clone()
         compiled = list(self.model.log)
         moves: list[Move] = []
+        role_moves: set[int] = set()
 
         def collect(rule: str, steps: Sequence[Step]) -> None:
             if (move := Move.of(rule, steps)) is not None:
                 moves.append(move)
+                if any(
+                    step.var in self.role_variables
+                    or step.var.startswith("__role_")
+                    or any("role" in source for source in step.sources)
+                    for step in steps
+                ):
+                    role_moves.add(id(move))
 
         Solver(self.model.clone()).solve(on_step=collect)
         firings: list[tuple[str, Sequence[Step]]] = []
-        replay(start, shortest(start, moves), lambda rule, steps: firings.append((rule, steps)))
+        necessary = {id(move) for move in shortest(start, moves)} | role_moves
+        replay(
+            start,
+            [move for move in moves if id(move) in necessary],
+            lambda rule, steps: firings.append((rule, steps)),
+        )
 
         options = {p: {start.value_of(lit) for lit in start.options(p)} for p in self.board.people}
         state = _State(options, {p: set(s) for p, s in options.items()})
@@ -520,8 +576,24 @@ class Story:
         for label, group in groupby(compiled, key=lambda s: s.sources[0]):
             steps = list(group)
             for step in steps:
-                left[step.var].discard(step.value)
-            condition = self.conditions[label]
+                if step.var in left:
+                    left[step.var].discard(step.value)
+            role_rule = self.role_conditions.get(label)
+            if role_rule is not None:
+                text = self._role_condition_text(role_rule)
+                said.append(f"{_cap(text)}{self._role_ref(role_rule)}.")
+                if role_rule.kind in ("has_role", "not_role"):
+                    person, role = role_rule.args
+                    state.role_told[person, role] = role_rule.kind == "has_role"
+                continue
+            condition = self.conditions.get(label)
+            if condition is None:
+                for step in steps:
+                    if step.var in self.role_variables:
+                        text = self._role_step_text(step, state)
+                        if text:
+                            said.append(f"{_cap(text)}.")
+                continue
             if condition.number is None or condition.kind in ("in_region", "outside"):
                 continue
             (person,) = condition.people
@@ -539,6 +611,21 @@ class Story:
     def _firing(self, rule: str, steps: Sequence[Step], state: _State) -> str:
         before = {p: set(s) for p, s in state.options.items()}
         state.apply(steps)
+        role_sentences = [
+            text
+            for step in steps
+            if step.var in self.role_variables and step.placing is None
+            if (text := self._role_step_text(step, state))
+        ]
+        if role_sentences:
+            changed = [p for p in self.board.people if state.options[p] != before[p]]
+            if changed:
+                return (
+                    f"{self.say.join(role_sentences)}, {self.say('so')} "
+                    + self._outcome(changed, before, state)
+                    + "."
+                )
+            return f"{self.say.join(role_sentences)}."
         if rule == "single":
             if steps[0].var in self.auxiliary_variables:
                 return ""
@@ -648,7 +735,11 @@ class Story:
         self, step: Step, before: dict[str, set[Square]], changed: list[str], outcome: str
     ) -> str:
         """The clue, where the other people involved were known to be, and the upshot."""
-        condition = self.conditions[step.sources[0]]
+        source = step.sources[0]
+        if (role_rule := self._role_condition_for_source(source)) is not None:
+            clue = _cap(self._role_condition_text(role_rule))
+            return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
+        condition = self.conditions[source]
         clue = _cap(self._clue(condition)) + self._ref(condition)
         aspect = ASPECT.get(condition.kind)
         evidence = [
@@ -821,6 +912,93 @@ class Story:
 
     def _clue(self, condition: Condition) -> str:
         return self._clue_text(condition.kind, condition.args, condition.people)
+
+    def _role_step_text(self, step: Step, state: _State) -> str:
+        person, role = self.role_variables[step.var]
+        present = step.value if step.asserted else not step.value
+        key = (person, role)
+        if state.role_told.get(key) == present:
+            return ""
+        state.role_told[key] = present
+        name = self.say.words.get(role) or role.replace("_", " ")
+        return self.say("role_has" if present else "role_not", who=person, role=name)
+
+    def _role_condition_for_source(self, source: str) -> RoleCondition | None:
+        if source in self.role_conditions:
+            return self.role_conditions[source]
+        return next(
+            (
+                rule
+                for label, rule in sorted(
+                    self.role_conditions.items(), key=lambda pair: len(pair[0]), reverse=True
+                )
+                if source.startswith(label + " ")
+            ),
+            None,
+        )
+
+    def _role_condition_text(self, rule: RoleCondition) -> str:
+        kind, args = rule.kind, rule.args
+
+        def role(name: str) -> str:
+            return self.say.words.get(name) or name.replace("_", " ")
+
+        if kind in ("has_role", "not_role"):
+            return self.say(
+                "role_has" if kind == "has_role" else "role_not",
+                who=args[0],
+                role=role(args[1]),
+            )
+        if kind in ("some_role", "roleless", "at_most_one_role"):
+            key = {
+                "some_role": "role_some",
+                "roleless": "roleless",
+                "at_most_one_role": "role_at_most_one",
+            }[kind]
+            return self.say(key, who=args[0])
+        if kind == "role_subset":
+            return self.say("role_subset", role=role(args[0]), other_role=role(args[1]))
+        if kind in ("role_in_tagged", "role_not_in_tagged"):
+            area = self.places.regions(self.board.tagged_region_ids([args[2]]))
+            return self.say(kind, who=args[0], role=role(args[1]), area=area)
+        if kind == "min_role_in_tagged":
+            area = self.places.regions(self.board.tagged_region_ids([args[1]]))
+            return self.say(
+                "min_role_in_tagged",
+                n=self.say.number(int(args[2])),
+                role=role(args[0]),
+                area=area,
+            )
+        if kind in ("role_on", "role_not_on", "role_next_to"):
+            what = self.say.join([self._role_target_name(name) for name in args[2:]], "or")
+            return self.say(kind, who=args[0], role=role(args[1]), things=what)
+        if kind == "role_below":
+            if len(args) == 4:
+                key = "role_below_n"
+                return self.say(
+                    key,
+                    who=args[0],
+                    role=role(args[1]),
+                    n=self.say.number(int(args[3])),
+                )
+            return self.say("role_below", who=args[0], role=role(args[1]))
+        if kind == "sole_role_companion":
+            return self.say(kind, who=args[0], role=role(args[1]))
+        condition = "alone" if args[1] == "alone" else "not alone"
+        return self.say("role_occupant", role=role(args[0]), condition=condition)
+
+    def _role_target_name(self, name: str) -> str:
+        if name in ("blocking", "standable"):
+            labels = {
+                "en": {"blocking": "blocking objects", "standable": "standable objects"},
+                "nl": {"blocking": "blokkerende objecten", "standable": "begaanbare objecten"},
+            }
+            return labels[self.say.language][name]
+        return self.places.thing(name)
+
+    @staticmethod
+    def _role_ref(rule: RoleCondition) -> str:
+        return "" if rule.number is None else f" ({rule.number})"
 
     def _clue_text(self, kind: str, args: Sequence[str], people: Sequence[str]) -> str:
         if kind == COUNTING:

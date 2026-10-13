@@ -48,6 +48,7 @@ def murdoku_picture(
     board: Board,
     placed: Mapping[str, Square] | None = None,
     *,
+    role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
     cell: int = 120,
     coordinates: bool = True,
     legend: bool = True,
@@ -58,7 +59,7 @@ def murdoku_picture(
     """
     margin = cell // 2 if coordinates else cell // 6
     side = board.size * cell
-    key = _Legend(board, cell) if legend else None
+    key = _Legend(board, cell, role_statuses or {}) if legend else None
     height = side + 2 * margin + (key.height if key else 0)
     image = Image.new("RGB", (side + 2 * margin, height), WHITE)
     draw = ImageDraw.Draw(image)
@@ -581,16 +582,23 @@ def _coordinates(draw: ImageDraw.ImageDraw, n: int, margin: int, cell: int) -> N
 class _Legend:
     """Region swatches with names, in two columns under the board."""
 
-    def __init__(self, board: Board, cell: int) -> None:
+    def __init__(
+        self,
+        board: Board,
+        cell: int,
+        role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
+    ) -> None:
         self.board = board
         self.cell = cell
+        self.role_statuses = role_statuses or {}
         self.swatch = cell // 3
         self.line = int(self.swatch * 1.6)
         self.rows = (len(board.region_names) + 1) // 2
         self.item_names = sorted(board.edge_item_names | board.corner_object_names)
         self.mark_names = sorted(board.mark_names)
+        self.role_names = sorted(board.role_names)
         self.height = (
-            self.rows + len(self.item_names) + len(self.mark_names)
+            self.rows + len(self.item_names) + len(self.mark_names) + len(self.role_names)
         ) * self.line + cell // 2
 
     def draw(self, image: Image.Image, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
@@ -659,5 +667,35 @@ class _Legend:
                 f"Mark: {name}{condition}",
                 fill=INK,
                 font=font,
+                anchor="lm",
+            )
+        role_offset = self.rows + len(self.item_names) + len(self.mark_names)
+        role_font = _font(max(8, self.swatch // 2))
+        for i, name in enumerate(self.role_names):
+            top = y + (role_offset + i) * self.line
+            area = (x, top, x + self.swatch, top + self.swatch)
+            draw.rectangle(area, fill=MARK_FILL, outline=MARK_INK, width=2)
+            _centred_text(draw, name[:2].upper(), area, max(8, self.swatch // 2), MARK_INK)
+            present = [
+                person
+                for person in self.board.people
+                if self.role_statuses.get((person, name)) is True
+            ]
+            absent = [
+                person
+                for person in self.board.people
+                if self.role_statuses.get((person, name)) is False
+            ]
+            unknown = [
+                person
+                for person in self.board.people
+                if self.role_statuses.get((person, name)) is None
+            ]
+            detail = f"+{','.join(present)} -{','.join(absent)} ?{','.join(unknown)}"
+            draw.text(
+                (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
+                f"Role {name}: {detail}",
+                fill=INK,
+                font=role_font,
                 anchor="lm",
             )

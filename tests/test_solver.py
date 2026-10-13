@@ -133,6 +133,8 @@ def _brute_force_count_solutions(model: Model) -> list[dict[str, Any]]:
 def _assert_logged_steps_preserve_solutions(model: Model, solutions: list[dict[str, Any]]) -> None:
     for step in model.log:
         for solution in solutions:
+            if step.var not in solution:
+                continue
             if step.asserted:
                 assert solution[step.var] == step.value, step
             else:
@@ -331,6 +333,321 @@ def test_clone_leaves_the_original_untouched():
     twin = m.clone()
     twin.assign(a, "test", "chosen")
     assert twin.is_false(b) and not m.is_false(b) and m.log == []
+
+
+def test_hidden_domain_participates_in_constraints_but_not_solution_assignments():
+    model = Model()
+    person = _variable(model, "Ada", ("r1c1", "r1c2"))
+    role_yes = model.literal("Ada has role bandit", True)
+    role_no = model.literal("Ada has role bandit", False)
+    model.constrain(
+        "Ada bandit state",
+        Kind.EXACTLY_ONE,
+        [role_yes, role_no],
+        defines="Ada has role bandit",
+        hidden=True,
+    )
+    model.constrain("bandit holds once", Kind.COUNT, [role_yes], allowed_counts={1})
+
+    assert model.variables == ["Ada"]
+    assert model.all_variables == ["Ada", "Ada has role bandit"]
+    assert model.chosen("Ada has role bandit") is None
+    model.assign(person[0], "test", "chosen")
+    assert rule_count(model)
+
+    assert model.solution() == {"Ada": "r1c1"}
+    assert model.is_true(role_yes)
+
+
+def test_roles_support_overlap_absence_some_unknown_and_eligibility():
+    text = """Size: 5
+Regions:
+a: room
+Grid:
+a a a a a
+a a a a a
+a a a a a
+a a a a a
+a a a a a
+People:
+A
+B
+C
+D
+E
+Roles:
+captain: 1
+seer: any
+RoleEligibility:
+captain: A
+Rules:
+has_role A seer
+not_role B seer
+some_role C
+at_most_one_role C
+roleless D
+role_subset captain seer
+"""
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    brute_solutions = bruteforce.solutions(text, "murdoku", limit=10)
+    _assert_logged_steps_preserve_solutions(model, brute_solutions)
+    role = board.role_variable
+
+    assert model.is_true(model.literal(role("A", "captain"), True))
+    assert model.is_true(model.literal(role("A", "seer"), True))
+    assert model.is_true(model.literal(role("B", "seer"), False))
+    assert model.is_true(model.literal(role("C", "seer"), True))
+    assert model.is_true(model.literal(role("D", "captain"), False))
+    assert model.is_true(model.literal(role("D", "seer"), False))
+    assert not model.is_true(model.literal(role("E", "seer"), True))
+    assert not model.is_true(model.literal(role("E", "seer"), False))
+    assert role("E", "seer") not in model.variables
+    model_report = report.describe(model)
+    assert "Role membership (10):" in model_report
+    assert "A has role captain: present" in model_report
+    assert "E has role seer: unknown" in model_report
+    rendered = _plain(murdoku.render(board, model, "roles"))
+    assert "role membership (+ present, - absent, ? unknown):" in rendered
+    assert "seer: A+ B- C+ D- E?" in rendered
+
+
+def test_cli_narrates_role_membership_without_boolean_literals(capsys):
+    model = Model()
+    has_role = model.literal("Ada has role bandit", True)
+    lacks_role = model.literal("Ada has role bandit", False)
+    model.constrain("Ada role", Kind.EXACTLY_ONE, [has_role, lacks_role])
+    model.assign(has_role, "single", "known role")
+
+    cli.narrate("single", model.log[:1])
+
+    output = capsys.readouterr().out
+    assert "Ada has role bandit" in output
+    assert "True" not in output
+
+
+def test_role_compiler_preserves_one_shot_clue_iterables():
+    board = murdoku.Board(
+        3,
+        [["a"] * 3 for _ in range(3)],
+        {"a": "room"},
+        [],
+        ["A", "B"],
+        roles=[murdoku.RoleSpec("captain", frozenset({1}))],
+    )
+    model = murdoku.compile_puzzle(
+        board, iter([("in_corner", ["A"]), ("has_role", ["A", "captain"])])
+    )
+
+    assert murdoku.Square(1, 1) not in {model.value_of(lit) for lit in model.options("A")}
+    assert model.is_true(model.literal(board.role_variable("A", "captain"), True))
+
+
+def test_role_below_and_sole_role_companion_match_brute_force():
+    below_text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Roles:
+scout: 1
+Rules:
+has_role A scout
+Clues:
+role_below B scout 1
+"""
+    below_solutions = bruteforce.solutions(below_text, "murdoku", limit=10)
+    assert below_solutions
+    assert all(solution["B"].row == solution["A"].row + 1 for solution in below_solutions)
+    board, clues = load_board(below_text)
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, below_solutions)
+
+    companion_text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Roles:
+murderer: 1
+Clues:
+sole_role_companion B murderer
+"""
+    companion_solutions = bruteforce.solutions(companion_text, "murdoku", limit=10)
+
+    assert companion_solutions
+    assert all(solution["A has role murderer"] for solution in companion_solutions)
+    board, clues = load_board(companion_text)
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, companion_solutions)
+
+
+def test_role_occupant_effect_reuses_conditional_count_hook():
+    permitted = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Roles:
+bandit: 1
+Rules:
+role_occupant bandit not_alone
+"""
+    allowed_solutions = bruteforce.solutions(permitted, "murdoku", limit=10)
+    assert allowed_solutions
+    board, clues = load_board(permitted)
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, allowed_solutions)
+
+    impossible = permitted.replace("not_alone", "alone")
+    assert bruteforce.solutions(impossible, "murdoku", limit=2) == []
+
+
+def test_role_bindings_to_marks_and_object_kinds_match_brute_force():
+    text = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+Objects:
+chair: standable r1c1
+wall: blocking r2c2
+People:
+A
+B
+Roles:
+captain: 1
+scout: 1
+Marks:
+seat: r1c1
+Rules:
+has_role A captain
+has_role B scout
+role_on A captain seat
+role_next_to B scout blocking
+"""
+    solutions = bruteforce.solutions(text, "murdoku", limit=10)
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+
+    assert solutions
+    for solution in solutions:
+        assert solution[board.role_variable("A", "captain")]
+        assert solution[board.role_variable("B", "scout")]
+        assert solution["A"] == murdoku.Square(0, 0)
+        assert murdoku.steps_between(solution["B"], murdoku.Square(1, 1)) == 1
+    for step in model.log:
+        for solution in solutions:
+            if step.var not in solution:
+                continue
+            if step.asserted:
+                assert solution[step.var] == step.value, step
+            else:
+                assert solution[step.var] != step.value, step
+
+
+def test_role_area_minimum_and_distinct_regions_use_count_constraints():
+    minimum_text = """Size: 2
+Regions:
+a: room
+b: garden
+Grid:
+a b
+a b
+People:
+A
+B
+AreaTags:
+outside: room garden
+Roles:
+scout: any
+Rules:
+min_role_in_tagged scout outside 1
+"""
+    solutions = bruteforce.solutions(minimum_text, "murdoku", limit=10)
+    assert solutions
+    board, clues = load_board(minimum_text)
+    model = murdoku.compile_puzzle(board, clues)
+    for solution in solutions:
+        assert all(solution[f"{person} has role scout"] for person in ("A", "B"))
+        candidate = model.clone()
+        for person in board.people:
+            candidate.assign(candidate.literal(person, solution[person]), "test", "chosen")
+        Solver(candidate).solve()
+        assert all(
+            candidate.chosen(board.role_variable(person, "scout")) is True
+            for person in board.people
+        )
+
+    distinct_text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Roles:
+scout: 2 different_regions
+"""
+    assert bruteforce.solutions(distinct_text, "murdoku", limit=2) == []
+
+
+def test_role_area_policies_match_brute_force_and_model():
+    text = """Size: 3
+Regions:
+a: room
+b: hall
+c: garden
+Grid:
+a b c
+a b c
+a b c
+People:
+Ada
+Ben
+AreaTags:
+inside: room
+Roles:
+guide: any
+Rules:
+has_role Ada guide
+has_role Ben guide
+role_in_tagged Ada guide inside
+role_not_in_tagged Ben guide inside
+"""
+    solutions = bruteforce.solutions(text, "murdoku", limit=50)
+    assert solutions
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+
+    for solution in solutions:
+        assert board.region_of(solution["Ada"]) == "a"
+        assert board.region_of(solution["Ben"]) != "a"
+        candidate = model.clone()
+        for variable, value in solution.items():
+            candidate.assign(candidate.literal(variable, value), "test", "brute-force solution")
+        candidate.check()
 
 
 def test_what_if_eliminates_a_literal_that_leads_to_contradiction():
@@ -1733,6 +2050,29 @@ def test_report_describes_count_constraints_and_reifiers():
     assert "COUNT (1 here):" in text
     assert "COUNT {0, 2}" in text
     assert "allowed counts 0, 2; reified by west_empty=True" in text
+
+
+def test_report_shows_known_and_unknown_role_membership():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Roles:
+bandit: any
+Rules:
+has_role A bandit
+"""
+    board, clues = load_board(text)
+    text = report.describe(murdoku.compile_puzzle(board, clues))
+
+    assert "Role membership (2):" in text
+    assert "A has role bandit: present" in text
+    assert "B has role bandit: unknown" in text
 
 
 def test_report_groups_unlabelled_constraints_by_name():
