@@ -58,7 +58,8 @@ Both pictures and the solution text are generated from
 [`examples/murdoku_intro.txt`](examples/murdoku_intro.txt):
 
 ```bash
-./solve.sh examples/murdoku_intro.txt --png board.png   # board.png, board-solution.png
+./solve.sh examples/murdoku_intro.txt --png              # beside the puzzle file
+./solve.sh examples/murdoku_intro.txt --png board.png    # board.png, board-solution.png
 ./solve.sh examples/murdoku_intro.txt --explain         # the worked solution above
 ```
 
@@ -173,7 +174,9 @@ detected from the file; `--type sudoku|murdoku|calcudoku|futoshiki` overrides th
 | `--brute-force` | Find the solutions by plain search instead of deduction, then stop. Exit code 0 if there is exactly one, 1 if there are none or several (it shows two and where they differ). The check to run after transcribing a puzzle. |
 | `--explain` | Murdoku only: write out a short worked solution, as Markdown bullets, in the puzzle's language. See [Worked solutions](#worked-solutions). |
 | `--grade` | Print only the puzzle's grade: the hardest rule the solve needed (`single` ... `chains`, `what_if`), or `unsolved`. |
-| `--png FILE` | Draw the puzzle as a picture in FILE, and once solved the solution in FILE with `-solution` added (`board.png`, `board-solution.png`). Combines with the other options. |
+| `--lint` | Murdoku only: check declarations and report missing icons, unreachable areas, and unused roles. Invalid puzzle data exits with code 1. |
+| `--require-forward` | Murdoku only: run lint and require a solve without `what_if`; exit code 1 if forward rules stall. |
+| `--png [FILE]` | Draw the puzzle to FILE, or default to `<puzzle-stem>.png` beside the input. A solved output adds `-solution` before the extension. |
 
 Every solve ends with a summary such as `rules used: single 54, cover2 2;
 grade: cover2`. Without `--brute-force` the exit code is 0 when the puzzle
@@ -198,6 +201,7 @@ file cannot be read.
 | `murdoku_house.txt` | `relations`, `subsumption`: a 5×5 using "not next to" and a counting clue |
 | `murdoku_sparse_mystery.txt` | `single`: a sparse 5×5 with role areas, standable objects, a door edge, and one murderer |
 | `murdoku_global_counts.txt` | `single`, `count`: a unique 3×3 using all global-count selector families |
+| `murdoku_composition.txt` | A neutral 4×4 composing tags, objects, edge/corner items, marks, roles, attributes, and counts |
 | `prrrdoku1.txt` | `relations`, `subsumption` |
 | `prrrdoku2.txt` | `what_if` |
 | `prrrdoku3.txt` | `what_if` |
@@ -343,7 +347,7 @@ dependency-free, but none of them written for one puzzle.
 ## Verification
 
 ```bash
-uv run pytest -q                        # 224 tests
+uv run pytest -q
 uvx ruff check src tests benchmark      # lint
 uvx ruff format --check src tests benchmark   # formatting
 uv run mypy src                         # strict type check
@@ -637,10 +641,14 @@ over all people. The 12×12/16×16 benchmark is reproducible with
 
 On the current Python 3.12 environment, three-run medians were:
 
-| Board | Parse ms | Compile ms | `single`/`count` ms | Constraints | Literals |
-|---:|---:|---:|---:|---:|---:|
-| 12×12 | 0.21 | 3.67 | 1.71 | 211 | 904 |
-| 16×16 | 0.31 | 8.55 | 3.57 | 337 | 2096 |
+| Board | Parse ms | Compile ms | `single`/`count` ms | `single`/`count`/`chains` ms | Constraints | Literals |
+|---:|---:|---:|---:|---:|---:|---:|
+| 12×12 | 0.23 | 3.62 | 2.12 | 15,336.98 | 211 | 904 |
+| 16×16 | 0.31 | 8.19 | 4.58 | 187,982.30 | 337 | 2096 |
+
+Chains are expensive on this synthetic count-heavy workload: the 16×16
+count-plus-chains median is about 3.1 minutes, compared with 4.56 ms for
+count-only propagation.
 
 Quantified location clues stay bounded: each target is checked against one
 candidate person at a time, with at most four variables in a relation (subject,
