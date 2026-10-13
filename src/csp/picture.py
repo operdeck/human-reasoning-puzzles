@@ -13,7 +13,8 @@ pastel fills, no two touching cages alike, and their target in the corner.
 Needs Pillow (`uv sync --extra png`).
 """
 
-from collections.abc import Callable, Hashable, Mapping
+import textwrap
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from typing import Any
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
@@ -23,7 +24,7 @@ from .calcudoku import Puzzle as Calcudoku
 from .calcudoku import cell_name as calcudoku_cell
 from .futoshiki import Puzzle as Futoshiki
 from .futoshiki import cell_name as futoshiki_cell
-from .murdoku import Board, Square
+from .murdoku import Board, GlobalCountCondition, Square
 from .sudoku import Puzzle as Sudoku
 from .sudoku import box_size
 from .sudoku import cell_name as sudoku_cell
@@ -35,6 +36,7 @@ EXTRA = (214, 214, 214)  # extra houses, grey as NRC prints them
 THIN = (190, 190, 190)
 MARK_FILL = (246, 249, 229)
 MARK_INK = (57, 89, 66)
+COUNT_SCOPE = (45, 110, 155)
 # Used for regions the puzzle file gives no colour.
 PALETTE = ["#F3C8C0", "#FADFB5", "#CBE6B9", "#D8D2F0", "#C4DCF2", "#BEE5D6", "#F3EDA2",
            "#DCDCDC", "#E0A79C", "#A9D6F0"]  # fmt: skip
@@ -49,6 +51,7 @@ def murdoku_picture(
     placed: Mapping[str, Square] | None = None,
     *,
     role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
+    global_counts: Sequence[GlobalCountCondition] = (),
     cell: int = 120,
     coordinates: bool = True,
     legend: bool = True,
@@ -59,7 +62,7 @@ def murdoku_picture(
     """
     margin = cell // 2 if coordinates else cell // 6
     side = board.size * cell
-    key = _Legend(board, cell, role_statuses or {}) if legend else None
+    key = _Legend(board, cell, role_statuses or {}, global_counts) if legend else None
     height = side + 2 * margin + (key.height if key else 0)
     image = Image.new("RGB", (side + 2 * margin, height), WHITE)
     draw = ImageDraw.Draw(image)
@@ -70,6 +73,7 @@ def murdoku_picture(
         return x, y, x + cell, y + cell
 
     blocked = board.blocked
+    count_scope = {square for condition in global_counts for square in condition.scope_cells(board)}
     for r in range(board.size):
         for c in range(board.size):
             sq = Square(r, c)
@@ -118,6 +122,12 @@ def murdoku_picture(
             corner.name,
             (x - radius, y - radius, x + radius, y + radius),
             cell,
+        )
+    for square in count_scope:
+        draw.rectangle(
+            box(square),
+            outline=COUNT_SCOPE,
+            width=max(2, cell // 40),
         )
     marks_by_cell: dict[Square, list[str]] = {}
     for mark in board.marks:
@@ -587,18 +597,37 @@ class _Legend:
         board: Board,
         cell: int,
         role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
+        global_counts: Sequence[GlobalCountCondition] = (),
     ) -> None:
         self.board = board
         self.cell = cell
         self.role_statuses = role_statuses or {}
+        self.global_counts = tuple(global_counts)
         self.swatch = cell // 3
         self.line = int(self.swatch * 1.6)
         self.rows = (len(board.region_names) + 1) // 2
         self.item_names = sorted(board.edge_item_names | board.corner_object_names)
         self.mark_names = sorted(board.mark_names)
         self.role_names = sorted(board.role_names)
+        self.count_font = _font(max(8, cell // 16))
+        max_chars = max(18, int((board.size * cell // 2) / max(1, cell // 24)))
+        self.global_count_lines = [
+            lines
+            for index, condition in enumerate(self.global_counts, 1)
+            for lines in [
+                textwrap.wrap(
+                    f"Global {condition.number or index}: {condition.description}",
+                    width=max_chars,
+                )
+            ]
+        ]
+        self.count_rows = sum(max(1, len(lines)) for lines in self.global_count_lines)
         self.height = (
-            self.rows + len(self.item_names) + len(self.mark_names) + len(self.role_names)
+            self.rows
+            + len(self.item_names)
+            + len(self.mark_names)
+            + len(self.role_names)
+            + self.count_rows
         ) * self.line + cell // 2
 
     def draw(self, image: Image.Image, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
@@ -699,3 +728,15 @@ class _Legend:
                 font=role_font,
                 anchor="lm",
             )
+        count_row = role_offset + len(self.role_names)
+        for lines in self.global_count_lines:
+            for line in lines or [""]:
+                top = y + count_row * self.line
+                draw.text(
+                    (x, top + self.line / 2),
+                    line,
+                    fill=COUNT_SCOPE,
+                    font=self.count_font,
+                    anchor="lm",
+                )
+                count_row += 1

@@ -1,0 +1,38 @@
+Size: 3
+Regions:
+a: west
+b: alcove
+c: east
+Grid:
+a a c
+a b c
+a a c
+AreaTags:
+inside: alcove east
+Objects:
+bed: standable r1c1
+Attributes:
+glasses: Ben
+Roles:
+engineer: any
+RoleEligibility:
+engineer: Ada
+Marks:
+seats: r1c1 r2c2
+People:
+Ada
+Ben
+Rules:
+in_row Ada 1
+Clues:
+count people on object:bed = 1
+count people on object_kind:standable = 1
+count people in area:alcove = 1
+count people in rows:1-2 = 2
+count people in columns:1-2 = 2
+count people in mark:seats = 2
+count people with role:engineer = 1
+count people with attribute:glasses = 1
+count empty areas all = 1
+count empty areas in tag:inside = 1
+count empty cells in mark:seats = 0

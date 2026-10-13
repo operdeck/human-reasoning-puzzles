@@ -197,6 +197,7 @@ file cannot be read.
 | `murdoku_intro.txt` | `single` only: the 4×4 first case above |
 | `murdoku_house.txt` | `relations`, `subsumption`: a 5×5 using "not next to" and a counting clue |
 | `murdoku_sparse_mystery.txt` | `single`: a sparse 5×5 with role areas, standable objects, a door edge, and one murderer |
+| `murdoku_global_counts.txt` | `single`, `count`: a unique 3×3 using all global-count selector families |
 | `prrrdoku1.txt` | `relations`, `subsumption` |
 | `prrrdoku2.txt` | `what_if` |
 | `prrrdoku3.txt` | `what_if` |
@@ -545,6 +546,16 @@ Clues:          # numbered 1, 2, ... in the order given
   alone Luna                    # nobody else in Luna's region
   furthest Luna Mao             # Luna is strictly further from Mao than anyone
   exactly 1 in_region Ada study ; in_region Ben hall   # exactly n of these hold
+    count people on object:bed = 1
+    count people on object_kind:standable = 1
+    count people in area:kitchen >= 2
+    count people in rows:1,3 = 2
+    count people in columns:2-4 <= 3
+    count people with role:bandit odd
+    count people with attribute:bearded = 3
+    count empty areas all = 0
+    count empty areas in tag:inside = 1
+    count empty cells in mark:quiet 2..4  # inclusive range
 ```
 
 Every object declaration must say `blocking` or `standable`; names and icons do
@@ -599,6 +610,37 @@ may name at most three people: the engine checks a relation by trying every
 combination of its people's squares, which grows quickly. Quantified-target
 clues and `alone_with` cannot be nested inside `exactly`; `only_on` is also a
 group restriction and cannot be nested.
+
+`count` adds whole-board clues using the existing `COUNT` constraint. Comparisons
+are `= n`, `<= n`, `>= n`, `odd`, `even`, or an inclusive `low..high` range.
+`people on` selects cells of an object type or object kind; `people in` accepts
+an area, tag, row/column list or range, object, or mark; `people with` accepts a
+role or attribute. `empty areas all` counts logical regions with no occupants;
+`empty areas in tag:name` counts empty regions in the tagged set once, even if
+tags overlap. `empty cells in` counts unoccupied, non-blocked cells in a set.
+
+People counts include every entry in `People:`, including a victim if listed;
+there is no implicit suspects-only subset. Attributes are fixed puzzle data, so
+a count of people with an attribute validates consistency but cannot deduce a
+location. Role counts can constrain role membership and location rules tied to
+those roles. Empty areas and empty cells use reified zero-occupancy literals.
+
+`--show-model` lists each global clue as its own `COUNT` constraint with the
+selected literals and allowed totals. `--step` shows true/open totals, how many
+more are needed, feasible totals, and highlights selected cells; `--explain`
+words count deductions and names area
+capacity; `--png` lists global clues and outlines their cell scopes. A global
+count adds one count over selected person/cell literals, plus one hidden empty
+indicator per logical area or selected free cell; it does not create a relation
+over all people. The 12×12/16×16 benchmark is reproducible with
+`uv run python benchmark/murdoku_global_counts.py --runs 3`.
+
+On the current Python 3.12 environment, three-run medians were:
+
+| Board | Parse ms | Compile ms | `single`/`count` ms | Constraints | Literals |
+|---:|---:|---:|---:|---:|---:|
+| 12×12 | 0.21 | 3.67 | 1.71 | 211 | 904 |
+| 16×16 | 0.31 | 8.55 | 3.57 | 337 | 2096 |
 
 Quantified location clues stay bounded: each target is checked against one
 candidate person at a time, with at most four variables in a relation (subject,
