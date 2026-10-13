@@ -9,9 +9,11 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-from . import bruteforce, calcudoku, futoshiki, murdoku, report, story, sudoku
+from . import bruteforce, calcudoku, futoshiki, murdoku, picture, report, story, sudoku
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
 from .puzzlefile import KINDS, detect, load_board
+
+_PNG_DEFAULT = object()
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,64 @@ def write_picture(
     return True
 
 
+def _murdoku_lint(board: murdoku.Board, clues: Sequence[murdoku.Clue], model: Model) -> list[str]:
+    findings: list[str] = []
+    for name in picture.unknown_object_icons(board):
+        findings.append(f"warning: missing icon for {name}; PNG will use a text label")
+
+    candidate_squares = {
+        model.value_of(literal) for person in board.people for literal in model.options(person)
+    }
+    for region, name in board.region_names.items():
+        free_cells = [square for square in board.free if board.region_of(square) == region]
+        if not free_cells or not (set(free_cells) & candidate_squares):
+            findings.append(f"warning: unreachable area {name}; no person candidate remains")
+
+    role_references: set[str] = set()
+    role_positions = {
+        "has_role": (1,),
+        "not_role": (1,),
+        "role_in_tagged": (1,),
+        "role_not_in_tagged": (1,),
+        "role_on": (1,),
+        "role_not_on": (1,),
+        "role_next_to": (1,),
+        "role_below": (1,),
+        "sole_role_companion": (1,),
+        "role_subset": (0, 1),
+        "min_role_in_tagged": (0,),
+        "role_occupant": (0,),
+    }
+    for rule in murdoku.role_conditions(board, clues):
+        if rule.kind in ("some_role", "roleless", "at_most_one_role"):
+            role_references.update(board.role_names)
+        for position in role_positions.get(rule.kind, ()):
+            token = rule.args[position]
+            name = token.partition(":")[2] if token.startswith("role:") else token
+            if name in board.role_names:
+                role_references.add(name)
+    for target_condition in murdoku.quantified_conditions(board, clues):
+        if target_condition.selector.kind == "role":
+            role_references.add(target_condition.selector.name)
+    for count_condition in murdoku.global_count_conditions(board, clues):
+        if (
+            count_condition.kind == "people_with"
+            and count_condition.selector is not None
+            and count_condition.selector.kind == "role"
+        ):
+            role_references.add(count_condition.selector.name)
+    for role in board.roles:
+        if (
+            role.allowed_counts != frozenset(range(len(board.people) + 1))
+            or role.different_regions
+            or role.eligible_people is not None
+        ):
+            role_references.add(role.name)
+    for role_name in sorted(board.role_names - role_references):
+        findings.append(f"warning: role {role_name} is declared but unused")
+    return findings
+
+
 def _filled(model: Model, solution: dict[str, Any]) -> Model:
     """A copy of `model` with every variable set as in `solution`, for drawing.
 
@@ -178,24 +238,44 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="print only the puzzle's grade: the hardest rule the solve needed",
     )
+    instead.add_argument(
+        "--lint",
+        action="store_true",
+        help="Murdoku only: check declarations, icons, reachable areas, and role usage",
+    )
+    instead.add_argument(
+        "--require-forward",
+        action="store_true",
+        help="Murdoku only: lint and require a solve without what_if",
+    )
     parser.add_argument(
         "--png",
+        nargs="?",
         type=Path,
+        const=_PNG_DEFAULT,
         metavar="FILE",
-        help="write the puzzle as a picture to FILE, and once solved the "
-        "solution to FILE with '-solution' before the extension (needs Pillow)",
+        help=(
+            "write the puzzle as a picture to FILE (default: beside the puzzle), and once solved "
+            "the solution to FILE with '-solution' before the extension (needs Pillow)"
+        ),
     )
     args = parser.parse_args(argv)
 
     path: Path = args.puzzle
+    png_path = path.with_suffix(".png") if args.png is _PNG_DEFAULT else args.png
     if not path.exists():
         print(f"no such file: {path}", file=sys.stderr)
         return 2
     text = path.read_text()
     kind = detect(text) if args.type == "auto" else args.type
+    if (args.lint or args.require_forward) and kind != "murdoku":
+        parser.error("--lint and --require-forward are only available for Murdoku")
     try:
         puzzle = load(text, kind)
     except ValueError as exc:
+        if args.lint or args.require_forward:
+            print(f"lint error in {path.name}: {exc}", file=sys.stderr)
+            return 1
         print(f"could not read {path.name}: {exc}", file=sys.stderr)
         return 2
 
@@ -204,13 +284,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.track_person:
         if kind != "murdoku":
             parser.error("--track-person is only available for Murdoku")
-        if args.show_model or args.brute_force or args.explain or args.grade:
+        if (
+            args.show_model
+            or args.brute_force
+            or args.explain
+            or args.grade
+            or args.lint
+            or args.require_forward
+        ):
             parser.error("--track-person requires a normal solve")
         track_board, _ = load_board(text)
         if args.track_person not in track_board.people:
             parser.error(
                 f"unknown person {args.track_person!r}; have {', '.join(track_board.people)}"
             )
+    if args.lint or args.require_forward:
+        board, clues = load_board(text)
+        findings = _murdoku_lint(board, clues, model)
+        for finding in findings:
+            print(finding)
+        if not findings:
+            print("lint: no issues found")
+        if args.require_forward:
+            forward_rules = tuple(rule for rule in DEFAULT_RULES if rule.name != "what_if")
+            forward_result = Solver(model.clone(), forward_rules).solve()
+            if not forward_result.solved:
+                detail = f": {forward_result.contradiction}" if forward_result.contradiction else ""
+                print(
+                    f"lint error: puzzle does not solve using forward rules "
+                    f"without what_if{detail}",
+                    file=sys.stderr,
+                )
+                return 1
+            print("require-forward: solved without what_if")
+        return 0
     if args.grade:
         fired: list[str] = []
         result = Solver(model).solve(on_step=lambda rule, steps: fired.append(rule))
@@ -224,14 +331,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.track_person:
         assert track_board is not None
         print(murdoku.track_person_status(track_board, model, args.track_person))
-    if args.png:
+    if png_path is not None:
         role_statuses = None
         if kind == "murdoku":
             role_board = track_board
             if role_board is None:
                 role_board, _ = load_board(text)
             role_statuses = murdoku.role_statuses(role_board, model)
-        if not write_picture(kind, text, args.png, role_statuses=role_statuses):
+        if not write_picture(kind, text, png_path, role_statuses=role_statuses):
             return 2
 
     if args.show_model:
@@ -269,8 +376,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if result.solved:
         print(puzzle.draw("Solved"))
-        if args.png:
-            solved = args.png.with_stem(f"{args.png.stem}-solution")
+        if png_path is not None:
+            solved = png_path.with_stem(f"{png_path.stem}-solution")
             roles = None
             if kind == "murdoku":
                 board, _ = load_board(text)

@@ -90,6 +90,7 @@ exclusive, so run each separately:
 uv run csp <file.txt> --show-model
 uv run csp <file.txt> --brute-force
 uv run csp <file.txt> --grade
+uv run csp <file.txt> --lint
 ```
 
 - `--show-model` must parse and compile the file. This establishes format/model
@@ -102,13 +103,17 @@ uv run csp <file.txt> --grade
   generated puzzle, require a solved grade and compare it with the user's
   target. For a transcription, `unsolved` means this solver's deduction rules
   did not finish it; it does not mean the text file is malformed.
+- `--lint` reports missing icons, unreachable areas, and unused roles; malformed
+  declarations are errors. `--require-forward` also runs lint and requires a
+  solve without the `what_if` rule when forward-only solving is required.
 - `--track-person` is for a normal Murdoku solve. For a late-reveal puzzle,
   check that the tracked person has multiple live squares and multiple
   region-overlap companion candidates until everyone else is placed, then
   one square and one companion.
 - `--explain` can produce a worked solution when requested. Review it against
-  the intended assignment and clue meanings. Use `--png <file.png>` when a
-  board picture is requested.
+  the intended assignment and clue meanings. Use `--png` to write `<puzzle-stem>.png`
+  beside the input, or `--png <file.png>` to choose an explicit path; the solved
+  image adds `-solution` before the extension.
 
 Report the file path, parser result, solution count, actual grade, and any
 remaining uncertainties. For generated puzzles, include the intended
@@ -122,6 +127,10 @@ it.
   there are `N` people, every row and column is occupied. Squares may remain
   empty. Repeated region IDs denote one logical area even when disconnected;
   overlay areas use a different ID.
+- A `blocking` object's cells are unavailable; `standable` objects remain
+  occupiable. The declared kind is required and never inferred from the object
+  name or icon. Edge items and corner objects touch cells without occupying
+  them; marks select cells without changing occupancy.
 - Every region ID in `Grid:` must be declared in `Regions:`. Use single-token
   identifiers for people, regions, area tags, and object types; use `Words:`
   for display wording where needed.
@@ -167,7 +176,7 @@ it.
   person with neither policy is unrestricted. `in_tagged` and `not_in_tagged`
   are also available as numbered clues.
 - **Late-reveal mystery rule:** when the question asks who shares a region with
-  a named mystery person (for example, Vladimir), keep that person's square
+  a named mystery person, keep that person's square
   open to at least two candidates until every other person is placed. Keep at
   least two region-overlap companion candidates until that final placement,
   then leave exactly one companion. Use `--track-person <person>` to inspect

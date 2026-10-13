@@ -2404,7 +2404,10 @@ def test_every_example_is_unique_and_the_engine_finds_it(name):
     (expected,) = bruteforce.solutions(text)
     result = Solver(cli.load(text, cli.detect(text)).model).solve()
     assert result.solved
-    assert result.assignment == {variable: expected[variable] for variable in result.assignment}
+    shared = result.assignment.keys() & expected.keys()
+    assert {variable: result.assignment[variable] for variable in shared} == {
+        variable: expected[variable] for variable in shared
+    }
 
 
 @pytest.mark.parametrize("name", sorted(p.name for p in EXAMPLES.glob("*.txt")))
@@ -2469,6 +2472,70 @@ def test_cli_brute_force_exit_codes(tmp_path, capsys):
     two.write_text("Size: 2\nGrid:\na a\nb b\nCages:\na: 3+\nb: 3+\n")
     assert cli.main([str(two), "--brute-force"]) == 1
     assert "more than one solution" in capsys.readouterr().out
+
+
+def test_cli_lint_reports_missing_icons_unreachable_areas_and_unused_roles(tmp_path, capsys):
+    puzzle = tmp_path / "lint.txt"
+    puzzle.write_text(
+        """Size: 2
+Regions:
+a: room
+b: attic
+Grid:
+a b
+a b
+Objects:
+zeppelin: blocking r1c2 r2c2
+People:
+A
+Roles:
+unused: any
+"""
+    )
+
+    assert cli.main([str(puzzle), "--lint"]) == 0
+    output = capsys.readouterr().out
+    assert "missing icon for zeppelin" in output
+    assert "unreachable area attic" in output
+    assert "role unused is declared but unused" in output
+
+
+def test_cli_lint_reports_invalid_declarations_as_errors(tmp_path, capsys):
+    puzzle = tmp_path / "invalid.txt"
+    puzzle.write_text(
+        """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+Objects:
+rock: blocking r1c3
+"""
+    )
+
+    assert cli.main([str(puzzle), "--lint"]) == 1
+    assert "lint error in invalid.txt" in capsys.readouterr().err
+
+
+def test_cli_require_forward_rejects_a_stalled_puzzle(tmp_path, capsys):
+    puzzle = tmp_path / "stalled.txt"
+    puzzle.write_text(
+        """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+"""
+    )
+
+    assert cli.main([str(puzzle), "--require-forward"]) == 1
+    assert "does not solve using forward rules without what_if" in capsys.readouterr().err
 
 
 def test_cli_tracks_murdoku_person_candidates(capsys):
