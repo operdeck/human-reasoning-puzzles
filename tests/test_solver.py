@@ -2699,3 +2699,15 @@ def test_show_model_explains_and_does_not_solve(capsys):
     assert "How the solver will run" in out
     assert "Solved" not in out
     assert max(len(line) for line in out.split("Start", 1)[1].splitlines()) <= report.WIDTH
+
+
+def test_show_model_reports_empty_domain(tmp_path, capsys):
+    puzzle = tmp_path / "repro.txt"
+    puzzle.write_text(
+        "Size: 2\nRegions:\na: room\nGrid:\na a\na a\nPeople:\nAda\nBen\n"
+        "Clues:\nin_row Ada 1\nnot_in_row Ada 1\n"
+    )
+    assert cli.main([str(puzzle), "--show-model"]) == 0
+    out = capsys.readouterr().out
+    assert "Invalid model: contradiction" in out
+    assert "Ada" in out
