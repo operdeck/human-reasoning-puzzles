@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.4.0
+**New Feature(s)**
+* [#19 Murdoku: Global clues](https://github.com/operdeck/prrrove/issues/19)
+    * `src/csp`: Added whole-board counts over people, roles, attributes, object/area/cell sets, empty areas, and empty cells using the generic `COUNT` primitive; integrated count explanations, step status, PNG scopes, brute-force checks, and size benchmarks.
+    * Example: `count empty areas in tag:inside = 1` requires exactly one logical region in the tagged set to be unoccupied.
+
 ## 0.3.0
 **New Feature(s)**
 * [#11 Murdoku: Add person attributes and quantified clue targets](https://github.com/operdeck/prrrove/issues/11)
