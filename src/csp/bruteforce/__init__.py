@@ -18,11 +18,12 @@ from collections.abc import Callable
 from typing import Any
 
 from ..puzzlefile import detect
-from . import calcudoku, futoshiki, murdoku, sudoku
+from . import calcudoku, futoshiki, murdoku, queens, sudoku
 
 SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "sudoku": sudoku.solutions,
     "murdoku": murdoku.solutions,
+    "queens": queens.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

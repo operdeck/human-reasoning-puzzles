@@ -25,6 +25,8 @@ from .calcudoku import cell_name as calcudoku_cell
 from .futoshiki import Puzzle as Futoshiki
 from .futoshiki import cell_name as futoshiki_cell
 from .murdoku import Board, GlobalCountCondition, Square
+from .queens import Cell as QueensCell
+from .queens import Puzzle as Queens
 from .sudoku import Puzzle as Sudoku
 from .sudoku import box_size
 from .sudoku import cell_name as sudoku_cell
@@ -260,6 +262,57 @@ def futoshiki_picture(
         pad = arm + cell // 25
         draw.rectangle((mx - pad, my - pad, mx + pad, my + pad), fill=WHITE)
         draw.line([ends[0], tip, ends[1]], fill=INK, width=max(3, cell // 25), joint="curve")
+    return image
+
+
+def queens_picture(
+    puzzle: Queens,
+    solution: Mapping[str, QueensCell] | None = None,
+    *,
+    cell: int = 100,
+) -> Image.Image:
+    """Draw region colours and the placed queens in blue."""
+    n = puzzle.size
+    margin = cell // 2
+    side = n * cell
+    image = Image.new("RGB", (side + 2 * margin, side + 2 * margin), WHITE)
+    draw = ImageDraw.Draw(image)
+    region_at = {(r, c): puzzle.grid[r][c] for r in range(n) for c in range(n)}
+    fills = _group_fills(region_at)
+    for (row, col), region in region_at.items():
+        x, y = margin + col * cell, margin + row * cell
+        draw.rectangle((x, y, x + cell, y + cell), fill=fills[region])
+    _walls(draw, n, margin, cell, lambda a, b: region_at[a] == region_at[b], thin_colour=THIN)
+    for queen in (solution or {}).values():
+        x = margin + queen.col * cell
+        y = margin + queen.row * cell
+        baseline = y + cell * 3 // 4
+        crown = [
+            (x + cell // 5, baseline),
+            (x + cell // 10, y + cell // 4),
+            (x + cell // 3, y + cell // 2),
+            (x + cell // 2, y + cell // 8),
+            (x + cell * 2 // 3, y + cell // 2),
+            (x + cell * 9 // 10, y + cell // 4),
+            (x + cell * 4 // 5, baseline),
+        ]
+        draw.polygon(crown, fill=SOLVED)
+        draw.rectangle((x + cell // 5, baseline, x + cell * 4 // 5, y + cell * 4 // 5), fill=SOLVED)
+        draw.rectangle(
+            (x + cell // 4, y + cell * 5 // 6, x + cell * 3 // 4, y + cell * 9 // 10),
+            fill=SOLVED,
+        )
+        radius = max(1, cell // 18)
+        for center_x, center_y in (
+            (x + cell // 10, y + cell // 4),
+            (x + cell // 2, y + cell // 8),
+            (x + cell * 9 // 10, y + cell // 4),
+        ):
+            draw.ellipse(
+                (center_x - radius, center_y - radius, center_x + radius, center_y + radius),
+                fill=SOLVED,
+            )
+    _coordinates(draw, n, margin, cell)
     return image
 
 

@@ -22,7 +22,7 @@ from .murdoku import (
     Square,
 )
 
-KINDS = ("sudoku", "murdoku", "calcudoku", "futoshiki")
+KINDS = ("sudoku", "murdoku", "calcudoku", "futoshiki", "queens")
 
 
 def detect(text: str) -> str:
@@ -31,6 +31,8 @@ def detect(text: str) -> str:
         return "calcudoku"
     if "Signs:" in text:
         return "futoshiki"
+    if (family := read_sections(text).get("Family")) and family[0].casefold() == "queens":
+        return "queens"
     return "murdoku" if "Regions:" in text else "sudoku"
 
 
