@@ -12,6 +12,15 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, Cell]]:
     placements: dict[str, Cell] = {}
     rows: set[int] = set()
     columns: set[int] = set()
+    for region, cell in puzzle.givens.items():
+        if any(
+            abs(cell.row - other.row) <= 1 and abs(cell.col - other.col) <= 1
+            for other in placements.values()
+        ):
+            return []
+        placements[region] = cell
+        rows.add(cell.row)
+        columns.add(cell.col)
 
     def candidates(region: str) -> list[Cell]:
         return [

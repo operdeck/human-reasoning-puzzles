@@ -22,18 +22,55 @@ from .murdoku import (
     Square,
 )
 
-KINDS = ("sudoku", "murdoku", "calcudoku", "futoshiki", "queens")
+KINDS = (
+    "sudoku",
+    "murdoku",
+    "calcudoku",
+    "futoshiki",
+    "queens",
+    "suguru",
+    "logicgrid",
+    "starbattle",
+    "binairo",
+    "tents",
+    "minesweeper",
+    "akari",
+    "kakurasu",
+    "battleships",
+)
+
+FAMILY_KINDS = {
+    "queens": "queens",
+    "suguru": "suguru",
+    "tectonic": "suguru",
+    "logicgrid": "logicgrid",
+    "starbattle": "starbattle",
+    "binairo": "binairo",
+    "tango": "binairo",
+    "tents": "tents",
+    "minesweeper": "minesweeper",
+    "akari": "akari",
+    "lightup": "akari",
+    "kakurasu": "kakurasu",
+    "battleships": "battleships",
+}
 
 
 def detect(text: str) -> str:
     """Which puzzle family a file holds, from its sections."""
-    if "Cages:" in text:
+    section = read_sections(text)
+    if "Family" in section:
+        if len(section["Family"]) != 1:
+            raise ValueError("Family: must name exactly one puzzle family")
+        family = section["Family"][0].casefold()
+        if family not in FAMILY_KINDS:
+            raise ValueError(f"unknown puzzle family {family!r}")
+        return FAMILY_KINDS[family]
+    if "Cages" in section:
         return "calcudoku"
-    if "Signs:" in text:
+    if "Signs" in section:
         return "futoshiki"
-    if (family := read_sections(text).get("Family")) and family[0].casefold() == "queens":
-        return "queens"
-    return "murdoku" if "Regions:" in text else "sudoku"
+    return "murdoku" if "Regions" in section else "sudoku"
 
 
 def read_sections(text: str) -> dict[str, list[str]]:

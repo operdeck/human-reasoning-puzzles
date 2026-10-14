@@ -18,12 +18,36 @@ from collections.abc import Callable
 from typing import Any
 
 from ..puzzlefile import detect
-from . import calcudoku, futoshiki, murdoku, queens, sudoku
+from . import (
+    akari,
+    battleships,
+    binairo,
+    calcudoku,
+    futoshiki,
+    kakurasu,
+    logicgrid,
+    minesweeper,
+    murdoku,
+    queens,
+    starbattle,
+    sudoku,
+    suguru,
+    tents,
+)
 
 SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "sudoku": sudoku.solutions,
     "murdoku": murdoku.solutions,
     "queens": queens.solutions,
+    "suguru": suguru.solutions,
+    "logicgrid": logicgrid.solutions,
+    "starbattle": starbattle.solutions,
+    "binairo": binairo.solutions,
+    "tents": tents.solutions,
+    "minesweeper": minesweeper.solutions,
+    "akari": akari.solutions,
+    "kakurasu": kakurasu.solutions,
+    "battleships": battleships.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

@@ -1,0 +1,7 @@
+# Counts-only small Battleships variant; no ship shapes are modelled.
+Family: battleships
+Size: 4
+RowCounts:
+4 3 2 1
+ColumnCounts:
+4 3 2 1
