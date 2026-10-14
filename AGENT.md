@@ -162,6 +162,10 @@ may remain empty. Edge items and corner objects touch cells without occupying
 them. Marks may overlap and do not change cell occupancy. Roles overlap unless
 the puzzle explicitly constrains them; attributes are fixed person facts.
 
+Names must match appearance: an area called "Blue hall" is drawn blue, and
+icons and other visuals fit their object's name. A test checks colour words in
+region names against `Regions:` colours; review other names by eye.
+
 `--lint` reports malformed declarations as errors and missing icons,
 unreachable areas, or unused roles as warnings. `--require-forward` also
 requires a solve without `what_if`. `--png` without a path writes

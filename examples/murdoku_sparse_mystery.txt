@@ -20,7 +20,7 @@ gate: the gate
 
 Regions:
 a: maras_house #D8D2F0
-b: blue_hall #DCDCDC
+b: blue_hall #9EB9E8
 c: garden #CBE6B9
 d: study #FADFB5
 e: well_court #C4DCF2
