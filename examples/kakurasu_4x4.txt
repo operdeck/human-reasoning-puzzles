@@ -1,0 +1,7 @@
+# Small Kakurasu with a unique staircase pattern.
+Family: kakurasu
+Size: 4
+RowSums:
+10 6 3 1
+ColumnSums:
+10 6 3 1

@@ -20,16 +20,30 @@ from typing import Any
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from . import icons
+from .akari import Puzzle as Akari
+from .akari import cell_name as akari_cell
+from .battleships import Puzzle as Battleships
+from .binairo import Puzzle as Binairo
+from .binairo import cell_name as binairo_cell
 from .calcudoku import Puzzle as Calcudoku
 from .calcudoku import cell_name as calcudoku_cell
 from .futoshiki import Puzzle as Futoshiki
 from .futoshiki import cell_name as futoshiki_cell
+from .kakurasu import Puzzle as Kakurasu
+from .logicgrid import Puzzle as LogicGrid
+from .minesweeper import Puzzle as Minesweeper
+from .minesweeper import cell_name as minesweeper_cell
 from .murdoku import Board, GlobalCountCondition, Square
 from .queens import Cell as QueensCell
 from .queens import Puzzle as Queens
+from .starbattle import Puzzle as StarBattle
+from .starbattle import cell_name as starbattle_cell
 from .sudoku import Puzzle as Sudoku
 from .sudoku import box_size
 from .sudoku import cell_name as sudoku_cell
+from .suguru import Puzzle as Suguru
+from .suguru import cell_name as suguru_cell
+from .tents import Puzzle as Tents
 
 INK = (26, 26, 26)
 WHITE = (255, 255, 255)
@@ -208,7 +222,44 @@ def sudoku_picture(
             return grid[r][c], INK
         return (solution or {}).get(sudoku_cell(r, c)), SOLVED
 
-    return _number_grid(n, cell, shade, number, lambda a, b: boxes[a[0]][a[1]] == boxes[b[0]][b[1]])
+    image = _number_grid(
+        n, cell, shade, number, lambda a, b: boxes[a[0]][a[1]] == boxes[b[0]][b[1]]
+    )
+    if puzzle.links:
+        draw = ImageDraw.Draw(image)
+        margin = cell // 2
+        for link in puzzle.links:
+            first_x = margin + link.first[1] * cell + cell // 2
+            first_y = margin + link.first[0] * cell + cell // 2
+            second_x = margin + link.second[1] * cell + cell // 2
+            second_y = margin + link.second[0] * cell + cell // 2
+            if link.kind == "less":
+                draw.line(
+                    (first_x, first_y, second_x, second_y),
+                    fill=WHITE,
+                    width=max(8, cell // 5),
+                )
+                draw.line(
+                    (first_x, first_y, second_x, second_y),
+                    fill=INK,
+                    width=max(2, cell // 28),
+                )
+            else:
+                middle = ((first_x + second_x) // 2, (first_y + second_y) // 2)
+                radius = max(6, cell // 13)
+                fill = INK if link.kind == "black" else WHITE
+                draw.ellipse(
+                    (
+                        middle[0] - radius,
+                        middle[1] - radius,
+                        middle[0] + radius,
+                        middle[1] + radius,
+                    ),
+                    fill=fill,
+                    outline=INK,
+                    width=max(2, cell // 35),
+                )
+    return image
 
 
 def calcudoku_picture(
@@ -288,7 +339,8 @@ def queens_picture(
         x, y = margin + col * cell, margin + row * cell
         draw.rectangle((x, y, x + cell, y + cell), fill=fills[region])
     _walls(draw, n, margin, cell, lambda a, b: region_at[a] == region_at[b], thin_colour=THIN)
-    for queen in (solution or {}).values():
+
+    def crown(queen: QueensCell, colour: RGB) -> None:
         x = margin + queen.col * cell
         y = margin + queen.row * cell
         baseline = y + cell * 3 // 4
@@ -301,11 +353,11 @@ def queens_picture(
             (x + cell * 9 // 10, y + cell // 4),
             (x + cell * 4 // 5, baseline),
         ]
-        draw.polygon(crown, fill=SOLVED)
-        draw.rectangle((x + cell // 5, baseline, x + cell * 4 // 5, y + cell * 4 // 5), fill=SOLVED)
+        draw.polygon(crown, fill=colour)
+        draw.rectangle((x + cell // 5, baseline, x + cell * 4 // 5, y + cell * 4 // 5), fill=colour)
         draw.rectangle(
             (x + cell // 4, y + cell * 5 // 6, x + cell * 3 // 4, y + cell * 9 // 10),
-            fill=SOLVED,
+            fill=colour,
         )
         radius = max(1, cell // 18)
         for center_x, center_y in (
@@ -315,9 +367,282 @@ def queens_picture(
         ):
             draw.ellipse(
                 (center_x - radius, center_y - radius, center_x + radius, center_y + radius),
-                fill=SOLVED,
+                fill=colour,
             )
+
+    given_cells = set(puzzle.givens.values())
+    for queen in given_cells:
+        crown(queen, INK)
+    for queen in (solution or {}).values():
+        if queen not in given_cells:
+            crown(queen, SOLVED)
     _coordinates(draw, n, margin, cell)
+    return image
+
+
+def suguru_picture(
+    puzzle: Suguru, solution: Mapping[str, int] | None = None, *, cell: int = 100
+) -> Image.Image:
+    """Draw Suguru regions and values, with solved values in blue."""
+    region_at = {
+        (r, c): puzzle.areas.cells[r][c] for r in range(puzzle.size) for c in range(puzzle.size)
+    }
+    fills = _group_fills(region_at)
+
+    def number(row: int, col: int) -> tuple[str | int | None, RGB]:
+        given = puzzle.givens[row][col]
+        if given:
+            return given, INK
+        return (solution or {}).get(suguru_cell((row, col))), SOLVED
+
+    return _number_grid(
+        puzzle.size,
+        cell,
+        lambda row, col: fills[region_at[row, col]],
+        number,
+        lambda first, second: region_at[first] == region_at[second],
+    )
+
+
+def starbattle_picture(
+    puzzle: StarBattle,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 100,
+) -> Image.Image:
+    """Draw Star Battle regions and the solved stars."""
+    region_at = {
+        (r, c): puzzle.areas.cells[r][c] for r in range(puzzle.size) for c in range(puzzle.size)
+    }
+    fills = _group_fills(region_at)
+
+    def mark(row: int, col: int) -> tuple[str | None, RGB]:
+        key = starbattle_cell((row, col))
+        if puzzle.givens[row][col] == 1:
+            return "*", INK
+        if solution is not None and solution.get(key):
+            return "*", SOLVED
+        return None, INK
+
+    return _number_grid(
+        puzzle.size,
+        cell,
+        lambda row, col: fills[region_at[row, col]],
+        mark,
+        lambda first, second: region_at[first] == region_at[second],
+    )
+
+
+def binairo_picture(
+    puzzle: Binairo, solution: Mapping[str, bool] | None = None, *, cell: int = 100
+) -> Image.Image:
+    """Draw binary givens in ink and solved values in blue."""
+
+    def value(row: int, col: int) -> tuple[str | int | None, RGB]:
+        given = puzzle.givens[row][col]
+        if given >= 0:
+            return given, INK
+        chosen = (solution or {}).get(binairo_cell((row, col)))
+        return (int(chosen), SOLVED) if chosen is not None else (None, INK)
+
+    return _number_grid(
+        puzzle.size, cell, lambda row, col: WHITE, value, lambda first, second: True
+    )
+
+
+def tents_picture(
+    puzzle: Tents, solution: Mapping[str, bool] | None = None, *, cell: int = 78
+) -> Image.Image:
+    """Draw trees, tent placements and their row/column counts."""
+    fixed = {tree: ("T", MARK_INK) for tree in puzzle.trees}
+    return _line_count_picture(
+        puzzle.size,
+        puzzle.row_counts,
+        puzzle.column_counts,
+        solution,
+        cell=cell,
+        fixed=fixed,
+        solved_mark="*",
+    )
+
+
+def minesweeper_picture(
+    puzzle: Minesweeper, solution: Mapping[str, bool] | None = None, *, cell: int = 78
+) -> Image.Image:
+    """Draw clue numbers in ink and mines in the solved board in blue."""
+
+    def value(row: int, col: int) -> tuple[str | int | None, RGB]:
+        clue = puzzle.clues[row][col]
+        if clue is not None:
+            return clue, INK
+        if (solution or {}).get(minesweeper_cell((row, col)), False):
+            return "*", SOLVED
+        return None, INK
+
+    return _number_grid(
+        puzzle.size, cell, lambda row, col: WHITE, value, lambda first, second: True
+    )
+
+
+def akari_picture(
+    puzzle: Akari, solution: Mapping[str, bool] | None = None, *, cell: int = 78
+) -> Image.Image:
+    """Draw Akari walls and solved bulbs."""
+
+    def shade(row: int, col: int) -> RGB:
+        return (218, 218, 218) if puzzle.board[row][col] != "." else WHITE
+
+    def value(row: int, col: int) -> tuple[str | int | None, RGB]:
+        marker = puzzle.board[row][col]
+        if marker != ".":
+            return (marker if marker.isdigit() else None), INK
+        if (solution or {}).get(akari_cell((row, col)), False):
+            return "*", SOLVED
+        return None, INK
+
+    return _number_grid(puzzle.size, cell, shade, value, lambda first, second: True)
+
+
+def kakurasu_picture(
+    puzzle: Kakurasu, solution: Mapping[str, bool] | None = None, *, cell: int = 78
+) -> Image.Image:
+    """Draw selected Kakurasu cells and weighted row/column totals."""
+    fixed = {
+        (row, col): ("#", INK)
+        for row in range(puzzle.size)
+        for col in range(puzzle.size)
+        if puzzle.givens[row][col] == 1
+    }
+    return _line_count_picture(
+        puzzle.size,
+        puzzle.row_sums,
+        puzzle.column_sums,
+        solution,
+        cell=cell,
+        fixed=fixed,
+        solved_mark="#",
+    )
+
+
+def battleships_picture(
+    puzzle: Battleships, solution: Mapping[str, bool] | None = None, *, cell: int = 78
+) -> Image.Image:
+    """Draw the counts-only occupied-cell grid with its line totals."""
+    fixed = {
+        (row, col): ("#" if puzzle.givens[row][col] else ".", INK)
+        for row in range(puzzle.size)
+        for col in range(puzzle.size)
+        if puzzle.givens[row][col] >= 0
+    }
+    return _line_count_picture(
+        puzzle.size,
+        puzzle.row_counts,
+        puzzle.column_counts,
+        solution,
+        cell=cell,
+        fixed=fixed,
+        solved_mark="#",
+    )
+
+
+def logicgrid_picture(
+    puzzle: LogicGrid, solution: Mapping[str, int] | None = None, *, cell: int = 64
+) -> Image.Image:
+    """Draw one item-to-position matrix per logic-grid category."""
+    left = max(90, max(len(item) for items in puzzle.categories.values() for item in items) * 9)
+    top, row_height = cell // 2, max(34, cell // 2)
+    width = left + puzzle.size * cell + cell // 2
+    clue_lines = [
+        line
+        for clue in puzzle.clues
+        for line in textwrap.wrap(clue.label, width=max(24, (width - 16) // 8))
+    ]
+    table_height = sum(len(items) + 1 for items in puzzle.categories.values()) * row_height
+    height = top + table_height + (len(clue_lines) + 2) * row_height + cell // 2
+    image = Image.new("RGB", (width, height), WHITE)
+    draw = ImageDraw.Draw(image)
+    font = _font(max(10, cell // 4))
+    small = _font(max(9, cell // 5))
+    y = top
+    for category, items in puzzle.categories.items():
+        draw.rectangle((0, y, width, y + row_height), fill=(232, 237, 244))
+        draw.text((8, y + row_height // 2), category, fill=INK, font=font, anchor="lm")
+        for position in range(1, puzzle.size + 1):
+            x = left + (position - 1) * cell
+            draw.text(
+                (x + cell // 2, y + row_height // 2),
+                str(position),
+                fill=INK,
+                font=small,
+                anchor="mm",
+            )
+        y += row_height
+        for item in items:
+            draw.text((8, y + row_height // 2), item, fill=INK, font=small, anchor="lm")
+            draw.line((left, y, left + puzzle.size * cell, y), fill=THIN, width=1)
+            for position in range(1, puzzle.size + 1):
+                x = left + (position - 1) * cell
+                draw.rectangle((x, y, x + cell, y + row_height), outline=THIN, width=1)
+                if solution and solution.get(item) == position:
+                    draw.text(
+                        (x + cell // 2, y + row_height // 2),
+                        "X",
+                        fill=SOLVED,
+                        font=font,
+                        anchor="mm",
+                    )
+            y += row_height
+    y += row_height // 2
+    draw.text((8, y), "Clues", fill=INK, font=font, anchor="lt")
+    y += row_height
+    for clue_line in clue_lines:
+        draw.text((8, y), clue_line, fill=INK, font=small, anchor="lt")
+        y += row_height
+    return image
+
+
+def _line_count_picture(
+    n: int,
+    row_counts: Sequence[int],
+    column_counts: Sequence[int],
+    solution: Mapping[str, bool] | None,
+    *,
+    cell: int,
+    fixed: Mapping[Cell, tuple[str, RGB]] | None = None,
+    solved_mark: str = "*",
+) -> Image.Image:
+    margin = cell // 2
+    left = margin + cell // 2
+    top = margin + cell // 2
+    side = n * cell
+    image = Image.new("RGB", (left + side + cell // 4, top + side + cell // 4), WHITE)
+    draw = ImageDraw.Draw(image)
+    for row in range(n):
+        for col in range(n):
+            x, y = left + col * cell, top + row * cell
+            draw.rectangle((x, y, x + cell, y + cell), fill=WHITE)
+    _walls(draw, n, left, cell, lambda first, second: False)
+    font = _font(max(10, cell // 4))
+    for row, target in enumerate(row_counts):
+        y = top + row * cell + cell // 2
+        draw.text((left - cell // 4, y), str(target), fill=INK, font=font, anchor="rm")
+    for col, target in enumerate(column_counts):
+        x = left + col * cell + cell // 2
+        draw.text((x, top - cell // 4), str(target), fill=INK, font=font, anchor="mm")
+    for cell_position, (mark, colour) in (fixed or {}).items():
+        row, col = cell_position
+        x = left + col * cell + cell // 2
+        y = top + row * cell + cell // 2
+        draw.text((x, y), mark, fill=colour, font=_font(max(12, cell // 2)), anchor="mm")
+    for key, occupied in (solution or {}).items():
+        if occupied:
+            row_text, col_text = key[1:].split("c")
+            row, col = int(row_text) - 1, int(col_text) - 1
+            if (row, col) in (fixed or {}):
+                continue
+            x = left + col * cell + cell // 2
+            y = top + row * cell + cell // 2
+            draw.text((x, y), solved_mark, fill=SOLVED, font=_font(max(12, cell // 2)), anchor="mm")
     return image
 
 
@@ -325,7 +650,7 @@ def _number_grid(
     n: int,
     cell: int,
     shade: Callable[[int, int], RGB],
-    number: Callable[[int, int], tuple[int | None, RGB]],
+    number: Callable[[int, int], tuple[str | int | None, RGB]],
     together: Callable[[Cell, Cell], bool],
 ) -> Image.Image:
     """A square grid of numbers: shaded cells, walls between groups, coordinates."""
@@ -342,7 +667,7 @@ def _number_grid(
     for r in range(n):
         for c in range(n):
             value, colour = number(r, c)
-            if value:
+            if value is not None:
                 middle = (margin + c * cell + cell / 2, margin + r * cell + cell * 0.56)
                 draw.text(middle, str(value), fill=colour, font=font, anchor="mm")
     _coordinates(draw, n, margin, cell)

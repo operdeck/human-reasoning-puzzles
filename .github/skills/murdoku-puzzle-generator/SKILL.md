@@ -31,6 +31,13 @@ source is unlicensed or permission is unclear, stop before creating a
 transcription and ask; a non-reproductive inventory of the source files is
 still possible.
 
+This skill's transcription and generation procedures are specific to Murdoku.
+For other families, use the file format and model mapping in
+`docs/model-and-puzzle-formats.md`, and consult the generated examples in
+`docs/examples.md`. Do not encode another family by approximating it as
+Murdoku. New family examples must be original or generated, and must be checked
+by the family's independent brute-force solver.
+
 ## Transcribe an Image
 
 1. Inspect the actual user-supplied image. Use visual inspection at full

@@ -7,7 +7,7 @@ import pytest
 PIL = pytest.importorskip("PIL")
 from PIL import Image, ImageDraw  # noqa: E402
 
-from csp import bruteforce, icons, picture  # noqa: E402
+from csp import bruteforce, cli, icons, picture  # noqa: E402
 from csp.murdoku import Board, BoardObject, CornerObject, EdgeItem, RoleSpec, Square  # noqa: E402
 from csp.puzzlefile import load_board  # noqa: E402
 
@@ -497,6 +497,27 @@ def test_sudoku_picture_shows_givens_in_ink_and_solved_numbers_in_blue():
     assert not _has(blank, 0, 0, picture.SOLVED)
 
 
+def test_sudoku_variant_picture_marks_kropki_and_thermometer_links():
+    from csp import sudoku
+
+    text = """Givens:
+. . . .
+. . . .
+. . . .
+. . . .
+Kropki:
+black r1c1 r1c2
+Thermometers:
+r2c1 r2c2
+"""
+    puzzle = sudoku.parse(text)
+    image = picture.sudoku_picture(puzzle, cell=CELL)
+    margin = CELL // 2
+
+    assert image.getpixel((margin + CELL, margin + CELL // 2)) == picture.INK
+    assert image.getpixel((margin + CELL, margin + CELL + CELL // 2)) == picture.INK
+
+
 def test_sudoku_picture_shades_alternate_boxes():
     from csp import sudoku
 
@@ -567,6 +588,65 @@ def test_queens_picture_shows_regions_and_solution():
     crown_x = CELL // 2 + CELL + CELL // 2
     crown_y = CELL // 2 + CELL // 8
     assert image.getpixel((crown_x, crown_y)) == picture.SOLVED
+
+
+def test_logicgrid_unsolved_picture_includes_clues():
+    from csp import logicgrid
+
+    puzzle = logicgrid.parse((EXAMPLES / "logicgrid_3x3.txt").read_text())
+    image = picture.logicgrid_picture(puzzle, cell=48)
+    table_height = sum(len(items) + 1 for items in puzzle.categories.values()) * 24
+
+    assert image.height > table_height
+    assert image.getbbox() is not None
+
+
+def test_starbattle_picture_distinguishes_given_and_solved_stars():
+    from csp import starbattle
+
+    text = (EXAMPLES / "starbattle_8x8.txt").read_text()
+    puzzle = starbattle.parse(text)
+    (solution,) = bruteforce.solutions(text)
+    image = picture.starbattle_picture(puzzle, solution, cell=CELL)
+    solved_row, solved_col = next(
+        (row, col)
+        for row in range(puzzle.size)
+        for col in range(puzzle.size)
+        if solution[starbattle.cell_name((row, col))] and puzzle.givens[row][col] != 1
+    )
+
+    assert _has(image, 0, 1, picture.INK)
+    assert _has(image, solved_row, solved_col, picture.SOLVED)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "sudoku_kropki_4x4.txt",
+        "sudoku_anti_4x4.txt",
+        "sudoku_antiking_6x6.txt",
+        "suguru_4x4.txt",
+        "starbattle_4x4.txt",
+        "logicgrid_3x3.txt",
+        "binairo_4x4.txt",
+        "tango_4x4.txt",
+        "tents_4x4.txt",
+        "minesweeper_3x3.txt",
+        "akari_2x2.txt",
+        "kakurasu_4x4.txt",
+        "battleships_counts_4x4.txt",
+    ],
+)
+def test_family_png_cli_writes_nonblank_solution(name, tmp_path):
+    text = (EXAMPLES / name).read_text()
+    kind = cli.detect(text)
+    (solution,) = bruteforce.solutions(text, kind)
+    path = tmp_path / f"{name}.png"
+
+    assert cli.write_picture(kind, text, path, solution)
+    image = Image.open(path).convert("RGB")
+    assert image.width > 0 and image.height > 0
+    assert image.getbbox() is not None
 
 
 def test_touching_calcudoku_cages_never_share_a_colour():
