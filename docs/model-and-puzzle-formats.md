@@ -1,0 +1,251 @@
+# Model and Puzzle File Formats
+
+This guide describes the solver's generic model, the rule ladder, and the file formats accepted by each puzzle family. For the visual and graded examples, see [Puzzle Examples](examples.md).
+
+## Generic model
+
+The engine in [`src/csp/core.py`](../src/csp/core.py) knows only literals, constraints, relations, and generic deduction rules. A puzzle module parses its family format and compiles it to these primitives. No puzzle-family logic belongs in `core.py`.
+
+- **Literal:** a named variable takes a value, such as `r3c4=7`, `a=r1c1`, or `r2c3=True`.
+- **Variable:** a domain represented by an `EXACTLY_ONE` constraint. The solver reports the selected value when known.
+- **`EXACTLY_ONE`:** exactly one listed literal is true.
+- **`AT_MOST_ONE`:** zero or one listed literal is true. It never forces one to be true.
+- **`COUNT`:** the number of true literals belongs to `allowed_counts`; a reifier is true exactly when the count is allowed.
+- **Relation:** a predicate over the values of two or more named variables. Relations are checked by generalized arc consistency.
+
+The distinction between `EXACTLY_ONE` and `AT_MOST_ONE` is essential: sparse boards leave cells empty. The solver records every deduction with its rule and supporting constraints or relations; proof replay and narration use that record without adding family knowledge to the engine.
+
+## Deduction rules
+
+The solver applies these rules cheapest-first and restarts at the first rule that changes the model:
+
+| Rule | Meaning |
+|---|---|
+| `single` | Force the last option in an `EXACTLY_ONE` constraint, or the only literal forced by a `COUNT` with one feasible total. |
+| `count` | Propagate allowed count totals, including bounds, gaps, parity, and reified counts. |
+| `relations` | Generalized arc consistency: remove a value if no combination of the other variables' values supports it. |
+| `subsumption` | Use the remaining capacity of an outer constraint when an inner constraint requires another true literal. |
+| `cover2`, `cover3` | Combine disjoint inner constraints whose guaranteed demand fills an outer constraint's remaining capacity. |
+| `chains` | Follow strong/weak links from counts and two-variable relations; a contradiction or paired weak links can eliminate a value. |
+| `what_if` | On a model copy, assume a value and run only `single`, `count`, `relations`, and `subsumption`; a contradiction proves the assumption false. |
+
+`--grade` reports the hardest rule actually used, or `unsolved` if the deduction ladder stalls. It is a measure of this solver's deductions, not a universal human difficulty rating.
+
+## Family mappings
+
+| Family | Variables | Generic constraints and relations |
+|---|---|---|
+| Sudoku | Cell | One digit per cell; each digit exactly once per row, column, box, and extra house. Optional variants add generic relations or at-most-one peer pairs. |
+| Calcudoku | Cell | Sudoku rows/columns plus one arithmetic relation per cage. |
+| Futoshiki | Cell | Latin-square rows/columns plus one order relation per sign. |
+| Murdoku | Person | One square per person; at most one person per square, row, and column; clue predicates are relations/counts. |
+| Queens-style | Region | One cell per region; exactly one queen per row/column; at most one per 2×2 window. |
+| Tectonic / Suguru | Cell | Domain 1 through the size of its region; each value exactly once per region; equal values at most once in every eight-neighbor pair. |
+| Star Battle | Cell | Boolean star/empty; exact star counts per row, column, and region; at most one star in each 2×2 window. |
+| Zebra logic grid | Item | Each item chooses one position; each category has exactly one item per position; pair clues are relations. |
+| Binairo / Tango | Cell | Boolean cell; half of each value per row/column; no three equal in a window; all rows and columns differ. Tango adds equal/different relations. |
+| Tents and Trees | Cell | Boolean tent/empty; row/column counts; exactly one orthogonal tent neighbor per tree; tents do not touch, including diagonally. |
+| Minesweeper-style | Cell | Boolean mine/safe; each numbered cell counts mines in its eight-neighbor set; optional total mine count. |
+| Light Up / Akari | Cell | Boolean bulb/empty; visibility counts, numbered-wall counts, and at-most-one bulb per line of sight. |
+| Kakurasu | Cell | Boolean filled/empty; weighted row and column sums encoded as generic relations over the line cells. |
+| Battleships, counts only | Cell | Boolean occupied/empty with row and column counts. Ship shapes, fleet composition, and connectivity are not represented. |
+
+The new-family formats below currently use `COUNT`, `AT_MOST_ONE`, `EXACTLY_ONE`, and generic relations. Binairo/Tango row and column uniqueness uses bounded-arity auxiliary relations; performance on larger boards is part of the example and benchmark checks. Kakurasu's weighted equations currently use generic relations rather than a new weighted core constraint.
+
+## Sudoku and variants
+
+Plain Sudoku accepts a 4×4 or 9×9 grid; `.` and `0` are blanks, and visual `|`/`-` separators are ignored. A sectioned puzzle puts the grid under `Givens:` and may add `Boxes:` and `Extra:`:
+
+```text
+Givens:
+. . . .
+. . . .
+. . . .
+. . . .
+Boxes:       # optional jigsaw region ID per cell
+ a a b b
+ a c b b
+ c c d d
+ c c d d
+Extra:       # optional extra-house IDs per cell; '.' means none
+ x . . y
+ . x y .
+ . y x .
+ y . . x
+```
+
+A jigsaw requires N boxes of N cells. Each extra house has N cells. `Extra:` expresses X-Sudoku diagonals, NRC boxes, and other overlapping houses.
+
+Optional relation/peer sections are:
+
+```text
+Kropki:
+white r1c1 r1c2
+black r1c2 r2c2
+Consecutive:
+r2c1 r2c2
+Thermometers:
+r1c1 r2c1 r2c2
+AntiKnight:
+AntiKing:
+```
+
+- White Kropki dots require a difference of one; black dots require one value to be twice the other. Consecutive pairs require a difference of one.
+- Thermometer paths list cells from bulb to tip. Consecutive cells in the path are orthogonal neighbors, and values strictly increase along the path.
+- `AntiKnight:` and `AntiKing:` are enabled by section presence. Equal digits are forbidden for cells a knight move apart or a king move apart, respectively; overlaps with existing houses do not create duplicate constraints.
+
+## Region-grid formats
+
+Queens, Suguru/Tectonic, and Star Battle share the basic region-grid shape:
+
+```text
+Family: queens
+Size: 4
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+Grid:
+a a a b
+a b b b
+c c c c
+d d d d
+```
+
+`Grid:` contains one declared region ID per cell. The family validates its own region count and size requirements. Examples in `examples/` are the executable specifications.
+
+### Queens-style
+
+There must be N regions of N cells on an N×N board. The solver places one queen in every region, row, and column, with at most one queen in every 2×2 window. Optional `Givens:` lines are `region rNcN`, for example `a r1c2`. A queen in any of the eight neighboring cells counts as touching.
+
+### Tectonic / Suguru
+
+`Family:` is `suguru` or the alias `tectonic`. Add an optional N×N `Givens:` section of `.` or values. A cell's domain is 1 through the size of its region; each value appears once in that region, and equal values may not occupy cells that touch by side or corner.
+
+### Star Battle
+
+`Family: starbattle` requires one integer in `Stars:`. That many stars must appear in every row, column, and region; stars may not touch, including diagonally. Optional `Givens:` uses `?` for unknown, `.` for known empty, and `*` for a star.
+
+## Zebra-style logic grids
+
+A logic grid has no spatial board. Each category lists N distinct items; every item chooses one position from 1 through N, and each category uses every position exactly once:
+
+```text
+Family: logicgrid
+Size: 3
+Categories:
+resident: Ada Ben Cal
+color: red blue green
+pet: cat dog fox
+Clues:
+same Ada red
+left_of dog green
+next_to Ben fox
+```
+
+Supported relation words are `same`, `different`, `left_of`, `before`, and `next_to`. `left_of`/`before` mean an earlier position; `next_to` means consecutive positions. Every clue names items from different or the same declared categories, as allowed by the relation.
+
+## Binary grids
+
+Binairo/Takuzu and Tango use an even board size from 4 through 16. `Givens:` is an N×N grid of `.`, `0`, and `1`. Each row and column has equal numbers of 0 and 1, contains no run of three equal values, and is distinct from every other row/column. Tango adds neighboring-cell signs:
+
+```text
+Family: tango
+Size: 4
+Givens:
+. . . .
+. . . .
+. . . .
+. . . .
+Equal:
+r1c1 r1c2
+Different:
+r2c2 r3c2
+```
+
+Sign cell pairs must be orthogonal neighbors. The unique-line encoding uses existing generic relations; larger examples benchmark its cost.
+
+## Count and placement grids
+
+### Tents and Trees
+
+`Trees:` is an N×N grid of `.` and `T`. `RowCounts:` and `ColumnCounts:` each contain N non-negative counts, whose totals must equal the tree count. Every tree has exactly one orthogonally adjacent tent; tents are not on trees and may not touch each other, including diagonally. A tent is eligible only if it is orthogonally adjacent to exactly one tree, making tree pairing one-to-one.
+
+### Minesweeper-style
+
+`Clues:` is an N×N grid; `.` is a hidden cell and `0`–`8` is a safe numbered cell. The number counts mines in all in-bounds neighbors, including diagonals. Optional `TotalMines:` gives the total mine count.
+
+### Light Up / Akari
+
+`Family:` is `akari` or the alias `lightup`. `Grid:` uses `.` for floor, `W` for an unnumbered wall, and `0`–`4` for a numbered wall. Bulbs light every floor cell along its row/column until a wall; bulbs cannot see one another. Numbered walls count orthogonally adjacent bulbs.
+
+### Kakurasu
+
+`RowSums:` and `ColumnSums:` each contain N weighted totals. A filled cell in column c contributes c to its row sum; a filled cell in row r contributes r to its column sum. Optional `Givens:` uses `.`, `0`, and `1`. The current compiler expresses weighted line equations as generic relations; it does not add weighted propagation to `core.py`.
+
+### Battleships, counts only
+
+`RowCounts:` and `ColumnCounts:` each contain N occupied-cell counts; optional `Givens:` uses `.`, `0`, and `1`. This format intentionally models only row/column counts. It does not model ship shapes, fleet composition, adjacency rules, or connectivity, so it is not full Battleships.
+
+## Murdoku
+
+Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are required. Optional sections include `Rules:`, numbered `Clues:`, `AreaTags:`, `Objects:`, `EdgeItems:`, `CornerObjects:`, `Marks:`, `Roles:`, `RoleEligibility:`, `Attributes:`, `Pronouns:`, `Hatched:`, and `Words:`. See [`examples/murdoku_composition.txt`](../examples/murdoku_composition.txt) for a neutral composition and the [`Murdoku authoring skill`](../.github/skills/murdoku-puzzle-generator/SKILL.md) for the complete clue vocabulary.
+
+Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Corner objects list their four touched cells. Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
+
+For ordinary objects, `next_to` means one orthogonal step (up, down, left, or right) within the same logical area; diagonal cells do not count. Door and corner-object touched cells satisfy `next_to` across region boundaries. A window is a target for `at`, not `next_to`. `adjacent_regions` means two regions share a side.
+
+## Other existing formats
+
+- **Calcudoku:** `Size:`, `Grid:` cage IDs, and `Cages:` arithmetic targets/operators. Cages must be connected; subtraction and division are two-cell cages.
+- **Futoshiki:** `Grid:` givens/dots plus `Signs:` lines such as `r1c4 < r2c4`; signs join orthogonally adjacent cells.
+- **Sudoku:** see the earlier section. Plain format is a grid; variants use sectioned `Givens:`, `Boxes:`, and `Extra:`.
+
+## CLI and validation
+
+The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, and `--png` use the same generic engine for every family. `--explain`, `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific; other families have no clue narrative unless documented by that module.
+
+```bash
+uv run csp examples/<family-example>.txt --show-model
+uv run csp examples/<family-example>.txt --brute-force
+uv run csp examples/<family-example>.txt --grade
+uv run csp examples/<family-example>.txt --png board.png
+```
+
+For a new family, add a parser/compiler, an independent backtracker in `src/csp/bruteforce/`, CLI and kind registration, a renderer and PNG test, small and larger unique examples, example soundness coverage, README/AGENT/skill documentation, and a line in the module-layer test. Use existing generic primitives; a new engine constraint requires a separate design issue.
+
+## Source layout
+
+```text
+src/csp/
+	core.py        generic literals, constraints, relations, rules, and solver
+	puzzlefile.py  section reader and automatic family detection
+	regiongrid.py  shared named-region grid reader
+	<family>.py    one parser/compiler/text renderer per family
+	bruteforce/    independent search implementation per family
+	picture.py     PNG renderers for every family
+	cli.py         family dispatch and shared solver options
+tests/           engine, family, soundness, layering, and picture tests
+examples/        small and larger unique examples for each family
+benchmark/       seeded Sudoku and cross-family benchmark programs
+```
+
+The project verification commands are:
+
+```bash
+uv run pytest -q
+uvx ruff check src tests benchmark
+uvx ruff format --check src tests benchmark
+uv run mypy src
+```
+
+Continuous integration runs the same gates on Python 3.12 and 3.13. The tests check brute-force uniqueness for every example, engine agreement, and every logged placement/elimination against the independent solution. The exception is a documented unsupported narrative, such as non-Murdoku `--explain`, not solver correctness.
+
+`--png` uses Pillow (`uv sync --extra png`). Murdoku object icons are downloaded from the pinned Noto Emoji release on first use and cached locally; offline or unknown icons fall back to labels. Other family renderers use the puzzle grid, regions, counts, signs, or item-position matrix directly.
+
+## Further engine work
+
+Some proposed families remain conditional on generic-core design work. Weighted sums may need a generic primitive if relations are not practical; this is tracked separately from Kakurasu. Reusing chain links could improve large-board performance but is an optimization, not a prerequisite for families expressed by existing primitives. Connectivity, path, and run-length puzzles need separate designs for generic constraints.
+
+Other solver/documentation roadmap items are tracked as [DOCX generation #28](https://github.com/operdeck/human-reasoning-puzzles/issues/28), [weighted-sum support #46](https://github.com/operdeck/human-reasoning-puzzles/issues/46), [chain-link reuse #47](https://github.com/operdeck/human-reasoning-puzzles/issues/47), [large Calcudoku cages #50](https://github.com/operdeck/human-reasoning-puzzles/issues/50), [higher-arity weak links #51](https://github.com/operdeck/human-reasoning-puzzles/issues/51), [advanced covers #52](https://github.com/operdeck/human-reasoning-puzzles/issues/52), and [hybrid search #53](https://github.com/operdeck/human-reasoning-puzzles/issues/53). Plain-language clue interpretation remains an authoring-assistant task; the solver does not parse natural-language clues.

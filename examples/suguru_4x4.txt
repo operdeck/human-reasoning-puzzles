@@ -1,0 +1,18 @@
+# Small Tectonic/Suguru board; regions each contain 1 through 4.
+Family: suguru
+Size: 4
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+Grid:
+a a b b
+a a b b
+c c d d
+c c d d
+Givens:
+. 2 . .
+3 . . .
+. . 1 2
+. . 3 .

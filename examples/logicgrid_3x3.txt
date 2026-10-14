@@ -1,0 +1,14 @@
+# Small Zebra-style puzzle using a compact relation vocabulary.
+Family: logicgrid
+Size: 3
+Categories:
+resident: Ada Ben Cal
+color: red blue green
+pet: cat dog fox
+Clues:
+same Ada red
+same Ben dog
+same Cal fox
+same red cat
+left_of dog green
+before Ada Ben

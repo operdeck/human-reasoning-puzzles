@@ -9,7 +9,26 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-from . import bruteforce, calcudoku, futoshiki, murdoku, picture, queens, report, story, sudoku
+from . import (
+    akari,
+    battleships,
+    binairo,
+    bruteforce,
+    calcudoku,
+    futoshiki,
+    kakurasu,
+    logicgrid,
+    minesweeper,
+    murdoku,
+    picture,
+    queens,
+    report,
+    starbattle,
+    story,
+    sudoku,
+    suguru,
+    tents,
+)
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
 from .puzzlefile import KINDS, detect, load_board
 
@@ -41,8 +60,35 @@ def load(text: str, kind: str) -> Puzzle:
         model, signs = futoshiki.compile_puzzle(text)
         return Puzzle(kind, model, partial(futoshiki.render, signs))
     if kind == "queens":
-        model, puzzle = queens.compile_puzzle(text)
-        return Puzzle(kind, model, partial(queens.render, puzzle))
+        model, queens_puzzle = queens.compile_puzzle(text)
+        return Puzzle(kind, model, partial(queens.render, queens_puzzle))
+    if kind == "suguru":
+        model, suguru_puzzle = suguru.compile_puzzle(text)
+        return Puzzle(kind, model, partial(suguru.render, suguru_puzzle))
+    if kind == "logicgrid":
+        model, logicgrid_puzzle = logicgrid.compile_puzzle(text)
+        return Puzzle(kind, model, partial(logicgrid.render, logicgrid_puzzle))
+    if kind == "starbattle":
+        model, starbattle_puzzle = starbattle.compile_puzzle(text)
+        return Puzzle(kind, model, partial(starbattle.render, starbattle_puzzle))
+    if kind == "binairo":
+        model, binairo_puzzle = binairo.compile_puzzle(text)
+        return Puzzle(kind, model, partial(binairo.render, binairo_puzzle))
+    if kind == "tents":
+        model, tents_puzzle = tents.compile_puzzle(text)
+        return Puzzle(kind, model, partial(tents.render, tents_puzzle))
+    if kind == "minesweeper":
+        model, minesweeper_puzzle = minesweeper.compile_puzzle(text)
+        return Puzzle(kind, model, partial(minesweeper.render, minesweeper_puzzle))
+    if kind == "akari":
+        model, akari_puzzle = akari.compile_puzzle(text)
+        return Puzzle(kind, model, partial(akari.render, akari_puzzle))
+    if kind == "kakurasu":
+        model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
+        return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "battleships":
+        model, battleships_puzzle = battleships.compile_puzzle(text)
+        return Puzzle(kind, model, partial(battleships.render, battleships_puzzle))
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
     global_counts = murdoku.global_count_conditions(board, clues)
@@ -112,6 +158,24 @@ def write_picture(
         return False
     if kind == "queens":
         image = picture.queens_picture(queens.parse(text), solution)
+    elif kind == "suguru":
+        image = picture.suguru_picture(suguru.parse(text), solution)
+    elif kind == "starbattle":
+        image = picture.starbattle_picture(starbattle.parse(text), solution)
+    elif kind == "binairo":
+        image = picture.binairo_picture(binairo.parse(text), solution)
+    elif kind == "tents":
+        image = picture.tents_picture(tents.parse(text), solution)
+    elif kind == "minesweeper":
+        image = picture.minesweeper_picture(minesweeper.parse(text), solution)
+    elif kind == "akari":
+        image = picture.akari_picture(akari.parse(text), solution)
+    elif kind == "kakurasu":
+        image = picture.kakurasu_picture(kakurasu.parse(text), solution)
+    elif kind == "battleships":
+        image = picture.battleships_picture(battleships.parse(text), solution)
+    elif kind == "logicgrid":
+        image = picture.logicgrid_picture(logicgrid.parse(text), solution)
     elif kind == "sudoku":
         image = picture.sudoku_picture(sudoku.parse(text), solution)
     elif kind == "calcudoku":

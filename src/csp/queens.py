@@ -1,5 +1,6 @@
 """Queens-style placement: one queen per row, column and region, never touching."""
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -25,6 +26,7 @@ class Cell:
 class Puzzle:
     region_names: dict[str, str]
     grid: list[list[str]]
+    givens: dict[str, Cell]
 
     @property
     def size(self) -> int:
@@ -100,7 +102,27 @@ def parse(text: str) -> Puzzle:
     }
     if wrong := {region: count for region, count in counts.items() if count != size}:
         raise ValueError(f"each region needs {size} cells, got {wrong}")
-    return Puzzle(region_names, grid)
+    givens: dict[str, Cell] = {}
+    given_rows: set[int] = set()
+    given_columns: set[int] = set()
+    for line in sections.get("Givens", []):
+        parts = line.split()
+        if len(parts) != 2 or parts[0] not in region_names:
+            raise ValueError(f"bad queen given {line!r}, expected 'region r1c1'")
+        match = re.fullmatch(r"r(\d+)c(\d+)", parts[1], flags=re.IGNORECASE)
+        if match is None:
+            raise ValueError(f"bad queen square {parts[1]!r}, expected like r2c3")
+        cell = Cell(int(match[1]) - 1, int(match[2]) - 1)
+        if not (0 <= cell.row < size and 0 <= cell.col < size):
+            raise ValueError(f"queen square {parts[1]!r} is off the board")
+        if grid[cell.row][cell.col] != parts[0]:
+            raise ValueError(f"given queen {parts[0]} {parts[1]} is outside its region")
+        if parts[0] in givens or cell.row in given_rows or cell.col in given_columns:
+            raise ValueError("queen givens must use distinct regions, rows, and columns")
+        givens[parts[0]] = cell
+        given_rows.add(cell.row)
+        given_columns.add(cell.col)
+    return Puzzle(region_names, grid, givens)
 
 
 def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
@@ -146,6 +168,8 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
                 [model.literal(puzzle.grid[cell.row][cell.col], cell) for cell in cells],
                 family="queens do not touch",
             )
+    for region, cell in puzzle.givens.items():
+        model.assign(model.literal(region, cell), "given", "stated in the puzzle")
     return model, puzzle
 
 

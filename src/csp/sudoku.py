@@ -27,8 +27,10 @@ NRC Sudoku's four grey boxes are written the same way.
 With `Boxes:` the grid may be any size from 4 to 9.
 """
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import combinations, pairwise
 from math import isqrt
 
 from .core import Kind, Model, Step
@@ -43,6 +45,24 @@ type Cell = tuple[int, int]
 
 
 @dataclass(frozen=True)
+class Link:
+    kind: str
+    first: Cell
+    second: Cell
+
+    @property
+    def label(self) -> str:
+        return f"{self.kind} {cell_name(*self.first)} {cell_name(*self.second)}"
+
+    def holds(self, first: int, second: int) -> bool:
+        if self.kind in ("white", "consecutive"):
+            return abs(first - second) == 1
+        if self.kind == "black":
+            return max(first, second) == 2 * min(first, second)
+        return first < second
+
+
+@dataclass(frozen=True)
 class Puzzle:
     """The givens (0 for blank), a box id per cell, and any extra houses: per
     cell '.' or the one-character ids of the extra houses it is in."""
@@ -50,6 +70,9 @@ class Puzzle:
     grid: Grid
     boxes: list[list[str]]
     extra: list[list[str]] | None = None
+    links: tuple[Link, ...] = ()
+    anti_knight: bool = False
+    anti_king: bool = False
 
     @property
     def size(self) -> int:
@@ -84,6 +107,35 @@ class Puzzle:
                     cells_of.setdefault(house, []).append((r, c))
         return dict(sorted(cells_of.items()))
 
+    def anti_peers(self) -> list[tuple[Cell, Cell, str]]:
+        """Non-house cell pairs that must not hold the same digit."""
+        house_pairs = {
+            frozenset((first, second))
+            for _, _, cells in self.houses()
+            for first, second in combinations(cells, 2)
+        }
+        out: dict[tuple[Cell, Cell], str] = {}
+        for row in range(self.size):
+            for col in range(self.size):
+                first = (row, col)
+                moves: list[tuple[int, int, str]] = []
+                if self.anti_knight:
+                    moves.extend(
+                        (dr, dc, "anti-knight") for dr, dc in ((1, 2), (1, -2), (2, 1), (2, -1))
+                    )
+                if self.anti_king:
+                    moves.extend(
+                        (dr, dc, "anti-king") for dr in (0, 1) for dc in (-1, 0, 1) if dr or dc
+                    )
+                for dr, dc, kind in moves:
+                    second = row + dr, col + dc
+                    if not (0 <= second[0] < self.size and 0 <= second[1] < self.size):
+                        continue
+                    pair = (first, second) if first < second else (second, first)
+                    if frozenset(pair) not in house_pairs:
+                        out[pair] = kind
+        return [(first, second, kind) for (first, second), kind in sorted(out.items())]
+
 
 def cell_name(row: int, col: int) -> str:
     """1-indexed, matching what the grid prints."""
@@ -102,20 +154,26 @@ def standard_boxes(size: int) -> list[list[str]]:
 
 
 def parse(text: str) -> Puzzle:
-    """Read a plain grid, or a sectioned file with Givens, Boxes and Extra."""
-    if "Givens:" not in text:
+    """Read a Sudoku grid and optional house, adjacency, and peer rules."""
+    section = read_sections(text)
+    variant_sections = {"Kropki", "Consecutive", "Thermometers", "AntiKnight", "AntiKing"}
+    if "Givens" not in section:
+        if section.keys() & variant_sections:
+            raise ValueError("variant rules require a Givens: section")
         grid = _grid(text.splitlines())
         if len(grid) not in (4, 9):
             raise ValueError(f"grid has {len(grid)} rows, expected 4 or 9")
         return Puzzle(grid, standard_boxes(len(grid)))
-    section = read_sections(text)
     grid = _grid(section["Givens"])
     size = len(grid)
     extra = _extra(section["Extra"], size) if "Extra" in section else None
+    links = _variant_links(section, size)
+    anti_knight = _flag(section, "AntiKnight")
+    anti_king = _flag(section, "AntiKing")
     if "Boxes" not in section:
         if size not in (4, 9):
             raise ValueError(f"grid has {size} rows; without Boxes: it must be 4 or 9")
-        return Puzzle(grid, standard_boxes(size), extra)
+        return Puzzle(grid, standard_boxes(size), extra, links, anti_knight, anti_king)
     boxes = [line.split() for line in section["Boxes"]]
     if not 4 <= size <= 9:
         raise ValueError(f"a jigsaw grid is 4 to 9 cells wide, not {size}")
@@ -124,7 +182,60 @@ def parse(text: str) -> Puzzle:
     sizes = {box: sum(row.count(box) for row in boxes) for row in boxes for box in row}
     if len(sizes) != size or set(sizes.values()) != {size}:
         raise ValueError(f"Boxes needs {size} boxes of {size} cells, got {sorted(sizes.items())}")
-    return Puzzle(grid, boxes, extra)
+    return Puzzle(grid, boxes, extra, links, anti_knight, anti_king)
+
+
+def _flag(section: dict[str, list[str]], name: str) -> bool:
+    if name not in section:
+        return False
+    values = section[name]
+    if values and (len(values) != 1 or values[0].casefold() not in ("yes", "true")):
+        raise ValueError(f"{name}: is an enabled flag; omit its value or write 'yes'")
+    return True
+
+
+def _cell(token: str, size: int) -> Cell:
+    match = re.fullmatch(r"r(\d+)c(\d+)", token, flags=re.IGNORECASE)
+    if match is None:
+        raise ValueError(f"bad cell {token!r}, expected like r2c3")
+    row, col = int(match[1]) - 1, int(match[2]) - 1
+    if not (0 <= row < size and 0 <= col < size):
+        raise ValueError(f"cell {token!r} is off the grid")
+    return row, col
+
+
+def _neighbor(first: Cell, second: Cell) -> bool:
+    return abs(first[0] - second[0]) + abs(first[1] - second[1]) == 1
+
+
+def _variant_links(section: dict[str, list[str]], size: int) -> tuple[Link, ...]:
+    links: set[Link] = set()
+    for line in section.get("Kropki", []):
+        parts = line.split()
+        if len(parts) != 3 or parts[0].casefold() not in ("white", "black"):
+            raise ValueError(f"bad Kropki dot {line!r}, expected 'white|black r1c1 r1c2'")
+        first, second = _cell(parts[1], size), _cell(parts[2], size)
+        if not _neighbor(first, second):
+            raise ValueError(f"Kropki dot {line!r} is not between neighbouring cells")
+        links.add(Link(parts[0].casefold(), first, second))
+
+    for line in section.get("Consecutive", []):
+        parts = line.split()
+        if len(parts) != 2:
+            raise ValueError(f"bad consecutive pair {line!r}, expected 'r1c1 r1c2'")
+        first, second = _cell(parts[0], size), _cell(parts[1], size)
+        if not _neighbor(first, second):
+            raise ValueError(f"consecutive pair {line!r} is not between neighbouring cells")
+        links.add(Link("consecutive", first, second))
+
+    for line in section.get("Thermometers", []):
+        cells = tuple(_cell(token, size) for token in line.split())
+        if len(cells) < 2 or len(set(cells)) != len(cells):
+            raise ValueError(f"bad thermometer {line!r}, expected a non-repeating path of cells")
+        if any(not _neighbor(first, second) for first, second in pairwise(cells)):
+            raise ValueError(f"thermometer {line!r} has non-neighbouring cells")
+        links.update(Link("less", first, second) for first, second in pairwise(cells))
+    return tuple(sorted(links, key=lambda link: (link.kind, link.first, link.second)))
 
 
 def _extra(lines: Sequence[str], size: int) -> list[list[str]]:
@@ -187,6 +298,20 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
                 [model.literal(cell_name(r, c), d) for r, c in members],
                 family=f"each digit once per {WORDS.get(family, family)}",
             )
+        for first, second, kind in puzzle.anti_peers():
+            model.constrain(
+                f"{d} not repeated on {kind} peers {cell_name(*first)} {cell_name(*second)}",
+                Kind.AT_MOST_ONE,
+                [model.literal(cell_name(*first), d), model.literal(cell_name(*second), d)],
+                family=f"no repeated digit on {kind} peers",
+            )
+
+    for link in puzzle.links:
+        model.relate(
+            link.label,
+            (cell_name(*link.first), cell_name(*link.second)),
+            link.holds,
+        )
 
     for row, col in cells:
         given = puzzle.grid[row][col]

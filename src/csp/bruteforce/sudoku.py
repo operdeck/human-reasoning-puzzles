@@ -4,7 +4,7 @@ Shares only `sudoku.Puzzle.houses()`, the definition of what a Sudoku
 requires, with the engine's compiler.
 """
 
-from ..sudoku import Cell, cell_name, parse
+from ..sudoku import Cell, Link, cell_name, parse
 
 type Grid = list[list[int]]
 type Peers = dict[Cell, list[Cell]]
@@ -17,10 +17,13 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, int]]:
     for _, _, cells in puzzle.houses():
         for cell in cells:
             peers.setdefault(cell, []).extend(other for other in cells if other != cell)
-    if not _givens_consistent(grid, peers):
+    for first, second, _ in puzzle.anti_peers():
+        peers.setdefault(first, []).append(second)
+        peers.setdefault(second, []).append(first)
+    if not _givens_consistent(grid, peers, puzzle.links):
         return []
     found: list[dict[str, int]] = []
-    _search(grid, peers, found, limit)
+    _search(grid, peers, puzzle.links, found, limit)
     return found
 
 
@@ -29,7 +32,7 @@ def _candidates(grid: Grid, peers: Peers, r: int, c: int) -> list[int]:
     return [d for d in range(1, len(grid) + 1) if d not in used]
 
 
-def _givens_consistent(grid: Grid, peers: Peers) -> bool:
+def _givens_consistent(grid: Grid, peers: Peers, links: tuple[Link, ...]) -> bool:
     for r in range(len(grid)):
         for c in range(len(grid)):
             if given := grid[r][c]:
@@ -38,10 +41,22 @@ def _givens_consistent(grid: Grid, peers: Peers) -> bool:
                 grid[r][c] = given
                 if not ok:
                     return False
-    return True
+    return _links_consistent(grid, links)
 
 
-def _search(grid: Grid, peers: Peers, found: list[dict[str, int]], limit: int) -> None:
+def _links_consistent(grid: Grid, links: tuple[Link, ...]) -> bool:
+    return all(
+        not grid[first[0]][first[1]]
+        or not grid[second[0]][second[1]]
+        or link.holds(grid[first[0]][first[1]], grid[second[0]][second[1]])
+        for link in links
+        for first, second in ((link.first, link.second),)
+    )
+
+
+def _search(
+    grid: Grid, peers: Peers, links: tuple[Link, ...], found: list[dict[str, int]], limit: int
+) -> None:
     size = len(grid)
     best: tuple[int, int, list[int]] | None = None
     for r in range(size):
@@ -56,7 +71,8 @@ def _search(grid: Grid, peers: Peers, found: list[dict[str, int]], limit: int) -
     r, c, options = best
     for d in options:
         grid[r][c] = d
-        _search(grid, peers, found, limit)
+        if _links_consistent(grid, links):
+            _search(grid, peers, links, found, limit)
         grid[r][c] = 0
         if len(found) >= limit:
             return

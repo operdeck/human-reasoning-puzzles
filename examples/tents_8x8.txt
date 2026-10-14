@@ -1,0 +1,16 @@
+# Larger generated Tents and Trees board with one tent per row and column.
+Family: tents
+Size: 8
+Trees:
+T . . . . . . .
+. . T . . . . .
+. . . . . . T .
+. T . . . . . .
+. . . . . . . T
+. . . . . T . .
+. . . T . . . .
+. . . . T . . .
+RowCounts:
+1 1 1 1 1 1 1 1
+ColumnCounts:
+1 1 1 1 1 1 1 1
