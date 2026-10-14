@@ -552,6 +552,23 @@ def test_futoshiki_picture_points_each_sign_at_the_smaller_cell():
     assert image.getpixel((edge - arm // 2, middle)) == picture.WHITE  # open towards r1c1
 
 
+def test_queens_picture_shows_regions_and_solution():
+    from csp import queens
+
+    text = (EXAMPLES / "queens_4x4.txt").read_text()
+    puzzle = queens.parse(text)
+    (solution,) = bruteforce.solutions(text)
+    image = picture.queens_picture(puzzle, solution, cell=CELL)
+
+    assert image.size == (5 * CELL, 5 * CELL)
+    assert _corner(image, 0, 0) == _corner(image, 1, 0)
+    assert _corner(image, 0, 2) != _corner(image, 0, 3)
+    assert _has(image, 0, 1, picture.SOLVED)
+    crown_x = CELL // 2 + CELL + CELL // 2
+    crown_y = CELL // 2 + CELL // 8
+    assert image.getpixel((crown_x, crown_y)) == picture.SOLVED
+
+
 def test_touching_calcudoku_cages_never_share_a_colour():
     from csp import calcudoku
 
