@@ -649,6 +649,32 @@ def test_family_png_cli_writes_nonblank_solution(name, tmp_path):
     assert image.getbbox() is not None
 
 
+def test_tango_picture_marks_equal_and_different_signs():
+    from csp import binairo
+
+    text = (EXAMPLES / "tango_4x4.txt").read_text()
+    puzzle = binairo.parse(text)
+    (solution,) = bruteforce.solutions(text)
+    image = picture.binairo_picture(puzzle, solution, cell=CELL)
+    margin = CELL // 2
+
+    for sign in puzzle.signs:
+        first_row, first_col = sign.first
+        second_row, second_col = sign.second
+        if first_row == second_row:
+            x = margin + max(first_col, second_col) * CELL
+            y = margin + first_row * CELL + CELL // 2
+        else:
+            x = margin + first_col * CELL + CELL // 2
+            y = margin + max(first_row, second_row) * CELL
+        badge = image.crop((x - 15, y - 15, x + 16, y + 16))
+        assert any(
+            badge.getpixel((x, y)) == picture.INK
+            for x in range(badge.width)
+            for y in range(badge.height)
+        )
+
+
 def test_touching_calcudoku_cages_never_share_a_colour():
     from csp import calcudoku
 

@@ -445,9 +445,32 @@ def binairo_picture(
         chosen = (solution or {}).get(binairo_cell((row, col)))
         return (int(chosen), SOLVED) if chosen is not None else (None, INK)
 
-    return _number_grid(
+    image = _number_grid(
         puzzle.size, cell, lambda row, col: WHITE, value, lambda first, second: True
     )
+    if puzzle.signs:
+        draw = ImageDraw.Draw(image)
+        margin = cell // 2
+        radius = max(10, cell // 7)
+        font = _font(max(12, cell // 4))
+        for sign in puzzle.signs:
+            first_row, first_col = sign.first
+            second_row, second_col = sign.second
+            if first_row == second_row:
+                x = margin + max(first_col, second_col) * cell
+                y = margin + first_row * cell + cell // 2
+            else:
+                x = margin + first_col * cell + cell // 2
+                y = margin + max(first_row, second_row) * cell
+            draw.ellipse(
+                (x - radius, y - radius, x + radius, y + radius),
+                fill=WHITE,
+                outline=INK,
+                width=max(2, cell // 35),
+            )
+            label = "=" if sign.kind == "equal" else "x"
+            draw.text((x, y), label, fill=INK, font=font, anchor="mm")
+    return image
 
 
 def tents_picture(
