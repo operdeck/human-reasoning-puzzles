@@ -494,8 +494,8 @@ People:         # one per line, from 1 through Size
 Rules:          # optional; clues that come with the board, not numbered
   outside Tim water
 Clues:          # numbered 1, 2, ... in the order given
-  next_to Tim klimwand               # beside any of the named things, same region
-  not_next_to Ben lamp               # beside none of them
+  next_to Tim klimwand               # shares a side in the same region; not diagonal
+  not_next_to Ben lamp               # no side-sharing neighbor in the same region
   at Tim window                      # exactly a cell touched by a door or window
   next_to Jos fountain               # one of the four cells around a corner object
   on_mark Ada quiet                  # Ada occupies a cell marked quiet
@@ -659,12 +659,13 @@ relation over every person's square at once.
 There is no "two people next to each other" clue: with at most one person per
 row and column, two people never share a side, so it could never hold.
 
-Ordinary-object `next_to` stays in the same logical area. A door lists two
-orthogonally neighboring cells in different areas; either cell satisfies
-`next_to` or `at`, including across the boundary. Wider openings are multiple
-simple doors with the same name. A window lists one cell for `at`; a corner
-object lists the four cells around its interior grid vertex for `next_to`.
-These items touch cells but do not occupy or block them. Distance (`within`,
+For ordinary objects, `next_to` means one orthogonal step (up, down, left, or
+right) from an object cell in the same logical area. Diagonal cells do not
+count. A door lists two orthogonally neighboring cells in different areas;
+either cell satisfies `next_to` or `at`, including across the boundary. Wider
+openings are multiple simple doors with the same name. A window lists one cell
+for `at`; a corner object lists the four cells around its interior grid vertex
+for `next_to`. These items touch cells but do not occupy or block them. Distance (`within`,
 `at_least`, `furthest`), direction (`above`, `left_of`) and `knight_from` may
 cross region boundaries.
 

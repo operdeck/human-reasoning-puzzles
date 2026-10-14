@@ -284,11 +284,11 @@ no weak links yet.
   are colour legends, useful for matching colours to region names (read
   `w:fill`). Always cross-check a transcription against the candidate lists
   in the document's worked solution, and run `--brute-force` on it.
-- Puzzle 3 as first published had no solution once "next to" stays within a
-  region: the koffer on r1c5 sat in Bankastraat. Its board, solution picture
-  and worked solution were corrected (r1c5 now in Helmholtzstraat); puzzle
-  1's worked solution listed a cross-region square for Tjitske and was
-  corrected too. The answers did not change.
+- Puzzle 3 as first published had no solution under same-region, orthogonal
+  "next to" semantics: the koffer on r1c5 sat in Bankastraat. Its board,
+  solution picture and worked solution were corrected (r1c5 now in
+  Helmholtzstraat); puzzle 1's worked solution listed a cross-region square
+  for Tjitske and was corrected too. The answers did not change.
 - "Only Luna may stand in the water" is a board rule, written out as one
   `outside` line per other person in the `Rules:` section of
   `prrrdoku3.txt`, so clue numbers still match the document.
