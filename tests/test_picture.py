@@ -603,3 +603,26 @@ def test_walls_do_not_poke_into_cells():
     x, y = CELL // 2 + 2 * CELL, CELL // 2 + CELL  # top-left corner of r2c3
     corner = image.crop((x - 10, y - 10, x - 3, y - 3))
     assert corner.convert("L").getextrema()[0] > 60
+
+
+@pytest.mark.parametrize("name", ["tapijt", "carpet", "rug", "carpet2", "well", "waterput"])
+def test_hand_drawn_objects_never_fall_back_to_text(name):
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "here"},
+        [BoardObject(name, "standable", (Square(0, 0),))],
+        ["A", "B"],
+    )
+    assert picture.unknown_object_icons(board) == []
+
+
+def test_every_object_in_the_examples_has_an_icon():
+    checked = 0
+    for path in sorted(EXAMPLES.glob("*.txt")):
+        if not path.name.startswith(("murdoku", "prrrdoku")):
+            continue
+        board, _ = load_board(path.read_text())
+        assert picture.unknown_object_icons(board) == [], path.name
+        checked += 1
+    assert checked >= 5

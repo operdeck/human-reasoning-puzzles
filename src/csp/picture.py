@@ -98,7 +98,7 @@ def murdoku_picture(
         x0, y0, _, _ = box(min(piece))
         _, _, x1, y1 = box(max(piece))
         stretch = len(piece) > 1
-        if name.rstrip("0123456789").rstrip("_").lower() in {"waterput", "well"}:
+        if name.rstrip("0123456789").rstrip("_").lower() in WELL_NAMES:
             _draw_water_well(draw, (x0, y0, x1, y1))
         elif obj.kind == "standable":
             rotate = name.rstrip("0123456789").rstrip("_").lower() == "bed" and y1 - y0 > x1 - x0
@@ -159,9 +159,14 @@ def murdoku_picture(
     return image
 
 
+# Objects drawn by hand because Noto Emoji has no suitable picture.
+CARPET_NAMES = frozenset({"tapijt", "carpet", "rug"})
+WELL_NAMES = frozenset({"waterput", "well"})
+
+
 def unknown_object_icons(board: Board) -> list[str]:
     """Object types that render with a text fallback instead of a picture icon."""
-    custom = {"tapijt", "waterput", "well"}
+    custom = CARPET_NAMES | WELL_NAMES
     return sorted(
         {
             name
@@ -494,7 +499,7 @@ def _icon(
     """Draw `name`'s icon centred in `area`; `stretch` fills the area instead."""
     x0, y0, x1, y1 = area
     normalized = name.rstrip("0123456789").rstrip("_").lower()
-    if normalized == "tapijt":
+    if normalized in CARPET_NAMES:
         _draw_carpet(draw, area)
         return
     path = icons.icon(name)
