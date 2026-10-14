@@ -61,7 +61,7 @@ CATALOGUE: dict[str, str] = {
     "ladder": "1fa9c",
     "tafel": "1f37d", "table": "1f37d",
     "bureau": "1f5a5", "desk": "1f5a5", "computer": "1f5a5",
-    "kookeiland": "1f373", "fornuis": "1f373", "stove": "1f373",
+    "kookeiland": "1f373", "fornuis": "1f373", "stove": "1f373", "oven": "1f373",
     "kombuis": "1f372", "galley": "1f372",
     "koffer": "1f9f3", "suitcase": "1f9f3",
     "kruik": "1f3fa", "amphora": "1f3fa", "vase": "1f3fa",
