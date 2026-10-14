@@ -1,0 +1,12 @@
+# Larger anti-king Sudoku; standard boxes already rule out king-adjacent repeats.
+Givens:
+1 2 3 4 5 6 7 8 9
+7 8 5 2 9 3 1 4 6
+4 6 9 1 8 7 2 3 5
+8 1 2 5 3 4 6 9 7
+3 7 4 9 6 2 5 1 8
+5 9 6 7 1 8 3 2 4
+6 4 1 8 2 5 9 7 3
+9 3 7 6 4 1 8 5 2
+2 5 8 3 7 9 4 6 .
+AntiKing:

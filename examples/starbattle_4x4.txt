@@ -1,0 +1,14 @@
+# Small one-star Star Battle with irregular regions.
+Family: starbattle
+Size: 4
+Stars: 1
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+Grid:
+a a a b
+a b b b
+c c c c
+d d d d

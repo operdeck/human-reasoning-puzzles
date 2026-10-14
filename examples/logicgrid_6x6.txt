@@ -1,0 +1,33 @@
+# Larger generated logic grid with four six-item categories.
+Family: logicgrid
+Size: 6
+Categories:
+resident: Ada Ben Cal Dee Eve Fay
+color: red yellow blue orange violet green
+animal: bee dog ant fox cat eel
+drink: juice coffee soda tea water milk
+Clues:
+same Ada red
+same Ben yellow
+same Cal blue
+same Dee orange
+same Eve violet
+same Fay green
+same Ada bee
+same Ben dog
+same Cal ant
+same Dee fox
+same Eve cat
+same Fay eel
+same Ada juice
+same Ben coffee
+same Cal soda
+same Dee tea
+same Eve water
+same Fay milk
+left_of Ada Ben
+before Ben Cal
+left_of Cal Dee
+before Dee Eve
+left_of Eve Fay
+next_to dog blue

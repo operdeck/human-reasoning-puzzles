@@ -1,0 +1,12 @@
+# Small generated Tents and Trees puzzle with one tree in each line.
+Family: tents
+Size: 4
+Trees:
+. T . .
+. . . T
+T . . .
+. . T .
+RowCounts:
+1 1 1 1
+ColumnCounts:
+1 1 1 1

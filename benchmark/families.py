@@ -1,0 +1,135 @@
+"""Benchmark the checked-in small/larger examples for each added family.
+
+    uv run python benchmark/families.py --runs 3 --seed 42
+
+Examples are fixed, unique, and checked into the repository. The seed shuffles
+case order; timings include standalone parsing, CLI load/compile, deduction, and
+independent brute-force validation so runs are reproducible and comparable.
+"""
+
+import argparse
+import random
+import statistics
+import time
+from collections.abc import Callable
+from pathlib import Path
+
+from csp import (
+    akari,
+    battleships,
+    binairo,
+    bruteforce,
+    cli,
+    kakurasu,
+    logicgrid,
+    minesweeper,
+    queens,
+    report,
+    starbattle,
+    sudoku,
+    suguru,
+    tents,
+)
+from csp.core import Solver
+from csp.puzzlefile import detect
+
+ROOT = Path(__file__).parent.parent
+EXAMPLES = ROOT / "examples"
+
+PARSERS: dict[str, Callable[[str], object]] = {
+    "sudoku": sudoku.parse,
+    "queens": queens.parse,
+    "suguru": suguru.parse,
+    "logicgrid": logicgrid.parse,
+    "starbattle": starbattle.parse,
+    "binairo": binairo.parse,
+    "tents": tents.parse,
+    "minesweeper": minesweeper.parse,
+    "akari": akari.parse,
+    "kakurasu": kakurasu.parse,
+    "battleships": battleships.parse,
+}
+
+CASES = (
+    "queens_4x4.txt",
+    "queens_8x8.txt",
+    "sudoku_kropki_4x4.txt",
+    "sudoku_relations_9x9.txt",
+    "sudoku_anti_4x4.txt",
+    "sudoku_anti_9x9.txt",
+    "sudoku_antiking_6x6.txt",
+    "sudoku_antiking_9x9.txt",
+    "suguru_4x4.txt",
+    "suguru_8x8.txt",
+    "starbattle_4x4.txt",
+    "starbattle_8x8.txt",
+    "logicgrid_3x3.txt",
+    "logicgrid_6x6.txt",
+    "binairo_4x4.txt",
+    "binairo_8x8.txt",
+    "tango_4x4.txt",
+    "tango_8x8.txt",
+    "tents_4x4.txt",
+    "tents_8x8.txt",
+    "minesweeper_3x3.txt",
+    "minesweeper_8x8.txt",
+    "akari_2x2.txt",
+    "akari_8x8.txt",
+    "kakurasu_4x4.txt",
+    "kakurasu_8x8.txt",
+    "battleships_counts_4x4.txt",
+    "battleships_counts_8x8.txt",
+)
+
+
+def measure(name: str) -> tuple[str, float, float, float, float]:
+    text = (EXAMPLES / name).read_text()
+    kind = detect(text)
+
+    start = time.perf_counter()
+    PARSERS[kind](text)
+    parse_ms = (time.perf_counter() - start) * 1000
+
+    start = time.perf_counter()
+    puzzle = cli.load(text, kind)
+    compile_ms = (time.perf_counter() - start) * 1000
+
+    fired: list[str] = []
+    start = time.perf_counter()
+    result = Solver(puzzle.model).solve(on_step=lambda rule, steps: fired.append(rule))
+    solve_ms = (time.perf_counter() - start) * 1000
+
+    start = time.perf_counter()
+    found = bruteforce.solutions(text, kind, limit=2)
+    brute_ms = (time.perf_counter() - start) * 1000
+    if len(found) != 1 or not result.solved or result.assignment != found[0]:
+        raise ValueError(f"{name} failed uniqueness or engine agreement")
+    return report.grade(fired), parse_ms, compile_ms, solve_ms, brute_ms
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--runs", type=int, default=3)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+    if args.runs < 1:
+        parser.error("--runs must be positive")
+
+    cases = list(CASES)
+    random.Random(args.seed).shuffle(cases)
+    print(f"{len(cases)} family examples, {args.runs} runs, seed {args.seed}\n")
+    print("| Example | Grade | Parse ms | Load/compile ms | Solve ms | Brute-force ms |")
+    print("|---|---|---:|---:|---:|---:|")
+    for name in cases:
+        measured = [measure(name) for _ in range(args.runs)]
+        grade_name = measured[0][0]
+        medians = [statistics.median(run[index] for run in measured) for index in range(1, 5)]
+        print(
+            f"| `{name}` | `{grade_name}` | "
+            + " | ".join(f"{value:.2f}" for value in medians)
+            + " |"
+        )
+
+
+if __name__ == "__main__":
+    main()
