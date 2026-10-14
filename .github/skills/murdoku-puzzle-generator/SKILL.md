@@ -149,6 +149,12 @@ it.
   occupiable. The declared kind is required and never inferred from the object
   name or icon. Edge items and corner objects touch cells without occupying
   them; marks select cells without changing occupancy.
+- Names and appearance must agree. A region named for a colour ("Blue hall")
+  gets a background of that colour, and a colour-neutral name never implies
+  one; the same holds for icons and other visuals (a "carpet" shows a carpet).
+  When transcribing or generating, check every name against its colour and
+  icon, and rename or recolour on mismatch. Keep neighbouring regions
+  distinguishable. `tests/test_solver.py` checks colour words in region names.
 - Every region ID in `Grid:` must be declared in `Regions:`. Use single-token
   identifiers for people, regions, area tags, and object types; use `Words:`
   for display wording where needed.
