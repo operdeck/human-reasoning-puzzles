@@ -8,7 +8,7 @@ b: blue
 c: coral
 d: green
 Grid:
-a a a b
-a b b b
-c c c c
-d d d d
+a a b b
+a a c b
+d d c b
+d d c c
