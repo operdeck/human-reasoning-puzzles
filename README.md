@@ -1,10 +1,10 @@
-# prrrove
+# Human Reasoning Puzzles
 
 **Solves logic puzzles the way a person would, and writes down how.**
 
 One small constraint engine, several puzzle families: **Murdoku** (any size),
-**Sudoku** (with Jigsaw, X-Sudoku and NRC variants), **Calcudoku/KenKen** and
-**Futoshiki**. Each puzzle is compiled down to literals
+**Sudoku** (with Jigsaw, X-Sudoku and NRC variants), **Calcudoku/KenKen**,
+**Futoshiki**, and **Queens-style**. Each puzzle is compiled down to literals
 and constraints, and solved by named deduction rules — no search — so every
 step can be explained. The rules never learn which puzzle they are solving.
 
@@ -63,7 +63,7 @@ Both pictures and the solution text are generated from
 ./solve.sh examples/murdoku_intro.txt --explain         # the worked solution above
 ```
 
-## Also Sudoku, Calcudoku and Futoshiki
+## Also Sudoku, Calcudoku, Futoshiki and Queens-style
 
 The same engine, with the same kind of pictures. Givens are black; what the
 solver fills in is blue.
@@ -72,25 +72,34 @@ solver fills in is blue.
 <tr>
 <th>Mini Sudoku</th>
 <th>Calcudoku</th>
+<th>Queens-style</th>
 </tr>
 <tr>
 <td>Every row, column and 2 × 2 box holds 1–4 once.</td>
 <td>Every row and column holds 1–4 once. Each cage's numbers make its
 target with its sign: <code>9+</code> adds up to 9, <code>12x</code>
 multiplies to 12, <code>2/</code> divides to 2.</td>
+<td>One queen in each row, column, and region; no two queens touch, even diagonally.</td>
 </tr>
 <tr>
 <td><img src="docs/images/sudoku_4x4.png" width="230" alt="A 4 by 4 Sudoku">
 <img src="docs/images/sudoku_4x4-solution.png" width="230" alt="Its solution"></td>
 <td><img src="docs/images/calcudoku_4x4_easy.png" width="230" alt="A 4 by 4 Calcudoku">
 <img src="docs/images/calcudoku_4x4_easy-solution.png" width="230" alt="Its solution"></td>
+<td><img src="docs/images/queens_4x4.png" width="170" alt="A 4 by 4 Queens-style board">
+<img src="docs/images/queens_4x4-solution.png" width="170" alt="The Queens-style solution"></td>
 </tr>
 </table>
 
 ```bash
 ./solve.sh examples/sudoku_4x4.txt --png sudoku.png           # sudoku.png, sudoku-solution.png
 ./solve.sh examples/calcudoku_4x4_easy.txt --png calcudoku.png
+./solve.sh examples/queens_4x4.txt --png queens.png
 ```
+
+**Queens-style** places one queen in each row, column, and region. No two
+queens may touch, including diagonally; the compiler models each region as a
+variable and each 2 × 2 window as an `AT_MOST_ONE` constraint.
 
 ### Variants by generalising, not by new code
 
@@ -131,7 +140,7 @@ extra houses. A Futoshiki sign, being a two-cell relation, also gives
 `chains`.
 
 Sudoku is 4 × 4 or 9 × 9, Jigsaw Sudoku and Futoshiki 4 × 4 to 9 × 9,
-Calcudoku any size.
+Calcudoku any size. Queens-style uses an N × N grid with N regions of N cells.
 
 ## What else it does
 
@@ -146,7 +155,8 @@ Calcudoku any size.
 - **Grades puzzles** by the hardest rule they need (`--grade`), from
   `single` up to `chains` and `what_if`.
 - **Draws the puzzle** (`--png`): Murdoku with region colours, icons and name
-  tags; Sudoku, Calcudoku and Futoshiki with boxes, cages, targets and signs.
+  tags; Sudoku, Calcudoku and Futoshiki with boxes, cages, targets and signs;
+  Queens with region colours and placed queens.
 
 ```bash
 ./solve.sh examples/prrrdoku3.txt --explain        # a 9 × 9 with three cats, in Dutch
@@ -162,7 +172,7 @@ Pillow (`uv sync --extra png`).
 ## Command line
 
 `./solve.sh <puzzle file> [options]` (or `uv run csp <puzzle file> [options]`). The puzzle type is
-detected from the file; `--type sudoku|murdoku|calcudoku|futoshiki` overrides that.
+detected from the file; `--type sudoku|murdoku|calcudoku|futoshiki|queens` overrides that.
 
 | Option | What it does |
 |---|---|
@@ -197,6 +207,7 @@ file cannot be read.
 | `sudoku_jigsaw.txt` | `cover2`: a 6×6 with irregular boxes |
 | `sudoku_nrc.txt` | `single` only, but it uses its four grey boxes: without them it has two solutions |
 | `futoshiki_5x5.txt` | `chains`: no givens, eight signs |
+| `queens_4x4.txt` | `what_if`: region, row, column, and non-touching constraints |
 | `murdoku_intro.txt` | `single` only: the 4×4 first case above |
 | `murdoku_house.txt` | `relations`, `subsumption`: a 5×5 using "not next to" and a counting clue |
 | `murdoku_sparse_mystery.txt` | `single`: a sparse 5×5 with role areas, standable objects, a door edge, and one murderer |
@@ -223,7 +234,7 @@ one has exactly one solution.
 Three ingredients, defined in `src/csp/core.py`:
 
 - **Literals** — atomic choices. `r3c4=7` for Sudoku or Calcudoku,
-  `Tim=r1c1` for Murdoku.
+  `Tim=r1c1` for Murdoku, or `a=r1c1` for Queens-style.
 - **Constraints** — a set of literals with allowed true counts. The named
   `EXACTLY_ONE` and `AT_MOST_ONE` kinds retain their existing meanings;
   `COUNT` accepts any set of allowed totals and can be reified by a literal.
@@ -247,19 +258,21 @@ for Vladimir" says nothing at all.
 
 ## How the puzzles map
 
-| | Sudoku | Murdoku | Calcudoku | Futoshiki |
-|---|---|---|---|---|
-| Variable | a cell | a **person** | a cell | a cell |
-| Literal | cell holds digit | person stands on square | cell holds number | cell holds number |
-| `EXACTLY_ONE` | cell holds one digit | person stands somewhere | cell holds one number | cell holds one number |
-| | digit once per row / col / box (/ extra house) | at most one person per row and column; full boards occupy each line | number once per row / col | number once per row / col |
-| `AT_MOST_ONE` | — | square holds at most one person | — | — |
-| Relations | — | position, distance and region clues; see [Puzzle files](#puzzle-files) | one per cage: its arithmetic | one per sign: smaller < larger |
+| | Sudoku | Murdoku | Calcudoku | Futoshiki | Queens |
+|---|---|---|---|---|---|
+| Variable | a cell | a **person** | a cell | a cell | a region |
+| Literal | cell holds digit | person stands on square | cell holds number | cell holds number | region has queen on cell |
+| `EXACTLY_ONE` | cell holds one digit | person stands somewhere | cell holds one number | cell holds one number | one queen per region |
+| | digit once per row / col / box (/ extra house) | at most one person per row and column; full boards occupy each line | number once per row / col | number once per row / col | one queen per row and column |
+| `AT_MOST_ONE` | — | square holds at most one person | — | — | one queen per 2 × 2 window |
+| Relations | — | position, distance and region clues; see [Puzzle files](#puzzle-files) | one per cage: its arithmetic | one per sign: smaller < larger | — |
 
 A Calcudoku is a Sudoku without boxes plus one relation per cage. The cage
 relation also requires distinct numbers where its cells share a row or
 column, so arc consistency rules out "3+3" inside a line without help.
 A Futoshiki is the same Latin square with one two-cell relation per sign.
+Queens-style uses one variable per region; every region, row, and column has
+exactly one queen, and every 2 × 2 window has at most one.
 Jigsaw boxes and extra houses (X-Sudoku diagonals, NRC boxes) are more
 `EXACTLY_ONE` families, built
 from one list of the puzzle's houses that the compiler, the brute force and
@@ -434,6 +447,28 @@ Signs:
 r1c4 > r1c5
 r1c4 < r2c4
 ```
+
+Queens-style files label every cell with its region ID. Each of the N regions
+must contain N cells:
+
+```
+Family: queens
+Size: 4
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+Grid:
+a a a b
+a b b b
+c c c c
+d d d d
+```
+
+The rules require one queen per region, row, and column, with no two queens in
+the same 2 × 2 window. Queens has no numbered clue narrative, so `--explain`
+remains available for Murdoku only.
 
 Calcudoku names each cage with a letter on the grid, then gives its rule:
 
@@ -728,6 +763,7 @@ src/csp/
   sudoku.py      Sudoku compiler + renderer, including Jigsaw, X-Sudoku and NRC
   calcudoku.py   Calcudoku/KenKen compiler + renderer with pencil marks
   futoshiki.py   Futoshiki compiler + renderer with pencil marks
+  queens.py      Queens-style compiler + renderer
   murdoku.py     Murdoku compiler + renderer + clue vocabulary and meaning
   story.py       --explain: Murdoku worked solutions, Dutch or English
   puzzlefile.py  file readers: section format, Murdoku boards, kind detection
@@ -737,10 +773,10 @@ src/csp/
   picture.py     --png: pictures of every puzzle type (Pillow)
   icons.py       object name -> Noto Emoji picture, fetched and cached on use
 examples/        sudoku_*.txt, calcudoku_*.txt and futoshiki_*.txt (graded
-                 by the rule they need), murdoku_*.txt, prrrdoku1-3.txt
+                 by the rule they need), queens_*.txt, murdoku_*.txt, prrrdoku1-3.txt
 benchmark/       run.py: grade and time generated Sudokus
 docs/images/     the README's pictures, drawn by --png
-tests/           test_solver.py, test_picture.py, test_story.py
+tests/           test_solver.py, test_queens.py, test_picture.py, test_story.py
 .github/         CI workflow
 ```
 

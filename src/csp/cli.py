@@ -9,7 +9,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-from . import bruteforce, calcudoku, futoshiki, murdoku, picture, report, story, sudoku
+from . import bruteforce, calcudoku, futoshiki, murdoku, picture, queens, report, story, sudoku
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
 from .puzzlefile import KINDS, detect, load_board
 
@@ -40,6 +40,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "futoshiki":
         model, signs = futoshiki.compile_puzzle(text)
         return Puzzle(kind, model, partial(futoshiki.render, signs))
+    if kind == "queens":
+        model, puzzle = queens.compile_puzzle(text)
+        return Puzzle(kind, model, partial(queens.render, puzzle))
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
     global_counts = murdoku.global_count_conditions(board, clues)
@@ -107,7 +110,9 @@ def write_picture(
     except ImportError:
         print("--png needs Pillow: uv sync --extra png", file=sys.stderr)
         return False
-    if kind == "sudoku":
+    if kind == "queens":
+        image = picture.queens_picture(queens.parse(text), solution)
+    elif kind == "sudoku":
         image = picture.sudoku_picture(sudoku.parse(text), solution)
     elif kind == "calcudoku":
         image = picture.calcudoku_picture(calcudoku.parse(text), solution)

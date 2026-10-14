@@ -197,6 +197,9 @@ puzzle-specific behavior to `core.py`.
   Ask what the puzzle's constraints quantify over. Murdoku's "at most one
   figure per row and column" is about people, so people are the variables;
   copying Sudoku's cell-centric shape produced an unsatisfiable model.
+  Queens-style uses regions as variables choosing one cell each, with
+  exactly-one row/column constraints and at-most-one constraints per 2x2
+  window for the no-touching rule.
 3. Express every rule as `EXACTLY_ONE` / `AT_MOST_ONE` sets, plus relations
    (over two or more variables) for clues that link people.
 4. A `render(..., title, steps) -> str` function. `steps` are the deductions
