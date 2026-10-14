@@ -2,6 +2,9 @@
 
 ## Unreleased
 **Bug Fix(es)**
+* Name-vs-appearance consistency
+    * `examples/murdoku_sparse_mystery.txt`: "Blue hall" is now blue instead of grey; all other examples audited, no other mismatches.
+    * Added a test that colour words in region names match their background colour, plus guidance in the Murdoku skill and `AGENT.md`.
 * [#26 Handle empty domains in --show-model](https://github.com/operdeck/human-reasoning-puzzles/issues/26)
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
