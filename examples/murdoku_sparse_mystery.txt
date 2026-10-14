@@ -12,9 +12,9 @@ well_court: in the well court
 stable: in the stable
 noble_areas: in the noble areas
 bed: the bed
-chair: the chair
+chair: one of the chairs
 carpet: the carpet
-horse: the horse
+horse: one of the horses
 well: the well
 gate: the gate
 
@@ -40,9 +40,11 @@ Objects:
 well: blocking r4c2 r4c3 r5c2 r5c3
 table: blocking r3c4
 bed: standable r1c1 r1c2
-chair: standable r2c3 r2c4
+chair: standable r2c3
+chair: standable r2c4
 carpet: standable r4c4 r4c5
-horse: standable r5c4 r5c5
+horse: standable r5c4
+horse: standable r5c5
 
 EdgeItems:
 gate: door r1c2 r1c3
