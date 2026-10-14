@@ -2112,6 +2112,33 @@ def test_next_to_objects_stays_in_area_but_edge_items_cross_boundaries():
     assert door_condition.test(square(1, 0)) and door_condition.test(square(1, 1))
 
 
+def test_next_to_uses_orthogonal_neighbors_within_the_same_area():
+    text = """Size: 3
+Regions:
+west: western_room
+east: eastern_room
+Grid:
+west west east
+west west east
+west west east
+Objects:
+lamp: blocking r2c2
+People:
+A
+Clues:
+next_to A lamp
+"""
+    board, clues = load_board(text)
+    condition = murdoku.conditions(board, clues)[0]
+    square = murdoku.Square
+
+    assert {candidate for candidate in board.free if condition.test(candidate)} == {
+        square(0, 1),
+        square(1, 0),
+        square(2, 1),
+    }
+
+
 def test_not_on_excludes_a_standable_object_set():
     sq = murdoku.Square
     board = _one_region_board(
