@@ -2,6 +2,9 @@
 
 ## Unreleased
 **Bug Fix(es)**
+* Name-vs-appearance consistency
+    * `examples/murdoku_sparse_mystery.txt`: "Blue hall" is now blue instead of grey; all other examples audited, no other mismatches.
+    * Added a test that colour words in region names match their background colour, plus guidance in the Murdoku skill and `AGENT.md`.
 * Murdoku PNG: the English `carpet` (and `rug`) object now draws the hand-made rug icon instead of the literal word, as `tapijt` already did.
     * `src/csp/icons.py`: added the `oven` icon, which `murdoku_house.txt` lacked.
     * `src/csp/picture.py`: shared `CARPET_NAMES`/`WELL_NAMES` drive both drawing and the missing-icon check; `tests/test_picture.py` checks every object in the Murdoku examples has an icon.

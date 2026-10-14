@@ -2738,3 +2738,49 @@ def test_show_model_reports_empty_domain(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "Invalid model: contradiction" in out
     assert "Ada" in out
+
+
+def _colour_family(hex_colour):
+    import colorsys
+
+    r, g, b = (int(hex_colour[i : i + 2], 16) / 255 for i in (1, 3, 5))
+    h, s, _ = colorsys.rgb_to_hsv(r, g, b)
+    if s < 0.12:
+        return {"grey", "gray", "grijs", "white", "wit"}
+    deg = h * 360
+    if deg < 20 or deg >= 340:
+        return {"red", "rood", "pink", "roze"}
+    if deg < 45:
+        return {"orange", "oranje", "brown", "bruin"}
+    if deg < 70:
+        return {"yellow", "geel", "gold"}
+    if deg < 170:
+        return {"green", "groen"}
+    if deg < 260:
+        return {"blue", "blauw"}
+    return {"purple", "paars", "violet", "lilac", "pink", "roze"}
+
+
+def test_colour_words_in_region_names_match_their_background():
+    from pathlib import Path
+
+    from csp.puzzlefile import load_board
+
+    all_words = {
+        "red", "rood", "pink", "roze", "orange", "oranje", "brown", "bruin", "yellow",
+        "geel", "green", "groen", "blue", "blauw", "purple", "paars", "grey", "gray",
+        "grijs", "white", "wit", "violet", "lilac", "gold",
+    }  # fmt: skip
+    checked = 0
+    for path in sorted((Path(__file__).parent.parent / "examples").glob("*.txt")):
+        text = path.read_text()
+        if "People:" not in text:
+            continue
+        board, _ = load_board(text)
+        for rid, name in board.region_names.items():
+            colour = board.colours.get(rid)
+            for word in set(name.lower().split("_")) & all_words:
+                checked += 1
+                assert colour, f"{path.name}: {name} has no colour"
+                assert word in _colour_family(colour), f"{path.name}: {name} is {colour}"
+    assert checked >= 1
