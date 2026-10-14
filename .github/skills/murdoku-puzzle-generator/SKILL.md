@@ -213,7 +213,7 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `in_tagged <person> <tag>...` | Person is in a region carrying any named tag. |
 | `not_in_tagged <person> <tag>...` | Person is in no region carrying any named tag. |
 | `only_in_tagged <person> <tag>...` | Person is restricted to regions carrying any named tag; intended for `Rules:`. |
-| `next_to <person> <object-or-edge-item-or-corner-object>...` | Ordinary objects use same-area adjacency; door and corner item touched cells count, including across an area boundary. |
+| `next_to <person> <object-or-edge-item-or-corner-object>...` | For ordinary objects, the person's cell must share a side with an object cell in the same logical area; diagonals do not count. Door and corner-object touched cells count, including across an area boundary. |
 | `not_next_to <person> <object-or-edge-item-or-corner-object>...` | Person is not next to any named thing. |
 | `at <person> <edge-item>...` | Person occupies a cell listed by any named door or window. |
 | `on_mark <person> <mark>...` | Person occupies one of the cells carrying any named mark. |
@@ -294,12 +294,13 @@ role membership for a maximum relation arity of four. Do not expand a clue to
 one relation over all people; quantified targets and `alone_with` are not
 supported inside `exactly`.
 
-Ordinary-object `next_to` stays within a logical area. A door lists two
-orthogonally neighboring cells in different areas; either cell satisfies
-`next_to` or `at`, including across the boundary. Wider openings are multiple
-simple doors with the same name. A window lists one cell for `at`; a corner
-object lists the four cells around its interior vertex for `next_to`. These
-items do not occupy or block cells. Direction, distance, and `knight_from`
+For ordinary objects, `next_to` means one orthogonal step (up, down, left, or
+right) from an object cell in the same logical area. Diagonal cells do not
+count. A door lists two orthogonally neighboring cells in different areas;
+either cell satisfies `next_to` or `at`, including across the boundary. Wider
+openings are multiple simple doors with the same name. A window lists one cell
+for `at`; a corner object lists the four cells around its interior vertex for
+`next_to`. These items do not occupy or block cells. Direction, distance, and `knight_from`
 may cross region boundaries. There is no person-to-person adjacency clue: at
 most one person per row and column makes it impossible for two people to
 share a side.
