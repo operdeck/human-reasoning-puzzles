@@ -111,12 +111,28 @@ def murdoku_picture(
         piece = obj.squares
         x0, y0, _, _ = box(min(piece))
         _, _, x1, y1 = box(max(piece))
-        stretch = len(piece) > 1
-        if name.rstrip("0123456789").rstrip("_").lower() in WELL_NAMES:
+        base = name.rstrip("0123456789").rstrip("_").lower()
+        # Seats (bench/bank) keep their shape: a vertical seat is turned, never stretched.
+        seat = base in SEAT_NAMES
+        stretch = len(piece) > 1 and not seat
+        if base in WELL_NAMES:
             _draw_water_well(draw, (x0, y0, x1, y1))
         elif obj.kind == "standable":
-            rotate = name.rstrip("0123456789").rstrip("_").lower() == "bed" and y1 - y0 > x1 - x0
-            if occupied & set(piece) and not stretch:
+            long_vertical = y1 - y0 > x1 - x0
+            rotate = (base == "bed" or seat) and long_vertical
+            if seat:
+                # Keep the seat's proportions and fit it to the whole footprint.
+                _icon(
+                    image,
+                    draw,
+                    name,
+                    (x0, y0, x1, y1),
+                    cell,
+                    scale=0.9,
+                    rotate=rotate,
+                    fit_box=True,
+                )
+            elif occupied & set(piece) and not stretch:
                 y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
                 _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
             else:
@@ -176,6 +192,7 @@ def murdoku_picture(
 # Objects drawn by hand because Noto Emoji has no suitable picture.
 CARPET_NAMES = frozenset({"tapijt", "carpet", "rug"})
 WELL_NAMES = frozenset({"waterput", "well"})
+SEAT_NAMES = frozenset({"bench", "bank", "bankje"})
 
 
 def unknown_object_icons(board: Board) -> list[str]:
@@ -843,8 +860,13 @@ def _icon(
     scale: float = 0.72,
     stretch: bool = False,
     rotate: bool = False,
+    fit_box: bool = False,
 ) -> None:
-    """Draw `name`'s icon centred in `area`; `stretch` fills the area instead."""
+    """Draw `name`'s icon centred in `area`; `stretch` fills the area instead.
+
+    `fit_box` keeps the aspect ratio but fits the icon to the whole area, so a
+    long seat spanning two squares is drawn long rather than one square big.
+    """
     x0, y0, x1, y1 = area
     normalized = name.rstrip("0123456789").rstrip("_").lower()
     if normalized in CARPET_NAMES:
@@ -865,6 +887,10 @@ def _icon(
         pad = cell // 10
         size = (x1 - x0 - 2 * pad, y1 - y0 - 2 * pad)
         picture = picture.resize(size, Image.Resampling.LANCZOS)
+    elif fit_box:
+        picture = picture.crop(picture.getchannel("A").getbbox())
+        box_size = (int((x1 - x0) * scale), int((y1 - y0) * scale))
+        picture.thumbnail(box_size, Image.Resampling.LANCZOS)
     else:
         side = int(min(x1 - x0, y1 - y0) * scale)
         picture.thumbnail((side, side), Image.Resampling.LANCZOS)

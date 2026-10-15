@@ -170,6 +170,14 @@ it.
   connected footprint; repeat a name on another line for another instance of
   that type. Footprints may not overlap, and all cells must be on the board.
   Standable objects are valid `on`, `not_on`, and `only_on` targets.
+- Furniture footprints: prefer one line per square. Chairs and tables are
+  1x1, with chairs standable and tables blocking. Benches (and beds) are
+  standable; write each square as its own `bench: standable` line unless a
+  multi-square bench is needed. The picture renderer stretches a multi-square
+  object into one icon across its whole footprint, which is an acceptable
+  fallback but can look odd, so check the picture before keeping it. Footprints
+  may cross region boundaries (connectivity is the only parser rule), but that
+  is unusual and should be noted in the file header.
 - `EdgeItems:` declares named doors and windows without occupying cells.
   A simple door lists two orthogonally neighboring cells in different areas,
   for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider
