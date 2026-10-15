@@ -79,6 +79,8 @@ def murdoku_picture(
     Without `show_roles` the legend leaves out the solver's role lines.
     """
     margin = cell // 2 if coordinates else cell // 6
+    # Solver assignments also hold role booleans; only squares are people.
+    placed = {k: v for k, v in (placed or {}).items() if isinstance(v, Square)}
     side = board.size * cell
     key = _Legend(board, cell, role_statuses or {}, global_counts, show_roles) if legend else None
     height = side + 2 * margin + (key.height if key else 0)
@@ -108,7 +110,7 @@ def murdoku_picture(
     )
     _draw_edge_item_doors(draw, board, margin, cell)
 
-    occupied = set((placed or {}).values())
+    occupied = set(placed.values())
     for obj in board.objects:
         name = obj.name
         piece = obj.squares
