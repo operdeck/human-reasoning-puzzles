@@ -32,20 +32,20 @@ f f f f h h h h i i i i
 f f f f h h h h i i i i
 
 Objects:
-tree: blocking r1c1
-boulder: blocking r2c7
-fountain: blocking r4c3
-piano: blocking r5c10
-tv: blocking r8c6
-lamp: blocking r7c11
-clock: blocking r11c6
-books: blocking r10c2
-bed: standable r2c4 r2c5
-chair: standable r3c10
-bench: standable r6c8 r6c9
-table: standable r9c10
-mirror: standable r12c10
-painting: standable r4c7
+sakura: blocking r1c1
+fuji: blocking r2c7
+shrine: blocking r4c3
+castle: blocking r5c10
+lantern: blocking r8c6
+carp: blocking r7c11
+tanabata: blocking r11c6
+scroll: blocking r10c2
+tatami: standable r2c4 r2c5
+taiko: standable r3c10
+tatami: standable r6c8 r6c9
+tea: standable r9c10
+sake: standable r12c10
+hanafuda: standable r4c7
 
 People:
 Mametchi
@@ -81,9 +81,9 @@ same_region Kuchipatchi Gozarutchi
 left_of Pianitchi Gozarutchi
 above Tarakotchi Kuchipatchi
 outside Tarakotchi lilac_library
-not_next_to Ichigotchi tree
+not_next_to Ichigotchi sakura
 left_of Masktchi Lovelitchi
-next_to Kuchipatchi books
+next_to Kuchipatchi scroll
 above Masktchi Ichigotchi
 apart Memetchi Tarakotchi
 outside Tarakotchi orange_market

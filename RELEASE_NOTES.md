@@ -12,6 +12,7 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* Tamagotchi Murdoku puzzles now use Japanese objects (shrine, castle, Mount Fuji, sakura, lanterns, taiko, tatami, ...); new icons added to `src/csp/icons.py`, `tatami` draws the rug icon.
 * New Murdoku example puzzles
     * `examples/food-murdoku-1.txt`, `-2.txt`, `-3.txt`: Japanese food and cities (5x5 to 7x7).
     * `examples/tamagotchi-murdoku-6x6.txt`, `-9x9.txt` (stream and bridge), `-12x12.txt`: "where is the devil?" late-reveal puzzles; new `bridge` icon.

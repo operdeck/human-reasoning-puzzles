@@ -27,17 +27,17 @@ e e e e w f f f f
 e e e e w f f f f
 
 Objects:
-tree: blocking r1c1
-boulder: blocking r3c8
-fountain: blocking r5c2
-piano: blocking r6c7
-tv: blocking r8c2
-lamp: blocking r9c9
-flower: standable r2c3
-chair: standable r2c8
-bench: standable r6c1 r6c2
+sakura: blocking r1c1
+fuji: blocking r3c8
+shrine: blocking r5c2
+castle: blocking r6c7
+lantern: blocking r8c2
+carp: blocking r9c9
+bonsai: standable r2c3
+taiko: standable r2c8
+tatami: standable r6c1 r6c2
 bridge: standable r7c4 r7c5 r7c6
-table: standable r9c3
+tea: standable r9c3
 
 People:
 Mametchi
@@ -61,7 +61,7 @@ within Gozarutchi Tarakotchi 5
 adjacent_regions Tarakotchi Masktchi
 within Masktchi Tarakotchi 4
 only_on Kuchipatchi bridge
-only_on Lovelitchi flower
+only_on Lovelitchi bonsai
 within Memetchi Lovelitchi 10
 left_of Violetchi Mametchi
 left_of Kuchipatchi Mametchi 1

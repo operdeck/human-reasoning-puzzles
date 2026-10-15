@@ -42,6 +42,15 @@ CATALOGUE: dict[str, str] = {
     "auto": "1f697", "car": "1f697",
     "boot": "26f5", "boat": "26f5",
     "brug": "1f309", "bridge": "1f309",
+    # Japanese
+    "sakura": "1f338", "cherry_blossom": "1f338",
+    "shrine": "26e9", "torii": "26e9",
+    "castle": "1f3ef", "fuji": "1f5fb",
+    "taiko": "1f941", "drum": "1f941",
+    "carp": "1f38f", "koinobori": "1f38f",
+    "bonsai": "1f38d", "tanabata": "1f38b",
+    "tea": "1f375", "sake": "1f376",
+    "scroll": "1f4dc", "hanafuda": "1f3b4",
     # indoors
     "bank": "1f6cb", "bankje": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bench": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",
