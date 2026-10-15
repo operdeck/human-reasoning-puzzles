@@ -114,6 +114,7 @@ class Entry:
     kind: str = "murdoku"
     puzzle_image: Any = None
     solution_image: Any = None
+    steps: tuple[str, ...] = ()
 
 
 RULES = {
@@ -150,7 +151,7 @@ def _generic_title(entry: Entry) -> str:
 
 def _add_generic(document: Any, entry: Entry, title: str, new_page: bool, solved: bool) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Cm
+    from docx.shared import Cm, Pt
 
     heading = document.add_heading(title, level=1)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -163,6 +164,12 @@ def _add_generic(document: Any, entry: Entry, title: str, new_page: bool, solved
     stream.seek(0)
     document.add_picture(stream, width=Cm(GENERIC_BOARD_WIDTH_CM))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if solved and entry.steps:
+        document.add_heading("How to solve it", level=2)
+        for line in entry.steps:
+            paragraph = document.add_paragraph(line, style="List Bullet")
+            for run in paragraph.runs:
+                run.font.size = Pt(8)
 
 
 def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:

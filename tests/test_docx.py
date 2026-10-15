@@ -174,6 +174,7 @@ def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     headings = [p.text for p in document.paragraphs if p.style.name == "Heading 1"]
     assert len(headings) == 2 and headings[1].startswith("Solution")
     assert any(p.text == "Rules" for p in document.paragraphs)
+    assert any(p.text == "How to solve it" for p in document.paragraphs)
     assert len(document.inline_shapes) == 2
 
 
