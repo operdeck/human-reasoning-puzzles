@@ -58,12 +58,12 @@ def _cache_icon(code: str, image: Image.Image) -> None:
 
 
 def test_two_square_standable_object_is_stretched_across_both_squares():
-    _cache_icon("1f6cb", Image.new("RGBA", (40, 40), (0, 0, 255, 255)))  # a blue block
+    _cache_icon("1f37d", Image.new("RGBA", (40, 40), (0, 0, 255, 255)))  # a blue block
     board = Board(
         2,
         [["a", "a"], ["a", "a"]],
         {"a": "here"},
-        [BoardObject("bank", "standable", (Square(1, 0), Square(1, 1)))],
+        [BoardObject("table", "standable", (Square(1, 0), Square(1, 1)))],
         ["A", "B"],
     )  # fmt: skip
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
@@ -71,6 +71,23 @@ def test_two_square_standable_object_is_stretched_across_both_squares():
     row = margin + CELL + CELL // 2
     blue = [x for x in range(image.width) if image.getpixel((x, row)) == (0, 0, 255)]
     assert blue[0] < margin + CELL // 4 and blue[-1] > margin + 2 * CELL - CELL // 4
+
+
+def test_two_square_bench_keeps_its_proportions_and_is_not_stretched():
+    _cache_icon("1f6cb", Image.new("RGBA", (40, 40), (0, 0, 255, 255)))  # a blue block
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "here"},
+        [BoardObject("bench", "standable", (Square(1, 0), Square(1, 1)))],
+        ["A", "B"],
+    )  # fmt: skip
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    margin = CELL // 6
+    row = margin + CELL + CELL // 2
+    blue = [x for x in range(image.width) if image.getpixel((x, row)) == (0, 0, 255)]
+    # A square icon keeps its shape: about one square wide, not stretched across both.
+    assert blue and blue[-1] - blue[0] < CELL
 
 
 def test_two_square_blocking_object_uses_one_spanning_icon(monkeypatch):

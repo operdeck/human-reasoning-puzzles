@@ -31,8 +31,7 @@ kobe sapporo kyoto kyoto kyoto
 Objects:
 table: blocking r1c5
 table: blocking r3c4
-bench: standable r1c4
-bench: standable r2c4
+bench: standable r1c4 r2c4
 
 Attributes:
 food: Ramen Yakitori Tonkatsu Tempura

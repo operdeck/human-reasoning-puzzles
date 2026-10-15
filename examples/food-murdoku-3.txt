@@ -3,6 +3,7 @@
 # Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
 # deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
 #
+# Decor: the big bento (2 cells) is standable and does not count for Jos.
 # Solution: Tonkatsu r1c3, Yakitori r2c2, Tempura r3c7, Okonomiyaki r4c1, Gyoza r5c5, Sushi r6c6, Jos r7c4.
 # Jos shares Nagoya with Gyoza, the food he is about to eat.
 #
@@ -33,12 +34,12 @@ sapporo sapporo nagoya nagoya nagoya sendai sendai
 sapporo sapporo sapporo nagoya sendai sendai sendai
 
 Objects:
+bento: standable r1c1 r1c2
 table: blocking r6c7
 table: blocking r3c1
 table: blocking r3c3
 table: blocking r4c3
-bench: standable r4c2
-bench: standable r5c2
+bench: standable r4c2 r5c2
 
 Attributes:
 food: Tonkatsu Yakitori Tempura Okonomiyaki Gyoza Sushi
