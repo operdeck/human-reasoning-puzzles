@@ -124,6 +124,8 @@ uv run csp <file.txt> --lint
   solutions. For a newly generated puzzle, require exactly one. For a
   transcription, treat the result as a diagnostic and report it; compare
   unexpected results with the image rather than changing the source puzzle.
+- A generated puzzle's `--brute-force` check must finish within 5 seconds. If it
+  takes longer, add clues or shrink the board rather than accepting a slow check.
 - `--grade` reports the hardest rule this solver used, or `unsolved`. For a
   generated puzzle, require a solved grade and compare it with the user's
   target. For a transcription, `unsolved` means this solver's deduction rules
@@ -214,6 +216,15 @@ it.
   `Rules:` for required-inside and forbidden-inside per-person policies. A
   person with neither policy is unrestricted. `in_tagged` and `not_in_tagged`
   are also available as numbered clues.
+- **Last-candidate rule:** in a puzzle with a final character (the victim, the
+  eater, a zoo carer, and so on), that character has no clues of their own and is
+  named in no other character's clue. The only statement about them is the
+  general rule that they are alone with exactly one other character, for example
+  `alone_with <person> <selector>` in `Rules:`. The puzzle must be built so that
+  they are found last: until everyone else is placed, keep at least two live
+  squares and at least two region-overlap companion candidates for them. Build
+  the clue pool without that character, and check the result with
+  `--track-person <person>`; grep the `Clues:` section for their name as well.
 - **Late-reveal mystery rule:** when the question asks who shares a region with
   a named mystery person, keep that person's square
   open to at least two candidates until every other person is placed. Keep at
