@@ -40,7 +40,7 @@ tv: blocking r8c6
 lamp: blocking r7c11
 clock: blocking r11c6
 books: blocking r10c2
-bed: standable r1c4 r2c4
+bed: standable r2c4 r2c5
 chair: standable r3c10
 bench: standable r6c8 r6c9
 table: standable r9c10
