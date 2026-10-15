@@ -17,6 +17,8 @@ Everything here reads the public `Model` API, `Step` provenance and
 `murdoku`'s board and clue meaning; nothing here is needed to solve.
 """
 
+import dataclasses
+import re
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from itertools import combinations, groupby
@@ -103,6 +105,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "both": "then {who} are both {where}",
         "breaks": "which clue {n} does not allow",
         "breaks_first": "clue {n} does not allow that",
+        "breaks_plain": "which the clues do not allow",
+        "breaks_first_plain": "the clues do not allow that",
         "breaks_rule": "which the board does not allow",
         "breaks_rule_first": "the board does not allow that",
         "cannot": "{who} cannot be on {squares}: {chain}.",
@@ -136,7 +140,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_attribute": "{a} does not have the {attribute} attribute",
         "clue.unique_attribute": "exactly one of {people} has the {attribute} attribute",
         "clue.adjacent_regions": "{a} and {b} are in neighboring regions",
-        "clue.alone_with": "{a} shares a region with exactly one other person: {target}",
+        "clue.alone_with": (
+            "{a} shares a region with exactly one other person, and that is {target}"
+        ),
         "clue.same_region": "{a} and {b} are in the same region",
         "clue.different_region": "{a} and {b} are in different regions",
         "clue.apart": "{a} and {b} are in regions that do not touch",
@@ -144,6 +150,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.left_of_one": "{a} is exactly one column left of {b}",
         "clue.left_of_n": "{a} is exactly {n} columns left of {b}",
         "clue.exactly": "exactly {n} of these is true: {list}",
+        "clue.either": "either {first}, or {second}, but not both",
+        "clue.either_same_region": "{a} is in the same region as either {b} or {c}",
         "count_reason": "the allowed counts for {name} are {counts}",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
@@ -173,9 +181,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "roleless": "{who} has no roles",
         "role_at_most_one": "{who} has at most one role",
         "role_subset": "anyone matching {left} also matches {right}",
-        "role_in_tagged": "{who} has role {role} only in {area}",
-        "role_not_in_tagged": "{who} has role {role} only outside {area}",
-        "min_role_in_tagged": "at least {n} {role} holders are in {area}",
+        "role_in_tagged": "{who} has role {role} only {area}",
+        "role_not_in_tagged": "{who} never has role {role} {area}",
+        "min_role_in_tagged": "at least {n} {role} holders are {area}",
         "role_on": "if {who} has role {role}, {subject} must be on {things}",
         "role_not_on": "if {who} has role {role}, {subject} must not be on {things}",
         "role_next_to": "if {who} has role {role}, {subject} must be next to {things}",
@@ -191,7 +199,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.at_least": "{a} is at least {n} squares from {b}",
         "clue.alone": "nobody else is in {a}'s region",
         "clue.furthest": "{a} is further from {b} than {c} is",
-        "target.attribute": "someone with {name}",
+        "target.attribute": "someone with the {name} attribute",
         "target.role": "a {name} holder",
         "target.area": "someone {where}",
         "target.on": "someone on {what}",
@@ -254,6 +262,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "both": "dan zitten {who} allebei {where}",
         "breaks": "en dat mag niet volgens aanwijzing {n}",
         "breaks_first": "dat mag niet volgens aanwijzing {n}",
+        "breaks_plain": "en dat mag niet",
+        "breaks_first_plain": "dat mag niet",
         "breaks_rule": "en dat mag niet",
         "breaks_rule_first": "dat mag niet",
         "cannot": "{who} kan niet op {squares}: {chain}.",
@@ -287,7 +297,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_attribute": "{a} heeft het kenmerk {attribute} niet",
         "clue.unique_attribute": "precies één van {people} heeft het kenmerk {attribute}",
         "clue.adjacent_regions": "{a} en {b} zijn in aangrenzende gebieden",
-        "clue.alone_with": "{a} deelt een gebied met precies één ander persoon: {target}",
+        "clue.alone_with": "{a} deelt een gebied met precies één ander persoon, en dat is {target}",
         "clue.same_region": "{a} en {b} zijn in hetzelfde gebied",
         "clue.different_region": "{a} en {b} zijn in verschillende gebieden",
         "clue.apart": "{a} en {b} zijn in gebieden die niet aan elkaar grenzen",
@@ -295,6 +305,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.left_of_one": "{a} is precies één kolom links van {b}",
         "clue.left_of_n": "{a} is precies {n} kolommen links van {b}",
         "clue.exactly": "precies {n} hiervan klopt: {list}",
+        "clue.either": "ofwel {first}, ofwel {second}, maar niet allebei",
+        "clue.either_same_region": "{a} is in hetzelfde gebied als {b} of {c}",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
@@ -324,9 +336,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "roleless": "{who} heeft geen rollen",
         "role_at_most_one": "{who} heeft hoogstens één rol",
         "role_subset": "wie aan {left} voldoet, voldoet ook aan {right}",
-        "role_in_tagged": "{who} heeft de rol {role} alleen in {area}",
-        "role_not_in_tagged": "{who} heeft de rol {role} alleen buiten {area}",
-        "min_role_in_tagged": "minstens {n} {role}-dragers zijn in {area}",
+        "role_in_tagged": "{who} heeft de rol {role} alleen {area}",
+        "role_not_in_tagged": "{who} heeft de rol {role} nooit {area}",
+        "min_role_in_tagged": "minstens {n} {role}-dragers zijn {area}",
         "role_on": "als {who} de rol {role} heeft, staat {subject} op {things}",
         "role_not_on": "als {who} de rol {role} heeft, staat {subject} niet op {things}",
         "role_next_to": "als {who} de rol {role} heeft, staat {subject} naast {things}",
@@ -340,7 +352,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.at_least": "{a} is minstens {n} vakjes van {b}",
         "clue.alone": "niemand anders is in het gebied van {a}",
         "clue.furthest": "{a} is verder van {b} dan {c}",
-        "target.attribute": "iemand met {name}",
+        "target.attribute": "iemand met het kenmerk {name}",
         "target.role": "een {name}-drager",
         "target.area": "iemand {where}",
         "target.on": "iemand op {what}",
@@ -376,6 +388,8 @@ class Wording:
 
     language: str = "en"
     words: dict[str, str] = field(default_factory=dict)
+    phrases: dict[str, str] = field(default_factory=dict)
+    numbered: bool = True
 
     @classmethod
     def read(cls, text: str) -> "Wording":
@@ -385,15 +399,26 @@ class Wording:
         if language not in PHRASES:
             raise ValueError(f"no wording for language {language!r}; have {sorted(PHRASES)}")
         words = {}
+        phrases = {}
         for line in section.get("Words", []):
             name, _, phrase = line.partition(":")
             if not phrase.strip():
                 raise ValueError(f"Words: {line!r} is not like 'vuurtje: het vuurtje'")
-            words[name.strip()] = phrase.strip()
-        return cls(language, words)
+            if name.strip() in PHRASES[language]:
+                phrases[name.strip()] = phrase.strip()
+            else:
+                words[name.strip()] = phrase.strip()
+        return cls(language, words, phrases)
+
+    def unnumbered(self) -> "Wording":
+        """The same wording that never points at clue numbers."""
+        return dataclasses.replace(self, numbered=False)
 
     def __call__(self, key: str, **fields: Any) -> str:
-        return PHRASES[self.language][key].format(**fields)
+        if not self.numbered and key in ("breaks", "breaks_first"):
+            key += "_plain"
+        template = self.phrases.get(key) or PHRASES[self.language][key]
+        return template.format(**fields)
 
     def number(self, n: int) -> str:
         names = NUMBERS[self.language]
@@ -1490,6 +1515,13 @@ class Story:
     def _clue_text(self, kind: str, args: Sequence[str], people: Sequence[str]) -> str:
         if kind == COUNTING:
             n, parts = counted(args)
+            if n == 1 and len(parts) == 2:
+                (k1, a1), (k2, a2) = parts
+                if k1 == k2 == "same_region" and a1[0] == a2[0]:
+                    return self.say("clue.either_same_region", a=a1[0], b=a1[1], c=a2[1])
+                first = self._clue_text(k1, a1, a1[: 1 if k1 in FILTERS else 2])
+                second = self._clue_text(k2, a2, a2[: 1 if k2 in FILTERS else 2])
+                return self.say("clue.either", first=first, second=second)
             listed = "; ".join(
                 self._clue_text(k, rest, rest[: 1 if k in FILTERS else 2]) for k, rest in parts
             )
@@ -1528,7 +1560,9 @@ class Story:
         if kind == "above" and len(args) > 2:
             n = int(args[2])
             kind = "above_n"
-            fields["rows"] = self.say("one_row") if n == 1 else self.say("n_rows", n=n)
+            fields["rows"] = (
+                self.say("one_row") if n == 1 else self.say("n_rows", n=self.say.number(n))
+            )
         elif kind in ("within", "at_least"):
             fields["n"] = self.say.number(int(args[2]))
         return self.say(f"clue.{kind}", **fields)
@@ -1620,6 +1654,76 @@ def _pieces(squares: set[Square]) -> list[set[Square]]:
     return pieces
 
 
+ARTICLES = frozenset({"the", "a", "an", "de", "het", "een"})
+NEGATIONS = frozenset({"not", "niet"})
+LINE_WORDS = frozenset({"row", "column", "rij", "kolom"})
+
+
+def _merge_predicates(predicates: Sequence[str], say: Wording) -> str:
+    """Join the predicates of one subject, folding those that share their opening words:
+    'is not next to the plant', 'is not next to the bench' -> 'is not next to the plant or
+    the bench'."""
+    groups: dict[tuple[str, ...], list[list[str]]] = {}
+    for predicate in predicates:
+        words = predicate.split()
+        width = 3 if len(words) > 3 and words[1] in NEGATIONS else 2
+        groups.setdefault(tuple(words[:width]), []).append(words)
+    segments: list[str] = []
+    for members in groups.values():
+        shared = list(members[0])
+        for words in members[1:]:
+            keep = 0
+            while keep < min(len(shared), len(words)) and shared[keep] == words[keep]:
+                keep += 1
+            shared = shared[:keep]
+        while shared and shared[-1] in ARTICLES:
+            shared.pop()
+        tails = [" ".join(words[len(shared) :]) for words in members]
+        lines_only = all(tail.split(" ", 1)[0] in LINE_WORDS for tail in tails)
+        if len(members) == 1 or not all(tails) or len(shared) < (2 if lines_only else 3):
+            segments.extend(" ".join(words) for words in members)
+            continue
+        joiner = "or" if shared[1] in NEGATIONS else "and"
+        segments.append(f"{' '.join(shared)} {say.join(tails, joiner)}")
+    return say.join(segments, "and")
+
+
+def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[str]:
+    """The clues grouped per person, one paragraph each, in the order of the people.
+
+    What a clue says about its first person is folded into that person's sentence;
+    clues that are not about one person come last, one paragraph each.
+    `overrides` replaces the generated wording of clue numbers.
+    """
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording.read(text))
+    texts = story.clue_texts()
+    owners = sorted(board.people, key=len, reverse=True)
+    predicates: dict[str, list[str]] = {person: [] for person in board.people}
+    extra: dict[str, list[str]] = {person: [] for person in board.people}
+    loose: list[str] = []
+    for number, generated in enumerate(texts, 1):
+        sentence = (overrides or {}).get(number, generated)
+        owner = next((p for p in owners if sentence.startswith(f"{p} ")), None)
+        if owner is None:
+            loose.append(sentence)
+            continue
+        rest = sentence[len(owner) + 1 :].rstrip(".")
+        if rest.split(" ", 1)[0] in (story.say("and"),):
+            extra[owner].append(sentence)
+        else:
+            predicates[owner].append(rest)
+    out = []
+    for person in board.people:
+        parts = []
+        if predicates[person]:
+            parts.append(f"{person} {_merge_predicates(predicates[person], story.say)}.")
+        parts.extend(extra[person])
+        if parts:
+            out.append(" ".join(parts))
+    return out + loose
+
+
 def clue_texts(text: str) -> list[str]:
     """The numbered clues of a Murdoku puzzle file in plain language."""
     board, clues = load_board(text)
@@ -1631,7 +1735,12 @@ def phrase(text: str, key: str) -> str:
     return Wording.read(text)(key)
 
 
-def explain(text: str) -> str:
-    """The worked solution of a Murdoku puzzle file, as Markdown bullets."""
+def explain(text: str, numbered: bool = True) -> str:
+    """The worked solution of a Murdoku puzzle file, as Markdown bullets.
+
+    Without `numbered` it never points at clue numbers, for clues that are not numbered.
+    """
     board, clues = load_board(text)
-    return Story(board, clues, Wording.read(text)).tell()
+    say = Wording.read(text)
+    story = Story(board, clues, say if numbered else say.unnumbered()).tell()
+    return story if numbered else re.sub(r" \(\d+\)", "", story)

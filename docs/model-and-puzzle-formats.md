@@ -198,6 +198,8 @@ For ordinary objects, `next_to` means one orthogonal step (up, down, left, or ri
 
 ### Booklet text (`--docx`)
 
+In the booklet the clues of each person are folded into one paragraph ("Makaak is in de Bergen en zit niet naast de struik of de bank."), in the order of the people, with clues about no single person last; they are not numbered, so the worked solution never points at clue numbers either. `Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
+
 `--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 
 * `Title:`, `Intro:` (one paragraph per line, `**bold**` allowed), `Question:`, `Reveal:` (answer text, solution file only).

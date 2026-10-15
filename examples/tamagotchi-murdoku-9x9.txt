@@ -55,6 +55,9 @@ friend: Mametchi Kuchipatchi Memetchi Lovelitchi Tarakotchi Masktchi Gozarutchi 
 
 # The question - where is the devil? - is not a clue. Akumatchi has no clues of
 # his own except that he ends up alone with exactly one friend; the rest pin him down.
+Words:
+target.attribute: a {name}
+
 Clues:
 alone_with Akumatchi attribute:friend
 within Gozarutchi Tarakotchi 5

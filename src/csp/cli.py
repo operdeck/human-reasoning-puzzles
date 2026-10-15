@@ -223,6 +223,8 @@ def _murdoku_lint(
     findings: list[str] = []
     for name in picture.unknown_object_icons(board):
         findings.append(f"warning: missing icon for {name}; PNG will use a text label")
+    for number, other in murdoku.implied_clues(clues):
+        findings.append(f"warning: clue {number} is already implied by clue {other}")
 
     try:
         presentation = load_presentation(text)

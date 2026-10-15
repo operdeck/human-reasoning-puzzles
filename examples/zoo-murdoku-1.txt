@@ -15,6 +15,9 @@ savanne: in de Savanne
 bergen: in de Bergen
 moeras: in de Moeras
 woestijn: in de Woestijn
+target.attribute: een {name}
+role_has: {who} is een {role}
+role_not: {who} is geen {role}
 
 Regions:
 savanne: savanne #FADFB5
@@ -72,7 +75,6 @@ in_region Tijger savanne
 not_next_to Giraffe fontein
 different_region Giraffe Makaak
 not_next_to Makaak bank
-outside Makaak woestijn
 in_column Tijger 4
 different_region Gibbon Giraffe
 at_least Giraffe Makaak 5

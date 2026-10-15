@@ -16,6 +16,9 @@ bergen: in de Bergen
 jungle: in de Jungle
 weide: in de Weide
 moeras: in de Moeras
+target.attribute: een {name}
+role_has: {who} is een {role}
+role_not: {who} is geen {role}
 
 Regions:
 bos: bos #C4DCF2

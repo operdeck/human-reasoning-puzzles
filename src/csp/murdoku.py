@@ -2522,3 +2522,35 @@ def track_person_status(board: Board, model: Model, person: str) -> str:
 
     possible = ", ".join(companions) or "none"
     return f"  tracked {person}: {location}; region-overlap companions: {possible}"
+
+
+def implied_clues(clues: Sequence[Clue]) -> list[tuple[int, int]]:
+    """Pairs (clue, other) of 1-based clue numbers where `other` alone already says what
+    `clue` says, so `clue` can go: a person put in one region needs no 'not in' another
+    region, and two people put in different regions need no 'different region' clue."""
+    placed: dict[str, list[tuple[int, set[str]]]] = {}
+    for number, (kind, args) in enumerate(clues, 1):
+        if kind == "in_region":
+            placed.setdefault(args[0], []).append((number, set(args[1:])))
+    found = []
+    for number, (kind, args) in enumerate(clues, 1):
+        if kind == "outside":
+            found += [
+                (number, other)
+                for other, regions in placed.get(args[0], [])
+                if not regions & set(args[1:])
+            ]
+        elif kind == "different_region":
+            found += [
+                (number, other)
+                for other, first in placed.get(args[0], [])
+                for _, second in placed.get(args[1], [])
+                if not first & second
+            ][:1]
+        elif kind == "in_region":
+            found += [
+                (number, other)
+                for other, regions in placed.get(args[0], [])
+                if other != number and regions < set(args[1:])
+            ]
+    return found

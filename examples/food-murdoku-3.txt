@@ -16,6 +16,7 @@ sapporo: in Sapporo
 sendai: in Sendai
 tokyo: in Tokyo
 nagoya: in Nagoya
+target.attribute: a {name}
 
 Regions:
 fukuoka: fukuoka #CBE6B9
