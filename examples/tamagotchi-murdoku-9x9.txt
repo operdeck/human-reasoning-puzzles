@@ -71,3 +71,10 @@ within Violetchi Mametchi 7
 apart Mametchi Violetchi
 in_region Kuchipatchi orange_market
 above Kuchipatchi Memetchi
+
+# Booklet text for --docx (optional).
+Title:
+Tamagotchi Murdoku 9x9: Where is the devil?
+
+Question:
+Akumatchi is placed last and is alone with one friend. Which friend?

@@ -122,3 +122,10 @@ at_least Tjitske Mao 10
 alone Luna
 furthest Luna Mao
 within Mao Otto 6
+
+# Booklet text for --docx (optional).
+Title:
+Prrrdoku 3: Een dagje Amsterdam
+
+Question:
+Wie zit er alleen met Vladimir in één gebied?

@@ -50,6 +50,16 @@ from .puzzlefile import load_board, read_sections
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
         "square": "r{row}c{col}",
+        "doc.figures": "The figures",
+        "doc.clues": "Clues",
+        "doc.question": "Question",
+        "doc.solution": "Solution",
+        "doc.answer": "Answer",
+        "doc.rules": (
+            "Place every figure on a free square of the board. No two figures share a row or a "
+            "column. Squares with an object that blocks cannot be used; squares with a standable "
+            "object can."
+        ),
         "and": "and",
         "or": "or",
         "region": "in the {name}",
@@ -189,6 +199,16 @@ PHRASES: dict[str, dict[str, str]] = {
     },
     "nl": {
         "square": "r{row}k{col}",
+        "doc.figures": "De figuren",
+        "doc.clues": "Aanwijzingen",
+        "doc.question": "Vraag",
+        "doc.solution": "Oplossing",
+        "doc.answer": "Antwoord",
+        "doc.rules": (
+            "Zet elke figuur op een vrij vakje van het bord. Twee figuren staan nooit in dezelfde "
+            "rij of kolom. Vakjes met een blokkerend voorwerp kun je niet gebruiken; vakjes met "
+            "een begaanbaar voorwerp wel."
+        ),
         "and": "en",
         "or": "of",
         "region": "in de {name}",
@@ -1315,6 +1335,27 @@ class Story:
 
     # --- clues ---------------------------------------------------------------
 
+    def clue_texts(self) -> list[str]:
+        """Every numbered clue as one human-readable sentence, in clue order."""
+        said: dict[int, str] = {}
+        for condition in conditions(self.board, self.clues):
+            if condition.number is not None:
+                said.setdefault(condition.number, self._clue(condition))
+        for quantified in self.quantified_conditions.values():
+            if quantified.number is not None:
+                said.setdefault(quantified.number, self._quantified_text(quantified))
+        for rule in self.role_conditions.values():
+            if rule.number is not None:
+                said.setdefault(rule.number, self._role_condition_text(rule))
+        for count in self.global_counts.values():
+            if count.number is not None:
+                said.setdefault(count.number, self._global_count_text(count))
+        out = []
+        for number, (kind, args) in enumerate(self.clues, 1):
+            text = said.get(number) or self._clue_text(kind, args, args[:1])
+            out.append(f"{_cap(text)}.")
+        return out
+
     def _clue(self, condition: Condition) -> str:
         return self._clue_text(condition.kind, condition.args, condition.people)
 
@@ -1573,6 +1614,17 @@ def _pieces(squares: set[Square]) -> list[set[Square]]:
             todo += near
         pieces.append(piece)
     return pieces
+
+
+def clue_texts(text: str) -> list[str]:
+    """The numbered clues of a Murdoku puzzle file in plain language."""
+    board, clues = load_board(text)
+    return Story(board, clues, Wording.read(text)).clue_texts()
+
+
+def phrase(text: str, key: str) -> str:
+    """A fixed phrase such as `doc.clues` in the puzzle's language."""
+    return Wording.read(text)(key)
 
 
 def explain(text: str) -> str:

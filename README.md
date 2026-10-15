@@ -16,7 +16,7 @@ uv run csp examples/logicgrid_3x3.txt --brute-force
 uv run csp examples/akari_2x2.txt --png akari.png
 ```
 
-`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--png` needs Pillow (`uv sync --extra png`).
+`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--png` needs Pillow (`uv sync --extra png`). `--docx [FILE]` writes an editable Word booklet page for a Murdoku puzzle (plus `-solution.docx` with the worked solution; needs `uv sync --extra docx`).
 
 For the full [example index and grade notes](docs/examples.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
 

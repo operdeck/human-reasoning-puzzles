@@ -12,6 +12,9 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* [#28 Create docx from puzzle description](https://github.com/operdeck/human-reasoning-puzzles/issues/28)
+    * `--docx [FILE]` writes an editable Word booklet page (title, board picture, figures, numbered human-readable clues, question) and, once solved, `-solution.docx` with the worked solution. Optional extra: `uv sync --extra docx`.
+    * New optional puzzle-file sections `Title:`, `Intro:`, `Question:`, `ClueText:`, `Figures:` (with optional `image=`) and `Reveal:`; they never affect solving, lint or PNG. Added to the prrrdoku and Tamagotchi examples.
 * Tamagotchi Murdoku puzzles now use Japanese objects (shrine, castle, Mount Fuji, sakura, lanterns, taiko, tatami, ...); new icons added to `src/csp/icons.py`, `tatami` draws the rug icon.
 * New Murdoku example puzzles
     * `examples/food-murdoku-1.txt`, `-2.txt`, `-3.txt`: Japanese food and cities (5x5 to 7x7).
