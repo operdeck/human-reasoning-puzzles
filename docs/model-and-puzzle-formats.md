@@ -196,6 +196,16 @@ Every object footprint must be declared `blocking` or `standable`; its name/icon
 
 For ordinary objects, `next_to` means one orthogonal step (up, down, left, or right) within the same logical area; diagonal cells do not count. Door and corner-object touched cells satisfy `next_to` across region boundaries. A window is a target for `at`, not `next_to`. `adjacent_regions` means two regions share a side.
 
+### Booklet text (`--docx`)
+
+`--docx [FILE]` writes an editable Word page; solved puzzles also get `FILE-solution.docx` with the worked solution. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
+
+* `Title:`, `Intro:` (one paragraph per line, `**bold**` allowed), `Question:`, `Reveal:` (answer text, solution file only).
+* `ClueText:` lines `N: wording` replace the generated sentence for clue N. Without them every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura."
+* `Figures:` lines `Name: description ; image=path`; the path is relative to the puzzle file and a missing image falls back to text.
+
+Needs `uv sync --extra docx` (python-docx).
+
 ## Other existing formats
 
 - **Calcudoku:** `Size:`, `Grid:` cage IDs, and `Cages:` arithmetic targets/operators. Cages must be connected; subtraction and division are two-cell cages.
@@ -225,6 +235,7 @@ src/csp/
 	<family>.py    one parser/compiler/text renderer per family
 	bruteforce/    independent search implementation per family
 	picture.py     PNG renderers for every family
+	docx_export.py Word booklet pages for Murdoku (optional python-docx)
 	cli.py         family dispatch and shared solver options
 tests/           engine, family, soundness, layering, and picture tests
 examples/        small and larger unique examples for each family

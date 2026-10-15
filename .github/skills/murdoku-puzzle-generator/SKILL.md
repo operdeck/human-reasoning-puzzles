@@ -341,3 +341,10 @@ workflow permits: a transcription must stay faithful to its source, while a
 generated puzzle may change as long as all hard constraints remain satisfied.
 Do not weaken verification or change solver code unless the user separately
 asks for a solver change.
+
+## Booklet text (optional)
+
+`--docx` words every clue automatically; to check a translation, compare it with the clue
+operator. Optional `Title:`, `Intro:`, `Question:`, `ClueText:` (`N: wording`), `Figures:` and
+`Reveal:` sections add presentation only; they never change the solution. See
+`docs/model-and-puzzle-formats.md`.

@@ -91,3 +91,10 @@ above Masktchi Lovelitchi 3
 in_region Ichigotchi green_garden
 adjacent_regions Lovelitchi Masktchi
 adjacent_regions Kuchipatchi Violetchi
+
+# Booklet text for --docx (optional).
+Title:
+Tamagotchi Murdoku 12x12: Where is the devil?
+
+Question:
+Akumatchi is placed last and is alone with one friend. Which friend?

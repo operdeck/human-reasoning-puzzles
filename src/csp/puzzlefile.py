@@ -6,6 +6,7 @@ one-line section can be written inline before the first header, as in
 """
 
 import re
+from dataclasses import dataclass, field
 
 from .murdoku import (
     Board,
@@ -351,3 +352,63 @@ def _role_placements(
             RoleSpec(name.strip(), allowed_counts, different_regions, eligibility.get(name.strip()))
         )
     return roles
+
+
+@dataclass(frozen=True)
+class Figure:
+    """Optional booklet text and picture for one person; never read by the solver."""
+
+    description: str = ""
+    image: str = ""
+
+
+@dataclass(frozen=True)
+class Presentation:
+    """Author-written booklet metadata. Absent sections leave the fields empty."""
+
+    title: str = ""
+    intro: list[str] = field(default_factory=list)
+    question: str = ""
+    clue_text: dict[int, str] = field(default_factory=dict)
+    figures: dict[str, Figure] = field(default_factory=dict)
+    reveal: list[str] = field(default_factory=list)
+
+
+def load_presentation(text: str) -> Presentation:
+    """The optional `Title:`, `Intro:`, `Question:`, `ClueText:`, `Figures:` and `Reveal:`.
+
+    Presentation never affects parsing, solving or pictures. `ClueText:` lines are
+    `N: wording` for clue N of `Clues:`; `Figures:` lines are
+    `Name: description [; image=path]`.
+    """
+    section = read_sections(text)
+    people = section.get("People", [])
+    clue_count = len(section.get("Clues", []))
+    clue_text: dict[int, str] = {}
+    for line in section.get("ClueText", []):
+        number, separator, wording = line.partition(":")
+        if not separator or not number.strip().isdigit() or not wording.strip():
+            raise ValueError(f"bad ClueText {line!r}, expected 'N: wording'")
+        if not 1 <= int(number) <= clue_count:
+            raise ValueError(f"ClueText {number.strip()} has no matching clue (1-{clue_count})")
+        if int(number) in clue_text:
+            raise ValueError(f"ClueText {number.strip()} is given more than once")
+        clue_text[int(number)] = wording.strip()
+    figures: dict[str, Figure] = {}
+    for line in section.get("Figures", []):
+        name, separator, rest = line.partition(":")
+        description, _, option = rest.partition(";")
+        option = option.strip()
+        if not separator or name.strip() not in people:
+            raise ValueError(f"Figures names unknown person in {line!r}")
+        if option and not option.startswith("image="):
+            raise ValueError(f"bad Figures option {option!r}, expected 'image=path'")
+        figures[name.strip()] = Figure(description.strip(), option.removeprefix("image=").strip())
+    return Presentation(
+        title=" ".join(section.get("Title", [])),
+        intro=section.get("Intro", []),
+        question=" ".join(section.get("Question", [])),
+        clue_text=clue_text,
+        figures=figures,
+        reveal=section.get("Reveal", []),
+    )

@@ -50,3 +50,10 @@ left_of Memetchi Lovelitchi
 not_next_to Kuchipatchi shrine
 apart Memetchi Lovelitchi
 only_on Mametchi taiko
+
+# Booklet text for --docx (optional).
+Title:
+Tamagotchi Murdoku 6x6: Where is the devil?
+
+Question:
+Akumatchi is placed last and is alone with one friend. Which friend?

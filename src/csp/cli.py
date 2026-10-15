@@ -30,9 +30,10 @@ from . import (
     tents,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
-from .puzzlefile import KINDS, detect, load_board
+from .puzzlefile import KINDS, detect, load_board, load_presentation
 
 _PNG_DEFAULT = object()
+_DOCX_DEFAULT = object()
 
 
 @dataclass(frozen=True)
@@ -143,6 +144,28 @@ def brute_force(puzzle: Puzzle, text: str) -> int:
     return 1
 
 
+def write_docx(
+    text: str,
+    path: Path,
+    base: Path,
+    solution: dict[str, Any] | None = None,
+    role_statuses: dict[tuple[str, str], bool | None] | None = None,
+) -> bool:
+    """Save a Murdoku booklet page; False (after saying why) if it cannot be written."""
+    try:
+        from . import docx_export
+    except ImportError:
+        print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
+        return False
+    try:
+        docx_export.write_docx(text, path, base, solution, role_statuses)
+    except ValueError as error:
+        print(f"{path}: {error}", file=sys.stderr)
+        return False
+    print(f"wrote {path}")
+    return True
+
+
 def write_picture(
     kind: str,
     text: str,
@@ -201,10 +224,17 @@ def write_picture(
     return True
 
 
-def _murdoku_lint(board: murdoku.Board, clues: Sequence[murdoku.Clue], model: Model) -> list[str]:
+def _murdoku_lint(
+    board: murdoku.Board, clues: Sequence[murdoku.Clue], model: Model, text: str = ""
+) -> list[str]:
     findings: list[str] = []
     for name in picture.unknown_object_icons(board):
         findings.append(f"warning: missing icon for {name}; PNG will use a text label")
+
+    try:
+        load_presentation(text)
+    except ValueError as error:
+        findings.append(f"warning: booklet text: {error}")
 
     candidate_squares = {
         model.value_of(literal) for person in board.people for literal in model.options(person)
@@ -328,9 +358,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             "the solution to FILE with '-solution' before the extension (needs Pillow)"
         ),
     )
+    parser.add_argument(
+        "--docx",
+        nargs="?",
+        type=Path,
+        const=_DOCX_DEFAULT,
+        metavar="FILE",
+        help=(
+            "Murdoku only: write an editable Word booklet page to FILE (default: beside the "
+            "puzzle), and once solved one with the worked solution to FILE with '-solution' "
+            "before the extension (needs python-docx: uv sync --extra docx)"
+        ),
+    )
     args = parser.parse_args(argv)
 
     path: Path = args.puzzle
+    docx_path = path.with_suffix(".docx") if args.docx is _DOCX_DEFAULT else args.docx
     png_path = path.with_suffix(".png") if args.png is _PNG_DEFAULT else args.png
     if not path.exists():
         print(f"no such file: {path}", file=sys.stderr)
@@ -369,7 +412,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
     if args.lint or args.require_forward:
         board, clues = load_board(text)
-        findings = _murdoku_lint(board, clues, model)
+        findings = _murdoku_lint(board, clues, model, text)
         for finding in findings:
             print(finding)
         if not findings:
@@ -408,6 +451,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 role_board, _ = load_board(text)
             role_statuses = murdoku.role_statuses(role_board, model)
         if not write_picture(kind, text, png_path, role_statuses=role_statuses):
+            return 2
+
+    if docx_path is not None:
+        if kind != "murdoku":
+            print(f"--docx only supports Murdoku, not {kind}", file=sys.stderr)
+            return 2
+        if not write_docx(text, docx_path, path.parent):
             return 2
 
     if args.show_model:
@@ -452,6 +502,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 board, _ = load_board(text)
                 roles = murdoku.role_statuses(board, model)
             write_picture(kind, text, solved, result.assignment, roles)
+        if docx_path is not None:
+            board, _ = load_board(text)
+            write_docx(
+                text,
+                docx_path.with_stem(f"{docx_path.stem}-solution"),
+                path.parent,
+                result.assignment,
+                murdoku.role_statuses(board, model),
+            )
     elif result.contradiction:
         print(puzzle.draw("Stuck"))
         print(f"\ncontradiction: {result.contradiction}")

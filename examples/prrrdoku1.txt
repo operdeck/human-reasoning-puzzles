@@ -62,3 +62,23 @@ above Otto Tjitske 1
 next_to Tjitske vuurtje
 within Tjitske Otto 4
 left_of Jos Otto
+
+# Booklet text for --docx (optional; solving and pictures ignore it).
+Title:
+Prrrdoku 1: Wie krijgt Vladimir op schoot?
+
+Intro:
+Zeven vrienden bezoeken het park. Zet iedereen op een vrij vakje; Vladimir komt als laatste.
+Geen twee mensen staan in dezelfde rij of kolom. Voorwerpen blokkeren een vakje.
+
+Figures:
+Vladimir: de poes die iemand op schoot zoekt
+
+ClueText:
+5: Otto zit precies één rij boven Tjitske.
+
+Question:
+Bij wie zit Vladimir alleen in een gebied?
+
+Reveal:
+Vladimir zit bij degene die in zijn gebied alleen met hem is; zie de uitleg hieronder.
