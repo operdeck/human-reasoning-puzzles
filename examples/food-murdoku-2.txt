@@ -69,7 +69,7 @@ Title:
 Food Murdoku 6x6: Five suspects, one victim
 
 Intro:
-Japanese dishes wander through the city. Jos is hungry and is placed last.
+Japanese dishes are placed around the city. Jos is hungry and is placed last.
 No two figures share a row or a column; an object that blocks a square makes it unusable.
 
 Figures:
