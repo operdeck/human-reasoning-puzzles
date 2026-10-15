@@ -190,7 +190,7 @@ def murdoku_picture(
 
 
 # Objects drawn by hand because Noto Emoji has no suitable picture.
-CARPET_NAMES = frozenset({"tapijt", "carpet", "rug"})
+CARPET_NAMES = frozenset({"tapijt", "carpet", "rug", "tatami"})
 WELL_NAMES = frozenset({"waterput", "well"})
 SEAT_NAMES = frozenset({"bench", "bank", "bankje"})
 
