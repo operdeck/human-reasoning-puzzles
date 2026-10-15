@@ -29,8 +29,8 @@ kobe kyoto kyoto kyoto kyoto
 kobe sapporo kyoto kyoto kyoto
 
 Objects:
-barrel: blocking r1c5
-tree: blocking r3c4
+table: blocking r1c5
+table: blocking r3c4
 bench: standable r1c4 r2c4
 
 Attributes:
@@ -52,4 +52,4 @@ outside Yakitori kobe
 above Tempura Jos
 outside Tempura kobe
 in_column Jos 5
-next_to Ramen barrel
+next_to Ramen bench
