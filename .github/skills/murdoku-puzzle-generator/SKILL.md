@@ -70,7 +70,9 @@ clues in their printed order. Never infer an object's kind from its name or icon
    clue line, so the booklet reads like the original. Do not pad the puzzle with
    clues another clue already implies (`lint` warns). If roles or attributes are
    really kinds (species, foods), reword them in `Words:` (`role_has`, `role_not`,
-   `target.attribute`) instead of "has the role tiger".
+   `target.attribute`) instead of "has the role tiger". Never make a role that only
+   one character can hold (`lint` warns): say it about that person instead, for
+   example `alone <person>` rather than `role_occupant <role> alone`.
 
 ### Paired Solution Evidence
 

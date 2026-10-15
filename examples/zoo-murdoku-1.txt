@@ -40,15 +40,12 @@ bank: standable r2c2 r3c2
 
 Attributes:
 aap: Makaak Gibbon
-tijger: Tijger
 dier: Tijger Makaak Gibbon Giraffe
 
 Roles:
-tijger: 1
 aap: 2
 
 RoleEligibility:
-tijger: attribute:tijger
 aap: attribute:aap
 
 People:
@@ -59,7 +56,7 @@ Giraffe
 Verzorger
 
 Rules:
-role_occupant tijger alone
+alone Tijger
 role_occupant aap not_alone
 alone_with Verzorger attribute:dier
 
