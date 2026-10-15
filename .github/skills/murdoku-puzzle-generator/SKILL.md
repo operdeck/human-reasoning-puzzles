@@ -170,6 +170,11 @@ it.
   connected footprint; repeat a name on another line for another instance of
   that type. Footprints may not overlap, and all cells must be on the board.
   Standable objects are valid `on`, `not_on`, and `only_on` targets.
+- Prefer 1x1 objects for everyday furniture: use separate `table` and `chair`
+  lines rather than a 2-cell table or chair. Reserve 2-cell standable footprints
+  for a `bench` (bank) or `bed`. Footprints may cross region boundaries (the
+  parser only requires connectivity), but that is unusual; avoid it unless the
+  puzzle needs it, and say so in the file header when you use it.
 - `EdgeItems:` declares named doors and windows without occupying cells.
   A simple door lists two orthogonally neighboring cells in different areas,
   for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider

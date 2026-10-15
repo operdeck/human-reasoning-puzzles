@@ -32,10 +32,10 @@ nagoya osaka osaka kobe tokyo tokyo
 nagoya osaka osaka kobe kobe kobe
 
 Objects:
-barrel: blocking r6c5
-vase: blocking r2c6
-table: standable r4c3
-table: standable r4c4
+table: blocking r6c5
+table: blocking r2c6
+table: blocking r4c3
+table: blocking r4c4
 chair: standable r6c3
 chair: standable r6c4
 
@@ -55,7 +55,7 @@ alone_with Jos attribute:food
 
 Clues:
 left_of Mochi Okonomiyaki
-next_to Jos barrel
+next_to Jos table
 outside Onigiri nagoya
 left_of Sushi Tonkatsu
 at_least Jos Onigiri 7
