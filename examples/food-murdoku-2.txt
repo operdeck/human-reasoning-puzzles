@@ -54,13 +54,15 @@ Rules:
 alone_with Jos attribute:food
 
 Clues:
+same_region Okonomiyaki Onigiri
+outside Tonkatsu kobe
+left_of Onigiri Tonkatsu
+in_row Onigiri 1
+at_least Okonomiyaki Tonkatsu 6
+at_least Onigiri Tonkatsu 8
+in_row Sushi 4
+above Mochi Tonkatsu
 left_of Mochi Okonomiyaki
-next_to Jos table
-outside Onigiri nagoya
-left_of Sushi Tonkatsu
-at_least Jos Onigiri 7
-in_column Sushi 5
-in_row Mochi 3
 
 # Booklet text for --docx (optional).
 Title:

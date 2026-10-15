@@ -56,12 +56,12 @@ Title:
 Tamagotchi Murdoku 6x6: Where is the devil?
 
 Figures:
-Mametchi: a friend
-Kuchipatchi: a friend
-Memetchi: a friend
-Lovelitchi: a friend
-Masktchi: a friend
-Akumatchi: the devil
+Mametchi: a friend ; icon=U+1F423
+Kuchipatchi: a friend ; icon=U+1F425
+Memetchi: a friend ; icon=U+1F338
+Lovelitchi: a friend ; icon=U+1F496
+Masktchi: a friend ; icon=U+1F3AD
+Akumatchi: the devil ; icon=U+1F47F
 
 Question:
 Akumatchi is placed last and is alone with one friend. Which friend?
