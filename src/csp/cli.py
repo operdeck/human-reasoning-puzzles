@@ -1,6 +1,7 @@
 """Command line front end."""
 
 import argparse
+import dataclasses
 import glob
 import sys
 import time
@@ -146,19 +147,15 @@ def brute_force(puzzle: Puzzle, text: str) -> int:
     return 1
 
 
-def write_picture(
+def make_image(
     kind: str,
     text: str,
-    path: Path,
     solution: dict[str, Any] | None = None,
     role_statuses: dict[tuple[str, str], bool | None] | None = None,
-) -> bool:
-    """Save the puzzle as a PNG, with `solution` drawn in if given."""
-    try:
-        from . import picture
-    except ImportError:
-        print("--png needs Pillow: uv sync --extra png", file=sys.stderr)
-        return False
+) -> Any:
+    """The picture of a puzzle of any family, with `solution` drawn in if given."""
+    from . import picture
+
     if kind == "queens":
         image = picture.queens_picture(queens.parse(text), solution)
     elif kind == "suguru":
@@ -199,6 +196,22 @@ def write_picture(
             role_statuses=role_statuses,
             global_counts=global_counts,
         )
+    return image
+
+
+def write_picture(
+    kind: str,
+    text: str,
+    path: Path,
+    solution: dict[str, Any] | None = None,
+    role_statuses: dict[tuple[str, str], bool | None] | None = None,
+) -> bool:
+    """Save the puzzle as a PNG, with `solution` drawn in if given."""
+    try:
+        image = make_image(kind, text, solution, role_statuses)
+    except ImportError:
+        print("--png needs Pillow: uv sync --extra png", file=sys.stderr)
+        return False
     image.save(path)
     print(f"wrote {path}")
     return True
@@ -288,42 +301,47 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
 
 
 def _booklet(files: list[Path], docx: Any) -> int:
-    """One booklet, puzzles first and then solutions, for the Murdoku `files`."""
+    """One booklet, puzzles first and then solutions, for the puzzle `files` of any family."""
     if docx is not _DOCX_DEFAULT:
         out = docx
     elif len(files) == 1:
         out = files[0].with_suffix(".docx")
     else:
         out = files[0].parent / "booklet.docx"
-    solved: list[tuple[str, Path, dict[str, Any] | None, Any]] = []
-    for file in files:
-        text = file.read_text()
-        if detect(text) != "murdoku":
-            print(f"skipping {file}: not a Murdoku puzzle", file=sys.stderr)
-            continue
-        try:
-            model = load(text, "murdoku").model
-        except ValueError as exc:
-            print(f"could not read {file.name}: {exc}", file=sys.stderr)
-            return 2
-        result = Solver(model).solve()
-        board, _ = load_board(text)
-        if result.solved:
-            placed = {k: v for k, v in result.assignment.items() if not isinstance(v, bool)}
-            solved.append((text, file, placed, murdoku.role_statuses(board, model)))
-        else:
-            print(f"warning: {file.name} is not solved by the rules; solution page omitted")
-            solved.append((text, file, None, None))
-    if not solved:
-        print("no Murdoku puzzles among the files given", file=sys.stderr)
-        return 2
     try:
         from . import docx_export
     except ImportError:
         print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
         return 2
-    docx_export.write_booklet([docx_export.Entry(t, f, a, r) for t, f, a, r in solved], out)
-    print(f"wrote {out} ({len(solved)} puzzles, then their solutions)")
+    entries = []
+    for file in files:
+        text = file.read_text()
+        try:
+            kind = detect(text)
+            model = load(text, kind).model
+        except ValueError as exc:
+            print(f"could not read {file.name}: {exc}", file=sys.stderr)
+            return 2
+        result = Solver(model).solve()
+        placed = None
+        roles = None
+        if result.solved:
+            placed = dict(result.assignment)
+            if kind == "murdoku":
+                placed = {k: v for k, v in placed.items() if not isinstance(v, bool)}
+                roles = murdoku.role_statuses(load_board(text)[0], model)
+        else:
+            print(f"warning: {file.name} is not solved by the rules; solution page omitted")
+        entry = docx_export.Entry(text, file, placed, roles, kind)
+        if kind != "murdoku":
+            entry = dataclasses.replace(
+                entry,
+                puzzle_image=make_image(kind, text),
+                solution_image=make_image(kind, text, placed) if placed is not None else None,
+            )
+        entries.append(entry)
+    docx_export.write_booklet(entries, out)
+    print(f"wrote {out} ({len(entries)} puzzles, then their solutions)")
     return 0
 
 

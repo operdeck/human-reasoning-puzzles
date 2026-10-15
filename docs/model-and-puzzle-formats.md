@@ -206,6 +206,8 @@ For ordinary objects, `next_to` means one orthogonal step (up, down, left, or ri
 
 Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page.
 
+Puzzles of other families (sudoku, queens, tents, …) are included generically: title (`Title:` or the file name), a one-line rule for the family, the board, and the solved board on a separate solution page. A mixed glob such as `"examples/*.txt"` therefore works.
+
 Needs `uv sync --extra docx` (python-docx).
 
 ## Other existing formats

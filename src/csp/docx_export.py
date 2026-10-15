@@ -20,6 +20,7 @@ from .story import clue_texts, explain, phrase
 BOLD = re.compile(r"\*\*(.+?)\*\*")
 BOARD_WIDTH_CM = 9.0
 FIGURE_IMAGE_CM = 0.8
+GENERIC_BOARD_WIDTH_CM = 14.0
 
 
 def _runs(paragraph: Any, text: str) -> None:
@@ -94,12 +95,67 @@ class Entry:
     path: Path
     solution: dict[str, Any] | None = None
     role_statuses: dict[tuple[str, str], bool | None] | None = None
+    kind: str = "murdoku"
+    puzzle_image: Any = None
+    solution_image: Any = None
+
+
+RULES = {
+    "sudoku": "Fill the grid so every row, column and box contains each digit once.",
+    "calcudoku": "Fill the grid so no digit repeats in a row or column, and each cage's "
+    "digits combine to its target with its operation.",
+    "futoshiki": "Fill the grid so no digit repeats in a row or column and every "
+    "inequality sign between neighbouring cells holds.",
+    "queens": "Place one queen in every row, column and region; queens may not touch, "
+    "not even diagonally.",
+    "suguru": "Fill every region of n cells with 1..n; equal digits may not touch, "
+    "not even diagonally.",
+    "starbattle": "Place stars so each row, column and region holds the same number; "
+    "stars may not touch, not even diagonally.",
+    "binairo": "Fill the grid with two symbols: no three equal in a row or column, "
+    "each row and column has equally many of each, and no two rows or columns are identical.",
+    "tents": "Put a tent next to each tree (horizontally or vertically), one tent per tree; "
+    "tents never touch each other, and the numbers give the tents per row and column.",
+    "minesweeper": "Mark the mines: each number tells how many of its eight neighbours are mines.",
+    "akari": "Place lights so every white cell is lit and no two lights see each other; "
+    "a number tells how many lights touch that black cell.",
+    "kakurasu": "Shade cells so each row and column adds up to its target, where a "
+    "shaded cell counts its position number.",
+    "battleships": "Place the fleet without ships touching, even diagonally; the numbers "
+    "give the ship cells per row and column.",
+    "logicgrid": "Use the clues to match every item of each category with exactly one "
+    "item of every other category.",
+}
+
+
+def _generic_title(entry: Entry) -> str:
+    return load_presentation(entry.text).title or entry.path.stem.replace("_", " ").capitalize()
+
+
+def _add_generic(document: Any, entry: Entry, title: str, new_page: bool, solved: bool) -> None:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Cm
+
+    heading = document.add_heading(title, level=1)
+    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    heading.paragraph_format.page_break_before = new_page
+    if not solved:
+        document.add_heading("Rules", level=2)
+        document.add_paragraph(RULES.get(entry.kind, ""), style="List Bullet")
+    stream = io.BytesIO()
+    (entry.solution_image if solved else entry.puzzle_image).save(stream, format="PNG")
+    stream.seek(0)
+    document.add_picture(stream, width=Cm(GENERIC_BOARD_WIDTH_CM))
+    document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
 
 def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt
 
+    if entry.kind != "murdoku":
+        _add_generic(document, entry, _generic_title(entry), new_page, solved=False)
+        return
     text = entry.text
     presentation = load_presentation(text)
     first_comment = next((line for line in text.splitlines() if line.startswith("# ")), "")
@@ -131,6 +187,9 @@ def _add_solution(document: Any, entry: Entry, title: str) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm
 
+    if entry.kind != "murdoku":
+        _add_generic(document, entry, title, True, solved=True)
+        return
     text = entry.text
     presentation = load_presentation(text)
     heading = document.add_heading(title, level=1)
@@ -206,6 +265,11 @@ def write_booklet(entries: list[Entry], path: Path) -> None:
     solved = [entry for entry in entries if entry.solution is not None]
     if solved:
         for entry in solved:
-            title = load_presentation(entry.text).title or entry.path.stem
-            _add_solution(document, entry, f"{phrase(entry.text, 'doc.solution')}: {title}")
+            title = (
+                _generic_title(entry)
+                if entry.kind != "murdoku"
+                else (load_presentation(entry.text).title or entry.path.stem)
+            )
+            label = "Solution" if entry.kind != "murdoku" else phrase(entry.text, "doc.solution")
+            _add_solution(document, entry, f"{label}: {title}")
     document.save(str(path))

@@ -164,3 +164,14 @@ def test_booklet_footer_carries_copyright_notice(tmp_path):
     out = tmp_path / "b.docx"
     assert main([str(EXAMPLES / "prrrdoku1.txt"), "--docx", str(out)]) == 0
     assert COPYRIGHT_NOTICE in Document(str(out)).sections[0].footer.paragraphs[0].text
+
+
+@pytest.mark.parametrize("name", ["sudoku_easy", "queens_4x4", "tents_4x4", "calcudoku_4x4_easy"])
+def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
+    out = tmp_path / "b.docx"
+    assert main([str(EXAMPLES / f"{name}.txt"), "--docx", str(out)]) == 0
+    document = Document(str(out))
+    headings = [p.text for p in document.paragraphs if p.style.name == "Heading 1"]
+    assert len(headings) == 2 and headings[1].startswith("Solution")
+    assert any(p.text == "Rules" for p in document.paragraphs)
+    assert len(document.inline_shapes) == 2
