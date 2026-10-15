@@ -40,14 +40,6 @@ recorder: 3 different_regions
 RoleEligibility:
 navigator: attribute:trained
 Clues:
-in_row Ada 1
-in_column Ada 1
-in_row Bo 2
-in_column Bo 3
-in_row Cal 3
-in_column Cal 4
-in_row Dee 4
-in_column Dee 2
 at Bo archway
 at Cal window
 next_to Dee fountain
