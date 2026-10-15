@@ -10,12 +10,16 @@ pytest.importorskip("docx")
 from docx import Document
 
 from csp.cli import main
-from csp.docx_export import write_docx
+from csp.docx_export import Entry, write_booklet
 from csp.puzzlefile import load_presentation
 from csp.story import clue_texts
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
 PRRRDOKUS = ["prrrdoku1", "prrrdoku2", "prrrdoku3"]
+
+
+def write_docx(text, out, base, solution=None):
+    write_booklet([Entry(text, base / "x.txt", solution)], out)
 
 
 def _text(path: Path) -> str:
@@ -30,18 +34,10 @@ def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
     text = _text(out)
     assert "Prrrdoku" in text and "Aanwijzingen" in text and "Vladimir" in text
     assert any(n.startswith("word/media/") for n in zipfile.ZipFile(out).namelist())
-    solution = _text(tmp_path / f"{name}-solution.docx")
-    assert "Oplossing" in solution
-    assert (
-        len(
-            [
-                n
-                for n in zipfile.ZipFile(tmp_path / f"{name}-solution.docx").namelist()
-                if n.startswith("word/media/")
-            ]
-        )
-        == 2
-    )
+    assert "Oplossing" in text
+    media = [n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]
+    assert len(media) == 2
+    assert text.index("Aanwijzingen") < text.index("Oplossing")
 
 
 def test_clue_text_override_wins():
@@ -85,7 +81,7 @@ def test_figure_image_is_embedded(tmp_path):
 
 
 def test_bad_presentation_is_rejected_and_linted():
-    bad = (EXAMPLES / "prrrdoku1.txt").read_text() + "\nClueText:\n99: nope\n"
+    bad = (EXAMPLES / "prrrdoku1.txt").read_text() + "\nFigures:\nNobody: x\n"
     with pytest.raises(ValueError):
         load_presentation(bad)
 
@@ -103,9 +99,22 @@ def test_glob_makes_one_multi_puzzle_booklet(tmp_path):
     assert main([str(tmp_path / "prrrdoku*.txt"), "--docx", str(out)]) == 0
     text = _text(out)
     assert "Prrrdoku 1" in text and "Prrrdoku 2" in text
-    assert "Oplossing" in _text(tmp_path / "all-solution.docx")
+    assert text.count("Aanwijzingen") == 2 and "Oplossing" in text
+    assert text.rindex("Prrrdoku 1") > text.index("Oplossing")
+    assert not (tmp_path / "all-solution.docx").exists()
 
 
 def test_glob_without_docx_is_an_error(tmp_path):
     with pytest.raises(SystemExit):
         main([str(tmp_path / "*.txt")])
+
+
+def test_inline_wording_does_not_change_the_puzzle():
+    from csp.puzzlefile import load_board
+
+    plain = (
+        (EXAMPLES / "prrrdoku1.txt")
+        .read_text()
+        .replace(" | Otto zit precies één rij boven Tjitske.", "")
+    )
+    assert load_board(plain) == load_board((EXAMPLES / "prrrdoku1.txt").read_text())

@@ -58,9 +58,9 @@ next_to Tim klimwand
 in_region Jos keukenwinkel
 same_region Anna Jos
 in_region Pip moestuin
-above Otto Tjitske 1
+above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.
 next_to Tjitske vuurtje
-within Tjitske Otto 4
+within Tjitske Otto 4 | Tjitske zit hooguit vier vakjes bij Otto vandaan.
 left_of Jos Otto
 
 # Booklet text for --docx (optional; solving and pictures ignore it).
@@ -73,9 +73,6 @@ Geen twee mensen staan in dezelfde rij of kolom. Voorwerpen blokkeren een vakje.
 
 Figures:
 Vladimir: de poes die iemand op schoot zoekt
-
-ClueText:
-5: Otto zit precies één rij boven Tjitske.
 
 Question:
 Bij wie zit Vladimir alleen in een gebied?

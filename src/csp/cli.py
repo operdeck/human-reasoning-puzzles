@@ -145,28 +145,6 @@ def brute_force(puzzle: Puzzle, text: str) -> int:
     return 1
 
 
-def write_docx(
-    text: str,
-    path: Path,
-    base: Path,
-    solution: dict[str, Any] | None = None,
-    role_statuses: dict[tuple[str, str], bool | None] | None = None,
-) -> bool:
-    """Save a Murdoku booklet page; False (after saying why) if it cannot be written."""
-    try:
-        from . import docx_export
-    except ImportError:
-        print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
-        return False
-    try:
-        docx_export.write_docx(text, path, base, solution, role_statuses)
-    except ValueError as error:
-        print(f"{path}: {error}", file=sys.stderr)
-        return False
-    print(f"wrote {path}")
-    return True
-
-
 def write_picture(
     kind: str,
     text: str,
@@ -305,15 +283,18 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
 
 
 def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
-    """One booklet (plus a `-solution` one) for all Murdoku files matching `pattern`."""
+    """One booklet, puzzles first and then solutions, for the Murdoku file(s) in `pattern`."""
     if docx is None:
         parser.error("a glob pattern needs --docx")
-    files = [Path(name) for name in sorted(glob.glob(pattern))]
-    if not files:
+    if not glob.has_magic(pattern):
+        files = [Path(pattern)]
+        out = Path(pattern).with_suffix(".docx") if docx is _DOCX_DEFAULT else docx
+    else:
+        files = [Path(name) for name in sorted(glob.glob(pattern))]
+        out = Path(pattern).parent / "booklet.docx" if docx is _DOCX_DEFAULT else docx
+    if not files or not all(file.exists() for file in files):
         print(f"no files match: {pattern}", file=sys.stderr)
         return 2
-    out = Path(pattern).parent / "booklet.docx" if docx is _DOCX_DEFAULT else docx
-    puzzles: list[tuple[str, Path]] = []
     solved: list[tuple[str, Path, dict[str, Any] | None, Any]] = []
     for file in files:
         text = file.read_text()
@@ -327,13 +308,12 @@ def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
             return 2
         result = Solver(model).solve()
         board, _ = load_board(text)
-        puzzles.append((text, file))
         if result.solved:
             solved.append((text, file, result.assignment, murdoku.role_statuses(board, model)))
         else:
             print(f"warning: {file.name} is not solved by the rules; solution page omitted")
             solved.append((text, file, None, None))
-    if not puzzles:
+    if not solved:
         print(f"no Murdoku puzzles match: {pattern}", file=sys.stderr)
         return 2
     try:
@@ -341,10 +321,8 @@ def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
     except ImportError:
         print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
         return 2
-    docx_export.write_booklet([docx_export.Entry(t, f) for t, f in puzzles], out)
-    answers = out.with_stem(f"{out.stem}-solution")
-    docx_export.write_booklet([docx_export.Entry(t, f, a, r) for t, f, a, r in solved], answers)
-    print(f"wrote {out} and {answers} ({len(puzzles)} puzzles)")
+    docx_export.write_booklet([docx_export.Entry(t, f, a, r) for t, f, a, r in solved], out)
+    print(f"wrote {out} ({len(solved)} puzzles, then their solutions)")
     return 0
 
 
@@ -414,17 +392,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         const=_DOCX_DEFAULT,
         metavar="FILE",
         help=(
-            "Murdoku only: write an editable Word booklet page to FILE (default: beside the "
-            "puzzle), and once solved one with the worked solution to FILE with '-solution' "
-            "before the extension (needs python-docx: uv sync --extra docx)"
+            "Murdoku only: write an editable Word booklet to FILE (default: beside the puzzle, or "
+            "booklet.docx for a glob): all puzzles, then all solutions (needs python-docx: "
+            "uv sync --extra docx)"
         ),
     )
     args = parser.parse_args(argv)
 
     path: Path = args.puzzle
-    if glob.has_magic(str(path)):
+    if glob.has_magic(str(path)) or args.docx is not None:
         return _booklet(parser, str(path), args.docx)
-    docx_path = path.with_suffix(".docx") if args.docx is _DOCX_DEFAULT else args.docx
     png_path = path.with_suffix(".png") if args.png is _PNG_DEFAULT else args.png
     if not path.exists():
         print(f"no such file: {path}", file=sys.stderr)
@@ -504,13 +481,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not write_picture(kind, text, png_path, role_statuses=role_statuses):
             return 2
 
-    if docx_path is not None:
-        if kind != "murdoku":
-            print(f"--docx only supports Murdoku, not {kind}", file=sys.stderr)
-            return 2
-        if not write_docx(text, docx_path, path.parent):
-            return 2
-
     if args.show_model:
         print(f"\n{report.describe(model)}")
         return 0
@@ -553,15 +523,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 board, _ = load_board(text)
                 roles = murdoku.role_statuses(board, model)
             write_picture(kind, text, solved, result.assignment, roles)
-        if docx_path is not None:
-            board, _ = load_board(text)
-            write_docx(
-                text,
-                docx_path.with_stem(f"{docx_path.stem}-solution"),
-                path.parent,
-                result.assignment,
-                murdoku.role_statuses(board, model),
-            )
     elif result.contradiction:
         print(puzzle.draw("Stuck"))
         print(f"\ncontradiction: {result.contradiction}")

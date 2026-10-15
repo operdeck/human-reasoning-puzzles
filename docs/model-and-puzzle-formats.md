@@ -198,13 +198,13 @@ For ordinary objects, `next_to` means one orthogonal step (up, down, left, or ri
 
 ### Booklet text (`--docx`)
 
-`--docx [FILE]` writes an editable Word page; solved puzzles also get `FILE-solution.docx` with the worked solution. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
+`--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 
 * `Title:`, `Intro:` (one paragraph per line, `**bold**` allowed), `Question:`, `Reveal:` (answer text, solution file only).
-* `ClueText:` lines `N: wording` replace the generated sentence for clue N. Without them every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura."
+* A clue line may end in `| wording` (e.g. `above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura."
 * `Figures:` lines `Name: description ; image=path`; the path is relative to the puzzle file and a missing image falls back to text.
 
-Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page, with a matching `-solution` booklet.
+Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page.
 
 Needs `uv sync --extra docx` (python-docx).
 

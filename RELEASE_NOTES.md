@@ -13,9 +13,9 @@
 
 **New Feature(s)**
 * [#28 Create docx from puzzle description](https://github.com/operdeck/human-reasoning-puzzles/issues/28)
-    * `--docx [FILE]` writes an editable Word booklet page (title, board picture, figures, numbered human-readable clues, question) and, once solved, `-solution.docx` with the worked solution. Optional extra: `uv sync --extra docx`.
-    * `--docx` also accepts a quoted glob (e.g. `"examples/prrrdoku*.txt"`) to build one multi-puzzle booklet plus a `-solution` booklet.
-    * New optional puzzle-file sections `Title:`, `Intro:`, `Question:`, `ClueText:`, `Figures:` (with optional `image=`) and `Reveal:`; they never affect solving, lint or PNG. Added to the prrrdoku and Tamagotchi examples.
+    * `--docx [FILE]` writes one editable Word booklet (per puzzle: title, board picture, figures, numbered human-readable clues, question), followed by the solved boards and worked solutions. Optional extra: `uv sync --extra docx`.
+    * `--docx` also accepts a quoted glob (e.g. `"examples/prrrdoku*.txt"`) to build one multi-puzzle booklet.
+    * New optional puzzle-file sections `Title:`, `Intro:`, `Question:`, `Figures:` (with optional `image=`) and `Reveal:`, plus an optional `| wording` after a clue in `Clues:`; they never affect solving, lint or PNG. Added to the prrrdoku and Tamagotchi examples.
 * Tamagotchi Murdoku puzzles now use Japanese objects (shrine, castle, Mount Fuji, sakura, lanterns, taiko, tatami, ...); new icons added to `src/csp/icons.py`, `tatami` draws the rug icon.
 * New Murdoku example puzzles
     * `examples/food-murdoku-1.txt`, `-2.txt`, `-3.txt`: Japanese food and cities (5x5 to 7x7).

@@ -170,7 +170,11 @@ region names against `Regions:` colours; review other names by eye.
 unreachable areas, or unused roles as warnings. `--require-forward` also
 requires a solve without `what_if`. `--png` without a path writes
 `<puzzle-stem>.png` beside the input, and the solved image adds `-solution`;
-an explicit path overrides the default.
+an explicit path overrides the default. `--docx [FILE]` (or a quoted glob) writes
+an editable Word booklet, puzzles first and then solutions, one page each, from
+`docx_export`; new Murdoku puzzles should carry the optional `Title:`, `Intro:`,
+`Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku
+skill) and never commit generated `.docx` files.
 
 ## Murdoku global counts
 
