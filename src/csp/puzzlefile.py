@@ -182,7 +182,13 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
 
 def _clues(lines: list[str]) -> list[Clue]:
     """'next_to Tim klimwand' lines -> [('next_to', ['Tim', 'klimwand'])]."""
-    return [(kind, args) for kind, *args in (line.split() for line in lines)]
+    return [(kind, args) for kind, *args in (_split_clue(line)[0].split() for line in lines)]
+
+
+def _split_clue(line: str) -> tuple[str, str]:
+    """'next_to Tim bank | Tim zit bij de bank' -> clue part and optional booklet wording."""
+    clue, _, wording = line.partition("|")
+    return clue, wording.strip()
 
 
 def _object_placements(lines: list[str]) -> list[BoardObject]:
@@ -375,25 +381,19 @@ class Presentation:
 
 
 def load_presentation(text: str) -> Presentation:
-    """The optional `Title:`, `Intro:`, `Question:`, `ClueText:`, `Figures:` and `Reveal:`.
+    """The optional `Title:`, `Intro:`, `Question:`, `Figures:`, `Reveal:` and clue wordings.
 
-    Presentation never affects parsing, solving or pictures. `ClueText:` lines are
-    `N: wording` for clue N of `Clues:`; `Figures:` lines are
+    Presentation never affects parsing, solving or pictures. A clue line may end in
+    `| wording` to replace its generated sentence; `Figures:` lines are
     `Name: description [; image=path]`.
     """
     section = read_sections(text)
     people = section.get("People", [])
-    clue_count = len(section.get("Clues", []))
-    clue_text: dict[int, str] = {}
-    for line in section.get("ClueText", []):
-        number, separator, wording = line.partition(":")
-        if not separator or not number.strip().isdigit() or not wording.strip():
-            raise ValueError(f"bad ClueText {line!r}, expected 'N: wording'")
-        if not 1 <= int(number) <= clue_count:
-            raise ValueError(f"ClueText {number.strip()} has no matching clue (1-{clue_count})")
-        if int(number) in clue_text:
-            raise ValueError(f"ClueText {number.strip()} is given more than once")
-        clue_text[int(number)] = wording.strip()
+    clue_text = {
+        number: wording
+        for number, line in enumerate(section.get("Clues", []), 1)
+        if (wording := _split_clue(line)[1])
+    }
     figures: dict[str, Figure] = {}
     for line in section.get("Figures", []):
         name, separator, rest = line.partition(":")

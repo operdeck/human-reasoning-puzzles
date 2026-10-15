@@ -18,7 +18,7 @@ from .puzzlefile import Presentation, load_board, load_presentation
 from .story import clue_texts, explain, phrase
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
-BOARD_WIDTH_CM = 14.0
+BOARD_WIDTH_CM = 9.0
 FIGURE_IMAGE_CM = 2.0
 
 
@@ -55,6 +55,16 @@ def _figures(document: Any, text: str, presentation: Presentation, base: Path) -
 
     board, _ = load_board(text)
     document.add_heading(phrase(text, "doc.figures"), level=2)
+    figures = presentation.figures
+    if not any(figure.image and (base / figure.image).is_file() for figure in figures.values()):
+        paragraph = document.add_paragraph()
+        for number, person in enumerate(board.people):
+            if number:
+                paragraph.add_run("; " if figures else ", ")
+            paragraph.add_run(person).bold = bool(figures)
+            if person in figures and figures[person].description:
+                paragraph.add_run(f": {figures[person].description}")
+        return
     for person in board.people:
         figure = presentation.figures.get(person)
         paragraph = document.add_paragraph(style="List Bullet")
@@ -78,43 +88,72 @@ class Entry:
     role_statuses: dict[tuple[str, str], bool | None] | None = None
 
 
-def _add_puzzle(document: Any, entry: Entry, heading_level: int) -> None:
-    from docx.shared import Cm
+def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Cm, Pt
 
     text = entry.text
     presentation = load_presentation(text)
     first_comment = next((line for line in text.splitlines() if line.startswith("# ")), "")
     title = presentation.title or first_comment.removeprefix("# ").strip() or entry.path.stem
-    document.add_heading(title, level=heading_level - 1 if heading_level == 1 else 0)
+    heading = document.add_heading(title, level=1)
+    heading.paragraph_format.page_break_before = new_page
     for line in presentation.intro or [phrase(text, "doc.rules")]:
         _runs(document.add_paragraph(), line)
     document.add_picture(_picture_stream(text, None, None), width=Cm(BOARD_WIDTH_CM))
+    document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     _figures(document, text, presentation, entry.path.parent)
 
     document.add_heading(phrase(text, "doc.clues"), level=2)
     for number, generated in enumerate(clue_texts(text), 1):
         wording = presentation.clue_text.get(number, generated)
-        _runs(document.add_paragraph(style="List Number"), wording)
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.left_indent = Cm(0.8)
+        paragraph.paragraph_format.first_line_indent = Cm(-0.8)
+        paragraph.paragraph_format.space_after = Pt(1)
+        paragraph.add_run(f"{number}.\t")
+        _runs(paragraph, wording)
     if presentation.question:
         document.add_heading(phrase(text, "doc.question"), level=2)
         _runs(document.add_paragraph(), presentation.question)
 
-    if entry.solution is not None:
-        document.add_heading(phrase(text, "doc.solution"), level=2)
-        document.add_picture(
-            _picture_stream(text, entry.solution, entry.role_statuses), width=Cm(BOARD_WIDTH_CM)
-        )
-        if presentation.reveal:
-            document.add_heading(phrase(text, "doc.answer"), level=2)
-            for line in presentation.reveal:
-                _runs(document.add_paragraph(), line)
-        for block in explain(text).split("\n\n"):
-            if block.strip():
-                _runs(document.add_paragraph(), block.strip().removeprefix("- "))
+
+def _add_solution(document: Any, entry: Entry, title: str) -> None:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Cm
+
+    text = entry.text
+    presentation = load_presentation(text)
+    document.add_heading(title, level=1).paragraph_format.page_break_before = True
+    document.add_picture(
+        _picture_stream(text, entry.solution, entry.role_statuses), width=Cm(BOARD_WIDTH_CM)
+    )
+    document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if presentation.reveal:
+        document.add_heading(phrase(text, "doc.answer"), level=2)
+        for line in presentation.reveal:
+            _runs(document.add_paragraph(), line)
+    for block in explain(text).split("\n\n"):
+        if block.strip():
+            _runs(document.add_paragraph(), block.strip().removeprefix("- "))
+
+
+def _compact(document: Any) -> None:
+    """Small margins and text so a puzzle, and its solution, each fit on one page."""
+    from docx.shared import Cm, Pt
+
+    for section in document.sections:
+        section.top_margin = section.bottom_margin = Cm(1.5)
+        section.left_margin = section.right_margin = Cm(1.8)
+    normal = document.styles["Normal"]
+    normal.font.size = Pt(10)
+    normal.paragraph_format.space_after = Pt(3)
+    for name in ("List Number", "List Bullet"):
+        document.styles[name].paragraph_format.space_after = Pt(1)
 
 
 def write_booklet(entries: list[Entry], path: Path) -> None:
-    """Write one document holding every entry, each starting on a new page.
+    """Write one document: every puzzle on its own page, then the solved ones' solutions.
 
     A figure image path is relative to its puzzle file; a missing image is skipped,
     leaving the text-only entry. Raises ImportError without python-docx.
@@ -122,19 +161,12 @@ def write_booklet(entries: list[Entry], path: Path) -> None:
     from docx import Document
 
     document = Document()
+    _compact(document)
     for number, entry in enumerate(entries):
-        if number:
-            document.add_page_break()  # type: ignore[no-untyped-call]
-        _add_puzzle(document, entry, 1)
+        _add_puzzle(document, entry, new_page=number > 0)
+    solved = [entry for entry in entries if entry.solution is not None]
+    if solved:
+        for entry in solved:
+            title = load_presentation(entry.text).title or entry.path.stem
+            _add_solution(document, entry, f"{phrase(entry.text, 'doc.solution')}: {title}")
     document.save(str(path))
-
-
-def write_docx(
-    text: str,
-    path: Path,
-    base: Path,
-    solution: dict[str, Any] | None = None,
-    role_statuses: dict[tuple[str, str], bool | None] | None = None,
-) -> None:
-    """Write a single-puzzle document; `base` is the puzzle file's directory."""
-    write_booklet([Entry(text, base / path.name, solution, role_statuses)], path)
