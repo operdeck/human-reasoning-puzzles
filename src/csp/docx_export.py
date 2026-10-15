@@ -158,6 +158,24 @@ def _centred(document: Any, text: str) -> None:
         run.bold = True
 
 
+COPYRIGHT_NOTICE = (
+    "\u00a9 Otto Perdeck. All rights reserved. No copying, redistribution or other use "
+    "of these puzzles without the explicit written permission of the author."
+)
+
+
+def _footer(document: Any) -> None:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+
+    for section in document.sections:
+        paragraph = section.footer.paragraphs[0]
+        paragraph.text = COPYRIGHT_NOTICE
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in paragraph.runs:
+            run.font.size = Pt(7)
+
+
 def _compact(document: Any) -> None:
     """Small margins and text so a puzzle, and its solution, each fit on one page."""
     from docx.shared import Cm, Pt
@@ -182,6 +200,7 @@ def write_booklet(entries: list[Entry], path: Path) -> None:
 
     document = Document()
     _compact(document)
+    _footer(document)
     for number, entry in enumerate(entries):
         _add_puzzle(document, entry, new_page=number > 0)
     solved = [entry for entry in entries if entry.solution is not None]

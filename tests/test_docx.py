@@ -154,3 +154,13 @@ def test_unknown_icon_is_linted(tmp_path, capsys):
     (tmp_path / "f.txt").write_text(text)
     main([str(tmp_path / "f.txt"), "--lint"])
     assert "unknown icon nonsense" in capsys.readouterr().out
+
+
+def test_booklet_footer_carries_copyright_notice(tmp_path):
+    from docx import Document
+
+    from csp.docx_export import COPYRIGHT_NOTICE
+
+    out = tmp_path / "b.docx"
+    assert main([str(EXAMPLES / "prrrdoku1.txt"), "--docx", str(out)]) == 0
+    assert COPYRIGHT_NOTICE in Document(str(out)).sections[0].footer.paragraphs[0].text

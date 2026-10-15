@@ -93,3 +93,10 @@ Each cell links to a representative example. The image shows the puzzle or its s
 <td></td><td></td><td></td>
 </tr>
 </table>
+
+## Licence
+
+The code is Apache 2.0 (see `LICENSE`). The puzzles in `examples/` are **not**: they are
+© Otto Perdeck, all rights reserved, and may not be copied or reused without the author's
+explicit permission (see `examples/LICENSE.md`). Generated `--docx` booklets carry this notice
+in their footer.

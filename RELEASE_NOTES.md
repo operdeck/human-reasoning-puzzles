@@ -1,6 +1,8 @@
 # Release Notes
 
 ## Unreleased
+**Licensing**
+* The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
 **Bug Fix(es)**
 * Name-vs-appearance consistency
     * `examples/murdoku_sparse_mystery.txt`: "Blue hall" is now blue instead of grey; all other examples audited, no other mismatches.
