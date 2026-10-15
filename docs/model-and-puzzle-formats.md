@@ -198,7 +198,7 @@ For ordinary objects, `next_to` means one orthogonal step (up, down, left, or ri
 
 ### Booklet text (`--docx`)
 
-In the booklet the clues of each person are folded into one paragraph ("Makaak is in de Bergen en zit niet naast de struik of de bank."), in the order of the people, with clues about no single person last; paragraphs are numbered, and the board sits beside the figure list (70/30). Board notes explain marks, attributes and roles used by the clues. `Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
+In the booklet the clues of each person are folded into one paragraph ("Makaak is in de Bergen en zit niet naast de struik of de bank."), in the order of the people, with clues about no single person last; paragraphs are numbered, and the board sits beside the figure list (70/30). Board notes explain the marks and area tags used by the clues, and the attributes and roles are listed under the figures. `Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
 
 `--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 
@@ -208,9 +208,11 @@ In the booklet the clues of each person are folded into one paragraph ("Makaak i
 
 Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page.
 
-Puzzles of other families (sudoku, queens, tents, …) are included generically: title (`Title:` or the file name), a one-line rule for the family, the board, and the solved board on a separate solution page. A mixed glob such as `"examples/*.txt"` therefore works.
+Puzzles of other families (sudoku, queens, tents, …) are included generically: title (`Title:` or the file name), a one-line rule for the family, the board, and on a separate solution page the solved board with the solver's placement steps. A mixed glob such as `"examples/*.txt"` therefore works.
 
 Needs `uv sync --extra docx` (python-docx).
+
+In the Murdoku PNG, blocked squares carry a translucent red cross behind their object, and area tags (for example `noble_areas`) are named in the legend.
 
 ## Other existing formats
 
