@@ -1,10 +1,10 @@
 # Food Murdoku 7x7 - "The last bowl" (needs what-if)
 #
-# Japanese food as suspects, Japanese cities as areas. Jos is the victim. Hint: Jos
+# Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
 # deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
 #
 # Solution: Tonkatsu r1c3, Yakitori r2c2, Tempura r3c7, Okonomiyaki r4c1, Gyoza r5c5, Sushi r6c6, Jos r7c4.
-# Jos shares Nagoya with Gyoza, the murderer.
+# Jos shares Nagoya with Gyoza, the food he is about to eat.
 #
 Size: 7
 Language: en

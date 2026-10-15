@@ -1,23 +1,23 @@
 # Food Murdoku 6x6 - "Five suspects, one victim" (subsumption)
 #
-# Japanese food as suspects, Japanese cities as areas. Jos is the victim. Hint: Jos
+# Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
 # deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
 #
 # Solution: Onigiri r1c2, Okonomiyaki r2c3, Mochi r3c1, Sushi r4c5, Tonkatsu r5c6, Jos r6c4.
-# Jos shares Hiroshima with Sushi, the murderer.
+# Jos shares Kobe with Sushi, the food he is about to eat.
 #
 Size: 6
 Language: en
 
 Words:
-hiroshima: in Hiroshima
+kobe: in Kobe
 osaka: in Osaka
 fukuoka: in Fukuoka
 tokyo: in Tokyo
 nagoya: in Nagoya
 
 Regions:
-hiroshima: hiroshima #CBE6B9
+kobe: kobe #CBE6B9
 osaka: osaka #F3EDA2
 fukuoka: fukuoka #D8D2F0
 tokyo: tokyo #FADFB5
@@ -27,9 +27,9 @@ Grid:
 nagoya fukuoka fukuoka fukuoka fukuoka fukuoka
 nagoya fukuoka fukuoka fukuoka fukuoka tokyo
 nagoya fukuoka fukuoka fukuoka fukuoka tokyo
-nagoya fukuoka fukuoka hiroshima hiroshima tokyo
-nagoya osaka osaka hiroshima tokyo tokyo
-nagoya osaka osaka hiroshima hiroshima hiroshima
+nagoya fukuoka fukuoka kobe kobe tokyo
+nagoya osaka osaka kobe tokyo tokyo
+nagoya osaka osaka kobe kobe kobe
 
 Objects:
 barrel: blocking r6c5
