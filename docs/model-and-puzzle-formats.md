@@ -196,6 +196,24 @@ Every object footprint must be declared `blocking` or `standable`; its name/icon
 
 For ordinary objects, `next_to` means one orthogonal step (up, down, left, or right) within the same logical area; diagonal cells do not count. Door and corner-object touched cells satisfy `next_to` across region boundaries. A window is a target for `at`, not `next_to`. `adjacent_regions` means two regions share a side.
 
+### Booklet text (`--docx`)
+
+In the booklet the clues of each person are folded into one paragraph ("Makaak is in de Bergen en zit niet naast de struik of de bank."), in the order of the people, with clues about no single person last; paragraphs are numbered, and the board sits beside the figure list (70/30). Board notes explain the marks and area tags used by the clues, and the attributes and roles are listed under the figures. `Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
+
+`--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
+
+* `Title:`, `Intro:` (one paragraph per line, `**bold**` allowed), `Question:`, `Reveal:` (answer text, solution file only).
+* A clue line may end in `| wording` (e.g. `above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura."
+* `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C`). Without any of these it is text only. Put licensed artwork in the figures folder; the repository does not bundle third-party images.
+
+Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page.
+
+Puzzles of other families (sudoku, queens, tents, …) are included generically: title (`Title:` or the file name), a one-line rule for the family, the board, and on a separate solution page the solved board with the solver's placement steps. A mixed glob such as `"examples/*.txt"` therefore works.
+
+Needs `uv sync --extra docx` (python-docx).
+
+In the Murdoku PNG, blocked squares carry a translucent red cross behind their object, and area tags (for example `noble_areas`) are named in the legend.
+
 ## Other existing formats
 
 - **Calcudoku:** `Size:`, `Grid:` cage IDs, and `Cages:` arithmetic targets/operators. Cages must be connected; subtraction and division are two-cell cages.
@@ -225,6 +243,7 @@ src/csp/
 	<family>.py    one parser/compiler/text renderer per family
 	bruteforce/    independent search implementation per family
 	picture.py     PNG renderers for every family
+	docx_export.py Word booklet pages for Murdoku (optional python-docx)
 	cli.py         family dispatch and shared solver options
 tests/           engine, family, soundness, layering, and picture tests
 examples/        small and larger unique examples for each family

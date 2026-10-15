@@ -532,7 +532,8 @@ r2c1 r2c2
     margin = CELL // 2
 
     assert image.getpixel((margin + CELL, margin + CELL // 2)) == picture.INK
-    assert image.getpixel((margin + CELL, margin + CELL + CELL // 2)) == picture.INK
+    thermometer = image.getpixel((margin + CELL, margin + CELL + CELL // 2))
+    assert thermometer != picture.WHITE and thermometer != picture.INK
 
 
 def test_sudoku_picture_shades_alternate_boxes():
@@ -750,3 +751,14 @@ def test_every_object_in_the_examples_has_an_icon():
         assert picture.unknown_object_icons(board) == [], path.name
         checked += 1
     assert checked >= 5
+
+
+def test_blocked_squares_carry_a_red_cross():
+    board, _ = load_board((EXAMPLES / "tamagotchi-murdoku-9x9.txt").read_text())
+    image = picture.murdoku_picture(board, legend=False).convert("RGB")
+    cell, margin = 120, 60
+    blocked = sorted(board.blocked)[0]
+    x, y = margin + blocked.col * cell, margin + blocked.row * cell
+    # a quarter of the way along the diagonal, clear of the centre
+    r, g, b = image.getpixel((x + cell // 4, y + cell // 4))
+    assert r > g + 40 and r > b + 40

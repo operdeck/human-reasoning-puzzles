@@ -71,14 +71,16 @@ def murdoku_picture(
     cell: int = 120,
     coordinates: bool = True,
     legend: bool = True,
+    show_roles: bool = True,
 ) -> Image.Image:
     """The board, with `placed` people drawn on their squares if given.
 
     Without `legend` the picture is square, for documents with their own legend.
+    Without `show_roles` the legend leaves out the solver's role lines.
     """
     margin = cell // 2 if coordinates else cell // 6
     side = board.size * cell
-    key = _Legend(board, cell, role_statuses or {}, global_counts) if legend else None
+    key = _Legend(board, cell, role_statuses or {}, global_counts, show_roles) if legend else None
     height = side + 2 * margin + (key.height if key else 0)
     image = Image.new("RGB", (side + 2 * margin, height), WHITE)
     draw = ImageDraw.Draw(image)
@@ -96,6 +98,7 @@ def murdoku_picture(
             fill = fills[board.region_of(sq)]
             draw.rectangle(box(sq), fill=_darker(fill) if sq in blocked else fill)
     _hatch(image, board, box, cell)
+    _no_entry(image, [box(sq) for sq in sorted(blocked)], cell)
     _walls(
         draw,
         board.size,
@@ -176,7 +179,7 @@ def murdoku_picture(
             outline=MARK_INK,
             width=max(1, cell // 50),
         )
-        initials = "/".join(name[0].upper() for name in sorted(names))
+        initials = "/".join(name[:2].upper() for name in sorted(names))
         _centred_text(draw, initials, area, max(8, cell // 12), MARK_INK, max_width=cell // 3)
     standable = board.squares_of(obj.name for obj in board.standable_objects)
     for person, sq in (placed or {}).items():
@@ -251,16 +254,7 @@ def sudoku_picture(
             second_x = margin + link.second[1] * cell + cell // 2
             second_y = margin + link.second[0] * cell + cell // 2
             if link.kind == "less":
-                draw.line(
-                    (first_x, first_y, second_x, second_y),
-                    fill=WHITE,
-                    width=max(8, cell // 5),
-                )
-                draw.line(
-                    (first_x, first_y, second_x, second_y),
-                    fill=INK,
-                    width=max(2, cell // 28),
-                )
+                continue
             else:
                 middle = ((first_x + second_x) // 2, (first_y + second_y) // 2)
                 radius = max(6, cell // 13)
@@ -276,7 +270,32 @@ def sudoku_picture(
                     outline=INK,
                     width=max(2, cell // 35),
                 )
+        image = _thermometers(image, puzzle, cell)
     return image
+
+
+def _thermometers(image: Image.Image, puzzle: Sudoku, cell: int) -> Image.Image:
+    """Draw each thermometer as a translucent grey bulb and stem over the finished grid."""
+    links = [link for link in puzzle.links if link.kind == "less"]
+    if not links:
+        return image
+    margin = cell // 2
+    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    grey = (120, 120, 120, 105)
+    width = max(6, cell // 7)
+
+    def centre(square: tuple[int, int]) -> tuple[int, int]:
+        return margin + square[1] * cell + cell // 2, margin + square[0] * cell + cell // 2
+
+    for link in links:
+        draw.line((centre(link.first), centre(link.second)), fill=grey, width=width)
+    seconds = {link.second for link in links}
+    for first in {link.first for link in links} - seconds:
+        x, y = centre(first)
+        radius = cell // 4
+        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=grey)
+    return Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB")
 
 
 def calcudoku_picture(
@@ -982,6 +1001,20 @@ def _drop_floor_lamp(picture: Image.Image) -> Image.Image:
 ICON_FIXES = {"1f6cb": _drop_floor_lamp}
 
 
+def _no_entry(image: Image.Image, boxes: Sequence[Box], cell: int) -> None:
+    """A translucent red cross over the full diagonals of every blocked square."""
+    if not boxes:
+        return
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    paint = ImageDraw.Draw(overlay)
+    red = (200, 40, 40, 150)
+    width = max(3, cell // 20)
+    for x0, y0, x1, y1 in boxes:
+        paint.line((x0, y0, x1, y1), fill=red, width=width)
+        paint.line((x0, y1, x1, y0), fill=red, width=width)
+    image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
+
+
 def _name_tag(
     draw: ImageDraw.ImageDraw, person: str, area: Box, cell: int, low: bool = False
 ) -> None:
@@ -1030,6 +1063,7 @@ class _Legend:
         cell: int,
         role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
         global_counts: Sequence[GlobalCountCondition] = (),
+        show_roles: bool = True,
     ) -> None:
         self.board = board
         self.cell = cell
@@ -1040,9 +1074,20 @@ class _Legend:
         self.rows = (len(board.region_names) + 1) // 2
         self.item_names = sorted(board.edge_item_names | board.corner_object_names)
         self.mark_names = sorted(board.mark_names)
-        self.role_names = sorted(board.role_names)
-        self.count_font = _font(max(8, cell // 16))
-        max_chars = max(18, int((board.size * cell // 2) / max(1, cell // 24)))
+        self.role_names = sorted(board.role_names) if show_roles else []
+        self.tag_lines = [
+            f"{tag.replace('_', ' ').capitalize()}: "
+            + ", ".join(
+                board.region_names[rid].replace("_", " ").capitalize()
+                for rid in board.region_names
+                if rid in board.region_ids(members)
+            )
+            for tag, members in board.area_tags.items()
+        ]
+        count_size = max(10, cell // 10)
+        self.count_font = _font(count_size)
+        self.count_line = int(count_size * 1.6)
+        max_chars = max(18, int(board.size * cell / (count_size * 0.55)))
         self.global_count_lines = [
             lines
             for index, condition in enumerate(self.global_counts, 1)
@@ -1055,12 +1100,17 @@ class _Legend:
         ]
         self.count_rows = sum(max(1, len(lines)) for lines in self.global_count_lines)
         self.height = (
-            self.rows
-            + len(self.item_names)
-            + len(self.mark_names)
-            + len(self.role_names)
-            + self.count_rows
-        ) * self.line + cell // 2
+            (
+                self.rows
+                + len(self.item_names)
+                + len(self.mark_names)
+                + len(self.role_names)
+                + len(self.tag_lines)
+            )
+            * self.line
+            + self.count_rows * self.count_line
+            + cell // 6
+        )
 
     def draw(self, image: Image.Image, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
         fills = _fills(self.board)
@@ -1122,10 +1172,13 @@ class _Legend:
                 max_width=self.swatch - 4,
             )
             mark = next(item for item in self.board.marks if item.name == name)
-            condition = f" ({mark.occupant_condition})" if mark.occupant_condition else ""
+            condition = {
+                "alone": ": alone in area",
+                "not_alone": ": shares area",
+            }.get(mark.occupant_condition or "", "")
             draw.text(
                 (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
-                f"Mark: {name}{condition}",
+                f"{name}{condition}" if condition else f"{name} cells",
                 fill=INK,
                 font=font,
                 anchor="lm",
@@ -1160,15 +1213,18 @@ class _Legend:
                 font=role_font,
                 anchor="lm",
             )
-        count_row = role_offset + len(self.role_names)
+        tag_offset = role_offset + len(self.role_names)
+        for i, line in enumerate(self.tag_lines):
+            top = y + (tag_offset + i) * self.line
+            draw.text((x, top + self.swatch / 2), line, fill=INK, font=font, anchor="lm")
+        top = y + (tag_offset + len(self.tag_lines)) * self.line
         for lines in self.global_count_lines:
             for line in lines or [""]:
-                top = y + count_row * self.line
                 draw.text(
-                    (x, top + self.line / 2),
+                    (x, top + self.count_line / 2),
                     line,
                     fill=COUNT_SCOPE,
                     font=self.count_font,
                     anchor="lm",
                 )
-                count_row += 1
+                top += self.count_line

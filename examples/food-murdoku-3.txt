@@ -16,6 +16,7 @@ sapporo: in Sapporo
 sendai: in Sendai
 tokyo: in Tokyo
 nagoya: in Nagoya
+target.attribute: a {name}
 
 Regions:
 fukuoka: fukuoka #CBE6B9
@@ -66,3 +67,26 @@ different_region Gyoza Tempura
 within Okonomiyaki Yakitori 3
 in_row Tempura 3
 in_row Sushi 6
+
+# Booklet text for --docx (optional).
+Title:
+Food Murdoku 7x7: The last bowl
+
+Intro:
+Japanese dishes are placed around the city. Jos is hungry and is placed last.
+No two figures share a row or a column; an object that blocks a square makes it unusable.
+
+Figures:
+Tonkatsu: a Japanese dish ; icon=U+1F356
+Yakitori: a Japanese dish ; icon=U+1F362
+Tempura: a Japanese dish ; icon=U+1F364
+Okonomiyaki: a Japanese dish ; icon=U+1F95E
+Gyoza: a Japanese dish ; icon=U+1F95F
+Sushi: a Japanese dish ; icon=U+1F363
+Jos: the hungry eater ; icon=U+1F9D1
+
+Question:
+What is Jos going to eat today?
+
+Reveal:
+Jos shares Nagoya with Gyoza.

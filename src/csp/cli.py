@@ -1,6 +1,7 @@
 """Command line front end."""
 
 import argparse
+import dataclasses
 import glob
 import sys
 import time
@@ -17,6 +18,7 @@ from . import (
     bruteforce,
     calcudoku,
     futoshiki,
+    icons,
     kakurasu,
     logicgrid,
     minesweeper,
@@ -31,9 +33,10 @@ from . import (
     tents,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
-from .puzzlefile import KINDS, detect, load_board
+from .puzzlefile import KINDS, detect, load_board, load_presentation
 
 _PNG_DEFAULT = object()
+_DOCX_DEFAULT = object()
 
 
 @dataclass(frozen=True)
@@ -118,6 +121,29 @@ def narrate(rule: str, steps: Sequence[Step]) -> None:
         print(f"  ... {len(dropped)} option{'s' if len(dropped) != 1 else ''} ruled out")
 
 
+class _Fired:
+    """Collects each rule firing of one solve."""
+
+    def __init__(self) -> None:
+        self.items: list[tuple[str, Sequence[Step]]] = []
+
+    def append_step(self, rule: str, steps: Sequence[Step]) -> None:
+        self.items.append((rule, steps))
+
+
+def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) -> tuple[str, ...]:
+    """One line per placement, in solving order, capped at `limit` lines."""
+    lines = [
+        f"{s.literal} ({s.reason}; rule {rule})"
+        for rule, steps in fired
+        for s in steps
+        if s.asserted
+    ]
+    if len(lines) > limit:
+        lines = [*lines[:limit], f"... and {len(lines) - limit} more placements."]
+    return tuple(lines)
+
+
 def brute_force(puzzle: Puzzle, text: str) -> int:
     """Search for solutions without the engine. Exit code 0 means exactly one."""
     start = time.perf_counter()
@@ -144,19 +170,15 @@ def brute_force(puzzle: Puzzle, text: str) -> int:
     return 1
 
 
-def write_picture(
+def make_image(
     kind: str,
     text: str,
-    path: Path,
     solution: dict[str, Any] | None = None,
     role_statuses: dict[tuple[str, str], bool | None] | None = None,
-) -> bool:
-    """Save the puzzle as a PNG, with `solution` drawn in if given."""
-    try:
-        from . import picture
-    except ImportError:
-        print("--png needs Pillow: uv sync --extra png", file=sys.stderr)
-        return False
+) -> Any:
+    """The picture of a puzzle of any family, with `solution` drawn in if given."""
+    from . import picture
+
     if kind == "queens":
         image = picture.queens_picture(queens.parse(text), solution)
     elif kind == "suguru":
@@ -197,15 +219,44 @@ def write_picture(
             role_statuses=role_statuses,
             global_counts=global_counts,
         )
+    return image
+
+
+def write_picture(
+    kind: str,
+    text: str,
+    path: Path,
+    solution: dict[str, Any] | None = None,
+    role_statuses: dict[tuple[str, str], bool | None] | None = None,
+) -> bool:
+    """Save the puzzle as a PNG, with `solution` drawn in if given."""
+    try:
+        image = make_image(kind, text, solution, role_statuses)
+    except ImportError:
+        print("--png needs Pillow: uv sync --extra png", file=sys.stderr)
+        return False
     image.save(path)
     print(f"wrote {path}")
     return True
 
 
-def _murdoku_lint(board: murdoku.Board, clues: Sequence[murdoku.Clue], model: Model) -> list[str]:
+def _murdoku_lint(
+    board: murdoku.Board, clues: Sequence[murdoku.Clue], model: Model, text: str = ""
+) -> list[str]:
     findings: list[str] = []
     for name in picture.unknown_object_icons(board):
         findings.append(f"warning: missing icon for {name}; PNG will use a text label")
+    for number, other in murdoku.implied_clues(clues):
+        findings.append(f"warning: clue {number} is already implied by clue {other}")
+
+    try:
+        presentation = load_presentation(text)
+    except ValueError as error:
+        findings.append(f"warning: booklet text: {error}")
+    else:
+        for person, figure in presentation.figures.items():
+            if figure.icon and icons.code_for(figure.icon) is None:
+                findings.append(f"warning: unknown icon {figure.icon} for {person} in Figures")
 
     candidate_squares = {
         model.value_of(literal) for person in board.people for literal in model.options(person)
@@ -255,6 +306,13 @@ def _murdoku_lint(board: murdoku.Board, clues: Sequence[murdoku.Clue], model: Mo
             or role.eligible_people is not None
         ):
             role_references.add(role.name)
+    for role in board.roles:
+        if role.eligible_people is not None and len(role.eligible_people) == 1:
+            (only,) = role.eligible_people
+            findings.append(
+                f"warning: role {role.name} can only be held by {only}; "
+                f"state it about {only} instead of making it a role"
+            )
     for role_name in sorted(board.role_names - role_references):
         findings.append(f"warning: role {role_name} is declared but unused")
     return findings
@@ -274,13 +332,63 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
     return twin
 
 
+def _booklet(files: list[Path], docx: Any) -> int:
+    """One booklet, puzzles first and then solutions, for the puzzle `files` of any family."""
+    if docx is not _DOCX_DEFAULT:
+        out = docx
+    elif len(files) == 1:
+        out = files[0].with_suffix(".docx")
+    else:
+        out = files[0].parent / "booklet.docx"
+    try:
+        from . import docx_export
+    except ImportError:
+        print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
+        return 2
+    entries = []
+    for file in files:
+        text = file.read_text()
+        try:
+            kind = detect(text)
+            model = load(text, kind).model
+        except ValueError as exc:
+            print(f"could not read {file.name}: {exc}", file=sys.stderr)
+            return 2
+        fired = _Fired()
+        result = Solver(model).solve(on_step=fired.append_step)
+        placed = None
+        roles = None
+        if result.solved:
+            placed = dict(result.assignment)
+            if kind == "murdoku":
+                placed = {k: v for k, v in placed.items() if not isinstance(v, bool)}
+                roles = murdoku.role_statuses(load_board(text)[0], model)
+        else:
+            print(f"warning: {file.name} is not solved by the rules; solution page omitted")
+        entry = docx_export.Entry(text, file, placed, roles, kind)
+        if kind != "murdoku":
+            entry = dataclasses.replace(
+                entry,
+                puzzle_image=make_image(kind, text),
+                solution_image=make_image(kind, text, placed) if placed is not None else None,
+                steps=solving_steps(fired.items),
+            )
+        entries.append(entry)
+    docx_export.write_booklet(entries, out)
+    print(f"wrote {out} ({len(entries)} puzzles, then their solutions)")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exact-cover puzzle solver")
     parser.add_argument(
         "puzzles",
         nargs="+",
         metavar="PUZZLE",
-        help="puzzle file(s) or glob pattern(s); quote a pattern to let the program expand it",
+        help=(
+            "puzzle file(s) or glob pattern(s); quote a pattern to let the program "
+            "expand it; --docx puts them in one booklet"
+        ),
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="narrate each deduction")
     parser.add_argument(
@@ -334,12 +442,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             "the solution to FILE with '-solution' before the extension (needs Pillow)"
         ),
     )
+    parser.add_argument(
+        "--docx",
+        nargs="?",
+        type=Path,
+        const=_DOCX_DEFAULT,
+        metavar="FILE",
+        help=(
+            "Murdoku only: write an editable Word booklet to FILE (default: beside the puzzle, or "
+            "booklet.docx for a glob): all puzzles, then all solutions (needs python-docx: "
+            "uv sync --extra docx)"
+        ),
+    )
     args = parser.parse_args(argv)
     paths = _expand_patterns(args.puzzles)
     if paths is None:
         return 2
     if args.png not in (None, _PNG_DEFAULT) and len(paths) > 1:
         parser.error("--png FILE needs a single puzzle; use --png alone for several")
+    if args.docx is not None:
+        return _booklet(paths, args.docx)
     status = 0
     for path in paths:
         status = max(status, _solve_one(args, path, parser))
@@ -401,7 +523,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             )
     if args.lint or args.require_forward:
         board, clues = load_board(text)
-        findings = _murdoku_lint(board, clues, model)
+        findings = _murdoku_lint(board, clues, model, text)
         for finding in findings:
             print(finding)
         if not findings:

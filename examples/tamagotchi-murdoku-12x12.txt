@@ -66,6 +66,9 @@ friend: Mametchi Kuchipatchi Memetchi Lovelitchi Tarakotchi Masktchi Gozarutchi 
 
 # The question - where is the devil? - is not a clue. Akumatchi has no clues of
 # his own except that he ends up alone with exactly one friend; the rest pin him down.
+Words:
+target.attribute: a {name}
+
 Clues:
 alone_with Akumatchi attribute:friend
 left_of Kuchipatchi Memetchi 8
@@ -78,7 +81,6 @@ left_of Ichigotchi Gozarutchi
 left_of Tarakotchi Hashizotchi
 in_row Mametchi 3
 same_region Kuchipatchi Gozarutchi
-left_of Pianitchi Gozarutchi
 above Tarakotchi Kuchipatchi
 outside Tarakotchi lilac_library
 not_next_to Ichigotchi sakura
@@ -90,4 +92,24 @@ outside Tarakotchi orange_market
 above Masktchi Lovelitchi 3
 in_region Ichigotchi green_garden
 adjacent_regions Lovelitchi Masktchi
-adjacent_regions Kuchipatchi Violetchi
+
+# Booklet text for --docx (optional).
+Title:
+Tamagotchi Murdoku 12x12: Where is the devil?
+
+Figures:
+Mametchi: a friend ; icon=U+1F423
+Kuchipatchi: a friend ; icon=U+1F425
+Memetchi: a friend ; icon=U+1F338
+Lovelitchi: a friend ; icon=U+1F496
+Tarakotchi: a friend
+Masktchi: a friend ; icon=U+1F3AD
+Gozarutchi: a friend
+Violetchi: a friend
+Pianitchi: a friend
+Ichigotchi: a friend
+Hashizotchi: a friend
+Akumatchi: the devil ; icon=U+1F47F
+
+Question:
+Akumatchi is placed last and is alone with one friend. Which friend?

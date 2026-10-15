@@ -15,6 +15,7 @@ osaka: in Osaka
 fukuoka: in Fukuoka
 tokyo: in Tokyo
 nagoya: in Nagoya
+target.attribute: a {name}
 
 Regions:
 kobe: kobe #CBE6B9
@@ -57,9 +58,30 @@ Clues:
 same_region Okonomiyaki Onigiri
 outside Tonkatsu kobe
 left_of Onigiri Tonkatsu
-in_row Onigiri 1
 at_least Okonomiyaki Tonkatsu 6
 at_least Onigiri Tonkatsu 8
 in_row Sushi 4
 above Mochi Tonkatsu
 left_of Mochi Okonomiyaki
+
+# Booklet text for --docx (optional).
+Title:
+Food Murdoku 6x6: Five suspects, one victim
+
+Intro:
+Japanese dishes are placed around the city. Jos is hungry and is placed last.
+No two figures share a row or a column; an object that blocks a square makes it unusable.
+
+Figures:
+Onigiri: a Japanese dish ; icon=U+1F359
+Okonomiyaki: a Japanese dish ; icon=U+1F95E
+Mochi: a Japanese dish ; icon=U+1F361
+Sushi: a Japanese dish ; icon=U+1F363
+Tonkatsu: a Japanese dish ; icon=U+1F356
+Jos: the hungry eater ; icon=U+1F9D1
+
+Question:
+What is Jos going to eat today?
+
+Reveal:
+Jos shares Kobe with Sushi.

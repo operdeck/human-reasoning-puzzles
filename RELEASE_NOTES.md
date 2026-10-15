@@ -1,6 +1,8 @@
 # Release Notes
 
 ## Unreleased
+**Licensing**
+* The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
 **Bug Fix(es)**
 * Name-vs-appearance consistency
     * `examples/murdoku_sparse_mystery.txt`: "Blue hall" is now blue instead of grey; all other examples audited, no other mismatches.
@@ -12,6 +14,16 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* Murdoku PNG: blocked squares show a translucent red cross behind their object, so blocking and standable objects are told apart.
+* Booklet lists attributes and roles beside the board; area tags (e.g. "noble areas") are now named in the PNG legend and the booklet rules.
+* Clues thinned in zoo, food-2 and tamagotchi puzzles and sudoku givens in the anti/relations examples (still unique); clearer wording for `furthest`/`alone`; thermometers and mark legends render cleanly; booklet layout follows the Prrrdoku style.
+* [#28 Create docx from puzzle description](https://github.com/operdeck/human-reasoning-puzzles/issues/28)
+    * `--docx [FILE]` writes one editable Word booklet (per puzzle: title, board picture, figures, numbered human-readable clues, question), followed by the solved boards and worked solutions. Optional extra: `uv sync --extra docx`.
+    * Every other puzzle family (sudoku, queens, tents, …) works too: a page with a one-line rule, the board, and the solved board on a separate page; no per-family processing.
+    * Booklet boards omit the solver's role/count legend lines and shrink for long clue lists so each puzzle fits one page; `--png` count lines are now readable.
+    * Booklet clues are grouped per person in one unnumbered paragraph; "exactly one of" alternatives read as "X is in the same region as either Y or Z" or "either …, or …, but not both"; the alone-with clue and role phrases can be reworded in `Words:` (`target.attribute`, `role_has`, `role_not`); fixed "only in in"; `lint` warns about implied clues, and a role only one person can hold now draws a lint warning (the zoo puzzles use `alone Tijger` instead of a tiger role); the redundant "Makaak is not in the desert" clue was removed from `zoo-murdoku-1`.
+    * `--docx` also accepts a quoted glob (e.g. `"examples/prrrdoku*.txt"`) to build one multi-puzzle booklet.
+    * New optional puzzle-file sections `Title:`, `Intro:`, `Question:`, `Figures:` (with optional `image=`) and `Reveal:`, plus an optional `| wording` after a clue in `Clues:`; they never affect solving, lint or PNG. Added to the prrrdoku and Tamagotchi examples.
 * Tamagotchi Murdoku puzzles now use Japanese objects (shrine, castle, Mount Fuji, sakura, lanterns, taiko, tatami, ...); new icons added to `src/csp/icons.py`, `tatami` draws the rug icon.
 * New Murdoku example puzzles
     * `examples/food-murdoku-1.txt`, `-2.txt`, `-3.txt`: Japanese food and cities (5x5 to 7x7).
