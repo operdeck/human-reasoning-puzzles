@@ -94,3 +94,18 @@ def test_human_readable_clues():
     got = clue_texts((EXAMPLES / "food-murdoku-3.txt").read_text())
     assert "Gyoza is in column 5." in got
     assert "Gyoza is somewhere above Jos." in got
+
+
+def test_glob_makes_one_multi_puzzle_booklet(tmp_path):
+    for name in PRRRDOKUS[:2]:
+        (tmp_path / f"{name}.txt").write_text((EXAMPLES / f"{name}.txt").read_text())
+    out = tmp_path / "all.docx"
+    assert main([str(tmp_path / "prrrdoku*.txt"), "--docx", str(out)]) == 0
+    text = _text(out)
+    assert "Prrrdoku 1" in text and "Prrrdoku 2" in text
+    assert "Oplossing" in _text(tmp_path / "all-solution.docx")
+
+
+def test_glob_without_docx_is_an_error(tmp_path):
+    with pytest.raises(SystemExit):
+        main([str(tmp_path / "*.txt")])

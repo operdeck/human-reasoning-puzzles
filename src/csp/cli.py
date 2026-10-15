@@ -1,6 +1,7 @@
 """Command line front end."""
 
 import argparse
+import glob
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -303,9 +304,57 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
     return twin
 
 
+def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
+    """One document (plus a `-solution` one with answers) for all Murdoku files matching `pattern`."""
+    if docx is None:
+        parser.error("a glob pattern needs --docx")
+    files = [Path(name) for name in sorted(glob.glob(pattern))]
+    if not files:
+        print(f"no files match: {pattern}", file=sys.stderr)
+        return 2
+    out = Path(pattern).parent / "booklet.docx" if docx is _DOCX_DEFAULT else docx
+    puzzles: list[tuple[str, Path]] = []
+    solved: list[tuple[str, Path, dict[str, Any] | None, Any]] = []
+    for file in files:
+        text = file.read_text()
+        if detect(text) != "murdoku":
+            print(f"skipping {file}: not a Murdoku puzzle", file=sys.stderr)
+            continue
+        try:
+            model = load(text, "murdoku").model
+        except ValueError as exc:
+            print(f"could not read {file.name}: {exc}", file=sys.stderr)
+            return 2
+        result = Solver(model).solve()
+        board, _ = load_board(text)
+        puzzles.append((text, file))
+        if result.solved:
+            solved.append((text, file, result.assignment, murdoku.role_statuses(board, model)))
+        else:
+            print(f"warning: {file.name} is not solved by the rules; solution page omitted")
+            solved.append((text, file, None, None))
+    if not puzzles:
+        print(f"no Murdoku puzzles match: {pattern}", file=sys.stderr)
+        return 2
+    try:
+        from . import docx_export
+    except ImportError:
+        print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
+        return 2
+    docx_export.write_booklet([docx_export.Entry(t, f) for t, f in puzzles], out)
+    answers = out.with_stem(f"{out.stem}-solution")
+    docx_export.write_booklet([docx_export.Entry(t, f, a, r) for t, f, a, r in solved], answers)
+    print(f"wrote {out} and {answers} ({len(puzzles)} puzzles)")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exact-cover puzzle solver")
-    parser.add_argument("puzzle", type=Path, help="puzzle file")
+    parser.add_argument(
+        "puzzle",
+        type=Path,
+        help="puzzle file; with --docx a glob such as 'examples/prrrdoku*.txt' makes one booklet",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="narrate each deduction")
     parser.add_argument(
         "--step", "-s", action="store_true", help="redraw and pause after each deduction"
@@ -373,6 +422,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     path: Path = args.puzzle
+    if glob.has_magic(str(path)):
+        return _booklet(parser, str(path), args.docx)
     docx_path = path.with_suffix(".docx") if args.docx is _DOCX_DEFAULT else args.docx
     png_path = path.with_suffix(".png") if args.png is _PNG_DEFAULT else args.png
     if not path.exists():
