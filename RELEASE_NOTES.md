@@ -12,6 +12,10 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* Tamagotchi Murdoku puzzles
+    * `examples/tamagotchi-murdoku-6x6.txt`, `-9x9.txt` (stream with a bridge) and `-12x12.txt`: original, unique late-reveal puzzles ("where is the devil?"); documented in `docs/examples.md`.
+    * `src/csp/icons.py`: added the `bridge`/`brug` icon.
+    * `tests/test_picture.py`: the icon check now covers every example with a `People:` section.
 * [#12 Murdoku: Migrate the format and verify feature composition](https://github.com/operdeck/human-reasoning-puzzles/issues/12)
     * `src/csp`: Added Murdoku lint and forward-only checks, optional default PNG paths, and 16x16 count/chain benchmark coverage.
     * Added a neutral combined-format example with brute-force uniqueness and per-step soundness coverage.
