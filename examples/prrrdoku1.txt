@@ -75,7 +75,7 @@ Figures:
 Vladimir: de poes die iemand op schoot zoekt
 
 Question:
-Bij wie zit Vladimir alleen in een gebied?
+Wie krijgt Vladimir op schoot?
 
 Reveal:
 Vladimir zit bij degene die in zijn gebied alleen met hem is; zie de uitleg hieronder.
