@@ -1002,19 +1002,16 @@ ICON_FIXES = {"1f6cb": _drop_floor_lamp}
 
 
 def _no_entry(image: Image.Image, boxes: Sequence[Box], cell: int) -> None:
-    """A translucent red 'no entry' sign behind the icon of every blocked square."""
+    """A translucent red cross over the full diagonals of every blocked square."""
     if not boxes:
         return
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     paint = ImageDraw.Draw(overlay)
     red = (200, 40, 40, 150)
-    width = max(3, cell // 16)
+    width = max(3, cell // 20)
     for x0, y0, x1, y1 in boxes:
-        pad = cell * 0.14
-        ring = (x0 + pad, y0 + pad, x1 - pad, y1 - pad)
-        paint.ellipse(ring, outline=red, width=width)
-        slant = pad + width * 0.8
-        paint.line((x0 + slant, y0 + slant, x1 - slant, y1 - slant), fill=red, width=width)
+        paint.line((x0, y0, x1, y1), fill=red, width=width)
+        paint.line((x0, y1, x1, y0), fill=red, width=width)
     image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
 
 
