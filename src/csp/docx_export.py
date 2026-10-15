@@ -13,12 +13,18 @@ from pathlib import Path
 from typing import Any
 
 from . import icons, picture
-from .murdoku import global_count_conditions
 from .puzzlefile import Figure, Presentation, load_board, load_presentation
 from .story import clue_texts, explain, phrase
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
 BOARD_WIDTH_CM = 9.0
+MIN_BOARD_WIDTH_CM = 3.8
+PAGE_BODY_CM = 26.0
+FIXED_CM = 7.5
+CLUE_LINE_CM = 0.5
+SMALL_CLUE_LINE_CM = 0.4
+MANY_CLUES = 18
+FIGURE_LINE_CM = 1.2
 FIGURE_IMAGE_CM = 0.8
 GENERIC_BOARD_WIDTH_CM = 14.0
 
@@ -37,18 +43,25 @@ def _picture_stream(
     text: str,
     solution: dict[str, Any] | None,
     role_statuses: dict[tuple[str, str], bool | None] | None,
-) -> io.BytesIO:
-    board, clues = load_board(text)
-    image = picture.murdoku_picture(
-        board,
-        solution,
-        role_statuses=role_statuses,
-        global_counts=global_count_conditions(board, clues),
-    )
+) -> tuple[io.BytesIO, float]:
+    """The board picture and its height/width ratio."""
+    board, _ = load_board(text)
+    image = picture.murdoku_picture(board, solution, show_roles=False)
     stream = io.BytesIO()
     image.save(stream, format="PNG")
     stream.seek(0)
-    return stream
+    return stream, image.height / image.width
+
+
+def _puzzle_board_width(aspect: float, clue_count: int, figure_lines: int) -> float:
+    """Board width in cm, shrunk so a long clue list still leaves the page whole."""
+    free = (
+        PAGE_BODY_CM
+        - FIXED_CM
+        - (CLUE_LINE_CM if clue_count <= MANY_CLUES else SMALL_CLUE_LINE_CM) * clue_count
+        - FIGURE_LINE_CM * figure_lines
+    )
+    return max(MIN_BOARD_WIDTH_CM, min(BOARD_WIDTH_CM, free / aspect))
 
 
 def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | None:
@@ -166,12 +179,16 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
     for line in presentation.intro or [phrase(text, "doc.rules")]:
         _runs(document.add_paragraph(style="List Bullet"), line)
-    document.add_picture(_picture_stream(text, None, None), width=Cm(BOARD_WIDTH_CM))
+    clues = clue_texts(text)
+    stream, aspect = _picture_stream(text, None, None)
+    figure_lines = 2 if presentation.figures else 1
+    width = _puzzle_board_width(aspect, len(clues), figure_lines)
+    document.add_picture(stream, width=Cm(width))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     _figures(document, text, presentation, entry.path)
 
     document.add_heading(phrase(text, "doc.clues"), level=2)
-    for number, generated in enumerate(clue_texts(text), 1):
+    for number, generated in enumerate(clues, 1):
         wording = presentation.clue_text.get(number, generated)
         paragraph = document.add_paragraph()
         paragraph.paragraph_format.left_indent = Cm(0.8)
@@ -179,6 +196,10 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
         paragraph.paragraph_format.space_after = Pt(1)
         paragraph.add_run(f"{number}.\t")
         _runs(paragraph, wording)
+        if len(clues) > MANY_CLUES:
+            paragraph.paragraph_format.space_after = Pt(0)
+            for run in paragraph.runs:
+                run.font.size = Pt(9)
     if presentation.question:
         _centred(document, presentation.question)
 
@@ -195,9 +216,8 @@ def _add_solution(document: Any, entry: Entry, title: str) -> None:
     heading = document.add_heading(title, level=1)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
     heading.paragraph_format.page_break_before = True
-    document.add_picture(
-        _picture_stream(text, entry.solution, entry.role_statuses), width=Cm(BOARD_WIDTH_CM)
-    )
+    stream, _ = _picture_stream(text, entry.solution, entry.role_statuses)
+    document.add_picture(stream, width=Cm(BOARD_WIDTH_CM))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     document.add_heading(phrase(text, "doc.how"), level=2)
     for block in explain(text).split("\n\n"):
