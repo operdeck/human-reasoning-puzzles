@@ -206,7 +206,7 @@ In the booklet the clues of each person are folded into one paragraph ("Makaak i
 * A clue line may end in `| wording` (e.g. `above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura."
 * `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C`). Without any of these it is text only. Put licensed artwork in the figures folder; the repository does not bundle third-party images.
 
-Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page.
+Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page, ordered alphabetically by file name, after a clickable table of contents.
 
 Puzzles of other families (sudoku, queens, tents, …) are included generically: title (`Title:` or the file name), a one-line rule for the family, the board, and on a separate solution page the solved board with the solver's placement steps. A mixed glob such as `"examples/*.txt"` therefore works.
 
