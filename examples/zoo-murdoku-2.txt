@@ -1,0 +1,84 @@
+# Dierentuin-murdoku 6x6 - "Sluitingstijd" (subsumption)
+#
+# Dieren als personages, verblijven als gebieden. De tijger is altijd alleen in zijn
+# verblijf; elke aap deelt zijn verblijf altijd met iemand (Rules:).
+# Doel: vind de verzorger. Hij staat alleen met precies een dier en wordt gebeten.
+#
+# Oplossing: Gibbon r3c6, Makaak r2c5, Ree r5c3, Tijger r1c2, Verzorger r6c1, Zebra r4c4.
+# De verzorger deelt savanne met Ree, dat hem bijt.
+#
+Size: 6
+Language: nl
+
+Words:
+moeras: in de Moeras
+woestijn: in de Woestijn
+savanne: in de Savanne
+rivier: in de Rivier
+bergen: in de Bergen
+
+Regions:
+moeras: moeras #CBE6B9
+woestijn: woestijn #D8D2F0
+savanne: savanne #C4DCF2
+rivier: rivier #BEE5D6
+bergen: bergen #FADFB5
+
+Grid:
+moeras bergen bergen bergen woestijn woestijn
+bergen bergen bergen rivier woestijn woestijn
+rivier rivier rivier rivier rivier woestijn
+savanne savanne savanne rivier rivier rivier
+savanne savanne savanne rivier rivier rivier
+savanne savanne savanne rivier rivier rivier
+
+Objects:
+boom: blocking r4c5
+ton: blocking r5c1
+bank: standable r1c1 r1c2
+
+Attributes:
+aap: Makaak Gibbon
+tijger: Tijger
+dier: Tijger Makaak Gibbon Zebra Ree
+
+Roles:
+tijger: 1
+aap: 2
+
+RoleEligibility:
+tijger: attribute:tijger
+aap: attribute:aap
+
+People:
+Tijger
+Makaak
+Gibbon
+Zebra
+Ree
+Verzorger
+
+Rules:
+role_occupant tijger alone
+role_occupant aap not_alone
+alone_with Verzorger attribute:dier
+
+Clues:
+above Tijger Makaak
+at_least Makaak Ree 5
+above Tijger Ree
+left_of Tijger Gibbon
+next_to Zebra boom
+left_of Tijger Ree
+in_column Makaak 5
+outside Tijger moeras
+at_least Tijger Zebra 5
+not_next_to Tijger boom
+not_next_to Zebra bank
+outside Gibbon rivier
+outside Ree bergen
+in_column Tijger 2
+in_column Ree 3
+in_row Tijger 1
+left_of Tijger Zebra
+not_next_to Makaak bank

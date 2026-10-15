@@ -57,14 +57,12 @@ Rules:
 alone_with Jos attribute:food
 
 Clues:
-outside Gyoza tokyo
-at_least Gyoza Tempura 4
-in_column Gyoza 5
-above Gyoza Jos
-not_next_to Yakitori bench
-outside Yakitori nagoya
-left_of Okonomiyaki Tempura
-above Tonkatsu Yakitori
-at_least Okonomiyaki Sushi 7
+at_least Gyoza Okonomiyaki 5
+in_row Tonkatsu 1
+in_column Okonomiyaki 1
+above Gyoza Sushi
+at_least Sushi Yakitori 8
+different_region Gyoza Tempura
+within Okonomiyaki Yakitori 3
+in_row Tempura 3
 in_row Sushi 6
-at_least Okonomiyaki Tempura 7
