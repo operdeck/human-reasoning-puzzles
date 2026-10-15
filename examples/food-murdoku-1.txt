@@ -47,9 +47,11 @@ Rules:
 alone_with Jos attribute:food
 
 Clues:
-at_least Ramen Tempura 5
-outside Yakitori kobe
-above Tempura Jos
-outside Tempura kobe
-in_column Jos 5
-next_to Ramen bench
+next_to Ramen table
+within Tempura Tonkatsu 2
+in_row Tempura 4
+different_region Tempura Yakitori
+left_of Yakitori Ramen
+in_column Tonkatsu 1
+in_row Tonkatsu 3
+in_column Ramen 4

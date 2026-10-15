@@ -1,6 +1,7 @@
 """Command line front end."""
 
 import argparse
+import glob
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -275,7 +276,12 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exact-cover puzzle solver")
-    parser.add_argument("puzzle", type=Path, help="puzzle file")
+    parser.add_argument(
+        "puzzles",
+        nargs="+",
+        metavar="PUZZLE",
+        help="puzzle file(s) or glob pattern(s); quote a pattern to let the program expand it",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="narrate each deduction")
     parser.add_argument(
         "--step", "-s", action="store_true", help="redraw and pause after each deduction"
@@ -329,8 +335,34 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
+    paths = _expand_patterns(args.puzzles)
+    if paths is None:
+        return 2
+    if args.png not in (None, _PNG_DEFAULT) and len(paths) > 1:
+        parser.error("--png FILE needs a single puzzle; use --png alone for several")
+    status = 0
+    for path in paths:
+        status = max(status, _solve_one(args, path, parser))
+    return status
 
-    path: Path = args.puzzle
+
+def _expand_patterns(patterns: Sequence[str]) -> list[Path] | None:
+    """Existing paths as given; anything else is a glob pattern. None if one matches nothing."""
+    found: list[Path] = []
+    for pattern in patterns:
+        if Path(pattern).exists():
+            matches = [pattern]
+        else:
+            matches = sorted(glob.glob(pattern, recursive=True))
+        files = [Path(match) for match in matches if Path(match).is_file()]
+        if not files:
+            print(f"no such file: {pattern}", file=sys.stderr)
+            return None
+        found.extend(files)
+    return found
+
+
+def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentParser) -> int:
     png_path = path.with_suffix(".png") if args.png is _PNG_DEFAULT else args.png
     if not path.exists():
         print(f"no such file: {path}", file=sys.stderr)
