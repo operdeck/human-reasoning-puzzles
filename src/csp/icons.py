@@ -41,6 +41,7 @@ CATALOGUE: dict[str, str] = {
     "fiets": "1f6b2", "bicycle": "1f6b2",
     "auto": "1f697", "car": "1f697",
     "boot": "26f5", "boat": "26f5",
+    "brug": "1f309", "bridge": "1f309",
     # indoors
     "bank": "1f6cb", "bankje": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bench": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",

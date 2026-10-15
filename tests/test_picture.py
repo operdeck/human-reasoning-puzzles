@@ -726,9 +726,10 @@ def test_hand_drawn_objects_never_fall_back_to_text(name):
 def test_every_object_in_the_examples_has_an_icon():
     checked = 0
     for path in sorted(EXAMPLES.glob("*.txt")):
-        if not path.name.startswith(("murdoku", "prrrdoku")):
+        text = path.read_text()
+        if "People:" not in text:
             continue
-        board, _ = load_board(path.read_text())
+        board, _ = load_board(text)
         assert picture.unknown_object_icons(board) == [], path.name
         checked += 1
     assert checked >= 5

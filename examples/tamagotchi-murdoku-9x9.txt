@@ -1,0 +1,73 @@
+# Tamagotchi Murdoku - "Where is the devil?" (medium)  (9x9)
+#
+# Original puzzle made for this repo. A stream splits Tamagotchi Town in two;
+# the playful bridge is the only dry way across. Akumatchi is placed last and is
+# alone with one friend: who?
+
+Size: 9
+
+Regions:
+a: green_garden #CBE6B9
+b: yellow_school #F3EDA2
+c: pink_cafe #F4CBC3
+d: lilac_library #E0D2F2
+e: orange_market #F8D0A0
+f: mint_playground #BEE5D6
+w: stream #A9D6F0
+
+Grid:
+a a a w b b b b b
+a a a w b b b b b
+a a a w b b b b b
+c c c w w b b b b
+c c c c w d d d d
+c c c c w d d d d
+e e e e w d d d d
+e e e e w f f f f
+e e e e w f f f f
+
+Objects:
+tree: blocking r1c1
+boulder: blocking r3c8
+fountain: blocking r5c2
+piano: blocking r6c7
+tv: blocking r8c2
+lamp: blocking r9c9
+bed: standable r1c3 r2c3
+chair: standable r2c8
+bench: standable r5c4 r6c4
+bridge: standable r7c4 r7c5 r7c6
+table: standable r9c3
+
+People:
+Mametchi
+Kuchipatchi
+Memetchi
+Lovelitchi
+Tarakotchi
+Masktchi
+Gozarutchi
+Violetchi
+Akumatchi
+
+Attributes:
+friend: Mametchi Kuchipatchi Memetchi Lovelitchi Tarakotchi Masktchi Gozarutchi Violetchi
+
+# The question - where is the devil? - is not a clue. Akumatchi has no clues of
+# his own except that he ends up alone with exactly one friend; the rest pin him down.
+Clues:
+alone_with Akumatchi attribute:friend
+within Gozarutchi Tarakotchi 5
+adjacent_regions Tarakotchi Masktchi
+within Masktchi Tarakotchi 4
+only_on Kuchipatchi bridge
+only_on Lovelitchi bed
+within Memetchi Lovelitchi 10
+left_of Violetchi Mametchi
+left_of Kuchipatchi Mametchi 1
+adjacent_regions Kuchipatchi Gozarutchi
+adjacent_regions Mametchi Tarakotchi
+within Violetchi Mametchi 7
+apart Mametchi Violetchi
+in_region Kuchipatchi orange_market
+above Kuchipatchi Memetchi
