@@ -287,19 +287,14 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
     return twin
 
 
-def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
-    """One booklet, puzzles first and then solutions, for the Murdoku file(s) in `pattern`."""
-    if docx is None:
-        parser.error("a glob pattern needs --docx")
-    if not glob.has_magic(pattern):
-        files = [Path(pattern)]
-        out = Path(pattern).with_suffix(".docx") if docx is _DOCX_DEFAULT else docx
+def _booklet(files: list[Path], docx: Any) -> int:
+    """One booklet, puzzles first and then solutions, for the Murdoku `files`."""
+    if docx is not _DOCX_DEFAULT:
+        out = docx
+    elif len(files) == 1:
+        out = files[0].with_suffix(".docx")
     else:
-        files = [Path(name) for name in sorted(glob.glob(pattern))]
-        out = Path(pattern).parent / "booklet.docx" if docx is _DOCX_DEFAULT else docx
-    if not files or not all(file.exists() for file in files):
-        print(f"no files match: {pattern}", file=sys.stderr)
-        return 2
+        out = files[0].parent / "booklet.docx"
     solved: list[tuple[str, Path, dict[str, Any] | None, Any]] = []
     for file in files:
         text = file.read_text()
@@ -314,12 +309,13 @@ def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
         result = Solver(model).solve()
         board, _ = load_board(text)
         if result.solved:
-            solved.append((text, file, result.assignment, murdoku.role_statuses(board, model)))
+            placed = {k: v for k, v in result.assignment.items() if not isinstance(v, bool)}
+            solved.append((text, file, placed, murdoku.role_statuses(board, model)))
         else:
             print(f"warning: {file.name} is not solved by the rules; solution page omitted")
             solved.append((text, file, None, None))
     if not solved:
-        print(f"no Murdoku puzzles match: {pattern}", file=sys.stderr)
+        print("no Murdoku puzzles among the files given", file=sys.stderr)
         return 2
     try:
         from . import docx_export
@@ -334,9 +330,13 @@ def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exact-cover puzzle solver")
     parser.add_argument(
-        "puzzle",
-        type=Path,
-        help="puzzle file; with --docx a glob such as 'examples/prrrdoku*.txt' makes one booklet",
+        "puzzles",
+        nargs="+",
+        metavar="PUZZLE",
+        help=(
+            "puzzle file(s) or glob pattern(s); quote a pattern to let the program "
+            "expand it; --docx puts them in one booklet"
+        ),
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="narrate each deduction")
     parser.add_argument(
@@ -403,10 +403,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
+    paths = _expand_patterns(args.puzzles)
+    if paths is None:
+        return 2
+    if args.png not in (None, _PNG_DEFAULT) and len(paths) > 1:
+        parser.error("--png FILE needs a single puzzle; use --png alone for several")
+    if args.docx is not None:
+        return _booklet(paths, args.docx)
+    status = 0
+    for path in paths:
+        status = max(status, _solve_one(args, path, parser))
+    return status
 
-    path: Path = args.puzzle
-    if glob.has_magic(str(path)) or args.docx is not None:
-        return _booklet(parser, str(path), args.docx)
+
+def _expand_patterns(patterns: Sequence[str]) -> list[Path] | None:
+    """Existing paths as given; anything else is a glob pattern. None if one matches nothing."""
+    found: list[Path] = []
+    for pattern in patterns:
+        if Path(pattern).exists():
+            matches = [pattern]
+        else:
+            matches = sorted(glob.glob(pattern, recursive=True))
+        files = [Path(match) for match in matches if Path(match).is_file()]
+        if not files:
+            print(f"no such file: {pattern}", file=sys.stderr)
+            return None
+        found.extend(files)
+    return found
+
+
+def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentParser) -> int:
     png_path = path.with_suffix(".png") if args.png is _PNG_DEFAULT else args.png
     if not path.exists():
         print(f"no such file: {path}", file=sys.stderr)

@@ -97,18 +97,18 @@ Title:
 Tamagotchi Murdoku 12x12: Where is the devil?
 
 Figures:
-Mametchi: a friend
-Kuchipatchi: a friend
-Memetchi: a friend
-Lovelitchi: a friend
+Mametchi: a friend ; icon=U+1F423
+Kuchipatchi: a friend ; icon=U+1F425
+Memetchi: a friend ; icon=U+1F338
+Lovelitchi: a friend ; icon=U+1F496
 Tarakotchi: a friend
-Masktchi: a friend
+Masktchi: a friend ; icon=U+1F3AD
 Gozarutchi: a friend
 Violetchi: a friend
 Pianitchi: a friend
 Ichigotchi: a friend
 Hashizotchi: a friend
-Akumatchi: the devil
+Akumatchi: the devil ; icon=U+1F47F
 
 Question:
 Akumatchi is placed last and is alone with one friend. Which friend?

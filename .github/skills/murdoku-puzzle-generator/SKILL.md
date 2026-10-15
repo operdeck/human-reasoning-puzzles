@@ -130,6 +130,8 @@ uv run csp <file.txt> --lint
   solutions. For a newly generated puzzle, require exactly one. For a
   transcription, treat the result as a diagnostic and report it; compare
   unexpected results with the image rather than changing the source puzzle.
+- A generated puzzle's `--brute-force` check must finish within 5 seconds. If it
+  takes longer, add clues or shrink the board rather than accepting a slow check.
 - `--grade` reports the hardest rule this solver used, or `unsolved`. For a
   generated puzzle, require a solved grade and compare it with the user's
   target. For a transcription, `unsolved` means this solver's deduction rules
@@ -222,6 +224,15 @@ it.
   `Rules:` for required-inside and forbidden-inside per-person policies. A
   person with neither policy is unrestricted. `in_tagged` and `not_in_tagged`
   are also available as numbered clues.
+- **Last-candidate rule:** in a puzzle with a final character (the victim, the
+  eater, a zoo carer, and so on), that character has no clues of their own and is
+  named in no other character's clue. The only statement about them is the
+  general rule that they are alone with exactly one other character, for example
+  `alone_with <person> <selector>` in `Rules:`. The puzzle must be built so that
+  they are found last: until everyone else is placed, keep at least two live
+  squares and at least two region-overlap companion candidates for them. Build
+  the clue pool without that character, and check the result with
+  `--track-person <person>`; grep the `Clues:` section for their name as well.
 - **Late-reveal mystery rule:** when the question asks who shares a region with
   a named mystery person, keep that person's square
   open to at least two candidates until every other person is placed. Keep at
@@ -370,7 +381,7 @@ a puzzle and its solution must each fit on one page. Omit to get the default
 rules paragraph.
 
 Figures:
-Name: one-line description of the character ; image=optional/relative.png
+Name: one-line description of the character ; icon=U+1F35C ; image=optional/relative.png
 
 Question:
 What the player must find out, in one sentence. The late-reveal person is
@@ -396,6 +407,9 @@ Rules when adding metadata:
   story needs flavour, and make sure it means exactly the same as the clue: read
   it back against [Supported Clues](#supported-clues). Never use `|` inside the
   clue itself.
+- Give every figure a thumbnail where one exists: `icon=U+<emoji code>` (or a catalogue
+  name) for original puzzles, e.g. food, animals; a file named after the person in
+  `<puzzle>-figures/` for licensed artwork. Lint warns about unknown icons.
 - Figure `image=` paths are relative to the puzzle file and optional (missing
   images fall back to text). Never commit third-party artwork; use original or
   licensed images only.

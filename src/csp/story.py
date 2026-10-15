@@ -1322,7 +1322,7 @@ class Story:
             kind, what = self.about[source]
             if kind == "person":
                 return self.say("nowhere", who=what)
-            placed = [s for s in step.trail if s.asserted]
+            placed = [s for s in step.trail if s.asserted and not isinstance(s.value, bool)]
             inside = [s.var for s in placed if self._in(kind, what, s.value)]
             if kind == "square":
                 where = self.say("on", what=self.places.square(what))
