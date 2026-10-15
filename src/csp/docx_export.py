@@ -14,13 +14,16 @@ from typing import Any
 
 from . import icons, picture
 from .puzzlefile import Figure, Presentation, load_board, load_presentation
-from .story import clue_paragraphs, explain, phrase
+from .story import board_notes, clue_paragraphs, explain, phrase
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
-BOARD_WIDTH_CM = 9.0
-MIN_BOARD_WIDTH_CM = 3.8
-PAGE_BODY_CM = 26.0
-FIXED_CM = 7.5
+BOARD_WIDTH_CM = 11.6
+MIN_BOARD_WIDTH_CM = 5.0
+TEXT_WIDTH_CM = 17.4
+BOARD_SHARE = 0.7
+PAGE_BODY_CM = 26.4
+FIXED_CM = 7.8
+RULE_LINE_CM = 0.48
 CLUE_LINE_CM = 0.5
 SMALL_CLUE_LINE_CM = 0.4
 MANY_CLUES = 18
@@ -28,7 +31,7 @@ CLUE_LINE_CHARS = 105
 MANY_SOLUTION_LINES = 30
 SOLUTION_MIN_BOARD_CM = 5.0
 FIGURE_LINE_CM = 1.2
-FIGURE_IMAGE_CM = 0.8
+FIGURE_IMAGE_CM = 0.7
 GENERIC_BOARD_WIDTH_CM = 14.0
 
 
@@ -56,14 +59,10 @@ def _picture_stream(
     return stream, image.height / image.width
 
 
-def _puzzle_board_width(aspect: float, clue_count: int, figure_lines: int) -> float:
-    """Board width in cm, shrunk so a long clue list still leaves the page whole."""
-    free = (
-        PAGE_BODY_CM
-        - FIXED_CM
-        - (CLUE_LINE_CM if clue_count <= MANY_CLUES else SMALL_CLUE_LINE_CM) * clue_count
-        - FIGURE_LINE_CM * figure_lines
-    )
+def _puzzle_board_width(aspect: float, clue_lines: int, clues: int, rules_lines: int) -> float:
+    """Board width in cm, shrunk so the rules, clues and question still fit the page."""
+    line = CLUE_LINE_CM if clue_lines <= MANY_CLUES else SMALL_CLUE_LINE_CM
+    free = PAGE_BODY_CM - FIXED_CM - RULE_LINE_CM * rules_lines - line * clue_lines - 0.12 * clues
     return max(MIN_BOARD_WIDTH_CM, min(BOARD_WIDTH_CM, free / aspect))
 
 
@@ -82,23 +81,25 @@ def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | No
     return None
 
 
-def _figures(document: Any, text: str, presentation: Presentation, source: Path) -> None:
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Cm
+def _figure_list(cell: Any, text: str, presentation: Presentation, source: Path) -> None:
+    """One paragraph per person, with the thumbnail and the description if there are any."""
+    from docx.shared import Cm, Pt
 
     board, _ = load_board(text)
     figures = presentation.figures
-    paragraph = document.add_paragraph()
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for number, person in enumerate(board.people):
-        if number:
-            paragraph.add_run("; " if figures else " · ")
+    heading = cell.paragraphs[0]
+    heading.paragraph_format.space_after = Pt(4)
+    run = heading.add_run(phrase(text, "doc.figures"))
+    _section_run(run)
+    for person in board.people:
         figure = figures.get(person)
+        paragraph = cell.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(3)
         image = _figure_image(person, figure, source)
         if image is not None:
             paragraph.add_run().add_picture(str(image), height=Cm(FIGURE_IMAGE_CM))
             paragraph.add_run(" ")
-        paragraph.add_run(person).bold = bool(figures)
+        paragraph.add_run(person).bold = True
         if figure is not None and figure.description:
             paragraph.add_run(f": {figure.description}")
 
@@ -153,9 +154,7 @@ def _add_generic(document: Any, entry: Entry, title: str, new_page: bool, solved
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt
 
-    heading = document.add_heading(title, level=1)
-    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    heading.paragraph_format.page_break_before = new_page
+    _title(document, title, new_page)
     if not solved:
         document.add_heading("Rules", level=2)
         document.add_paragraph(RULES.get(entry.kind, ""), style="List Bullet")
@@ -172,10 +171,83 @@ def _add_generic(document: Any, entry: Entry, title: str, new_page: bool, solved
                 run.font.size = Pt(8)
 
 
-def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
+def _title(document: Any, title: str, new_page: bool) -> None:
+    """The big spaced title and, after a colon, an italic subtitle."""
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt, RGBColor
+
+    main, _, sub = title.partition(": ")
+    heading = document.add_heading(main, level=1)
+    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    heading.paragraph_format.page_break_before = new_page
+    if sub:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.space_after = Pt(6)
+        run = paragraph.add_run(sub)
+        run.italic = True
+        run.font.size = Pt(12)
+        run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+
+
+def _boxed(document: Any, text: str) -> None:
+    """A bold, centred line in a box: the goal of the puzzle."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.shared import Pt
+
+    paragraph = document.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.space_before = Pt(10)
+    paragraph.paragraph_format.left_indent = paragraph.paragraph_format.right_indent = Pt(8)
+    borders = OxmlElement("w:pBdr")
+    for side in ("top", "left", "bottom", "right"):
+        edge = OxmlElement(f"w:{side}")
+        for key, value in (("val", "single"), ("sz", "8"), ("space", "8"), ("color", "888888")):
+            edge.set(qn(f"w:{key}"), value)
+        borders.append(edge)
+    _add_borders(paragraph._p.get_or_add_pPr(), borders)
+    _runs(paragraph, text)
+    for run in paragraph.runs:
+        run.bold = True
+
+
+def _numbered(document: Any, number: int, text: str, small: bool) -> None:
+    """A clue with its number and a hanging indent."""
     from docx.shared import Cm, Pt
 
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_after = Pt(2)
+    paragraph.paragraph_format.left_indent = Cm(0.7)
+    paragraph.paragraph_format.first_line_indent = Cm(-0.7)
+    paragraph.paragraph_format.tab_stops.add_tab_stop(Cm(0.7))
+    paragraph.add_run(f"{number}.\t")
+    _runs(paragraph, text)
+    if small:
+        for run in paragraph.runs:
+            run.font.size = Pt(9)
+
+
+def _board_and_figures(
+    document: Any, entry: Entry, presentation: Presentation, width: float
+) -> None:
+    """The board at 70% of the text width, the list of people in the other 30%."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Cm
+
+    stream, _ = _picture_stream(entry.text, None, None)
+    table = document.add_table(rows=1, cols=2)
+    table.autofit = False
+    left, right = table.rows[0].cells
+    left.width = Cm(TEXT_WIDTH_CM * BOARD_SHARE)
+    right.width = Cm(TEXT_WIDTH_CM * (1 - BOARD_SHARE))
+    left.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    left.paragraphs[0].add_run().add_picture(stream, width=Cm(width))
+    _figure_list(right, entry.text, presentation, entry.path)
+
+
+def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
     if entry.kind != "murdoku":
         _add_generic(document, entry, _generic_title(entry), new_page, solved=False)
         return
@@ -183,31 +255,25 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
     presentation = load_presentation(text)
     first_comment = next((line for line in text.splitlines() if line.startswith("# ")), "")
     title = presentation.title or first_comment.removeprefix("# ").strip() or entry.path.stem
-    heading = document.add_heading(title, level=1)
-    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    heading.paragraph_format.page_break_before = new_page
+    _title(document, title, new_page)
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
     for line in presentation.intro or [phrase(text, "doc.rules")]:
         _runs(document.add_paragraph(style="List Bullet"), line)
+    notes = board_notes(text)
+    for note in notes:
+        document.add_paragraph(note, style="List Bullet")
     clues = clue_paragraphs(text, presentation.clue_text)
-    stream, aspect = _picture_stream(text, None, None)
-    figure_lines = 2 if presentation.figures else 1
+    _, aspect = _picture_stream(text, None, None)
     clue_lines = sum(-(-len(clue) // CLUE_LINE_CHARS) for clue in clues)
-    width = _puzzle_board_width(aspect, clue_lines, figure_lines)
-    document.add_picture(stream, width=Cm(width))
-    document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _figures(document, text, presentation, entry.path)
-
+    rules = [*(presentation.intro or [phrase(text, "doc.rules")]), *notes]
+    rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
+    width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)
+    _board_and_figures(document, entry, presentation, width)
     document.add_heading(phrase(text, "doc.clues"), level=2)
-    for clue in clues:
-        paragraph = document.add_paragraph()
-        paragraph.paragraph_format.space_after = Pt(2)
-        _runs(paragraph, clue)
-        if clue_lines > MANY_CLUES:
-            for run in paragraph.runs:
-                run.font.size = Pt(9)
+    for number, clue in enumerate(clues, 1):
+        _numbered(document, number, clue, clue_lines > MANY_CLUES)
     if presentation.question:
-        _centred(document, presentation.question)
+        _boxed(document, presentation.question)
 
 
 def _add_solution(document: Any, entry: Entry, title: str) -> None:
@@ -219,15 +285,13 @@ def _add_solution(document: Any, entry: Entry, title: str) -> None:
         return
     text = entry.text
     presentation = load_presentation(text)
-    heading = document.add_heading(title, level=1)
-    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    heading.paragraph_format.page_break_before = True
+    _title(document, title, True)
     stream, aspect = _picture_stream(text, entry.solution, entry.role_statuses)
     blocks = [b.strip().removeprefix("- ") for b in explain(text, numbered=False).split("\n\n")]
     blocks = [b for b in blocks if b]
     lines = sum(-(-len(b) // CLUE_LINE_CHARS) for b in blocks)
     small = lines > MANY_SOLUTION_LINES
-    width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0)
+    width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0, 6)
     document.add_picture(stream, width=Cm(max(width, SOLUTION_MIN_BOARD_CM)))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     document.add_heading(phrase(text, "doc.how"), level=2)
@@ -238,17 +302,88 @@ def _add_solution(document: Any, entry: Entry, title: str) -> None:
             for run in paragraph.runs:
                 run.font.size = Pt(8)
     for line in presentation.reveal:
-        _centred(document, line)
+        _boxed(document, line)
 
 
-def _centred(document: Any, text: str) -> None:
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
+AFTER_SPACING = (
+    "w:w", "w:kern", "w:position", "w:sz", "w:szCs", "w:highlight", "w:u", "w:effect",
+    "w:bdr", "w:shd", "w:fitText", "w:vertAlign", "w:rtl", "w:cs", "w:em", "w:lang",
+    "w:eastAsianLayout", "w:specVanish", "w:oMath",
+)  # fmt: skip
+AFTER_BORDERS = (
+    "w:shd", "w:tabs", "w:suppressAutoHyphens", "w:kinsoku", "w:wordWrap",
+    "w:overflowPunct", "w:topLinePunct", "w:autoSpaceDE", "w:autoSpaceDN", "w:bidi",
+    "w:adjustRightInd", "w:snapToGrid", "w:spacing", "w:ind", "w:contextualSpacing",
+    "w:mirrorIndents", "w:suppressOverlap", "w:jc", "w:textDirection", "w:textAlignment",
+    "w:textboxTightWrap", "w:outlineLvl", "w:divId", "w:cnfStyle", "w:rPr", "w:sectPr",
+    "w:pPrChange",
+)  # fmt: skip
 
-    paragraph = document.add_paragraph()
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _runs(paragraph, text)
-    for run in paragraph.runs:
-        run.bold = True
+
+def _section_run(run: Any) -> None:
+    """Format a run like a section heading: bold, spaced capitals."""
+    from docx.shared import Pt, RGBColor
+
+    run.bold = True
+    run.font.all_caps = True
+    run.font.size = Pt(11)
+    run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
+    _letter_spacing(run._element.get_or_add_rPr(), 30)
+
+
+def _letter_spacing(properties: Any, twentieths: int) -> None:
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    spacing = OxmlElement("w:spacing")
+    spacing.set(qn("w:val"), str(twentieths))
+    properties.insert_element_before(spacing, *AFTER_SPACING)
+
+
+def _add_borders(properties: Any, borders: Any) -> None:
+    properties.insert_element_before(borders, *AFTER_BORDERS)
+
+
+def _plain_font(style: Any, size: int, bold: bool, color: str) -> None:
+    """Calibri in `color`, dropping the template's theme fonts and colour."""
+    from docx.oxml.ns import qn
+    from docx.shared import Pt, RGBColor
+
+    style.font.name = "Calibri"
+    fonts = style.element.get_or_add_rPr().find(qn("w:rFonts"))
+    for attribute in ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme"):
+        fonts.attrib.pop(qn(f"w:{attribute}"), None)
+    fonts.set(qn("w:eastAsia"), "Calibri")
+    style.font.size = Pt(size)
+    style.font.bold = bold
+    style.font.color.rgb = RGBColor.from_string(color)
+
+
+def _style_headings(document: Any) -> None:
+    """Title and section styles of the original hand-made puzzle documents."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.shared import Pt
+
+    title = document.styles["Heading 1"]
+    _plain_font(title, 20, True, "222222")
+    title.font.all_caps = True
+    _letter_spacing(title.element.get_or_add_rPr(), 100)
+    title.paragraph_format.space_before = Pt(0)
+    title.paragraph_format.space_after = Pt(2)
+    title.paragraph_format.keep_with_next = False
+    section = document.styles["Heading 2"]
+    _plain_font(section, 11, True, "333333")
+    section.font.all_caps = True
+    _letter_spacing(section.element.get_or_add_rPr(), 30)
+    section.paragraph_format.space_before = Pt(9)
+    section.paragraph_format.space_after = Pt(4)
+    borders = OxmlElement("w:pBdr")
+    edge = OxmlElement("w:bottom")
+    for key, value in (("val", "single"), ("sz", "6"), ("space", "4"), ("color", "BBBBBB")):
+        edge.set(qn(f"w:{key}"), value)
+    borders.append(edge)
+    _add_borders(section.element.get_or_add_pPr(), borders)
 
 
 COPYRIGHT_NOTICE = (
@@ -277,7 +412,9 @@ def _compact(document: Any) -> None:
         section.top_margin = section.bottom_margin = Cm(1.4)
         section.left_margin = section.right_margin = Cm(1.8)
     normal = document.styles["Normal"]
-    normal.font.size = Pt(10)
+    normal.font.name = "Calibri"
+    normal.font.size = Pt(10.5)
+    _style_headings(document)
     normal.paragraph_format.space_after = Pt(3)
     for name in ("List Number", "List Bullet"):
         document.styles[name].paragraph_format.space_after = Pt(1)

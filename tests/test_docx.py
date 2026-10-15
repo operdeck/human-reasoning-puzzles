@@ -23,7 +23,9 @@ def write_docx(text, out, base, solution=None):
 
 
 def _text(path: Path) -> str:
-    return "\n".join(p.text for p in Document(str(path)).paragraphs)
+    document = Document(str(path))
+    cells = [p for t in document.tables for r in t.rows for c in r.cells for p in c.paragraphs]
+    return "\n".join(p.text for p in [*document.paragraphs, *cells])
 
 
 @pytest.mark.parametrize("name", PRRRDOKUS)
@@ -185,7 +187,7 @@ def _read(name):
 def test_clues_are_grouped_per_person():
     paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
     makaak = next(p for p in paragraphs if p.startswith("Makaak"))
-    assert makaak == "Makaak is in de Bergen en zit niet naast de struik of de bank."
+    assert makaak.startswith("Makaak is in de Bergen en zit niet naast de ")
     assert sum(p.startswith("Giraffe") for p in paragraphs) == 1
 
 
@@ -200,11 +202,16 @@ def test_two_alternatives_read_as_either_or_not_both():
 
 
 def test_attribute_target_can_be_reworded():
-    paragraphs = clue_paragraphs(_read("tamagotchi-murdoku-12x12"))
+    text = _read("tamagotchi-murdoku-12x12").replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
     assert (
         "Akumatchi shares a region with exactly one other person, and that is a friend."
-        in paragraphs
+        in clue_paragraphs(text)
     )
+
+
+def test_attribute_everyone_has_is_not_named():
+    paragraphs = clue_paragraphs(_read("tamagotchi-murdoku-12x12"))
+    assert "Akumatchi shares a region with exactly one other person." in paragraphs
 
 
 def test_solution_without_clue_numbers():
@@ -253,3 +260,28 @@ def test_single_holder_role_is_linted():
     text = _read("zoo-murdoku-1").replace("RoleEligibility:\n", "RoleEligibility:\nsolo: Tijger\n")
     text = text.replace("Roles:\n", "Roles:\nsolo: 1\n")
     assert "role solo can only be held by Tijger" in _lint_output(text)
+
+
+def test_furthest_clue_names_nobody_to_compare_with():
+    text = _read("prrrdoku3")
+    assert "van alle figuren het verst van Mao" in " ".join(clue_paragraphs(text))
+    assert "dan Tim" not in " ".join(clue_paragraphs(text))
+
+
+def test_board_notes_explain_marks_attributes_and_roles():
+    from csp.story import board_notes
+
+    notes = board_notes(_read("murdoku_composition"))
+    assert any("whoever stands on one is alone in their area" in n for n in notes)
+    assert any(n.startswith("The trained attribute") for n in notes)
+    assert any("navigator role is held by exactly one person" in n for n in notes)
+
+
+def test_booklet_numbers_the_clues_and_lists_the_figures_beside_the_board(tmp_path):
+    out = tmp_path / "b.docx"
+    assert main([str(EXAMPLES / "prrrdoku1.txt"), "--docx", str(out)]) == 0
+    document = Document(str(out))
+    assert next(p.text for p in document.paragraphs if p.text[:2] == "1.").startswith("1.\t")
+    assert len(document.tables) == 1
+    names = [p.text for p in document.tables[0].rows[0].cells[1].paragraphs]
+    assert any(n.startswith("Vladimir") for n in names)

@@ -58,7 +58,6 @@ Clues:
 same_region Okonomiyaki Onigiri
 outside Tonkatsu kobe
 left_of Onigiri Tonkatsu
-in_row Onigiri 1
 at_least Okonomiyaki Tonkatsu 6
 at_least Onigiri Tonkatsu 8
 in_row Sushi 4

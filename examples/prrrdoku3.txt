@@ -113,7 +113,7 @@ in_tagged Otto klimgebied_en_kantoor
 on Jos bank
 next_to Anna koffer
 in_region Luna woonboot water
-next_to Tjitske vuurtje
+next_to Tjitske vuurtje | Tjitske zit nog steeds naast het vuurtje.
 same_region Otto Pip
 apart Anna Tim
 above Otto Luna

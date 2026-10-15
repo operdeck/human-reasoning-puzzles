@@ -59,7 +59,6 @@ Words:
 target.attribute: a {name}
 
 Clues:
-alone_with Akumatchi attribute:friend
 within Gozarutchi Tarakotchi 5
 adjacent_regions Tarakotchi Masktchi
 within Masktchi Tarakotchi 4

@@ -66,15 +66,8 @@ above Gibbon Giraffe
 in_column Giraffe 2
 in_column Gibbon 3
 in_row Giraffe 4
-different_region Giraffe Tijger
-not_next_to Makaak struik
 in_region Tijger savanne
-not_next_to Giraffe fontein
-different_region Giraffe Makaak
 not_next_to Makaak bank
-in_column Tijger 4
-different_region Gibbon Giraffe
-at_least Giraffe Makaak 5
 
 # Booklet text for --docx (optional).
 Title:

@@ -59,6 +59,22 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.question": "Question",
         "doc.solution": "Solution",
         "doc.answer": "Answer",
+        "doc.mark": "Cells marked {abbr} are {name} cells.",
+        "doc.mark_alone": (
+            "Cells marked {abbr} are {name} cells: whoever stands on one is alone in their area."
+        ),
+        "doc.mark_not_alone": (
+            "Cells marked {abbr} are {name} cells: whoever stands on one shares the area "
+            "with someone else."
+        ),
+        "doc.attribute": "The {name} attribute belongs to {people}.",
+        "doc.role": "The {name} role is held by {count}{extra}.",
+        "doc.count_one": "exactly one person",
+        "doc.count_exact": "exactly {n} people",
+        "doc.count_any": "any number of people",
+        "doc.count_one_of": "{list} people",
+        "doc.extra_regions": ", all in different areas",
+        "doc.extra_from": ", chosen from {people}",
         "doc.rules": (
             "Place every figure on a free square of the board. No two figures share a row or a "
             "column. Squares with an object that blocks cannot be used; squares with a standable "
@@ -143,6 +159,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.alone_with": (
             "{a} shares a region with exactly one other person, and that is {target}"
         ),
+        "clue.alone_with_anyone": "{a} shares a region with exactly one other person",
         "clue.same_region": "{a} and {b} are in the same region",
         "clue.different_region": "{a} and {b} are in different regions",
         "clue.apart": "{a} and {b} are in regions that do not touch",
@@ -197,8 +214,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.above_n": "{a} is exactly {rows} above {b}",
         "clue.within": "{a} is at most {n} squares from {b}",
         "clue.at_least": "{a} is at least {n} squares from {b}",
-        "clue.alone": "nobody else is in {a}'s region",
+        "clue.alone": "{a} is alone in a region",
         "clue.furthest": "{a} is further from {b} than {c} is",
+        "clue.furthest_all": "{a} is the furthest from {b} of all the figures",
         "target.attribute": "someone with the {name} attribute",
         "target.role": "a {name} holder",
         "target.area": "someone {where}",
@@ -216,6 +234,22 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.question": "Vraag",
         "doc.solution": "Oplossing",
         "doc.answer": "Antwoord",
+        "doc.mark": "Vakjes met {abbr} zijn {name}-vakjes.",
+        "doc.mark_alone": (
+            "Vakjes met {abbr} zijn {name}-vakjes: wie daar staat, is alleen in zijn gebied."
+        ),
+        "doc.mark_not_alone": (
+            "Vakjes met {abbr} zijn {name}-vakjes: wie daar staat, deelt het gebied met "
+            "iemand anders."
+        ),
+        "doc.attribute": "Het kenmerk {name} hebben: {people}.",
+        "doc.role": "De rol {name} heeft {count}{extra}.",
+        "doc.count_one": "precies één persoon",
+        "doc.count_exact": "precies {n} mensen",
+        "doc.count_any": "een willekeurig aantal mensen",
+        "doc.count_one_of": "{list} mensen",
+        "doc.extra_regions": ", allemaal in verschillende gebieden",
+        "doc.extra_from": ", gekozen uit {people}",
         "doc.rules": (
             "Zet elke figuur op een vrij vakje van het bord. Twee figuren staan nooit in dezelfde "
             "rij of kolom. Vakjes met een blokkerend voorwerp kun je niet gebruiken; vakjes met "
@@ -307,6 +341,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.exactly": "precies {n} hiervan klopt: {list}",
         "clue.either": "ofwel {first}, ofwel {second}, maar niet allebei",
         "clue.either_same_region": "{a} is in hetzelfde gebied als {b} of {c}",
+        "clue.alone_with_anyone": "{a} deelt een gebied met precies één ander persoon",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
@@ -350,8 +385,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.above_n": "{a} is precies {rows} boven {b}",
         "clue.within": "{a} is hooguit {n} vakjes van {b}",
         "clue.at_least": "{a} is minstens {n} vakjes van {b}",
-        "clue.alone": "niemand anders is in het gebied van {a}",
+        "clue.alone": "{a} is alleen in een gebied",
         "clue.furthest": "{a} is verder van {b} dan {c}",
+        "clue.furthest_all": "{a} is van alle figuren het verst van {b}",
         "target.attribute": "iemand met het kenmerk {name}",
         "target.role": "een {name}-drager",
         "target.area": "iemand {where}",
@@ -1526,6 +1562,8 @@ class Story:
                 self._clue_text(k, rest, rest[: 1 if k in FILTERS else 2]) for k, rest in parts
             )
             return self.say("clue.exactly", n=self.say.number(n), list=listed)
+        if kind == "furthest":
+            return self.say("clue.furthest_all", a=args[0], b=args[1])
         fields: dict[str, Any] = dict(zip("abc", people, strict=False))
         line_clues = ("in_row", "not_in_row", "in_column", "not_in_column")
         has_filter_args = kind in FILTERS or kind == "only_on" or kind in line_clues
@@ -1599,6 +1637,12 @@ class Story:
     def _quantified_text(self, condition: QuantifiedCondition) -> str:
         target = self._target_text(condition.selector)
         if condition.kind == "alone_with":
+            selector = condition.selector
+            others = set(self.board.people) - {condition.subject}
+            if selector.kind == "attribute" and others <= self.board.attributes.get(
+                selector.name, frozenset()
+            ):
+                return self.say("clue.alone_with_anyone", a=condition.subject)
             return self.say("clue.alone_with", a=condition.subject, target=target)
         fields: dict[str, Any] = {"a": condition.subject, "b": target}
         if condition.kind == "above" and condition.rest:
@@ -1728,6 +1772,43 @@ def clue_texts(text: str) -> list[str]:
     """The numbered clues of a Murdoku puzzle file in plain language."""
     board, clues = load_board(text)
     return Story(board, clues, Wording.read(text)).clue_texts()
+
+
+def board_notes(text: str) -> list[str]:
+    """Plain sentences for what the board picture only abbreviates: marks, attributes, roles."""
+    board, _ = load_board(text)
+    say = Wording.read(text)
+
+    def name(raw: str) -> str:
+        return say.words.get(raw, raw.replace("_", " "))
+
+    notes = []
+    for mark in board.marks:
+        key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
+        notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
+    for attribute, holders in board.attributes.items():
+        if "target.attribute" in say.phrases:
+            break
+        people = [person for person in board.people if person in holders]
+        notes.append(say("doc.attribute", name=name(attribute), people=say.join(people)))
+    for role in board.roles:
+        if "role_has" in say.phrases:
+            break
+        counts = sorted(role.allowed_counts)
+        if counts == [1]:
+            count = say("doc.count_one")
+        elif len(counts) == 1:
+            count = say("doc.count_exact", n=say.number(counts[0]))
+        elif counts == list(range(counts[0], len(board.people) + 1)):
+            count = say("doc.count_any")
+        else:
+            count = say("doc.count_one_of", list=say.join([say.number(n) for n in counts], "or"))
+        extra = say("doc.extra_regions") if role.different_regions and counts != [1] else ""
+        if role.eligible_people is not None:
+            chosen = [person for person in board.people if person in role.eligible_people]
+            extra += say("doc.extra_from", people=say.join(chosen))
+        notes.append(say("doc.role", name=name(role.name), count=count, extra=extra))
+    return notes
 
 
 def phrase(text: str, key: str) -> str:

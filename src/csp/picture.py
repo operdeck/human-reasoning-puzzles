@@ -178,7 +178,7 @@ def murdoku_picture(
             outline=MARK_INK,
             width=max(1, cell // 50),
         )
-        initials = "/".join(name[0].upper() for name in sorted(names))
+        initials = "/".join(name[:2].upper() for name in sorted(names))
         _centred_text(draw, initials, area, max(8, cell // 12), MARK_INK, max_width=cell // 3)
     standable = board.squares_of(obj.name for obj in board.standable_objects)
     for person, sq in (placed or {}).items():
@@ -253,16 +253,7 @@ def sudoku_picture(
             second_x = margin + link.second[1] * cell + cell // 2
             second_y = margin + link.second[0] * cell + cell // 2
             if link.kind == "less":
-                draw.line(
-                    (first_x, first_y, second_x, second_y),
-                    fill=WHITE,
-                    width=max(8, cell // 5),
-                )
-                draw.line(
-                    (first_x, first_y, second_x, second_y),
-                    fill=INK,
-                    width=max(2, cell // 28),
-                )
+                continue
             else:
                 middle = ((first_x + second_x) // 2, (first_y + second_y) // 2)
                 radius = max(6, cell // 13)
@@ -278,7 +269,32 @@ def sudoku_picture(
                     outline=INK,
                     width=max(2, cell // 35),
                 )
+        image = _thermometers(image, puzzle, cell)
     return image
+
+
+def _thermometers(image: Image.Image, puzzle: Sudoku, cell: int) -> Image.Image:
+    """Draw each thermometer as a translucent grey bulb and stem over the finished grid."""
+    links = [link for link in puzzle.links if link.kind == "less"]
+    if not links:
+        return image
+    margin = cell // 2
+    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    grey = (120, 120, 120, 105)
+    width = max(6, cell // 7)
+
+    def centre(square: tuple[int, int]) -> tuple[int, int]:
+        return margin + square[1] * cell + cell // 2, margin + square[0] * cell + cell // 2
+
+    for link in links:
+        draw.line((centre(link.first), centre(link.second)), fill=grey, width=width)
+    seconds = {link.second for link in links}
+    for first in {link.first for link in links} - seconds:
+        x, y = centre(first)
+        radius = cell // 4
+        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=grey)
+    return Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB")
 
 
 def calcudoku_picture(
@@ -1126,10 +1142,13 @@ class _Legend:
                 max_width=self.swatch - 4,
             )
             mark = next(item for item in self.board.marks if item.name == name)
-            condition = f" ({mark.occupant_condition})" if mark.occupant_condition else ""
+            condition = {
+                "alone": ": alone in area",
+                "not_alone": ": shares area",
+            }.get(mark.occupant_condition or "", "")
             draw.text(
                 (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
-                f"Mark: {name}{condition}",
+                f"{name}{condition}" if condition else f"{name} cells",
                 fill=INK,
                 font=font,
                 anchor="lm",
