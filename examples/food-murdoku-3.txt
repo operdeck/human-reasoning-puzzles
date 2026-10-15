@@ -86,7 +86,7 @@ Sushi: a Japanese dish ; icon=U+1F363
 Jos: the hungry eater ; icon=U+1F9D1
 
 Question:
-Jos shares his city with exactly one dish, which he is about to eat. Which dish?
+What is Jos going to eat today?
 
 Reveal:
 Jos shares Nagoya with Gyoza.
