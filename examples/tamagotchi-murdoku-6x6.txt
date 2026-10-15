@@ -21,11 +21,11 @@ d d d e e e
 d d d e e e
 
 Objects:
-tree: blocking r1c1
-fountain: blocking r3c3
-piano: blocking r5c5
-chair: standable r2c5
-bed: standable r5c1 r5c2
+sakura: blocking r1c1
+shrine: blocking r3c3
+castle: blocking r5c5
+taiko: standable r2c5
+tatami: standable r5c1 r5c2
 
 People:
 Mametchi
@@ -42,11 +42,11 @@ friend: Mametchi Kuchipatchi Memetchi Lovelitchi Masktchi
 # his own except that he ends up alone with exactly one friend; the rest pin him down.
 Clues:
 alone_with Akumatchi attribute:friend
-next_to Masktchi tree
+next_to Masktchi sakura
 adjacent_regions Kuchipatchi Masktchi
 in_corner Memetchi
 adjacent_regions Kuchipatchi Lovelitchi
 left_of Memetchi Lovelitchi
-not_next_to Kuchipatchi fountain
+not_next_to Kuchipatchi shrine
 apart Memetchi Lovelitchi
-only_on Mametchi chair
+only_on Mametchi taiko
