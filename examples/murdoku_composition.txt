@@ -40,14 +40,6 @@ recorder: 3 different_regions
 RoleEligibility:
 navigator: attribute:trained
 Clues:
-in_row Ada 1
-in_column Ada 1
-in_row Bo 2
-in_column Bo 3
-in_row Cal 3
-in_column Cal 4
-in_row Dee 4
-in_column Dee 2
 at Bo archway
 at Cal window
 next_to Dee fountain
@@ -69,3 +61,13 @@ count empty areas all = 1
 count empty areas in tag:west = 1
 count empty cells in mark:quiet = 1
 count empty cells in rows:1-4 = 10
+
+# Booklet text for --docx (optional).
+Title:
+Murdoku: Composition test
+
+Intro:
+A neutral four-by-four board that uses many Murdoku features at once: roles, attributes, marks and counting clues.
+
+Question:
+Where does everyone stand, and who has which role?

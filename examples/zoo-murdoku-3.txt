@@ -16,6 +16,9 @@ bergen: in de Bergen
 jungle: in de Jungle
 weide: in de Weide
 moeras: in de Moeras
+target.attribute: een {name}
+role_has: {who} is een {role}
+role_not: {who} is geen {role}
 
 Regions:
 bos: bos #C4DCF2
@@ -40,15 +43,12 @@ bank: standable r2c5 r3c5
 
 Attributes:
 aap: Makaak Gibbon
-tijger: Tijger
 dier: Tijger Makaak Gibbon Capibara Ree
 
 Roles:
-tijger: 1
 aap: 2
 
 RoleEligibility:
-tijger: attribute:tijger
 aap: attribute:aap
 
 People:
@@ -60,21 +60,38 @@ Ree
 Verzorger
 
 Rules:
-role_occupant tijger alone
+alone Tijger
 role_occupant aap not_alone
 alone_with Verzorger attribute:dier
 
 Clues:
 in_region Gibbon moeras
 next_to Tijger bank
-at_least Makaak Tijger 5
 in_row Capibara 4
 above Makaak Gibbon
 within Capibara Ree 3
 within Capibara Makaak 3
-above Makaak Capibara
-left_of Gibbon Tijger
-not_next_to Ree bank
-outside Ree jungle
 left_of Capibara Gibbon
-left_of Ree Tijger
+
+# Booklet text for --docx (optional).
+Title:
+Dierentuin-murdoku 6x6: Het verblijf van de tijger
+
+Intro:
+Dieren zijn de personages en de verblijven zijn de gebieden. Zet iedereen op een vrij vakje; geen twee figuren staan in dezelfde rij of kolom.
+De tijger is altijd alleen in zijn verblijf. Elke aap deelt zijn verblijf altijd met iemand.
+De verzorger wordt als laatste geplaatst en staat alleen met precies één dier.
+
+Figures:
+Tijger: altijd alleen in zijn verblijf ; icon=U+1F405
+Makaak: een aap: nooit alleen ; icon=U+1F412
+Gibbon: een aap: nooit alleen ; icon=U+1F9A7
+Capibara: een dier ; icon=U+1F9AB
+Ree: een dier ; icon=U+1F98C
+Verzorger: de verzorger, als laatste geplaatst ; icon=U+1F9D1
+
+Question:
+Waar staat de verzorger? Hij is alleen met precies één dier, en dat dier bijt hem. Welk dier?
+
+Reveal:
+De verzorger deelt de bergen met Ree, dat hem bijt.

@@ -16,6 +16,9 @@ woestijn: in de Woestijn
 savanne: in de Savanne
 rivier: in de Rivier
 bergen: in de Bergen
+target.attribute: een {name}
+role_has: {who} is een {role}
+role_not: {who} is geen {role}
 
 Regions:
 moeras: moeras #CBE6B9
@@ -39,15 +42,12 @@ bank: standable r1c1 r1c2
 
 Attributes:
 aap: Makaak Gibbon
-tijger: Tijger
 dier: Tijger Makaak Gibbon Zebra Ree
 
 Roles:
-tijger: 1
 aap: 2
 
 RoleEligibility:
-tijger: attribute:tijger
 aap: attribute:aap
 
 People:
@@ -59,26 +59,39 @@ Ree
 Verzorger
 
 Rules:
-role_occupant tijger alone
+alone Tijger
 role_occupant aap not_alone
 alone_with Verzorger attribute:dier
 
 Clues:
-above Tijger Makaak
 at_least Makaak Ree 5
-above Tijger Ree
 left_of Tijger Gibbon
 next_to Zebra boom
-left_of Tijger Ree
 in_column Makaak 5
 outside Tijger moeras
-at_least Tijger Zebra 5
-not_next_to Tijger boom
-not_next_to Zebra bank
 outside Gibbon rivier
-outside Ree bergen
-in_column Tijger 2
 in_column Ree 3
 in_row Tijger 1
-left_of Tijger Zebra
-not_next_to Makaak bank
+
+# Booklet text for --docx (optional).
+Title:
+Dierentuin-murdoku 6x6: Sluitingstijd
+
+Intro:
+Dieren zijn de personages en de verblijven zijn de gebieden. Zet iedereen op een vrij vakje; geen twee figuren staan in dezelfde rij of kolom.
+De tijger is altijd alleen in zijn verblijf. Elke aap deelt zijn verblijf altijd met iemand.
+De verzorger wordt als laatste geplaatst en staat alleen met precies één dier.
+
+Figures:
+Tijger: altijd alleen in zijn verblijf ; icon=U+1F405
+Makaak: een aap: nooit alleen ; icon=U+1F412
+Gibbon: een aap: nooit alleen ; icon=U+1F9A7
+Zebra: een dier ; icon=U+1F993
+Ree: een dier ; icon=U+1F98C
+Verzorger: de verzorger, als laatste geplaatst ; icon=U+1F9D1
+
+Question:
+Waar staat de verzorger? Hij is alleen met precies één dier, en dat dier bijt hem. Welk dier?
+
+Reveal:
+De verzorger deelt de savanne met Ree, dat hem bijt.

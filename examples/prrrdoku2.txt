@@ -73,3 +73,10 @@ alone Luna
 within Luna Tim 6
 apart Luna Mao
 at_least Jos Mao 13
+
+# Booklet text for --docx (optional).
+Title:
+Prrrdoku 2: Groter park, drie katten
+
+Question:
+Wie zit er alleen met Vladimir in één gebied?

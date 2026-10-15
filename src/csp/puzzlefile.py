@@ -6,6 +6,7 @@ one-line section can be written inline before the first header, as in
 """
 
 import re
+from dataclasses import dataclass, field
 
 from .murdoku import (
     Board,
@@ -181,7 +182,13 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
 
 def _clues(lines: list[str]) -> list[Clue]:
     """'next_to Tim klimwand' lines -> [('next_to', ['Tim', 'klimwand'])]."""
-    return [(kind, args) for kind, *args in (line.split() for line in lines)]
+    return [(kind, args) for kind, *args in (_split_clue(line)[0].split() for line in lines)]
+
+
+def _split_clue(line: str) -> tuple[str, str]:
+    """'next_to Tim bank | Tim zit bij de bank' -> clue part and optional booklet wording."""
+    clue, _, wording = line.partition("|")
+    return clue, wording.strip()
 
 
 def _object_placements(lines: list[str]) -> list[BoardObject]:
@@ -351,3 +358,63 @@ def _role_placements(
             RoleSpec(name.strip(), allowed_counts, different_regions, eligibility.get(name.strip()))
         )
     return roles
+
+
+@dataclass(frozen=True)
+class Figure:
+    """Optional booklet text and picture for one person; never read by the solver."""
+
+    description: str = ""
+    image: str = ""
+    icon: str = ""
+
+
+@dataclass(frozen=True)
+class Presentation:
+    """Author-written booklet metadata. Absent sections leave the fields empty."""
+
+    title: str = ""
+    intro: list[str] = field(default_factory=list)
+    question: str = ""
+    clue_text: dict[int, str] = field(default_factory=dict)
+    figures: dict[str, Figure] = field(default_factory=dict)
+    reveal: list[str] = field(default_factory=list)
+
+
+def load_presentation(text: str) -> Presentation:
+    """The optional `Title:`, `Intro:`, `Question:`, `Figures:`, `Reveal:` and clue wordings.
+
+    Presentation never affects parsing, solving or pictures. A clue line may end in
+    `| wording` to replace its generated sentence; `Figures:` lines are
+    `Name: description [; image=path] [; icon=name]`.
+    """
+    section = read_sections(text)
+    people = section.get("People", [])
+    clue_text = {
+        number: wording
+        for number, line in enumerate(section.get("Clues", []), 1)
+        if (wording := _split_clue(line)[1])
+    }
+    figures: dict[str, Figure] = {}
+    for line in section.get("Figures", []):
+        name, separator, rest = line.partition(":")
+        description, *options = (part.strip() for part in rest.split(";"))
+        if not separator or name.strip() not in people:
+            raise ValueError(f"Figures names unknown person in {line!r}")
+        values = {"image": "", "icon": ""}
+        for option in options:
+            key, _, value = option.partition("=")
+            if key.strip() not in values or not value.strip():
+                raise ValueError(
+                    f"bad Figures option {option!r}, expected 'image=path' or 'icon=name'"
+                )
+            values[key.strip()] = value.strip()
+        figures[name.strip()] = Figure(description, values["image"], values["icon"])
+    return Presentation(
+        title=" ".join(section.get("Title", [])),
+        intro=section.get("Intro", []),
+        question=" ".join(section.get("Question", [])),
+        clue_text=clue_text,
+        figures=figures,
+        reveal=section.get("Reveal", []),
+    )

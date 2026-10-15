@@ -17,6 +17,10 @@ csp = "csp.cli:main"
 png = [
     "pillow>=10.1",
 ]
+docx = [
+    "pillow>=10.1",
+    "python-docx>=1.1",
+]
 
 [dependency-groups]
 dev = [
@@ -24,6 +28,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "pillow>=10.1",
+    "python-docx>=1.1",
 ]
 
 [tool.ruff]

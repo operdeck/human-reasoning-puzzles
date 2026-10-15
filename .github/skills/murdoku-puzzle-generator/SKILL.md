@@ -65,6 +65,14 @@ clues in their printed order. Never infer an object's kind from its name or icon
    Then run the solution-count and grade checks under [Validation](#validation).
    For transcription, report those results faithfully; do not alter the
    transcribed clues just to force uniqueness or a desired grade.
+7. Add booklet text per [Booklet Metadata](#booklet-metadata): the source's title,
+   introduction and question, and its own clue wording as `| wording` after each
+   clue line, so the booklet reads like the original. Do not pad the puzzle with
+   clues another clue already implies (`lint` warns). If roles or attributes are
+   really kinds (species, foods), reword them in `Words:` (`role_has`, `role_not`,
+   `target.attribute`) instead of "has the role tiger". Never make a role that only
+   one character can hold (`lint` warns): say it about that person instead, for
+   example `alone <person>` rather than `role_occupant <role> alone`.
 
 ### Paired Solution Evidence
 
@@ -99,7 +107,10 @@ blocking. If a kind remains unclear, ask rather than silently defaulting.
    filename under `examples/`. Never copy a published puzzle's board, clue
    set, story, or solution. Consult the `Puzzle files` section of `README.md`
    or `src/csp/murdoku.py` if clue semantics are unclear.
-5. Run [Validation](#validation). If uniqueness or the requested grade is not
+5. Add the optional booklet text described in [Booklet Metadata](#booklet-metadata)
+   once the puzzle is final (title, intro, figures, question, and `| wording`
+   where useful).
+6. Run [Validation](#validation). If uniqueness or the requested grade is not
    achieved, revise the board or added clues without weakening hard
    constraints, then rerun the checks. If the requirements cannot be met
   together, explain the conflict instead of quietly dropping one. When adding
@@ -126,6 +137,10 @@ uv run csp <file.txt> --lint
   unexpected results with the image rather than changing the source puzzle.
 - A generated puzzle's `--brute-force` check must finish within 5 seconds. If it
   takes longer, add clues or shrink the board rather than accepting a slow check.
+- Never wait on a solve or brute-force run: give every trial (also each one of a
+  clue-thinning loop) a limit of a few seconds, for example `signal.alarm(5)`, and
+  kill the process when it is exceeded. Treat a timeout as "not unique/solvable
+  with this clue set" and keep the clue; do not let a loop run for minutes.
 - `--grade` reports the hardest rule this solver used, or `unsolved`. For a
   generated puzzle, require a solved grade and compare it with the user's
   target. For a transcription, `unsolved` means this solver's deduction rules
@@ -133,6 +148,8 @@ uv run csp <file.txt> --lint
 - `--lint` reports missing icons, unreachable areas, and unused roles; malformed
   declarations are errors. `--require-forward` also runs lint and requires a
   solve without the `what_if` rule when forward-only solving is required.
+- `--docx [FILE]` (also a glob) writes the booklet; see
+  [Booklet Metadata](#booklet-metadata). It needs `uv sync --extra docx`.
 - `--track-person` is for a normal Murdoku solve. For a late-reveal puzzle,
   check that the tracked person has multiple live squares and multiple
   region-overlap companion candidates until everyone else is placed, then
@@ -180,6 +197,8 @@ it.
   fallback but can look odd, so check the picture before keeping it. Footprints
   may cross region boundaries (connectivity is the only parser rule), but that
   is unusual and should be noted in the file header.
+  Blocking squares are drawn with a red cross, so a blocking object needs an
+  icon that still reads clearly behind it.
 - `EdgeItems:` declares named doors and windows without occupying cells.
   A simple door lists two orthogonally neighboring cells in different areas,
   for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider
@@ -352,3 +371,60 @@ workflow permits: a transcription must stay faithful to its source, while a
 generated puzzle may change as long as all hard constraints remain satisfied.
 Do not weaken verification or change solver code unless the user separately
 asks for a solver change.
+
+## Booklet Metadata
+
+Every new or transcribed puzzle file should carry booklet text so that
+`uv run csp <file.txt> --docx` (or a quoted glob such as
+`--docx "examples/*.txt"` for a multi-puzzle booklet: all puzzles, one per page,
+then all solutions) produces a nice document with no further editing. These
+sections are presentation only: the solver, `--lint`, `--brute-force` and
+`--png` ignore them, so they never change the puzzle. Append them after
+`Clues:`, in the puzzle's `Language:` (en or nl):
+
+```
+Title:
+Short puzzle title, e.g. "Tamagotchi Murdoku 6x6: Where is the devil?"
+
+Intro:
+One line per paragraph: the story and who is on the board. Keep it to 2-3 lines;
+a puzzle and its solution must each fit on one page. Omit to get the default
+rules paragraph.
+
+Figures:
+Name: one-line description of the character ; icon=U+1F35C ; image=optional/relative.png
+
+Question:
+What the player must find out, in one sentence. The late-reveal person is
+usually asked about here, never in `Clues:`.
+
+Reveal:
+Optional one- or two-line answer text, shown only in the solutions section.
+```
+
+Also, after a clue line, `| wording` replaces its generated sentence:
+`above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.`
+
+Rules when adding metadata:
+
+- Do this as a final step, after the puzzle is unique and graded, and rerun
+  `--lint`: it warns about unknown `Figures:` names. `Reveal:` must be true for
+  the verified solution; check it against `--explain`.
+- Do not write a `Reveal:` that gives away the answer unless it is consistent with the
+  solver's solution; do not invent clues in the wording that the `Clues:` do not state.
+- Generated clue sentences already cover every operator in both languages
+  (`at_least Ramen Tempura 5` → "Ramen is at least five squares from
+  Tempura."). Add `| wording` only where the generated text reads poorly or the
+  story needs flavour, and make sure it means exactly the same as the clue: read
+  it back against [Supported Clues](#supported-clues). Never use `|` inside the
+  clue itself.
+- Give every figure a thumbnail where one exists: `icon=U+<emoji code>` (or a catalogue
+  name) for original puzzles, e.g. food, animals; a file named after the person in
+  `<puzzle>-figures/` for licensed artwork. Lint warns about unknown icons.
+- Figure `image=` paths are relative to the puzzle file and optional (missing
+  images fall back to text). Never commit third-party artwork; use original or
+  licensed images only.
+- Check the result: `uv run csp <file.txt> --docx /tmp/check.docx`, open it (or convert
+  it to PDF) and confirm one page per puzzle and per solution, readable clue
+  numbering and a legible board. Do not commit generated `.docx` files.
+- Document format details live in `docs/model-and-puzzle-formats.md`.

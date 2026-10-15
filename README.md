@@ -16,7 +16,7 @@ uv run csp examples/logicgrid_3x3.txt --brute-force
 uv run csp examples/akari_2x2.txt --png akari.png
 ```
 
-`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--png` needs Pillow (`uv sync --extra png`).
+`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--png` needs Pillow (`uv sync --extra png`). `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`).
 
 For the full [example index and grade notes](docs/examples.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
 
@@ -93,3 +93,10 @@ Each cell links to a representative example. The image shows the puzzle or its s
 <td></td><td></td><td></td>
 </tr>
 </table>
+
+## Licence
+
+The code is Apache 2.0 (see `LICENSE`). The puzzles in `examples/` are **not**: they are
+© Otto Perdeck, all rights reserved, and may not be copied or reused without the author's
+explicit permission (see `examples/LICENSE.md`). Generated `--docx` booklets carry this notice
+in their footer.
