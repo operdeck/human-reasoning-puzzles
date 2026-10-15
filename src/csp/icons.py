@@ -9,6 +9,7 @@ a text label.
 """
 
 import os
+import re
 import urllib.request
 from pathlib import Path
 
@@ -80,7 +81,13 @@ CATALOGUE: dict[str, str] = {
 
 
 def code_for(name: str) -> str | None:
-    """The emoji code point for an object name; 'boom2' finds 'boom'."""
+    """The emoji code point for an object name; 'boom2' finds 'boom'.
+
+    A literal code point such as 'U+1F35C' is accepted too.
+    """
+    literal = re.fullmatch(r"[Uu]\+([0-9a-fA-F]{4,6})", name)
+    if literal:
+        return literal[1].lower()
     return CATALOGUE.get(name.lower().rstrip("0123456789").rstrip("_"))
 
 

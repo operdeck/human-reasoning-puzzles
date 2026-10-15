@@ -12,14 +12,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import picture
+from . import icons, picture
 from .murdoku import global_count_conditions
-from .puzzlefile import Presentation, load_board, load_presentation
+from .puzzlefile import Figure, Presentation, load_board, load_presentation
 from .story import clue_texts, explain, phrase
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
 BOARD_WIDTH_CM = 9.0
-FIGURE_IMAGE_CM = 2.0
+FIGURE_IMAGE_CM = 0.8
 
 
 def _runs(paragraph: Any, text: str) -> None:
@@ -50,30 +50,38 @@ def _picture_stream(
     return stream
 
 
-def _figures(document: Any, text: str, presentation: Presentation, base: Path) -> None:
+def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | None:
+    """The thumbnail for a person: the `image=` file, a file in `<stem>-figures/` or
+    `figures/` beside the puzzle named after the person, or the built-in `icon=`."""
+    base = source.parent
+    if figure is not None and figure.image and (base / figure.image).is_file():
+        return base / figure.image
+    for folder in (base / f"{source.stem}-figures", base / "figures"):
+        for suffix in (".png", ".jpg", ".jpeg"):
+            if (folder / f"{person}{suffix}").is_file():
+                return folder / f"{person}{suffix}"
+    if figure is not None and figure.icon:
+        return icons.icon(figure.icon)
+    return None
+
+
+def _figures(document: Any, text: str, presentation: Presentation, source: Path) -> None:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm
 
     board, _ = load_board(text)
-    document.add_heading(phrase(text, "doc.figures"), level=2)
     figures = presentation.figures
-    if not any(figure.image and (base / figure.image).is_file() for figure in figures.values()):
-        paragraph = document.add_paragraph()
-        for number, person in enumerate(board.people):
-            if number:
-                paragraph.add_run("; " if figures else ", ")
-            paragraph.add_run(person).bold = bool(figures)
-            if person in figures and figures[person].description:
-                paragraph.add_run(f": {figures[person].description}")
-        return
-    for person in board.people:
-        figure = presentation.figures.get(person)
-        paragraph = document.add_paragraph(style="List Bullet")
-        if figure is not None and figure.image:
-            path = base / figure.image
-            if path.is_file():
-                paragraph.add_run().add_picture(str(path), height=Cm(FIGURE_IMAGE_CM))
-                paragraph.add_run(" ")
-        paragraph.add_run(person).bold = True
+    paragraph = document.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for number, person in enumerate(board.people):
+        if number:
+            paragraph.add_run("; " if figures else " · ")
+        figure = figures.get(person)
+        image = _figure_image(person, figure, source)
+        if image is not None:
+            paragraph.add_run().add_picture(str(image), height=Cm(FIGURE_IMAGE_CM))
+            paragraph.add_run(" ")
+        paragraph.add_run(person).bold = bool(figures)
         if figure is not None and figure.description:
             paragraph.add_run(f": {figure.description}")
 
@@ -97,12 +105,14 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
     first_comment = next((line for line in text.splitlines() if line.startswith("# ")), "")
     title = presentation.title or first_comment.removeprefix("# ").strip() or entry.path.stem
     heading = document.add_heading(title, level=1)
+    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
     heading.paragraph_format.page_break_before = new_page
+    document.add_heading(phrase(text, "doc.rules_title"), level=2)
     for line in presentation.intro or [phrase(text, "doc.rules")]:
-        _runs(document.add_paragraph(), line)
+        _runs(document.add_paragraph(style="List Bullet"), line)
     document.add_picture(_picture_stream(text, None, None), width=Cm(BOARD_WIDTH_CM))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _figures(document, text, presentation, entry.path.parent)
+    _figures(document, text, presentation, entry.path)
 
     document.add_heading(phrase(text, "doc.clues"), level=2)
     for number, generated in enumerate(clue_texts(text), 1):
@@ -114,8 +124,7 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
         paragraph.add_run(f"{number}.\t")
         _runs(paragraph, wording)
     if presentation.question:
-        document.add_heading(phrase(text, "doc.question"), level=2)
-        _runs(document.add_paragraph(), presentation.question)
+        _centred(document, presentation.question)
 
 
 def _add_solution(document: Any, entry: Entry, title: str) -> None:
@@ -124,18 +133,29 @@ def _add_solution(document: Any, entry: Entry, title: str) -> None:
 
     text = entry.text
     presentation = load_presentation(text)
-    document.add_heading(title, level=1).paragraph_format.page_break_before = True
+    heading = document.add_heading(title, level=1)
+    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    heading.paragraph_format.page_break_before = True
     document.add_picture(
         _picture_stream(text, entry.solution, entry.role_statuses), width=Cm(BOARD_WIDTH_CM)
     )
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    if presentation.reveal:
-        document.add_heading(phrase(text, "doc.answer"), level=2)
-        for line in presentation.reveal:
-            _runs(document.add_paragraph(), line)
+    document.add_heading(phrase(text, "doc.how"), level=2)
     for block in explain(text).split("\n\n"):
         if block.strip():
-            _runs(document.add_paragraph(), block.strip().removeprefix("- "))
+            _runs(document.add_paragraph(style="List Bullet"), block.strip().removeprefix("- "))
+    for line in presentation.reveal:
+        _centred(document, line)
+
+
+def _centred(document: Any, text: str) -> None:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    paragraph = document.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _runs(paragraph, text)
+    for run in paragraph.runs:
+        run.bold = True
 
 
 def _compact(document: Any) -> None:
@@ -143,7 +163,7 @@ def _compact(document: Any) -> None:
     from docx.shared import Cm, Pt
 
     for section in document.sections:
-        section.top_margin = section.bottom_margin = Cm(1.5)
+        section.top_margin = section.bottom_margin = Cm(1.4)
         section.left_margin = section.right_margin = Cm(1.8)
     normal = document.styles["Normal"]
     normal.font.size = Pt(10)

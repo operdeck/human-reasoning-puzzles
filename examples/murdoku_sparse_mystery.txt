@@ -72,3 +72,23 @@ only_on Ria carpet
 in_corner Tomas
 on Tomas horse
 exactly 1 same_region Tomas Mara ; same_region Tomas Ria
+
+# Booklet text for --docx (optional).
+Title:
+Murdoku: The sparse mystery
+
+Intro:
+Mara and Nico are nobles; Ria and Tomas are commoners. Nobles stay in the noble areas, commoners stay out of them.
+Tomas is the victim and is placed last. Exactly one of Mara or Ria shares his area.
+
+Figures:
+Mara: a noble
+Nico: a noble
+Ria: a commoner
+Tomas: the victim, a commoner
+
+Question:
+Who is alone with Tomas: Mara or Ria?
+
+Reveal:
+Ria did it: she shares the stable with Tomas.

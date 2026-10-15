@@ -76,5 +76,16 @@ above Kuchipatchi Memetchi
 Title:
 Tamagotchi Murdoku 9x9: Where is the devil?
 
+Figures:
+Mametchi: a friend
+Kuchipatchi: a friend
+Memetchi: a friend
+Lovelitchi: a friend
+Tarakotchi: a friend
+Masktchi: a friend
+Gozarutchi: a friend
+Violetchi: a friend
+Akumatchi: the devil
+
 Question:
 Akumatchi is placed last and is alone with one friend. Which friend?

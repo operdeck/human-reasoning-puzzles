@@ -36,3 +36,16 @@ count people with attribute:glasses = 1
 count empty areas all = 1
 count empty areas in tag:inside = 1
 count empty cells in mark:seats = 0
+
+# Booklet text for --docx (optional).
+Title:
+Murdoku: Counting clues
+
+Intro:
+A tiny board where every clue is a count: how many people stand on beds, in rows, in columns or in areas.
+
+Question:
+Where do Ada and Ben stand?
+
+Reveal:
+Ada r1c1 and Ben r2c2.

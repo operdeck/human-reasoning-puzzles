@@ -61,3 +61,25 @@ left_of Sushi Tonkatsu
 at_least Jos Onigiri 7
 in_column Sushi 5
 in_row Mochi 3
+
+# Booklet text for --docx (optional).
+Title:
+Food Murdoku 6x6: Five suspects, one victim
+
+Intro:
+Japanese dishes wander through the city. Jos is hungry and is placed last.
+No two figures share a row or a column; an object that blocks a square makes it unusable.
+
+Figures:
+Onigiri: a Japanese dish ; icon=U+1F359
+Okonomiyaki: a Japanese dish ; icon=U+1F95E
+Mochi: a Japanese dish ; icon=U+1F361
+Sushi: a Japanese dish ; icon=U+1F363
+Tonkatsu: a Japanese dish ; icon=U+1F356
+Jos: the hungry eater ; icon=U+1F9D1
+
+Question:
+Jos shares his city with exactly one dish, which he is about to eat. Which dish?
+
+Reveal:
+Jos shares Kobe with Sushi.

@@ -46,7 +46,7 @@ def test_clue_text_override_wins():
 
 
 def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
-    source = EXAMPLES / "food-murdoku-1.txt"
+    source = EXAMPLES / "murdoku_house.txt"
     assert not load_presentation(source.read_text()).title
     out = tmp_path / "food.docx"
     write_docx(source.read_text(), out, source.parent)
@@ -118,3 +118,43 @@ def test_inline_wording_does_not_change_the_puzzle():
         .replace(" | Otto zit precies één rij boven Tjitske.", "")
     )
     assert load_board(plain) == load_board((EXAMPLES / "prrrdoku1.txt").read_text())
+
+
+def _media(path):
+    return [n for n in zipfile.ZipFile(path).namelist() if n.startswith("word/media/")]
+
+
+def test_figures_folder_gives_thumbnails_by_name(tmp_path):
+    from PIL import Image
+
+    text = (EXAMPLES / "tamagotchi-murdoku-6x6.txt").read_text()
+    (tmp_path / "t.txt").write_text(text)
+    folder = tmp_path / "t-figures"
+    folder.mkdir()
+    Image.new("RGB", (20, 20), "green").save(folder / "Mametchi.png")
+    out = tmp_path / "x.docx"
+    write_booklet([Entry(text, tmp_path / "t.txt")], out)
+    assert len(_media(out)) == 2  # board + Mametchi
+
+
+def test_icon_figures_use_builtin_icons(tmp_path, monkeypatch):
+    from PIL import Image
+
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("CSP_ICON_CACHE", str(cache))
+    from csp import icons
+
+    for code in ("1f35c", "1f362", "1f356", "1f364", "1f9d1"):
+        (icons.cache_dir()).mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (8, 8), "red").save(icons.cache_dir() / f"{code}.png")
+    text = (EXAMPLES / "food-murdoku-1.txt").read_text()
+    out = tmp_path / "x.docx"
+    write_booklet([Entry(text, EXAMPLES / "food-murdoku-1.txt")], out)
+    assert len(_media(out)) >= 2
+
+
+def test_unknown_icon_is_linted(tmp_path, capsys):
+    text = (EXAMPLES / "food-murdoku-1.txt").read_text().replace("U+1F35C", "nonsense")
+    (tmp_path / "f.txt").write_text(text)
+    main([str(tmp_path / "f.txt"), "--lint"])
+    assert "unknown icon nonsense" in capsys.readouterr().out

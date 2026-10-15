@@ -45,3 +45,17 @@ in_region Eva garden
 on Ben sofa
 above Cleo Eva
 not_next_to Ben lamp
+
+# Booklet text for --docx (optional).
+Title:
+Murdoku: The house
+
+Intro:
+Five people are in a house with four areas. Place each of them on a free square, one per row and one per column.
+Every clue is needed; drop one and the solution is no longer unique.
+
+Question:
+Where does everyone stand?
+
+Reveal:
+Cleo r1c2, Eva r2c1, Ben r3c4, Ada r4c3, Dirk r5c5.

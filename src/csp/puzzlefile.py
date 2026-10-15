@@ -366,6 +366,7 @@ class Figure:
 
     description: str = ""
     image: str = ""
+    icon: str = ""
 
 
 @dataclass(frozen=True)
@@ -385,7 +386,7 @@ def load_presentation(text: str) -> Presentation:
 
     Presentation never affects parsing, solving or pictures. A clue line may end in
     `| wording` to replace its generated sentence; `Figures:` lines are
-    `Name: description [; image=path]`.
+    `Name: description [; image=path] [; icon=name]`.
     """
     section = read_sections(text)
     people = section.get("People", [])
@@ -397,13 +398,18 @@ def load_presentation(text: str) -> Presentation:
     figures: dict[str, Figure] = {}
     for line in section.get("Figures", []):
         name, separator, rest = line.partition(":")
-        description, _, option = rest.partition(";")
-        option = option.strip()
+        description, *options = (part.strip() for part in rest.split(";"))
         if not separator or name.strip() not in people:
             raise ValueError(f"Figures names unknown person in {line!r}")
-        if option and not option.startswith("image="):
-            raise ValueError(f"bad Figures option {option!r}, expected 'image=path'")
-        figures[name.strip()] = Figure(description.strip(), option.removeprefix("image=").strip())
+        values = {"image": "", "icon": ""}
+        for option in options:
+            key, _, value = option.partition("=")
+            if key.strip() not in values or not value.strip():
+                raise ValueError(
+                    f"bad Figures option {option!r}, expected 'image=path' or 'icon=name'"
+                )
+            values[key.strip()] = value.strip()
+        figures[name.strip()] = Figure(description, values["image"], values["icon"])
     return Presentation(
         title=" ".join(section.get("Title", [])),
         intro=section.get("Intro", []),

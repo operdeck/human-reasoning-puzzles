@@ -49,3 +49,24 @@ Clues:
 on Ingrid chair
 next_to Joost tree
 on Lotte bed
+
+# Booklet text for --docx (optional).
+Title:
+Murdoku 0: The first case
+
+Intro:
+Three suspects and a victim stand in a small house. Place everyone on a free square, one per row and one per column.
+Objects block their square, except a chair or a bed, which people can use.
+Wouter, the victim, is placed last and was alone with his murderer.
+
+Figures:
+Ingrid: a suspect
+Joost: a suspect
+Lotte: a suspect
+Wouter: the victim
+
+Question:
+Who is the only other person in Wouter's room: who did it?
+
+Reveal:
+Ingrid did it: she shares the sitting room with Wouter.

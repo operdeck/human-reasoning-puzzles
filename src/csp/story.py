@@ -51,6 +51,8 @@ PHRASES: dict[str, dict[str, str]] = {
     "en": {
         "square": "r{row}c{col}",
         "doc.figures": "The figures",
+        "doc.rules_title": "Rules",
+        "doc.how": "How to get there.",
         "doc.clues": "Clues",
         "doc.question": "Question",
         "doc.solution": "Solution",
@@ -200,6 +202,8 @@ PHRASES: dict[str, dict[str, str]] = {
     "nl": {
         "square": "r{row}k{col}",
         "doc.figures": "De figuren",
+        "doc.rules_title": "Spelregels",
+        "doc.how": "Zo kom je erop.",
         "doc.clues": "Aanwijzingen",
         "doc.question": "Vraag",
         "doc.solution": "Oplossing",
