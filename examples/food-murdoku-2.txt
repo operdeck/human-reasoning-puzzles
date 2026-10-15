@@ -1,0 +1,61 @@
+# Food Murdoku 6x6 - "Five suspects, one victim" (subsumption)
+#
+# Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
+# deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
+#
+# Solution: Onigiri r1c2, Okonomiyaki r2c3, Mochi r3c1, Sushi r4c5, Tonkatsu r5c6, Jos r6c4.
+# Jos shares Kobe with Sushi, the food he is about to eat.
+#
+Size: 6
+Language: en
+
+Words:
+kobe: in Kobe
+osaka: in Osaka
+fukuoka: in Fukuoka
+tokyo: in Tokyo
+nagoya: in Nagoya
+
+Regions:
+kobe: kobe #CBE6B9
+osaka: osaka #F3EDA2
+fukuoka: fukuoka #D8D2F0
+tokyo: tokyo #FADFB5
+nagoya: nagoya #BEE5D6
+
+Grid:
+nagoya fukuoka fukuoka fukuoka fukuoka fukuoka
+nagoya fukuoka fukuoka fukuoka fukuoka tokyo
+nagoya fukuoka fukuoka fukuoka fukuoka tokyo
+nagoya fukuoka fukuoka kobe kobe tokyo
+nagoya osaka osaka kobe tokyo tokyo
+nagoya osaka osaka kobe kobe kobe
+
+Objects:
+barrel: blocking r6c5
+vase: blocking r2c6
+table: standable r4c3 r4c4
+bench: standable r6c3 r6c4
+
+Attributes:
+food: Onigiri Okonomiyaki Mochi Sushi Tonkatsu
+
+People:
+Onigiri
+Okonomiyaki
+Mochi
+Sushi
+Tonkatsu
+Jos
+
+Rules:
+alone_with Jos attribute:food
+
+Clues:
+left_of Mochi Okonomiyaki
+next_to Jos barrel
+outside Onigiri nagoya
+left_of Sushi Tonkatsu
+at_least Jos Onigiri 7
+in_column Sushi 5
+in_row Mochi 3
