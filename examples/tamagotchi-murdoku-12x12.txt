@@ -81,7 +81,6 @@ left_of Ichigotchi Gozarutchi
 left_of Tarakotchi Hashizotchi
 in_row Mametchi 3
 same_region Kuchipatchi Gozarutchi
-left_of Pianitchi Gozarutchi
 above Tarakotchi Kuchipatchi
 outside Tarakotchi lilac_library
 not_next_to Ichigotchi sakura
@@ -93,7 +92,6 @@ outside Tarakotchi orange_market
 above Masktchi Lovelitchi 3
 in_region Ichigotchi green_garden
 adjacent_regions Lovelitchi Masktchi
-adjacent_regions Kuchipatchi Violetchi
 
 # Booklet text for --docx (optional).
 Title:
