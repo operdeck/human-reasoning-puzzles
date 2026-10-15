@@ -67,17 +67,11 @@ alone_with Verzorger attribute:dier
 Clues:
 in_region Gibbon moeras
 next_to Tijger bank
-at_least Makaak Tijger 5
 in_row Capibara 4
 above Makaak Gibbon
 within Capibara Ree 3
 within Capibara Makaak 3
-above Makaak Capibara
-left_of Gibbon Tijger
-not_next_to Ree bank
-outside Ree jungle
 left_of Capibara Gibbon
-left_of Ree Tijger
 
 # Booklet text for --docx (optional).
 Title:

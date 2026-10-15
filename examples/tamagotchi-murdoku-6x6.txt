@@ -44,7 +44,6 @@ Words:
 target.attribute: a {name}
 
 Clues:
-alone_with Akumatchi attribute:friend
 next_to Masktchi sakura
 adjacent_regions Kuchipatchi Masktchi
 in_corner Memetchi

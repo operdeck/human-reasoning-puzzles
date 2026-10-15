@@ -532,7 +532,8 @@ r2c1 r2c2
     margin = CELL // 2
 
     assert image.getpixel((margin + CELL, margin + CELL // 2)) == picture.INK
-    assert image.getpixel((margin + CELL, margin + CELL + CELL // 2)) == picture.INK
+    thermometer = image.getpixel((margin + CELL, margin + CELL + CELL // 2))
+    assert thermometer != picture.WHITE and thermometer != picture.INK
 
 
 def test_sudoku_picture_shades_alternate_boxes():

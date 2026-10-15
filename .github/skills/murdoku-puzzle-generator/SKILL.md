@@ -137,6 +137,10 @@ uv run csp <file.txt> --lint
   unexpected results with the image rather than changing the source puzzle.
 - A generated puzzle's `--brute-force` check must finish within 5 seconds. If it
   takes longer, add clues or shrink the board rather than accepting a slow check.
+- Never wait on a solve or brute-force run: give every trial (also each one of a
+  clue-thinning loop) a limit of a few seconds, for example `signal.alarm(5)`, and
+  kill the process when it is exceeded. Treat a timeout as "not unique/solvable
+  with this clue set" and keep the clue; do not let a loop run for minutes.
 - `--grade` reports the hardest rule this solver used, or `unsolved`. For a
   generated puzzle, require a solved grade and compare it with the user's
   target. For a transcription, `unsolved` means this solver's deduction rules
