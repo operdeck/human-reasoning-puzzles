@@ -219,7 +219,7 @@ def test_zoo_roles_are_not_called_roles():
     from csp.story import explain
 
     text = explain(_read("zoo-murdoku-1"), numbered=False)
-    assert "de rol" not in text and "is geen tijger" in text
+    assert "de rol" not in text and "is geen aap" in text
 
 
 def test_no_example_has_an_implied_clue():
@@ -230,3 +230,25 @@ def test_no_example_has_an_implied_clue():
         text = path.read_text()
         if detect(text) == "murdoku":
             assert not implied_clues(load_board(text)[1]), path.name
+
+
+def _lint_output(text):
+    from csp.cli import _murdoku_lint
+    from csp.core import Model  # noqa: F401
+    from csp.murdoku import compile_puzzle
+    from csp.puzzlefile import load_board
+
+    board, clues = load_board(text)
+    model = compile_puzzle(board, clues)
+    return "\n".join(_murdoku_lint(board, clues, model, text))
+
+
+def test_zoo_puzzles_have_no_one_person_role():
+    for i in (1, 2, 3):
+        assert "can only be held" not in _lint_output(_read(f"zoo-murdoku-{i}"))
+
+
+def test_single_holder_role_is_linted():
+    text = _read("zoo-murdoku-1").replace("RoleEligibility:\n", "RoleEligibility:\nsolo: Tijger\n")
+    text = text.replace("Roles:\n", "Roles:\nsolo: 1\n")
+    assert "role solo can only be held by Tijger" in _lint_output(text)

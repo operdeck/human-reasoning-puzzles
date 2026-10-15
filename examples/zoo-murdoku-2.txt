@@ -42,15 +42,12 @@ bank: standable r1c1 r1c2
 
 Attributes:
 aap: Makaak Gibbon
-tijger: Tijger
 dier: Tijger Makaak Gibbon Zebra Ree
 
 Roles:
-tijger: 1
 aap: 2
 
 RoleEligibility:
-tijger: attribute:tijger
 aap: attribute:aap
 
 People:
@@ -62,7 +59,7 @@ Ree
 Verzorger
 
 Rules:
-role_occupant tijger alone
+alone Tijger
 role_occupant aap not_alone
 alone_with Verzorger attribute:dier
 

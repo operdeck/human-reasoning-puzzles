@@ -283,6 +283,13 @@ def _murdoku_lint(
             or role.eligible_people is not None
         ):
             role_references.add(role.name)
+    for role in board.roles:
+        if role.eligible_people is not None and len(role.eligible_people) == 1:
+            (only,) = role.eligible_people
+            findings.append(
+                f"warning: role {role.name} can only be held by {only}; "
+                f"state it about {only} instead of making it a role"
+            )
     for role_name in sorted(board.role_names - role_references):
         findings.append(f"warning: role {role_name} is declared but unused")
     return findings
