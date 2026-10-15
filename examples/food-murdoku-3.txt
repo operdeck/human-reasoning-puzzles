@@ -37,7 +37,8 @@ table: blocking r6c7
 table: blocking r3c1
 table: blocking r3c3
 table: blocking r4c3
-bench: standable r4c2 r5c2
+bench: standable r4c2
+bench: standable r5c2
 
 Attributes:
 food: Tonkatsu Yakitori Tempura Okonomiyaki Gyoza Sushi
