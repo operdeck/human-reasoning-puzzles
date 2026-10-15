@@ -67,8 +67,11 @@ PHRASES: dict[str, dict[str, str]] = {
             "Cells marked {abbr} are {name} cells: whoever stands on one shares the area "
             "with someone else."
         ),
-        "doc.attribute": "The {name} attribute belongs to {people}.",
-        "doc.role": "The {name} role is held by {count}{extra}.",
+        "doc.area_tag": "The {tag} are {areas}.",
+        "doc.attributes": "The attributes",
+        "doc.attribute": "{people}",
+        "doc.roles": "The roles",
+        "doc.role": "held by {count}{extra}",
         "doc.count_one": "exactly one person",
         "doc.count_exact": "exactly {n} people",
         "doc.count_any": "any number of people",
@@ -242,8 +245,11 @@ PHRASES: dict[str, dict[str, str]] = {
             "Vakjes met {abbr} zijn {name}-vakjes: wie daar staat, deelt het gebied met "
             "iemand anders."
         ),
-        "doc.attribute": "Het kenmerk {name} hebben: {people}.",
-        "doc.role": "De rol {name} heeft {count}{extra}.",
+        "doc.area_tag": "De {tag} zijn {areas}.",
+        "doc.attributes": "De kenmerken",
+        "doc.attribute": "{people}",
+        "doc.roles": "De rollen",
+        "doc.role": "heeft {count}{extra}",
         "doc.count_one": "precies één persoon",
         "doc.count_exact": "precies {n} mensen",
         "doc.count_any": "een willekeurig aantal mensen",
@@ -1783,17 +1789,27 @@ def board_notes(text: str) -> list[str]:
         return say.words.get(raw, raw.replace("_", " "))
 
     notes = []
+    for tag, members in board.area_tags.items():
+        areas = [
+            board.region_names[r].replace("_", " ").capitalize()
+            for r in sorted(board.region_ids(members))
+        ]
+        label = re.sub(r"^(in |the )+", "", name(tag))
+        notes.append(say("doc.area_tag", tag=label, areas=say.join(areas)))
     for mark in board.marks:
         key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
         notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
-    for attribute, holders in board.attributes.items():
-        if "target.attribute" in say.phrases:
-            break
-        people = [person for person in board.people if person in holders]
-        notes.append(say("doc.attribute", name=name(attribute), people=say.join(people)))
+    return notes
+
+
+def role_list(text: str) -> list[tuple[str, str]]:
+    """(role name, plain description) for each role, for a list beside the board."""
+    board, _ = load_board(text)
+    say = Wording.read(text)
+    if "role_has" in say.phrases:
+        return []
+    out = []
     for role in board.roles:
-        if "role_has" in say.phrases:
-            break
         counts = sorted(role.allowed_counts)
         if counts == [1]:
             count = say("doc.count_one")
@@ -1807,8 +1823,23 @@ def board_notes(text: str) -> list[str]:
         if role.eligible_people is not None:
             chosen = [person for person in board.people if person in role.eligible_people]
             extra += say("doc.extra_from", people=say.join(chosen))
-        notes.append(say("doc.role", name=name(role.name), count=count, extra=extra))
-    return notes
+        name = say.words.get(role.name, role.name.replace("_", " "))
+        out.append((name, say("doc.role", count=count, extra=extra)))
+    return out
+
+
+def attribute_list(text: str) -> list[tuple[str, str]]:
+    """(attribute name, the people who have it) for a list beside the board."""
+    board, _ = load_board(text)
+    say = Wording.read(text)
+    if "target.attribute" in say.phrases:
+        return []
+    out = []
+    for attribute, holders in board.attributes.items():
+        people = [person for person in board.people if person in holders]
+        name = say.words.get(attribute, attribute.replace("_", " "))
+        out.append((name, say("doc.attribute", people=say.join(people))))
+    return out
 
 
 def phrase(text: str, key: str) -> str:

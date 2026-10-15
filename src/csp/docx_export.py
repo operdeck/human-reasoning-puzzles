@@ -14,7 +14,7 @@ from typing import Any
 
 from . import icons, picture
 from .puzzlefile import Figure, Presentation, load_board, load_presentation
-from .story import board_notes, clue_paragraphs, explain, phrase
+from .story import attribute_list, board_notes, clue_paragraphs, explain, phrase, role_list
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
 BOARD_WIDTH_CM = 11.6
@@ -102,6 +102,18 @@ def _figure_list(cell: Any, text: str, presentation: Presentation, source: Path)
         paragraph.add_run(person).bold = True
         if figure is not None and figure.description:
             paragraph.add_run(f": {figure.description}")
+    for key, items in (("doc.attributes", attribute_list(text)), ("doc.roles", role_list(text))):
+        if not items:
+            continue
+        heading = cell.add_paragraph()
+        heading.paragraph_format.space_before = Pt(8)
+        heading.paragraph_format.space_after = Pt(4)
+        _section_run(heading.add_run(phrase(text, key)))
+        for name, description in items:
+            paragraph = cell.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(3)
+            paragraph.add_run(name).bold = True
+            paragraph.add_run(f": {description}")
 
 
 @dataclass(frozen=True)
