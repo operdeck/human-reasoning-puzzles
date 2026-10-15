@@ -120,7 +120,10 @@ def murdoku_picture(
         elif obj.kind == "standable":
             long_vertical = y1 - y0 > x1 - x0
             rotate = (base == "bed" or seat) and long_vertical
-            if occupied & set(piece) and not stretch:
+            if seat:
+                # Keep the seat's proportions and fit it to the whole footprint.
+                _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.9, rotate=rotate, fit_box=True)
+            elif occupied & set(piece) and not stretch:
                 y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
                 _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
             else:
@@ -848,8 +851,13 @@ def _icon(
     scale: float = 0.72,
     stretch: bool = False,
     rotate: bool = False,
+    fit_box: bool = False,
 ) -> None:
-    """Draw `name`'s icon centred in `area`; `stretch` fills the area instead."""
+    """Draw `name`'s icon centred in `area`; `stretch` fills the area instead.
+
+    `fit_box` keeps the aspect ratio but fits the icon to the whole area, so a
+    long seat spanning two squares is drawn long rather than one square big.
+    """
     x0, y0, x1, y1 = area
     normalized = name.rstrip("0123456789").rstrip("_").lower()
     if normalized in CARPET_NAMES:
@@ -870,6 +878,10 @@ def _icon(
         pad = cell // 10
         size = (x1 - x0 - 2 * pad, y1 - y0 - 2 * pad)
         picture = picture.resize(size, Image.Resampling.LANCZOS)
+    elif fit_box:
+        picture = picture.crop(picture.getchannel("A").getbbox())
+        box_size = (int((x1 - x0) * scale), int((y1 - y0) * scale))
+        picture.thumbnail(box_size, Image.Resampling.LANCZOS)
     else:
         side = int(min(x1 - x0, y1 - y0) * scale)
         picture.thumbnail((side, side), Image.Resampling.LANCZOS)
