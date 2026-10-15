@@ -751,3 +751,14 @@ def test_every_object_in_the_examples_has_an_icon():
         assert picture.unknown_object_icons(board) == [], path.name
         checked += 1
     assert checked >= 5
+
+
+def test_blocked_squares_carry_a_red_no_entry_sign():
+    board, _ = load_board((EXAMPLES / "tamagotchi-murdoku-9x9.txt").read_text())
+    image = picture.murdoku_picture(board, legend=False).convert("RGB")
+    cell, margin = 120, 60
+    blocked = sorted(board.blocked)[0]
+    x, y = margin + blocked.col * cell, margin + blocked.row * cell
+    # the ring's left edge, well clear of the icon in the middle
+    r, g, b = image.getpixel((x + int(cell * 0.14) + 2, y + cell // 2))
+    assert r > g + 40 and r > b + 40

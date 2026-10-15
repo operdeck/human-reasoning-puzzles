@@ -98,6 +98,7 @@ def murdoku_picture(
             fill = fills[board.region_of(sq)]
             draw.rectangle(box(sq), fill=_darker(fill) if sq in blocked else fill)
     _hatch(image, board, box, cell)
+    _no_entry(image, [box(sq) for sq in sorted(blocked)], cell)
     _walls(
         draw,
         board.size,
@@ -998,6 +999,23 @@ def _drop_floor_lamp(picture: Image.Image) -> Image.Image:
 
 # Per-icon touch-ups, by code point.
 ICON_FIXES = {"1f6cb": _drop_floor_lamp}
+
+
+def _no_entry(image: Image.Image, boxes: Sequence[Box], cell: int) -> None:
+    """A translucent red 'no entry' sign behind the icon of every blocked square."""
+    if not boxes:
+        return
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    paint = ImageDraw.Draw(overlay)
+    red = (200, 40, 40, 150)
+    width = max(3, cell // 16)
+    for x0, y0, x1, y1 in boxes:
+        pad = cell * 0.14
+        ring = (x0 + pad, y0 + pad, x1 - pad, y1 - pad)
+        paint.ellipse(ring, outline=red, width=width)
+        slant = pad + width * 0.8
+        paint.line((x0 + slant, y0 + slant, x1 - slant, y1 - slant), fill=red, width=width)
+    image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
 
 
 def _name_tag(

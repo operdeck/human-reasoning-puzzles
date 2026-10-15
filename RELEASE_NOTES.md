@@ -14,6 +14,7 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* Murdoku PNG: blocked squares show a translucent red "no entry" sign behind their object, so blocking and standable objects are told apart.
 * Booklet lists attributes and roles beside the board; area tags (e.g. "noble areas") are now named in the PNG legend and the booklet rules.
 * Clues thinned in zoo, food-2 and tamagotchi puzzles and sudoku givens in the anti/relations examples (still unique); clearer wording for `furthest`/`alone`; thermometers and mark legends render cleanly; booklet layout follows the Prrrdoku style.
 * [#28 Create docx from puzzle description](https://github.com/operdeck/human-reasoning-puzzles/issues/28)
