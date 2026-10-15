@@ -67,7 +67,10 @@ clues in their printed order. Never infer an object's kind from its name or icon
    transcribed clues just to force uniqueness or a desired grade.
 7. Add booklet text per [Booklet Metadata](#booklet-metadata): the source's title,
    introduction and question, and its own clue wording as `| wording` after each
-   clue line, so the booklet reads like the original.
+   clue line, so the booklet reads like the original. Do not pad the puzzle with
+   clues another clue already implies (`lint` warns). If roles or attributes are
+   really kinds (species, foods), reword them in `Words:` (`role_has`, `role_not`,
+   `target.attribute`) instead of "has the role tiger".
 
 ### Paired Solution Evidence
 

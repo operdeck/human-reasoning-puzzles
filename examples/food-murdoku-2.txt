@@ -15,6 +15,7 @@ osaka: in Osaka
 fukuoka: in Fukuoka
 tokyo: in Tokyo
 nagoya: in Nagoya
+target.attribute: a {name}
 
 Regions:
 kobe: kobe #CBE6B9

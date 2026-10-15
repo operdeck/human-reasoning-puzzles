@@ -12,7 +12,7 @@ from docx import Document
 from csp.cli import main
 from csp.docx_export import Entry, write_booklet
 from csp.puzzlefile import load_presentation
-from csp.story import clue_texts
+from csp.story import clue_paragraphs, clue_texts
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
 PRRRDOKUS = ["prrrdoku1", "prrrdoku2", "prrrdoku3"]
@@ -53,7 +53,7 @@ def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
     write_docx(plain, out, source.parent)
     text = _text(out)
     assert "Clues" in text
-    assert all(sentence in text for sentence in clue_texts(plain))
+    assert all(paragraph in text for paragraph in clue_paragraphs(plain))
 
 
 def test_missing_figure_image_falls_back_to_text(tmp_path):
@@ -175,3 +175,58 @@ def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     assert len(headings) == 2 and headings[1].startswith("Solution")
     assert any(p.text == "Rules" for p in document.paragraphs)
     assert len(document.inline_shapes) == 2
+
+
+def _read(name):
+    return (EXAMPLES / f"{name}.txt").read_text()
+
+
+def test_clues_are_grouped_per_person():
+    paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
+    makaak = next(p for p in paragraphs if p.startswith("Makaak"))
+    assert makaak == "Makaak is in de Bergen en zit niet naast de struik of de bank."
+    assert sum(p.startswith("Giraffe") for p in paragraphs) == 1
+
+
+def test_exactly_one_same_region_reads_as_either_or():
+    paragraphs = clue_paragraphs(_read("murdoku_sparse_mystery"))
+    assert any("same region as either Mara or Ria" in p for p in paragraphs)
+
+
+def test_two_alternatives_read_as_either_or_not_both():
+    clues = clue_texts(_read("murdoku_house"))
+    assert any(c.startswith("Either Ada is in the study, or Ben is in the hall") for c in clues)
+
+
+def test_attribute_target_can_be_reworded():
+    paragraphs = clue_paragraphs(_read("tamagotchi-murdoku-12x12"))
+    assert (
+        "Akumatchi shares a region with exactly one other person, and that is a friend."
+        in paragraphs
+    )
+
+
+def test_solution_without_clue_numbers():
+    from csp.story import explain
+
+    assert (
+        "(" not in explain(_read("zoo-murdoku-1"), numbered=False).replace("**", "").split(":")[0]
+    )
+    assert "which clue" not in explain(_read("murdoku_composition"), numbered=False)
+
+
+def test_zoo_roles_are_not_called_roles():
+    from csp.story import explain
+
+    text = explain(_read("zoo-murdoku-1"), numbered=False)
+    assert "de rol" not in text and "is geen tijger" in text
+
+
+def test_no_example_has_an_implied_clue():
+    from csp.murdoku import implied_clues
+    from csp.puzzlefile import detect, load_board
+
+    for path in sorted(EXAMPLES.glob("*.txt")):
+        text = path.read_text()
+        if detect(text) == "murdoku":
+            assert not implied_clues(load_board(text)[1]), path.name

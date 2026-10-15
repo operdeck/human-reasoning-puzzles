@@ -14,7 +14,7 @@ from typing import Any
 
 from . import icons, picture
 from .puzzlefile import Figure, Presentation, load_board, load_presentation
-from .story import clue_texts, explain, phrase
+from .story import clue_paragraphs, explain, phrase
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
 BOARD_WIDTH_CM = 9.0
@@ -24,6 +24,9 @@ FIXED_CM = 7.5
 CLUE_LINE_CM = 0.5
 SMALL_CLUE_LINE_CM = 0.4
 MANY_CLUES = 18
+CLUE_LINE_CHARS = 105
+MANY_SOLUTION_LINES = 30
+SOLUTION_MIN_BOARD_CM = 5.0
 FIGURE_LINE_CM = 1.2
 FIGURE_IMAGE_CM = 0.8
 GENERIC_BOARD_WIDTH_CM = 14.0
@@ -179,25 +182,21 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
     for line in presentation.intro or [phrase(text, "doc.rules")]:
         _runs(document.add_paragraph(style="List Bullet"), line)
-    clues = clue_texts(text)
+    clues = clue_paragraphs(text, presentation.clue_text)
     stream, aspect = _picture_stream(text, None, None)
     figure_lines = 2 if presentation.figures else 1
-    width = _puzzle_board_width(aspect, len(clues), figure_lines)
+    clue_lines = sum(-(-len(clue) // CLUE_LINE_CHARS) for clue in clues)
+    width = _puzzle_board_width(aspect, clue_lines, figure_lines)
     document.add_picture(stream, width=Cm(width))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     _figures(document, text, presentation, entry.path)
 
     document.add_heading(phrase(text, "doc.clues"), level=2)
-    for number, generated in enumerate(clues, 1):
-        wording = presentation.clue_text.get(number, generated)
+    for clue in clues:
         paragraph = document.add_paragraph()
-        paragraph.paragraph_format.left_indent = Cm(0.8)
-        paragraph.paragraph_format.first_line_indent = Cm(-0.8)
-        paragraph.paragraph_format.space_after = Pt(1)
-        paragraph.add_run(f"{number}.\t")
-        _runs(paragraph, wording)
-        if len(clues) > MANY_CLUES:
-            paragraph.paragraph_format.space_after = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(2)
+        _runs(paragraph, clue)
+        if clue_lines > MANY_CLUES:
             for run in paragraph.runs:
                 run.font.size = Pt(9)
     if presentation.question:
@@ -206,7 +205,7 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool) -> None:
 
 def _add_solution(document: Any, entry: Entry, title: str) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Cm
+    from docx.shared import Cm, Pt
 
     if entry.kind != "murdoku":
         _add_generic(document, entry, title, True, solved=True)
@@ -216,13 +215,21 @@ def _add_solution(document: Any, entry: Entry, title: str) -> None:
     heading = document.add_heading(title, level=1)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
     heading.paragraph_format.page_break_before = True
-    stream, _ = _picture_stream(text, entry.solution, entry.role_statuses)
-    document.add_picture(stream, width=Cm(BOARD_WIDTH_CM))
+    stream, aspect = _picture_stream(text, entry.solution, entry.role_statuses)
+    blocks = [b.strip().removeprefix("- ") for b in explain(text, numbered=False).split("\n\n")]
+    blocks = [b for b in blocks if b]
+    lines = sum(-(-len(b) // CLUE_LINE_CHARS) for b in blocks)
+    small = lines > MANY_SOLUTION_LINES
+    width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0)
+    document.add_picture(stream, width=Cm(max(width, SOLUTION_MIN_BOARD_CM)))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     document.add_heading(phrase(text, "doc.how"), level=2)
-    for block in explain(text).split("\n\n"):
-        if block.strip():
-            _runs(document.add_paragraph(style="List Bullet"), block.strip().removeprefix("- "))
+    for block in blocks:
+        paragraph = document.add_paragraph(style="List Bullet")
+        _runs(paragraph, block)
+        if small:
+            for run in paragraph.runs:
+                run.font.size = Pt(8)
     for line in presentation.reveal:
         _centred(document, line)
 

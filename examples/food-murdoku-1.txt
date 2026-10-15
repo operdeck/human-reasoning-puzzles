@@ -14,6 +14,7 @@ kobe: in Kobe
 tokyo: in Tokyo
 sapporo: in Sapporo
 kyoto: in Kyoto
+target.attribute: a {name}
 
 Regions:
 kobe: kobe #DCDCDC

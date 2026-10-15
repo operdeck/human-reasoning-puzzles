@@ -303,7 +303,7 @@ role_on Ada guide altar
         == "exactly one of Ada, Ben and Cal has the glasses attribute"
     )
     assert english._quantified_text(english.quantified_conditions["alone_with Ada role:guide"]) == (
-        "Ada shares a region with exactly one other person: a guide holder"
+        "Ada shares a region with exactly one other person, and that is a guide holder"
     )
     assert english._quantified_text(english.quantified_conditions["above Ada tag:inside"]) == (
         "Ada is somewhere above someone in the kitchen"
@@ -326,7 +326,7 @@ role_on Ada guide altar
         "Ben heeft het kenmerk bril"
     )
     assert dutch._quantified_text(dutch.quantified_conditions["alone_with Ada role:guide"]) == (
-        "Ada deelt een gebied met precies één ander persoon: een gids-drager"
+        "Ada deelt een gebied met precies één ander persoon, en dat is een gids-drager"
     )
     assert "iemand in de keuken" in dutch._quantified_text(
         dutch.quantified_conditions["above Ada tag:inside"]
@@ -360,7 +360,9 @@ role_on Ada guide altar
 """
     story = explain(text)
 
-    assert "Ada shares a region with exactly one other person: a guide holder (1)" in story
+    assert (
+        "Ada shares a region with exactly one other person, and that is a guide holder (1)" in story
+    )
     assert "she must be on the altar" in story
 
 
@@ -694,7 +696,7 @@ def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
 
 def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():
     story = explain((EXAMPLES / "murdoku_house.txt").read_text())
-    assert "Exactly one of these is true: Ada is in the study; Ben is in the hall (1)." in story
+    assert "Either Ada is in the study, or Ben is in the hall, but not both (1)." in story
     assert "Ben is on r3c4, so Ada is not in the study" in story
 
 

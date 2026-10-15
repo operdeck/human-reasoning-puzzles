@@ -16,6 +16,9 @@ woestijn: in de Woestijn
 savanne: in de Savanne
 rivier: in de Rivier
 bergen: in de Bergen
+target.attribute: een {name}
+role_has: {who} is een {role}
+role_not: {who} is geen {role}
 
 Regions:
 moeras: moeras #CBE6B9
