@@ -1,0 +1,67 @@
+# Food Murdoku 7x7 - "The last bowl" (needs what-if)
+#
+# Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
+# deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
+#
+# Solution: Tonkatsu r1c3, Yakitori r2c2, Tempura r3c7, Okonomiyaki r4c1, Gyoza r5c5, Sushi r6c6, Jos r7c4.
+# Jos shares Nagoya with Gyoza, the food he is about to eat.
+#
+Size: 7
+Language: en
+
+Words:
+fukuoka: in Fukuoka
+sapporo: in Sapporo
+sendai: in Sendai
+tokyo: in Tokyo
+nagoya: in Nagoya
+
+Regions:
+fukuoka: fukuoka #CBE6B9
+sapporo: sapporo #FADFB5
+sendai: sendai #BEE5D6
+tokyo: tokyo #D8D2F0
+nagoya: nagoya #C4DCF2
+
+Grid:
+fukuoka fukuoka fukuoka nagoya tokyo tokyo tokyo
+fukuoka fukuoka nagoya nagoya tokyo tokyo sendai
+fukuoka fukuoka nagoya nagoya tokyo sendai sendai
+fukuoka fukuoka nagoya nagoya tokyo sendai sendai
+fukuoka fukuoka nagoya nagoya nagoya sendai sendai
+sapporo sapporo nagoya nagoya nagoya sendai sendai
+sapporo sapporo sapporo nagoya sendai sendai sendai
+
+Objects:
+tree: blocking r6c7
+statue: blocking r3c1
+table: standable r3c3 r4c3
+bench: standable r4c2 r5c2
+
+Attributes:
+food: Tonkatsu Yakitori Tempura Okonomiyaki Gyoza Sushi
+
+People:
+Tonkatsu
+Yakitori
+Tempura
+Okonomiyaki
+Gyoza
+Sushi
+Jos
+
+Rules:
+alone_with Jos attribute:food
+
+Clues:
+outside Gyoza tokyo
+at_least Gyoza Tempura 4
+in_column Gyoza 5
+above Gyoza Jos
+not_next_to Yakitori bench
+outside Yakitori nagoya
+left_of Okonomiyaki Tempura
+above Tonkatsu Yakitori
+at_least Okonomiyaki Sushi 7
+in_row Sushi 6
+at_least Okonomiyaki Tempura 7
