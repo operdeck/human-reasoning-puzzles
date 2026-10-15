@@ -1060,6 +1060,15 @@ class _Legend:
         self.item_names = sorted(board.edge_item_names | board.corner_object_names)
         self.mark_names = sorted(board.mark_names)
         self.role_names = sorted(board.role_names) if show_roles else []
+        self.tag_lines = [
+            f"{tag.replace('_', ' ').capitalize()}: "
+            + ", ".join(
+                board.region_names[rid].replace("_", " ").capitalize()
+                for rid in board.region_names
+                if rid in board.region_ids(members)
+            )
+            for tag, members in board.area_tags.items()
+        ]
         count_size = max(10, cell // 10)
         self.count_font = _font(count_size)
         self.count_line = int(count_size * 1.6)
@@ -1076,7 +1085,13 @@ class _Legend:
         ]
         self.count_rows = sum(max(1, len(lines)) for lines in self.global_count_lines)
         self.height = (
-            (self.rows + len(self.item_names) + len(self.mark_names) + len(self.role_names))
+            (
+                self.rows
+                + len(self.item_names)
+                + len(self.mark_names)
+                + len(self.role_names)
+                + len(self.tag_lines)
+            )
             * self.line
             + self.count_rows * self.count_line
             + cell // 6
@@ -1183,7 +1198,11 @@ class _Legend:
                 font=role_font,
                 anchor="lm",
             )
-        top = y + (role_offset + len(self.role_names)) * self.line
+        tag_offset = role_offset + len(self.role_names)
+        for i, line in enumerate(self.tag_lines):
+            top = y + (tag_offset + i) * self.line
+            draw.text((x, top + self.swatch / 2), line, fill=INK, font=font, anchor="lm")
+        top = y + (tag_offset + len(self.tag_lines)) * self.line
         for lines in self.global_count_lines:
             for line in lines or [""]:
                 draw.text(

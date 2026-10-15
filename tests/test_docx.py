@@ -268,13 +268,28 @@ def test_furthest_clue_names_nobody_to_compare_with():
     assert "dan Tim" not in " ".join(clue_paragraphs(text))
 
 
-def test_board_notes_explain_marks_attributes_and_roles():
-    from csp.story import board_notes
+def test_board_notes_explain_marks_and_attributes_and_roles_are_listed_apart():
+    from csp.story import attribute_list, board_notes, role_list
 
     notes = board_notes(_read("murdoku_composition"))
     assert any("whoever stands on one is alone in their area" in n for n in notes)
-    assert any(n.startswith("The trained attribute") for n in notes)
-    assert any("navigator role is held by exactly one person" in n for n in notes)
+    assert not any("trained" in n for n in notes)
+    assert ("trained", "Cal and Dee") in attribute_list(_read("murdoku_composition"))
+    assert not any("navigator" in n for n in notes)
+    assert ("navigator", "held by exactly one person, chosen from Cal and Dee") in role_list(
+        _read("murdoku_composition")
+    )
+
+
+def test_booklet_lists_roles_beside_the_board(tmp_path):
+    out = tmp_path / "r.docx"
+    assert main([str(EXAMPLES / "murdoku_composition.txt"), "--docx", str(out)]) == 0
+    cell = Document(str(out)).tables[0].rows[0].cells[1]
+    texts = [p.text for p in cell.paragraphs]
+    assert "The attributes" in texts
+    assert "The roles" in texts
+    assert "trained: Cal and Dee" in texts
+    assert any(t.startswith("navigator: held by") for t in texts)
 
 
 def test_booklet_numbers_the_clues_and_lists_the_figures_beside_the_board(tmp_path):
@@ -285,3 +300,10 @@ def test_booklet_numbers_the_clues_and_lists_the_figures_beside_the_board(tmp_pa
     assert len(document.tables) == 1
     names = [p.text for p in document.tables[0].rows[0].cells[1].paragraphs]
     assert any(n.startswith("Vladimir") for n in names)
+
+
+def test_board_notes_name_the_areas_of_a_tag():
+    from csp.story import board_notes
+
+    notes = board_notes(_read("murdoku_sparse_mystery"))
+    assert "The noble areas are Maras house and Blue hall." in notes
