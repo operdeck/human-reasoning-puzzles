@@ -1,0 +1,55 @@
+# Food Murdoku 5x5 - "The first Japanese case" (four cities, relations)
+#
+# Japanese food as suspects, Japanese cities as areas. Jos is the victim. Hint: Jos
+# deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
+#
+# Solution: Ramen r1c4, Yakitori r2c3, Tonkatsu r3c1, Tempura r4c2, Jos r5c5.
+# Jos shares Kyoto with Tempura, the murderer.
+#
+Size: 5
+Language: en
+
+Words:
+hiroshima: in Hiroshima
+tokyo: in Tokyo
+sapporo: in Sapporo
+kyoto: in Kyoto
+
+Regions:
+hiroshima: hiroshima #DCDCDC
+tokyo: tokyo #FADFB5
+sapporo: sapporo #D8D2F0
+kyoto: kyoto #CBE6B9
+
+Grid:
+hiroshima tokyo tokyo tokyo tokyo
+hiroshima hiroshima tokyo tokyo tokyo
+hiroshima kyoto kyoto kyoto kyoto
+hiroshima kyoto kyoto kyoto kyoto
+hiroshima sapporo kyoto kyoto kyoto
+
+Objects:
+barrel: blocking r1c5
+tree: blocking r3c4
+bench: standable r1c4 r2c4
+
+Attributes:
+food: Ramen Yakitori Tonkatsu Tempura
+
+People:
+Ramen
+Yakitori
+Tonkatsu
+Tempura
+Jos
+
+Rules:
+alone_with Jos attribute:food
+
+Clues:
+at_least Ramen Tempura 5
+outside Yakitori hiroshima
+above Tempura Jos
+outside Tempura hiroshima
+in_column Jos 5
+next_to Ramen barrel
