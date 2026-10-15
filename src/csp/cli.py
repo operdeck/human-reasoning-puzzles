@@ -305,7 +305,7 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
 
 
 def _booklet(parser: argparse.ArgumentParser, pattern: str, docx: Any) -> int:
-    """One document (plus a `-solution` one with answers) for all Murdoku files matching `pattern`."""
+    """One booklet (plus a `-solution` one) for all Murdoku files matching `pattern`."""
     if docx is None:
         parser.error("a glob pattern needs --docx")
     files = [Path(name) for name in sorted(glob.glob(pattern))]
