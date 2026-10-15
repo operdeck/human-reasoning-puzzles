@@ -346,7 +346,7 @@ def _booklet(files: list[Path], docx: Any) -> int:
         print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
         return 2
     entries = []
-    for file in files:
+    for file in sorted(set(files), key=lambda path: (path.name.casefold(), str(path))):
         text = file.read_text()
         try:
             kind = detect(text)
