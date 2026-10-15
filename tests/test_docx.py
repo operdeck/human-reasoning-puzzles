@@ -307,3 +307,26 @@ def test_board_notes_name_the_areas_of_a_tag():
 
     notes = board_notes(_read("murdoku_sparse_mystery"))
     assert "The noble areas are Maras house and Blue hall." in notes
+
+
+def test_booklet_is_alphabetical_and_has_a_contents_page(tmp_path):
+    out = tmp_path / "t.docx"
+    names = [str(EXAMPLES / "zoo-murdoku-1.txt"), str(EXAMPLES / "food-murdoku-1.txt")]
+    assert main([*names, "--docx", str(out)]) == 0
+    document = Document(str(out))
+    texts = [p.text for p in document.paragraphs]
+    assert "Contents" in texts
+    lines = [t.split("\t")[0] for t in texts if "\t" in t and not t[0].isdigit()]
+    assert [line.split(":")[0] for line in lines] == [
+        "Food Murdoku 5x5",
+        "Dierentuin-murdoku 5x5",
+        "Solutions",
+    ]
+    xml = document.element.xml
+    assert 'w:anchor="puzzle0"' in xml and 'w:name="puzzle1"' in xml
+
+
+def test_single_puzzle_booklet_has_no_contents(tmp_path):
+    out = tmp_path / "s.docx"
+    assert main([str(EXAMPLES / "prrrdoku1.txt"), "--docx", str(out)]) == 0
+    assert "Contents" not in [p.text for p in Document(str(out)).paragraphs]

@@ -58,6 +58,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.clues": "Clues",
         "doc.question": "Question",
         "doc.solution": "Solution",
+        "doc.contents": "Contents",
+        "doc.solutions": "Solutions",
         "doc.answer": "Answer",
         "doc.mark": "Cells marked {abbr} are {name} cells.",
         "doc.mark_alone": (
@@ -236,6 +238,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.clues": "Aanwijzingen",
         "doc.question": "Vraag",
         "doc.solution": "Oplossing",
+        "doc.contents": "Inhoud",
+        "doc.solutions": "Oplossingen",
         "doc.answer": "Antwoord",
         "doc.mark": "Vakjes met {abbr} zijn {name}-vakjes.",
         "doc.mark_alone": (
