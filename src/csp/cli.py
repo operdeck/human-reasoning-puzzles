@@ -121,6 +121,29 @@ def narrate(rule: str, steps: Sequence[Step]) -> None:
         print(f"  ... {len(dropped)} option{'s' if len(dropped) != 1 else ''} ruled out")
 
 
+class _Fired:
+    """Collects each rule firing of one solve."""
+
+    def __init__(self) -> None:
+        self.items: list[tuple[str, Sequence[Step]]] = []
+
+    def append_step(self, rule: str, steps: Sequence[Step]) -> None:
+        self.items.append((rule, steps))
+
+
+def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) -> tuple[str, ...]:
+    """One line per placement, in solving order, capped at `limit` lines."""
+    lines = [
+        f"{s.literal} ({s.reason}; rule {rule})"
+        for rule, steps in fired
+        for s in steps
+        if s.asserted
+    ]
+    if len(lines) > limit:
+        lines = [*lines[:limit], f"... and {len(lines) - limit} more placements."]
+    return tuple(lines)
+
+
 def brute_force(puzzle: Puzzle, text: str) -> int:
     """Search for solutions without the engine. Exit code 0 means exactly one."""
     start = time.perf_counter()
@@ -331,7 +354,8 @@ def _booklet(files: list[Path], docx: Any) -> int:
         except ValueError as exc:
             print(f"could not read {file.name}: {exc}", file=sys.stderr)
             return 2
-        result = Solver(model).solve()
+        fired = _Fired()
+        result = Solver(model).solve(on_step=fired.append_step)
         placed = None
         roles = None
         if result.solved:
@@ -347,6 +371,7 @@ def _booklet(files: list[Path], docx: Any) -> int:
                 entry,
                 puzzle_image=make_image(kind, text),
                 solution_image=make_image(kind, text, placed) if placed is not None else None,
+                steps=solving_steps(fired.items),
             )
         entries.append(entry)
     docx_export.write_booklet(entries, out)
