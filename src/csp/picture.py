@@ -122,7 +122,16 @@ def murdoku_picture(
             rotate = (base == "bed" or seat) and long_vertical
             if seat:
                 # Keep the seat's proportions and fit it to the whole footprint.
-                _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.9, rotate=rotate, fit_box=True)
+                _icon(
+                    image,
+                    draw,
+                    name,
+                    (x0, y0, x1, y1),
+                    cell,
+                    scale=0.9,
+                    rotate=rotate,
+                    fit_box=True,
+                )
             elif occupied & set(piece) and not stretch:
                 y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
                 _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
