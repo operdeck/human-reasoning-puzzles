@@ -111,11 +111,15 @@ def murdoku_picture(
         piece = obj.squares
         x0, y0, _, _ = box(min(piece))
         _, _, x1, y1 = box(max(piece))
-        stretch = len(piece) > 1
-        if name.rstrip("0123456789").rstrip("_").lower() in WELL_NAMES:
+        base = name.rstrip("0123456789").rstrip("_").lower()
+        # Seats (bench/bank) keep their shape: a vertical seat is turned, never stretched.
+        seat = base in SEAT_NAMES
+        stretch = len(piece) > 1 and not seat
+        if base in WELL_NAMES:
             _draw_water_well(draw, (x0, y0, x1, y1))
         elif obj.kind == "standable":
-            rotate = name.rstrip("0123456789").rstrip("_").lower() == "bed" and y1 - y0 > x1 - x0
+            long_vertical = y1 - y0 > x1 - x0
+            rotate = (base == "bed" or seat) and long_vertical
             if occupied & set(piece) and not stretch:
                 y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
                 _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
@@ -176,6 +180,7 @@ def murdoku_picture(
 # Objects drawn by hand because Noto Emoji has no suitable picture.
 CARPET_NAMES = frozenset({"tapijt", "carpet", "rug"})
 WELL_NAMES = frozenset({"waterput", "well"})
+SEAT_NAMES = frozenset({"bench", "bank", "bankje"})
 
 
 def unknown_object_icons(board: Board) -> list[str]:
