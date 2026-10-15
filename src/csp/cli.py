@@ -17,6 +17,7 @@ from . import (
     bruteforce,
     calcudoku,
     futoshiki,
+    icons,
     kakurasu,
     logicgrid,
     minesweeper,
@@ -211,9 +212,13 @@ def _murdoku_lint(
         findings.append(f"warning: missing icon for {name}; PNG will use a text label")
 
     try:
-        load_presentation(text)
+        presentation = load_presentation(text)
     except ValueError as error:
         findings.append(f"warning: booklet text: {error}")
+    else:
+        for person, figure in presentation.figures.items():
+            if figure.icon and icons.code_for(figure.icon) is None:
+                findings.append(f"warning: unknown icon {figure.icon} for {person} in Figures")
 
     candidate_squares = {
         model.value_of(literal) for person in board.people for literal in model.options(person)
