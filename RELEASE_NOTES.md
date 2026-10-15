@@ -17,6 +17,7 @@
 * [#28 Create docx from puzzle description](https://github.com/operdeck/human-reasoning-puzzles/issues/28)
     * `--docx [FILE]` writes one editable Word booklet (per puzzle: title, board picture, figures, numbered human-readable clues, question), followed by the solved boards and worked solutions. Optional extra: `uv sync --extra docx`.
     * Every other puzzle family (sudoku, queens, tents, …) works too: a page with a one-line rule, the board, and the solved board on a separate page; no per-family processing.
+    * Booklet boards omit the solver's role/count legend lines and shrink for long clue lists so each puzzle fits one page; `--png` count lines are now readable.
     * `--docx` also accepts a quoted glob (e.g. `"examples/prrrdoku*.txt"`) to build one multi-puzzle booklet.
     * New optional puzzle-file sections `Title:`, `Intro:`, `Question:`, `Figures:` (with optional `image=`) and `Reveal:`, plus an optional `| wording` after a clue in `Clues:`; they never affect solving, lint or PNG. Added to the prrrdoku and Tamagotchi examples.
 * Tamagotchi Murdoku puzzles now use Japanese objects (shrine, castle, Mount Fuji, sakura, lanterns, taiko, tatami, ...); new icons added to `src/csp/icons.py`, `tatami` draws the rug icon.

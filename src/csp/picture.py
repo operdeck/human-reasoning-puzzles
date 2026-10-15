@@ -71,14 +71,16 @@ def murdoku_picture(
     cell: int = 120,
     coordinates: bool = True,
     legend: bool = True,
+    show_roles: bool = True,
 ) -> Image.Image:
     """The board, with `placed` people drawn on their squares if given.
 
     Without `legend` the picture is square, for documents with their own legend.
+    Without `show_roles` the legend leaves out the solver's role lines.
     """
     margin = cell // 2 if coordinates else cell // 6
     side = board.size * cell
-    key = _Legend(board, cell, role_statuses or {}, global_counts) if legend else None
+    key = _Legend(board, cell, role_statuses or {}, global_counts, show_roles) if legend else None
     height = side + 2 * margin + (key.height if key else 0)
     image = Image.new("RGB", (side + 2 * margin, height), WHITE)
     draw = ImageDraw.Draw(image)
@@ -1030,6 +1032,7 @@ class _Legend:
         cell: int,
         role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
         global_counts: Sequence[GlobalCountCondition] = (),
+        show_roles: bool = True,
     ) -> None:
         self.board = board
         self.cell = cell
@@ -1040,9 +1043,11 @@ class _Legend:
         self.rows = (len(board.region_names) + 1) // 2
         self.item_names = sorted(board.edge_item_names | board.corner_object_names)
         self.mark_names = sorted(board.mark_names)
-        self.role_names = sorted(board.role_names)
-        self.count_font = _font(max(8, cell // 16))
-        max_chars = max(18, int((board.size * cell // 2) / max(1, cell // 24)))
+        self.role_names = sorted(board.role_names) if show_roles else []
+        count_size = max(10, cell // 10)
+        self.count_font = _font(count_size)
+        self.count_line = int(count_size * 1.6)
+        max_chars = max(18, int(board.size * cell / (count_size * 0.55)))
         self.global_count_lines = [
             lines
             for index, condition in enumerate(self.global_counts, 1)
@@ -1055,12 +1060,11 @@ class _Legend:
         ]
         self.count_rows = sum(max(1, len(lines)) for lines in self.global_count_lines)
         self.height = (
-            self.rows
-            + len(self.item_names)
-            + len(self.mark_names)
-            + len(self.role_names)
-            + self.count_rows
-        ) * self.line + cell // 2
+            (self.rows + len(self.item_names) + len(self.mark_names) + len(self.role_names))
+            * self.line
+            + self.count_rows * self.count_line
+            + cell // 6
+        )
 
     def draw(self, image: Image.Image, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
         fills = _fills(self.board)
@@ -1160,15 +1164,14 @@ class _Legend:
                 font=role_font,
                 anchor="lm",
             )
-        count_row = role_offset + len(self.role_names)
+        top = y + (role_offset + len(self.role_names)) * self.line
         for lines in self.global_count_lines:
             for line in lines or [""]:
-                top = y + count_row * self.line
                 draw.text(
-                    (x, top + self.line / 2),
+                    (x, top + self.count_line / 2),
                     line,
                     fill=COUNT_SCOPE,
                     font=self.count_font,
                     anchor="lm",
                 )
-                count_row += 1
+                top += self.count_line
