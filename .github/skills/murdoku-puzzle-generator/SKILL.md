@@ -197,6 +197,8 @@ it.
   fallback but can look odd, so check the picture before keeping it. Footprints
   may cross region boundaries (connectivity is the only parser rule), but that
   is unusual and should be noted in the file header.
+  Blocking squares are drawn with a red cross, so a blocking object needs an
+  icon that still reads clearly behind it.
 - `EdgeItems:` declares named doors and windows without occupying cells.
   A simple door lists two orthogonally neighboring cells in different areas,
   for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider
