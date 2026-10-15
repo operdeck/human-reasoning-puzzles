@@ -60,6 +60,7 @@ CATALOGUE: dict[str, str] = {
     "spiegel": "1fa9e", "mirror": "1fa9e",
     "ladder": "1fa9c",
     "tafel": "1f37d", "table": "1f37d",
+    "bento": "1f371", "lunchbox": "1f371",
     "bureau": "1f5a5", "desk": "1f5a5", "computer": "1f5a5",
     "kookeiland": "1f373", "fornuis": "1f373", "stove": "1f373", "oven": "1f373",
     "kombuis": "1f372", "galley": "1f372",
