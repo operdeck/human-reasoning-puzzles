@@ -4,6 +4,7 @@
 **Licensing**
 * The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
 **Bug Fix(es)**
+* `--png` on a Murdoku puzzle with roles (e.g. `murdoku_composition.txt`) no longer crashes with `AttributeError: 'bool' object has no attribute 'col'`.
 * Name-vs-appearance consistency
     * `examples/murdoku_sparse_mystery.txt`: "Blue hall" is now blue instead of grey; all other examples audited, no other mismatches.
     * Added a test that colour words in region names match their background colour, plus guidance in the Murdoku skill and `AGENT.md`.

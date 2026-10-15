@@ -762,3 +762,9 @@ def test_blocked_squares_carry_a_red_cross():
     # a quarter of the way along the diagonal, clear of the centre
     r, g, b = image.getpixel((x + cell // 4, y + cell // 4))
     assert r > g + 40 and r > b + 40
+
+
+def test_picture_ignores_role_booleans_in_the_assignment(tmp_path):
+    out = tmp_path / "c.png"
+    assert cli.main([str(EXAMPLES / "murdoku_composition.txt"), "--png", str(out)]) == 0
+    assert out.exists()
