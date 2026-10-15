@@ -204,6 +204,8 @@ For ordinary objects, `next_to` means one orthogonal step (up, down, left, or ri
 * `ClueText:` lines `N: wording` replace the generated sentence for clue N. Without them every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura."
 * `Figures:` lines `Name: description ; image=path`; the path is relative to the puzzle file and a missing image falls back to text.
 
+Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page, with a matching `-solution` booklet.
+
 Needs `uv sync --extra docx` (python-docx).
 
 ## Other existing formats
