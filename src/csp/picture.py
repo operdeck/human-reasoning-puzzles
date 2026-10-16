@@ -365,7 +365,10 @@ def queens_picture(
     *,
     cell: int = 100,
 ) -> Image.Image:
-    """Draw region colours and the placed queens in blue."""
+    """Draw region colours and the placed queens (or dogs) in blue.
+
+    `puzzle.icon` picks the piece: a crown, a dog or a puppy.
+    """
     n = puzzle.size
     margin = cell // 2
     side = n * cell
@@ -373,6 +376,9 @@ def queens_picture(
     draw = ImageDraw.Draw(image)
     region_at = {(r, c): puzzle.grid[r][c] for r in range(n) for c in range(n)}
     fills = _group_fills(region_at)
+    if puzzle.icon != "queen" and n <= len(PALETTE):
+        # dog puzzles give every zone its own colour, in region order
+        fills = {region: _rgb(PALETTE[i]) for i, region in enumerate(puzzle.region_ids)}
     for (row, col), region in region_at.items():
         x, y = margin + col * cell, margin + row * cell
         draw.rectangle((x, y, x + cell, y + cell), fill=fills[region])
@@ -408,14 +414,77 @@ def queens_picture(
                 fill=colour,
             )
 
+    def piece(queen: QueensCell, colour: RGB) -> None:
+        if puzzle.icon == "queen":
+            crown(queen, colour)
+        else:
+            _dog_head(
+                draw,
+                margin + queen.col * cell,
+                margin + queen.row * cell,
+                cell,
+                colour,
+                puppy=puzzle.icon == "puppy",
+            )
+
     given_cells = set(puzzle.givens.values())
     for queen in given_cells:
-        crown(queen, INK)
+        piece(queen, INK)
     for queen in (solution or {}).values():
         if queen not in given_cells:
-            crown(queen, SOLVED)
+            piece(queen, SOLVED)
     _coordinates(draw, n, margin, cell)
     return image
+
+
+TONGUE = (232, 106, 126)
+
+
+def _dog_head(
+    draw: ImageDraw.ImageDraw, x: int, y: int, cell: int, colour: RGB, *, puppy: bool
+) -> None:
+    """Draw a dog's face in `colour` inside the square at (x, y).
+
+    A dog has pointed, upright ears; a puppy a rounder head, floppy ears and a
+    tongue. Drawn by hand so it can take the given/solved colours, as the crown does.
+    """
+
+    def at(fx: float, fy: float) -> tuple[float, float]:
+        return x + fx * cell, y + fy * cell
+
+    def ellipse(cx: float, cy: float, rx: float, ry: float, fill: RGB) -> None:
+        (x0, y0), (x1, y1) = at(cx - rx, cy - ry), at(cx + rx, cy + ry)
+        draw.ellipse((x0, y0, x1, y1), fill=fill)
+
+    def polygon(points: list[tuple[float, float]], fill: RGB) -> None:
+        draw.polygon([at(fx, fy) for fx, fy in points], fill=fill)
+
+    if puppy:
+        for side in (-1, 1):  # floppy ears hang beside the head
+            ellipse(0.5 + side * 0.3, 0.45, 0.1, 0.21, colour)
+        ellipse(0.5, 0.52, 0.27, 0.27, colour)
+        ellipse(0.5, 0.7, 0.15, 0.11, WHITE)  # muzzle
+        ellipse(0.5, 0.82, 0.05, 0.075, TONGUE)
+        ellipse(0.5, 0.66, 0.055, 0.04, colour)  # nose
+        eyes = (0.37, 0.63), 0.46, 0.05
+    else:
+        for side in (-1, 1):  # pointed ears stand up
+            polygon(
+                [
+                    (0.5 + side * 0.08, 0.34),
+                    (0.5 + side * 0.2, 0.08),
+                    (0.5 + side * 0.31, 0.4),
+                ],
+                colour,
+            )
+        ellipse(0.5, 0.56, 0.26, 0.25, colour)
+        ellipse(0.5, 0.7, 0.14, 0.1, WHITE)  # muzzle
+        ellipse(0.5, 0.65, 0.06, 0.04, colour)  # nose
+        eyes = (0.38, 0.62), 0.5, 0.045
+    columns, eye_y, radius = eyes
+    for eye_x in columns:
+        ellipse(eye_x, eye_y, radius, radius, WHITE)
+        ellipse(eye_x, eye_y, radius / 2, radius / 2, colour)
 
 
 def suguru_picture(

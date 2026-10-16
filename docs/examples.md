@@ -27,6 +27,7 @@ These previews are generated from the example files. The root README keeps a com
 <table>
 <tr><th>Family</th><th>Small / larger file</th><th>Puzzle</th><th>Solution</th></tr>
 <tr><td>Queens-style</td><td><a href="../examples/queens_4x4.txt">4 × 4</a> / <a href="../examples/queens_8x8.txt">8 × 8</a></td><td><img src="images/queens_4x4.png" width="100" alt="Queens puzzle"></td><td><img src="images/queens_4x4-solution.png" width="100" alt="Queens solution"></td></tr>
+<tr><td>DogDoku</td><td><a href="../examples/dogdoku_5x5.txt">5 × 5</a> / <a href="../examples/dogdoku_7x7.txt">7 × 7</a> / <a href="../examples/dogdoku_9x9.txt">9 × 9</a></td><td><img src="images/dogdoku_7x7.png" width="100" alt="DogDoku puzzle"></td><td><img src="images/dogdoku_7x7-solution.png" width="100" alt="DogDoku solution"></td></tr>
 <tr><td>Sudoku relations</td><td><a href="../examples/sudoku_kropki_4x4.txt">4 × 4</a> / <a href="../examples/sudoku_relations_9x9.txt">9 × 9</a></td><td><img src="images/sudoku_kropki_4x4.png" width="100" alt="Kropki and thermometer Sudoku"></td><td><img src="images/sudoku_kropki_4x4-solution.png" width="100" alt="Solved Sudoku variant"></td></tr>
 <tr><td>Anti-knight Sudoku</td><td><a href="../examples/sudoku_anti_4x4.txt">4 × 4</a> / <a href="../examples/sudoku_anti_9x9.txt">9 × 9</a></td><td><img src="images/sudoku_anti_4x4.png" width="100" alt="Anti-knight puzzle"></td><td><img src="images/sudoku_anti_4x4-solution.png" width="100" alt="Anti-knight solution"></td></tr>
 <tr><td>Anti-king Sudoku</td><td><a href="../examples/sudoku_antiking_6x6.txt">6 × 6</a> / <a href="../examples/sudoku_antiking_9x9.txt">9 × 9</a></td><td><img src="images/sudoku_antiking_6x6.png" width="100" alt="Anti-king jigsaw puzzle"></td><td><img src="images/sudoku_antiking_6x6-solution.png" width="100" alt="Anti-king solution"></td></tr>
@@ -49,6 +50,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Family | Small example | Larger example |
 |---|---|---|
 | Queens-style | `queens_4x4.txt` | `queens_8x8.txt` |
+| DogDoku (grades `single`, `subsumption`, `cover2`) | `dogdoku_5x5.txt` | `dogdoku_7x7.txt`, `dogdoku_9x9.txt` |
 | Sudoku relations | `sudoku_kropki_4x4.txt` | `sudoku_relations_9x9.txt` |
 | Anti-knight Sudoku | `sudoku_anti_4x4.txt` | `sudoku_anti_9x9.txt` |
 | Anti-king Sudoku | `sudoku_antiking_6x6.txt` | `sudoku_antiking_9x9.txt` |
