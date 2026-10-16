@@ -42,6 +42,7 @@ KINDS = (
 
 FAMILY_KINDS = {
     "queens": "queens",
+    "dogdoku": "queens",
     "suguru": "suguru",
     "tectonic": "suguru",
     "logicgrid": "logicgrid",
