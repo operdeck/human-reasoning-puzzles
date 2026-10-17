@@ -1,31 +1,22 @@
-# Larger two-star Star Battle with a partially filled start.
+# 8x8 two-star Star Battle with irregular regions; deductions up to cover2.
 Family: starbattle
 Size: 8
 Stars: 2
 Regions:
-a: row_one
-b: row_two
-c: row_three
-d: row_four
-e: row_five
-f: row_six
-g: row_seven
-h: row_eight
+a: zone_a
+b: zone_b
+c: zone_c
+d: zone_d
+e: zone_e
+f: zone_f
+g: zone_g
+h: zone_h
 Grid:
-a a a a a a a a
-b b b b b b b b
-c c c c c c c c
-d d d d d d d d
-e e e e e e e e
-f f f f f f f f
-g g g g g g g g
-h h h h h h h h
-Givens:
-? * ? * ? ? ? ?
-? ? ? ? ? * ? *
-? * ? * ? ? ? ?
-? ? ? ? ? * ? *
-* ? * ? ? ? ? ?
-? ? ? ? * ? * ?
-* ? * ? ? ? ? ?
-? ? ? ? ? ? ? ?
+a a a b c c c d
+a a a b c c d d
+a a b b c c d d
+a a b b e c d d
+f f f b e c g g
+f f h e e g g g
+h h h e e g g g
+h h h e e g g g

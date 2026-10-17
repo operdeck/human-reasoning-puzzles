@@ -622,10 +622,19 @@ def test_logicgrid_unsolved_picture_includes_clues():
 def test_starbattle_picture_distinguishes_given_and_solved_stars():
     from csp import starbattle
 
-    text = (EXAMPLES / "starbattle_8x8.txt").read_text()
+    base = (EXAMPLES / "starbattle_8x8.txt").read_text()
+    (first,) = bruteforce.solutions(base)
+    given = next(name for name, star in first.items() if star)
+    size = starbattle.parse(base).size
+    rows = [
+        " ".join("*" if starbattle.cell_name((row, col)) == given else "?" for col in range(size))
+        for row in range(size)
+    ]
+    text = base + "Givens:\n" + "\n".join(rows) + "\n"
     puzzle = starbattle.parse(text)
     (solution,) = bruteforce.solutions(text)
     image = picture.starbattle_picture(puzzle, solution, cell=CELL)
+    given_row, given_col = (int(x) - 1 for x in given[1:].split("c"))
     solved_row, solved_col = next(
         (row, col)
         for row in range(puzzle.size)
@@ -633,7 +642,7 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
         if solution[starbattle.cell_name((row, col))] and puzzle.givens[row][col] != 1
     )
 
-    assert _has(image, 0, 1, picture.INK)
+    assert _has(image, given_row, given_col, picture.INK)
     assert _has(image, solved_row, solved_col, picture.SOLVED)
 
 
@@ -644,7 +653,7 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
         "sudoku_anti_4x4.txt",
         "sudoku_antiking_6x6.txt",
         "suguru_4x4.txt",
-        "starbattle_4x4.txt",
+        "starbattle_8x8.txt",
         "logicgrid_3x3.txt",
         "binairo_4x4.txt",
         "tango_4x4.txt",
