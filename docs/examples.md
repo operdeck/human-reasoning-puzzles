@@ -32,7 +32,7 @@ These previews are generated from the example files. The root README keeps a com
 <tr><td>Anti-knight Sudoku</td><td><a href="../examples/sudoku_anti_4x4.txt">4 × 4</a> / <a href="../examples/sudoku_anti_9x9.txt">9 × 9</a></td><td><img src="images/sudoku_anti_4x4.png" width="100" alt="Anti-knight puzzle"></td><td><img src="images/sudoku_anti_4x4-solution.png" width="100" alt="Anti-knight solution"></td></tr>
 <tr><td>Anti-king Sudoku</td><td><a href="../examples/sudoku_antiking_6x6.txt">6 × 6</a> / <a href="../examples/sudoku_antiking_9x9.txt">9 × 9</a></td><td><img src="images/sudoku_antiking_6x6.png" width="100" alt="Anti-king jigsaw puzzle"></td><td><img src="images/sudoku_antiking_6x6-solution.png" width="100" alt="Anti-king solution"></td></tr>
 <tr><td>Tectonic / Suguru</td><td><a href="../examples/suguru_4x4.txt">4 × 4</a> / <a href="../examples/suguru_8x8.txt">8 × 8</a></td><td><img src="images/suguru_4x4.png" width="100" alt="Suguru puzzle"></td><td><img src="images/suguru_4x4-solution.png" width="100" alt="Suguru solution"></td></tr>
-<tr><td>Star Battle</td><td><a href="../examples/starbattle_4x4.txt">4 × 4</a> / <a href="../examples/starbattle_8x8.txt">8 × 8</a></td><td><img src="images/starbattle_4x4.png" width="100" alt="Star Battle puzzle"></td><td><img src="images/starbattle_4x4-solution.png" width="100" alt="Star Battle solution"></td></tr>
+<tr><td>Star Battle</td><td><a href="../examples/starbattle_8x8.txt">8 × 8</a> / <a href="../examples/starbattle_10x10.txt">10 × 10</a> / <a href="../examples/starbattle_12x12.txt">12 × 12</a></td><td><img src="images/starbattle_8x8.png" width="100" alt="Star Battle puzzle"></td><td><img src="images/starbattle_8x8-solution.png" width="100" alt="Star Battle solution"></td></tr>
 <tr><td>Zebra logic grid</td><td><a href="../examples/logicgrid_3x3.txt">3 × 3</a> / <a href="../examples/logicgrid_6x6.txt">6 × 6</a></td><td><img src="images/logicgrid_3x3.png" width="100" alt="Logic-grid puzzle and clues"></td><td><img src="images/logicgrid_3x3-solution.png" width="100" alt="Logic-grid solution matrix"></td></tr>
 <tr><td>Binairo / Takuzu</td><td><a href="../examples/binairo_4x4.txt">4 × 4</a> / <a href="../examples/binairo_8x8.txt">8 × 8</a></td><td><img src="images/binairo_4x4.png" width="100" alt="Binairo puzzle"></td><td><img src="images/binairo_4x4-solution.png" width="100" alt="Binairo solution"></td></tr>
 <tr><td>Tango</td><td><a href="../examples/tango_4x4.txt">4 × 4</a> / <a href="../examples/tango_8x8.txt">8 × 8</a></td><td><img src="images/tango_4x4.png" width="100" alt="Tango puzzle"></td><td><img src="images/tango_4x4-solution.png" width="100" alt="Tango solution"></td></tr>
@@ -45,7 +45,7 @@ These previews are generated from the example files. The root README keeps a com
 
 ## Rule-focused examples
 
-The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The 4 × 4 Queens and Star Battle examples need `what_if`; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
+The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The 4 × 4 Queens example needs `what_if`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
 
 | Family | Small example | Larger example |
 |---|---|---|
@@ -55,7 +55,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Anti-knight Sudoku | `sudoku_anti_4x4.txt` | `sudoku_anti_9x9.txt` |
 | Anti-king Sudoku | `sudoku_antiking_6x6.txt` | `sudoku_antiking_9x9.txt` |
 | Tectonic / Suguru | `suguru_4x4.txt` | `suguru_8x8.txt` |
-| Star Battle | `starbattle_4x4.txt` | `starbattle_8x8.txt` |
+| Star Battle (2 and 3 stars) | `starbattle_8x8.txt` | `starbattle_10x10.txt`, `starbattle_12x12.txt` |
 | Zebra-style logic grids | `logicgrid_3x3.txt` | `logicgrid_6x6.txt` |
 | Binairo / Takuzu | `binairo_4x4.txt` | `binairo_8x8.txt` |
 | Tango | `tango_4x4.txt` | `tango_8x8.txt` |

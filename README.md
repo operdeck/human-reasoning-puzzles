@@ -71,14 +71,13 @@ Each cell links to a representative example. The image shows the puzzle or its s
 <td><strong>Queens-style</strong><br><a href="examples/queens_4x4.txt">4 × 4</a> / <a href="examples/queens_8x8.txt">8 × 8</a><br><img src="docs/images/queens_4x4-solution.png" width="150" alt="Queens-style solution"></td>
 </tr>
 <tr>
-<td><strong>DogDoku</strong><br><a href="examples/dogdoku_5x5.txt">5 × 5</a> / <a href="examples/dogdoku_7x7.txt">7 × 7</a> / <a href="examples/dogdoku_9x9.txt">9 × 9</a><br><img src="docs/images/dogdoku_7x7-solution.png" width="150" alt="DogDoku solution"></td>
 <td><strong>Kropki / thermometers</strong><br><a href="examples/sudoku_kropki_4x4.txt">4 × 4</a> / <a href="examples/sudoku_relations_9x9.txt">9 × 9</a><br><img src="docs/images/sudoku_kropki_4x4.png" width="150" alt="Kropki and thermometer Sudoku"></td>
 <td><strong>Anti-knight</strong><br><a href="examples/sudoku_anti_4x4.txt">4 × 4</a> / <a href="examples/sudoku_anti_9x9.txt">9 × 9</a><br><img src="docs/images/sudoku_anti_4x4-solution.png" width="150" alt="Anti-knight solution"></td>
 <td><strong>Anti-king</strong><br><a href="examples/sudoku_antiking_6x6.txt">6 × 6</a> / <a href="examples/sudoku_antiking_9x9.txt">9 × 9</a><br><img src="docs/images/sudoku_antiking_6x6-solution.png" width="150" alt="Anti-king solution"></td>
 <td><strong>Tectonic / Suguru</strong><br><a href="examples/suguru_4x4.txt">4 × 4</a> / <a href="examples/suguru_8x8.txt">8 × 8</a><br><img src="docs/images/suguru_4x4-solution.png" width="150" alt="Suguru solution"></td>
 </tr>
 <tr>
-<td><strong>Star Battle</strong><br><a href="examples/starbattle_4x4.txt">4 × 4</a> / <a href="examples/starbattle_8x8.txt">8 × 8</a><br><img src="docs/images/starbattle_4x4-solution.png" width="150" alt="Star Battle solution"></td>
+<td><strong>Star Battle</strong><br><a href="examples/starbattle_8x8.txt">8 × 8</a> / <a href="examples/starbattle_10x10.txt">10 × 10</a> / <a href="examples/starbattle_12x12.txt">12 × 12</a><br><img src="docs/images/starbattle_8x8-solution.png" width="150" alt="Star Battle solution"></td>
 <td><strong>Zebra logic grid</strong><br><a href="examples/logicgrid_3x3.txt">3 × 3</a> / <a href="examples/logicgrid_6x6.txt">6 × 6</a><br><img src="docs/images/logicgrid_3x3-solution.png" width="150" alt="Logic-grid solution"></td>
 <td><strong>Binairo / Takuzu</strong><br><a href="examples/binairo_4x4.txt">4 × 4</a> / <a href="examples/binairo_8x8.txt">8 × 8</a><br><img src="docs/images/binairo_4x4-solution.png" width="150" alt="Binairo solution"></td>
 <td><strong>Tango</strong><br><a href="examples/tango_4x4.txt">4 × 4</a> / <a href="examples/tango_8x8.txt">8 × 8</a><br><img src="docs/images/tango_4x4-solution.png" width="150" alt="Tango solution"></td>
@@ -91,7 +90,8 @@ Each cell links to a representative example. The image shows the puzzle or its s
 </tr>
 <tr>
 <td><strong>Battleships, counts only</strong><br><a href="examples/battleships_counts_4x4.txt">4 × 4</a> / <a href="examples/battleships_counts_8x8.txt">8 × 8</a><br><img src="docs/images/battleships_counts_4x4-solution.png" width="150" alt="Counts-only Battleships solution"></td>
-<td></td><td></td><td></td>
+<td><strong>DogDoku</strong><br><a href="examples/dogdoku_5x5.txt">5 × 5</a> / <a href="examples/dogdoku_7x7.txt">7 × 7</a> / <a href="examples/dogdoku_9x9.txt">9 × 9</a><br><img src="docs/images/dogdoku_7x7-solution.png" width="150" alt="DogDoku solution"></td>
+<td></td><td></td>
 </tr>
 </table>
 

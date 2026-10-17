@@ -20,6 +20,24 @@ class RegionGrid:
         return {region: tuple(members) for region, members in grouped.items()}
 
 
+def is_connected(cells: tuple[tuple[int, int], ...]) -> bool:
+    """True if the cells form one area joined by shared sides."""
+    members = set(cells)
+    seen: set[tuple[int, int]] = set()
+    todo = [cells[0]]
+    while todo:
+        row, col = todo.pop()
+        if (row, col) in seen:
+            continue
+        seen.add((row, col))
+        todo.extend(
+            near
+            for near in ((row + 1, col), (row - 1, col), (row, col + 1), (row, col - 1))
+            if near in members and near not in seen
+        )
+    return seen == members
+
+
 def read_region_grid(
     text: str, families: tuple[str, ...]
 ) -> tuple[dict[str, list[str]], RegionGrid]:

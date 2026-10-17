@@ -1,0 +1,30 @@
+# 12x12 three-star Star Battle with irregular regions; deductions up to cover3.
+Family: starbattle
+Size: 12
+Stars: 3
+Regions:
+a: zone_a
+b: zone_b
+c: zone_c
+d: zone_d
+e: zone_e
+f: zone_f
+g: zone_g
+h: zone_h
+i: zone_i
+j: zone_j
+k: zone_k
+l: zone_l
+Grid:
+a a a b b b b c c c c c
+a a a b b b b b b c c c
+a a b b b b d d d d c c
+a a e b f b b d d d c c
+e e e e f f b d d g g g
+e e e e h f f f d g g g
+i i e e h f f f f g g g
+i i i i h i i f f g g g
+i i i h h h i j f f k k
+i l i h h h i j j k k k
+l l i i i i i j k k k k
+l l l l l j j j k k k k
