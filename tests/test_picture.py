@@ -768,3 +768,40 @@ def test_picture_ignores_role_booleans_in_the_assignment(tmp_path):
     out = tmp_path / "c.png"
     assert cli.main([str(EXAMPLES / "murdoku_composition.txt"), "--png", str(out)]) == 0
     assert out.exists()
+
+
+def test_dog_and_puppy_pieces_are_drawn_instead_of_the_crown():
+    from csp import queens
+
+    base = (EXAMPLES / "queens_4x4.txt").read_text()
+    pictures = {}
+    for icon in ("queen", "dog", "puppy"):
+        text = base.replace("Family: queens", f"Family: queens\nIcon: {icon}")
+        (solution,) = bruteforce.solutions(text)
+        pictures[icon] = picture.queens_picture(queens.parse(text), solution, cell=CELL)
+
+    assert pictures["dog"].size == pictures["queen"].size
+    assert pictures["dog"].tobytes() != pictures["queen"].tobytes()
+    assert pictures["dog"].tobytes() != pictures["puppy"].tobytes()
+    # the puppy's tongue is the only pink on the board
+    assert any(
+        pictures["puppy"].getpixel((x, y)) == picture.TONGUE
+        for x in range(pictures["puppy"].width)
+        for y in range(pictures["puppy"].height)
+    )
+
+
+def test_dog_puzzles_give_every_zone_its_own_colour():
+    from csp import queens
+
+    text = (EXAMPLES / "dogdoku_9x9.txt").read_text()
+    puzzle = queens.parse(text)
+    image = picture.queens_picture(puzzle, None, cell=CELL)
+    margin = CELL // 2
+    colours = {}
+    for r, line in enumerate(puzzle.grid):
+        for c, region in enumerate(line):
+            colours.setdefault(
+                region, image.getpixel((margin + c * CELL + 5, margin + r * CELL + 5))
+            )
+    assert len(set(colours.values())) == puzzle.size
