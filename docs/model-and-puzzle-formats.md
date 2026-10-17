@@ -117,7 +117,9 @@ d d d d
 
 ### Queens-style
 
-There must be N regions of N cells on an N×N board. The solver places one queen in every region, row, and column, with at most one queen in every 2×2 window. Optional `Givens:` lines are `region rNcN`, for example `a r1c2`. A queen in any of the eight neighboring cells counts as touching.
+There must be N regions on an N×N board; each is one connected area of any size from one cell up (a one-cell region fixes its queen at once). The solver places one queen in every region, row, and column, with at most one queen in every 2×2 window. Optional `Givens:` lines are `region rNcN`, for example `a r1c2`. A queen in any of the eight neighboring cells counts as touching. Unlike a chess queen, nothing reaches further than one step: only the eight neighbors are off limits.
+
+**DogDoku.** `Family: dogdoku` is the same puzzle with dogs. An optional `Icon:` section (`queen`, `dog` or `puppy`) picks the piece in the picture and the text board; `dogdoku` defaults to `dog` and `queens` to `queen`. The icon never changes the rules. Dog puzzles are drawn with a different colour for every zone, so zone names can be colour words. A one-cell zone fixes its dog at once; the examples `dogdoku_5x5.txt`, `dogdoku_7x7.txt` and `dogdoku_9x9.txt` are built backwards from a solving order and need only eliminations (`single`, `subsumption`, `cover2`), never `chains` or `what_if`.
 
 ### Tectonic / Suguru
 

@@ -1,0 +1,20 @@
+# DogDoku 7x7: medium, needs a zone that is confined to one line.
+Family: dogdoku
+Size: 7
+Icon: dog
+Regions:
+a: coral
+b: amber
+c: green
+d: violet
+e: blue
+f: mint
+g: yellow
+Grid:
+c b b b b a a
+d b b a a a a
+d b b a a a a
+d d d g g g g
+d f f g g f g
+d f f f f f f
+d f f f f e e

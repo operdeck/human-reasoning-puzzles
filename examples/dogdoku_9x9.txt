@@ -1,0 +1,24 @@
+# DogDoku 9x9: harder, two zones share two lines.
+Family: dogdoku
+Size: 9
+Icon: dog
+Regions:
+a: coral
+b: amber
+c: green
+d: violet
+e: blue
+f: mint
+g: yellow
+h: grey
+i: clay
+Grid:
+c c i i a a i e e
+c c i i i i i e e
+c c i i i i e e e
+c c f i h h e e h
+c c c c h h h h h
+c c c d h h h h h
+g g g d b b h h h
+g d g d d d h h h
+d d d d d d h h h

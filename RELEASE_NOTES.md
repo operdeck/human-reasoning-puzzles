@@ -15,6 +15,9 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* DogDoku ([#71](https://github.com/operdeck/human-reasoning-puzzles/issues/71)): `Family: dogdoku` (a Queens puzzle with dogs) and an optional `Icon:` section (`queen`, `dog`, `puppy`) for Queens files, drawn in `--png` and shown in the text board. Dog puzzles colour every zone differently.
+    * Queens zones may now have any size from one cell up, as long as each is connected (it used to require exactly N cells each).
+    * New examples `dogdoku_5x5.txt`, `dogdoku_7x7.txt`, `dogdoku_9x9.txt`: unique, built backwards from a solving order, and solvable by eliminations only; grades `single`, `subsumption`, `cover2`.
 * Booklets list the puzzles alphabetically by file name and, with more than one puzzle, start with a clickable table of contents (page numbers fill in when Word opens it).
 * Murdoku PNG: blocked squares show a translucent red cross behind their object, so blocking and standable objects are told apart.
 * Booklet lists attributes and roles beside the board; area tags (e.g. "noble areas") are now named in the PNG legend and the booklet rules.

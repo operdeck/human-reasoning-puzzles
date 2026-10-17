@@ -1,4 +1,9 @@
-"""Queens-style placement: one queen per row, column and region, never touching."""
+"""Queens-style placement: one queen per row, column and region, never touching.
+
+`Family: dogdoku` is the same puzzle with dogs instead of queens. An optional
+`Icon:` section (`queen`, `dog` or `puppy`) picks what is placed; it only
+changes drawing, never the rules.
+"""
 
 import re
 from collections.abc import Sequence
@@ -11,6 +16,11 @@ BOLD = "\033[1m"
 NEW = "\033[38;5;21m"
 RESET = "\033[0m"
 QUEEN_MARK = "♛"
+DOG_MARK = "🐕"
+PUPPY_MARK = "🐶"
+FAMILIES = ("queens", "dogdoku")
+ICONS = ("queen", "dog", "puppy")
+ICON_MARKS = {"queen": QUEEN_MARK, "dog": DOG_MARK, "puppy": PUPPY_MARK}
 
 
 @dataclass(frozen=True, order=True)
@@ -27,6 +37,7 @@ class Puzzle:
     region_names: dict[str, str]
     grid: list[list[str]]
     givens: dict[str, Cell]
+    icon: str = "queen"
 
     @property
     def size(self) -> int:
@@ -49,6 +60,37 @@ class Puzzle:
         return {region: _symbol(index) for index, region in enumerate(self.region_ids)}
 
 
+def _connected(grid: list[list[str]], region: str) -> bool:
+    """True if the region's cells form one area joined by shared sides."""
+    cells = {
+        (r, c) for r, line in enumerate(grid) for c, value in enumerate(line) if value == region
+    }
+    seen: set[tuple[int, int]] = set()
+    todo = [next(iter(cells))]
+    while todo:
+        row, col = todo.pop()
+        if (row, col) in seen:
+            continue
+        seen.add((row, col))
+        todo.extend(
+            near
+            for near in ((row + 1, col), (row - 1, col), (row, col + 1), (row, col - 1))
+            if near in cells and near not in seen
+        )
+    return seen == cells
+
+
+def _display_width(mark: str) -> int:
+    """Terminal columns a mark takes: emoji are double width."""
+    return 2 if ord(mark[0]) >= 0x1F000 else 1
+
+
+def _centre(mark: str, width: int) -> str:
+    missing = width - _display_width(mark) - (len(mark) - 1)
+    left = missing // 2
+    return " " * left + mark + " " * (missing - left)
+
+
 def _symbol(index: int) -> str:
     label = ""
     while True:
@@ -65,8 +107,13 @@ def parse(text: str) -> Puzzle:
     for required in ("Family", "Size", "Regions", "Grid"):
         if required not in sections:
             raise ValueError(f"puzzle file is missing a {required}: section")
-    if len(sections["Family"]) != 1 or sections["Family"][0].casefold() != "queens":
-        raise ValueError("Family must be 'queens'")
+    if len(sections["Family"]) != 1 or sections["Family"][0].casefold() not in FAMILIES:
+        raise ValueError("Family must be 'queens' or 'dogdoku'")
+    icon = "dog" if sections["Family"][0].casefold() == "dogdoku" else "queen"
+    if "Icon" in sections:
+        if len(sections["Icon"]) != 1 or sections["Icon"][0].casefold() not in ICONS:
+            raise ValueError(f"Icon must be one of {', '.join(ICONS)}")
+        icon = sections["Icon"][0].casefold()
     try:
         size = int(sections["Size"][0])
     except (IndexError, ValueError) as exc:
@@ -97,11 +144,10 @@ def parse(text: str) -> Puzzle:
     unknown = {region for row in grid for region in row} - set(region_names)
     if unknown:
         raise ValueError(f"Grid uses region IDs with no name: {sorted(unknown)}")
-    counts = {
-        region: sum(cell == region for row in grid for cell in row) for region in region_names
-    }
-    if wrong := {region: count for region, count in counts.items() if count != size}:
-        raise ValueError(f"each region needs {size} cells, got {wrong}")
+    if empty := sorted(set(region_names) - {region for row in grid for region in row}):
+        raise ValueError(f"regions with no cells in Grid: {empty}")
+    if split := [region for region in region_names if not _connected(grid, region)]:
+        raise ValueError(f"each region must be one connected area, but {split} are not")
     givens: dict[str, Cell] = {}
     given_rows: set[int] = set()
     given_columns: set[int] = set()
@@ -122,7 +168,7 @@ def parse(text: str) -> Puzzle:
         givens[parts[0]] = cell
         given_rows.add(cell.row)
         given_columns.add(cell.col)
-    return Puzzle(region_names, grid, givens)
+    return Puzzle(region_names, grid, givens, icon)
 
 
 def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
@@ -182,20 +228,22 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
     chosen = {region: model.chosen(region) for region in puzzle.region_ids}
     changed = {(step.var, step.value) for step in steps}
     symbols = puzzle.symbols
-    width = max(1, max(map(len, symbols.values())))
+    queen_mark = ICON_MARKS[puzzle.icon]
+    wide = _display_width(queen_mark) > 1  # emoji take two terminal columns
+    width = max(1, 2 if wide else 1, max(map(len, symbols.values())))
     out = [f"\n{BOLD}{title}{RESET}"]
     for row, line in enumerate(puzzle.grid):
         cells = []
         for col, region in enumerate(line):
             cell = Cell(row, col)
             if chosen[region] == cell:
-                mark = QUEEN_MARK
+                mark = queen_mark
             elif cell in options[region]:
                 mark = symbols[region]
             else:
                 mark = "."
             tint = NEW if (region, cell) in changed else ""
-            cells.append(f"{tint}{mark.center(width)}{RESET}")
+            cells.append(f"{tint}{_centre(mark, width)}{RESET}")
         out.append(f"{row + 1:>2} " + " ".join(cells))
     out.append("   " + " ".join(str(col + 1).rjust(width) for col in range(puzzle.size)))
     out.append(
