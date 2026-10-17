@@ -77,7 +77,7 @@ Each cell links to a representative example. The image shows the puzzle or its s
 <td><strong>Tectonic / Suguru</strong><br><a href="examples/suguru_4x4.txt">4 × 4</a> / <a href="examples/suguru_8x8.txt">8 × 8</a><br><img src="docs/images/suguru_4x4-solution.png" width="150" alt="Suguru solution"></td>
 </tr>
 <tr>
-<td><strong>Star Battle</strong><br><a href="examples/starbattle_4x4.txt">4 × 4</a> / <a href="examples/starbattle_8x8.txt">8 × 8</a><br><img src="docs/images/starbattle_4x4-solution.png" width="150" alt="Star Battle solution"></td>
+<td><strong>Star Battle</strong><br><a href="examples/starbattle_8x8.txt">8 × 8</a> / <a href="examples/starbattle_10x10.txt">10 × 10</a> / <a href="examples/starbattle_12x12.txt">12 × 12</a><br><img src="docs/images/starbattle_8x8-solution.png" width="150" alt="Star Battle solution"></td>
 <td><strong>Zebra logic grid</strong><br><a href="examples/logicgrid_3x3.txt">3 × 3</a> / <a href="examples/logicgrid_6x6.txt">6 × 6</a><br><img src="docs/images/logicgrid_3x3-solution.png" width="150" alt="Logic-grid solution"></td>
 <td><strong>Binairo / Takuzu</strong><br><a href="examples/binairo_4x4.txt">4 × 4</a> / <a href="examples/binairo_8x8.txt">8 × 8</a><br><img src="docs/images/binairo_4x4-solution.png" width="150" alt="Binairo solution"></td>
 <td><strong>Tango</strong><br><a href="examples/tango_4x4.txt">4 × 4</a> / <a href="examples/tango_8x8.txt">8 × 8</a><br><img src="docs/images/tango_4x4-solution.png" width="150" alt="Tango solution"></td>

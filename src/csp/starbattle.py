@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from .core import Kind, Model, Step
-from .regiongrid import RegionGrid, read_region_grid
+from .regiongrid import RegionGrid, is_connected, read_region_grid
 
 type Cell = tuple[int, int]
 
@@ -33,10 +33,14 @@ def parse(text: str) -> Puzzle:
     if not 1 <= stars <= areas.size:
         raise ValueError(f"Stars: must be between 1 and {areas.size}")
     cells_by_region = areas.cells_by_region
-    if len(cells_by_region) != areas.size or any(
-        len(cells) != areas.size for cells in cells_by_region.values()
-    ):
-        raise ValueError(f"Star Battle needs {areas.size} regions of {areas.size} cells")
+    if len(cells_by_region) != areas.size:
+        raise ValueError(f"Star Battle needs {areas.size} regions, got {len(cells_by_region)}")
+    if small := {
+        region: len(cells) for region, cells in cells_by_region.items() if len(cells) < stars
+    }:
+        raise ValueError(f"each region needs at least {stars} cells, got {small}")
+    if split := [region for region, cells in cells_by_region.items() if not is_connected(cells)]:
+        raise ValueError(f"each region must be one connected area, but {split} are not")
     if stars * 2 > areas.size * areas.size:
         raise ValueError("Stars: count exceeds the number of board cells")
     given_rows = [line.split() for line in sections.get("Givens", [])]

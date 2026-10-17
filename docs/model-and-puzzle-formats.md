@@ -127,7 +127,7 @@ There must be N regions on an N×N board; each is one connected area of any size
 
 ### Star Battle
 
-`Family: starbattle` requires one integer in `Stars:`. That many stars must appear in every row, column, and region; stars may not touch, including diagonally. Optional `Givens:` uses `?` for unknown, `.` for known empty, and `*` for a star.
+`Family: starbattle` requires one integer in `Stars:`. That many stars must appear in every row, column, and region; stars may not touch, including diagonally. Optional `Givens:` uses `?` for unknown, `.` for known empty, and `*` for a star. There must be N regions on an N×N board; each is one connected area with at least as many cells as `Stars:`, and sizes may differ. A board needs at least 8×8 for two stars and 12×12 for three, because stars may not touch.
 
 ## Zebra-style logic grids
 
