@@ -1,0 +1,26 @@
+# 10x10 two-star Star Battle with irregular regions; needs chains.
+Family: starbattle
+Size: 10
+Stars: 2
+Regions:
+a: zone_a
+b: zone_b
+c: zone_c
+d: zone_d
+e: zone_e
+f: zone_f
+g: zone_g
+h: zone_h
+i: zone_i
+j: zone_j
+Grid:
+a a a a a a b b b b
+a a c c d b b e e b
+c c c c d d d e e b
+c f f f f d d d e e
+c f f f d d e e e g
+c f f f d d g e g g
+c f f h h h g g g g
+c f f f h g g g g g
+i i i h h h g g g g
+i i i i i h j j j g
