@@ -2,10 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from csp import bruteforce, cli
+from csp import bruteforce, cli, queens, report
 from csp.bruteforce import queens as brute
 from csp.core import Kind, Solver
-from csp import queens, report
 from csp.queens import DOG_MARK, PUPPY_MARK, QUEEN_MARK, Cell, compile_puzzle, render
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -122,7 +121,7 @@ def test_dogdoku_examples_are_unique_and_get_harder():
         assert len(set(puzzle.region_names.values())) == puzzle.size
         model, _ = compile_puzzle(text)
         fired: list[str] = []
-        result = Solver(model).solve(on_step=lambda rule, steps: fired.append(rule))
+        result = Solver(model).solve(on_step=lambda rule, steps, log=fired: log.append(rule))
         assert result.solved
         assert "what_if" not in fired and "chains" not in fired  # eliminations only
         grades.append(report.grade(fired))

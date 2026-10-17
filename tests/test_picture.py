@@ -801,5 +801,7 @@ def test_dog_puzzles_give_every_zone_its_own_colour():
     colours = {}
     for r, line in enumerate(puzzle.grid):
         for c, region in enumerate(line):
-            colours.setdefault(region, image.getpixel((margin + c * CELL + 5, margin + r * CELL + 5)))
+            colours.setdefault(
+                region, image.getpixel((margin + c * CELL + 5, margin + r * CELL + 5))
+            )
     assert len(set(colours.values())) == puzzle.size
