@@ -10,7 +10,7 @@ one of three variants:
 - blank: the puzzle only (no solution given),
 - solution: the solved board, solved items in blue,
 - interactive (`interactive=True`): the puzzle only, every cell a transparent
-  element with an id such as `r3c4`, and no pre-drawn crosses on blocked cells.
+  element with an id such as `r3c4`.
 
 Murdoku follows the style of the printed puzzles: region fills (darker where
 an object stands), optional diagonal hatching, thick dark lines between
@@ -129,8 +129,6 @@ def murdoku_picture(
             fill = fills[board.region_of(sq)]
             canvas.rectangle(box(sq), fill=_darker(fill) if sq in blocked else fill)
     _hatch(canvas, board, box, cell)
-    if not interactive:
-        _no_entry(canvas, [box(sq) for sq in sorted(blocked)], cell)
     _walls(
         canvas,
         board.size,
@@ -862,7 +860,11 @@ def _rgb(hex_colour: str) -> RGB:
     return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
 
 
-def _darker(colour: RGB, factor: float = 0.9) -> RGB:
+# Blocked squares (nobody can stand there) are this much darker than their region.
+BLOCKED_SHADE = 0.75
+
+
+def _darker(colour: RGB, factor: float = BLOCKED_SHADE) -> RGB:
     r, g, b = colour
     return round(r * factor), round(g * factor), round(b * factor)
 
@@ -991,18 +993,6 @@ def _icon(
         side = min(x1 - x0, y1 - y0) * scale
         half = side / 2
         icons.draw(canvas, icon, (cx - half, cy - half, cx + half, cy + half), rotate=turn)
-
-
-def _no_entry(canvas: Canvas, boxes: Sequence[Box], cell: int) -> None:
-    """A translucent red cross over the full diagonals of every blocked square."""
-    if not boxes:
-        return
-    red = (200, 40, 40)
-    width = max(3, cell // 20)
-    with canvas.group(opacity=150 / 255):
-        for x0, y0, x1, y1 in boxes:
-            canvas.line((x0, y0, x1, y1), fill=red, width=width)
-            canvas.line((x0, y1, x1, y0), fill=red, width=width)
 
 
 def _name_tag(canvas: Canvas, person: str, area: Box, cell: int, low: bool = False) -> None:
