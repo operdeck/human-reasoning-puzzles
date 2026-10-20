@@ -53,10 +53,7 @@ def _picture_stream(
     """The board picture and its height/width ratio."""
     board, _ = load_board(text)
     image = picture.murdoku_picture(board, solution, show_roles=False)
-    stream = io.BytesIO()
-    image.save(stream, format="PNG")
-    stream.seek(0)
-    return stream, image.height / image.width
+    return io.BytesIO(image.to_png()), image.height / image.width
 
 
 def _puzzle_board_width(aspect: float, clue_lines: int, clues: int, rules_lines: int) -> float:
@@ -66,7 +63,7 @@ def _puzzle_board_width(aspect: float, clue_lines: int, clues: int, rules_lines:
     return max(MIN_BOARD_WIDTH_CM, min(BOARD_WIDTH_CM, free / aspect))
 
 
-def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | None:
+def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | io.BytesIO | None:
     """The thumbnail for a person: the `image=` file, a file in `<stem>-figures/` or
     `figures/` beside the puzzle named after the person, or the built-in `icon=`."""
     base = source.parent
@@ -77,7 +74,9 @@ def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | No
             if (folder / f"{person}{suffix}").is_file():
                 return folder / f"{person}{suffix}"
     if figure is not None and figure.icon:
-        return icons.icon(figure.icon)
+        icon = icons.object_icon(figure.icon)
+        thumbnail = None if icon is None else icons.png(icon, 128)
+        return None if thumbnail is None else io.BytesIO(thumbnail)
     return None
 
 
@@ -97,7 +96,8 @@ def _figure_list(cell: Any, text: str, presentation: Presentation, source: Path)
         paragraph.paragraph_format.space_after = Pt(3)
         image = _figure_image(person, figure, source)
         if image is not None:
-            paragraph.add_run().add_picture(str(image), height=Cm(FIGURE_IMAGE_CM))
+            source_image = str(image) if isinstance(image, Path) else image
+            paragraph.add_run().add_picture(source_image, height=Cm(FIGURE_IMAGE_CM))
             paragraph.add_run(" ")
         paragraph.add_run(person).bold = True
         if figure is not None and figure.description:
@@ -177,9 +177,8 @@ def _add_generic(
     if not solved:
         document.add_heading("Rules", level=2)
         document.add_paragraph(RULES.get(entry.kind, ""), style="List Bullet")
-    stream = io.BytesIO()
-    (entry.solution_image if solved else entry.puzzle_image).save(stream, format="PNG")
-    stream.seek(0)
+    image = entry.solution_image if solved else entry.puzzle_image
+    stream = io.BytesIO(image.to_png(zoom=2))
     document.add_picture(stream, width=Cm(GENERIC_BOARD_WIDTH_CM))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     if solved and entry.steps:

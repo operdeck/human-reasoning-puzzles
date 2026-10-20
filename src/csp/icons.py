@@ -1,23 +1,151 @@
-"""Pictures for Murdoku object types, referenced rather than bundled.
+"""The icon registry: one place that says how every puzzle symbol looks.
 
-Every object name maps to a Unicode emoji code point; the picture for a code
-point comes from Google's Noto Emoji (image resources under the Apache License
-2.0), pinned to one commit so a name always gives the same picture. Pictures
-are downloaded on first use and cached under ~/.cache/csp-solver (or
-$CSP_ICON_CACHE). Without network, `icon` returns None and callers fall back to
-a text label.
+Families refer to semantic names ("star", "queen", "tent", "mine", ...), never
+to glyphs. Each `Icon` gives
+
+- the drawing used on boards: either a small SVG drawing kept here (geometric
+  icons, which take the given/solved colour through `currentColor`) or a
+  picture vendored from Google's Noto Emoji (pictorial icons),
+- a Unicode fallback for text output and the Word booklets, chosen from
+  symbols that print in ordinary fonts rather than as emoji where possible,
+- a label for legends and accessibility.
+
+Murdoku objects use the same pictures: `CATALOGUE` maps the object names used
+in puzzles (Dutch, plus English synonyms) to Noto Emoji code points. The
+pictures are vendored under `assets/emoji` (see the NOTICE there and
+scripts/vendor_emoji.py), so rendering never needs the network.
 """
 
-import os
+import math
 import re
-import urllib.request
-from pathlib import Path
+from dataclasses import dataclass
+
+from . import svg
 
 NOTO_COMMIT = "e20cbc2bbec1926686be9f9bee7d1d2cfa1fea0e"
-SOURCE = (
-    f"https://raw.githubusercontent.com/googlefonts/noto-emoji/{NOTO_COMMIT}"
-    "/2D/png/512/emoji_u{code}.png"
+
+type Box = tuple[float, float, float, float]
+
+
+@dataclass(frozen=True)
+class Icon:
+    name: str
+    unicode: str
+    label: str
+    emoji: str | None = None  # code point of a vendored Noto Emoji picture
+    markup: str | None = None  # SVG drawing in `view` units
+    view: Box = (0, 0, 100, 100)
+
+
+def _star() -> str:
+    points = []
+    for k in range(10):
+        radius = 47 if k % 2 == 0 else 19
+        angle = math.pi * (k / 5 - 0.5)
+        points.append(f"{50 + radius * math.cos(angle):.1f},{54 + radius * math.sin(angle):.1f}")
+    return f'<polygon points="{" ".join(points)}" fill="currentColor"/>'
+
+
+CROWN = (
+    '<g fill="currentColor"><polygon points="20,75 10,25 33.3,50 50,12.5 66.7,50 90,25 80,75"/>'
+    '<rect x="20" y="75" width="60" height="6"/><rect x="25" y="83.3" width="50" height="7.7"/>'
+    '<circle cx="10" cy="25" r="5.6"/><circle cx="50" cy="12.5" r="5.6"/>'
+    '<circle cx="90" cy="25" r="5.6"/></g>'
 )
+TONGUE = "#e86a7e"
+# A dog has pointed, upright ears; a puppy a rounder head, floppy ears and a tongue.
+DOG = (
+    '<g fill="currentColor"><polygon points="42,34 30,8 19,40"/>'
+    '<polygon points="58,34 70,8 81,40"/>'
+    '<ellipse cx="50" cy="56" rx="26" ry="25"/></g>'
+    '<ellipse cx="50" cy="70" rx="14" ry="10" fill="#fff"/>'
+    '<ellipse cx="50" cy="65" rx="6" ry="4" fill="currentColor"/>'
+    '<g fill="#fff"><circle cx="38" cy="50" r="4.5"/><circle cx="62" cy="50" r="4.5"/></g>'
+    '<g fill="currentColor"><circle cx="38" cy="50" r="2.25"/>'
+    '<circle cx="62" cy="50" r="2.25"/></g>'
+)
+PUPPY = (
+    '<g fill="currentColor"><ellipse cx="20" cy="45" rx="10" ry="21"/>'
+    '<ellipse cx="80" cy="45" rx="10" ry="21"/><circle cx="50" cy="52" r="27"/></g>'
+    '<ellipse cx="50" cy="70" rx="15" ry="11" fill="#fff"/>'
+    f'<ellipse cx="50" cy="82" rx="5" ry="7.5" fill="{TONGUE}"/>'
+    '<ellipse cx="50" cy="66" rx="5.5" ry="4" fill="currentColor"/>'
+    '<g fill="#fff"><circle cx="37" cy="46" r="5"/><circle cx="63" cy="46" r="5"/></g>'
+    '<g fill="currentColor"><circle cx="37" cy="46" r="2.5"/><circle cx="63" cy="46" r="2.5"/></g>'
+)
+# A patterned rug and a stone well, drawn here because Noto Emoji has neither.
+CARPET = (
+    '<rect x="10" y="10" width="101" height="101" rx="10" fill="#9c3a2d"/>'
+    '<rect x="12.5" y="12.5" width="96" height="96" rx="7.5" fill="none" stroke="#4f2d2b"'
+    ' stroke-width="5"/>'
+    '<rect x="17.5" y="17.5" width="86" height="86" fill="none" stroke="#e7be59" stroke-width="5"/>'
+    '<polygon points="60.5,36.5 84.5,60.5 60.5,84.5 36.5,60.5" fill="#e7be59" stroke="#4f2d2b"/>'
+    '<circle cx="60.5" cy="60.5" r="8.5" fill="#9c3a2d"/>'
+)
+WELL = (
+    '<ellipse cx="60.5" cy="85.5" rx="48" ry="23" fill="#898b84" stroke="#373937"'
+    ' stroke-width="5"/>'
+    '<ellipse cx="60.5" cy="85.5" rx="25" ry="7" fill="#2d4146" stroke="#373937"'
+    ' stroke-width="3"/>'
+    '<g fill="#6f4830" stroke="#373937" stroke-width="2">'
+    '<rect x="31" y="16" width="9" height="64"/><rect x="81" y="16" width="9" height="64"/>'
+    '<rect x="26" y="21" width="69" height="9"/></g>'
+    '<line x1="60.5" y1="31" x2="60.5" y2="92.5" stroke="#e1cf9b" stroke-width="3"/>'
+)
+LINE = 'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"'
+
+FILL = 'fill="currentColor"'
+SHAPES = {
+    "wall": f'<rect width="100" height="100" {FILL}/>',
+    "filled": f'<rect x="14" y="14" width="72" height="72" rx="4" {FILL}/>',
+    "water": f'<path d="M14 50q9-12 18 0t18 0t18 0t18 0" {LINE} stroke-width="7"/>',
+    "disc_black": f'<circle cx="50" cy="50" r="34" {FILL}/>',
+    "disc_white": '<circle cx="50" cy="50" r="31" fill="#fff" stroke="currentColor"'
+    ' stroke-width="6"/>',
+    "equal": f'<g {FILL}><rect x="24" y="33" width="52" height="10"/>'
+    '<rect x="24" y="57" width="52" height="10"/></g>',
+    "different": f'<path d="M28 28L72 72M72 28L28 72" {LINE} stroke-width="10"/>',
+    "less": f'<polyline points="68,14 32,50 68,86" {LINE} stroke-width="13"/>',
+    "dot_white": '<circle cx="50" cy="50" r="42" fill="#fff" stroke="currentColor"'
+    ' stroke-width="10"/>',
+    "dot_black": f'<circle cx="50" cy="50" r="47" {FILL}/>',
+    "check": f'<polyline points="18,52 40,74 82,28" {LINE} stroke-width="12"/>',
+    "cross": f'<path d="M24 24L76 76M76 24L24 76" {LINE} stroke-width="12"/>',
+}
+
+# name, Unicode fallback, label, and either a vendored emoji or the drawing.
+REGISTRY: dict[str, Icon] = {
+    icon.name: icon
+    for icon in (
+        Icon("star", "\u2605", "star", markup=_star()),
+        Icon("queen", "\u265b", "queen", markup=CROWN),
+        Icon("dog", "\U0001f415", "dog", markup=DOG),
+        Icon("puppy", "\U0001f436", "puppy", markup=PUPPY),
+        Icon("tent", "\u25b2", "tent", emoji="26fa"),
+        Icon("tree", "\u2663", "tree", emoji="1f332"),
+        Icon("mine", "\u2731", "mine", emoji="1f4a3"),
+        Icon("flag", "\u2691", "flag", emoji="1f6a9"),
+        Icon("bulb", "\u25cf", "bulb", emoji="1f4a1"),
+        Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
+        Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
+        Icon("water", "\u00b7", "water", markup=SHAPES["water"]),
+        Icon("disc_black", "\u25cf", "one", markup=SHAPES["disc_black"]),
+        Icon("disc_white", "\u25cb", "zero", markup=SHAPES["disc_white"]),
+        Icon("equal", "=", "equal", markup=SHAPES["equal"]),
+        Icon("different", "\u00d7", "different", markup=SHAPES["different"]),
+        Icon("less", "<", "smaller than", markup=SHAPES["less"]),
+        Icon("dot_white", "\u25cb", "white dot", markup=SHAPES["dot_white"]),
+        Icon("dot_black", "\u25cf", "black dot", markup=SHAPES["dot_black"]),
+        Icon("check", "\u2713", "yes", markup=SHAPES["check"]),
+        Icon("cross", "\u2717", "no", markup=SHAPES["cross"]),
+        Icon("carpet", "\u25a6", "carpet", markup=CARPET, view=(0, 0, 121, 121)),
+        Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
+    )
+}
+
+# Murdoku object names drawn with a registry icon rather than an emoji.
+OBJECT_ICONS = {"tapijt": "carpet", "carpet": "carpet", "rug": "carpet", "tatami": "carpet",
+                "waterput": "well", "well": "well"}  # fmt: skip
 
 # Dutch names as used in the puzzles, plus English synonyms.
 CATALOGUE: dict[str, str] = {
@@ -80,6 +208,10 @@ CATALOGUE: dict[str, str] = {
 }  # fmt: skip
 
 
+def _base(name: str) -> str:
+    return name.lower().rstrip("0123456789").rstrip("_")
+
+
 def code_for(name: str) -> str | None:
     """The emoji code point for an object name; 'boom2' finds 'boom'.
 
@@ -88,31 +220,69 @@ def code_for(name: str) -> str | None:
     literal = re.fullmatch(r"[Uu]\+([0-9a-fA-F]{4,6})", name)
     if literal:
         return literal[1].lower()
-    return CATALOGUE.get(name.lower().rstrip("0123456789").rstrip("_"))
+    return CATALOGUE.get(_base(name))
 
 
-def cache_dir() -> Path:
-    root = os.environ.get("CSP_ICON_CACHE") or Path.home() / ".cache" / "csp-solver"
-    return Path(root) / f"noto-emoji-{NOTO_COMMIT[:12]}"
+def lookup(name: str) -> Icon | None:
+    """The registry icon a puzzle family names, such as "star" or "tent"."""
+    return REGISTRY.get(name)
 
 
-def icon(name: str) -> Path | None:
-    """A local PNG for object `name`, downloading it once if needed.
+def object_icon(name: str) -> Icon | None:
+    """The icon for a Murdoku object or a figure's `icon=`, if one is vendored.
 
-    None if the name is not in the catalogue or the picture cannot be fetched.
+    These names mean what the catalogue says ("tree" is a deciduous tree), so
+    they are looked up apart from the family registry.
     """
+    if _base(name) in OBJECT_ICONS:
+        return REGISTRY[OBJECT_ICONS[_base(name)]]
     code = code_for(name)
-    if code is None:
+    if code is None or svg.emoji_markup(code) is None:
         return None
-    path = cache_dir() / f"{code}.png"
-    if not path.exists():
-        try:
-            with urllib.request.urlopen(SOURCE.format(code=code), timeout=15) as response:
-                data = response.read()
-        except OSError:
-            return None
-        if not data.startswith(b"\x89PNG"):
-            return None
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
-    return path
+    return Icon(name, chr(int(code, 16)), name.replace("_", " "), emoji=code)
+
+
+def symbol(name: str) -> str:
+    """The Unicode fallback for registry icon `name`."""
+    return REGISTRY[name].unicode
+
+
+def draw(
+    canvas: svg.Canvas,
+    name: str | Icon,
+    box: Box,
+    *,
+    tint: svg.Colour | None = None,
+    crop: bool = False,
+    stretch: bool = False,
+    rotate: float = 0,
+) -> bool:
+    """Draw icon `name` (a registry name, or an `Icon`) into `box`; False if there is none.
+
+    `crop` fits a picture's visible part rather than its whole square, `stretch`
+    fills the box exactly, and `rotate` turns it counter-clockwise (degrees).
+    """
+    icon = lookup(name) if isinstance(name, str) else name
+    if icon is None:
+        return False
+    if icon.emoji is not None:
+        return canvas.emoji(icon.emoji, box, crop=crop, stretch=stretch, rotate=rotate)
+    assert icon.markup is not None
+    canvas.place(
+        f"icon-{icon.name}", icon.markup, icon.view, box, stretch=stretch, rotate=rotate, tint=tint
+    )
+    return True
+
+
+def to_svg(name: str | Icon, size: int = 64, tint: svg.Colour = (26, 26, 26)) -> str | None:
+    """A standalone square SVG of icon `name` on a transparent background."""
+    canvas = svg.Canvas(size, size, background="none")
+    if not draw(canvas, name, (0, 0, size, size), tint=tint):
+        return None
+    return canvas.to_svg()
+
+
+def png(name: str | Icon, size: int = 64) -> bytes | None:
+    """A square PNG of icon `name`, or None if there is no such icon."""
+    picture = to_svg(name, size)
+    return None if picture is None else svg.rasterise(picture)

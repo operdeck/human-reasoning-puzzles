@@ -40,7 +40,7 @@ def test_starbattle_backtracker_and_engine_agree():
 
     assert result.solved
     assert result.assignment == solution
-    assert "*" in render(puzzle, model, "Solved")
+    assert "★" in render(puzzle, model, "Solved")
 
 
 def _grid(stars, rows, names="abcde"):

@@ -14,11 +14,16 @@ dependencies = []
 csp = "csp.cli:main"
 
 [project.optional-dependencies]
+svg = [
+    "fonttools>=4.50",
+]
 png = [
-    "pillow>=10.1",
+    "fonttools>=4.50",
+    "resvg-py>=0.5",
 ]
 docx = [
-    "pillow>=10.1",
+    "fonttools>=4.50",
+    "resvg-py>=0.5",
     "python-docx>=1.1",
 ]
 
@@ -29,7 +34,12 @@ dev = [
     "mypy>=1.11",
     "pillow>=10.1",
     "python-docx>=1.1",
+    "fonttools>=4.50",
+    "resvg-py>=0.5",
 ]
+
+[tool.setuptools.package-data]
+csp = ["assets/*", "assets/*/*"]
 
 [tool.ruff]
 line-length = 100
@@ -41,6 +51,10 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["fontTools.*", "resvg_py"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

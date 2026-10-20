@@ -135,20 +135,14 @@ def test_figures_folder_gives_thumbnails_by_name(tmp_path):
     assert len(_media(out)) == 7  # board + six figures
 
 
-def test_icon_figures_use_builtin_icons(tmp_path, monkeypatch):
-    from PIL import Image
-
-    cache = tmp_path / "cache"
-    monkeypatch.setenv("CSP_ICON_CACHE", str(cache))
-    from csp import icons
-
-    for code in ("1f35c", "1f362", "1f356", "1f364", "1f9d1"):
-        (icons.cache_dir()).mkdir(parents=True, exist_ok=True)
-        Image.new("RGB", (8, 8), "red").save(icons.cache_dir() / f"{code}.png")
+def test_icon_figures_use_builtin_icons(tmp_path):
+    # Every icon= in the example is vendored, so each figure gets a thumbnail.
     text = (EXAMPLES / "food-murdoku-1.txt").read_text()
     out = tmp_path / "x.docx"
     write_booklet([Entry(text, EXAMPLES / "food-murdoku-1.txt")], out)
-    assert len(_media(out)) >= 2
+    figures = sum(1 for line in text.splitlines() if "icon=" in line)
+    assert figures >= 4
+    assert len(_media(out)) >= 1 + figures
 
 
 def test_unknown_icon_is_linted(tmp_path, capsys):
@@ -156,6 +150,14 @@ def test_unknown_icon_is_linted(tmp_path, capsys):
     (tmp_path / "f.txt").write_text(text)
     main([str(tmp_path / "f.txt"), "--lint"])
     assert "unknown icon nonsense" in capsys.readouterr().out
+
+
+def test_icon_that_is_not_vendored_is_linted(tmp_path, capsys):
+    # A valid code point whose picture was never vendored would print as text.
+    text = (EXAMPLES / "food-murdoku-1.txt").read_text().replace("U+1F35C", "U+1F680")
+    (tmp_path / "f.txt").write_text(text)
+    main([str(tmp_path / "f.txt"), "--lint"])
+    assert "unknown icon U+1F680" in capsys.readouterr().out
 
 
 def test_booklet_footer_carries_copyright_notice(tmp_path):

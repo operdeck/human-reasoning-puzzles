@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from .core import Kind, Model, Step
+from .icons import symbol
 from .regiongrid import RegionGrid, is_connected, read_region_grid
 
 type Cell = tuple[int, int]
@@ -136,7 +137,7 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
         for col in range(puzzle.size):
             name = cell_name((row, col))
             chosen = model.chosen(name)
-            mark = "*" if chosen is True else "." if chosen is False else "?"
+            mark = symbol("star") if chosen is True else "." if chosen is False else "?"
             tint = "\033[38;5;21m" if name in changed else ""
             cells.append(f"{tint}{mark}\033[0m")
         out.append(f"{row + 1:>2} " + " ".join(cells))
