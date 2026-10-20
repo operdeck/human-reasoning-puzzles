@@ -15,13 +15,20 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* [#75 Better icons for the puzzles](https://github.com/operdeck/human-reasoning-puzzles/issues/75)
+    * One renderer: `picture.py` now draws every family as SVG (`src/csp/svg.py`); `--png`, the README images and `--docx` booklets are rasterised from it with resvg. New `--svg [FILE]` writes the SVG (blank and `-solution`), and `--svg --interactive` writes the blank board with a transparent `r<row>c<col>` element per cell for an app.
+    * Icon registry (`src/csp/icons.py`): stars, tents, trees, mines, bulbs, walls, discs, signs and DogDoku pieces each have a picture and a Unicode fallback used by the text boards (★ ▲ ♣ ✱ ● ■ ○). Calcudoku prints − × ÷.
+    * Icons and font are vendored under `src/csp/assets/` (Noto Emoji SVGs and a Noto Sans subset at pinned commits, licences in `NOTICE.md`); rendering never uses the network and text is drawn as paths, so output does not depend on installed fonts. `scripts/vendor_emoji.py` and `scripts/subset_font.py` rebuild them.
+    * Extras: `svg` (fonttools), `png` (+ resvg-py, no system libraries; Pillow no longer needed), `docx` (+ python-docx). Without them `--svg`/`--png`/`--docx` print which extra to install.
+    * Murdoku: blocked squares are now shown by a clearly darker shade of their region instead of a red cross.
+    * `--lint` also warns when a figure `icon=` is a valid code point whose picture is not vendored; tests check every object and figure in `examples/` has a vendored icon and every character in the example pictures is in the bundled font. The Murdoku skill and `AGENT.md` describe how to add icons for new objects and families.
 * Star Battle examples now have irregular regions and two or three stars: `starbattle_8x8.txt` and `starbattle_10x10.txt` (two stars) and `starbattle_12x12.txt` (three stars), unique and graded `cover2`, `chains` and `cover3`. They replace `starbattle_4x4.txt` (one star, which is just a Queens puzzle) and the old row-region 8 × 8.
     * Star Battle regions may now have any size from `Stars:` cells up, as long as each is connected (it used to require exactly N cells each).
 * DogDoku ([#71](https://github.com/operdeck/human-reasoning-puzzles/issues/71)): `Family: dogdoku` (a Queens puzzle with dogs) and an optional `Icon:` section (`queen`, `dog`, `puppy`) for Queens files, drawn in `--png` and shown in the text board. Dog puzzles colour every zone differently.
     * Queens zones may now have any size from one cell up, as long as each is connected (it used to require exactly N cells each).
     * New examples `dogdoku_5x5.txt`, `dogdoku_7x7.txt`, `dogdoku_9x9.txt`: unique, built backwards from a solving order, and solvable by eliminations only; grades `single`, `subsumption`, `cover2`.
 * Booklets list the puzzles alphabetically by file name and, with more than one puzzle, start with a clickable table of contents (page numbers fill in when Word opens it).
-* Murdoku PNG: blocked squares show a translucent red cross behind their object, so blocking and standable objects are told apart.
+* Murdoku PNG: blocked squares are marked so blocking and standable objects are told apart (now a darker shade, see #75).
 * Booklet lists attributes and roles beside the board; area tags (e.g. "noble areas") are now named in the PNG legend and the booklet rules.
 * Clues thinned in zoo, food-2 and tamagotchi puzzles and sudoku givens in the anti/relations examples (still unique); clearer wording for `furthest`/`alone`; thermometers and mark legends render cleanly; booklet layout follows the Prrrdoku style.
 * [#28 Create docx from puzzle description](https://github.com/operdeck/human-reasoning-puzzles/issues/28)

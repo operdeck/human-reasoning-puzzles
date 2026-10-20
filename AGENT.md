@@ -99,7 +99,7 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   generated instead, as `murdoku_intro.txt` and the graded Sudokus and
   Calcudokus are.
 - **README pictures and solutions are generated**, never hand-edited: redraw
-  `docs/images/*.png` with `--png` and re-run `--explain` whenever drawing or
+  `docs/images/*.png` with `--png` (rasterised from the SVG renderer) and re-run `--explain` whenever drawing or
   wording changes, and keep the README in step. In the README, "Prrrdoku"
   appears only as the example file names, not as a general term.
 
@@ -166,11 +166,19 @@ Names must match appearance: an area called "Blue hall" is drawn blue, and
 icons and other visuals fit their object's name. A test checks colour words in
 region names against `Regions:` colours; review other names by eye.
 
+Every object and figure needs a vendored icon, never a text fallback: add the
+name to `icons.CATALOGUE` (or reuse an entry), vendor a missing picture with
+`uv run python scripts/vendor_emoji.py U+<code>` (the only step that uses the
+network; rendering never does) and commit the SVG and `bounds.json`. A test
+fails when any object or figure in `examples/` lacks one; the Murdoku skill's
+"Icons and Pictures" section has the full checklist.
+
 `--lint` reports malformed declarations as errors and missing icons,
 unreachable areas, or unused roles as warnings. `--require-forward` also
-requires a solve without `what_if`. `--png` without a path writes
-`<puzzle-stem>.png` beside the input, and the solved image adds `-solution`;
-an explicit path overrides the default. `--docx [FILE]` (or a quoted glob) writes
+requires a solve without `what_if`. `--svg` or `--png` without a path writes
+`<puzzle-stem>.svg`/`.png` beside the input, and the solved image adds `-solution`;
+an explicit path overrides the default. `--interactive` (with `--svg`) adds cell
+ids for an app and leaves out the solution. `--docx [FILE]` (or a quoted glob) writes
 an editable Word booklet, puzzles first and then solutions, one page each, from
 `docx_export`; new Murdoku puzzles should carry the optional `Title:`, `Intro:`,
 `Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku
@@ -216,7 +224,11 @@ puzzle-specific behavior to `core.py`.
 5. Wire into `puzzlefile.detect` and `KINDS`, `cli.load` and
    `cli.write_picture`, `bruteforce.SOLVERS`, `picture.py`, and give the
    module a line in the layering test's `ALLOWED` map (`futoshiki.py` is
-   the smallest complete example to copy).
+   the smallest complete example to copy). Draw every piece (stars, tents,
+   bulbs, ships...) through `icons`: add a registry `Icon` with a Unicode
+   `symbol` for text output and a shape or vendored emoji for pictures, use
+   `icons.symbol(...)` in `render()` and `icons.draw(...)` in `picture.py`;
+   the parametrised registry test then checks it renders.
 6. Add `bruteforce/<family>.py` with `solutions(text, limit) -> list[dict]`,
    a plain search sharing only the reader and the rule definitions. Keep the
    rule definitions (what a clue or cage *means*) in one place that both the

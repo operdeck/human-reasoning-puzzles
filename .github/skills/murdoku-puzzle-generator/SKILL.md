@@ -145,7 +145,8 @@ uv run csp <file.txt> --lint
   generated puzzle, require a solved grade and compare it with the user's
   target. For a transcription, `unsolved` means this solver's deduction rules
   did not finish it; it does not mean the text file is malformed.
-- `--lint` reports missing icons, unreachable areas, and unused roles; malformed
+- `--lint` reports missing icons (fix them as in
+  [Icons and Pictures](#icons-and-pictures)), unreachable areas, and unused roles; malformed
   declarations are errors. `--require-forward` also runs lint and requires a
   solve without the `what_if` rule when forward-only solving is required.
 - `--docx [FILE]` (also a glob) writes the booklet; see
@@ -155,14 +156,41 @@ uv run csp <file.txt> --lint
   region-overlap companion candidates until everyone else is placed, then
   one square and one companion.
 - `--explain` can produce a worked solution when requested. Review it against
-  the intended assignment and clue meanings. Use `--png` to write `<puzzle-stem>.png`
-  beside the input, or `--png <file.png>` to choose an explicit path; the solved
-  image adds `-solution` before the extension.
+  the intended assignment and clue meanings. Use `--svg` (or `--png`, which needs
+  `uv sync --extra png`) to write `<puzzle-stem>.svg` beside the input, or
+  `--svg <file.svg>` to choose an explicit path; the solved image adds `-solution`
+  before the extension.
 
 Report the file path, parser result, solution count, actual grade, and any
 remaining uncertainties. For generated puzzles, include the intended
 solution. Do not claim a requested grade was reached unless `--grade` confirms
 it.
+
+## Icons and Pictures
+
+Every object, window, corner object and figure must show a fitting picture, not
+a text fallback. Do this for each new name before reporting the puzzle:
+
+1. Run `uv run csp <file.txt> --lint`. "missing icon for X" (objects) or
+   "unknown icon X" (figures) means the name has no vendored picture.
+2. Pick an emoji that shows what the name says (a "tree" is a deciduous tree, a
+   "carpet" a carpet). Prefer reusing an existing `icons.CATALOGUE` entry by
+   naming the object after it; otherwise add the Dutch name and the English
+   synonyms to `CATALOGUE` in `src/csp/icons.py`, grouped with similar objects.
+   Figures may use `icon=U+<code>` directly.
+3. If its picture is not yet in `src/csp/assets/emoji/`, vendor it (this is the
+   only step that needs network; rendering never fetches anything):
+   `uv run python scripts/vendor_emoji.py U+<code>`. Commit the new
+   `emoji_u<code>.svg` and the updated `bounds.json`. Only vendor from the
+   pinned Noto Emoji commit; never add artwork from other sources. If no emoji
+   fits, draw an original shape in `icons.REGISTRY` (like `carpet` and `well`)
+   and map the name in `OBJECT_ICONS`.
+4. Rerun `--lint` until it reports no icon warnings, then render with
+   `--svg` (or `--png`) and look at the picture: the icon must read clearly at
+   cell size and, for blocking objects, on the darker shading. Fix a picture
+   that crops oddly by choosing another emoji rather than editing coordinates.
+5. For a committed example, `uv run pytest tests/test_picture.py -k vendored_icon`
+   checks every object and figure in `examples/` has a vendored icon.
 
 ## Murdoku Invariants
 
@@ -197,8 +225,8 @@ it.
   fallback but can look odd, so check the picture before keeping it. Footprints
   may cross region boundaries (connectivity is the only parser rule), but that
   is unusual and should be noted in the file header.
-  Blocking squares are drawn with a red cross, so a blocking object needs an
-  icon that still reads clearly behind it.
+  Blocking squares are shaded darker than their region, so a blocking object
+  needs an icon that still reads clearly on the darker shade.
 - `EdgeItems:` declares named doors and windows without occupying cells.
   A simple door lists two orthogonally neighboring cells in different areas,
   for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider
@@ -420,7 +448,8 @@ Rules when adding metadata:
   clue itself.
 - Give every figure a thumbnail where one exists: `icon=U+<emoji code>` (or a catalogue
   name) for original puzzles, e.g. food, animals; a file named after the person in
-  `<puzzle>-figures/` for licensed artwork. Lint warns about unknown icons.
+  `<puzzle>-figures/` for licensed artwork. Lint warns about unknown or unvendored
+  icons; vendor them as in [Icons and Pictures](#icons-and-pictures).
 - Figure `image=` paths are relative to the puzzle file and optional (missing
   images fall back to text). Never commit third-party artwork; use original or
   licensed images only.

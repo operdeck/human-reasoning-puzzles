@@ -1,23 +1,32 @@
-"""PNG pictures of puzzles, drawn from the puzzle itself.
+"""Pictures of puzzles, drawn as SVG from the puzzle itself.
+
+This is the one renderer: every family draws on an `svg.Canvas`, and PNG
+(`--png`, README images) and the Word booklets are rasterised from that SVG.
+Symbols come from the icon registry in `csp.icons`.
+
+Every picture function takes the puzzle and an optional solution, and draws
+one of three variants:
+
+- blank: the puzzle only (no solution given),
+- solution: the solved board, solved items in blue,
+- interactive (`interactive=True`): the puzzle only, every cell a transparent
+  element with an id such as `r3c4`.
 
 Murdoku follows the style of the printed puzzles: region fills (darker where
 an object stands), optional diagonal hatching, thick dark lines between
 regions and thin white lines inside them, an icon per object, name tags for
-people, and a legend. Icons come from `csp.icons`;
-an object without one gets its name written in the square.
+people, and a legend. An object without an icon gets its name written in
+the square.
 
 Sudoku and Calcudoku share the look: thick lines around boxes or cages, thin
 ones inside, givens in black and solved numbers in blue. Calcudoku cages get
 pastel fills, no two touching cages alike, and their target in the corner.
-
-Needs Pillow (`uv sync --extra png`).
 """
 
 import textwrap
 from collections.abc import Callable, Hashable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
-
-from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from . import icons
 from .akari import Puzzle as Akari
@@ -43,6 +52,7 @@ from .sudoku import box_size
 from .sudoku import cell_name as sudoku_cell
 from .suguru import Puzzle as Suguru
 from .suguru import cell_name as suguru_cell
+from .svg import Canvas
 from .tents import Puzzle as Tents
 
 INK = (26, 26, 26)
@@ -53,6 +63,7 @@ THIN = (190, 190, 190)
 MARK_FILL = (246, 249, 229)
 MARK_INK = (57, 89, 66)
 COUNT_SCOPE = (45, 110, 155)
+TONGUE = (232, 106, 126)  # the puppy's tongue, see icons.PUPPY
 # Used for regions the puzzle file gives no colour.
 PALETTE = ["#F3C8C0", "#FADFB5", "#CBE6B9", "#D8D2F0", "#C4DCF2", "#BEE5D6", "#F3EDA2",
            "#DCDCDC", "#E0A79C", "#A9D6F0"]  # fmt: skip
@@ -60,6 +71,22 @@ PALETTE = ["#F3C8C0", "#FADFB5", "#CBE6B9", "#D8D2F0", "#C4DCF2", "#BEE5D6", "#F
 type RGB = tuple[int, int, int]
 type Box = tuple[int, int, int, int]
 type Cell = tuple[int, int]
+
+
+@dataclass(frozen=True)
+class Mark:
+    """A registry icon to draw in a cell, taking `scale` of the cell."""
+
+    name: str
+    scale: float = 0.72
+
+
+type Value = str | int | Mark | None
+
+
+def cell_id(row: int, col: int) -> str:
+    """The id of a cell in the interactive variant, as in the solver: r1c1 is top left."""
+    return f"r{row + 1}c{col + 1}"
 
 
 def murdoku_picture(
@@ -72,7 +99,8 @@ def murdoku_picture(
     coordinates: bool = True,
     legend: bool = True,
     show_roles: bool = True,
-) -> Image.Image:
+    interactive: bool = False,
+) -> Canvas:
     """The board, with `placed` people drawn on their squares if given.
 
     Without `legend` the picture is square, for documents with their own legend.
@@ -81,11 +109,12 @@ def murdoku_picture(
     margin = cell // 2 if coordinates else cell // 6
     # Solver assignments also hold role booleans; only squares are people.
     placed = {k: v for k, v in (placed or {}).items() if isinstance(v, Square)}
+    if interactive:
+        placed = {}
     side = board.size * cell
     key = _Legend(board, cell, role_statuses or {}, global_counts, show_roles) if legend else None
     height = side + 2 * margin + (key.height if key else 0)
-    image = Image.new("RGB", (side + 2 * margin, height), WHITE)
-    draw = ImageDraw.Draw(image)
+    canvas = Canvas(side + 2 * margin, height)
     fills = _fills(board)
 
     def box(sq: Square) -> Box:
@@ -98,17 +127,16 @@ def murdoku_picture(
         for c in range(board.size):
             sq = Square(r, c)
             fill = fills[board.region_of(sq)]
-            draw.rectangle(box(sq), fill=_darker(fill) if sq in blocked else fill)
-    _hatch(image, board, box, cell)
-    _no_entry(image, [box(sq) for sq in sorted(blocked)], cell)
+            canvas.rectangle(box(sq), fill=_darker(fill) if sq in blocked else fill)
+    _hatch(canvas, board, box, cell)
     _walls(
-        draw,
+        canvas,
         board.size,
         margin,
         cell,
         lambda a, b: board.regions[a[0]][a[1]] == board.regions[b[0]][b[1]],
     )
-    _draw_edge_item_doors(draw, board, margin, cell)
+    _draw_edge_item_doors(canvas, board, margin, cell)
 
     occupied = set(placed.values())
     for obj in board.objects:
@@ -121,51 +149,32 @@ def murdoku_picture(
         seat = base in SEAT_NAMES
         stretch = len(piece) > 1 and not seat
         if base in WELL_NAMES:
-            _draw_water_well(draw, (x0, y0, x1, y1))
+            icons.draw(canvas, "well", (x0, y0, x1, y1), stretch=True)
         elif obj.kind == "standable":
             long_vertical = y1 - y0 > x1 - x0
             rotate = (base == "bed" or seat) and long_vertical
             if seat:
                 # Keep the seat's proportions and fit it to the whole footprint.
-                _icon(
-                    image,
-                    draw,
-                    name,
-                    (x0, y0, x1, y1),
-                    cell,
-                    scale=0.9,
-                    rotate=rotate,
-                    fit_box=True,
-                )
+                _icon(canvas, name, (x0, y0, x1, y1), cell, scale=0.9, rotate=rotate, fit_box=True)
             elif occupied & set(piece) and not stretch:
                 y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
-                _icon(image, draw, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
+                _icon(canvas, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
             else:
-                _icon(image, draw, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
+                _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
         else:
-            _icon(image, draw, name, (x0, y0, x1, y1), cell, stretch=stretch)
+            _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch)
     for item in board.edge_items:
         if item.kind == "window":
-            _icon(image, draw, item.name, box(item.cells[0]), cell, scale=0.42)
+            _icon(canvas, item.name, box(item.cells[0]), cell, scale=0.42)
     for corner in board.corner_objects:
         anchor_row = max(square.row for square in corner.cells)
         anchor_col = max(square.col for square in corner.cells)
         x = margin + anchor_col * cell
         y = margin + anchor_row * cell
         radius = cell // 4
-        _icon(
-            image,
-            draw,
-            corner.name,
-            (x - radius, y - radius, x + radius, y + radius),
-            cell,
-        )
+        _icon(canvas, corner.name, (x - radius, y - radius, x + radius, y + radius), cell)
     for square in count_scope:
-        draw.rectangle(
-            box(square),
-            outline=COUNT_SCOPE,
-            width=max(2, cell // 40),
-        )
+        canvas.rectangle(box(square), outline=COUNT_SCOPE, width=max(2, cell // 40))
     marks_by_cell: dict[Square, list[str]] = {}
     for mark in board.marks:
         for square in mark.cells:
@@ -174,7 +183,7 @@ def murdoku_picture(
         x0, y0, _, _ = box(square)
         pad = max(3, cell // 24)
         area = (x0 + pad, y0 + pad, x0 + pad + cell // 3, y0 + pad + cell // 4)
-        draw.rounded_rectangle(
+        canvas.rounded_rectangle(
             area,
             radius=max(2, cell // 30),
             fill=MARK_FILL,
@@ -182,27 +191,28 @@ def murdoku_picture(
             width=max(1, cell // 50),
         )
         initials = "/".join(name[:2].upper() for name in sorted(names))
-        _centred_text(draw, initials, area, max(8, cell // 12), MARK_INK, max_width=cell // 3)
+        _centred_text(canvas, initials, area, max(8, cell // 12), MARK_INK, max_width=cell // 3)
     standable = board.squares_of(obj.name for obj in board.standable_objects)
-    for person, sq in (placed or {}).items():
-        _name_tag(draw, person, box(sq), cell, low=sq in standable)
+    for person, sq in placed.items():
+        _name_tag(canvas, person, box(sq), cell, low=sq in standable)
 
     if coordinates:
-        _coordinates(draw, board.size, margin, cell)
+        _coordinates(canvas, board.size, margin, cell)
     if key:
-        key.draw(image, draw, margin, margin + side + cell // 3)
-    return image
+        key.draw(canvas, margin, margin + side + cell // 3)
+    if interactive:
+        _cells(canvas, board.size, margin, margin, cell)
+    return canvas
 
 
-# Objects drawn by hand because Noto Emoji has no suitable picture.
-CARPET_NAMES = frozenset({"tapijt", "carpet", "rug", "tatami"})
-WELL_NAMES = frozenset({"waterput", "well"})
+# Objects drawn with the registry's own drawings because Noto Emoji has no suitable picture.
+CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "carpet")
+WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
 SEAT_NAMES = frozenset({"bench", "bank", "bankje"})
 
 
 def unknown_object_icons(board: Board) -> list[str]:
     """Object types that render with a text fallback instead of a picture icon."""
-    custom = CARPET_NAMES | WELL_NAMES
     return sorted(
         {
             name
@@ -211,24 +221,29 @@ def unknown_object_icons(board: Board) -> list[str]:
                 | {item.name for item in board.edge_items if item.kind == "window"}
                 | board.corner_object_names
             )
-            if icons.code_for(name) is None
-            and name.rstrip("0123456789").rstrip("_").lower() not in custom
+            if icons.object_icon(name) is None
         }
     )
 
 
 def sudoku_picture(
-    puzzle: Sudoku, solution: Mapping[str, int] | None = None, *, cell: int = 100
-) -> Image.Image:
+    puzzle: Sudoku,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 100,
+    interactive: bool = False,
+) -> Canvas:
     """The grid with its givens, and the solved numbers in blue if given.
 
     Square boxes are shaded alternately; jigsaw boxes get a pastel each.
-    Extra houses (NRC boxes, X-Sudoku diagonals) are grey.
+    Extra houses (NRC boxes, X-Sudoku diagonals) are grey. Kropki dots sit on
+    the edge between their cells; thermometers are grey bulbs and stems.
     """
     n, grid, boxes = puzzle.size, puzzle.grid, puzzle.boxes
     fills = _group_fills({(r, c): boxes[r][c] for r in range(n) for c in range(n)})
     box = box_size(n)
     extra = {cell for cells in puzzle.extra_houses().values() for cell in cells}
+    solution = None if interactive else solution
 
     def shade(r: int, c: int) -> RGB:
         if (r, c) in extra:
@@ -239,124 +254,133 @@ def sudoku_picture(
             return WHITE
         return (238, 242, 250) if (r // box + c // box) % 2 else WHITE
 
-    def number(r: int, c: int) -> tuple[int | None, RGB]:
+    def number(r: int, c: int) -> tuple[Value, RGB]:
         if grid[r][c]:
             return grid[r][c], INK
         return (solution or {}).get(sudoku_cell(r, c)), SOLVED
 
-    image = _number_grid(
-        n, cell, shade, number, lambda a, b: boxes[a[0]][a[1]] == boxes[b[0]][b[1]]
-    )
-    if puzzle.links:
-        draw = ImageDraw.Draw(image)
+    def overlay(canvas: Canvas) -> None:
         margin = cell // 2
         for link in puzzle.links:
-            first_x = margin + link.first[1] * cell + cell // 2
-            first_y = margin + link.first[0] * cell + cell // 2
-            second_x = margin + link.second[1] * cell + cell // 2
-            second_y = margin + link.second[0] * cell + cell // 2
             if link.kind == "less":
                 continue
-            else:
-                middle = ((first_x + second_x) // 2, (first_y + second_y) // 2)
-                radius = max(6, cell // 13)
-                fill = INK if link.kind == "black" else WHITE
-                draw.ellipse(
-                    (
-                        middle[0] - radius,
-                        middle[1] - radius,
-                        middle[0] + radius,
-                        middle[1] + radius,
-                    ),
-                    fill=fill,
-                    outline=INK,
-                    width=max(2, cell // 35),
-                )
-        image = _thermometers(image, puzzle, cell)
-    return image
+            x = margin + (link.first[1] + link.second[1] + 1) * cell // 2
+            y = margin + (link.first[0] + link.second[0] + 1) * cell // 2
+            radius = max(6, cell // 13)
+            dot = "dot_black" if link.kind == "black" else "dot_white"
+            icons.draw(
+                canvas, dot, (x - radius, y - radius, x + radius + 1, y + radius + 1), tint=INK
+            )
+        _thermometers(canvas, puzzle, cell)
+
+    return _number_grid(
+        n,
+        cell,
+        shade,
+        number,
+        lambda a, b: boxes[a[0]][a[1]] == boxes[b[0]][b[1]],
+        overlay=overlay,
+        interactive=interactive,
+    )
 
 
-def _thermometers(image: Image.Image, puzzle: Sudoku, cell: int) -> Image.Image:
-    """Draw each thermometer as a translucent grey bulb and stem over the finished grid."""
+def _thermometers(canvas: Canvas, puzzle: Sudoku, cell: int) -> None:
+    """Draw each thermometer as a translucent grey bulb and stem."""
     links = [link for link in puzzle.links if link.kind == "less"]
     if not links:
-        return image
+        return
     margin = cell // 2
-    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer)
-    grey = (120, 120, 120, 105)
+    grey = (120, 120, 120)
     width = max(6, cell // 7)
 
     def centre(square: tuple[int, int]) -> tuple[int, int]:
         return margin + square[1] * cell + cell // 2, margin + square[0] * cell + cell // 2
 
-    for link in links:
-        draw.line((centre(link.first), centre(link.second)), fill=grey, width=width)
-    seconds = {link.second for link in links}
-    for first in {link.first for link in links} - seconds:
-        x, y = centre(first)
-        radius = cell // 4
-        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=grey)
-    return Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB")
+    with canvas.group(opacity=105 / 255):
+        for link in links:
+            canvas.line((centre(link.first), centre(link.second)), fill=grey, width=width)
+        seconds = {link.second for link in links}
+        for first in sorted({link.first for link in links} - seconds):
+            x, y = centre(first)
+            radius = cell // 4
+            canvas.ellipse((x - radius, y - radius, x + radius, y + radius), fill=grey)
 
 
 def calcudoku_picture(
-    puzzle: Calcudoku, solution: Mapping[str, int] | None = None, *, cell: int = 100
-) -> Image.Image:
-    """The cages with their targets, and the solved numbers if given."""
+    puzzle: Calcudoku,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 100,
+    interactive: bool = False,
+) -> Canvas:
+    """The cages with their targets (with printed signs), and the solved numbers if given."""
     fills = _cage_fills(puzzle)
     cage_at = puzzle.cage_at
+    solution = None if interactive else solution
 
-    def number(r: int, c: int) -> tuple[int | None, RGB]:
+    def number(r: int, c: int) -> tuple[Value, RGB]:
         return (solution or {}).get(calcudoku_cell((r, c))), SOLVED
 
-    image = _number_grid(
+    def overlay(canvas: Canvas) -> None:
+        margin = cell // 2
+        for cage in puzzle.cages:
+            r, c = min(cage.cells)
+            corner = (margin + c * cell + cell // 10, margin + r * cell + cell // 14)
+            canvas.text(corner, cage.display_label, INK, cell // 5, anchor="la")
+
+    return _number_grid(
         puzzle.size,
         cell,
         lambda r, c: fills[cage_at[r, c]],
         number,
         lambda a, b: cage_at[a] is cage_at[b],
+        overlay=overlay,
+        interactive=interactive,
     )
-    draw = ImageDraw.Draw(image)
-    margin = cell // 2
-    font = _font(cell // 5)
-    for cage in puzzle.cages:
-        r, c = min(cage.cells)
-        corner = (margin + c * cell + cell // 10, margin + r * cell + cell // 14)
-        draw.text(corner, cage.label, fill=INK, font=font, anchor="la")
-    return image
 
 
 def futoshiki_picture(
-    puzzle: Futoshiki, solution: Mapping[str, int] | None = None, *, cell: int = 100
-) -> Image.Image:
+    puzzle: Futoshiki,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 100,
+    interactive: bool = False,
+) -> Canvas:
     """The grid with its givens and signs, and the solved numbers in blue if given.
 
     Each sign is a chevron on the edge between its two cells, its point
     towards the smaller number.
     """
     grid = puzzle.grid
+    solution = None if interactive else solution
 
-    def number(r: int, c: int) -> tuple[int | None, RGB]:
+    def number(r: int, c: int) -> tuple[Value, RGB]:
         if grid[r][c]:
             return grid[r][c], INK
         return (solution or {}).get(futoshiki_cell((r, c))), SOLVED
 
-    image = _number_grid(puzzle.size, cell, lambda r, c: WHITE, number, lambda a, b: True)
-    draw = ImageDraw.Draw(image)
-    margin, arm = cell // 2, cell // 9
-    for sign in puzzle.signs:
-        (r0, c0), (r1, c1) = sign.smaller, sign.larger
-        dx, dy = c0 - c1, r0 - r1  # one step towards the smaller cell
-        mx = margin + (c0 + c1 + 1) * cell / 2
-        my = margin + (r0 + r1 + 1) * cell / 2
-        tip = (mx + dx * arm / 2, my + dy * arm / 2)
-        back = (mx - dx * arm / 2, my - dy * arm / 2)
-        ends = [(back[0] + dy * arm, back[1] + dx * arm), (back[0] - dy * arm, back[1] - dx * arm)]
-        pad = arm + cell // 25
-        draw.rectangle((mx - pad, my - pad, mx + pad, my + pad), fill=WHITE)
-        draw.line([ends[0], tip, ends[1]], fill=INK, width=max(3, cell // 25), joint="curve")
-    return image
+    def overlay(canvas: Canvas) -> None:
+        margin, arm = cell // 2, cell // 9
+        # The 'less' icon points left; turn it towards the smaller cell.
+        turn = {(-1, 0): 0, (0, 1): 90, (1, 0): 180, (0, -1): 270}
+        for sign in puzzle.signs:
+            (r0, c0), (r1, c1) = sign.smaller, sign.larger
+            mx = margin + (c0 + c1 + 1) * cell / 2
+            my = margin + (r0 + r1 + 1) * cell / 2
+            pad = arm + cell // 25
+            canvas.rectangle((mx - pad, my - pad, mx + pad, my + pad), fill=WHITE)
+            area = (mx - pad + 0.5, my - pad + 0.5, mx + pad + 0.5, my + pad + 0.5)
+            icons.draw(canvas, "less", area, tint=INK, rotate=turn[c0 - c1, r0 - r1])
+
+    return _number_grid(
+        puzzle.size,
+        cell,
+        lambda r, c: WHITE,
+        number,
+        lambda a, b: True,
+        overlay=overlay,
+        interactive=interactive,
+    )
 
 
 def queens_picture(
@@ -364,16 +388,16 @@ def queens_picture(
     solution: Mapping[str, QueensCell] | None = None,
     *,
     cell: int = 100,
-) -> Image.Image:
+    interactive: bool = False,
+) -> Canvas:
     """Draw region colours and the placed queens (or dogs) in blue.
 
-    `puzzle.icon` picks the piece: a crown, a dog or a puppy.
+    `puzzle.icon` picks the piece from the registry: a crown, a dog or a puppy.
     """
     n = puzzle.size
     margin = cell // 2
     side = n * cell
-    image = Image.new("RGB", (side + 2 * margin, side + 2 * margin), WHITE)
-    draw = ImageDraw.Draw(image)
+    canvas = Canvas(side + 2 * margin, side + 2 * margin)
     region_at = {(r, c): puzzle.grid[r][c] for r in range(n) for c in range(n)}
     fills = _group_fills(region_at)
     if puzzle.icon != "queen" and n <= len(PALETTE):
@@ -381,122 +405,40 @@ def queens_picture(
         fills = {region: _rgb(PALETTE[i]) for i, region in enumerate(puzzle.region_ids)}
     for (row, col), region in region_at.items():
         x, y = margin + col * cell, margin + row * cell
-        draw.rectangle((x, y, x + cell, y + cell), fill=fills[region])
-    _walls(draw, n, margin, cell, lambda a, b: region_at[a] == region_at[b], thin_colour=THIN)
-
-    def crown(queen: QueensCell, colour: RGB) -> None:
-        x = margin + queen.col * cell
-        y = margin + queen.row * cell
-        baseline = y + cell * 3 // 4
-        crown = [
-            (x + cell // 5, baseline),
-            (x + cell // 10, y + cell // 4),
-            (x + cell // 3, y + cell // 2),
-            (x + cell // 2, y + cell // 8),
-            (x + cell * 2 // 3, y + cell // 2),
-            (x + cell * 9 // 10, y + cell // 4),
-            (x + cell * 4 // 5, baseline),
-        ]
-        draw.polygon(crown, fill=colour)
-        draw.rectangle((x + cell // 5, baseline, x + cell * 4 // 5, y + cell * 4 // 5), fill=colour)
-        draw.rectangle(
-            (x + cell // 4, y + cell * 5 // 6, x + cell * 3 // 4, y + cell * 9 // 10),
-            fill=colour,
-        )
-        radius = max(1, cell // 18)
-        for center_x, center_y in (
-            (x + cell // 10, y + cell // 4),
-            (x + cell // 2, y + cell // 8),
-            (x + cell * 9 // 10, y + cell // 4),
-        ):
-            draw.ellipse(
-                (center_x - radius, center_y - radius, center_x + radius, center_y + radius),
-                fill=colour,
-            )
+        canvas.rectangle((x, y, x + cell, y + cell), fill=fills[region])
+    _walls(canvas, n, margin, cell, lambda a, b: region_at[a] == region_at[b], thin_colour=THIN)
 
     def piece(queen: QueensCell, colour: RGB) -> None:
-        if puzzle.icon == "queen":
-            crown(queen, colour)
-        else:
-            _dog_head(
-                draw,
-                margin + queen.col * cell,
-                margin + queen.row * cell,
-                cell,
-                colour,
-                puppy=puzzle.icon == "puppy",
-            )
+        x, y = margin + queen.col * cell, margin + queen.row * cell
+        icons.draw(canvas, puzzle.icon, (x, y, x + cell, y + cell), tint=colour, stretch=True)
 
     given_cells = set(puzzle.givens.values())
     for queen in given_cells:
         piece(queen, INK)
-    for queen in (solution or {}).values():
+    for queen in ({} if interactive else solution or {}).values():
         if queen not in given_cells:
             piece(queen, SOLVED)
-    _coordinates(draw, n, margin, cell)
-    return image
-
-
-TONGUE = (232, 106, 126)
-
-
-def _dog_head(
-    draw: ImageDraw.ImageDraw, x: int, y: int, cell: int, colour: RGB, *, puppy: bool
-) -> None:
-    """Draw a dog's face in `colour` inside the square at (x, y).
-
-    A dog has pointed, upright ears; a puppy a rounder head, floppy ears and a
-    tongue. Drawn by hand so it can take the given/solved colours, as the crown does.
-    """
-
-    def at(fx: float, fy: float) -> tuple[float, float]:
-        return x + fx * cell, y + fy * cell
-
-    def ellipse(cx: float, cy: float, rx: float, ry: float, fill: RGB) -> None:
-        (x0, y0), (x1, y1) = at(cx - rx, cy - ry), at(cx + rx, cy + ry)
-        draw.ellipse((x0, y0, x1, y1), fill=fill)
-
-    def polygon(points: list[tuple[float, float]], fill: RGB) -> None:
-        draw.polygon([at(fx, fy) for fx, fy in points], fill=fill)
-
-    if puppy:
-        for side in (-1, 1):  # floppy ears hang beside the head
-            ellipse(0.5 + side * 0.3, 0.45, 0.1, 0.21, colour)
-        ellipse(0.5, 0.52, 0.27, 0.27, colour)
-        ellipse(0.5, 0.7, 0.15, 0.11, WHITE)  # muzzle
-        ellipse(0.5, 0.82, 0.05, 0.075, TONGUE)
-        ellipse(0.5, 0.66, 0.055, 0.04, colour)  # nose
-        eyes = (0.37, 0.63), 0.46, 0.05
-    else:
-        for side in (-1, 1):  # pointed ears stand up
-            polygon(
-                [
-                    (0.5 + side * 0.08, 0.34),
-                    (0.5 + side * 0.2, 0.08),
-                    (0.5 + side * 0.31, 0.4),
-                ],
-                colour,
-            )
-        ellipse(0.5, 0.56, 0.26, 0.25, colour)
-        ellipse(0.5, 0.7, 0.14, 0.1, WHITE)  # muzzle
-        ellipse(0.5, 0.65, 0.06, 0.04, colour)  # nose
-        eyes = (0.38, 0.62), 0.5, 0.045
-    columns, eye_y, radius = eyes
-    for eye_x in columns:
-        ellipse(eye_x, eye_y, radius, radius, WHITE)
-        ellipse(eye_x, eye_y, radius / 2, radius / 2, colour)
+    _coordinates(canvas, n, margin, cell)
+    if interactive:
+        _cells(canvas, n, margin, margin, cell)
+    return canvas
 
 
 def suguru_picture(
-    puzzle: Suguru, solution: Mapping[str, int] | None = None, *, cell: int = 100
-) -> Image.Image:
+    puzzle: Suguru,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 100,
+    interactive: bool = False,
+) -> Canvas:
     """Draw Suguru regions and values, with solved values in blue."""
     region_at = {
         (r, c): puzzle.areas.cells[r][c] for r in range(puzzle.size) for c in range(puzzle.size)
     }
     fills = _group_fills(region_at)
+    solution = None if interactive else solution
 
-    def number(row: int, col: int) -> tuple[str | int | None, RGB]:
+    def number(row: int, col: int) -> tuple[Value, RGB]:
         given = puzzle.givens[row][col]
         if given:
             return given, INK
@@ -508,6 +450,7 @@ def suguru_picture(
         lambda row, col: fills[region_at[row, col]],
         number,
         lambda first, second: region_at[first] == region_at[second],
+        interactive=interactive,
     )
 
 
@@ -516,19 +459,21 @@ def starbattle_picture(
     solution: Mapping[str, bool] | None = None,
     *,
     cell: int = 100,
-) -> Image.Image:
-    """Draw Star Battle regions and the solved stars."""
+    interactive: bool = False,
+) -> Canvas:
+    """Draw Star Battle regions, given stars in ink and solved stars in blue."""
     region_at = {
         (r, c): puzzle.areas.cells[r][c] for r in range(puzzle.size) for c in range(puzzle.size)
     }
     fills = _group_fills(region_at)
+    solution = None if interactive else solution
+    star = Mark("star", 0.62)
 
-    def mark(row: int, col: int) -> tuple[str | None, RGB]:
-        key = starbattle_cell((row, col))
+    def mark(row: int, col: int) -> tuple[Value, RGB]:
         if puzzle.givens[row][col] == 1:
-            return "*", INK
-        if solution is not None and solution.get(key):
-            return "*", SOLVED
+            return star, INK
+        if solution is not None and solution.get(starbattle_cell((row, col))):
+            return star, SOLVED
         return None, INK
 
     return _number_grid(
@@ -537,29 +482,36 @@ def starbattle_picture(
         lambda row, col: fills[region_at[row, col]],
         mark,
         lambda first, second: region_at[first] == region_at[second],
+        interactive=interactive,
     )
 
 
 def binairo_picture(
-    puzzle: Binairo, solution: Mapping[str, bool] | None = None, *, cell: int = 100
-) -> Image.Image:
-    """Draw binary givens in ink and solved values in blue."""
+    puzzle: Binairo,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 100,
+    interactive: bool = False,
+) -> Canvas:
+    """Draw ones as black discs and zeros as white discs, solved ones in blue.
 
-    def value(row: int, col: int) -> tuple[str | int | None, RGB]:
+    Tango signs (equal and different) sit in a badge on the edge between their cells.
+    """
+    solution = None if interactive else solution
+
+    def disc(one: bool) -> Mark:
+        return Mark("disc_black" if one else "disc_white", 0.7)
+
+    def value(row: int, col: int) -> tuple[Value, RGB]:
         given = puzzle.givens[row][col]
         if given >= 0:
-            return given, INK
+            return disc(given == 1), INK
         chosen = (solution or {}).get(binairo_cell((row, col)))
-        return (int(chosen), SOLVED) if chosen is not None else (None, INK)
+        return (disc(chosen), SOLVED) if chosen is not None else (None, INK)
 
-    image = _number_grid(
-        puzzle.size, cell, lambda row, col: WHITE, value, lambda first, second: True
-    )
-    if puzzle.signs:
-        draw = ImageDraw.Draw(image)
+    def overlay(canvas: Canvas) -> None:
         margin = cell // 2
         radius = max(10, cell // 7)
-        font = _font(max(12, cell // 4))
         for sign in puzzle.signs:
             first_row, first_col = sign.first
             second_row, second_col = sign.second
@@ -569,76 +521,113 @@ def binairo_picture(
             else:
                 x = margin + first_col * cell + cell // 2
                 y = margin + max(first_row, second_row) * cell
-            draw.ellipse(
+            canvas.ellipse(
                 (x - radius, y - radius, x + radius, y + radius),
                 fill=WHITE,
                 outline=INK,
                 width=max(2, cell // 35),
             )
-            label = "=" if sign.kind == "equal" else "x"
-            draw.text((x, y), label, fill=INK, font=font, anchor="mm")
-    return image
+            inner = radius * 0.7
+            name = "equal" if sign.kind == "equal" else "different"
+            area = (x + 0.5 - inner, y + 0.5 - inner, x + 0.5 + inner, y + 0.5 + inner)
+            icons.draw(canvas, name, area, tint=INK)
+
+    return _number_grid(
+        puzzle.size,
+        cell,
+        lambda row, col: WHITE,
+        value,
+        lambda first, second: True,
+        overlay=overlay,
+        interactive=interactive,
+    )
 
 
 def tents_picture(
-    puzzle: Tents, solution: Mapping[str, bool] | None = None, *, cell: int = 78
-) -> Image.Image:
+    puzzle: Tents,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 78,
+    interactive: bool = False,
+) -> Canvas:
     """Draw trees, tent placements and their row/column counts."""
-    fixed = {tree: ("T", MARK_INK) for tree in puzzle.trees}
+    fixed: dict[Cell, tuple[Value, RGB]] = {tree: (Mark("tree"), INK) for tree in puzzle.trees}
     return _line_count_picture(
         puzzle.size,
         puzzle.row_counts,
         puzzle.column_counts,
-        solution,
+        None if interactive else solution,
         cell=cell,
         fixed=fixed,
-        solved_mark="*",
+        solved_mark=Mark("tent"),
+        interactive=interactive,
     )
 
 
 def minesweeper_picture(
-    puzzle: Minesweeper, solution: Mapping[str, bool] | None = None, *, cell: int = 78
-) -> Image.Image:
-    """Draw clue numbers in ink and mines in the solved board in blue."""
+    puzzle: Minesweeper,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 78,
+    interactive: bool = False,
+) -> Canvas:
+    """Draw clue numbers in ink and the mines of the solved board."""
+    solution = None if interactive else solution
 
-    def value(row: int, col: int) -> tuple[str | int | None, RGB]:
+    def value(row: int, col: int) -> tuple[Value, RGB]:
         clue = puzzle.clues[row][col]
         if clue is not None:
             return clue, INK
         if (solution or {}).get(minesweeper_cell((row, col)), False):
-            return "*", SOLVED
+            return Mark("mine"), SOLVED
         return None, INK
 
     return _number_grid(
-        puzzle.size, cell, lambda row, col: WHITE, value, lambda first, second: True
+        puzzle.size,
+        cell,
+        lambda row, col: WHITE,
+        value,
+        lambda first, second: True,
+        interactive=interactive,
     )
 
 
 def akari_picture(
-    puzzle: Akari, solution: Mapping[str, bool] | None = None, *, cell: int = 78
-) -> Image.Image:
-    """Draw Akari walls and solved bulbs."""
+    puzzle: Akari,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 78,
+    interactive: bool = False,
+) -> Canvas:
+    """Draw Akari walls (grey, with their numbers) and solved bulbs."""
+    solution = None if interactive else solution
 
     def shade(row: int, col: int) -> RGB:
         return (218, 218, 218) if puzzle.board[row][col] != "." else WHITE
 
-    def value(row: int, col: int) -> tuple[str | int | None, RGB]:
+    def value(row: int, col: int) -> tuple[Value, RGB]:
         marker = puzzle.board[row][col]
         if marker != ".":
             return (marker if marker.isdigit() else None), INK
         if (solution or {}).get(akari_cell((row, col)), False):
-            return "*", SOLVED
+            return Mark("bulb"), SOLVED
         return None, INK
 
-    return _number_grid(puzzle.size, cell, shade, value, lambda first, second: True)
+    return _number_grid(
+        puzzle.size, cell, shade, value, lambda first, second: True, interactive=interactive
+    )
 
 
 def kakurasu_picture(
-    puzzle: Kakurasu, solution: Mapping[str, bool] | None = None, *, cell: int = 78
-) -> Image.Image:
+    puzzle: Kakurasu,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 78,
+    interactive: bool = False,
+) -> Canvas:
     """Draw selected Kakurasu cells and weighted row/column totals."""
-    fixed = {
-        (row, col): ("#", INK)
+    fixed: dict[Cell, tuple[Value, RGB]] = {
+        (row, col): (Mark("filled", 0.9), INK)
         for row in range(puzzle.size)
         for col in range(puzzle.size)
         if puzzle.givens[row][col] == 1
@@ -647,19 +636,24 @@ def kakurasu_picture(
         puzzle.size,
         puzzle.row_sums,
         puzzle.column_sums,
-        solution,
+        None if interactive else solution,
         cell=cell,
         fixed=fixed,
-        solved_mark="#",
+        solved_mark=Mark("filled", 0.9),
+        interactive=interactive,
     )
 
 
 def battleships_picture(
-    puzzle: Battleships, solution: Mapping[str, bool] | None = None, *, cell: int = 78
-) -> Image.Image:
+    puzzle: Battleships,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 78,
+    interactive: bool = False,
+) -> Canvas:
     """Draw the counts-only occupied-cell grid with its line totals."""
-    fixed = {
-        (row, col): ("#" if puzzle.givens[row][col] else ".", INK)
+    fixed: dict[Cell, tuple[Value, RGB]] = {
+        (row, col): (Mark("filled", 0.9) if puzzle.givens[row][col] else Mark("water"), INK)
         for row in range(puzzle.size)
         for col in range(puzzle.size)
         if puzzle.givens[row][col] >= 0
@@ -668,17 +662,26 @@ def battleships_picture(
         puzzle.size,
         puzzle.row_counts,
         puzzle.column_counts,
-        solution,
+        None if interactive else solution,
         cell=cell,
         fixed=fixed,
-        solved_mark="#",
+        solved_mark=Mark("filled", 0.9),
+        interactive=interactive,
     )
 
 
 def logicgrid_picture(
-    puzzle: LogicGrid, solution: Mapping[str, int] | None = None, *, cell: int = 64
-) -> Image.Image:
-    """Draw one item-to-position matrix per logic-grid category."""
+    puzzle: LogicGrid,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+) -> Canvas:
+    """Draw one item-to-position matrix per logic-grid category.
+
+    In the interactive variant the cell of item i of category k at position p
+    has the id `k{k}i{i}p{p}`, all counted from 1.
+    """
     left = max(90, max(len(item) for items in puzzle.categories.values() for item in items) * 9)
     top, row_height = cell // 2, max(34, cell // 2)
     width = left + puzzle.size * cell + cell // 2
@@ -689,46 +692,39 @@ def logicgrid_picture(
     ]
     table_height = sum(len(items) + 1 for items in puzzle.categories.values()) * row_height
     height = top + table_height + (len(clue_lines) + 2) * row_height + cell // 2
-    image = Image.new("RGB", (width, height), WHITE)
-    draw = ImageDraw.Draw(image)
-    font = _font(max(10, cell // 4))
-    small = _font(max(9, cell // 5))
+    canvas = Canvas(width, height)
+    size = max(10, cell // 4)
+    small = max(9, cell // 5)
+    solution = None if interactive else solution
     y = top
-    for category, items in puzzle.categories.items():
-        draw.rectangle((0, y, width, y + row_height), fill=(232, 237, 244))
-        draw.text((8, y + row_height // 2), category, fill=INK, font=font, anchor="lm")
+    for k, (category, items) in enumerate(puzzle.categories.items(), 1):
+        canvas.rectangle((0, y, width, y + row_height), fill=(232, 237, 244))
+        canvas.text((8, y + row_height // 2), category, INK, size, anchor="lm")
         for position in range(1, puzzle.size + 1):
             x = left + (position - 1) * cell
-            draw.text(
-                (x + cell // 2, y + row_height // 2),
-                str(position),
-                fill=INK,
-                font=small,
-                anchor="mm",
-            )
+            canvas.text((x + cell // 2, y + row_height // 2), str(position), INK, small, "mm")
         y += row_height
-        for item in items:
-            draw.text((8, y + row_height // 2), item, fill=INK, font=small, anchor="lm")
-            draw.line((left, y, left + puzzle.size * cell, y), fill=THIN, width=1)
+        for i, item in enumerate(items, 1):
+            canvas.text((8, y + row_height // 2), item, INK, small, anchor="lm")
+            canvas.line((left, y, left + puzzle.size * cell, y), fill=THIN, width=1)
             for position in range(1, puzzle.size + 1):
                 x = left + (position - 1) * cell
-                draw.rectangle((x, y, x + cell, y + row_height), outline=THIN, width=1)
+                canvas.rectangle((x, y, x + cell, y + row_height), outline=THIN, width=1)
                 if solution and solution.get(item) == position:
-                    draw.text(
-                        (x + cell // 2, y + row_height // 2),
-                        "X",
-                        fill=SOLVED,
-                        font=font,
-                        anchor="mm",
-                    )
+                    side = row_height * 0.7
+                    cx, cy = x + cell / 2 + 0.5, y + row_height / 2 + 0.5
+                    area = (cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2)
+                    icons.draw(canvas, "check", area, tint=SOLVED)
+                if interactive:
+                    canvas.cell(f"k{k}i{i}p{position}", (x, y, x + cell, y + row_height))
             y += row_height
     y += row_height // 2
-    draw.text((8, y), "Clues", fill=INK, font=font, anchor="lt")
+    canvas.text((8, y), "Clues", INK, size, anchor="lt")
     y += row_height
     for clue_line in clue_lines:
-        draw.text((8, y), clue_line, fill=INK, font=small, anchor="lt")
+        canvas.text((8, y), clue_line, INK, small, anchor="lt")
         y += row_height
-    return image
+    return canvas
 
 
 def _line_count_picture(
@@ -738,70 +734,91 @@ def _line_count_picture(
     solution: Mapping[str, bool] | None,
     *,
     cell: int,
-    fixed: Mapping[Cell, tuple[str, RGB]] | None = None,
-    solved_mark: str = "*",
-) -> Image.Image:
+    fixed: Mapping[Cell, tuple[Value, RGB]] | None = None,
+    solved_mark: Value = None,
+    interactive: bool = False,
+) -> Canvas:
     margin = cell // 2
     left = margin + cell // 2
     top = margin + cell // 2
     side = n * cell
-    image = Image.new("RGB", (left + side + cell // 4, top + side + cell // 4), WHITE)
-    draw = ImageDraw.Draw(image)
-    for row in range(n):
-        for col in range(n):
-            x, y = left + col * cell, top + row * cell
-            draw.rectangle((x, y, x + cell, y + cell), fill=WHITE)
-    _walls(draw, n, left, cell, lambda first, second: False)
-    font = _font(max(10, cell // 4))
+    canvas = Canvas(left + side + cell // 4, top + side + cell // 4)
+    _walls(canvas, n, left, cell, lambda first, second: False)
+    size = max(10, cell // 4)
     for row, target in enumerate(row_counts):
         y = top + row * cell + cell // 2
-        draw.text((left - cell // 4, y), str(target), fill=INK, font=font, anchor="rm")
+        canvas.text((left - cell // 4, y), str(target), INK, size, anchor="rm")
     for col, target in enumerate(column_counts):
         x = left + col * cell + cell // 2
-        draw.text((x, top - cell // 4), str(target), fill=INK, font=font, anchor="mm")
-    for cell_position, (mark, colour) in (fixed or {}).items():
-        row, col = cell_position
-        x = left + col * cell + cell // 2
-        y = top + row * cell + cell // 2
-        draw.text((x, y), mark, fill=colour, font=_font(max(12, cell // 2)), anchor="mm")
+        canvas.text((x, top - cell // 4), str(target), INK, size, anchor="mm")
+    for (row, col), (mark, colour) in (fixed or {}).items():
+        _value(canvas, mark, colour, left + col * cell, top + row * cell, cell, max(12, cell // 2))
     for key, occupied in (solution or {}).items():
         if occupied:
             row_text, col_text = key[1:].split("c")
             row, col = int(row_text) - 1, int(col_text) - 1
             if (row, col) in (fixed or {}):
                 continue
-            x = left + col * cell + cell // 2
-            y = top + row * cell + cell // 2
-            draw.text((x, y), solved_mark, fill=SOLVED, font=_font(max(12, cell // 2)), anchor="mm")
-    return image
+            x, y = left + col * cell, top + row * cell
+            _value(canvas, solved_mark, SOLVED, x, y, cell, max(12, cell // 2))
+    if interactive:
+        _cells(canvas, n, left, top, cell)
+    return canvas
+
+
+def _value(canvas: Canvas, value: Value, colour: RGB, x: int, y: int, cell: int, size: int) -> None:
+    """Draw a number, text or registry icon in the middle of the cell at (x, y)."""
+    if value is None:
+        return
+    if isinstance(value, Mark):
+        side = cell * value.scale
+        cx, cy = x + cell / 2 + 0.5, y + cell / 2 + 0.5
+        icons.draw(canvas, value.name, (cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2),
+                   tint=colour)  # fmt: skip
+    else:
+        canvas.text((x + cell / 2, y + cell * 0.56), str(value), colour, size, anchor="mm")
 
 
 def _number_grid(
     n: int,
     cell: int,
     shade: Callable[[int, int], RGB],
-    number: Callable[[int, int], tuple[str | int | None, RGB]],
+    number: Callable[[int, int], tuple[Value, RGB]],
     together: Callable[[Cell, Cell], bool],
-) -> Image.Image:
-    """A square grid of numbers: shaded cells, walls between groups, coordinates."""
+    *,
+    overlay: Callable[[Canvas], None] | None = None,
+    interactive: bool = False,
+) -> Canvas:
+    """A square grid of numbers or icons: shaded cells, walls between groups, coordinates.
+
+    `overlay` draws family extras (signs, dots, cage targets) over the grid.
+    """
     margin = cell // 2
     side = n * cell
-    image = Image.new("RGB", (side + 2 * margin, side + 2 * margin), WHITE)
-    draw = ImageDraw.Draw(image)
-    font = _font(int(cell * 0.5))
+    canvas = Canvas(side + 2 * margin, side + 2 * margin)
     for r in range(n):
         for c in range(n):
             x, y = margin + c * cell, margin + r * cell
-            draw.rectangle((x, y, x + cell, y + cell), fill=shade(r, c))
-    _walls(draw, n, margin, cell, together, thin_colour=THIN)
+            canvas.rectangle((x, y, x + cell, y + cell), fill=shade(r, c))
+    _walls(canvas, n, margin, cell, together, thin_colour=THIN)
     for r in range(n):
         for c in range(n):
             value, colour = number(r, c)
-            if value is not None:
-                middle = (margin + c * cell + cell / 2, margin + r * cell + cell * 0.56)
-                draw.text(middle, str(value), fill=colour, font=font, anchor="mm")
-    _coordinates(draw, n, margin, cell)
-    return image
+            x, y = margin + c * cell, margin + r * cell
+            _value(canvas, value, colour, x, y, cell, int(cell * 0.5))
+    if overlay:
+        overlay(canvas)
+    _coordinates(canvas, n, margin, cell)
+    if interactive:
+        _cells(canvas, n, margin, margin, cell)
+    return canvas
+
+
+def _cells(canvas: Canvas, n: int, left: int, top: int, cell: int) -> None:
+    for r in range(n):
+        for c in range(n):
+            x, y = left + c * cell, top + r * cell
+            canvas.cell(cell_id(r, c), (x, y, x + cell, y + cell))
 
 
 def _cage_fills(puzzle: Calcudoku) -> dict[object, RGB]:
@@ -843,41 +860,42 @@ def _rgb(hex_colour: str) -> RGB:
     return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
 
 
-def _darker(colour: RGB, factor: float = 0.9) -> RGB:
+# Blocked squares (nobody can stand there) are this much darker than their region.
+BLOCKED_SHADE = 0.75
+
+
+def _darker(colour: RGB, factor: float = BLOCKED_SHADE) -> RGB:
     r, g, b = colour
     return round(r * factor), round(g * factor), round(b * factor)
 
 
-def _hatch(image: Image.Image, board: Board, box: Callable[[Square], Box], cell: int) -> None:
+def _hatch(canvas: Canvas, board: Board, box: Callable[[Square], Box], cell: int) -> None:
     """Thin diagonal lines over hatched regions, as on the printed boards.
 
     Stripes follow one global pattern (constant x + y), so they run on
     unbroken from square to square.
     """
-    if not board.hatched:
+    squares = [
+        Square(r, c)
+        for r in range(board.size)
+        for c in range(board.size)
+        if board.region_of(Square(r, c)) in board.hatched
+    ]
+    if not squares:
         return
     step = max(6, cell // 7)
     width = max(2, cell // 30)
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    for r in range(board.size):
-        for c in range(board.size):
-            sq = Square(r, c)
-            if board.region_of(sq) not in board.hatched:
-                continue
-            x0, y0, x1, y1 = box(sq)
-            tile = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
-            stripes = ImageDraw.Draw(tile)
-            first = (x0 + y0) // step * step
-            for k in range(first, x1 + y1 + step, step):
-                # The line x + y = k, in tile coordinates.
-                stripes.line([(k - x0 - y0, 0), (k - x0 - y1, y1 - y0)],
-                             fill=(60, 60, 60, 60), width=width)  # fmt: skip
-            overlay.paste(tile, (x0, y0))
-    image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
+    boxes = [box(sq) for sq in squares]
+    top, bottom = min(b[1] for b in boxes), max(b[3] for b in boxes)
+    low, high = min(b[0] + b[1] for b in boxes), max(b[2] + b[3] for b in boxes)
+    with canvas.group(opacity=60 / 255, clip=boxes):
+        for k in range(low // step * step, high + step, step):
+            # The line x + y = k.
+            canvas.line([(k - top, top), (k - bottom, bottom)], fill=(60, 60, 60), width=width)
 
 
 def _walls(
-    draw: ImageDraw.ImageDraw,
+    canvas: Canvas,
     n: int,
     margin: int,
     cell: int,
@@ -886,7 +904,7 @@ def _walls(
 ) -> None:
     """Thin lines between cells that are `together`, thick walls elsewhere."""
     thin = max(2, cell // 40)
-    thick = max(5, cell // 22) | 1  # odd, so Pillow centres both directions alike
+    thick = max(5, cell // 22) | 1  # odd, so both directions centre alike
     walls: list[tuple[int, int, int, int]] = []
     for r in range(n):
         for c in range(n):
@@ -894,11 +912,11 @@ def _walls(
             if c + 1 < n:
                 line = (x + cell, y, x + cell, y + cell)
                 same = together((r, c), (r, c + 1))
-                (draw.line(line, fill=thin_colour, width=thin) if same else walls.append(line))
+                (canvas.line(line, fill=thin_colour, width=thin) if same else walls.append(line))
             if r + 1 < n:
                 line = (x, y + cell, x + cell, y + cell)
                 same = together((r, c), (r + 1, c))
-                (draw.line(line, fill=thin_colour, width=thin) if same else walls.append(line))
+                (canvas.line(line, fill=thin_colour, width=thin) if same else walls.append(line))
     side = n * cell
     low, high = margin, margin + side
     horizontal_ends = {p for x0, y0, x1, y1 in walls if y0 == y1 for p in ((x0, y0), (x1, y1))}
@@ -912,11 +930,11 @@ def _walls(
             x0, x1 = max(low, x0 - grow[0]), min(high, x1 + grow[1])
         else:
             y0, y1 = max(low, y0 - grow[0]), min(high, y1 + grow[1])
-        draw.line((x0, y0, x1, y1), fill=INK, width=thick)
-    draw.rectangle((low, low, high, high), outline=INK, width=thick)
+        canvas.line((x0, y0, x1, y1), fill=INK, width=thick)
+    canvas.rectangle((low, low, high, high), outline=INK, width=thick)
 
 
-def _draw_edge_item_doors(draw: ImageDraw.ImageDraw, board: Board, margin: int, cell: int) -> None:
+def _draw_edge_item_doors(canvas: Canvas, board: Board, margin: int, cell: int) -> None:
     """Mark each simple door on the shared edge between its two cells."""
     wood = (117, 75, 47)
     width = max(4, cell // 10)
@@ -927,23 +945,18 @@ def _draw_edge_item_doors(draw: ImageDraw.ImageDraw, board: Board, margin: int, 
         if first.row == second.row:
             x = margin + max(first.col, second.col) * cell
             y = margin + first.row * cell + cell // 2
-            draw.line((x, y - cell // 4, x, y + cell // 4), fill=wood, width=width)
+            canvas.line((x, y - cell // 4, x, y + cell // 4), fill=wood, width=width)
         else:
             x = margin + first.col * cell + cell // 2
             y = margin + max(first.row, second.row) * cell
-            draw.line((x - cell // 4, y, x + cell // 4, y), fill=wood, width=width)
+            canvas.line((x - cell // 4, y, x + cell // 4, y), fill=wood, width=width)
 
 
 # --- things on the board --------------------------------------------------
 
 
-def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    return ImageFont.load_default(size=size)
-
-
 def _icon(
-    image: Image.Image,
-    draw: ImageDraw.ImageDraw,
+    canvas: Canvas,
     name: str,
     area: Box,
     cell: int,
@@ -956,149 +969,45 @@ def _icon(
 
     `fit_box` keeps the aspect ratio but fits the icon to the whole area, so a
     long seat spanning two squares is drawn long rather than one square big.
+    Registry drawings without a picture (carpet, well) always fill the area.
     """
     x0, y0, x1, y1 = area
-    normalized = name.rstrip("0123456789").rstrip("_").lower()
-    if normalized in CARPET_NAMES:
-        _draw_carpet(draw, area)
+    icon = icons.object_icon(name)
+    if icon is None:
+        _centred_text(canvas, name[:6], area, cell // 5, INK)
         return
-    path = icons.icon(name)
-    if path is None:
-        _centred_text(draw, name[:6], area, cell // 5, INK)
-        return
-    picture = Image.open(path).convert("RGBA")
-    fix = ICON_FIXES.get(icons.code_for(name) or "")
-    if fix:
-        picture = fix(picture)
-    if rotate:
-        picture = picture.rotate(90, expand=True)
-    if stretch:
-        picture = picture.crop(picture.getchannel("A").getbbox())
+    turn = 90 if rotate else 0
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    if icon.emoji is None:
+        icons.draw(canvas, icon, area, stretch=True, rotate=turn)
+    elif stretch:
         pad = cell // 10
-        size = (x1 - x0 - 2 * pad, y1 - y0 - 2 * pad)
-        picture = picture.resize(size, Image.Resampling.LANCZOS)
+        icons.draw(
+            canvas, icon, (x0 + pad, y0 + pad, x1 - pad, y1 - pad), stretch=True, rotate=turn
+        )
     elif fit_box:
-        picture = picture.crop(picture.getchannel("A").getbbox())
-        box_size = (int((x1 - x0) * scale), int((y1 - y0) * scale))
-        picture.thumbnail(box_size, Image.Resampling.LANCZOS)
+        w, h = (x1 - x0) * scale, (y1 - y0) * scale
+        icons.draw(canvas, icon, (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2), crop=True,
+                   rotate=turn)  # fmt: skip
     else:
-        side = int(min(x1 - x0, y1 - y0) * scale)
-        picture.thumbnail((side, side), Image.Resampling.LANCZOS)
-    left = x0 + (x1 - x0 - picture.width) // 2
-    top = y0 + (y1 - y0 - picture.height) // 2
-    image.paste(picture, (left, top), picture)
+        side = min(x1 - x0, y1 - y0) * scale
+        half = side / 2
+        icons.draw(canvas, icon, (cx - half, cy - half, cx + half, cy + half), rotate=turn)
 
 
-def _draw_carpet(draw: ImageDraw.ImageDraw, area: Box) -> None:
-    """Draw a patterned rug that reads clearly at a single-cell size."""
-    x0, y0, x1, y1 = area
-    width, height = x1 - x0, y1 - y0
-    pad = max(3, min(width, height) // 12)
-    bounds = (x0 + pad, y0 + pad, x1 - pad, y1 - pad)
-    red, gold, dark = (156, 58, 45), (231, 190, 89), (79, 45, 43)
-    draw.rounded_rectangle(bounds, radius=pad, fill=red, outline=dark, width=max(2, pad // 2))
-    inner_pad = max(3, pad // 2)
-    inner = (
-        bounds[0] + inner_pad,
-        bounds[1] + inner_pad,
-        bounds[2] - inner_pad,
-        bounds[3] - inner_pad,
-    )
-    draw.rectangle(inner, outline=gold, width=max(2, pad // 2))
-    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
-    diamond = max(3, min(width, height) // 5)
-    draw.polygon(
-        [(cx, cy - diamond), (cx + diamond, cy), (cx, cy + diamond), (cx - diamond, cy)],
-        fill=gold,
-        outline=dark,
-    )
-    center = max(1, diamond // 3)
-    draw.ellipse((cx - center, cy - center, cx + center, cy + center), fill=red)
-
-
-def _draw_water_well(draw: ImageDraw.ImageDraw, area: Box) -> None:
-    """Draw a stone well with dark water and a simple timber frame."""
-    x0, y0, x1, y1 = area
-    width, height = x1 - x0, y1 - y0
-    stone, edge, wood, water = (137, 139, 132), (55, 57, 55), (111, 72, 48), (45, 65, 70)
-    pad = max(5, min(width, height) // 12)
-    rim = (x0 + pad, y0 + height // 2, x1 - pad, y1 - pad)
-    draw.ellipse(rim, fill=stone, outline=edge, width=max(3, pad // 2))
-    inset_x, inset_y = width // 5, height // 7
-    pool = (rim[0] + inset_x, rim[1] + inset_y, rim[2] - inset_x, rim[3] - inset_y)
-    draw.ellipse(pool, fill=water, outline=edge, width=max(2, pad // 3))
-    post_width = max(4, width // 12)
-    post_top, post_bottom = y0 + height // 8, y0 + height * 2 // 3
-    left_post = (x0 + width // 4, post_top, x0 + width // 4 + post_width, post_bottom)
-    right_post = (x1 - width // 4 - post_width, post_top, x1 - width // 4, post_bottom)
-    draw.rectangle(left_post, fill=wood, outline=edge, width=2)
-    draw.rectangle(right_post, fill=wood, outline=edge, width=2)
-    beam_y = y0 + height // 6
-    draw.rectangle(
-        (
-            left_post[0] - post_width // 2,
-            beam_y,
-            right_post[2] + post_width // 2,
-            beam_y + post_width,
-        ),
-        fill=wood,
-        outline=edge,
-        width=2,
-    )
-    rope_x = x0 + width // 2
-    draw.line(
-        (rope_x, beam_y + post_width, rope_x, pool[1] + height // 8),
-        fill=(225, 207, 155),
-        width=max(2, pad // 3),
-    )
-
-
-def _drop_floor_lamp(picture: Image.Image) -> Image.Image:
-    """Noto's U+1F6CB is 'couch and lamp': keep the blue couch, drop the lamp.
-
-    The lamp and its pole are yellow and brown and stand above the seat, which
-    starts at 47.5% of the height; every couch pixel up there is blue.
-    """
-    picture = picture.copy()
-    red, _, blue, alpha = picture.split()
-    blueish = ImageChops.subtract(blue, red).point(lambda v: 255 if v > 0 else 0)
-    above_seat = (0, 0, picture.width, int(picture.height * 0.475))
-    alpha.paste(ImageChops.multiply(alpha.crop(above_seat), blueish.crop(above_seat)), above_seat)
-    picture.putalpha(alpha)
-    return picture
-
-
-# Per-icon touch-ups, by code point.
-ICON_FIXES = {"1f6cb": _drop_floor_lamp}
-
-
-def _no_entry(image: Image.Image, boxes: Sequence[Box], cell: int) -> None:
-    """A translucent red cross over the full diagonals of every blocked square."""
-    if not boxes:
-        return
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    paint = ImageDraw.Draw(overlay)
-    red = (200, 40, 40, 150)
-    width = max(3, cell // 20)
-    for x0, y0, x1, y1 in boxes:
-        paint.line((x0, y0, x1, y1), fill=red, width=width)
-        paint.line((x0, y1, x1, y0), fill=red, width=width)
-    image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
-
-
-def _name_tag(
-    draw: ImageDraw.ImageDraw, person: str, area: Box, cell: int, low: bool = False
-) -> None:
+def _name_tag(canvas: Canvas, person: str, area: Box, cell: int, low: bool = False) -> None:
     x0, y0, x1, _ = area
     pad = cell // 10
     top = y0 + int(cell * 0.6) if low else y0 + cell // 3
     tag = (x0 + pad, top, x1 - pad, top + cell // 3)
-    draw.rounded_rectangle(tag, radius=cell // 8, fill=WHITE, outline=INK, width=max(2, cell // 40))
-    _centred_text(draw, person, tag, cell // 5, INK, max_width=cell - 3 * pad)
+    canvas.rounded_rectangle(
+        tag, radius=cell // 8, fill=WHITE, outline=INK, width=max(2, cell // 40)
+    )
+    _centred_text(canvas, person, tag, cell // 5, INK, max_width=cell - 3 * pad)
 
 
 def _centred_text(
-    draw: ImageDraw.ImageDraw,
+    canvas: Canvas,
     text: str,
     area: Box,
     size: int,
@@ -1106,20 +1015,18 @@ def _centred_text(
     max_width: int | None = None,
 ) -> None:
     x0, y0, x1, y1 = area
-    font = _font(size)
-    while max_width and size > 8 and draw.textlength(text, font=font) > max_width:
+    while max_width and size > 8 and canvas.textlength(text, size) > max_width:
         size -= 1
-        font = _font(size)
-    draw.text(((x0 + x1) / 2, (y0 + y1) / 2), text, fill=colour, font=font, anchor="mm")
+    canvas.text(((x0 + x1) / 2, (y0 + y1) / 2), text, colour, size, anchor="mm")
 
 
-def _coordinates(draw: ImageDraw.ImageDraw, n: int, margin: int, cell: int) -> None:
-    font = _font(cell // 5)
+def _coordinates(canvas: Canvas, n: int, margin: int, cell: int) -> None:
+    size = cell // 5
     grey = (120, 120, 120)
     for i in range(n):
         middle = margin + i * cell + cell / 2
-        draw.text((middle, margin / 2), str(i + 1), fill=grey, font=font, anchor="mm")
-        draw.text((margin / 2, middle), str(i + 1), fill=grey, font=font, anchor="mm")
+        canvas.text((middle, margin / 2), str(i + 1), grey, size, anchor="mm")
+        canvas.text((margin / 2, middle), str(i + 1), grey, size, anchor="mm")
 
 
 # --- legend ---------------------------------------------------------------
@@ -1155,10 +1062,9 @@ class _Legend:
             )
             for tag, members in board.area_tags.items()
         ]
-        count_size = max(10, cell // 10)
-        self.count_font = _font(count_size)
-        self.count_line = int(count_size * 1.6)
-        max_chars = max(18, int(board.size * cell / (count_size * 0.55)))
+        self.count_size = max(10, cell // 10)
+        self.count_line = int(self.count_size * 1.6)
+        max_chars = max(18, int(board.size * cell / (self.count_size * 0.55)))
         self.global_count_lines = [
             lines
             for index, condition in enumerate(self.global_counts, 1)
@@ -1183,51 +1089,47 @@ class _Legend:
             + cell // 6
         )
 
-    def draw(self, image: Image.Image, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
+    def draw(self, canvas: Canvas, x: int, y: int) -> None:
         fills = _fills(self.board)
-        font = _font(int(self.swatch * 0.8))
+        size = int(self.swatch * 0.8)
         column = self.board.size * self.cell // 2
+
+        def label(top: int, text: str, font_size: int = size) -> None:
+            middle = (x + self.swatch + self.swatch // 2, top + self.swatch / 2)
+            canvas.text(middle, text, INK, font_size, anchor="lm")
+
         for i, (rid, name) in enumerate(self.board.region_names.items()):
             left = x + (i // self.rows) * column
             top = y + (i % self.rows) * self.line
             square = (left, top, left + self.swatch, top + self.swatch)
-            draw.rectangle(square, fill=fills[rid], outline=INK, width=2)
+            canvas.rectangle(square, fill=fills[rid], outline=INK, width=2)
             if rid in self.board.hatched:
                 for k in range(0, 2 * self.swatch, max(5, self.swatch // 4)):
-                    draw.line(
+                    canvas.line(
                         [(left + max(0, k - self.swatch), top + min(k, self.swatch)),
                          (left + min(k, self.swatch), top + max(0, k - self.swatch))],
                         fill=(110, 110, 110), width=1,
                     )  # fmt: skip
-            label = name.replace("_", " ").capitalize()
-            draw.text((left + self.swatch + self.swatch // 2, top + self.swatch / 2),
-                      label, fill=INK, font=font, anchor="lm")  # fmt: skip
+            middle = (left + self.swatch + self.swatch // 2, top + self.swatch / 2)
+            canvas.text(middle, name.replace("_", " ").capitalize(), INK, size, anchor="lm")
         for i, name in enumerate(self.item_names):
             top = y + (self.rows + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
             if name in self.board.edge_item_names and self.board.edge_item_kind(name) == "door":
-                draw.line(
+                canvas.line(
                     (x, top + self.swatch // 2, x + self.swatch, top + self.swatch // 2),
                     fill=(117, 75, 47),
                     width=max(4, self.swatch // 5),
                 )
-                label = f"Door: {name}"
+                label(top, f"Door: {name}")
             else:
-                _icon(image, draw, name, area, self.cell, scale=0.8)
-                label = (
-                    f"Window: {name}" if name in self.board.edge_item_names else f"Corner: {name}"
-                )
-            draw.text(
-                (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
-                label,
-                fill=INK,
-                font=font,
-                anchor="lm",
-            )
+                _icon(canvas, name, area, self.cell, scale=0.8)
+                kind = "Window" if name in self.board.edge_item_names else "Corner"
+                label(top, f"{kind}: {name}")
         for i, name in enumerate(self.mark_names):
             top = y + (self.rows + len(self.item_names) + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
-            draw.rounded_rectangle(
+            canvas.rounded_rectangle(
                 area,
                 radius=max(2, self.swatch // 8),
                 fill=MARK_FILL,
@@ -1235,7 +1137,7 @@ class _Legend:
                 width=2,
             )
             _centred_text(
-                draw,
+                canvas,
                 name[:2].upper(),
                 area,
                 max(8, self.cell // 6),
@@ -1247,55 +1149,28 @@ class _Legend:
                 "alone": ": alone in area",
                 "not_alone": ": shares area",
             }.get(mark.occupant_condition or "", "")
-            draw.text(
-                (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
-                f"{name}{condition}" if condition else f"{name} cells",
-                fill=INK,
-                font=font,
-                anchor="lm",
-            )
+            label(top, f"{name}{condition}" if condition else f"{name} cells")
         role_offset = self.rows + len(self.item_names) + len(self.mark_names)
-        role_font = _font(max(8, self.swatch // 2))
         for i, name in enumerate(self.role_names):
             top = y + (role_offset + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
-            draw.rectangle(area, fill=MARK_FILL, outline=MARK_INK, width=2)
-            _centred_text(draw, name[:2].upper(), area, max(8, self.swatch // 2), MARK_INK)
-            present = [
-                person
-                for person in self.board.people
-                if self.role_statuses.get((person, name)) is True
-            ]
-            absent = [
-                person
-                for person in self.board.people
-                if self.role_statuses.get((person, name)) is False
-            ]
-            unknown = [
-                person
-                for person in self.board.people
-                if self.role_statuses.get((person, name)) is None
-            ]
+            canvas.rectangle(area, fill=MARK_FILL, outline=MARK_INK, width=2)
+            _centred_text(canvas, name[:2].upper(), area, max(8, self.swatch // 2), MARK_INK)
+            status = {
+                person: self.role_statuses.get((person, name)) for person in self.board.people
+            }
+            present = [person for person, known in status.items() if known is True]
+            absent = [person for person, known in status.items() if known is False]
+            unknown = [person for person, known in status.items() if known is None]
             detail = f"+{','.join(present)} -{','.join(absent)} ?{','.join(unknown)}"
-            draw.text(
-                (x + self.swatch + self.swatch // 2, top + self.swatch / 2),
-                f"Role {name}: {detail}",
-                fill=INK,
-                font=role_font,
-                anchor="lm",
-            )
+            label(top, f"Role {name}: {detail}", max(8, self.swatch // 2))
         tag_offset = role_offset + len(self.role_names)
         for i, line in enumerate(self.tag_lines):
             top = y + (tag_offset + i) * self.line
-            draw.text((x, top + self.swatch / 2), line, fill=INK, font=font, anchor="lm")
+            canvas.text((x, top + self.swatch / 2), line, INK, size, anchor="lm")
         top = y + (tag_offset + len(self.tag_lines)) * self.line
         for lines in self.global_count_lines:
             for line in lines or [""]:
-                draw.text(
-                    (x, top + self.count_line / 2),
-                    line,
-                    fill=COUNT_SCOPE,
-                    font=self.count_font,
-                    anchor="lm",
-                )
+                middle = (x, top + self.count_line / 2)
+                canvas.text(middle, line, COUNT_SCOPE, self.count_size, anchor="lm")
                 top += self.count_line
