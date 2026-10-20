@@ -38,6 +38,8 @@ def _moves(model: Model) -> list[Move]:
 # Who may import whom inside the package; anything not listed may import freely.
 ALLOWED = {
     "core": set(),
+    "svg": set(),
+    "icons": {"svg"},
     "proof": {"core"},
     "murdoku": {"core"},
     "sudoku": {"core", "puzzlefile"},
@@ -48,14 +50,14 @@ ALLOWED = {
     "regiongrid": {"puzzlefile"},
     "queens": {"core", "puzzlefile"},
     "suguru": {"core", "puzzlefile", "regiongrid"},
-    "starbattle": {"core", "regiongrid"},
+    "starbattle": {"core", "regiongrid", "icons"},
     "logicgrid": {"core", "puzzlefile"},
-    "binairo": {"core", "puzzlefile"},
-    "tents": {"core", "puzzlefile"},
-    "minesweeper": {"core", "puzzlefile"},
-    "akari": {"core", "puzzlefile"},
-    "kakurasu": {"core", "puzzlefile"},
-    "battleships": {"core", "puzzlefile"},
+    "binairo": {"core", "puzzlefile", "icons"},
+    "tents": {"core", "puzzlefile", "icons"},
+    "minesweeper": {"core", "puzzlefile", "icons"},
+    "akari": {"core", "puzzlefile", "icons"},
+    "kakurasu": {"core", "puzzlefile", "icons"},
+    "battleships": {"core", "puzzlefile", "icons"},
     "picture": {
         "murdoku",
         "sudoku",
@@ -72,6 +74,7 @@ ALLOWED = {
         "kakurasu",
         "battleships",
         "icons",
+        "svg",
     },
 }
 

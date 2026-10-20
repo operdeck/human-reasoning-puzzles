@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 
 from .core import Kind, Model, Step
+from .icons import symbol
 from .puzzlefile import read_sections
 
 type Cell = tuple[int, int]
@@ -141,7 +142,7 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
             mark = (
                 str(clue)
                 if clue is not None
-                else "*"
+                else symbol("mine")
                 if chosen is True
                 else "."
                 if chosen is False

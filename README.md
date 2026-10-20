@@ -13,10 +13,10 @@ uv run csp examples/sudoku_4x4.txt
 uv run csp examples/murdoku_intro.txt --explain
 uv run csp examples/queens_4x4.txt --show-model
 uv run csp examples/logicgrid_3x3.txt --brute-force
-uv run csp examples/akari_2x2.txt --png akari.png
+uv run csp examples/akari_2x2.txt --svg akari.svg
 ```
 
-`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--png` needs Pillow (`uv sync --extra png`). `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`).
+`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` adds cell ids for an app. Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network. `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`).
 
 For the full [example index and grade notes](docs/examples.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
 

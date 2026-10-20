@@ -206,15 +206,15 @@ In the booklet the clues of each person are folded into one paragraph ("Makaak i
 
 * `Title:`, `Intro:` (one paragraph per line, `**bold**` allowed), `Question:`, `Reveal:` (answer text, solution file only).
 * A clue line may end in `| wording` (e.g. `above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura."
-* `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C`). Without any of these it is text only. Put licensed artwork in the figures folder; the repository does not bundle third-party images.
+* `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C` whose picture is vendored in `src/csp/assets/emoji/`; `--lint` warns otherwise). Without any of these it is text only. Put licensed artwork in the figures folder; the only bundled third-party images are the vendored Noto Emoji (see `src/csp/assets/NOTICE.md`).
 
 Pass a glob (quoted) such as `"examples/prrrdoku*.txt"` to put every matching Murdoku puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own page, ordered alphabetically by file name, after a clickable table of contents.
 
 Puzzles of other families (sudoku, queens, tents, …) are included generically: title (`Title:` or the file name), a one-line rule for the family, the board, and on a separate solution page the solved board with the solver's placement steps. A mixed glob such as `"examples/*.txt"` therefore works.
 
-Needs `uv sync --extra docx` (python-docx).
+Needs `uv sync --extra docx` (python-docx, plus fonttools and resvg for the pictures).
 
-In the Murdoku PNG, blocked squares carry a translucent red cross behind their object, and area tags (for example `noble_areas`) are named in the legend.
+In the Murdoku picture, blocked squares are shaded clearly darker than their region (standable objects keep the region colour), and area tags (for example `noble_areas`) are named in the legend.
 
 ## Other existing formats
 
@@ -224,16 +224,17 @@ In the Murdoku PNG, blocked squares carry a translucent red cross behind their o
 
 ## CLI and validation
 
-The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, and `--png` use the same generic engine for every family. `--explain`, `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific; other families have no clue narrative unless documented by that module.
+The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, `--svg`, and `--png` use the same generic engine for every family. `--explain`, `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific; other families have no clue narrative unless documented by that module.
 
 ```bash
 uv run csp examples/<family-example>.txt --show-model
 uv run csp examples/<family-example>.txt --brute-force
 uv run csp examples/<family-example>.txt --grade
+uv run csp examples/<family-example>.txt --svg board.svg
 uv run csp examples/<family-example>.txt --png board.png
 ```
 
-For a new family, add a parser/compiler, an independent backtracker in `src/csp/bruteforce/`, CLI and kind registration, a renderer and PNG test, small and larger unique examples, example soundness coverage, README/AGENT/skill documentation, and a line in the module-layer test. Use existing generic primitives; a new engine constraint requires a separate design issue.
+For a new family, add a parser/compiler, an independent backtracker in `src/csp/bruteforce/`, CLI and kind registration, a renderer (pieces as `icons.REGISTRY` entries) and picture test, small and larger unique examples, example soundness coverage, README/AGENT/skill documentation, and a line in the module-layer test. Use existing generic primitives; a new engine constraint requires a separate design issue.
 
 ## Source layout
 
@@ -244,7 +245,10 @@ src/csp/
 	regiongrid.py  shared named-region grid reader
 	<family>.py    one parser/compiler/text renderer per family
 	bruteforce/    independent search implementation per family
-	picture.py     PNG renderers for every family
+	svg.py         SVG canvas, text as paths, PNG rasterising (resvg)
+	icons.py       icon registry, Murdoku object catalogue, Unicode fallbacks
+	picture.py     SVG pictures for every family
+	assets/        vendored Noto Emoji SVGs and Noto Sans subset (NOTICE.md)
 	docx_export.py Word booklet pages for Murdoku (optional python-docx)
 	cli.py         family dispatch and shared solver options
 tests/           engine, family, soundness, layering, and picture tests
@@ -263,7 +267,9 @@ uv run mypy src
 
 Continuous integration runs the same gates on Python 3.12 and 3.13. The tests check brute-force uniqueness for every example, engine agreement, and every logged placement/elimination against the independent solution. The exception is a documented unsupported narrative, such as non-Murdoku `--explain`, not solver correctness.
 
-`--png` uses Pillow (`uv sync --extra png`). Murdoku object icons are downloaded from the pinned Noto Emoji release on first use and cached locally; offline or unknown icons fall back to labels. Other family renderers use the puzzle grid, regions, counts, signs, or item-position matrix directly.
+Pictures have one renderer: `picture.py` draws every family on an `svg.Canvas`, and every other format derives from it. `--svg [FILE]` writes it (needs `uv sync --extra svg` for fonttools, which turns text into paths from the bundled Noto Sans subset, so output does not depend on installed fonts); `--png [FILE]` rasterises it with resvg (`uv sync --extra png`, no system libraries); `--docx` embeds the PNG. Each has three variants: blank, solution (the `-solution` file), and with `--svg --interactive` the blank board with a transparent `<rect id="r<row>c<col>" class="cell">` over every cell (r1c1 top left) for an app to fill in.
+
+Pieces come from the icon registry in `icons.py`: each `Icon` has a name, a Unicode `symbol` used by the text boards (★ star, ▲ tent, ♣ tree, ✱ mine, ● bulb, ■ wall/shaded, ●/○ Binairo) and either an original vector shape or a vendored Noto Emoji. Murdoku objects and figure `icon=` names are looked up in `icons.CATALOGUE` (Dutch names plus English synonyms, or `U+<code>`); unknown or unvendored icons fall back to a text label and `--lint` warns. All artwork is vendored under `src/csp/assets/` at pinned commits with its licences (`NOTICE.md`); rendering never uses the network. To add a picture, add the name to `CATALOGUE` and run `uv run python scripts/vendor_emoji.py U+<code>`; `scripts/subset_font.py` rebuilds the font subset.
 
 ## Further engine work
 
