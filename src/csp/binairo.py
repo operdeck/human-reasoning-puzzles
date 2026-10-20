@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from itertools import combinations
 
 from .core import Kind, Model, Step
+from .icons import symbol
 from .puzzlefile import read_sections
 
 type Cell = tuple[int, int]
@@ -195,7 +196,13 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
         for col in range(puzzle.size):
             name = cell_name((row, col))
             chosen = model.chosen(name)
-            mark = "1" if chosen is True else "0" if chosen is False else "?"
+            mark = (
+                symbol("disc_black")
+                if chosen is True
+                else symbol("disc_white")
+                if chosen is False
+                else "?"
+            )
             tint = "\033[38;5;21m" if name in changed else ""
             cells.append(f"{tint}{mark}\033[0m")
         out.append(" ".join(cells))

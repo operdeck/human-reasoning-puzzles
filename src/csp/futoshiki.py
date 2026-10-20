@@ -169,7 +169,7 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
             line += _cell_text(model, cell_name((r, c)), width, n, placed, narrowed)
         out.append(line)
         if r < n - 1:
-            arrows = {"<": "^", ">": "v"}
+            arrows = {"<": "\u2227", ">": "\u2228"}  # the wedges point at the smaller cell
             under = [arrows.get(between.get(((r, c), (r + 1, c)), ""), " ") for c in range(n)]
             out.append("   ".join(a.center(width) for a in under).rstrip())
     return "\n".join(out)

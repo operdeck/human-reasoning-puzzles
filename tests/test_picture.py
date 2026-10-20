@@ -1,29 +1,66 @@
-"""Tests for the PNG pictures and the icon references. No network needed."""
+"""Tests for the SVG pictures, their PNG rasters and the icon registry. No network needed."""
 
+import socket
+from io import BytesIO
 from pathlib import Path
 
 import pytest
 
 PIL = pytest.importorskip("PIL")
-from PIL import Image, ImageDraw  # noqa: E402
+pytest.importorskip("resvg_py")
+from PIL import Image  # noqa: E402
 
-from csp import bruteforce, cli, icons, picture  # noqa: E402
+from csp import bruteforce, cli, icons, svg  # noqa: E402
+from csp import picture as drawing  # noqa: E402
 from csp.murdoku import Board, BoardObject, CornerObject, EdgeItem, RoleSpec, Square  # noqa: E402
-from csp.puzzlefile import load_board  # noqa: E402
+from csp.puzzlefile import load_board, load_presentation  # noqa: E402
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
 CELL = 100
 
 
-@pytest.fixture(autouse=True)
-def offline_icons(tmp_path, monkeypatch):
-    """An empty icon cache, and no downloads: icons fall back to text labels."""
-    monkeypatch.setenv("CSP_ICON_CACHE", str(tmp_path / "icons"))
+def _raster(canvas: svg.Canvas) -> Image.Image:
+    return Image.open(BytesIO(canvas.to_png())).convert("RGB")
 
-    def no_network(*args, **kwargs):
+
+class _Rasterised:
+    """`picture`, but each `*_picture` call gives the PNG raster as a Pillow image."""
+
+    def __getattr__(self, name):
+        value = getattr(drawing, name)
+        if name.endswith("_picture"):
+            return lambda *args, **kwargs: _raster(value(*args, **kwargs))
+        return value
+
+
+picture = _Rasterised()
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Rendering never touches the network: every icon is vendored."""
+
+    def refuse(*args, **kwargs):
         raise OSError("network disabled in tests")
 
-    monkeypatch.setattr(icons.urllib.request, "urlopen", no_network)
+    monkeypatch.setattr(socket, "socket", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+
+
+@pytest.fixture
+def fake_emoji(monkeypatch):
+    """Swap a vendored picture for a plain block of colour, to find it in the raster."""
+    fakes: dict[str, str] = {}
+    markup, bounds = svg.emoji_markup, svg.emoji_bounds
+    monkeypatch.setattr(svg, "emoji_markup", lambda code: fakes.get(code) or markup(code))
+    monkeypatch.setattr(
+        svg, "emoji_bounds", lambda: {**bounds(), **dict.fromkeys(fakes, (0, 0, 128, 128))}
+    )
+
+    def add(code: str, rgb: tuple[int, int, int]) -> None:
+        fakes[code] = f'<rect width="128" height="128" fill="rgb{rgb}"/>'
+
+    return add
 
 
 def _centre(image, board, r, c, coordinates=True):
@@ -40,25 +77,94 @@ def test_icon_names_map_to_code_points():
     assert icons.code_for("stoel") == icons.code_for("chair")
     assert icons.code_for("window") == "1fa9f"
     assert icons.code_for("zeppelin") is None
-    assert icons.NOTO_COMMIT in icons.SOURCE
+    assert len(icons.NOTO_COMMIT) == 40
 
 
-def test_cached_icon_is_used_without_downloading():
-    path = icons.cache_dir() / "1f333.png"
-    path.parent.mkdir(parents=True)
-    Image.new("RGBA", (8, 8), (0, 128, 0, 255)).save(path)
-    assert icons.icon("boom") == path
-    assert icons.icon("koffer") is None  # not cached, and the download fails
+def test_every_catalogue_picture_is_vendored():
+    missing = sorted(
+        name for name, code in icons.CATALOGUE.items() if svg.emoji_markup(code) is None
+    )
+    assert missing == []
+    assert set(svg.emoji_bounds()) >= set(icons.CATALOGUE.values())
 
 
-def _cache_icon(code: str, image: Image.Image) -> None:
-    path = icons.cache_dir() / f"{code}.png"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path)
+def test_object_names_keep_their_catalogue_meaning():
+    # The family registry's "tree" (Tents) is a fir; a Murdoku tree stays deciduous.
+    assert icons.lookup("tree").emoji == "1f332"
+    assert icons.object_icon("tree").emoji == "1f333"
+    assert icons.object_icon("rug2").name == "carpet"
+    assert icons.object_icon("zeppelin") is None
 
 
-def test_two_square_standable_object_is_stretched_across_both_squares():
-    _cache_icon("1f37d", Image.new("RGBA", (40, 40), (0, 0, 255, 255)))  # a blue block
+@pytest.mark.parametrize("name", sorted(icons.REGISTRY))
+def test_every_registry_icon_renders(name):
+    icon = icons.REGISTRY[name]
+    assert icon.unicode and icons.symbol(name) == icon.unicode
+    image = Image.open(BytesIO(icons.png(name, 48))).convert("RGBA")
+    assert image.size == (48, 48)
+    assert image.getchannel("A").getbbox() is not None
+
+
+def test_registry_icons_take_a_tint():
+    red = icons.to_svg("star", 32, tint=(200, 0, 0))
+    assert red is not None and 'color="#c80000"' in red
+    colours = Image.open(BytesIO(svg.rasterise(red))).convert("RGBA").getcolors(32 * 32)
+    assert any(r > 150 and g < 60 and b < 60 and a == 255 for _, (r, g, b, a) in colours)
+
+
+def test_text_is_drawn_as_paths_from_the_bundled_font():
+    from csp import sudoku
+
+    canvas = drawing.sudoku_picture(sudoku.parse((EXAMPLES / "sudoku_4x4.txt").read_text()))
+    text = canvas.to_svg()
+    assert "<text" not in text and "aria-label" in text
+
+
+def test_every_character_in_the_example_pictures_is_in_the_bundled_font():
+    # Missing glyphs would print as empty boxes; svg.SUBSTITUTES covers signs
+    # such as the minus that Noto Sans lacks.
+    import html
+    import re
+
+    from csp.puzzlefile import detect
+
+    font = svg.font()
+    for path in sorted(EXAMPLES.glob("*.txt")):
+        text = path.read_text()
+        markup = cli.make_image(detect(text), text).to_svg()
+        for label in re.findall(r'aria-label="([^"]*)"', markup):
+            missing = {c for c in html.unescape(label) if font.glyph(c) == ".notdef"}
+            assert not missing, (path.name, label, missing)
+    assert font.glyph("\u2212") != ".notdef"
+
+
+def test_interactive_variant_has_cell_ids_and_no_solution():
+    from csp import sudoku
+
+    text = (EXAMPLES / "sudoku_4x4.txt").read_text()
+    grid = sudoku.parse(text)
+    (solution,) = bruteforce.solutions(text)
+    interactive = drawing.sudoku_picture(grid, solution, interactive=True)
+    blank = drawing.sudoku_picture(grid)
+    cells = {f"r{r}c{c}" for r in range(1, 5) for c in range(1, 5)}
+    assert cells <= set(svg.ids(interactive.to_svg()))
+    assert _raster(interactive).tobytes() == _raster(blank).tobytes()
+
+
+def test_interactive_murdoku_has_no_crosses_or_name_tags():
+    text = (EXAMPLES / "tamagotchi-murdoku-9x9.txt").read_text()
+    board, _ = load_board(text)
+    canvas = drawing.murdoku_picture(board, legend=False, interactive=True)
+    assert "r1c1" in svg.ids(canvas.to_svg())
+    image = _raster(canvas)
+    blocked = sorted(board.blocked)[0]
+    x, y = 60 + blocked.col * 120, 60 + blocked.row * 120
+    r, g, b = image.getpixel((x + 120 // 4, y + 120 // 4))
+    assert not (r > g + 40 and r > b + 40)
+
+
+def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji):
+    fake_emoji("1f37d", (0, 0, 255))  # a blue block
     board = Board(
         2,
         [["a", "a"], ["a", "a"]],
@@ -73,8 +179,8 @@ def test_two_square_standable_object_is_stretched_across_both_squares():
     assert blue[0] < margin + CELL // 4 and blue[-1] > margin + 2 * CELL - CELL // 4
 
 
-def test_two_square_bench_keeps_its_proportions_and_is_not_stretched():
-    _cache_icon("1f6cb", Image.new("RGBA", (40, 40), (0, 0, 255, 255)))  # a blue block
+def test_two_square_bench_keeps_its_proportions_and_is_not_stretched(fake_emoji):
+    fake_emoji("1f6cb", (0, 0, 255))  # a blue block
     board = Board(
         2,
         [["a", "a"], ["a", "a"]],
@@ -100,10 +206,10 @@ def test_two_square_blocking_object_uses_one_spanning_icon(monkeypatch):
     )
     calls = []
 
-    def capture(image, draw, name, area, cell, **kwargs):
+    def capture(canvas, name, area, cell, **kwargs):
         calls.append((name, area, kwargs))
 
-    monkeypatch.setattr(picture, "_icon", capture)
+    monkeypatch.setattr(drawing, "_icon", capture)
     picture.murdoku_picture(board, cell=CELL, coordinates=False)
 
     assert len(calls) == 1
@@ -125,10 +231,10 @@ def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
     )  # fmt: skip
     calls = []
 
-    def capture(image, draw, name, area, cell, **kwargs):
+    def capture(canvas, name, area, cell, **kwargs):
         calls.append((name, area, kwargs))
 
-    monkeypatch.setattr(picture, "_icon", capture)
+    monkeypatch.setattr(drawing, "_icon", capture)
     picture.murdoku_picture(board, cell=CELL, coordinates=False)
     assert len(calls) == 2
     assert all(name == "stoel" and area[2] - area[0] == CELL for name, area, _ in calls)
@@ -155,10 +261,10 @@ def test_edge_items_and_corner_objects_render_at_their_anchors(monkeypatch):
     )
     calls = []
 
-    def capture(image, draw, name, area, cell, **kwargs):
+    def capture(canvas, name, area, cell, **kwargs):
         calls.append((name, area))
 
-    monkeypatch.setattr(picture, "_icon", capture)
+    monkeypatch.setattr(drawing, "_icon", capture)
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
     margin = CELL // 6
 
@@ -243,13 +349,13 @@ not_role B bandit
     target = tmp_path / "roles.png"
     puzzle.write_text(text)
     seen = []
-    original = picture.murdoku_picture
+    original = drawing.murdoku_picture
 
     def capture(board, placed=None, **kwargs):
         seen.append(kwargs.get("role_statuses"))
         return original(board, placed, **kwargs)
 
-    monkeypatch.setattr(picture, "murdoku_picture", capture)
+    monkeypatch.setattr(drawing, "murdoku_picture", capture)
     cli.main([str(puzzle), "--png", str(target)])
 
     assert seen
@@ -288,13 +394,13 @@ count people on object:bed = 1
     target = tmp_path / "global-count.png"
     puzzle.write_text(text)
     seen = []
-    original = picture.murdoku_picture
+    original = drawing.murdoku_picture
 
     def capture(board, placed=None, **kwargs):
         seen.append(kwargs.get("global_counts"))
         return original(board, placed, **kwargs)
 
-    monkeypatch.setattr(picture, "murdoku_picture", capture)
+    monkeypatch.setattr(drawing, "murdoku_picture", capture)
     cli.main([str(puzzle), "--png", str(target)])
 
     assert seen and seen[0]
@@ -311,32 +417,29 @@ def test_vertical_bed_icon_is_rotated(monkeypatch):
     )  # fmt: skip
     rotations = []
 
-    def capture(image, draw, name, area, cell, **kwargs):
+    def capture(canvas, name, area, cell, **kwargs):
         rotations.append(kwargs.get("rotate", False))
 
-    monkeypatch.setattr(picture, "_icon", capture)
+    monkeypatch.setattr(drawing, "_icon", capture)
     picture.murdoku_picture(board, cell=CELL, coordinates=False)
     assert rotations == [True]
 
 
 def test_custom_carpet_and_well_icons_draw_distinct_images():
-    carpet = Image.new("RGB", (120, 120), picture.WHITE)
-    picture._draw_carpet(ImageDraw.Draw(carpet), (0, 0, 120, 120))
+    carpet = Image.open(BytesIO(icons.png("carpet", 121))).convert("RGB")
     assert carpet.getpixel((60, 60)) == (156, 58, 45)
 
-    well = Image.new("RGB", (120, 120), picture.WHITE)
-    picture._draw_water_well(ImageDraw.Draw(well), (0, 0, 120, 120))
+    well = Image.open(BytesIO(icons.png("well", 121))).convert("RGB")
+    assert carpet.tobytes() != well.tobytes()
     assert well.getpixel((45, 84)) == (45, 65, 70)
 
 
 def test_couch_icon_loses_its_floor_lamp():
-    couch = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
-    couch.paste((250, 210, 0, 255), (60, 0, 90, 40))  # yellow lamp, top right
-    couch.paste((40, 140, 220, 255), (5, 30, 95, 95))  # blue couch, backrest up to y=30
-    cleaned = picture.ICON_FIXES["1f6cb"](couch)
-    assert cleaned.getpixel((75, 10))[3] == 0  # lamp gone
-    assert cleaned.getpixel((20, 35)) == (40, 140, 220, 255)  # backrest kept
-    assert cleaned.getpixel((50, 80)) == (40, 140, 220, 255)  # seat kept
+    couch = svg.emoji_markup("1f6cb")
+    assert couch is not None
+    assert "#FFD600" not in couch.upper() and "#FFFF8D" not in couch.upper()
+    _, y0, _, _ = svg.emoji_bounds()["1f6cb"]
+    assert y0 > 20  # nothing sticks up above the backrest any more
 
 
 def test_picture_shows_regions_objects_and_borders():
@@ -468,6 +571,27 @@ in_column Ben 2
     assert cli.main([str(puzzle), "--png"]) == 0
     assert target.exists()
     assert (tmp_path / "default-solution.png").exists()
+
+
+def test_cli_svg_writes_board_and_solution_beside_the_puzzle(tmp_path):
+    puzzle = tmp_path / "tents.txt"
+    puzzle.write_text((EXAMPLES / "tents_4x4.txt").read_text())
+    assert cli.main([str(puzzle), "--svg"]) == 0
+    board, solved = tmp_path / "tents.svg", tmp_path / "tents-solution.svg"
+    assert board.read_text().startswith("<svg") and solved.read_text().startswith("<svg")
+    assert not (tmp_path / "tents.png").exists()
+
+
+def test_cli_interactive_svg_has_cell_ids(tmp_path):
+    target = tmp_path / "game.svg"
+    assert cli.main([str(EXAMPLES / "prrrdoku1.txt"), "--svg", str(target), "--interactive"]) == 0
+    assert "r1c1" in svg.ids(target.read_text())
+    assert "r1c1" not in svg.ids((tmp_path / "game-solution.svg").read_text())
+
+
+def test_cli_interactive_needs_svg(tmp_path):
+    with pytest.raises(SystemExit):
+        cli.main([str(EXAMPLES / "tents_4x4.txt"), "--interactive"])
 
 
 def test_cli_png_writes_board_and_solution(tmp_path, capsys):
@@ -750,7 +874,7 @@ def test_hand_drawn_objects_never_fall_back_to_text(name):
     assert picture.unknown_object_icons(board) == []
 
 
-def test_every_object_in_the_examples_has_an_icon():
+def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
     checked = 0
     for path in sorted(EXAMPLES.glob("*.txt")):
         text = path.read_text()
@@ -758,6 +882,9 @@ def test_every_object_in_the_examples_has_an_icon():
             continue
         board, _ = load_board(text)
         assert picture.unknown_object_icons(board) == [], path.name
+        for person, figure in load_presentation(text).figures.items():
+            if figure.icon:
+                assert icons.object_icon(figure.icon) is not None, (path.name, person)
         checked += 1
     assert checked >= 5
 

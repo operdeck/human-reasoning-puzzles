@@ -27,6 +27,8 @@ NEW = "\033[38;5;21m"  # blue: changed by the step just shown
 FADED = "\033[38;5;245m"
 RESET = "\033[0m"
 
+SIGNS = {"+": "+", "-": "\u2212", "x": "\u00d7", "/": "\u00f7"}
+
 # Newspapers print the typographic signs; files may use those or plain ASCII.
 OPERATORS = {
     "+": "+",
@@ -57,6 +59,11 @@ class Cage:
     @property
     def label(self) -> str:
         return f"{self.target}{self.operator or ''}"
+
+    @property
+    def display_label(self) -> str:
+        """The label with the printed plus, minus, times and divide signs, for display."""
+        return f"{self.target}{SIGNS.get(self.operator or '', '')}"
 
     def holds(self, values: Sequence[int]) -> bool:
         """Whether `values`, one per cell, make the target."""
@@ -241,7 +248,7 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
         for c in range(n):
             side = "|" if c == 0 or not same_cage((r, c - 1), (r, c)) else " "
             cage = first_cell.get((r, c))
-            labels += side + (cage.label if cage else "").ljust(width)
+            labels += side + (cage.display_label if cage else "").ljust(width)
             values += side + _cell_text(model, cell_name((r, c)), width, n, placed, narrowed)
         out += [labels + "|", values + "|"]
     return "\n".join(out)

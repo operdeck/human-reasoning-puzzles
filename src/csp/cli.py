@@ -3,6 +3,7 @@
 import argparse
 import dataclasses
 import glob
+import importlib.util
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -175,51 +176,45 @@ def make_image(
     text: str,
     solution: dict[str, Any] | None = None,
     role_statuses: dict[tuple[str, str], bool | None] | None = None,
+    *,
+    interactive: bool = False,
 ) -> Any:
-    """The picture of a puzzle of any family, with `solution` drawn in if given."""
+    """The picture (an `svg.Canvas`) of a puzzle of any family.
+
+    `solution` is drawn in if given; `interactive` draws the variant for the
+    online game instead: cells as elements with ids, no solution.
+    """
     from . import picture
 
-    if kind == "queens":
-        image = picture.queens_picture(queens.parse(text), solution)
-    elif kind == "suguru":
-        image = picture.suguru_picture(suguru.parse(text), solution)
-    elif kind == "starbattle":
-        image = picture.starbattle_picture(starbattle.parse(text), solution)
-    elif kind == "binairo":
-        image = picture.binairo_picture(binairo.parse(text), solution)
-    elif kind == "tents":
-        image = picture.tents_picture(tents.parse(text), solution)
-    elif kind == "minesweeper":
-        image = picture.minesweeper_picture(minesweeper.parse(text), solution)
-    elif kind == "akari":
-        image = picture.akari_picture(akari.parse(text), solution)
-    elif kind == "kakurasu":
-        image = picture.kakurasu_picture(kakurasu.parse(text), solution)
-    elif kind == "battleships":
-        image = picture.battleships_picture(battleships.parse(text), solution)
-    elif kind == "logicgrid":
-        image = picture.logicgrid_picture(logicgrid.parse(text), solution)
-    elif kind == "sudoku":
-        image = picture.sudoku_picture(sudoku.parse(text), solution)
-    elif kind == "calcudoku":
-        image = picture.calcudoku_picture(calcudoku.parse(text), solution)
-    elif kind == "futoshiki":
-        image = picture.futoshiki_picture(futoshiki.parse(text), solution)
-    else:
-        board, clues = load_board(text)
-        global_counts = murdoku.global_count_conditions(board, clues)
-        if solution is None and (unknown := picture.unknown_object_icons(board)):
-            print(
-                f"warning: no icon for {', '.join(unknown)}; using text labels",
-                file=sys.stderr,
-            )
-        image = picture.murdoku_picture(
-            board,
-            solution,
-            role_statuses=role_statuses,
-            global_counts=global_counts,
-        )
-    return image
+    families: dict[str, tuple[Callable[[str], Any], Callable[..., Any]]] = {
+        "queens": (queens.parse, picture.queens_picture),
+        "suguru": (suguru.parse, picture.suguru_picture),
+        "starbattle": (starbattle.parse, picture.starbattle_picture),
+        "binairo": (binairo.parse, picture.binairo_picture),
+        "tents": (tents.parse, picture.tents_picture),
+        "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
+        "akari": (akari.parse, picture.akari_picture),
+        "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "battleships": (battleships.parse, picture.battleships_picture),
+        "logicgrid": (logicgrid.parse, picture.logicgrid_picture),
+        "sudoku": (sudoku.parse, picture.sudoku_picture),
+        "calcudoku": (calcudoku.parse, picture.calcudoku_picture),
+        "futoshiki": (futoshiki.parse, picture.futoshiki_picture),
+    }
+    if kind in families:
+        parse, draw = families[kind]
+        return draw(parse(text), solution, interactive=interactive)
+    board, clues = load_board(text)
+    global_counts = murdoku.global_count_conditions(board, clues)
+    if solution is None and (unknown := picture.unknown_object_icons(board)):
+        print(f"warning: no icon for {', '.join(unknown)}; using text labels", file=sys.stderr)
+    return picture.murdoku_picture(
+        board,
+        solution,
+        role_statuses=role_statuses,
+        global_counts=global_counts,
+        interactive=interactive,
+    )
 
 
 def write_picture(
@@ -228,14 +223,20 @@ def write_picture(
     path: Path,
     solution: dict[str, Any] | None = None,
     role_statuses: dict[tuple[str, str], bool | None] | None = None,
+    *,
+    interactive: bool = False,
 ) -> bool:
-    """Save the puzzle as a PNG, with `solution` drawn in if given."""
+    """Save the puzzle as SVG or PNG (by `path`'s extension), with `solution` if given."""
     try:
-        image = make_image(kind, text, solution, role_statuses)
+        image = make_image(kind, text, solution, role_statuses, interactive=interactive)
+        image.save(path)
     except ImportError:
-        print("--png needs Pillow: uv sync --extra png", file=sys.stderr)
+        extra = "svg" if path.suffix.lower() == ".svg" else "png"
+        print(
+            f"--{extra} needs the picture extras: uv sync --extra {extra}",
+            file=sys.stderr,
+        )
         return False
-    image.save(path)
     print(f"wrote {path}")
     return True
 
@@ -245,7 +246,10 @@ def _murdoku_lint(
 ) -> list[str]:
     findings: list[str] = []
     for name in picture.unknown_object_icons(board):
-        findings.append(f"warning: missing icon for {name}; PNG will use a text label")
+        findings.append(
+            f"warning: missing icon for {name}; the picture will use a text label "
+            "(add it to icons.CATALOGUE and vendor it with scripts/vendor_emoji.py)"
+        )
     for number, other in murdoku.implied_clues(clues):
         findings.append(f"warning: clue {number} is already implied by clue {other}")
 
@@ -255,8 +259,11 @@ def _murdoku_lint(
         findings.append(f"warning: booklet text: {error}")
     else:
         for person, figure in presentation.figures.items():
-            if figure.icon and icons.code_for(figure.icon) is None:
-                findings.append(f"warning: unknown icon {figure.icon} for {person} in Figures")
+            if figure.icon and icons.object_icon(figure.icon) is None:
+                findings.append(
+                    f"warning: unknown icon {figure.icon} for {person} in Figures "
+                    "(not in icons.CATALOGUE or not vendored; see scripts/vendor_emoji.py)"
+                )
 
     candidate_squares = {
         model.value_of(literal) for person in board.people for literal in model.options(person)
@@ -340,11 +347,12 @@ def _booklet(files: list[Path], docx: Any) -> int:
         out = files[0].with_suffix(".docx")
     else:
         out = files[0].parent / "booklet.docx"
-    try:
-        from . import docx_export
-    except ImportError:
-        print("--docx needs python-docx and Pillow: uv sync --extra docx", file=sys.stderr)
+    needed = ("docx", "fontTools", "resvg_py")
+    if any(importlib.util.find_spec(module) is None for module in needed):
+        print("--docx needs python-docx and resvg: uv sync --extra docx", file=sys.stderr)
         return 2
+    from . import docx_export
+
     entries = []
     for file in sorted(set(files), key=lambda path: (path.name.casefold(), str(path))):
         text = file.read_text()
@@ -439,7 +447,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         metavar="FILE",
         help=(
             "write the puzzle as a picture to FILE (default: beside the puzzle), and once solved "
-            "the solution to FILE with '-solution' before the extension (needs Pillow)"
+            "the solution to FILE with '-solution' before the extension (rasterised from the "
+            "SVG picture; needs resvg: uv sync --extra png)"
+        ),
+    )
+    parser.add_argument(
+        "--svg",
+        nargs="?",
+        type=Path,
+        const=_PNG_DEFAULT,
+        metavar="FILE",
+        help=(
+            "write the puzzle as an SVG picture to FILE (default: beside the puzzle), and once "
+            "solved the solution to FILE with '-solution' before the extension (needs "
+            "fonttools: uv sync --extra svg)"
+        ),
+    )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help=(
+            "with --svg: draw the puzzle as the interactive variant (every cell an element "
+            "with an id such as r3c4, no solution, no crosses on blocked squares)"
         ),
     )
     parser.add_argument(
@@ -458,8 +487,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     paths = _expand_patterns(args.puzzles)
     if paths is None:
         return 2
-    if args.png not in (None, _PNG_DEFAULT) and len(paths) > 1:
-        parser.error("--png FILE needs a single puzzle; use --png alone for several")
+    for option, value in (("--png", args.png), ("--svg", args.svg)):
+        if value not in (None, _PNG_DEFAULT) and len(paths) > 1:
+            parser.error(f"{option} FILE needs a single puzzle; use {option} alone for several")
+    if args.interactive and args.svg is None:
+        parser.error("--interactive needs --svg")
     if args.docx is not None:
         return _booklet(paths, args.docx)
     status = 0
@@ -485,7 +517,11 @@ def _expand_patterns(patterns: Sequence[str]) -> list[Path] | None:
 
 
 def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentParser) -> int:
-    png_path = path.with_suffix(".png") if args.png is _PNG_DEFAULT else args.png
+    picture_paths = [
+        path.with_suffix(suffix) if option is _PNG_DEFAULT else option
+        for option, suffix in ((args.png, ".png"), (args.svg, ".svg"))
+        if option is not None
+    ]
     if not path.exists():
         print(f"no such file: {path}", file=sys.stderr)
         return 2
@@ -554,15 +590,19 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
     if args.track_person:
         assert track_board is not None
         print(murdoku.track_person_status(track_board, model, args.track_person))
-    if png_path is not None:
+    if picture_paths:
         role_statuses = None
         if kind == "murdoku":
             role_board = track_board
             if role_board is None:
                 role_board, _ = load_board(text)
             role_statuses = murdoku.role_statuses(role_board, model)
-        if not write_picture(kind, text, png_path, role_statuses=role_statuses):
-            return 2
+        for picture_path in picture_paths:
+            interactive = args.interactive and picture_path.suffix.lower() == ".svg"
+            if not write_picture(
+                kind, text, picture_path, role_statuses=role_statuses, interactive=interactive
+            ):
+                return 2
 
     if args.show_model:
         print(f"\n{report.describe(model)}")
@@ -599,13 +639,14 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
 
     if result.solved:
         print(puzzle.draw("Solved"))
-        if png_path is not None:
-            solved = png_path.with_stem(f"{png_path.stem}-solution")
+        if picture_paths:
             roles = None
             if kind == "murdoku":
                 board, _ = load_board(text)
                 roles = murdoku.role_statuses(board, model)
-            write_picture(kind, text, solved, result.assignment, roles)
+            for picture_path in picture_paths:
+                solved = picture_path.with_stem(f"{picture_path.stem}-solution")
+                write_picture(kind, text, solved, result.assignment, roles)
     elif result.contradiction:
         print(puzzle.draw("Stuck"))
         print(f"\ncontradiction: {result.contradiction}")
