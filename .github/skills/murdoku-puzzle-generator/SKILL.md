@@ -187,7 +187,7 @@ a text fallback. Do this for each new name before reporting the puzzle:
    and map the name in `OBJECT_ICONS`.
 4. Rerun `--lint` until it reports no icon warnings, then render with
    `--svg` (or `--png`) and look at the picture: the icon must read clearly at
-   cell size and, for blocking objects, behind the red cross. Fix a picture
+   cell size and, for blocking objects, on the darker shading. Fix a picture
    that crops oddly by choosing another emoji rather than editing coordinates.
 5. For a committed example, `uv run pytest tests/test_picture.py -k vendored_icon`
    checks every object and figure in `examples/` has a vendored icon.
@@ -225,8 +225,8 @@ a text fallback. Do this for each new name before reporting the puzzle:
   fallback but can look odd, so check the picture before keeping it. Footprints
   may cross region boundaries (connectivity is the only parser rule), but that
   is unusual and should be noted in the file header.
-  Blocking squares are drawn with a red cross, so a blocking object needs an
-  icon that still reads clearly behind it.
+  Blocking squares are shaded darker than their region, so a blocking object
+  needs an icon that still reads clearly on the darker shade.
 - `EdgeItems:` declares named doors and windows without occupying cells.
   A simple door lists two orthogonally neighboring cells in different areas,
   for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider

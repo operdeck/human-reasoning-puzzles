@@ -151,16 +151,13 @@ def test_interactive_variant_has_cell_ids_and_no_solution():
     assert _raster(interactive).tobytes() == _raster(blank).tobytes()
 
 
-def test_interactive_murdoku_has_no_crosses_or_name_tags():
+def test_interactive_murdoku_has_cell_ids_and_the_blank_board():
     text = (EXAMPLES / "tamagotchi-murdoku-9x9.txt").read_text()
     board, _ = load_board(text)
     canvas = drawing.murdoku_picture(board, legend=False, interactive=True)
     assert "r1c1" in svg.ids(canvas.to_svg())
-    image = _raster(canvas)
-    blocked = sorted(board.blocked)[0]
-    x, y = 60 + blocked.col * 120, 60 + blocked.row * 120
-    r, g, b = image.getpixel((x + 120 // 4, y + 120 // 4))
-    assert not (r > g + 40 and r > b + 40)
+    blank = drawing.murdoku_picture(board, legend=False)
+    assert _raster(canvas).tobytes() == _raster(blank).tobytes()
 
 
 def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji):
@@ -889,15 +886,17 @@ def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
     assert checked >= 5
 
 
-def test_blocked_squares_carry_a_red_cross():
+def test_blocked_squares_are_shaded_darker_without_a_cross():
     board, _ = load_board((EXAMPLES / "tamagotchi-murdoku-9x9.txt").read_text())
     image = picture.murdoku_picture(board, legend=False).convert("RGB")
     cell, margin = 120, 60
     blocked = sorted(board.blocked)[0]
     x, y = margin + blocked.col * cell, margin + blocked.row * cell
-    # a quarter of the way along the diagonal, clear of the centre
-    r, g, b = image.getpixel((x + cell // 4, y + cell // 4))
-    assert r > g + 40 and r > b + 40
+    region = picture._rgb(board.colours[board.region_of(blocked)])
+    # A corner of the square, clear of the icon: a plain darker region colour.
+    r, g, b = image.getpixel((x + cell // 12, y + cell // 12))
+    assert (r, g, b) == tuple(round(v * picture.BLOCKED_SHADE) for v in region)
+    assert sum(region) - (r + g + b) > 100
 
 
 def test_picture_ignores_role_booleans_in_the_assignment(tmp_path):
