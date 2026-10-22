@@ -13,11 +13,11 @@ from .murdoku import (
     BoardObject,
     CellMark,
     Clue,
-    CornerObject,
     EdgeItem,
     EdgeItemKind,
     ObjectKind,
     OccupantCondition,
+    PointObject,
     PronounSet,
     RoleSpec,
     Square,
@@ -73,6 +73,11 @@ def detect(text: str) -> str:
     if "Signs" in section:
         return "futoshiki"
     return "murdoku" if "Regions" in section else "sudoku"
+
+
+def language_of(text: str) -> str:
+    """The puzzle's `Language:` code, "en" when absent."""
+    return (read_sections(text).get("Language") or ["en"])[0]
 
 
 def read_sections(text: str) -> dict[str, list[str]]:
@@ -148,7 +153,9 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         raise ValueError("Doors: is no longer supported; use EdgeItems:")
     objects = _object_placements(section.get("Objects", []))
     edge_items = _edge_item_placements(section.get("EdgeItems", []))
-    corner_objects = _corner_object_placements(section.get("CornerObjects", []))
+    if "CornerObjects" in section:
+        raise ValueError("CornerObjects: is no longer supported; use PointObjects: with an anchor")
+    point_objects = _point_object_placements(section.get("PointObjects", []), size)
     marks = _mark_placements(section.get("Marks", []))
 
     people = list(section["People"])
@@ -168,7 +175,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         area_tags=area_tags,
         colours=colours,
         edge_items=edge_items,
-        corner_objects=corner_objects,
+        point_objects=point_objects,
         marks=marks,
         roles=roles,
         attributes=attributes,
@@ -229,17 +236,25 @@ def _edge_item_placements(lines: list[str]) -> list[EdgeItem]:
     return items
 
 
-def _corner_object_placements(lines: list[str]) -> list[CornerObject]:
-    """Read corner objects by listing their four surrounding cells."""
-    items: list[CornerObject] = []
+def _point_object_placements(lines: list[str], size: int) -> list[PointObject]:
+    """Read point objects by their half-step anchor, such as 'fountain: r2.5c2.5'."""
+    items: list[PointObject] = []
     for line in lines:
-        name, separator, positions = line.partition(":")
-        if not separator or not name.strip():
-            raise ValueError(f"bad corner object {line!r}, expected 'name: r1c1 r1c2 r2c1 r2c2'")
-        items.append(
-            CornerObject(name.strip(), tuple(parse_square(token) for token in positions.split()))
-        )
+        name, separator, position = line.partition(":")
+        if not separator or not name.strip() or len(position.split()) != 1:
+            raise ValueError(f"bad point object {line!r}, expected 'name: r2.5c3.5'")
+        items.append(PointObject.at(name.strip(), parse_anchor(position.split()[0]), size))
     return items
+
+
+def parse_anchor(token: str) -> tuple[int, int]:
+    """'r2.5c4' -> (5, 8): a grid point in doubled 1-based coordinates."""
+    match = re.fullmatch(r"r(\d+(?:\.[05])?)c(\d+(?:\.[05])?)", token.strip().lower())
+    if match is None:
+        raise ValueError(
+            f"bad point object anchor {token!r}, expected half steps like r2.5c3.5 or r0.5c4"
+        )
+    return int(float(match[1]) * 2), int(float(match[2]) * 2)
 
 
 def _mark_placements(lines: list[str]) -> list[CellMark]:

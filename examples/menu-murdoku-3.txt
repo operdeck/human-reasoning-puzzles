@@ -1,0 +1,110 @@
+# Menu-murdoku 3 (moeilijk, grade what_if)
+#
+# Gerechten als personages, dagen van de week als gebieden, bloemen op de
+# hoekpunten van de vakjes (PointObjects:). Hoogstens één zetmeelproduct per dag
+# (rol met different_regions). Vla heeft geen eigen aanwijzingen: hij deelt zijn
+# dag met precies twee andere gerechten (alone_with Vla 2) en wordt als laatste gevonden.
+#
+# Oplossing: Aardappel r1c1, Rijst r5c2, Pasta r3c6, Noedels r8c8, Vis r2c5, Bonen r4c7, Wortel r7c4, Vla r6c3.
+#
+Size: 8
+Language: nl
+
+Words:
+maandag: op maandag
+woensdag: op woensdag
+vrijdag: op vrijdag
+zondag: op zondag
+target.attribute: een {name}
+role_has: {who} is {role}
+role_not: {who} is geen {role}
+clue.role_apart: {a} en {b} zijn allebei {role}, en er staat nooit meer dan één {role} op dezelfde dag
+
+Regions:
+maandag: maandag #F3C8C0
+woensdag: woensdag #FADFB5
+vrijdag: vrijdag #C4DCF2
+zondag: zondag #CBE6B9
+
+Grid:
+maandag maandag maandag maandag woensdag woensdag woensdag woensdag
+maandag maandag maandag woensdag woensdag woensdag woensdag woensdag
+maandag vrijdag maandag maandag woensdag woensdag zondag woensdag
+vrijdag vrijdag vrijdag maandag maandag zondag zondag woensdag
+vrijdag vrijdag vrijdag maandag zondag zondag zondag zondag
+vrijdag vrijdag maandag maandag zondag zondag zondag zondag
+vrijdag vrijdag vrijdag maandag maandag zondag zondag zondag
+vrijdag vrijdag vrijdag vrijdag maandag maandag zondag zondag
+
+PointObjects:
+sierui: r2.5c4.5
+sierui: r4.5c8.5
+sierui: r7.5c4.5
+sierui: r7.5c8.5
+zonnebloem: r3.5c7.5
+zonnebloem: r4.5c7.5
+zonnebloem: r5.5c7.5
+zonnebloem: r8.5c8.5
+
+Attributes:
+zetmeel: Aardappel Rijst Pasta Noedels
+eiwit: Vis Bonen
+groente: Wortel
+
+Roles:
+zetmeel: 4 different_regions
+eiwit: 2 different_regions
+
+RoleEligibility:
+zetmeel: attribute:zetmeel
+eiwit: attribute:eiwit
+
+People:
+Aardappel
+Rijst
+Pasta
+Noedels
+Vis
+Bonen
+Wortel
+Vla
+
+Rules:
+alone_with Vla 2
+
+Clues:
+not_next_to Aardappel zonnebloem
+next_to Noedels sierui
+not_in_row Pasta 5
+above Vis Noedels 6
+above Aardappel Bonen 3
+at_least Aardappel Noedels 14
+outside Wortel zondag
+next_to Vis sierui
+at_least Aardappel Vis 5
+within Noedels Wortel 5
+
+# Booklet text for --docx (optional).
+Title:
+Menu-murdoku 3: Weekmenu
+
+Intro:
+Elk gerecht staat op één vakje, met hoogstens één gerecht per rij en per kolom. Elk gebied is een dag van de week: wat in hetzelfde gebied staat, eten we op dezelfde dag. Op de hoekpunten van sommige vakjes staan zonnebloemen en sieruien; een gerecht staat naast een bloem als zijn vakje die hoek raakt.
+Vier dagen, vier menu's. Op elke dag staat precies één zetmeelproduct en hoogstens één eiwitbron (vis of bonen).
+De vla is het toetje. Over de vla zijn geen aanwijzingen, behalve deze: de vla zit in een menu met precies twee andere soorten voedsel, dus op een dag met precies twee andere gerechten.
+
+Figures:
+Aardappel: gekookt of gebakken, een zetmeelproduct ; icon=U+1F954
+Rijst: witte of zilvervliesrijst, een zetmeelproduct ; icon=U+1F35A
+Pasta: spaghetti of macaroni, een zetmeelproduct ; icon=U+1F35D
+Noedels: mie of ramen, een zetmeelproduct ; icon=U+1F35C
+Vis: eiwit: vis ; icon=U+1F41F
+Bonen: eiwit: peulvruchten ; icon=U+1FAD8
+Wortel: groente ; icon=U+1F955
+Vla: het toetje, zonder eigen aanwijzingen ; icon=U+1F36E
+
+Question:
+Op welke dag eten we vla als toetje?
+
+Reveal:
+We eten vla op maandag, als toetje na aardappel en wortel.

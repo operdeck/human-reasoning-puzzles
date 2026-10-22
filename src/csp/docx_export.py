@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from . import icons, picture
-from .puzzlefile import Figure, Presentation, load_board, load_presentation
+from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import attribute_list, board_notes, clue_paragraphs, explain, phrase, role_list
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
@@ -52,7 +52,7 @@ def _picture_stream(
 ) -> tuple[io.BytesIO, float]:
     """The board picture and its height/width ratio."""
     board, _ = load_board(text)
-    image = picture.murdoku_picture(board, solution, show_roles=False)
+    image = picture.murdoku_picture(board, solution, show_roles=False, language=language_of(text))
     return io.BytesIO(image.to_png()), image.height / image.width
 
 

@@ -748,3 +748,9 @@ def test_board_rules_are_what_the_model_is_built_from():
     model = murdoku.compile_puzzle(board, clues)
     names = {rule.name for rule in murdoku.board_rules(board)}
     assert names == {c.name for c in model.constraints}
+
+
+def test_story_explains_a_different_regions_role_step():
+    story = explain((EXAMPLES / "menu-murdoku-1.txt").read_text())
+
+    assert "zijn allebei zetmeel, en er staat nooit meer dan één zetmeel op dezelfde dag" in story
