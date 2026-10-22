@@ -237,3 +237,23 @@ describe("peer light", () => {
     expect(autoMarks(b, state)).toEqual(new Set(["r1c2", "r2c1", "r3c1"]));
   });
 });
+
+describe("restore", () => {
+  it("survives storage it did not write", () => {
+    const b = digits();
+    for (const saved of [
+      { placed: "r1c2", crosses: "r1c3", usedClues: 3, notes: [] },
+      { placed: { r1c2: 7, r1c3: "2" }, crosses: ["r1c4", "r1c4", 5], notes: { r1c2: "2" } },
+      null,
+      42,
+    ]) {
+      const state = restore(b, saved);
+      expect(Array.isArray(state.crosses)).toBe(true);
+      expect(Array.isArray(state.usedClues)).toBe(true);
+    }
+    expect(restore(b, { placed: { r1c2: 7, r1c3: "2" }, crosses: ["r1c4", "r1c4", 5] })).toMatchObject({
+      placed: { r1c3: "2" },
+      crosses: ["r1c4"],
+    });
+  });
+});

@@ -31,9 +31,10 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-async function showIndex(): Promise<void> {
-  document.title = "Human reasoning puzzles";
+async function showIndex(current: () => boolean): Promise<void> {
   const index = JSON.parse(await fetchText("index.json")) as { license: string; puzzles: IndexEntry[] };
+  if (!current()) return;
+  document.title = "Human reasoning puzzles";
   const families = new Map<string, IndexEntry[]>();
   for (const entry of index.puzzles) {
     const list = families.get(entry.familyLabel) ?? [];
@@ -96,18 +97,25 @@ async function showIndex(): Promise<void> {
   );
 }
 
-async function showPuzzle(id: string): Promise<void> {
+async function showPuzzle(id: string, current: () => boolean): Promise<void> {
   const [bundleText, svg] = await Promise.all([fetchText(`${id}.json`), fetchText(`${id}.svg`)]);
+  if (!current()) return;
   const bundle = JSON.parse(bundleText) as Bundle;
   new PuzzleView(bundle, svg).render(app);
 }
 
+let routing = 0;
+
 async function route(): Promise<void> {
   const id = decodeURIComponent(location.hash.slice(1));
+  const ticket = ++routing;
+  // A later hash change wins, even if this page arrives after it.
+  const current = () => ticket === routing;
   try {
-    if (id && /^[\w.-]+$/.test(id)) await showPuzzle(id);
-    else await showIndex();
+    if (id && /^[\w.-]+$/.test(id)) await showPuzzle(id, current);
+    else await showIndex(current);
   } catch (error) {
+    if (!current()) return;
     app.replaceChildren(
       el("p", { className: "error", textContent: `Could not load the puzzle: ${String(error)}` }),
       el("a", { href: "#", textContent: "← All puzzles" }),

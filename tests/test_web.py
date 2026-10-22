@@ -152,3 +152,13 @@ def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
     bundle = _bundle(exported, "murdoku_intro")
     assert "peers" not in bundle
     assert "notes" not in bundle
+
+
+def test_export_refuses_two_puzzles_with_the_same_name(tmp_path, capsys):
+    other = tmp_path / "copy"
+    other.mkdir()
+    (other / "tents_4x4.txt").write_text((EXAMPLES / "tents_4x4.txt").read_text())
+    files = [str(EXAMPLES / "tents_4x4.txt"), str(other / "tents_4x4.txt")]
+    assert cli.main([*files, "--export", str(tmp_path / "site")]) == 2
+    assert "tents_4x4" in capsys.readouterr().err
+    assert not (tmp_path / "site").exists()
