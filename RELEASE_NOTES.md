@@ -23,6 +23,7 @@
     * `alone_with <person> [selector] [n]`: the selector is now optional (anyone) and `n` sets how many companions (default 1), e.g. `alone_with Vla 2`.
     * New hand-drawn `sierui`/`allium` icon (purple ornamental onion) and flower/food emoji (zonnebloem, roos, madeliefje, hibiscus, aardappel, rijst, pasta, broccoli, spinazie, wortel, vis, kip, bonen, vla).
     * `--explain` no longer crashes with `KeyError` on a step from a `different_regions` role ("er is hoogstens één zetmeel per gebied").
+    * The picture legend follows the puzzle's `Language:` (`Punt`, `Deur`, `Raam`, ...). Role lines are readable: a role whose candidates must all hold it is shown as a category ("Zetmeel: Aardappel, Rijst, Pasta, Noedels (niet meer dan 1 hiervan per gebied)"); otherwise the holders, then "maybe" for the open candidates. Point icons are a third larger.
 * [#75 Better icons for the puzzles](https://github.com/operdeck/human-reasoning-puzzles/issues/75)
     * One renderer: `picture.py` now draws every family as SVG (`src/csp/svg.py`); `--png`, the README images and `--docx` booklets are rasterised from it with resvg. New `--svg [FILE]` writes the SVG (blank and `-solution`), and `--svg --interactive` writes the blank board with a transparent `r<row>c<col>` element per cell for an app.
     * Icon registry (`src/csp/icons.py`): stars, tents, trees, mines, bulbs, walls, discs, signs and DogDoku pieces each have a picture and a Unicode fallback used by the text boards (★ ▲ ♣ ✱ ● ■ ○). Calcudoku prints − × ÷.

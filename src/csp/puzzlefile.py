@@ -75,6 +75,11 @@ def detect(text: str) -> str:
     return "murdoku" if "Regions" in section else "sudoku"
 
 
+def language_of(text: str) -> str:
+    """The puzzle's `Language:` code, "en" when absent."""
+    return (read_sections(text).get("Language") or ["en"])[0]
+
+
 def read_sections(text: str) -> dict[str, list[str]]:
     """Section name -> its non-blank, non-comment lines."""
     out: dict[str, list[str]] = {}
