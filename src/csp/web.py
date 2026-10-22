@@ -16,8 +16,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import icons, queens, starbattle
-from .core import Model
+from . import akari, icons, queens, starbattle
+from .core import Kind, Model
 from .murdoku import Square
 from .puzzlefile import language_of, load_board, load_presentation
 from .story import (
@@ -111,6 +111,40 @@ def grid_cells(picture: str) -> list[tuple[int, int]]:
 def _fixed(model: Model) -> dict[str, Any]:
     """Variables the puzzle itself decides before any deduction: its givens."""
     return {var: value for var in model.variables if (value := model.chosen(var)) is not None}
+
+
+def peers(
+    model: Model, cells: set[str], by_value: Mapping[Any, str], only: str | None = None
+) -> list[dict[str, Any]]:
+    """Groups of cells that may hold an item at most once, from the model's constraints.
+
+    These are the rule's own "sees each other" sets: Sudoku houses and anti-knight
+    pairs, or the cells an Akari bulb lights. A group lists its `items` unless it
+    holds for every palette item. Cell domains and reified constraints are skipped;
+    `only` keeps just the constraints of that puzzle rule (`Constraint.family`).
+    """
+    domains = {model.domain_of(var) for var in model.variables}
+    every = set(by_value.values())
+    groups: dict[tuple[str, ...], set[str]] = {}
+    for constraint in model.constraints:
+        if constraint.index in domains or constraint.reified_by is not None:
+            continue
+        if only is not None and constraint.family != only:
+            continue
+        if constraint.kind is Kind.COUNT and max(constraint.allowed_counts, default=0) != 1:
+            continue
+        members = [(model.var_of(lit), model.value_of(lit)) for lit in constraint.literals]
+        names = tuple(sorted({var for var, _ in members}))
+        items = {by_value.get(value) for _, value in members}
+        if len(names) != len(members) or len(names) < 2 or not set(names) <= cells:
+            continue
+        if None in items or len(items) != 1:
+            continue
+        groups.setdefault(names, set()).update(item for item in items if item is not None)
+    return [
+        {"cells": list(names)} | ({} if items == every else {"items": sorted(items)})
+        for names, items in sorted(groups.items())
+    ]
 
 
 def bundle(
@@ -207,6 +241,8 @@ def _family(
     regions: dict[str, str] = {}
     scopes: list[dict[str, Any]] = []
     auto = True
+    mark = "cross"
+    groups: list[dict[str, Any]] = []
     if kind == "queens":
         puzzle = queens.parse(text)
         items = [Item(puzzle.icon, puzzle.icon.capitalize(), puzzle.icon)]
@@ -243,6 +279,12 @@ def _family(
         elif kind == "tents":
             scopes = NEIGHBOURS
         by_value = {item.value: item.id for item in items}
+        if kind in DIGITS:
+            groups = peers(model, set(names), by_value)
+        elif kind == "akari":
+            groups = peers(model, set(names), by_value, only=akari.SIGHT)
+            scopes = [{"scope": "peers"}]
+            mark = "light"
         placed = {
             cell: by_value[value]
             for cell, value in solution.items()
@@ -259,12 +301,20 @@ def _family(
         "playable": True,
         "palette": [item.to_json() for item in items],
         "placement": {"perCell": 1, "blocked": blocked},
-        "autoMark": {"default": auto and bool(scopes), "mark": "cross", "onPlace": scopes},
+        "autoMark": {
+            "default": (auto and bool(scopes)) or bool(groups),
+            "mark": mark,
+            "onPlace": scopes,
+        },
         "givens": dict(sorted(givens.items())),
         "solution": dict(sorted(placed.items())),
     }
     if regions:
         out["regions"] = regions
+    if groups:
+        out["peers"] = groups
+    if kind in DIGITS:
+        out["notes"] = True
     return out
 
 

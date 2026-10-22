@@ -118,3 +118,37 @@ def test_conditions_only_list_the_kinds_a_puzzle_uses():
     text = (EXAMPLES / "murdoku_intro.txt").read_text()
     used = {kind for kind, _ in re.findall(r"^\s*(\w+)\s+(.*)$", text, re.M)}
     assert len(story.condition_list(text)) <= len(used)
+
+
+def test_digit_puzzles_get_pencil_marks_and_peer_groups(exported):
+    bundle = _bundle(exported, "sudoku_4x4")
+    assert bundle["notes"] is True
+    assert bundle["autoMark"]["default"] is True
+    groups = [frozenset(group["cells"]) for group in bundle["peers"]]
+    rows = [frozenset(f"r{r}c{c}" for c in range(1, 5)) for r in range(1, 5)]
+    cols = [frozenset(f"r{r}c{c}" for r in range(1, 5)) for c in range(1, 5)]
+    assert set(rows + cols) <= set(groups)
+    assert len(groups) == len(set(groups)) == 12
+    assert all("items" not in group for group in bundle["peers"])
+
+
+def test_anti_knight_pairs_are_peers(exported):
+    groups = {frozenset(group["cells"]) for group in _bundle(exported, "sudoku_anti_4x4")["peers"]}
+    assert frozenset({"r1c1", "r2c3"}) in groups
+
+
+def test_akari_lights_what_a_bulb_sees(exported):
+    bundle = _bundle(exported, "akari_2x2")
+    assert "notes" not in bundle
+    assert bundle["autoMark"] == {"default": True, "mark": "light", "onPlace": [{"scope": "peers"}]}
+    # Only lines of sight, never the cells around a numbered wall.
+    assert sorted(sorted(group["cells"]) for group in bundle["peers"]) == [
+        ["r1c1", "r2c1"],
+        ["r2c1", "r2c2"],
+    ]
+
+
+def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
+    bundle = _bundle(exported, "murdoku_intro")
+    assert "peers" not in bundle
+    assert "notes" not in bundle
