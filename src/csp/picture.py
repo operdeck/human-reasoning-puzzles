@@ -1076,7 +1076,7 @@ LEGEND_WORDS = {
 
 
 class _Legend:
-    """Region swatches with names, in two columns under the board."""
+    """Region swatches with names, two per row under the board, in file order."""
 
     def __init__(
         self,
@@ -1144,8 +1144,8 @@ class _Legend:
             canvas.text(middle, text, INK, font_size, anchor="lm")
 
         for i, (rid, name) in enumerate(self.board.region_names.items()):
-            left = x + (i // self.rows) * column
-            top = y + (i % self.rows) * self.line
+            left = x + (i % 2) * column
+            top = y + (i // 2) * self.line
             square = (left, top, left + self.swatch, top + self.swatch)
             canvas.rectangle(square, fill=fills[rid], outline=INK, width=2)
             if rid in self.board.hatched:
