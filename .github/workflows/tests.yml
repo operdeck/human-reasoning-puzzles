@@ -21,3 +21,19 @@ jobs:
       - run: uvx ruff format --check src tests benchmark
       - run: uv run mypy src
       - run: uv run pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npx tsc --noEmit
+        working-directory: web
+      - run: npm test
+        working-directory: web
