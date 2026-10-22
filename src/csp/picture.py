@@ -232,10 +232,10 @@ def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
 def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
     """A small labelled disc for a point object without a picture icon."""
     x0, y0, x1, y1 = area
-    pad = (x1 - x0) * 0.1
+    pad = (x1 - x0) // 10
     disc = (x0 + pad, y0 + pad, x1 - pad, y1 - pad)
     canvas.ellipse(disc, fill=(255, 255, 255), outline=INK, width=max(1, cell // 60))
-    _centred_text(canvas, name[:3], disc, max(8, cell // 8), INK, max_width=int(x1 - x0 - 4 * pad))
+    _centred_text(canvas, name[:3], disc, max(8, cell // 8), INK, max_width=x1 - x0 - 4 * pad)
 
 
 # Objects drawn with the registry's own drawings because Noto Emoji has no suitable picture.
