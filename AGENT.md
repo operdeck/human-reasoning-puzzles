@@ -178,7 +178,12 @@ unreachable areas, or unused roles as warnings. `--require-forward` also
 requires a solve without `what_if`. `--svg` or `--png` without a path writes
 `<puzzle-stem>.svg`/`.png` beside the input, and the solved image adds `-solution`;
 an explicit path overrides the default. `--interactive` (with `--svg`) adds cell
-ids for an app and leaves out the solution. `--docx [FILE]` (or a quoted glob) writes
+ids for an app and writes no solution picture. `--export DIR` writes a JSON
+bundle and interactive board per puzzle, plus `index.json`, for the web player in
+`web/` (see `src/csp/web.py`; it fails when any puzzle cannot be exported). The
+player in `web/` stays family-agnostic: palettes, scopes, rules and wording come
+from the bundle, so new family knowledge belongs in `web.py`, not in TypeScript.
+After changing `web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FILE]` (or a quoted glob) writes
 an editable Word booklet, puzzles first and then solutions, one page each, from
 `docx_export`; new Murdoku puzzles should carry the optional `Title:`, `Intro:`,
 `Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku
