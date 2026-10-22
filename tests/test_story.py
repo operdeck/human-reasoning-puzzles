@@ -753,4 +753,4 @@ def test_board_rules_are_what_the_model_is_built_from():
 def test_story_explains_a_different_regions_role_step():
     story = explain((EXAMPLES / "menu-murdoku-1.txt").read_text())
 
-    assert "Er is hoogstens één zetmeel per gebied (Aardappel, " in story
+    assert "zijn allebei zetmeel, en er staat nooit meer dan één zetmeel op dezelfde dag" in story

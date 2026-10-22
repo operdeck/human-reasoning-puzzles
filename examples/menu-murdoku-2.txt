@@ -18,6 +18,7 @@ zondag: op zondag
 target.attribute: een {name}
 role_has: {who} is {role}
 role_not: {who} is geen {role}
+clue.role_apart: {a} en {b} zijn allebei {role}, en er staat nooit meer dan één {role} op dezelfde dag
 
 Regions:
 donderdag: donderdag #FADFB5
