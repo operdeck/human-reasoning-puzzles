@@ -15,6 +15,10 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* [#83 Murdoku: objects on any grid point](https://github.com/operdeck/human-reasoning-puzzles/issues/83)
+    * `CornerObjects:` is renamed `PointObjects:` (no alias; the old name gives an error) and takes a half-step anchor instead of four cells: `fountain: r2.5c2.5`. Point objects may sit on an interior vertex (4 cells), a vertex on the outer edge or the middle of an inner cell side (2 cells), or a board corner or the middle of an outer cell side (1 cell). Any touched cell counts for `next_to`, across area boundaries. The typed selector is now `point_object:name`.
+    * Pictures centre the small icon on the point and widen the margin when a point lies on the outer edge, so it is not clipped or drawn over the coordinates; an object without an icon gets a small labelled badge. New `mouse`/`muis` and `cheese`/`kaas` icons.
+    * `examples/murdoku_composition.txt` migrated; new example `examples/murdoku_point_objects.txt` (unique, grade `single`).
 * [#75 Better icons for the puzzles](https://github.com/operdeck/human-reasoning-puzzles/issues/75)
     * One renderer: `picture.py` now draws every family as SVG (`src/csp/svg.py`); `--png`, the README images and `--docx` booklets are rasterised from it with resvg. New `--svg [FILE]` writes the SVG (blank and `-solution`), and `--svg --interactive` writes the blank board with a transparent `r<row>c<col>` element per cell for an app.
     * Icon registry (`src/csp/icons.py`): stars, tents, trees, mines, bulbs, walls, discs, signs and DogDoku pieces each have a picture and a Unicode fallback used by the text boards (★ ▲ ♣ ✱ ● ■ ○). Calcudoku prints − × ÷.

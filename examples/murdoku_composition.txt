@@ -23,8 +23,8 @@ bench: standable r4c2
 EdgeItems:
 archway: door r2c2 r2c3
 window: window r3c4
-CornerObjects:
-fountain: r3c1 r3c2 r4c1 r4c2
+PointObjects:
+fountain: r3.5c1.5
 Marks:
 quiet: r1c1 r2c1 ; alone
 People:

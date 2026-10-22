@@ -500,7 +500,7 @@ class Places:
             return self.say.words[name]
         if (
             name in self.board.edge_item_names
-            or name in self.board.corner_object_names
+            or name in self.board.point_object_names
             or name in self.board.mark_names
         ):
             many = False
@@ -607,8 +607,8 @@ class Places:
         for name in sorted(board.edge_item_names):
             cells = board.edge_item_cells([name])
             areas.append((self.say("at", what=self.thing(name)), cells.__contains__))
-        for name in sorted(board.corner_object_names):
-            cells = board.corner_object_cells([name])
+        for name in sorted(board.point_object_names):
+            cells = board.point_object_cells([name])
             areas.append((self.say("next_to", what=self.thing(name)), cells.__contains__))
         for name in sorted(board.mark_names):
             cells = board.mark_cells([name])
