@@ -6,8 +6,10 @@ The puzzle files in this folder (`examples/`), including their texts, clues,
 story elements and layouts, are NOT covered by the Apache 2.0 licence that
 applies to the rest of this repository.
 
-You may read and solve them, and run them through the solver in this repository
-for personal use. You may not copy, reproduce, redistribute, publish, translate,
+You may read and solve them, run them through the solver in this repository
+for personal use, and play them online on this project's own site
+(https://operdeck.github.io/human-reasoning-puzzles/), which the author publishes
+from this repository. You may not copy, reproduce, redistribute, publish, translate,
 adapt or use them (or booklets, images or documents generated from them) for any
 other purpose without the explicit prior written permission of the author.
 
