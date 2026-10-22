@@ -1,0 +1,378 @@
+:root {
+  --ink: #1a1a1a;
+  --muted: #666;
+  --line: #ddd;
+  --accent: #2456a6;
+  --good: #1d7a3a;
+  --bad: #b3261e;
+  --paper: #fff;
+  --soft: #f5f5f2;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--soft);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.75rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+footer {
+  margin-top: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* --- landing page ------------------------------------------------------- */
+
+.site-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.family ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.25rem 1rem;
+}
+
+.family li {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.badge {
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 1rem;
+  background: #eee;
+  color: var(--muted);
+}
+
+/* --- puzzle page -------------------------------------------------------- */
+
+.puzzle-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.puzzle-header h1 {
+  flex: 1;
+  font-size: 1.3rem;
+  margin: 0.25rem 0;
+}
+
+.auto {
+  white-space: nowrap;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.play {
+  position: sticky;
+  top: 0.5rem;
+}
+
+.board {
+  background: var(--paper);
+  border-radius: 6px;
+  outline: none;
+}
+
+.board:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 78vh;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.board rect.cell {
+  cursor: pointer;
+}
+
+.overlay .mark line {
+  stroke-linecap: round;
+}
+
+.overlay .mark.manual {
+  stroke: #222;
+}
+
+.overlay .mark.auto {
+  stroke: #9a9a9a;
+  stroke-opacity: 0.6;
+}
+
+.overlay .tag {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.overlay text {
+  text-anchor: middle;
+  fill: var(--accent);
+  font-weight: 600;
+}
+
+.overlay text.symbol {
+  fill: var(--accent);
+}
+
+.overlay .cursor {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-dasharray: 8 5;
+}
+
+.board:not(:focus-visible) .overlay .cursor {
+  display: none;
+}
+
+.overlay .cursor.locked {
+  stroke: var(--muted);
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.6rem 0;
+}
+
+.tool {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.tool[aria-checked="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  font-weight: 600;
+}
+
+.swatch svg {
+  width: 100%;
+  height: 100%;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.verdict {
+  min-height: 1.4em;
+  font-weight: 600;
+}
+
+.verdict.solved {
+  color: var(--good);
+}
+
+.verdict.wrong {
+  color: var(--bad);
+}
+
+.note {
+  color: var(--muted);
+}
+
+/* --- panel: clues, rules, conditions ------------------------------------ */
+
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.25rem 0.9rem 0.75rem;
+  position: sticky;
+  top: 0.5rem;
+  max-height: calc(100vh - 1rem);
+  overflow-y: auto;
+}
+
+.tabs {
+  display: none;
+}
+
+.panel h2 {
+  font-size: 1.05rem;
+  margin: 0.8rem 0 0.4rem;
+}
+
+.panel h3 {
+  font-size: 0.95rem;
+  margin: 0.8rem 0 0.3rem;
+}
+
+.panel ul,
+.panel ol {
+  padding-left: 1.3rem;
+  margin: 0.3rem 0;
+}
+
+.panel li {
+  margin: 0.3rem 0;
+  line-height: 1.35;
+}
+
+.clues label {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.clues label span {
+  flex: 1;
+}
+
+.clues input {
+  margin-top: 0.2rem;
+  flex: none;
+}
+
+.clues li.used span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.question {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+}
+
+.question p {
+  margin: 0.2rem 0 0;
+}
+
+dt {
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+dd {
+  margin: 0.1rem 0 0 0;
+  line-height: 1.35;
+}
+
+/* Phones: board first, then a tabbed panel one tap away. */
+@media (max-width: 760px) {
+  main {
+    padding: 0.4rem;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .play,
+  .panel {
+    position: static;
+    max-height: none;
+  }
+
+  .board svg {
+    max-height: 62vh;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0.5rem 0 0.25rem;
+  }
+
+  .tabs button {
+    flex: 1;
+  }
+
+  .tabs button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .panel-section {
+    display: none;
+  }
+
+  .panel-section.active {
+    display: block;
+  }
+
+  .panel-section h2 {
+    display: none;
+  }
+}
