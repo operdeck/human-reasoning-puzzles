@@ -92,6 +92,19 @@ WELL = (
     '<rect x="26" y="21" width="69" height="9"/></g>'
     '<line x1="60.5" y1="31" x2="60.5" y2="92.5" stroke="#e1cf9b" stroke-width="3"/>'
 )
+# An ornamental onion (allium): a purple ball of florets on a long stem.
+ALLIUM = (
+    '<path d="M50 60V96" stroke="#4c8c3a" stroke-width="5" stroke-linecap="round"/>'
+    '<path d="M50 92Q30 84 24 66Q40 72 50 86Z" fill="#6aa84f"/>'
+    '<circle cx="50" cy="36" r="27" fill="#7d3c98"/>'
+    '<g fill="#c39bd3">'
+    + "".join(
+        f'<circle cx="{50 + r * math.cos(a):.1f}" cy="{36 + r * math.sin(a):.1f}" r="3.6"/>'
+        for r, n, turn in ((0, 1, 0), (9, 6, 0.3), (18, 11, 0.6))
+        for a in (turn + 2 * math.pi * k / n for k in range(n))
+    )
+    + "</g>"
+)
 LINE = 'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"'
 
 FILL = 'fill="currentColor"'
@@ -140,19 +153,25 @@ REGISTRY: dict[str, Icon] = {
         Icon("cross", "\u2717", "no", markup=SHAPES["cross"]),
         Icon("carpet", "\u25a6", "carpet", markup=CARPET, view=(0, 0, 121, 121)),
         Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
+        Icon("allium", "\u273f", "allium", markup=ALLIUM),
     )
 }
 
 # Murdoku object names drawn with a registry icon rather than an emoji.
 OBJECT_ICONS = {"tapijt": "carpet", "carpet": "carpet", "rug": "carpet", "tatami": "carpet",
-                "waterput": "well", "well": "well"}  # fmt: skip
+                "waterput": "well", "well": "well",
+                "sierui": "allium", "allium": "allium"}  # fmt: skip
 
 # Dutch names as used in the puzzles, plus English synonyms.
 CATALOGUE: dict[str, str] = {
     # outdoors
     "boom": "1f333", "tree": "1f333",
     "struik": "1f33f", "bush": "1f33f",
-    "bloem": "1f337", "flower": "1f337",
+    "bloem": "1f337", "flower": "1f337", "tulp": "1f337", "tulip": "1f337",
+    "zonnebloem": "1f33b", "sunflower": "1f33b",
+    "roos": "1f339", "rose": "1f339",
+    "madeliefje": "1f33c", "daisy": "1f33c",
+    "hibiscus": "1f33a",
     "paddenstoel": "1f344", "mushroom": "1f344",
     "boulder": "1faa8", "rots": "1faa8", "rock": "1faa8",
     "paard": "1f40e", "horse": "1f40e",

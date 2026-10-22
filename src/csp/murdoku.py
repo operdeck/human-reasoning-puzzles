@@ -792,6 +792,7 @@ type TargetKind = Literal[
     "point_object",
     "rows",
     "columns",
+    "anyone",
 ]
 
 
@@ -1034,6 +1035,11 @@ class QuantifiedCondition:
     number: int | None = None
     rest: tuple[str, ...] = ()
 
+    @property
+    def companions(self) -> int:
+        """How many others `alone_with` puts in the subject's region (default one)."""
+        return int(self.rest[0]) if self.kind == "alone_with" and self.rest else 1
+
     def pair_state(
         self,
         board: Board,
@@ -1066,7 +1072,7 @@ class QuantifiedCondition:
                 if not valid:
                     return False
                 count += witness
-            return count == 1
+            return count == self.companions
         return any(
             person != self.subject
             and self.pair_state(board, placed[self.subject], person, placed[person], roles)[0]
@@ -1120,6 +1126,10 @@ def _is_quantified_target(kind: str, args: Sequence[str]) -> bool:
     return kind == "alone_with" or (kind in RELATIONS and len(args) > 1 and ":" in args[1])
 
 
+def _positive(token: str) -> bool:
+    return token.isdigit() and int(token) > 0
+
+
 def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[QuantifiedCondition]:
     """Target-based clues, each compiled using only pairwise placement relations."""
     rules: list[tuple[str, list[str], int | None]] = [
@@ -1131,11 +1141,16 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
         if not _is_quantified_target(kind, args):
             continue
         if kind == "alone_with":
-            if len(args) != 2:
-                raise ValueError(f"alone_with expects a person and one target selector: {args}")
-            subject, selector_text = args
+            subject, *rest = args
+            count = rest.pop() if rest and rest[-1].isdigit() else None
+            if len(rest) > 1 or (count is not None and not _positive(count)):
+                raise ValueError(
+                    f"alone_with expects a person, an optional target selector and an "
+                    f"optional positive count: {args}"
+                )
+            selector_text = rest[0] if rest else ""
+            rest = [count] if count is not None else []
             pair_test = None
-            rest: list[str] = []
         else:
             if len(args) < 2:
                 raise ValueError(f"quantified {kind} expects a person and target selector: {args}")
@@ -1143,7 +1158,11 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
             pair_test = RELATIONS[kind](board, *rest)
         if subject not in board.people:
             raise ValueError(f"clue {kind!r} names unknown person {subject!r}")
-        selector = _target_selector(board, selector_text)
+        selector = (
+            _target_selector(board, selector_text)
+            if selector_text
+            else TargetSelector("anyone", "")
+        )
         out.append(
             QuantifiedCondition(
                 " ".join((kind, *args)), kind, subject, selector, pair_test, number, tuple(rest)
@@ -1279,6 +1298,8 @@ def _target_matches(
     square: Square,
     roles: dict[tuple[str, str], bool],
 ) -> bool:
+    if selector.kind == "anyone":
+        return True
     if selector.kind == "person":
         return person == selector.name
     if selector.kind == "attribute":
@@ -1888,7 +1909,9 @@ def _compile_quantified_condition(
     if not witnesses:
         model.relate(condition.label, (condition.subject,), lambda _square: False)
         return
-    allowed = {1} if condition.kind == "alone_with" else range(1, len(witnesses) + 1)
+    allowed = (
+        {condition.companions} if condition.kind == "alone_with" else range(1, len(witnesses) + 1)
+    )
     model.constrain(
         condition.label,
         Kind.COUNT,
