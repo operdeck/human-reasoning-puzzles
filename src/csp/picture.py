@@ -100,11 +100,13 @@ def murdoku_picture(
     legend: bool = True,
     show_roles: bool = True,
     interactive: bool = False,
+    language: str = "en",
 ) -> Canvas:
     """The board, with `placed` people drawn on their squares if given.
 
     Without `legend` the picture is square, for documents with their own legend.
     Without `show_roles` the legend leaves out the solver's role lines.
+    `language` ("en" or "nl") sets the legend wording.
     """
     margin = _murdoku_margin(board, cell, coordinates)
     # Solver assignments also hold role booleans; only squares are people.
@@ -112,7 +114,11 @@ def murdoku_picture(
     if interactive:
         placed = {}
     side = board.size * cell
-    key = _Legend(board, cell, role_statuses or {}, global_counts, show_roles) if legend else None
+    key = (
+        _Legend(board, cell, role_statuses or {}, global_counts, show_roles, language)
+        if legend
+        else None
+    )
     height = side + 2 * margin + (key.height if key else 0)
     canvas = Canvas(side + 2 * margin, height)
     fills = _fills(board)
@@ -170,7 +176,7 @@ def murdoku_picture(
         row2, col2 = point.anchor
         x = margin + (col2 - 1) * cell // 2
         y = margin + (row2 - 1) * cell // 2
-        radius = cell // 4
+        radius = cell // 3
         area = (x - radius, y - radius, x + radius, y + radius)
         if icons.object_icon(point.name) is None:
             _badge(canvas, point.name, area, cell)
@@ -211,16 +217,16 @@ def murdoku_picture(
 def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
     """Room around the board, widened so point objects on the outer edge are not clipped.
 
-    A point icon reaches `0.72 * cell / 4` (about 0.18 cell) past its anchor.
+    A point icon reaches `0.72 * cell / 3` (about 0.24 cell) past its anchor.
     Coordinate labels sit halfway into the top and left margins, so a point on
     those edges gets extra room to keep its icon off the labels.
     """
     outer = {1, 2 * board.size + 1}
     if not coordinates:
         on_edge = any(set(point.anchor) & outer for point in board.point_objects)
-        return cell // 4 if on_edge else cell // 6
+        return cell // 4 + cell // 20 if on_edge else cell // 6
     top_left = any(1 in point.anchor for point in board.point_objects)
-    return cell // 2 + cell // 6 if top_left else cell // 2
+    return cell // 2 + cell // 4 if top_left else cell // 2
 
 
 def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
@@ -1058,6 +1064,16 @@ def _coordinates(canvas: Canvas, n: int, margin: int, cell: int) -> None:
 
 # --- legend ---------------------------------------------------------------
 
+LEGEND_WORDS = {
+    "en": {"door": "Door", "window": "Window", "point": "Point", "cells": "cells",
+           "alone": "alone in area", "not_alone": "shares area", "global": "Global",
+           "maybe": "maybe", "apart": "at most one of these per area"},
+    "nl": {"door": "Deur", "window": "Raam", "point": "Punt", "cells": "vakjes",
+           "alone": "alleen in het gebied", "not_alone": "deelt het gebied",
+           "global": "Telling", "maybe": "misschien",
+           "apart": "niet meer dan 1 hiervan per gebied"},
+}  # fmt: skip
+
 
 class _Legend:
     """Region swatches with names, in two columns under the board."""
@@ -1069,7 +1085,9 @@ class _Legend:
         role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
         global_counts: Sequence[GlobalCountCondition] = (),
         show_roles: bool = True,
+        language: str = "en",
     ) -> None:
+        self.words = LEGEND_WORDS.get(language, LEGEND_WORDS["en"])
         self.board = board
         self.cell = cell
         self.role_statuses = role_statuses or {}
@@ -1097,7 +1115,7 @@ class _Legend:
             for index, condition in enumerate(self.global_counts, 1)
             for lines in [
                 textwrap.wrap(
-                    f"Global {condition.number or index}: {condition.description}",
+                    f"{self.words['global']} {condition.number or index}: {condition.description}",
                     width=max_chars,
                 )
             ]
@@ -1148,11 +1166,11 @@ class _Legend:
                     fill=(117, 75, 47),
                     width=max(4, self.swatch // 5),
                 )
-                label(top, f"Door: {name}")
+                label(top, f"{self.words['door']}: {name}")
             else:
                 _icon(canvas, name, area, self.cell, scale=0.8)
-                kind = "Window" if name in self.board.edge_item_names else "Point"
-                label(top, f"{kind}: {name}")
+                kind = "window" if name in self.board.edge_item_names else "point"
+                label(top, f"{self.words[kind]}: {name}")
         for i, name in enumerate(self.mark_names):
             top = y + (self.rows + len(self.item_names) + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
@@ -1172,25 +1190,20 @@ class _Legend:
                 max_width=self.swatch - 4,
             )
             mark = next(item for item in self.board.marks if item.name == name)
-            condition = {
-                "alone": ": alone in area",
-                "not_alone": ": shares area",
-            }.get(mark.occupant_condition or "", "")
-            label(top, f"{name}{condition}" if condition else f"{name} cells")
+            condition = mark.occupant_condition or ""
+            label(
+                top,
+                f"{name}: {self.words[condition]}"
+                if condition
+                else f"{name} {self.words['cells']}",
+            )
         role_offset = self.rows + len(self.item_names) + len(self.mark_names)
         for i, name in enumerate(self.role_names):
             top = y + (role_offset + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
             canvas.rectangle(area, fill=MARK_FILL, outline=MARK_INK, width=2)
             _centred_text(canvas, name[:2].upper(), area, max(8, self.swatch // 2), MARK_INK)
-            status = {
-                person: self.role_statuses.get((person, name)) for person in self.board.people
-            }
-            present = [person for person, known in status.items() if known is True]
-            absent = [person for person, known in status.items() if known is False]
-            unknown = [person for person, known in status.items() if known is None]
-            detail = f"+{','.join(present)} -{','.join(absent)} ?{','.join(unknown)}"
-            label(top, f"Role {name}: {detail}", max(8, self.swatch // 2))
+            label(top, self._role_line(name), max(8, self.swatch // 2))
         tag_offset = role_offset + len(self.role_names)
         for i, line in enumerate(self.tag_lines):
             top = y + (tag_offset + i) * self.line
@@ -1201,3 +1214,22 @@ class _Legend:
                 middle = (x, top + self.count_line / 2)
                 canvas.text(middle, line, COUNT_SCOPE, self.count_size, anchor="lm")
                 top += self.count_line
+
+    def _role_line(self, name: str) -> str:
+        """Who holds the role, who may, and whether holders are in different areas."""
+        role = next(item for item in self.board.roles if item.name == name)
+        status = {person: self.role_statuses.get((person, name)) for person in self.board.people}
+        if role.eligible_people is not None:
+            status = {p: (k if p in role.eligible_people else False) for p, k in status.items()}
+        present = [person for person, known in status.items() if known is True]
+        unknown = [person for person, known in status.items() if known is None]
+        if role.allowed_counts == {len(present) + len(unknown)}:
+            # Every candidate must hold the role: it is a fixed category.
+            present = [person for person in status if status[person] is not False]
+            unknown = []
+        parts = [", ".join(present)] if present else []
+        if unknown:
+            maybe = ", ".join(unknown)
+            parts.append(f"{self.words['maybe']} {maybe}" if present else maybe)
+        line = f"{name.replace('_', ' ').capitalize()}: {'; '.join(parts) or '-'}"
+        return f"{line} ({self.words['apart']})" if role.different_regions else line

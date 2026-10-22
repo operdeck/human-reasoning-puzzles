@@ -266,10 +266,10 @@ def test_edge_items_and_point_objects_render_at_their_anchors(monkeypatch):
         (
             "fountain",
             (
-                margin + CELL - CELL // 4,
-                margin + CELL - CELL // 4,
-                margin + CELL + CELL // 4,
-                margin + CELL + CELL // 4,
+                margin + CELL - CELL // 3,
+                margin + CELL - CELL // 3,
+                margin + CELL + CELL // 3,
+                margin + CELL + CELL // 3,
             ),
         ),
     ]
@@ -995,3 +995,12 @@ def test_dog_puzzles_give_every_zone_its_own_colour():
                 region, image.getpixel((margin + c * CELL + 5, margin + r * CELL + 5))
             )
     assert len(set(colours.values())) == puzzle.size
+
+
+def test_dutch_legend_lists_fixed_role_holders_as_a_category():
+    text = Path("examples/menu-murdoku-3.txt").read_text()
+    board = load_board(text)
+    legend = drawing._Legend(board, CELL, {}, None, True, "nl")
+
+    assert legend.words["point"] == "Punt"
+    assert legend._role_line("eiwit") == "Eiwit: Vis, Bonen (niet meer dan 1 hiervan per gebied)"

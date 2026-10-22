@@ -34,7 +34,7 @@ from . import (
     tents,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
-from .puzzlefile import KINDS, detect, load_board, load_presentation
+from .puzzlefile import KINDS, detect, language_of, load_board, load_presentation
 
 _PNG_DEFAULT = object()
 _DOCX_DEFAULT = object()
@@ -214,6 +214,7 @@ def make_image(
         role_statuses=role_statuses,
         global_counts=global_counts,
         interactive=interactive,
+        language=language_of(text),
     )
 
 
