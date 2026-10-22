@@ -111,7 +111,9 @@ npm run dev      # or: npm test, npm run build
 
 Place a piece with a click or tap (or arrow keys and Space, or the piece's number key),
 cross off a square with right-click, long-press or the Cross tool, and undo with Ctrl+Z.
-Auto-mark crosses the squares a placement rules out. Progress is kept in the browser.
+Auto-mark crosses the squares a placement rules out (in Akari it lights what a bulb sees).
+Digit puzzles take pencil marks: the Notes tool (key N) writes small digits, and auto-mark
+hides any that a placed peer rules out. Progress is kept in the browser.
 
 ## Licence
 

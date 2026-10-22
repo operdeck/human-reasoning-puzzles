@@ -12,8 +12,14 @@ export interface PaletteItem {
 }
 
 export interface Scope {
-  scope: "row" | "col" | "region" | "neighbors4" | "neighbors8" | "king" | "knight";
+  scope: "row" | "col" | "region" | "neighbors4" | "neighbors8" | "king" | "knight" | "peers";
   whenFull?: number;
+}
+
+/** Cells that may hold each of `items` (default: every palette item) at most once. */
+export interface PeerGroup {
+  cells: CellId[];
+  items?: string[];
 }
 
 export interface Named {
@@ -35,7 +41,9 @@ export interface Bundle {
   unsupported?: string;
   palette?: PaletteItem[];
   placement?: { perItem?: number; perCell?: number; blocked: CellId[] };
-  autoMark?: { default: boolean; mark: "cross"; onPlace: Scope[] };
+  autoMark?: { default: boolean; mark: "cross" | "light"; onPlace: Scope[] };
+  peers?: PeerGroup[];
+  notes?: boolean;
   givens?: Record<CellId, string>;
   solution?: Record<CellId, string>;
   regions?: Record<CellId, string>;
@@ -51,12 +59,13 @@ export interface Bundle {
 export interface State {
   placed: Record<CellId, string>;
   crosses: CellId[];
+  notes: Record<CellId, string[]>;
   usedClues: number[];
   auto: boolean;
 }
 
 export function emptyState(bundle: Bundle): State {
-  return { placed: {}, crosses: [], usedClues: [], auto: bundle.autoMark?.default ?? false };
+  return { placed: {}, crosses: [], notes: {}, usedClues: [], auto: bundle.autoMark?.default ?? false };
 }
 
 export function cellId(row: number, col: number): CellId {
@@ -83,8 +92,19 @@ export function locked(bundle: Bundle, cell: CellId): boolean {
 
 const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
 
-/** The cells of `scope` that contain `cell`, without `cell` itself. */
-export function scopeCells(bundle: Bundle, scope: Scope["scope"], cell: CellId): CellId[] {
+/** The cells that may not hold `item` too once `cell` holds it, by the bundle's peer groups. */
+export function peerCells(bundle: Bundle, cell: CellId, item: string): CellId[] {
+  const out = new Set<CellId>();
+  for (const group of bundle.peers ?? []) {
+    if (group.items && !group.items.includes(item)) continue;
+    if (!group.cells.includes(cell)) continue;
+    for (const other of group.cells) if (other !== cell) out.add(other);
+  }
+  return [...out];
+}
+
+/** The cells of `scope` that contain `cell`, without `cell` itself; `item` is what `cell` holds. */
+export function scopeCells(bundle: Bundle, scope: Scope["scope"], cell: CellId, item = ""): CellId[] {
   const [row, col] = parseCell(cell);
   const [rows, cols] = bundle.size;
   const inside = ([r, c]: number[]) => r >= 1 && r <= rows && c >= 1 && c <= cols;
@@ -107,6 +127,8 @@ export function scopeCells(bundle: Bundle, scope: Scope["scope"], cell: CellId):
       return offsets([[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]);
     case "knight":
       return offsets(KNIGHT);
+    case "peers":
+      return peerCells(bundle, cell, item);
   }
 }
 
@@ -123,9 +145,9 @@ export function autoMarks(bundle: Bundle, state: State): Set<CellId> {
   const marks = new Set<CellId>();
   if (!state.auto || !bundle.autoMark) return marks;
   const pieces = occupied(bundle, state);
-  for (const cell of Object.keys(pieces)) {
+  for (const [cell, item] of Object.entries(pieces)) {
     for (const rule of bundle.autoMark.onPlace) {
-      const others = scopeCells(bundle, rule.scope, cell);
+      const others = scopeCells(bundle, rule.scope, cell, item);
       if (rule.whenFull !== undefined) {
         const count = 1 + others.filter((other) => other in pieces).length;
         if (count < rule.whenFull) continue;
@@ -136,6 +158,40 @@ export function autoMarks(bundle: Bundle, state: State): Set<CellId> {
   for (const cell of Object.keys(pieces)) marks.delete(cell);
   for (const cell of bundle.placement?.blocked ?? []) marks.delete(cell);
   return marks;
+}
+
+/**
+ * Pencil marks ruled out by a placement: `cell` maps to the noted items that a
+ * peer already holds. Derived like the auto marks, so they come back on undo.
+ */
+export function struckNotes(bundle: Bundle, state: State): Map<CellId, Set<string>> {
+  const struck = new Map<CellId, Set<string>>();
+  if (!state.auto) return struck;
+  const pieces = occupied(bundle, state);
+  for (const [cell, items] of Object.entries(state.notes)) {
+    if (cell in pieces) continue;
+    for (const item of items) {
+      if (peerCells(bundle, cell, item).some((other) => pieces[other] === item)) {
+        if (!struck.has(cell)) struck.set(cell, new Set());
+        struck.get(cell)!.add(item);
+      }
+    }
+  }
+  return struck;
+}
+
+/** Add or remove the pencil mark `item` on an empty `cell`. */
+export function toggleNote(bundle: Bundle, state: State, cell: CellId, item: string): State {
+  if (!bundle.notes || locked(bundle, cell) || cell in state.placed) return state;
+  const current = state.notes[cell] ?? [];
+  const order = (bundle.palette ?? []).map((entry) => entry.id);
+  const next = current.includes(item)
+    ? current.filter((other) => other !== item)
+    : [...current, item].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const notes = { ...state.notes };
+  if (next.length > 0) notes[cell] = next;
+  else delete notes[cell];
+  return { ...state, notes };
 }
 
 /** Place `item` on `cell`, or take it off if it is already there. */
@@ -153,12 +209,14 @@ export function place(bundle: Bundle, state: State, cell: CellId, item: string):
   return { ...state, placed, crosses: state.crosses.filter((other) => other !== cell) };
 }
 
-/** Empty `cell`: no piece and no manual cross. */
+/** Empty `cell`: no piece, no manual cross and no pencil marks. */
 export function clearCell(bundle: Bundle, state: State, cell: CellId): State {
   if (locked(bundle, cell)) return state;
   const placed = { ...state.placed };
   delete placed[cell];
-  return { ...state, placed, crosses: state.crosses.filter((other) => other !== cell) };
+  const notes = { ...state.notes };
+  delete notes[cell];
+  return { ...state, placed, notes, crosses: state.crosses.filter((other) => other !== cell) };
 }
 
 /** Set or remove a manual cross; `on` undefined toggles it. Pieces are left alone. */
@@ -255,6 +313,13 @@ export function restore(bundle: Bundle, saved: unknown): State {
   state.crosses = (raw.crosses ?? []).filter(
     (cell) => cells.has(cell) && !locked(bundle, cell) && !(cell in state.placed),
   );
+  if (bundle.notes && typeof raw.notes === "object" && raw.notes !== null) {
+    for (const [cell, noted] of Object.entries(raw.notes)) {
+      if (!cells.has(cell) || locked(bundle, cell) || !Array.isArray(noted)) continue;
+      const kept = [...items].filter((item) => noted.includes(item));
+      if (kept.length > 0) state.notes[cell] = kept;
+    }
+  }
   state.usedClues = (raw.usedClues ?? []).filter(
     (n) => Number.isInteger(n) && n >= 0 && n < bundle.clues.length,
   );

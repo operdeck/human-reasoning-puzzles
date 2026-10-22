@@ -5,11 +5,14 @@ import {
   emptyState,
   History,
   locked,
+  occupied,
   parseCell,
   place,
   restore,
   setCross,
+  struckNotes,
   toggleClue,
+  toggleNote,
   cellId,
   type Bundle,
   type CellId,
@@ -79,6 +82,8 @@ export class PuzzleView {
   private undoButton = el("button", { type: "button", textContent: "Undo" });
   private redoButton = el("button", { type: "button", textContent: "Redo" });
   private autoBox = el("input", { type: "checkbox" });
+  private notesMode = false;
+  private notesButton = el("button", { type: "button", className: "tool notes-toggle" });
   private clueBoxes: HTMLInputElement[] = [];
 
   constructor(
@@ -103,7 +108,7 @@ export class PuzzleView {
       el("a", { href: "#", className: "back", textContent: "← All puzzles" }),
       el("h1", { textContent: b.title }),
     );
-    if (b.playable && b.autoMark && b.autoMark.onPlace.length > 0) {
+    if (b.playable && b.autoMark && (b.autoMark.onPlace.length > 0 || (b.notes && b.peers?.length))) {
       this.autoBox.checked = this.state.auto;
       this.autoBox.addEventListener("change", () =>
         this.commit({ ...this.state, auto: this.autoBox.checked }),
@@ -239,12 +244,24 @@ export class PuzzleView {
       this.paletteButtons.set(id, button);
       bar.append(button);
     }
+    if (this.bundle.notes) {
+      this.notesButton.append(el("span", { className: "swatch", textContent: "✎" }), el("span", { textContent: "Notes" }));
+      this.notesButton.title = "Pencil marks: digits go in as small notes (key N)";
+      this.notesButton.addEventListener("click", () => this.setNotesMode(!this.notesMode));
+      this.setNotesMode(false);
+      bar.append(this.notesButton);
+    }
     return bar;
   }
 
   private selectTool(id: string): void {
     this.tool = id;
     for (const [key, button] of this.paletteButtons) button.setAttribute("aria-checked", String(key === id));
+  }
+
+  private setNotesMode(on: boolean): void {
+    this.notesMode = on;
+    this.notesButton.setAttribute("aria-pressed", String(on));
   }
 
   private controls(): HTMLElement {
@@ -384,6 +401,7 @@ export class PuzzleView {
 
   private apply(cell: CellId): void {
     if (this.tool === CROSS) this.commit(setCross(this.bundle, this.state, cell));
+    else if (this.notesMode) this.commit(toggleNote(this.bundle, this.state, cell, this.tool));
     else this.commit(place(this.bundle, this.state, cell, this.tool));
   }
 
@@ -406,6 +424,8 @@ export class PuzzleView {
       this.apply(this.cursor);
     } else if ((event.key === "Delete" || event.key === "Backspace") && this.cursor) {
       this.commit(clearCell(this.bundle, this.state, this.cursor));
+    } else if (event.key.toLowerCase() === "n" && !mod && this.bundle.notes) {
+      this.setNotesMode(!this.notesMode);
     } else if (event.key.toLowerCase() === "x" && !mod) {
       if (this.cursor) this.commit(setCross(this.bundle, this.state, this.cursor));
       else this.selectTool(CROSS);
@@ -433,8 +453,17 @@ export class PuzzleView {
     if (!this.overlay) return;
     const marks = autoMarks(this.bundle, state);
     const parts: SVGElement[] = [];
-    for (const cell of marks) {
-      if (!state.crosses.includes(cell) && !(cell in state.placed)) parts.push(this.cross(cell, "auto"));
+    if (this.bundle.autoMark?.mark === "light") {
+      const lit = state.auto ? new Set([...marks, ...Object.keys(occupied(this.bundle, state))]) : [];
+      for (const cell of lit) parts.push(this.light(cell));
+    } else {
+      for (const cell of marks) {
+        if (!state.crosses.includes(cell) && !(cell in state.placed)) parts.push(this.cross(cell, "auto"));
+      }
+    }
+    const struck = struckNotes(this.bundle, state);
+    for (const [cell, items] of Object.entries(state.notes)) {
+      if (!(cell in state.placed)) parts.push(this.notes(cell, items, struck.get(cell)));
     }
     for (const cell of state.crosses) parts.push(this.cross(cell, "manual"));
     for (const [cell, item] of Object.entries(state.placed)) parts.push(this.piece(cell, item));
@@ -452,6 +481,31 @@ export class PuzzleView {
       );
     }
     this.overlay.replaceChildren(...parts);
+  }
+
+  private light(cell: CellId): SVGElement {
+    const { x, y, w, h } = this.boxes.get(cell)!;
+    return svgEl("rect", { class: "lit", x, y, width: w, height: h });
+  }
+
+  /** Pencil marks in a small grid, each digit in its own spot; ruled-out ones are hidden. */
+  private notes(cell: CellId, items: string[], struck: Set<string> | undefined): SVGElement {
+    const { x, y, w, h } = this.boxes.get(cell)!;
+    const palette = this.bundle.palette ?? [];
+    const side = Math.max(3, Math.ceil(Math.sqrt(palette.length)));
+    const group = svgEl("g", { class: "notes", "font-size": (Math.min(w, h) / side) * 0.8 });
+    for (const item of items) {
+      if (struck?.has(item)) continue;
+      const index = palette.findIndex((entry) => entry.id === item);
+      if (index < 0) continue;
+      const text = svgEl("text", {
+        x: x + (w * ((index % side) + 0.5)) / side,
+        y: y + (h * (Math.floor(index / side) + 0.78)) / side,
+      });
+      text.textContent = palette[index].symbol;
+      group.append(text);
+    }
+    return group;
   }
 
   private cross(cell: CellId, kind: "auto" | "manual"): SVGElement {

@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   autoMarks,
   check,
+  clearCell,
   emptyState,
   History,
   place,
   restore,
   scopeCells,
   setCross,
+  struckNotes,
+  toggleNote,
   type Bundle,
 } from "./game";
 
@@ -147,6 +150,90 @@ describe("history and storage", () => {
       usedClues: [0, 5],
       auto: false,
     });
-    expect(state).toEqual({ placed: { r1c1: "Joost" }, crosses: ["r2c2"], usedClues: [0], auto: false });
+    expect(state).toEqual({
+      placed: { r1c1: "Joost" },
+      crosses: ["r2c2"],
+      notes: {},
+      usedClues: [0],
+      auto: false,
+    });
+  });
+});
+
+function digits(): Bundle {
+  return {
+    ...murdoku(),
+    family: "sudoku",
+    palette: ["1", "2", "3", "4"].map((d) => ({ id: d, label: d, symbol: d })),
+    placement: { perCell: 1, blocked: [] },
+    autoMark: { default: true, mark: "cross", onPlace: [] },
+    givens: { r1c1: "1" },
+    solution: { r1c2: "2" },
+    notes: true,
+    peers: [
+      { cells: ["r1c1", "r1c2", "r1c3", "r1c4"] },
+      { cells: ["r1c1", "r2c2"], items: ["3"] },
+    ],
+  };
+}
+
+describe("pencil marks", () => {
+  it("toggle in palette order and only on free cells", () => {
+    const b = digits();
+    let state = toggleNote(b, emptyState(b), "r1c2", "3");
+    state = toggleNote(b, state, "r1c2", "2");
+    expect(state.notes).toEqual({ r1c2: ["2", "3"] });
+    state = toggleNote(b, state, "r1c2", "2");
+    state = toggleNote(b, state, "r1c2", "3");
+    expect(state.notes).toEqual({});
+    expect(toggleNote(b, state, "r1c1", "2")).toBe(state);
+  });
+
+  it("are struck by a peer holding the same digit, and come back when it goes", () => {
+    const b = digits();
+    let state = toggleNote(b, emptyState(b), "r1c3", "1");
+    state = toggleNote(b, state, "r1c3", "2");
+    state = toggleNote(b, state, "r2c2", "3");
+    expect(struckNotes(b, state)).toEqual(new Map([["r1c3", new Set(["1"])]]));
+    state = place(b, state, "r1c1", "3");
+    expect(struckNotes(b, state).get("r2c2")).toBeUndefined();
+    state = place(b, state, "r1c4", "2");
+    expect(struckNotes(b, state).get("r1c3")).toEqual(new Set(["1", "2"]));
+    state = place(b, state, "r1c4", "2");
+    expect(struckNotes(b, state).get("r1c3")).toEqual(new Set(["1"]));
+    expect(struckNotes(b, { ...state, auto: false }).size).toBe(0);
+  });
+
+  it("only strike a digit its peer group covers", () => {
+    const b = { ...digits(), givens: {} };
+    let state = toggleNote(b, emptyState(b), "r2c2", "3");
+    state = toggleNote(b, state, "r2c2", "4");
+    state = place(b, state, "r1c1", "4");
+    expect(struckNotes(b, state).size).toBe(0);
+    state = place(b, state, "r1c1", "3");
+    expect(struckNotes(b, state).get("r2c2")).toEqual(new Set(["3"]));
+  });
+
+  it("are cleared with the cell and survive storage", () => {
+    const b = digits();
+    const state = toggleNote(b, emptyState(b), "r1c3", "4");
+    expect(clearCell(b, state, "r1c3").notes).toEqual({});
+    const saved = JSON.parse(JSON.stringify({ ...state, notes: { ...state.notes, r1c1: ["2"], r1c4: ["9", "2"] } }));
+    expect(restore(b, saved).notes).toEqual({ r1c3: ["4"], r1c4: ["2"] });
+  });
+});
+
+describe("peer light", () => {
+  it("lights the cells a bulb sees", () => {
+    const b: Bundle = {
+      ...murdoku(),
+      family: "akari",
+      palette: [{ id: "bulb", label: "Light", symbol: "o" }],
+      placement: { perCell: 1, blocked: ["r1c3"] },
+      autoMark: { default: true, mark: "light", onPlace: [{ scope: "peers" }] },
+      peers: [{ cells: ["r1c1", "r1c2"] }, { cells: ["r1c1", "r2c1", "r3c1"] }],
+    };
+    const state = place(b, emptyState(b), "r1c1", "bulb");
+    expect(autoMarks(b, state)).toEqual(new Set(["r1c2", "r2c1", "r3c1"]));
   });
 });

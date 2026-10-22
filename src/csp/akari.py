@@ -102,6 +102,9 @@ def parse(text: str) -> Puzzle:
     return puzzle
 
 
+SIGHT = "bulbs do not see each other"
+
+
 def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
     puzzle = parse(text)
     model = Model()
@@ -119,7 +122,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
             f"at most one bulb in sight line from {cell_name(segment[0])}",
             Kind.AT_MOST_ONE,
             [model.literal(cell_name(cell), True) for cell in segment],
-            family="bulbs do not see each other",
+            family=SIGHT,
         )
     for cell in puzzle.open_cells:
         visible = puzzle.visible[cell]

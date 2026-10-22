@@ -160,6 +160,22 @@ footer {
   stroke-opacity: 0.6;
 }
 
+.overlay .lit {
+  fill: #fff0a0;
+  mix-blend-mode: multiply;
+}
+
+.overlay .notes text {
+  fill: #555;
+  font-weight: 400;
+}
+
+.notes-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: #e8eef9;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 .overlay .tag {
   fill: #fff;
   stroke: var(--accent);
