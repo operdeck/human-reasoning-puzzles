@@ -12,7 +12,7 @@ from PIL import Image  # noqa: E402
 
 from csp import bruteforce, cli, icons, svg  # noqa: E402
 from csp import picture as drawing  # noqa: E402
-from csp.murdoku import Board, BoardObject, CornerObject, EdgeItem, RoleSpec, Square  # noqa: E402
+from csp.murdoku import Board, BoardObject, EdgeItem, PointObject, RoleSpec, Square  # noqa: E402
 from csp.puzzlefile import load_board, load_presentation  # noqa: E402
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -238,7 +238,7 @@ def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
     assert all(area[3] - area[1] == CELL for _, area, _ in calls)
 
 
-def test_edge_items_and_corner_objects_render_at_their_anchors(monkeypatch):
+def test_edge_items_and_point_objects_render_at_their_anchors(monkeypatch):
     board = Board(
         3,
         [["west", "east", "east"], ["west", "east", "east"], ["west", "east", "east"]],
@@ -249,12 +249,7 @@ def test_edge_items_and_corner_objects_render_at_their_anchors(monkeypatch):
             EdgeItem("gate", "door", (Square(0, 0), Square(0, 1))),
             EdgeItem("window", "window", (Square(2, 2),)),
         ],
-        corner_objects=[
-            CornerObject(
-                "critter",
-                (Square(0, 0), Square(0, 1), Square(1, 0), Square(1, 1)),
-            )
-        ],
+        point_objects=[PointObject.at("fountain", (3, 3), 3)],
     )
     calls = []
 
@@ -269,7 +264,7 @@ def test_edge_items_and_corner_objects_render_at_their_anchors(monkeypatch):
     assert calls == [
         ("window", (margin + 2 * CELL, margin + 2 * CELL, margin + 3 * CELL, margin + 3 * CELL)),
         (
-            "critter",
+            "fountain",
             (
                 margin + CELL - CELL // 4,
                 margin + CELL - CELL // 4,
@@ -280,8 +275,68 @@ def test_edge_items_and_corner_objects_render_at_their_anchors(monkeypatch):
     ]
     with_legend = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     assert with_legend.height > image.height
-    assert picture.unknown_object_icons(board) == ["critter"]
+    assert picture.unknown_object_icons(board) == []
     assert len(board.free) == 9
+
+
+def _point_board(*points):
+    return Board(
+        3,
+        [["west", "east", "east"], ["west", "east", "east"], ["west", "east", "east"]],
+        {"west": "west", "east": "east"},
+        [],
+        ["A"],
+        point_objects=[PointObject.at(name, anchor, 3) for name, anchor in points],
+    )
+
+
+@pytest.mark.parametrize("coordinates", [False, True])
+def test_point_objects_on_the_board_edge_are_centred_and_not_clipped(monkeypatch, coordinates):
+    board = _point_board(("mouse1", (1, 4)), ("mouse2", (7, 1)), ("cheese", (7, 4)))
+    calls = []
+
+    def capture(canvas, name, area, cell, **kwargs):
+        calls.append((name, area, kwargs.get("scale", 0.72)))
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=coordinates, legend=False)
+    margin = (image.width - 3 * CELL) // 2
+    anchors = {"mouse1": (margin + 3 * CELL // 2, margin), "mouse2": (margin, margin + 3 * CELL),
+               "cheese": (margin + 3 * CELL // 2, margin + 3 * CELL)}  # fmt: skip
+
+    assert {name for name, _, _ in calls} == set(anchors)
+    for name, (x0, y0, x1, y1), scale in calls:
+        assert ((x0 + x1) / 2, (y0 + y1) / 2) == anchors[name]
+        reach = (x1 - x0) * scale / 2
+        assert reach < CELL // 2  # smaller than an in-cell object
+        assert x0 + (x1 - x0) / 2 - reach >= 0 and y1 - (y1 - y0) / 2 + reach <= image.width
+        if coordinates and y0 < margin:
+            assert margin - reach > margin / 2 + CELL // 10  # clear of the column numbers
+    assert picture.unknown_object_icons(board) == []
+
+
+def test_interior_point_objects_keep_the_plain_margin():
+    plain = picture.murdoku_picture(_point_board(), cell=CELL, coordinates=False, legend=False)
+    inner = picture.murdoku_picture(
+        _point_board(("fountain", (3, 3))), cell=CELL, coordinates=False, legend=False
+    )
+    assert inner.width == plain.width == 3 * CELL + 2 * (CELL // 6)
+
+
+def test_point_object_without_an_icon_renders_a_badge(monkeypatch):
+    board = _point_board(("zorblax", (1, 1)))
+    texts = []
+    original = drawing._centred_text
+
+    def capture(canvas, text, area, size, colour, max_width=None):
+        texts.append((text, size))
+        original(canvas, text, area, size, colour, max_width=max_width)
+
+    monkeypatch.setattr(drawing, "_centred_text", capture)
+    picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+
+    assert ("zor", max(8, CELL // 8)) in texts
+    assert picture.unknown_object_icons(board) == ["zorblax"]
 
 
 def test_overlapping_marks_render_badges_and_condition_labels():

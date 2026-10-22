@@ -277,8 +277,8 @@ def _target_cells(board: Board, names: Sequence[str]) -> set[Square]:
             cells.update(board.squares_of([name]))
         elif name in board.edge_item_names:
             cells.update(board.edge_item_cells([name]))
-        elif name in board.corner_object_names:
-            cells.update(board.corner_object_cells([name]))
+        elif name in board.point_object_names:
+            cells.update(board.point_object_cells([name]))
     return cells
 
 
@@ -301,7 +301,7 @@ def _next_to(board: Board, square: Square, names: Sequence[str]) -> bool:
     for name in names:
         if name in board.edge_item_names and square in board.edge_item_cells([name]):
             return True
-        if name in board.corner_object_names and square in board.corner_object_cells([name]):
+        if name in board.point_object_names and square in board.point_object_cells([name]):
             return True
         if any(
             abs(square.row - target.row) + abs(square.col - target.col) == 1

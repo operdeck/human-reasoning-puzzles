@@ -1692,7 +1692,7 @@ def test_standable_objects_can_be_stood_on_and_blocking_objects_cannot():
     assert sorted(model.value_of(lit) for lit in model.options("A")) == [sq(1, 0), sq(1, 1)]
 
 
-def test_edge_items_and_corner_objects_expose_touched_cells():
+def test_edge_items_and_point_objects_expose_touched_cells():
     text = """Size: 3
 Regions:
 a: west
@@ -1709,8 +1709,8 @@ EdgeItems:
 gate: door r1c1 r1c2
 gate: door r2c1 r2c2
 window: window r3c3
-CornerObjects:
-critter: r1c1 r1c2 r2c1 r2c2
+PointObjects:
+critter: r2.5c2.5
 Clues:
 next_to A gate
 at A gate
@@ -1729,11 +1729,11 @@ next_to C critter
         square(1, 1),
     }
     assert board.edge_item_cells(["window"]) == {square(2, 2)}
-    assert board.corner_object_cells(["critter"]) == {
-        square(0, 0),
-        square(0, 1),
-        square(1, 0),
+    assert board.point_object_cells(["critter"]) == {
         square(1, 1),
+        square(1, 2),
+        square(2, 1),
+        square(2, 2),
     }
     assert len(board.free) == 9
     conditions = murdoku.conditions(board, clues)
@@ -1752,12 +1752,12 @@ next_to C critter
     assert {sq for sq in board.free if at_gate.test(sq)} == board.edge_item_cells(["gate"])
     assert {sq for sq in board.free if next_to_window.test(sq)} == {square(2, 2)}
     assert {sq for sq in board.free if next_to_gate.test(sq)} == board.edge_item_cells(["gate"])
-    assert {sq for sq in board.free if next_to_corner.test(sq)} == board.corner_object_cells(
+    assert {sq for sq in board.free if next_to_corner.test(sq)} == board.point_object_cells(
         ["critter"]
     )
     rendered = _plain(murdoku.render(board, murdoku.compile_puzzle(board, clues), "t"))
     assert "edge items: gate door r1c1 r1c2, gate door r2c1 r2c2, window window r3c3" in rendered
-    assert "corner objects: critter r1c1 r1c2 r2c1 r2c2" in rendered
+    assert "point objects: critter r2.5c2.5 r2c2 r2c3 r3c2 r3c3" in rendered
 
 
 def test_named_cell_marks_can_overlap_and_filter_occupants():
@@ -2089,8 +2089,87 @@ B
         load_board(base + "EdgeItems:\ngate: door r1c1 r3c2\n")
     with pytest.raises(ValueError, match="area boundary"):
         load_board(base + "EdgeItems:\ngate: door r1c1 r2c1\n")
-    with pytest.raises(ValueError, match="four cells around one corner"):
-        load_board(base + "CornerObjects:\ncritter: r1c1 r1c2 r2c1\n")
+    with pytest.raises(ValueError, match="no longer supported"):
+        load_board(base + "CornerObjects:\ncritter: r1c1 r1c2 r2c1 r2c2\n")
+    with pytest.raises(ValueError, match="bad point object"):
+        load_board(base + "PointObjects:\ncritter: r1c1 r1c2 r2c1 r2c2\n")
+    with pytest.raises(ValueError, match="half steps"):
+        load_board(base + "PointObjects:\ncritter: r1.25c1.5\n")
+    with pytest.raises(ValueError, match="cell centre"):
+        load_board(base + "PointObjects:\ncritter: r2c2\n")
+    with pytest.raises(ValueError, match="off the board"):
+        load_board(base + "PointObjects:\ncritter: r4.5c1.5\n")
+    with pytest.raises(ValueError, match="off the board"):
+        load_board(base + "PointObjects:\ncritter: r0c1.5\n")
+    with pytest.raises(ValueError, match="overlaps another item"):
+        load_board(base + "EdgeItems:\ncritter: window r1c1\nPointObjects:\ncritter: r1.5c1.5\n")
+
+
+@pytest.mark.parametrize(
+    "anchor, cells",
+    [
+        ("r2.5c2.5", {(1, 1), (1, 2), (2, 1), (2, 2)}),  # interior vertex
+        ("r0.5c1.5", {(0, 0), (0, 1)}),  # vertex on the top edge
+        ("r3.5c2.5", {(2, 1), (2, 2)}),  # vertex on the bottom edge
+        ("r1.5c0.5", {(0, 0), (1, 0)}),  # vertex on the left edge
+        ("r2.5c3.5", {(1, 2), (2, 2)}),  # vertex on the right edge
+        ("r0.5c0.5", {(0, 0)}),  # board corners
+        ("r0.5c3.5", {(0, 2)}),
+        ("r3.5c0.5", {(2, 0)}),
+        ("r3.5c3.5", {(2, 2)}),
+        ("r1.5c2", {(0, 1), (1, 1)}),  # middle of an inner cell side
+        ("r2c1.5", {(1, 0), (1, 1)}),
+        ("r3.5c2", {(2, 1)}),  # middle of an outer cell side
+        ("r2c0.5", {(1, 0)}),
+    ],
+)
+def test_point_objects_touch_the_cells_around_their_anchor(anchor, cells):
+    text = f"""Size: 3
+Regions:
+a: west
+b: east
+Grid:
+a b a
+a b a
+a b a
+People:
+A
+PointObjects:
+critter: {anchor}
+Clues:
+next_to A critter
+"""
+    board, clues = load_board(text)
+    touched = {murdoku.Square(row, col) for row, col in cells}
+
+    assert board.point_object_cells(["critter"]) == touched
+    (condition,) = murdoku.conditions(board, clues)
+    assert {sq for sq in board.free if condition.test(sq)} == touched
+    not_next = murdoku.conditions(board, [("not_next_to", ["A", "critter"])])[0]
+    assert {sq for sq in board.free if not not_next.test(sq)} == touched
+
+
+def test_point_object_next_to_crosses_area_boundaries():
+    text = """Size: 3
+Regions:
+a: west
+b: east
+Grid:
+a b a
+a b a
+a b a
+People:
+A
+PointObjects:
+mouse: r0.5c1.5
+"""
+    board, _ = load_board(text)
+    square = murdoku.Square
+    (condition,) = murdoku.conditions(board, [("next_to", ["A", "mouse"])])
+
+    assert board.region_of(square(0, 0)) != board.region_of(square(0, 1))
+    assert condition.test(square(0, 0)) and condition.test(square(0, 1))
+    assert not condition.test(square(1, 0))
 
 
 def test_next_to_objects_stays_in_area_but_edge_items_cross_boundaries():

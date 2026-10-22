@@ -106,7 +106,7 @@ def murdoku_picture(
     Without `legend` the picture is square, for documents with their own legend.
     Without `show_roles` the legend leaves out the solver's role lines.
     """
-    margin = cell // 2 if coordinates else cell // 6
+    margin = _murdoku_margin(board, cell, coordinates)
     # Solver assignments also hold role booleans; only squares are people.
     placed = {k: v for k, v in (placed or {}).items() if isinstance(v, Square)}
     if interactive:
@@ -166,13 +166,16 @@ def murdoku_picture(
     for item in board.edge_items:
         if item.kind == "window":
             _icon(canvas, item.name, box(item.cells[0]), cell, scale=0.42)
-    for corner in board.corner_objects:
-        anchor_row = max(square.row for square in corner.cells)
-        anchor_col = max(square.col for square in corner.cells)
-        x = margin + anchor_col * cell
-        y = margin + anchor_row * cell
+    for point in board.point_objects:
+        row2, col2 = point.anchor
+        x = margin + (col2 - 1) * cell // 2
+        y = margin + (row2 - 1) * cell // 2
         radius = cell // 4
-        _icon(canvas, corner.name, (x - radius, y - radius, x + radius, y + radius), cell)
+        area = (x - radius, y - radius, x + radius, y + radius)
+        if icons.object_icon(point.name) is None:
+            _badge(canvas, point.name, area, cell)
+        else:
+            _icon(canvas, point.name, area, cell)
     for square in count_scope:
         canvas.rectangle(box(square), outline=COUNT_SCOPE, width=max(2, cell // 40))
     marks_by_cell: dict[Square, list[str]] = {}
@@ -205,6 +208,30 @@ def murdoku_picture(
     return canvas
 
 
+def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
+    """Room around the board, widened so point objects on the outer edge are not clipped.
+
+    A point icon reaches `0.72 * cell / 4` (about 0.18 cell) past its anchor.
+    Coordinate labels sit halfway into the top and left margins, so a point on
+    those edges gets extra room to keep its icon off the labels.
+    """
+    outer = {1, 2 * board.size + 1}
+    if not coordinates:
+        on_edge = any(set(point.anchor) & outer for point in board.point_objects)
+        return cell // 4 if on_edge else cell // 6
+    top_left = any(1 in point.anchor for point in board.point_objects)
+    return cell // 2 + cell // 6 if top_left else cell // 2
+
+
+def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
+    """A small labelled disc for a point object without a picture icon."""
+    x0, y0, x1, y1 = area
+    pad = (x1 - x0) * 0.1
+    disc = (x0 + pad, y0 + pad, x1 - pad, y1 - pad)
+    canvas.ellipse(disc, fill=(255, 255, 255), outline=INK, width=max(1, cell // 60))
+    _centred_text(canvas, name[:3], disc, max(8, cell // 8), INK, max_width=int(x1 - x0 - 4 * pad))
+
+
 # Objects drawn with the registry's own drawings because Noto Emoji has no suitable picture.
 CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "carpet")
 WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
@@ -219,7 +246,7 @@ def unknown_object_icons(board: Board) -> list[str]:
             for name in (
                 {obj.name for obj in board.objects}
                 | {item.name for item in board.edge_items if item.kind == "window"}
-                | board.corner_object_names
+                | board.point_object_names
             )
             if icons.object_icon(name) is None
         }
@@ -1050,7 +1077,7 @@ class _Legend:
         self.swatch = cell // 3
         self.line = int(self.swatch * 1.6)
         self.rows = (len(board.region_names) + 1) // 2
-        self.item_names = sorted(board.edge_item_names | board.corner_object_names)
+        self.item_names = sorted(board.edge_item_names | board.point_object_names)
         self.mark_names = sorted(board.mark_names)
         self.role_names = sorted(board.role_names) if show_roles else []
         self.tag_lines = [
@@ -1124,7 +1151,7 @@ class _Legend:
                 label(top, f"Door: {name}")
             else:
                 _icon(canvas, name, area, self.cell, scale=0.8)
-                kind = "Window" if name in self.board.edge_item_names else "Corner"
+                kind = "Window" if name in self.board.edge_item_names else "Point"
                 label(top, f"{kind}: {name}")
         for i, name in enumerate(self.mark_names):
             top = y + (self.rows + len(self.item_names) + i) * self.line

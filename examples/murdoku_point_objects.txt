@@ -1,0 +1,55 @@
+# Murdoku 5x5: point objects on an interior vertex, the board edge, a board corner
+# and the middle of an inner and an outer cell side.
+#
+# Objects can stand on a grid point instead of in a cell. A person in any cell
+# that the point touches is next to it, even across an area boundary.
+#
+# Solution: Ada r1c4, Bo r2c3, Cal r3c5, Dee r4c1, Eli r5c2.
+#
+Size: 5
+Language: en
+Words:
+mouse1: the mouse on the top edge
+mouse2: the mouse in the corner
+Regions:
+p: Patio
+g: Greenhouse
+l: Lawn
+s: Shed
+o: Orchard
+Grid:
+p p p g g
+p p l g g
+s l l l g
+s s l o o
+s s o o o
+PointObjects:
+fountain: r2.5c2.5
+mouse1: r0.5c4.5
+mouse2: r5.5c0.5
+cheese: r3.5c5
+lantern: r5.5c2
+People:
+Ada
+Bo
+Cal
+Dee
+Eli
+Clues:
+next_to Ada mouse1
+next_to Bo fountain
+next_to Cal cheese
+in_region Cal Greenhouse
+next_to Eli lantern
+not_next_to Dee mouse2
+
+# Booklet text for --docx (optional).
+Title:
+Murdoku: Mice in the garden
+
+Intro:
+Two mice, a fountain, a lantern and some cheese sit on the grid lines of this garden, not inside the squares.
+Whoever stands in a square touching such a point is next to it, even when that square lies in another area.
+
+Question:
+Where does everyone stand?
