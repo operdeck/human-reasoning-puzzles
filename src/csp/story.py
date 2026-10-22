@@ -79,6 +79,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.count_any": "any number of people",
         "doc.count_one_of": "{list} people",
         "doc.extra_regions": ", all in different areas",
+        "clue.role_apart": "there is at most one {role} per area ({a}, {b})",
         "doc.extra_from": ", chosen from {people}",
         "doc.rules": (
             "Place every figure on a free square of the board. No two figures share a row or a "
@@ -165,6 +166,10 @@ PHRASES: dict[str, dict[str, str]] = {
             "{a} shares a region with exactly one other person, and that is {target}"
         ),
         "clue.alone_with_anyone": "{a} shares a region with exactly one other person",
+        "clue.alone_with_n": (
+            "{a} shares a region with exactly {n} others, and they are all {target}"
+        ),
+        "clue.alone_with_anyone_n": "{a} shares a region with exactly {n} others",
         "clue.same_region": "{a} and {b} are in the same region",
         "clue.different_region": "{a} and {b} are in different regions",
         "clue.apart": "{a} and {b} are in regions that do not touch",
@@ -259,6 +264,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.count_any": "een willekeurig aantal mensen",
         "doc.count_one_of": "{list} mensen",
         "doc.extra_regions": ", allemaal in verschillende gebieden",
+        "clue.role_apart": "er is hoogstens één {role} per gebied ({a}, {b})",
         "doc.extra_from": ", gekozen uit {people}",
         "doc.rules": (
             "Zet elke figuur op een vrij vakje van het bord. Twee figuren staan nooit in dezelfde "
@@ -352,6 +358,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.either": "ofwel {first}, ofwel {second}, maar niet allebei",
         "clue.either_same_region": "{a} is in hetzelfde gebied als {b} of {c}",
         "clue.alone_with_anyone": "{a} deelt een gebied met precies één ander persoon",
+        "clue.alone_with_n": (
+            "{a} deelt een gebied met precies {n} anderen, en dat zijn allemaal {target}"
+        ),
+        "clue.alone_with_anyone_n": "{a} deelt een gebied met precies {n} anderen",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
@@ -1224,6 +1234,8 @@ class Story:
         if (quantified := self._quantified_condition_for_source(source)) is not None:
             clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
             return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
+        if source not in self.conditions and (apart := self._role_apart(source)) is not None:
+            return f"{_cap(apart)}, {self.say('so')} {outcome}." if outcome else f"{_cap(apart)}."
         condition = self.conditions[source]
         clue = _cap(self._clue(condition)) + self._ref(condition)
         aspect = ASPECT.get(condition.kind)
@@ -1444,6 +1456,17 @@ class Story:
         name = self.say.words.get(role) or role.replace("_", " ")
         return self.say("role_has" if present else "role_not", who=person, role=name)
 
+    def _role_apart(self, source: str) -> str | None:
+        """The text for a different_regions role step, labelled "A and B role in ..."."""
+        for role in self.board.roles:
+            if role.different_regions and source.endswith(f" {role.name} in different regions"):
+                a, _, b = source.removesuffix(f" {role.name} in different regions").partition(
+                    " and "
+                )
+                name = self.say.words.get(role.name) or role.name.replace("_", " ")
+                return self.say("clue.role_apart", role=name, a=a, b=b)
+        return None
+
     def _role_condition_for_source(self, source: str) -> RoleCondition | None:
         if source in self.role_conditions:
             return self.role_conditions[source]
@@ -1645,13 +1668,23 @@ class Story:
         return self.say("target.corner", what=what)
 
     def _quantified_text(self, condition: QuantifiedCondition) -> str:
-        target = self._target_text(condition.selector)
+        target = (
+            "" if condition.selector.kind == "anyone" else self._target_text(condition.selector)
+        )
         if condition.kind == "alone_with":
             selector = condition.selector
             others = set(self.board.people) - {condition.subject}
-            if selector.kind == "attribute" and others <= self.board.attributes.get(
-                selector.name, frozenset()
-            ):
+            n = condition.companions
+            anyone = selector.kind == "anyone" or (
+                selector.kind == "attribute"
+                and others <= self.board.attributes.get(selector.name, frozenset())
+            )
+            if n != 1:
+                count = self.say.number(n)
+                if anyone:
+                    return self.say("clue.alone_with_anyone_n", a=condition.subject, n=count)
+                return self.say("clue.alone_with_n", a=condition.subject, n=count, target=target)
+            if anyone:
                 return self.say("clue.alone_with_anyone", a=condition.subject)
             return self.say("clue.alone_with", a=condition.subject, target=target)
         fields: dict[str, Any] = {"a": condition.subject, "b": target}

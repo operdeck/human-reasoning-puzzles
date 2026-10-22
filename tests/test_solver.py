@@ -2863,3 +2863,44 @@ def test_colour_words_in_region_names_match_their_background():
                 assert colour, f"{path.name}: {name} has no colour"
                 assert word in _colour_family(colour), f"{path.name}: {name} is {colour}"
     assert checked >= 1
+
+
+@pytest.mark.parametrize("rule", ["alone_with V 2", "alone_with V attribute:food 2"])
+def test_alone_with_takes_an_optional_selector_and_companion_count(rule):
+    text = f"""Size: 3
+Regions:
+a: west
+b: east
+Grid:
+a a a
+a a b
+a b b
+People:
+A
+B
+V
+Attributes:
+food: A B
+Rules:
+{rule}
+"""
+    board, clues = load_board(text)
+    (condition,) = murdoku.quantified_conditions(board, clues)
+    square = murdoku.Square
+    roles: dict = {}
+
+    assert condition.companions == 2
+    together = {"A": square(0, 0), "B": square(1, 1), "V": square(2, 2)}
+    assert not condition.holds(board, together, roles)
+    together["V"] = square(0, 2)
+    assert condition.holds(board, together, roles)
+    solutions = bruteforce.solutions(text, "murdoku", limit=50)
+    assert solutions and all(
+        {board.region_of(solution[p]) for p in "ABV"} == {"a"} for solution in solutions
+    )
+
+
+def test_alone_with_rejects_a_bad_count():
+    base = "Size: 2\nRegions:\na: room\nGrid:\na a\na a\nPeople:\nA\nB\nRules:\n"
+    with pytest.raises(ValueError, match="optional positive count"):
+        murdoku.quantified_conditions(*load_board(base + "alone_with A 0\n"))

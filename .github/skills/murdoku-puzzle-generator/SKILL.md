@@ -273,8 +273,8 @@ a text fallback. Do this for each new name before reporting the puzzle:
 - **Last-candidate rule:** in a puzzle with a final character (the victim, the
   eater, a zoo carer, and so on), that character has no clues of their own and is
   named in no other character's clue. The only statement about them is the
-  general rule that they are alone with exactly one other character, for example
-  `alone_with <person> <selector>` in `Rules:`. The puzzle must be built so that
+  general rule that they are alone with exactly one (or `n`) other characters, for example
+  `alone_with <person> <selector>` or `alone_with <person> 2` in `Rules:`. The puzzle must be built so that
   they are found last: until everyone else is placed, keep at least two live
   squares and at least two region-overlap companion candidates for them. Build
   the clue pool without that character, and check the result with
@@ -327,7 +327,7 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `different_region <person-a> <person-b>` | People are in different regions. |
 | `apart <person-a> <person-b>` | People are in different, non-touching regions. |
 | `adjacent_regions <person-a> <person-b>` | People are in different regions that share a side. |
-| `alone_with <person> <target-selector>` | Exactly one other person shares the subject's region, and that companion matches the selector. |
+| `alone_with <person> [target-selector] [n]` | Exactly `n` other people (default 1) share the subject's region, and every companion matches the selector (default: anyone). `alone_with Vla 2` means Vla shares its region with exactly two others. |
 | `<relation> <person> <target-selector> [relation arguments]` | Quantify pairwise relations such as `above Ada role:bandit` or `within Ben tag:inside 3` over matching people. |
 | `left_of <person-a> <person-b> [n]` | A is left of B; with `n`, exactly `n` columns left. |
 | `above <person-a> <person-b> [n]` | A is above B; with `n`, exactly `n` rows above. |
