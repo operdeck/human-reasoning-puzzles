@@ -634,11 +634,11 @@ def test_cli_svg_writes_board_and_solution_beside_the_puzzle(tmp_path):
     assert not (tmp_path / "tents.png").exists()
 
 
-def test_cli_interactive_svg_has_cell_ids(tmp_path):
+def test_cli_interactive_svg_has_cell_ids_and_no_solution(tmp_path):
     target = tmp_path / "game.svg"
     assert cli.main([str(EXAMPLES / "prrrdoku1.txt"), "--svg", str(target), "--interactive"]) == 0
     assert "r1c1" in svg.ids(target.read_text())
-    assert "r1c1" not in svg.ids((tmp_path / "game-solution.svg").read_text())
+    assert [path.name for path in tmp_path.iterdir()] == ["game.svg"]
 
 
 def test_cli_interactive_needs_svg(tmp_path):

@@ -58,6 +58,7 @@ ALLOWED = {
     "akari": {"core", "puzzlefile", "icons"},
     "kakurasu": {"core", "puzzlefile", "icons"},
     "battleships": {"core", "puzzlefile", "icons"},
+    "web": {"core", "icons", "murdoku", "puzzlefile", "queens", "starbattle", "story"},
     "picture": {
         "murdoku",
         "sudoku",
