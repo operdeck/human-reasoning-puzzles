@@ -395,11 +395,16 @@ def _export(files: list[Path], out: Path) -> int:
     if importlib.util.find_spec("fontTools") is None:
         print("--export needs the picture extras: uv sync --extra svg", file=sys.stderr)
         return 2
+    files = sorted(set(files), key=lambda path: path.name.casefold())
+    stems = [file.stem for file in files]
+    if clashes := sorted({stem for stem in stems if stems.count(stem) > 1}):
+        print(f"--export needs unique file names; repeated: {', '.join(clashes)}", file=sys.stderr)
+        return 2
     out.mkdir(parents=True, exist_ok=True)
     index = []
     failed = []
-    for file in sorted(set(files), key=lambda path: path.name.casefold()):
-        text = file.read_text()
+    for file in files:
+        text = file.read_text(encoding="utf-8")
         try:
             kind = detect(text)
             model = load(text, kind).model
@@ -421,15 +426,18 @@ def _export(files: list[Path], out: Path) -> int:
             print(f"could not export {file.name}: {exc}", file=sys.stderr)
             failed.append(file.name)
             continue
-        (out / f"{file.stem}.svg").write_text(picture)
-        (out / f"{file.stem}.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+        (out / f"{file.stem}.svg").write_text(picture, encoding="utf-8")
+        (out / f"{file.stem}.json").write_text(
+            json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
         index.append(web.index_entry(data))
     (out / "index.json").write_text(
         json.dumps(
             {"schema": web.SCHEMA, "license": web.LICENSE, "puzzles": index},
             ensure_ascii=False,
             indent=1,
-        )
+        ),
+        encoding="utf-8",
     )
     print(f"wrote {len(index)} puzzles to {out}")
     return 1 if failed else 0

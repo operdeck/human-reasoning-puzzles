@@ -92,12 +92,21 @@ export function locked(bundle: Bundle, cell: CellId): boolean {
 
 const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
 
+const peerIndex = new WeakMap<Bundle, Map<CellId, PeerGroup[]>>();
+
 /** The cells that may not hold `item` too once `cell` holds it, by the bundle's peer groups. */
 export function peerCells(bundle: Bundle, cell: CellId, item: string): CellId[] {
+  let index = peerIndex.get(bundle);
+  if (!index) {
+    index = new Map();
+    for (const group of bundle.peers ?? []) {
+      for (const member of group.cells) index.set(member, [...(index.get(member) ?? []), group]);
+    }
+    peerIndex.set(bundle, index);
+  }
   const out = new Set<CellId>();
-  for (const group of bundle.peers ?? []) {
+  for (const group of index.get(cell) ?? []) {
     if (group.items && !group.items.includes(item)) continue;
-    if (!group.cells.includes(cell)) continue;
     for (const other of group.cells) if (other !== cell) out.add(other);
   }
   return [...out];
@@ -112,9 +121,9 @@ export function scopeCells(bundle: Bundle, scope: Scope["scope"], cell: CellId, 
     list.map(([dr, dc]) => [row + dr, col + dc]).filter(inside).map(([r, c]) => cellId(r, c));
   switch (scope) {
     case "row":
-      return allCells(bundle).filter((other) => other !== cell && parseCell(other)[0] === row);
+      return Array.from({ length: cols }, (_, c) => cellId(row, c + 1)).filter((other) => other !== cell);
     case "col":
-      return allCells(bundle).filter((other) => other !== cell && parseCell(other)[1] === col);
+      return Array.from({ length: rows }, (_, r) => cellId(r + 1, col)).filter((other) => other !== cell);
     case "region": {
       const region = bundle.regions?.[cell];
       if (region === undefined) return [];
@@ -304,15 +313,19 @@ export class History {
 export function restore(bundle: Bundle, saved: unknown): State {
   const state = emptyState(bundle);
   if (typeof saved !== "object" || saved === null) return state;
-  const raw = saved as Partial<State>;
+  const raw = saved as Record<keyof State, unknown>;
   const cells = new Set(allCells(bundle));
   const items = new Set((bundle.palette ?? []).map((item) => item.id));
-  for (const [cell, item] of Object.entries(raw.placed ?? {})) {
-    if (cells.has(cell) && items.has(item) && !locked(bundle, cell)) state.placed[cell] = item;
+  const free = (cell: unknown): cell is CellId =>
+    typeof cell === "string" && cells.has(cell) && !locked(bundle, cell);
+  if (typeof raw.placed === "object" && raw.placed !== null) {
+    for (const [cell, item] of Object.entries(raw.placed)) {
+      if (free(cell) && typeof item === "string" && items.has(item)) state.placed[cell] = item;
+    }
   }
-  state.crosses = (raw.crosses ?? []).filter(
-    (cell) => cells.has(cell) && !locked(bundle, cell) && !(cell in state.placed),
-  );
+  if (Array.isArray(raw.crosses)) {
+    state.crosses = [...new Set(raw.crosses)].filter((cell) => free(cell) && !(cell in state.placed));
+  }
   if (bundle.notes && typeof raw.notes === "object" && raw.notes !== null) {
     for (const [cell, noted] of Object.entries(raw.notes)) {
       if (!cells.has(cell) || locked(bundle, cell) || !Array.isArray(noted)) continue;
@@ -320,9 +333,11 @@ export function restore(bundle: Bundle, saved: unknown): State {
       if (kept.length > 0) state.notes[cell] = kept;
     }
   }
-  state.usedClues = (raw.usedClues ?? []).filter(
-    (n) => Number.isInteger(n) && n >= 0 && n < bundle.clues.length,
-  );
+  if (Array.isArray(raw.usedClues)) {
+    state.usedClues = [...new Set(raw.usedClues)]
+      .filter((n): n is number => Number.isInteger(n) && n >= 0 && n < bundle.clues.length)
+      .sort((a, b) => a - b);
+  }
   if (typeof raw.auto === "boolean") state.auto = raw.auto;
   return state;
 }

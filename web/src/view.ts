@@ -356,7 +356,13 @@ export class PuzzleView {
     svg.addEventListener("contextmenu", (event) => event.preventDefault());
     svg.addEventListener("pointerdown", (event) => {
       const cell = this.cellAt(event.clientX, event.clientY);
-      if (!cell || press) return;
+      if (!cell || press || (event.button !== 0 && event.button !== 2)) return;
+      // Keep the pointer's events even if it leaves the board, so a press always ends.
+      try {
+        svg.setPointerCapture(event.pointerId);
+      } catch {
+        // Synthetic or already-released pointers cannot be captured; nothing to keep.
+      }
       this.cursor = cell;
       const crossNow = event.button === 2 || this.tool === CROSS;
       press = { cell, timer: null, cross: null, pointer: event.pointerId };
@@ -394,6 +400,7 @@ export class PuzzleView {
     };
     svg.addEventListener("pointerup", (event) => finish(event, false));
     svg.addEventListener("pointercancel", (event) => finish(event, true));
+    svg.addEventListener("lostpointercapture", (event) => finish(event, true));
     svg.style.touchAction = "none";
 
     board.addEventListener("keydown", (event) => this.key(event));
