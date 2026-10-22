@@ -418,6 +418,233 @@ PHRASES: dict[str, dict[str, str]] = {
     },
 }
 
+# The one-line rules of every family but Murdoku, for the booklet and the web site.
+FAMILY_RULES = {
+    "sudoku": "Fill the grid so every row, column and box contains each digit once.",
+    "calcudoku": "Fill the grid so no digit repeats in a row or column, and each cage's "
+    "digits combine to its target with its operation.",
+    "futoshiki": "Fill the grid so no digit repeats in a row or column and every "
+    "inequality sign between neighbouring cells holds.",
+    "queens": "Place one queen in every row, column and region; queens may not touch, "
+    "not even diagonally.",
+    "suguru": "Fill every region of n cells with 1..n; equal digits may not touch, "
+    "not even diagonally.",
+    "starbattle": "Place stars so each row, column and region holds the same number; "
+    "stars may not touch, not even diagonally.",
+    "binairo": "Fill the grid with two symbols: no three equal in a row or column, "
+    "each row and column has equally many of each, and no two rows or columns are identical.",
+    "tents": "Put a tent next to each tree (horizontally or vertically), one tent per tree; "
+    "tents never touch each other, and the numbers give the tents per row and column.",
+    "minesweeper": "Mark the mines: each number tells how many of its eight neighbours are mines.",
+    "akari": "Place lights so every white cell is lit and no two lights see each other; "
+    "a number tells how many lights touch that black cell.",
+    "kakurasu": "Shade cells so each row and column adds up to its target, where a "
+    "shaded cell counts its position number.",
+    "battleships": "Place the fleet without ships touching, even diagonally; the numbers "
+    "give the ship cells per row and column.",
+    "logicgrid": "Use the clues to match every item of each category with exactly one "
+    "item of every other category.",
+}
+
+# Which explanation (`cond.<key>` in PHRASES) covers each Murdoku clue kind.
+CONDITION_KEYS = {
+    "in_region": "in_region",
+    "outside": "in_region",
+    "in_tagged": "in_tagged",
+    "not_in_tagged": "in_tagged",
+    "only_in_tagged": "in_tagged",
+    "next_to": "next_to",
+    "not_next_to": "next_to",
+    "at": "at",
+    "on_mark": "on_mark",
+    "not_on_mark": "on_mark",
+    "has_attribute": "attribute",
+    "not_attribute": "attribute",
+    "unique_attribute": "attribute",
+    "has_role": "role",
+    "not_role": "role",
+    "some_role": "role",
+    "roleless": "role",
+    "at_most_one_role": "role",
+    "role_subset": "role",
+    "role_in_tagged": "role",
+    "role_not_in_tagged": "role",
+    "min_role_in_tagged": "role",
+    "role_occupant": "role",
+    "role_on": "role",
+    "role_not_on": "role",
+    "role_next_to": "role",
+    "role_below": "role",
+    "sole_role_companion": "role",
+    "knight_from": "knight_from",
+    "on": "on",
+    "not_on": "on",
+    "only_on": "only_on",
+    "in_corner": "in_corner",
+    "in_row": "in_line",
+    "not_in_row": "in_line",
+    "in_column": "in_line",
+    "not_in_column": "in_line",
+    "in_area_corner": "in_area_corner",
+    "same_region": "same_region",
+    "different_region": "same_region",
+    "apart": "apart",
+    "adjacent_regions": "adjacent_regions",
+    "alone_with": "alone_with",
+    "left_of": "left_of",
+    "above": "above",
+    "within": "distance",
+    "at_least": "distance",
+    "alone": "alone",
+    "furthest": "furthest",
+    "exactly": "exactly",
+    "count": "count",
+}
+
+CONDITION_PHRASES = {
+    "en": {
+        "doc.conditions": "Conditions",
+        "cond.in_region.name": "in an area",
+        "cond.in_region": "The figure stands on a square of that area (or, with 'not', of none "
+        "of them). An area may be split over several parts of the board.",
+        "cond.in_tagged.name": "in a group of areas",
+        "cond.in_tagged": "The figure stands in one of the areas of that group (or in none of "
+        "them); the rules list which areas belong to each group.",
+        "cond.next_to.name": "next to",
+        "cond.next_to": "The figure's square shares a side with a square of the object, in the "
+        "same area; diagonals do not count. A door, window or corner object counts across an "
+        "area border.",
+        "cond.at.name": "at a door or window",
+        "cond.at": "The figure stands on one of the squares on either side of the door or window.",
+        "cond.on_mark.name": "on a marked square",
+        "cond.on_mark": "The figure stands on (or not on) a square carrying that mark.",
+        "cond.attribute.name": "attributes",
+        "cond.attribute": "An attribute is a fixed fact about a figure, listed beside the board; "
+        "it never changes where anyone can stand.",
+        "cond.role.name": "roles",
+        "cond.role": "A role is held by some of the figures, as the role list says; a clue "
+        "about a role only says where its holders can or cannot be.",
+        "cond.knight_from.name": "a knight's move from",
+        "cond.knight_from": "As a knight moves in chess: two squares one way and one square to "
+        "the side. Area borders do not matter.",
+        "cond.on.name": "on",
+        "cond.on": "The figure stands on a square of that object (or not on one). Only "
+        "standable objects, such as a chair or a bed, can be stood on.",
+        "cond.only_on.name": "the only one on",
+        "cond.only_on": "The figure stands on that object, and nobody else stands on any object "
+        "of that kind.",
+        "cond.in_corner.name": "in a corner",
+        "cond.in_corner": "The figure stands on one of the four corner squares of the board.",
+        "cond.in_line.name": "in a row or column",
+        "cond.in_line": "The figure stands in (or not in) that numbered row or column; row 1 is "
+        "at the top, column 1 at the left.",
+        "cond.in_area_corner.name": "in the corner of an area",
+        "cond.in_area_corner": "The figure stands on a square where two walls of its area meet "
+        "at a right angle.",
+        "cond.same_region.name": "same area",
+        "cond.same_region": "The two figures are in the same area (or, for 'different', in "
+        "different areas).",
+        "cond.apart.name": "apart",
+        "cond.apart": "The two figures are in different areas that do not share a side.",
+        "cond.adjacent_regions.name": "neighbouring areas",
+        "cond.adjacent_regions": "The two figures are in different areas that share a side.",
+        "cond.alone_with.name": "alone with",
+        "cond.alone_with": "The figure shares its area with exactly that many others (one if "
+        "no number is given), and nobody else.",
+        "cond.left_of.name": "left of",
+        "cond.left_of": "Somewhere in a column further left, in any row; with a number, exactly "
+        "that many columns further left.",
+        "cond.above.name": "above",
+        "cond.above": "Somewhere in a row higher up, in any column; with a number, exactly that "
+        "many rows higher.",
+        "cond.distance.name": "squares apart",
+        "cond.distance": "Distance is counted in steps across sides, not diagonally: rows apart "
+        "plus columns apart.",
+        "cond.alone.name": "alone",
+        "cond.alone": "Nobody else is in the same area.",
+        "cond.furthest.name": "the furthest from",
+        "cond.furthest": "Counted in steps across sides; every other figure is strictly closer.",
+        "cond.exactly.name": "exactly n of",
+        "cond.exactly": "Of the statements listed, exactly that many are true; the others are "
+        "false.",
+        "cond.count.name": "counts",
+        "cond.count": "Counts the figures (or the empty areas or squares) that match; the "
+        "number must be as stated.",
+    },
+    "nl": {
+        "doc.conditions": "Voorwaarden",
+        "cond.in_region.name": "in een gebied",
+        "cond.in_region": "Het figuur staat op een vakje van dat gebied (of, met 'niet', van "
+        "geen ervan). Een gebied kan uit meerdere delen van het bord bestaan.",
+        "cond.in_tagged.name": "in een groep gebieden",
+        "cond.in_tagged": "Het figuur staat in een van de gebieden van die groep (of in geen "
+        "ervan); de spelregels noemen welke gebieden bij elke groep horen.",
+        "cond.next_to.name": "naast",
+        "cond.next_to": "Het vakje van het figuur deelt een zijde met een vakje van het object, "
+        "in hetzelfde gebied; schuin telt niet. Een deur, raam of hoekobject telt ook over een "
+        "gebiedsgrens heen.",
+        "cond.at.name": "bij een deur of raam",
+        "cond.at": "Het figuur staat op een van de vakjes aan weerszijden van de deur of het raam.",
+        "cond.on_mark.name": "op een gemarkeerd vakje",
+        "cond.on_mark": "Het figuur staat (niet) op een vakje met die markering.",
+        "cond.attribute.name": "kenmerken",
+        "cond.attribute": "Een kenmerk is een vast gegeven over een figuur, naast het bord "
+        "vermeld; het verandert nooit waar iemand kan staan.",
+        "cond.role.name": "rollen",
+        "cond.role": "Een rol hoort bij sommige figuren, zoals de rollenlijst zegt; een "
+        "aanwijzing over een rol zegt alleen waar de dragers wel of niet kunnen staan.",
+        "cond.knight_from.name": "een paardensprong van",
+        "cond.knight_from": "Zoals het paard in het schaakspel: twee vakjes de ene kant op en "
+        "één opzij. Gebiedsgrenzen doen er niet toe.",
+        "cond.on.name": "op",
+        "cond.on": "Het figuur staat (niet) op een vakje van dat object. Alleen begaanbare "
+        "objecten, zoals een stoel of een bed, kun je op staan.",
+        "cond.only_on.name": "als enige op",
+        "cond.only_on": "Het figuur staat op dat object, en niemand anders staat op een object "
+        "van die soort.",
+        "cond.in_corner.name": "in een hoek",
+        "cond.in_corner": "Het figuur staat op een van de vier hoekvakjes van het bord.",
+        "cond.in_line.name": "in een rij of kolom",
+        "cond.in_line": "Het figuur staat (niet) in die genummerde rij of kolom; rij 1 is "
+        "bovenaan, kolom 1 links.",
+        "cond.in_area_corner.name": "in de hoek van een gebied",
+        "cond.in_area_corner": "Het figuur staat op een vakje waar twee wanden van zijn gebied "
+        "haaks samenkomen.",
+        "cond.same_region.name": "zelfde gebied",
+        "cond.same_region": "De twee figuren staan in hetzelfde gebied (of, bij 'verschillend', "
+        "in verschillende gebieden).",
+        "cond.apart.name": "uit elkaar",
+        "cond.apart": "De twee figuren staan in verschillende gebieden die geen zijde delen.",
+        "cond.adjacent_regions.name": "aangrenzende gebieden",
+        "cond.adjacent_regions": "De twee figuren staan in verschillende gebieden die een zijde "
+        "delen.",
+        "cond.alone_with.name": "alleen met",
+        "cond.alone_with": "Het figuur deelt zijn gebied met precies zoveel anderen (één als er "
+        "geen getal staat), en met niemand anders.",
+        "cond.left_of.name": "links van",
+        "cond.left_of": "Ergens in een kolom verder naar links, in elke rij; met een getal "
+        "precies zoveel kolommen verder naar links.",
+        "cond.above.name": "boven",
+        "cond.above": "Ergens in een hogere rij, in elke kolom; met een getal precies zoveel "
+        "rijen hoger.",
+        "cond.distance.name": "vakjes afstand",
+        "cond.distance": "Afstand telt in stappen over zijden, niet schuin: rijen verschil plus "
+        "kolommen verschil.",
+        "cond.alone.name": "alleen",
+        "cond.alone": "Niemand anders staat in hetzelfde gebied.",
+        "cond.furthest.name": "het verst van",
+        "cond.furthest": "Geteld in stappen over zijden; elk ander figuur staat echt dichterbij.",
+        "cond.exactly.name": "precies n van",
+        "cond.exactly": "Van de genoemde uitspraken zijn er precies zoveel waar; de rest is "
+        "onwaar.",
+        "cond.count.name": "aantallen",
+        "cond.count": "Telt de figuren (of de lege gebieden of vakjes) die passen; het aantal "
+        "moet kloppen.",
+    },
+}
+for _language, _entries in CONDITION_PHRASES.items():
+    PHRASES[_language].update(_entries)
+
 NUMBERS = {
     "en": ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
            "ten", "eleven", "twelve"],
@@ -1882,6 +2109,29 @@ def attribute_list(text: str) -> list[tuple[str, str]]:
 def phrase(text: str, key: str) -> str:
     """A fixed phrase such as `doc.clues` in the puzzle's language."""
     return Wording.read(text)(key)
+
+
+def condition_list(text: str) -> list[tuple[str, str]]:
+    """(name, plain meaning) of each kind of condition the puzzle's clues and rules use.
+
+    Only the kinds used appear, in the order they are first used; clues inside
+    `exactly` count too.
+    """
+    board, clues = load_board(text)
+    say = Wording.read(text)
+    keys: list[str] = []
+
+    def visit(kind: str, args: Sequence[str]) -> None:
+        key = CONDITION_KEYS.get(kind)
+        if key is not None and key not in keys:
+            keys.append(key)
+        if kind == COUNTING:
+            for inner_kind, inner_args in counted(args)[1]:
+                visit(inner_kind, inner_args)
+
+    for kind, args in [*board.rules, *clues]:
+        visit(kind, args)
+    return [(say(f"cond.{key}.name"), say(f"cond.{key}")) for key in keys]
 
 
 def explain(text: str, numbered: bool = True) -> str:

@@ -4,6 +4,7 @@ import argparse
 import dataclasses
 import glob
 import importlib.util
+import json
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -32,6 +33,7 @@ from . import (
     sudoku,
     suguru,
     tents,
+    web,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
 from .puzzlefile import KINDS, detect, language_of, load_board, load_presentation
@@ -388,6 +390,59 @@ def _booklet(files: list[Path], docx: Any) -> int:
     return 0
 
 
+def _export(files: list[Path], out: Path) -> int:
+    """Write a browser bundle and interactive board per puzzle, and `index.json`, to `out`."""
+    if importlib.util.find_spec("fontTools") is None:
+        print("--export needs the picture extras: uv sync --extra svg", file=sys.stderr)
+        return 2
+    files = sorted(set(files), key=lambda path: path.name.casefold())
+    stems = [file.stem for file in files]
+    if clashes := sorted({stem for stem in stems if stems.count(stem) > 1}):
+        print(f"--export needs unique file names; repeated: {', '.join(clashes)}", file=sys.stderr)
+        return 2
+    out.mkdir(parents=True, exist_ok=True)
+    index = []
+    failed = []
+    for file in files:
+        text = file.read_text(encoding="utf-8")
+        try:
+            kind = detect(text)
+            model = load(text, kind).model
+            fired = _Fired()
+            result = Solver(model.clone()).solve(on_step=fired.append_step)
+            if not result.solved:
+                raise ValueError("not solved by the rules")
+            picture = make_image(kind, text, interactive=True).to_svg()
+            data = web.bundle(
+                text,
+                kind,
+                file.stem,
+                model,
+                result.assignment,
+                picture,
+                report.grade(rule for rule, _ in fired.items),
+            )
+        except ValueError as exc:
+            print(f"could not export {file.name}: {exc}", file=sys.stderr)
+            failed.append(file.name)
+            continue
+        (out / f"{file.stem}.svg").write_text(picture, encoding="utf-8")
+        (out / f"{file.stem}.json").write_text(
+            json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+        index.append(web.index_entry(data))
+    (out / "index.json").write_text(
+        json.dumps(
+            {"schema": web.SCHEMA, "license": web.LICENSE, "puzzles": index},
+            ensure_ascii=False,
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
+    print(f"wrote {len(index)} puzzles to {out}")
+    return 1 if failed else 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exact-cover puzzle solver")
     parser.add_argument(
@@ -469,7 +524,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help=(
             "with --svg: draw the puzzle as the interactive variant (every cell an element "
-            "with an id such as r3c4, no solution, no crosses on blocked squares)"
+            "with an id such as r3c4, no solution, no crosses on blocked squares); no "
+            "solution picture is written"
         ),
     )
     parser.add_argument(
@@ -484,6 +540,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "uv sync --extra docx)"
         ),
     )
+    parser.add_argument(
+        "--export",
+        type=Path,
+        metavar="DIR",
+        help=(
+            "write the puzzles for the web site to DIR: per puzzle a JSON bundle and the "
+            "interactive SVG board, plus index.json (needs fonttools: uv sync --extra svg)"
+        ),
+    )
     args = parser.parse_args(argv)
     paths = _expand_patterns(args.puzzles)
     if paths is None:
@@ -493,6 +558,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error(f"{option} FILE needs a single puzzle; use {option} alone for several")
     if args.interactive and args.svg is None:
         parser.error("--interactive needs --svg")
+    if args.export is not None:
+        return _export(paths, args.export)
     if args.docx is not None:
         return _booklet(paths, args.docx)
     status = 0
@@ -640,7 +707,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
 
     if result.solved:
         print(puzzle.draw("Solved"))
-        if picture_paths:
+        if picture_paths and not args.interactive:
             roles = None
             if kind == "murdoku":
                 board, _ = load_board(text)
