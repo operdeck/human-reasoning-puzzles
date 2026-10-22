@@ -1000,7 +1000,7 @@ def test_dog_puzzles_give_every_zone_its_own_colour():
 def test_dutch_legend_lists_fixed_role_holders_as_a_category():
     text = Path("examples/menu-murdoku-3.txt").read_text()
     board = load_board(text)
-    legend = drawing._Legend(board, CELL, {}, None, True, "nl")
+    legend = drawing._Legend(board, CELL, language="nl")
 
     assert legend.words["point"] == "Punt"
     assert legend._role_line("eiwit") == "Eiwit: Vis, Bonen (niet meer dan 1 hiervan per gebied)"
