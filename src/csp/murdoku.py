@@ -120,26 +120,56 @@ class EdgeItem:
 
 
 @dataclass(frozen=True)
-class CornerObject:
-    """An object anchored at the common corner of its four surrounding cells."""
+class PointObject:
+    """An object on a grid point, touching the cells whose square contains that point.
+
+    `anchor` is the point as doubled 1-based (row, col) coordinates, so that
+    whole numbers on the half-step lattice stay integers: an even value is a
+    cell centre line and an odd value a grid line (1 and 2N+1 are the outer
+    edges). `r2.5c2.5` is `(5, 5)`. At least one coordinate lies on a grid line.
+    """
 
     name: str
+    anchor: tuple[int, int]
     cells: tuple[Square, ...]
 
     def __post_init__(self) -> None:
         if not self.name or any(char.isspace() for char in self.name):
-            raise ValueError(f"corner object name {self.name!r} must be a single token")
-        cells = set(self.cells)
-        if len(cells) != 4:
-            raise ValueError(f"corner object {self.name!r} must list four cells around one corner")
-        rows = {square.row for square in cells}
-        cols = {square.col for square in cells}
-        if (
-            len(rows) != 2
-            or len(cols) != 2
-            or cells != {Square(row, col) for row in rows for col in cols}
-        ):
-            raise ValueError(f"corner object {self.name!r} cells must surround one grid corner")
+            raise ValueError(f"point object name {self.name!r} must be a single token")
+        if not self.cells:
+            raise ValueError(f"point object {self.name!r} touches no cell")
+
+    @property
+    def label(self) -> str:
+        """The anchor as written in a puzzle file, such as `r2.5c4`."""
+        return _anchor_label(self.anchor)
+
+    @classmethod
+    def at(cls, name: str, anchor: tuple[int, int], size: int) -> "PointObject":
+        """The point object at a doubled anchor on a board of `size`, with its touched cells."""
+        row2, col2 = anchor
+        shown = _anchor_label(anchor)
+        if not all(1 <= value <= 2 * size + 1 for value in anchor):
+            raise ValueError(f"point object {name!r} at {shown} is off the board")
+        if row2 % 2 == 0 and col2 % 2 == 0:
+            raise ValueError(
+                f"point object {name!r} at {shown} is a cell centre; use .5 for a grid line"
+            )
+        rows = _touched_lines(row2, size)
+        cols = _touched_lines(col2, size)
+        return cls(name, anchor, tuple(Square(row, col) for row in rows for col in cols))
+
+
+def _anchor_label(anchor: tuple[int, int]) -> str:
+    row2, col2 = anchor
+    return f"r{row2 / 2:g}c{col2 / 2:g}"
+
+
+def _touched_lines(doubled: int, size: int) -> list[int]:
+    """0-based rows (or columns) whose cells contain the doubled 1-based coordinate."""
+    if doubled % 2 == 0:
+        return [doubled // 2 - 1]
+    return [line for line in ((doubled - 3) // 2, (doubled - 1) // 2) if 0 <= line < size]
 
 
 @dataclass(frozen=True)
@@ -196,7 +226,7 @@ class Board:
     `regions` holds a short region id per square (a letter, say) and
     `region_names` maps each id to its name. `objects` lists connected object
     footprints with explicit blocking or standable kinds. Multiple instances
-    of one type may share a name. `edge_items` and `corner_objects` are named
+    of one type may share a name. `edge_items` and `point_objects` are named
     cell sets that occupy no square. `marks` are named cell sets that may
     overlap and optionally carry an occupant condition. `colours`
     (region id -> '#RRGGBB') and `hatched` (region ids) only affect pictures.
@@ -218,7 +248,7 @@ class Board:
     hatched: set[str] = field(default_factory=set)
     rules: list["Clue"] = field(default_factory=list)
     edge_items: list[EdgeItem] = field(default_factory=list)
-    corner_objects: list[CornerObject] = field(default_factory=list)
+    point_objects: list[PointObject] = field(default_factory=list)
     marks: list[CellMark] = field(default_factory=list)
     roles: list[RoleSpec] = field(default_factory=list)
     attributes: dict[str, frozenset[str]] = field(default_factory=dict)
@@ -266,8 +296,8 @@ class Board:
             self.region_ids(members)
         edge_kinds: dict[str, EdgeItemKind] = {}
         for item in self.edge_items:
-            corner_names = {obj.name for obj in self.corner_objects}
-            if item.name in self.object_names or item.name in corner_names:
+            point_names = {obj.name for obj in self.point_objects}
+            if item.name in self.object_names or item.name in point_names:
                 raise ValueError(f"edge item name {item.name!r} overlaps another item name")
             if item.name in edge_kinds and edge_kinds[item.name] != item.kind:
                 raise ValueError(f"edge item {item.name!r} has conflicting kinds")
@@ -284,14 +314,14 @@ class Board:
                 if self.region_of(first) == self.region_of(second):
                     raise ValueError(f"door {item.name!r} must be on an area boundary")
         object_names = self.object_names
-        for corner in self.corner_objects:
-            if corner.name in object_names or corner.name in edge_kinds:
-                raise ValueError(f"corner object name {corner.name!r} overlaps another item name")
+        for point in self.point_objects:
+            if point.name in object_names or point.name in edge_kinds:
+                raise ValueError(f"point object name {point.name!r} overlaps another item name")
             if any(
                 square.row not in range(self.size) or square.col not in range(self.size)
-                for square in corner.cells
+                for square in point.cells
             ):
-                raise ValueError(f"corner object {corner.name!r} is off the grid")
+                raise ValueError(f"point object {point.name!r} is off the grid")
         mark_names: set[str] = set()
         for mark in self.marks:
             if mark.name in mark_names:
@@ -375,8 +405,8 @@ class Board:
         return {item.name for item in self.edge_items}
 
     @property
-    def corner_object_names(self) -> set[str]:
-        return {item.name for item in self.corner_objects}
+    def point_object_names(self) -> set[str]:
+        return {item.name for item in self.point_objects}
 
     @property
     def mark_names(self) -> set[str]:
@@ -436,15 +466,15 @@ class Board:
             raise ValueError(f"unknown edge item {name!r}; have {sorted(self.edge_item_names)}")
         return next(item.kind for item in self.edge_items if item.name == name)
 
-    def corner_object_cells(self, names: Iterable[str]) -> set[Square]:
+    def point_object_cells(self, names: Iterable[str]) -> set[Square]:
         """Cells surrounding named corner-anchored objects."""
         names = set(names)
-        unknown = names - self.corner_object_names
+        unknown = names - self.point_object_names
         if unknown:
             raise ValueError(
-                f"unknown corner objects {sorted(unknown)}; have {sorted(self.corner_object_names)}"
+                f"unknown point objects {sorted(unknown)}; have {sorted(self.point_object_names)}"
             )
-        return {cell for item in self.corner_objects if item.name in names for cell in item.cells}
+        return {cell for item in self.point_objects if item.name in names for cell in item.cells}
 
     def mark_cells(self, names: Iterable[str]) -> set[Square]:
         """Cells carrying any of the named marks."""
@@ -506,8 +536,8 @@ def _next_to(board: Board, *things: str) -> SquareTest:
     for thing in things:
         if thing in board.edge_item_names:
             touched.update(board.edge_item_cells([thing]))
-        elif thing in board.corner_object_names:
-            touched.update(board.corner_object_cells([thing]))
+        elif thing in board.point_object_names:
+            touched.update(board.point_object_cells([thing]))
         elif thing in board.mark_names:
             targets.update(board.mark_cells([thing]))
         elif thing in ("blocking", "standable"):
@@ -759,9 +789,10 @@ type TargetKind = Literal[
     "object",
     "mark",
     "edge_item",
-    "corner_object",
+    "point_object",
     "rows",
     "columns",
+    "anyone",
 ]
 
 
@@ -890,7 +921,7 @@ def _global_count_selector(
         kind: GlobalCountKind = "people_on" if args[1] == "on" else "people_in"
         selector = _target_selector(board, args[2])
         allowed = (
-            ("object", "object_kind", "mark", "edge_item", "corner_object")
+            ("object", "object_kind", "mark", "edge_item", "point_object")
             if kind == "people_on"
             else (
                 "area",
@@ -901,7 +932,7 @@ def _global_count_selector(
                 "object_kind",
                 "mark",
                 "edge_item",
-                "corner_object",
+                "point_object",
             )
         )
         if selector.kind not in allowed:
@@ -931,7 +962,7 @@ def _global_count_selector(
             "object_kind",
             "mark",
             "edge_item",
-            "corner_object",
+            "point_object",
         ):
             raise ValueError("count empty cells in requires a cell-set selector")
         return "empty_cells", selector, args[4:]
@@ -1004,6 +1035,11 @@ class QuantifiedCondition:
     number: int | None = None
     rest: tuple[str, ...] = ()
 
+    @property
+    def companions(self) -> int:
+        """How many others `alone_with` puts in the subject's region (default one)."""
+        return int(self.rest[0]) if self.kind == "alone_with" and self.rest else 1
+
     def pair_state(
         self,
         board: Board,
@@ -1036,7 +1072,7 @@ class QuantifiedCondition:
                 if not valid:
                     return False
                 count += witness
-            return count == 1
+            return count == self.companions
         return any(
             person != self.subject
             and self.pair_state(board, placed[self.subject], person, placed[person], roles)[0]
@@ -1090,6 +1126,10 @@ def _is_quantified_target(kind: str, args: Sequence[str]) -> bool:
     return kind == "alone_with" or (kind in RELATIONS and len(args) > 1 and ":" in args[1])
 
 
+def _positive(token: str) -> bool:
+    return token.isdigit() and int(token) > 0
+
+
 def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[QuantifiedCondition]:
     """Target-based clues, each compiled using only pairwise placement relations."""
     rules: list[tuple[str, list[str], int | None]] = [
@@ -1101,11 +1141,16 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
         if not _is_quantified_target(kind, args):
             continue
         if kind == "alone_with":
-            if len(args) != 2:
-                raise ValueError(f"alone_with expects a person and one target selector: {args}")
-            subject, selector_text = args
+            subject, *rest = args
+            count = rest.pop() if rest and rest[-1].isdigit() else None
+            if len(rest) > 1 or (count is not None and not _positive(count)):
+                raise ValueError(
+                    f"alone_with expects a person, an optional target selector and an "
+                    f"optional positive count: {args}"
+                )
+            selector_text = rest[0] if rest else ""
+            rest = [count] if count is not None else []
             pair_test = None
-            rest: list[str] = []
         else:
             if len(args) < 2:
                 raise ValueError(f"quantified {kind} expects a person and target selector: {args}")
@@ -1113,7 +1158,11 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
             pair_test = RELATIONS[kind](board, *rest)
         if subject not in board.people:
             raise ValueError(f"clue {kind!r} names unknown person {subject!r}")
-        selector = _target_selector(board, selector_text)
+        selector = (
+            _target_selector(board, selector_text)
+            if selector_text
+            else TargetSelector("anyone", "")
+        )
         out.append(
             QuantifiedCondition(
                 " ".join((kind, *args)), kind, subject, selector, pair_test, number, tuple(rest)
@@ -1140,7 +1189,7 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
         "object",
         "mark",
         "edge_item",
-        "corner_object",
+        "point_object",
         "rows",
         "columns",
     }
@@ -1165,8 +1214,8 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
         board.mark_cells([name])
     if kind == "edge_item":
         board.edge_item_cells([name])
-    if kind == "corner_object":
-        board.corner_object_cells([name])
+    if kind == "point_object":
+        board.point_object_cells([name])
     if kind in ("rows", "columns"):
         line_indices(name, board.size)
     return selector
@@ -1237,8 +1286,8 @@ def _selector_cells(board: Board, selector: TargetSelector) -> set[Square]:
         return board.mark_cells([selector.name])
     if selector.kind == "edge_item":
         return board.edge_item_cells([selector.name])
-    if selector.kind == "corner_object":
-        return board.corner_object_cells([selector.name])
+    if selector.kind == "point_object":
+        return board.point_object_cells([selector.name])
     raise ValueError(f"target selector {selector.kind!r} does not identify cells")
 
 
@@ -1249,6 +1298,8 @@ def _target_matches(
     square: Square,
     roles: dict[tuple[str, str], bool],
 ) -> bool:
+    if selector.kind == "anyone":
+        return True
     if selector.kind == "person":
         return person == selector.name
     if selector.kind == "attribute":
@@ -1377,8 +1428,8 @@ def _role_target_cells(board: Board, names: Iterable[str]) -> set[Square]:
             cells.update(board.squares_of([name]))
         elif name in board.edge_item_names:
             cells.update(board.edge_item_cells([name]))
-        elif name in board.corner_object_names:
-            cells.update(board.corner_object_cells([name]))
+        elif name in board.point_object_names:
+            cells.update(board.point_object_cells([name]))
         else:
             raise ValueError(f"unknown role target {name!r}")
     return cells
@@ -1858,7 +1909,9 @@ def _compile_quantified_condition(
     if not witnesses:
         model.relate(condition.label, (condition.subject,), lambda _square: False)
         return
-    allowed = {1} if condition.kind == "alone_with" else range(1, len(witnesses) + 1)
+    allowed = (
+        {condition.companions} if condition.kind == "alone_with" else range(1, len(witnesses) + 1)
+    )
     model.constrain(
         condition.label,
         Kind.COUNT,
@@ -2386,11 +2439,12 @@ def render(
             f"{item.name} {item.kind} {' '.join(map(str, item.cells))}" for item in board.edge_items
         )
         out.append(f"  edge items: {listed}")
-    if board.corner_objects:
+    if board.point_objects:
         listed = ", ".join(
-            f"{item.name} {' '.join(map(str, item.cells))}" for item in board.corner_objects
+            f"{item.name} {item.label} {' '.join(map(str, item.cells))}"
+            for item in board.point_objects
         )
-        out.append(f"  corner objects: {listed}")
+        out.append(f"  point objects: {listed}")
     if board.marks:
         listed = ", ".join(
             f"{mark.name} {' '.join(map(str, mark.cells))}"

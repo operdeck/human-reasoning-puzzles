@@ -168,7 +168,7 @@ it.
 
 ## Icons and Pictures
 
-Every object, window, corner object and figure must show a fitting picture, not
+Every object, window, point object and figure must show a fitting picture, not
 a text fallback. Do this for each new name before reporting the puzzle:
 
 1. Run `uv run csp <file.txt> --lint`. "missing icon for X" (objects) or
@@ -201,7 +201,7 @@ a text fallback. Do this for each new name before reporting the puzzle:
   overlay areas use a different ID.
 - A `blocking` object's cells are unavailable; `standable` objects remain
   occupiable. The declared kind is required and never inferred from the object
-  name or icon. Edge items and corner objects touch cells without occupying
+  name or icon. Edge items and point objects touch cells without occupying
   them; marks select cells without changing occupancy.
 - Names and appearance must agree. A region named for a colour ("Blue hall")
   gets a background of that colour, and a colour-neutral name never implies
@@ -232,9 +232,16 @@ a text fallback. Do this for each new name before reporting the puzzle:
   for example `gate: door r4c5 r4c6`; repeat the name for each door in a wider
   opening. A window lists exactly one inside cell, for example
   `window: window r2c3`.
-- `CornerObjects:` declares an object at an interior grid vertex by listing
-  its four surrounding cells, for example
-  `fountain: r3c3 r3c4 r4c3 r4c4`. These cells are touched, not occupied.
+- `PointObjects:` declares an object on a grid point by a half-step anchor,
+  for example `fountain: r3.5c3.5` (interior vertex, four cells),
+  `mouse1: r0.5c4.5` (top edge between c4 and c5, two cells),
+  `mouse2: r5.5c0.5` (bottom-left board corner, one cell), `cheese: r3.5c5`
+  (middle of the side between r3c5 and r4c5) or `lantern: r5.5c4` (middle of
+  the bottom side of r5c4). Whole numbers are cell centres, `.5` values grid
+  lines, `0.5` and `N+0.5` the outer edges; a cell centre is rejected. The
+  touched cells are the cells whose square contains the point; they are
+  touched, not occupied. A point object name may not repeat an object or edge
+  item name, so `mouse1` and `mouse2` (digits are ignored for the icon).
 - `Marks:` declares named cell sets independently of areas and objects, for
   example `quiet: r2c3 r2c4 ; alone`. Mark sets may overlap and never occupy
   or block cells. An optional `alone` or `not_alone` condition applies only
@@ -255,7 +262,7 @@ a text fallback. Do this for each new name before reporting the puzzle:
 - Put board-wide, unnumbered clues in `Rules:` and numbered puzzle clues in
    `Clues:`. Required sections are `Size:`, `Regions:`, `Grid:`, and `People:`.
   `Clues:`, `Language:`, `Words:`, `AreaTags:`, `Hatched:`, `Objects:`,
-  `EdgeItems:`, `CornerObjects:`, `Marks:`, `Roles:`, `RoleEligibility:`,
+  `EdgeItems:`, `PointObjects:`, `Marks:`, `Roles:`, `RoleEligibility:`,
   `Attributes:`, `Pronouns:`, and `Rules:` are optional.
 - Keep clues concise and non-duplicative. Avoid clues that directly reveal
   every person's square unless the user requests a very easy puzzle.
@@ -266,8 +273,8 @@ a text fallback. Do this for each new name before reporting the puzzle:
 - **Last-candidate rule:** in a puzzle with a final character (the victim, the
   eater, a zoo carer, and so on), that character has no clues of their own and is
   named in no other character's clue. The only statement about them is the
-  general rule that they are alone with exactly one other character, for example
-  `alone_with <person> <selector>` in `Rules:`. The puzzle must be built so that
+  general rule that they are alone with exactly one (or `n`) other characters, for example
+  `alone_with <person> <selector>` or `alone_with <person> 2` in `Rules:`. The puzzle must be built so that
   they are found last: until everyone else is placed, keep at least two live
   squares and at least two region-overlap companion candidates for them. Build
   the clue pool without that character, and check the result with
@@ -292,8 +299,8 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `in_tagged <person> <tag>...` | Person is in a region carrying any named tag. |
 | `not_in_tagged <person> <tag>...` | Person is in no region carrying any named tag. |
 | `only_in_tagged <person> <tag>...` | Person is restricted to regions carrying any named tag; intended for `Rules:`. |
-| `next_to <person> <object-or-edge-item-or-corner-object>...` | For ordinary objects, the person's cell must share a side with an object cell in the same logical area; diagonals do not count. Door and corner-object touched cells count, including across an area boundary. |
-| `not_next_to <person> <object-or-edge-item-or-corner-object>...` | Person is not next to any named thing. |
+| `next_to <person> <object-or-edge-item-or-point-object>...` | For ordinary objects, the person's cell must share a side with an object cell in the same logical area; diagonals do not count. Door and point-object touched cells count, including across an area boundary. |
+| `not_next_to <person> <object-or-edge-item-or-point-object>...` | Person is not next to any named thing. |
 | `at <person> <edge-item>...` | Person occupies a cell listed by any named door or window. |
 | `on_mark <person> <mark>...` | Person occupies one of the cells carrying any named mark. |
 | `not_on_mark <person> <mark>...` | Person occupies none of the cells carrying any named mark. |
@@ -320,7 +327,7 @@ Use the spellings and argument order below. Names refer to one-token IDs.
 | `different_region <person-a> <person-b>` | People are in different regions. |
 | `apart <person-a> <person-b>` | People are in different, non-touching regions. |
 | `adjacent_regions <person-a> <person-b>` | People are in different regions that share a side. |
-| `alone_with <person> <target-selector>` | Exactly one other person shares the subject's region, and that companion matches the selector. |
+| `alone_with <person> [target-selector] [n]` | Exactly `n` other people (default 1) share the subject's region, and every companion matches the selector (default: anyone). `alone_with Vla 2` means Vla shares its region with exactly two others. |
 | `<relation> <person> <target-selector> [relation arguments]` | Quantify pairwise relations such as `above Ada role:bandit` or `within Ben tag:inside 3` over matching people. |
 | `left_of <person-a> <person-b> [n]` | A is left of B; with `n`, exactly `n` columns left. |
 | `above <person-a> <person-b> [n]` | A is above B; with `n`, exactly `n` rows above. |
@@ -362,7 +369,7 @@ Global count semantics and authoring checks:
 
 Typed target selectors are `person:name`, `attribute:name`, `role:name`,
 `area:name`, `tag:name`, `object_kind:blocking|standable`, `object:name`,
-`mark:name`, `edge_item:name`, and `corner_object:name`. `area:name` accepts a
+`mark:name`, `edge_item:name`, and `point_object:name`. `area:name` accepts a
 region name or tag; `tag:name` requires an area tag. A bare known person is
 also accepted. `not_on_mark` with several names excludes their union.
 
@@ -378,8 +385,8 @@ right) from an object cell in the same logical area. Diagonal cells do not
 count. A door lists two orthogonally neighboring cells in different areas;
 either cell satisfies `next_to` or `at`, including across the boundary. Wider
 openings are multiple simple doors with the same name. A window lists one cell
-for `at`; a corner object lists the four cells around its interior vertex for
-`next_to`. These items do not occupy or block cells. Direction, distance, and `knight_from`
+for `at`; a point object touches the one, two or four cells around its anchor for
+`next_to`, across area boundaries. These items do not occupy or block cells. Direction, distance, and `knight_from`
 may cross region boundaries. There is no person-to-person adjacency clue: at
 most one person per row and column makes it impossible for two people to
 share a side.
