@@ -14,7 +14,15 @@ from typing import Any
 
 from . import icons, picture
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
-from .story import attribute_list, board_notes, clue_paragraphs, explain, phrase, role_list
+from .story import (
+    FAMILY_RULES,
+    attribute_list,
+    board_notes,
+    clue_paragraphs,
+    explain,
+    phrase,
+    role_list,
+)
 
 BOLD = re.compile(r"\*\*(.+?)\*\*")
 BOARD_WIDTH_CM = 11.6
@@ -130,34 +138,6 @@ class Entry:
     steps: tuple[str, ...] = ()
 
 
-RULES = {
-    "sudoku": "Fill the grid so every row, column and box contains each digit once.",
-    "calcudoku": "Fill the grid so no digit repeats in a row or column, and each cage's "
-    "digits combine to its target with its operation.",
-    "futoshiki": "Fill the grid so no digit repeats in a row or column and every "
-    "inequality sign between neighbouring cells holds.",
-    "queens": "Place one queen in every row, column and region; queens may not touch, "
-    "not even diagonally.",
-    "suguru": "Fill every region of n cells with 1..n; equal digits may not touch, "
-    "not even diagonally.",
-    "starbattle": "Place stars so each row, column and region holds the same number; "
-    "stars may not touch, not even diagonally.",
-    "binairo": "Fill the grid with two symbols: no three equal in a row or column, "
-    "each row and column has equally many of each, and no two rows or columns are identical.",
-    "tents": "Put a tent next to each tree (horizontally or vertically), one tent per tree; "
-    "tents never touch each other, and the numbers give the tents per row and column.",
-    "minesweeper": "Mark the mines: each number tells how many of its eight neighbours are mines.",
-    "akari": "Place lights so every white cell is lit and no two lights see each other; "
-    "a number tells how many lights touch that black cell.",
-    "kakurasu": "Shade cells so each row and column adds up to its target, where a "
-    "shaded cell counts its position number.",
-    "battleships": "Place the fleet without ships touching, even diagonally; the numbers "
-    "give the ship cells per row and column.",
-    "logicgrid": "Use the clues to match every item of each category with exactly one "
-    "item of every other category.",
-}
-
-
 def _generic_title(entry: Entry) -> str:
     return load_presentation(entry.text).title or entry.path.stem.replace("_", " ").capitalize()
 
@@ -176,7 +156,7 @@ def _add_generic(
     _title(document, title, new_page, bookmark)
     if not solved:
         document.add_heading("Rules", level=2)
-        document.add_paragraph(RULES.get(entry.kind, ""), style="List Bullet")
+        document.add_paragraph(FAMILY_RULES.get(entry.kind, ""), style="List Bullet")
     image = entry.solution_image if solved else entry.puzzle_image
     stream = io.BytesIO(image.to_png(zoom=2))
     document.add_picture(stream, width=Cm(GENERIC_BOARD_WIDTH_CM))
