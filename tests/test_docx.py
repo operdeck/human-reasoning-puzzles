@@ -368,7 +368,7 @@ def test_repeated_premises_are_merged():
         assert not repeats, (name, repeats)
 
 
-def test_booklet_writes_every_example_murdoku_to_one_pdf(tmp_path, monkeypatch, capsys):
+def test_pdf_writes_every_example_murdoku_without_puzzle_files(tmp_path, monkeypatch, capsys):
     import shutil
 
     from csp import cli, pdf_convert
@@ -385,19 +385,27 @@ def test_booklet_writes_every_example_murdoku_to_one_pdf(tmp_path, monkeypatch, 
     files = cli._murdoku_examples()
     assert files and all("tests" not in file.parts for file in files)
     assert {file.parent.name for file in files} >= {"demo", "prrrdoku", "wie-doet-het-met-wie"}
-    assert main(["--booklet"]) == 0
+    assert main(["--pdf"]) == 0
     assert (tmp_path / "booklet.pdf").exists()
     assert "Prrrdoku 1" in seen["text"] and "Sudoku" not in seen["text"]
-    assert f"({len(files)} Murdoku puzzles" in capsys.readouterr().out
+    assert f"({len(files)} puzzles" in capsys.readouterr().out
 
 
-def test_booklet_takes_no_puzzle_files(capsys):
-    with pytest.raises(SystemExit):
-        main(["examples/prrrdoku/prrrdoku1.txt", "--booklet"])
-    assert "takes no puzzle files" in capsys.readouterr().err
+def test_pdf_with_a_puzzle_file_writes_beside_it(tmp_path, monkeypatch):
+    import shutil
+
+    from csp import pdf_convert
+
+    monkeypatch.setattr(
+        pdf_convert, "docx_to_pdf", lambda source, target: shutil.copy(source, target) and "Fake"
+    )
+    source = tmp_path / "prrrdoku1.txt"
+    shutil.copy(example("prrrdoku1.txt"), source)
+    assert main([str(source), "--pdf"]) == 0
+    assert (tmp_path / "prrrdoku1.pdf").exists()
 
 
-def test_booklet_without_an_office_program_explains_what_to_install(tmp_path, monkeypatch):
+def test_pdf_without_an_office_program_explains_what_to_install(tmp_path, monkeypatch):
     from csp import pdf_convert
 
     monkeypatch.setattr(pdf_convert, "converters", lambda: [])
