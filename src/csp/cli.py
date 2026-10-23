@@ -6,6 +6,7 @@ import glob
 import importlib.util
 import json
 import sys
+import tempfile
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -41,6 +42,7 @@ from .puzzlefile import KINDS, detect, language_of, load_board, load_presentatio
 
 _PNG_DEFAULT = object()
 _DOCX_DEFAULT = object()
+_EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 
 
 @dataclass(frozen=True)
@@ -343,17 +345,54 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
     return twin
 
 
-def _booklet(files: list[Path], docx: Any) -> int:
-    """One booklet, puzzles first and then solutions, for the puzzle `files` of any family."""
-    if docx is not _DOCX_DEFAULT:
-        out = docx
+def _booklet(files: list[Path], requested: Any, suffix: str) -> int:
+    """One booklet (.docx or .pdf), puzzles first and then solutions, for the puzzle `files`
+    of any family; without files, for every example Murdoku."""
+    if requested is not _DOCX_DEFAULT:
+        out = requested
+    elif not files:
+        out = Path(f"booklet{suffix}")
     elif len(files) == 1:
-        out = files[0].with_suffix(".docx")
+        out = files[0].with_suffix(suffix)
     else:
-        out = files[0].parent / "booklet.docx"
+        out = files[0].parent / f"booklet{suffix}"
+    if not files:
+        files = _murdoku_examples()
+        if not files:
+            print("found no Murdoku puzzles under examples/", file=sys.stderr)
+            return 2
+    if suffix == ".docx":
+        return _write_booklet(files, out)
+    from . import pdf_convert
+
+    with tempfile.TemporaryDirectory() as folder:
+        docx = Path(folder) / f"{out.stem}.docx"
+        status = _write_booklet(files, docx, announce=False)
+        if status:
+            return status
+        try:
+            program = pdf_convert.docx_to_pdf(docx, out)
+        except pdf_convert.ConversionError as exc:
+            print(f"could not make a PDF: {exc}", file=sys.stderr)
+            return 2
+    print(f"wrote {out} ({len(files)} puzzles, then their solutions; via {program})")
+    return 0
+
+
+def _murdoku_examples() -> list[Path]:
+    """Every Murdoku puzzle under examples/ (test puzzles live in tests/puzzles)."""
+    folder = Path("examples") if Path("examples").is_dir() else _EXAMPLES
+    return [
+        file
+        for file in sorted(folder.glob("**/*.txt"))
+        if detect(file.read_text(encoding="utf-8")) == "murdoku"
+    ]
+
+
+def _write_booklet(files: list[Path], out: Path, announce: bool = True) -> int:
     needed = ("docx", "fontTools", "resvg_py")
     if any(importlib.util.find_spec(module) is None for module in needed):
-        print("--docx needs python-docx and resvg: uv sync --extra docx", file=sys.stderr)
+        print("the booklet needs python-docx and resvg: uv sync --extra docx", file=sys.stderr)
         return 2
     from . import docx_export
 
@@ -400,7 +439,8 @@ def _booklet(files: list[Path], docx: Any) -> int:
             )
         entries.append(entry)
     docx_export.write_booklet(entries, out)
-    print(f"wrote {out} ({len(entries)} puzzles, then their solutions)")
+    if announce:
+        print(f"wrote {out} ({len(entries)} puzzles, then their solutions)")
     return 0
 
 
@@ -470,11 +510,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exact-cover puzzle solver")
     parser.add_argument(
         "puzzles",
-        nargs="+",
+        nargs="*",
         metavar="PUZZLE",
         help=(
             "puzzle file(s) or glob pattern(s); quote a pattern to let the program "
-            "expand it; --docx puts them in one booklet"
+            "expand it; --docx and --pdf put them in one booklet (without puzzles: every "
+            "Murdoku in examples/)"
         ),
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="narrate each deduction")
@@ -559,9 +600,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         metavar="FILE",
         help=(
             "write an editable Word booklet to FILE (default: beside the puzzle, or "
-            "booklet.docx for a glob): all puzzles, numbered and grouped by family and "
+            "booklet.docx for a glob or no puzzle files): all puzzles (without puzzle "
+            "files: every Murdoku in examples/), numbered and grouped by family and "
             "category folder, then all solutions (needs python-docx: "
             "uv sync --extra docx)"
+        ),
+    )
+    parser.add_argument(
+        "--pdf",
+        nargs="?",
+        type=Path,
+        const=_DOCX_DEFAULT,
+        metavar="FILE",
+        help=(
+            "write the --docx booklet as PDF instead, with the same puzzles and default "
+            "name (booklet.pdf); converted with LibreOffice, or on macOS Microsoft Word "
+            "or Pages (needs uv sync --extra docx)"
         ),
     )
     parser.add_argument(
@@ -574,6 +628,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
+    booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
+    if not args.puzzles:
+        if not booklets or args.export is not None:
+            parser.error("give one or more puzzle files (only --docx and --pdf need none)")
+        return max(_booklet([], value, suffix) for value, suffix in booklets)
     paths = _expand_patterns(args.puzzles)
     if paths is None:
         return 2
@@ -584,8 +643,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--interactive needs --svg")
     if args.export is not None:
         return _export(paths, args.export)
-    if args.docx is not None:
-        return _booklet(paths, args.docx)
+    if booklets:
+        return max(_booklet(paths, value, suffix) for value, suffix in booklets)
     status = 0
     for path in paths:
         status = max(status, _solve_one(args, path, parser))

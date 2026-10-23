@@ -366,3 +366,58 @@ def test_repeated_premises_are_merged():
         ]
         repeats = [a for a, b in itertools.pairwise(premises) if a is not None and a == b]
         assert not repeats, (name, repeats)
+
+
+def test_pdf_writes_every_example_murdoku_without_puzzle_files(tmp_path, monkeypatch, capsys):
+    import shutil
+
+    from csp import cli, pdf_convert
+
+    seen = {}
+
+    def fake_convert(source, target):
+        seen["text"] = "\n".join(p.text for p in Document(str(source)).paragraphs)
+        shutil.copy(source, target)
+        return "Fake Office"
+
+    monkeypatch.setattr(pdf_convert, "docx_to_pdf", fake_convert)
+    monkeypatch.chdir(tmp_path)
+    files = cli._murdoku_examples()
+    assert files and all("tests" not in file.parts for file in files)
+    assert {file.parent.name for file in files} >= {"demo", "prrrdoku", "wie-doet-het-met-wie"}
+    assert main(["--pdf"]) == 0
+    assert (tmp_path / "booklet.pdf").exists()
+    assert "Prrrdoku 1" in seen["text"] and "Sudoku" not in seen["text"]
+    assert f"({len(files)} puzzles" in capsys.readouterr().out
+
+
+def test_pdf_with_a_puzzle_file_writes_beside_it(tmp_path, monkeypatch):
+    import shutil
+
+    from csp import pdf_convert
+
+    monkeypatch.setattr(
+        pdf_convert, "docx_to_pdf", lambda source, target: shutil.copy(source, target) and "Fake"
+    )
+    source = tmp_path / "prrrdoku1.txt"
+    shutil.copy(example("prrrdoku1.txt"), source)
+    assert main([str(source), "--pdf"]) == 0
+    assert (tmp_path / "prrrdoku1.pdf").exists()
+
+
+def test_pdf_without_an_office_program_explains_what_to_install(tmp_path, monkeypatch):
+    from csp import pdf_convert
+
+    monkeypatch.setattr(pdf_convert, "converters", lambda: [])
+    with pytest.raises(pdf_convert.ConversionError, match="install LibreOffice"):
+        pdf_convert.docx_to_pdf(tmp_path / "x.docx", tmp_path / "x.pdf")
+
+
+def test_docx_without_puzzle_files_takes_every_example_murdoku(tmp_path, monkeypatch, capsys):
+    from csp import cli
+
+    monkeypatch.chdir(tmp_path)
+    files = cli._murdoku_examples()
+    assert main(["--docx"]) == 0
+    assert (tmp_path / "booklet.docx").exists()
+    assert f"({len(files)} puzzles" in capsys.readouterr().out
