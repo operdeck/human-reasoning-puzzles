@@ -98,6 +98,7 @@ def murdoku_picture(
     cell: int = 120,
     coordinates: bool = True,
     legend: bool = True,
+    labels: bool = True,
     show_roles: bool = True,
     interactive: bool = False,
     language: str = "en",
@@ -105,6 +106,7 @@ def murdoku_picture(
     """The board, with `placed` people drawn on their squares if given.
 
     Without `legend` the picture is square, for documents with their own legend.
+    With `labels` an unsolved board names each region in a small tag.
     Without `show_roles` the legend leaves out the solver's role lines.
     `language` ("en" or "nl") sets the legend wording.
     """
@@ -159,14 +161,18 @@ def murdoku_picture(
         elif obj.kind == "standable":
             long_vertical = y1 - y0 > x1 - x0
             rotate = (base == "bed" or seat) and long_vertical
-            if seat:
-                # Keep the seat's proportions and fit it to the whole footprint.
-                _icon(canvas, name, (x0, y0, x1, y1), cell, scale=0.9, rotate=rotate, fit_box=True)
-            elif occupied & set(piece) and not stretch:
-                y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
-                _icon(canvas, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
-            else:
-                _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
+            # Standable objects are drawn faint: figures stand on them.
+            with canvas.group(opacity=STANDABLE_OPACITY):
+                if seat:
+                    # Keep the seat's proportions and fit it to the whole footprint.
+                    _icon(
+                        canvas, name, (x0, y0, x1, y1), cell, scale=0.9, rotate=rotate, fit_box=True
+                    )
+                elif occupied & set(piece) and not stretch:
+                    y1 = y0 + int(cell * 0.62)  # leave room for the name tag below
+                    _icon(canvas, name, (x0, y0, x1, y1), cell, scale=0.95, rotate=rotate)
+                else:
+                    _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
         else:
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch)
     for item in board.edge_items:
@@ -201,6 +207,8 @@ def murdoku_picture(
         )
         initials = "/".join(name[:2].upper() for name in sorted(names))
         _centred_text(canvas, initials, area, max(8, cell // 12), MARK_INK, max_width=cell // 3)
+    if labels and not placed:
+        _region_labels(canvas, board, box, cell)
     standable = board.squares_of(obj.name for obj in board.standable_objects)
     for person, sq in placed.items():
         _name_tag(canvas, person, box(sq), cell, low=sq in standable)
@@ -212,6 +220,58 @@ def murdoku_picture(
     if interactive:
         _cells(canvas, board.size, margin, margin, cell)
     return canvas
+
+
+STANDABLE_OPACITY = 0.55
+
+
+def _region_labels(canvas: Canvas, board: Board, box: Callable[[Square], Box], cell: int) -> None:
+    """A small name tag in each region, at the top of its first free square.
+
+    Squares with an object, a mark or a point object near their top edge are
+    passed over when the region has another; a long name may run on into the
+    next square of the same region.
+    """
+    taken = {sq for obj in board.objects for sq in obj.squares}
+    taken |= {sq for mark in board.marks for sq in mark.cells}
+    crowded = {
+        Square(r, c)
+        for point in board.point_objects
+        for r in range(board.size)
+        for c in range(board.size)
+        if point.anchor[0] in (2 * r + 1, 2 * r + 2)
+        and point.anchor[1] in range(2 * c + 1, 2 * c + 4)
+    }
+    fills = _fills(board)
+    size = max(8, cell // 7)
+    pad = max(2, cell // 24)
+    for rid, name in board.region_names.items():
+        squares = sorted(
+            Square(r, c)
+            for r in range(board.size)
+            for c in range(board.size)
+            if board.region_of(Square(r, c)) == rid
+        )
+        if not squares:
+            continue
+        sq = min(squares, key=lambda s: (s in taken or s in board.blocked, s in crowded, s))
+        text = name.replace("_", " ")
+        text = text[:1].upper() + text[1:]
+        x0, y0, x1, _ = box(sq)
+        right = Square(sq.row, sq.col + 1)
+        wide = canvas.textlength(text, size) > cell - 4 * pad
+        if wide and right in squares and right not in taken and right not in board.blocked:
+            x1 = box(right)[2]
+        tag = (x0 + pad, y0 + pad, x1 - pad, y0 + pad + int(size * 1.5))
+        with canvas.group(opacity=0.9):
+            canvas.rounded_rectangle(
+                tag,
+                radius=max(2, cell // 16),
+                fill=WHITE,
+                outline=_darker(fills[rid], 0.6),
+                width=max(1, cell // 60),
+            )
+        _centred_text(canvas, text, tag, size, INK, max_width=tag[2] - tag[0] - 2 * pad)
 
 
 def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:

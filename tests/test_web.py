@@ -74,6 +74,14 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     assert names == ["on", "next to"]
 
 
+def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
+    bundle = _bundle(exported, "zoo-murdoku-1")
+    assert bundle["headings"]["objects"] == "De voorwerpen"
+    objects = bundle["objects"]
+    assert objects and all(item["svg"].startswith("<svg") for item in objects)
+    assert {item["text"] for item in objects} <= {"hier kun je op staan", "hier kan niemand staan"}
+
+
 def test_dutch_murdoku_is_worded_in_dutch(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["language"] == "nl"

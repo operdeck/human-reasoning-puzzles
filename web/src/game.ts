@@ -25,6 +25,7 @@ export interface PeerGroup {
 export interface Named {
   name: string;
   text: string;
+  svg?: string;
 }
 
 export interface Bundle {
@@ -56,6 +57,7 @@ export interface Bundle {
   question: string;
   attributes?: Named[];
   roles?: Named[];
+  objects?: Named[];
 }
 
 export interface State {
