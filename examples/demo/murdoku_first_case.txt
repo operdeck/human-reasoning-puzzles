@@ -1,0 +1,66 @@
+# Murdoku - "The first case"  (4x4, three regions)
+#
+# A first, tiny Murdoku to show how the puzzle works.
+#
+# Three suspects and one victim, one per row and column. Ingrid, Joost and
+# Lotte each have a clue; Wouter, the victim, takes the last free square.
+# Wouter was alone with his murderer: the one other person in his region
+# did it.
+#
+# Solution: Joost r1c1, Wouter r2c3, Ingrid r3c4, Lotte r4c2, so Ingrid is
+# the murderer (she is the only other person in the sitting room).
+
+Size: 4
+Language: en
+
+Words:
+patio: on the patio
+
+Regions:
+p: patio #CBE6B9
+g: guest_room #F4CBC3
+s: sitting_room #FADFB5
+
+Grid:
+p p p p
+p g s s
+g g s s
+g g s s
+
+Objects:
+tree: blocking r1c2
+bush: blocking r1c3
+table: blocking r2c4
+cabinet: blocking r4c4
+
+# Chairs and the bed are standable; the bed is 1x2.
+chair: standable r3c1
+chair: standable r3c4
+chair: standable r4c3
+bed: standable r4c1 r4c2
+
+People:
+Ingrid
+Joost
+Lotte
+Wouter
+
+Clues:
+on Ingrid chair
+next_to Joost tree
+on Lotte bed
+
+# Booklet text for --docx (optional).
+Title:
+Murdoku: The first case
+
+Intro:
+Three suspects and a victim stand in a small house. Place everyone on a free square, one per row and one per column.
+Objects block their square, except a chair or a bed, which people can use.
+Wouter, the victim, is placed last and was alone with his murderer.
+
+Question:
+Who is the only other person in Wouter's room: who did it?
+
+Reveal:
+Ingrid did it: she shares the sitting room with Wouter.
