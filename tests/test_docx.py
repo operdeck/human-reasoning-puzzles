@@ -12,9 +12,9 @@ from docx import Document
 from csp.cli import main
 from csp.docx_export import Entry, write_booklet
 from csp.puzzlefile import load_presentation
-from csp.story import clue_paragraphs, clue_texts
+from csp.story import clue_paragraphs, clue_texts, object_list
+from tests.examples import all_examples, example
 
-EXAMPLES = Path(__file__).parent.parent / "examples"
 PRRRDOKUS = ["prrrdoku1", "prrrdoku2", "prrrdoku3"]
 
 
@@ -30,7 +30,7 @@ def _text(path: Path) -> str:
 
 @pytest.mark.parametrize("name", PRRRDOKUS)
 def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
-    source = EXAMPLES / f"{name}.txt"
+    source = example(f"{name}.txt")
     out = tmp_path / f"{name}.docx"
     assert main([str(source), "--docx", str(out)]) == 0
     text = _text(out)
@@ -38,17 +38,17 @@ def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
     assert any(n.startswith("word/media/") for n in zipfile.ZipFile(out).namelist())
     assert "Oplossing" in text
     media = [n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]
-    assert len(media) == 2
+    assert len(media) == 2 + len(object_list(source.read_text()))  # puzzle, solution, objects
     assert text.index("Aanwijzingen") < text.index("Oplossing")
 
 
 def test_clue_text_override_wins():
-    source = (EXAMPLES / "prrrdoku1.txt").read_text()
+    source = (example("prrrdoku1.txt")).read_text()
     assert load_presentation(source).clue_text[5].startswith("Otto zit")
 
 
 def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
-    source = EXAMPLES / "murdoku_house.txt"
+    source = example("murdoku_house.txt")
     plain = source.read_text().split("# Booklet text")[0]
     assert not load_presentation(plain).title
     out = tmp_path / "plain.docx"
@@ -59,7 +59,7 @@ def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
 
 
 def test_missing_figure_image_falls_back_to_text(tmp_path):
-    base = (EXAMPLES / "prrrdoku1.txt").read_text()
+    base = (example("prrrdoku1.txt")).read_text()
     source = base.replace(
         "Figures:\nVladimir: de poes die iemand op schoot zoekt",
         "Figures:\nVladimir: de poes ; image=missing.png",
@@ -74,30 +74,31 @@ def test_figure_image_is_embedded(tmp_path):
 
     Image.new("RGB", (20, 20), "red").save(tmp_path / "v.png")
     source = (
-        (EXAMPLES / "prrrdoku1.txt")
+        (example("prrrdoku1.txt"))
         .read_text()
         .replace("Vladimir: de poes die iemand op schoot zoekt", "Vladimir: poes ; image=v.png")
     )
     out = tmp_path / "x.docx"
     write_docx(source, out, tmp_path)
-    assert len([n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]) == 2
+    media = [n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]
+    assert len(media) == 2 + len(object_list(source))
 
 
 def test_bad_presentation_is_rejected_and_linted():
-    bad = (EXAMPLES / "prrrdoku1.txt").read_text() + "\nFigures:\nNobody: x\n"
+    bad = (example("prrrdoku1.txt")).read_text() + "\nFigures:\nNobody: x\n"
     with pytest.raises(ValueError):
         load_presentation(bad)
 
 
 def test_human_readable_clues():
-    got = clue_texts((EXAMPLES / "food-murdoku-3.txt").read_text())
+    got = clue_texts((example("food-murdoku-3.txt")).read_text())
     assert "Okonomiyaki is in column 1." in got
     assert any("somewhere above" in clue for clue in got)
 
 
 def test_glob_makes_one_multi_puzzle_booklet(tmp_path):
     for name in PRRRDOKUS[:2]:
-        (tmp_path / f"{name}.txt").write_text((EXAMPLES / f"{name}.txt").read_text())
+        (tmp_path / f"{name}.txt").write_text((example(f"{name}.txt")).read_text())
     out = tmp_path / "all.docx"
     assert main([str(tmp_path / "prrrdoku*.txt"), "--docx", str(out)]) == 0
     text = _text(out)
@@ -111,11 +112,11 @@ def test_inline_wording_does_not_change_the_puzzle():
     from csp.puzzlefile import load_board
 
     plain = (
-        (EXAMPLES / "prrrdoku1.txt")
+        (example("prrrdoku1.txt"))
         .read_text()
         .replace(" | Otto zit precies één rij boven Tjitske.", "")
     )
-    assert load_board(plain) == load_board((EXAMPLES / "prrrdoku1.txt").read_text())
+    assert load_board(plain) == load_board((example("prrrdoku1.txt")).read_text())
 
 
 def _media(path):
@@ -125,28 +126,28 @@ def _media(path):
 def test_figures_folder_gives_thumbnails_by_name(tmp_path):
     from PIL import Image
 
-    text = (EXAMPLES / "tamagotchi-murdoku-6x6.txt").read_text()
+    text = (example("tamagotchi-murdoku-6x6.txt")).read_text()
     (tmp_path / "t.txt").write_text(text)
     folder = tmp_path / "t-figures"
     folder.mkdir()
     Image.new("RGB", (20, 20), "green").save(folder / "Mametchi.png")
     out = tmp_path / "x.docx"
     write_booklet([Entry(text, tmp_path / "t.txt")], out)
-    assert len(_media(out)) == 7  # board + six figures
+    assert len(_media(out)) > 7  # board, six figures, then the objects
 
 
 def test_icon_figures_use_builtin_icons(tmp_path):
     # Every icon= in the example is vendored, so each figure gets a thumbnail.
-    text = (EXAMPLES / "food-murdoku-1.txt").read_text()
+    text = (example("food-murdoku-1.txt")).read_text()
     out = tmp_path / "x.docx"
-    write_booklet([Entry(text, EXAMPLES / "food-murdoku-1.txt")], out)
+    write_booklet([Entry(text, example("food-murdoku-1.txt"))], out)
     figures = sum(1 for line in text.splitlines() if "icon=" in line)
     assert figures >= 4
     assert len(_media(out)) >= 1 + figures
 
 
 def test_unknown_icon_is_linted(tmp_path, capsys):
-    text = (EXAMPLES / "food-murdoku-1.txt").read_text().replace("U+1F35C", "nonsense")
+    text = (example("food-murdoku-1.txt")).read_text().replace("U+1F35C", "nonsense")
     (tmp_path / "f.txt").write_text(text)
     main([str(tmp_path / "f.txt"), "--lint"])
     assert "unknown icon nonsense" in capsys.readouterr().out
@@ -154,7 +155,7 @@ def test_unknown_icon_is_linted(tmp_path, capsys):
 
 def test_icon_that_is_not_vendored_is_linted(tmp_path, capsys):
     # A valid code point whose picture was never vendored would print as text.
-    text = (EXAMPLES / "food-murdoku-1.txt").read_text().replace("U+1F35C", "U+1F680")
+    text = (example("food-murdoku-1.txt")).read_text().replace("U+1F35C", "U+1F680")
     (tmp_path / "f.txt").write_text(text)
     main([str(tmp_path / "f.txt"), "--lint"])
     assert "unknown icon U+1F680" in capsys.readouterr().out
@@ -166,14 +167,14 @@ def test_booklet_footer_carries_copyright_notice(tmp_path):
     from csp.docx_export import COPYRIGHT_NOTICE
 
     out = tmp_path / "b.docx"
-    assert main([str(EXAMPLES / "prrrdoku1.txt"), "--docx", str(out)]) == 0
+    assert main([str(example("prrrdoku1.txt")), "--docx", str(out)]) == 0
     assert COPYRIGHT_NOTICE in Document(str(out)).sections[0].footer.paragraphs[0].text
 
 
 @pytest.mark.parametrize("name", ["sudoku_easy", "queens_4x4", "tents_4x4", "calcudoku_4x4_easy"])
 def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     out = tmp_path / "b.docx"
-    assert main([str(EXAMPLES / f"{name}.txt"), "--docx", str(out)]) == 0
+    assert main([str(example(f"{name}.txt")), "--docx", str(out)]) == 0
     document = Document(str(out))
     headings = [p.text for p in document.paragraphs if p.style.name == "Heading 1"]
     assert len(headings) == 2 and headings[1].startswith("Solution")
@@ -183,14 +184,14 @@ def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
 
 
 def _read(name):
-    return (EXAMPLES / f"{name}.txt").read_text()
+    return (example(f"{name}.txt")).read_text()
 
 
 def test_clues_are_grouped_per_person():
     paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
-    makaak = next(p for p in paragraphs if p.startswith("Makaak"))
-    assert makaak.startswith("Makaak is in de Bergen en zit niet naast de ")
-    assert sum(p.startswith("Giraffe") for p in paragraphs) == 1
+    makaak = next(p for p in paragraphs if p.startswith("De makaak"))
+    assert makaak == "De makaak is in de bergen en zit niet naast het gras."
+    assert sum(p.startswith("De giraffe") for p in paragraphs) == 1
 
 
 def test_exactly_one_same_region_reads_as_either_or():
@@ -229,14 +230,17 @@ def test_zoo_roles_are_not_called_roles():
     from csp.story import explain
 
     text = explain(_read("zoo-murdoku-1"), numbered=False)
-    assert "de rol" not in text and "is geen aap" in text
+    assert "de rol" not in text
+    # The figure list already says which animals are apes; the booklet does not repeat it.
+    assert "is geen aap" not in text
+    assert "is geen aap" in explain(_read("zoo-murdoku-1"))
 
 
 def test_no_example_has_an_implied_clue():
     from csp.murdoku import implied_clues
     from csp.puzzlefile import detect, load_board
 
-    for path in sorted(EXAMPLES.glob("*.txt")):
+    for path in all_examples():
         text = path.read_text()
         if detect(text) == "murdoku":
             assert not implied_clues(load_board(text)[1]), path.name
@@ -259,9 +263,9 @@ def test_zoo_puzzles_have_no_one_person_role():
 
 
 def test_single_holder_role_is_linted():
-    text = _read("zoo-murdoku-1").replace("RoleEligibility:\n", "RoleEligibility:\nsolo: Tijger\n")
+    text = _read("zoo-murdoku-1").replace("RoleEligibility:\n", "RoleEligibility:\nsolo: Leeuw\n")
     text = text.replace("Roles:\n", "Roles:\nsolo: 1\n")
-    assert "role solo can only be held by Tijger" in _lint_output(text)
+    assert "role solo can only be held by Leeuw" in _lint_output(text)
 
 
 def test_furthest_clue_names_nobody_to_compare_with():
@@ -285,7 +289,7 @@ def test_board_notes_explain_marks_and_attributes_and_roles_are_listed_apart():
 
 def test_booklet_lists_roles_beside_the_board(tmp_path):
     out = tmp_path / "r.docx"
-    assert main([str(EXAMPLES / "murdoku_composition.txt"), "--docx", str(out)]) == 0
+    assert main([str(example("murdoku_composition.txt")), "--docx", str(out)]) == 0
     cell = Document(str(out)).tables[0].rows[0].cells[1]
     texts = [p.text for p in cell.paragraphs]
     assert "The attributes" in texts
@@ -296,7 +300,7 @@ def test_booklet_lists_roles_beside_the_board(tmp_path):
 
 def test_booklet_numbers_the_clues_and_lists_the_figures_beside_the_board(tmp_path):
     out = tmp_path / "b.docx"
-    assert main([str(EXAMPLES / "prrrdoku1.txt"), "--docx", str(out)]) == 0
+    assert main([str(example("prrrdoku1.txt")), "--docx", str(out)]) == 0
     document = Document(str(out))
     assert next(p.text for p in document.paragraphs if p.text[:2] == "1.").startswith("1.\t")
     assert len(document.tables) == 1
@@ -311,24 +315,54 @@ def test_board_notes_name_the_areas_of_a_tag():
     assert "The noble areas are Maras house and Blue hall." in notes
 
 
-def test_booklet_is_alphabetical_and_has_a_contents_page(tmp_path):
+def test_booklet_is_numbered_by_category_and_has_a_contents_page(tmp_path):
     out = tmp_path / "t.docx"
-    names = [str(EXAMPLES / "zoo-murdoku-1.txt"), str(EXAMPLES / "food-murdoku-1.txt")]
+    names = [str(example("food-murdoku-1.txt")), str(example("zoo-murdoku-1.txt"))]
     assert main([*names, "--docx", str(out)]) == 0
     document = Document(str(out))
     texts = [p.text for p in document.paragraphs]
-    assert "Contents" in texts
-    lines = [t.split("\t")[0] for t in texts if "\t" in t and not t[0].isdigit()]
-    assert [line.split(":")[0] for line in lines] == [
-        "Food Murdoku 5x5",
-        "Dierentuin-murdoku 5x5",
-        "Solutions",
+    assert texts[0] == "Inhoud"  # the first puzzle, Dutch, sets the language
+    lines = [t.split("\t")[0] for t in texts if "\t" in t]
+    assert [line.split(":")[0] for line in lines[:3]] == [
+        "1. Dierentuin-murdoku 5x5",
+        "2. Food Murdoku 5x5",
+        "Oplossingen",
     ]
+    assert "Murdoku \u00b7 Japanese food" in texts
+    assert any(text.startswith("Solution 2") for text in texts)
     xml = document.element.xml
     assert 'w:anchor="puzzle0"' in xml and 'w:name="puzzle1"' in xml
 
 
 def test_single_puzzle_booklet_has_no_contents(tmp_path):
     out = tmp_path / "s.docx"
-    assert main([str(EXAMPLES / "prrrdoku1.txt"), "--docx", str(out)]) == 0
+    assert main([str(example("prrrdoku1.txt")), "--docx", str(out)]) == 0
     assert "Contents" not in [p.text for p in Document(str(out)).paragraphs]
+
+
+def test_booklet_solutions_have_no_empty_reasons_or_clue_numbers():
+    import re
+
+    from csp.story import explain
+
+    for name in ("menu-murdoku-3", "zoo-murdoku-1", "food-murdoku-2", "prrrdoku1"):
+        text = explain(_read(name), numbered=False)
+        assert ", ." not in text and ": ." not in text, name
+        assert not re.search(r"\b(clue|aanwijzing) \d", text), name
+        assert not re.search(r"\(via [\d, en]+\)", text), name
+
+
+def test_repeated_premises_are_merged():
+    import itertools
+    import re
+
+    from csp.story import explain
+
+    for name in ("menu-murdoku-3", "zoo-murdoku-1", "zoo-murdoku-3", "prrrdoku2"):
+        text = explain(_read(name), numbered=False)
+        premises = [
+            re.split(", (?:dus|so) ", s)[0] if re.search(", (?:dus|so) ", s) else None
+            for s in re.split(r"(?<=\.) ", text)
+        ]
+        repeats = [a for a, b in itertools.pairwise(premises) if a is not None and a == b]
+        assert not repeats, (name, repeats)

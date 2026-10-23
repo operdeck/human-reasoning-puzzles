@@ -1,0 +1,63 @@
+# Wie doet het met wie? (4x4, three regions)
+#
+# A first, tiny Murdoku to show how the puzzle works, in Dutch.
+#
+# Four people, one per row and column. Ingrid, Joost and Lotte each have a
+# clue; Wouter takes the last free square. Wouter is alone with the one he
+# is doing it with: the one other person in his room.
+#
+# Solution: Joost r1c1, Wouter r2c3, Ingrid r3c4, Lotte r4c2, so Wouter is
+# doing it with Ingrid (she is the only other person in the woonkamer).
+
+Size: 4
+Language: nl
+
+Words:
+terras: op het terras
+bed: het bed
+
+Regions:
+t: terras #CBE6B9
+l: logeerkamer #F4CBC3
+w: woonkamer #FADFB5
+
+Grid:
+t t t t
+t l w w
+l l w w
+l l w w
+
+Objects:
+boom: blocking r1c2
+struik: blocking r1c3
+tafel: blocking r2c4
+kast: blocking r4c4
+stoel: standable r3c1
+stoel: standable r3c4
+stoel: standable r4c3
+bed: standable r4c1 r4c2
+
+People:
+Ingrid
+Joost
+Lotte
+Wouter
+
+Clues:
+on Ingrid stoel
+next_to Joost boom
+on Lotte bed
+
+Title:
+Murdoku: Wie doet het met wie?
+
+Intro:
+Vier mensen zijn in een klein huis. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Voorwerpen blokkeren hun vakje, behalve een stoel of een bed: daar kun je op staan.
+Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
+
+Question:
+Met wie doet Wouter het?
+
+Reveal:
+Met Ingrid: zij is de enige die met Wouter in de woonkamer is.

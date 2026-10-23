@@ -1,14 +1,12 @@
-from pathlib import Path
-
 import pytest
 
 from csp import bruteforce, cli, queens, report
 from csp.bruteforce import queens as brute
 from csp.core import Kind, Solver
 from csp.queens import DOG_MARK, PUPPY_MARK, QUEEN_MARK, Cell, compile_puzzle, render
+from tests.examples import example
 
-EXAMPLES = Path(__file__).parent.parent / "examples"
-EXAMPLE = EXAMPLES / "queens_4x4.txt"
+EXAMPLE = example("queens_4x4.txt")
 
 EXPECTED = {
     "a": Cell(0, 1),
@@ -74,7 +72,7 @@ def test_zones_may_differ_in_size_but_must_be_connected():
 
 
 def test_the_first_deduction_places_a_one_cell_zone():
-    text = (EXAMPLES / "dogdoku_5x5.txt").read_text()
+    text = (example("dogdoku_5x5.txt")).read_text()
     puzzle = queens.parse(text)
     lone = {region for region, cells in puzzle.cells_by_region.items() if len(cells) == 1}
     assert lone
@@ -115,7 +113,7 @@ def test_dogdoku_examples_are_unique_and_get_harder():
     ladder = ["single", "subsumption", "cover2"]
     grades = []
     for name in ("dogdoku_5x5", "dogdoku_7x7", "dogdoku_9x9"):
-        text = (EXAMPLES / f"{name}.txt").read_text()
+        text = (example(f"{name}.txt")).read_text()
         puzzle = queens.parse(text)
         assert len(brute.solutions(text)) == 1
         assert len(set(puzzle.region_names.values())) == puzzle.size

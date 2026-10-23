@@ -1,0 +1,76 @@
+# Tamagotchi Murdoku - "Where is the devil?"  (6x6)
+#
+# Original puzzle made for this repo. Five friends and the devil Akumatchi wander
+# Tamagotchi Town. Akumatchi is placed last and is alone with one friend: who?
+
+Size: 6
+
+Regions:
+a: garden #CBE6B9
+b: school #FADFB5
+c: fountain_square #F4CBC3
+d: library #E0D2F2
+e: arcade #F3EDA2
+
+Grid:
+a a a b b b
+a a a b b b
+a a c c b b
+d d c c e e
+d d d e e e
+d d d e e e
+
+Objects:
+sakura: blocking r1c1
+fountain: blocking r3c3
+arcade: blocking r5c5
+chair: standable r2c5
+carpet: standable r5c1 r5c2
+
+People:
+Mametchi
+Kuchipatchi
+Memetchi
+Lovelitchi
+Masktchi
+Akumatchi
+
+Attributes:
+friend: Mametchi Kuchipatchi Memetchi Lovelitchi Masktchi
+
+# The question - where is the devil? - is not a clue. Akumatchi has no clues of
+# his own except that he ends up alone with exactly one friend; the rest pin him down.
+Words:
+target.attribute: a {name}
+
+Clues:
+next_to Masktchi sakura
+adjacent_regions Kuchipatchi Masktchi
+in_corner Memetchi
+adjacent_regions Kuchipatchi Lovelitchi
+left_of Memetchi Lovelitchi
+not_next_to Kuchipatchi fountain
+apart Memetchi Lovelitchi
+only_on Mametchi chair
+
+# Booklet text for --docx (optional).
+Title:
+Tamagotchi Murdoku 6x6: Where is the devil?
+
+Intro:
+Five friends and the devil Akumatchi wander through Tamagotchi Town. Akumatchi is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; standable objects can.
+
+Figures:
+Mametchi: ; icon=U+1F423
+Kuchipatchi: ; icon=U+1F425
+Memetchi: ; icon=U+1F338
+Lovelitchi: ; icon=U+1F496
+Masktchi: ; icon=U+1F3AD
+Akumatchi: the devil ; icon=U+1F47F
+
+Question:
+Akumatchi is placed last and is alone with one friend. Which friend?
+
+Reveal:
+Akumatchi hides in the library with Memetchi.

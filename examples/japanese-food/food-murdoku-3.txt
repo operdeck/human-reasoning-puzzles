@@ -1,0 +1,91 @@
+# Food Murdoku 7x7 - "The last bowl" (needs what-if)
+#
+# Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
+# deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
+#
+# Decor: the big bento (2 cells) is standable and does not count for Jos.
+# Solution: Tonkatsu r1c3, Yakitori r2c2, Tempura r3c7, Okonomiyaki r4c1, Gyoza r5c5, Sushi r6c6, Jos r7c4.
+# Jos shares Nagoya with Gyoza, the food he is about to eat.
+#
+Size: 7
+Language: en
+
+Words:
+fukuoka: in Fukuoka
+sapporo: in Sapporo
+sendai: in Sendai
+tokyo: in Tokyo
+nagoya: in Nagoya
+target.attribute: a {name}
+
+Regions:
+fukuoka: fukuoka #CBE6B9
+sapporo: sapporo #FADFB5
+sendai: sendai #BEE5D6
+tokyo: tokyo #D8D2F0
+nagoya: nagoya #C4DCF2
+
+Grid:
+fukuoka fukuoka fukuoka nagoya tokyo tokyo tokyo
+fukuoka fukuoka nagoya nagoya tokyo tokyo sendai
+fukuoka fukuoka nagoya nagoya tokyo sendai sendai
+fukuoka fukuoka nagoya nagoya tokyo sendai sendai
+fukuoka fukuoka nagoya nagoya nagoya sendai sendai
+sapporo sapporo nagoya nagoya nagoya sendai sendai
+sapporo sapporo sapporo nagoya sendai sendai sendai
+
+Objects:
+tatami: standable r1c1 r1c2
+plate: blocking r6c7
+plate: blocking r3c1
+castle: blocking r3c3 r4c3
+tatami: standable r4c2 r5c2
+
+Attributes:
+food: Tonkatsu Yakitori Tempura Okonomiyaki Gyoza Sushi
+
+People:
+Tonkatsu
+Yakitori
+Tempura
+Okonomiyaki
+Gyoza
+Sushi
+Jos
+
+Rules:
+alone_with Jos attribute:food
+
+Clues:
+at_least Gyoza Okonomiyaki 5
+in_row Tonkatsu 1
+in_column Okonomiyaki 1
+above Gyoza Sushi
+at_least Sushi Yakitori 8
+different_region Gyoza Tempura
+within Okonomiyaki Yakitori 3
+in_row Tempura 3
+in_row Sushi 6
+
+# Booklet text for --docx (optional).
+Title:
+Food Murdoku 7x7: The last bowl
+
+Intro:
+Japanese dishes are spread over the cities of Japan. Jos is hungry and is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used.
+
+Figures:
+Tonkatsu: ; icon=U+1F356
+Yakitori: ; icon=U+1F362
+Tempura: ; icon=U+1F364
+Okonomiyaki: ; icon=U+1F95E
+Gyoza: ; icon=U+1F95F
+Sushi: ; icon=U+1F363
+Jos: the hungry eater ; icon=U+1F9D1
+
+Question:
+What is Jos going to eat today?
+
+Reveal:
+Jos shares Nagoya with the gyoza: that is his meal today.

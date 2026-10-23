@@ -1,0 +1,92 @@
+# Menu-murdoku 1 (makkelijk, grade relations)
+#
+# Gerechten als personages, dagen van de week als gebieden, bloemen op de
+# hoekpunten van de vakjes (PointObjects:). Hoogstens één zetmeelproduct per dag
+# (rol met different_regions). Vla heeft geen eigen aanwijzingen: hij deelt zijn
+# dag met precies twee andere gerechten (alone_with Vla 2) en wordt als laatste gevonden.
+#
+# Oplossing: Aardappel r3c5, Rijst r6c2, Pasta r1c3, Broccoli r5c1, Vis r2c6, Vla r4c4.
+#
+Size: 6
+Language: nl
+
+Words:
+maandag: op maandag
+dinsdag: op dinsdag
+woensdag: op woensdag
+target.attribute: een {name}
+role_has: {who} is {role}
+role_not: {who} is geen {role}
+clue.role_apart: {a} en {b} zijn allebei {role}, en er staat nooit meer dan één {role} op dezelfde dag
+
+Regions:
+maandag: maandag #F3C8C0
+dinsdag: dinsdag #CBE6B9
+woensdag: woensdag #C4DCF2
+
+Grid:
+maandag maandag maandag dinsdag dinsdag dinsdag
+maandag maandag maandag dinsdag dinsdag dinsdag
+maandag maandag woensdag woensdag dinsdag dinsdag
+maandag woensdag woensdag woensdag woensdag dinsdag
+woensdag woensdag woensdag woensdag dinsdag dinsdag
+woensdag woensdag woensdag dinsdag dinsdag dinsdag
+
+PointObjects:
+zonnebloem: r0.5c2.5
+zonnebloem: r4.5c2.5
+zonnebloem: r6.5c4.5
+
+Attributes:
+zetmeel: Aardappel Rijst Pasta
+groente: Broccoli
+eiwit: Vis
+
+Roles:
+zetmeel: 3 different_regions
+
+RoleEligibility:
+zetmeel: attribute:zetmeel
+
+People:
+Aardappel
+Rijst
+Pasta
+Broccoli
+Vis
+Vla
+
+Rules:
+alone_with Vla 2
+
+Clues:
+next_to Pasta zonnebloem
+left_of Broccoli Pasta 2
+in_column Aardappel 5
+above Vis Aardappel
+at_least Rijst Vis 7
+same_region Broccoli Rijst
+in_row Broccoli 5
+
+# Booklet text for --docx (optional).
+Title:
+Menu-murdoku 1: Vla op het menu
+
+Intro:
+Elk gerecht staat op één vakje, met hoogstens één gerecht per rij en per kolom. Elk gebied is een dag van de week: wat in hetzelfde gebied staat, eten we op dezelfde dag. Op de hoekpunten van sommige vakjes staan zonnebloemen; een gerecht staat naast een bloem als zijn vakje die hoek raakt.
+Drie dagen, drie menu's. Op elke dag staat precies één zetmeelproduct: aardappel, rijst of pasta.
+De vla is het toetje. Over de vla zijn geen aanwijzingen, behalve deze: de vla zit in een menu met precies twee andere soorten voedsel, dus op een dag met precies twee andere gerechten.
+
+Figures:
+Aardappel: gekookt of gebakken, een zetmeelproduct ; icon=U+1F954
+Rijst: witte of zilvervliesrijst, een zetmeelproduct ; icon=U+1F35A
+Pasta: spaghetti of macaroni, een zetmeelproduct ; icon=U+1F35D
+Broccoli: een groente ; icon=U+1F966
+Vis: een eiwitbron ; icon=U+1F41F
+Vla: het toetje, zonder eigen aanwijzingen ; icon=U+1F36E
+
+Question:
+Op welke dag eten we vla als toetje?
+
+Reveal:
+We eten vla op woensdag, als toetje na rijst en broccoli.

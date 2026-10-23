@@ -25,12 +25,15 @@ export interface PeerGroup {
 export interface Named {
   name: string;
   text: string;
+  svg?: string;
 }
 
 export interface Bundle {
   schema: number;
   id: string;
   family: string;
+  section?: string;
+  number?: number;
   title: string;
   grade: string;
   static: string;
@@ -54,6 +57,7 @@ export interface Bundle {
   question: string;
   attributes?: Named[];
   roles?: Named[];
+  objects?: Named[];
 }
 
 export interface State {

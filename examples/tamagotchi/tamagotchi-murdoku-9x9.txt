@@ -1,0 +1,100 @@
+# Tamagotchi Murdoku - "Where is the devil?" (medium)  (9x9)
+#
+# Original puzzle made for this repo. A stream splits Tamagotchi Town in two;
+# the playful bridge is the only dry way across. Akumatchi is placed last and is
+# alone with one friend: who?
+
+Size: 9
+
+Regions:
+a: garden #CBE6B9
+b: school #F3EDA2
+c: cafe #F4CBC3
+d: library #E0D2F2
+e: market #F8D0A0
+f: playground #BEE5D6
+w: stream #A9D6F0
+
+Grid:
+a a a w b b b b b
+a a a w b b b b b
+a a a w b b b b b
+c c c w w b b b b
+c c c c w d d d d
+c c c c w d d d d
+e e e e w d d d d
+e e e e w f f f f
+e e e e w f f f f
+
+Objects:
+sakura: blocking r1c1
+backpack: blocking r3c8
+cake: blocking r5c2
+books: blocking r6c7
+basket: blocking r8c2
+slide: blocking r9c9
+bench: standable r2c3
+chair: standable r2c8
+tatami: standable r6c1 r6c2
+bridge: standable r7c4 r7c5 r7c6
+carpet: standable r9c3
+
+People:
+Mametchi
+Kuchipatchi
+Memetchi
+Lovelitchi
+Tarakotchi
+Masktchi
+Gozarutchi
+Violetchi
+Akumatchi
+
+Attributes:
+friend: Mametchi Kuchipatchi Memetchi Lovelitchi Tarakotchi Masktchi Gozarutchi Violetchi
+
+# The question - where is the devil? - is not a clue. Akumatchi has no clues of
+# his own except that he ends up alone with exactly one friend; the rest pin him down.
+Words:
+target.attribute: a {name}
+
+Clues:
+within Gozarutchi Tarakotchi 5
+adjacent_regions Tarakotchi Masktchi
+within Masktchi Tarakotchi 4
+only_on Kuchipatchi bridge
+only_on Lovelitchi bench
+within Memetchi Lovelitchi 10
+left_of Violetchi Mametchi
+left_of Kuchipatchi Mametchi 1
+adjacent_regions Kuchipatchi Gozarutchi
+adjacent_regions Mametchi Tarakotchi
+within Violetchi Mametchi 7
+apart Mametchi Violetchi
+in_region Kuchipatchi market
+above Kuchipatchi Memetchi
+
+# Booklet text for --docx (optional).
+Title:
+Tamagotchi Murdoku 9x9: The devil by the stream
+
+Intro:
+A stream splits Tamagotchi Town in two; the bridge is the only dry way across. Eight friends and the devil Akumatchi are out and about, and Akumatchi is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; standable objects can.
+
+Figures:
+Mametchi: ; icon=U+1F423
+Kuchipatchi: ; icon=U+1F425
+Memetchi: ; icon=U+1F338
+Lovelitchi: ; icon=U+1F496
+Tarakotchi: ; icon=U+1F913
+Masktchi: ; icon=U+1F3AD
+Gozarutchi: ; icon=U+1F977
+Violetchi: ; icon=U+1F49C
+Akumatchi: the devil ; icon=U+1F47F
+
+Question:
+Akumatchi is placed last and is alone with one friend. Which friend?
+
+Reveal:
+Akumatchi waits in the playground with Memetchi.

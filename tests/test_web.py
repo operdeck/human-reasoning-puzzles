@@ -9,14 +9,13 @@ import pytest
 pytest.importorskip("fontTools")
 
 from csp import cli, murdoku, story, svg
-
-EXAMPLES = Path(__file__).parent.parent / "examples"
+from tests.examples import EXAMPLES, example, played_examples
 
 
 @pytest.fixture(scope="module")
 def exported(tmp_path_factory):
     out = tmp_path_factory.mktemp("site")
-    assert cli.main([str(EXAMPLES / "*.txt"), "--export", str(out)]) == 0
+    assert cli.main([str(EXAMPLES / "**" / "*.txt"), "--export", str(out)]) == 0
     return out
 
 
@@ -26,7 +25,7 @@ def _bundle(out: Path, name: str) -> dict:
 
 def test_every_example_is_exported_and_indexed(exported):
     index = json.loads((exported / "index.json").read_text())
-    names = sorted(path.stem for path in EXAMPLES.glob("*.txt"))
+    names = sorted(path.stem for path in played_examples())
     assert sorted(entry["id"] for entry in index["puzzles"]) == names
     assert "rights reserved" in index["license"]
     for name in names:
@@ -68,11 +67,19 @@ def test_murdoku_bundle_has_everything_to_play(exported):
         "r3c4": "Ingrid",
         "r4c2": "Lotte",
     }
-    assert bundle["clues"][0] == "Ingrid is on a chair."
+    assert bundle["clues"][0] == "Ingrid zit op een stoel."
     assert bundle["question"]
     assert bundle["rules"]
     names = [condition["name"] for condition in bundle["conditions"]]
-    assert names == ["on", "next to"]
+    assert names == ["op", "naast"]
+
+
+def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
+    bundle = _bundle(exported, "zoo-murdoku-1")
+    assert bundle["headings"]["objects"] == "De voorwerpen"
+    objects = bundle["objects"]
+    assert objects and all(item["svg"].startswith("<svg") for item in objects)
+    assert {item["text"] for item in objects} <= {"hier kun je op staan", "hier kan niemand staan"}
 
 
 def test_dutch_murdoku_is_worded_in_dutch(exported):
@@ -93,7 +100,7 @@ def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):
     broken = tmp_path / "broken.txt"
     broken.write_text("this is not a puzzle\n")
     assert (
-        cli.main([str(EXAMPLES / "tents_4x4.txt"), str(broken), "--export", str(tmp_path / "site")])
+        cli.main([str(example("tents_4x4.txt")), str(broken), "--export", str(tmp_path / "site")])
         == 1
     )
     assert "broken.txt" in capsys.readouterr().err
@@ -115,7 +122,7 @@ def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
 
 
 def test_conditions_only_list_the_kinds_a_puzzle_uses():
-    text = (EXAMPLES / "murdoku_intro.txt").read_text()
+    text = (example("murdoku_intro.txt")).read_text()
     used = {kind for kind, _ in re.findall(r"^\s*(\w+)\s+(.*)$", text, re.M)}
     assert len(story.condition_list(text)) <= len(used)
 
@@ -157,8 +164,18 @@ def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
 def test_export_refuses_two_puzzles_with_the_same_name(tmp_path, capsys):
     other = tmp_path / "copy"
     other.mkdir()
-    (other / "tents_4x4.txt").write_text((EXAMPLES / "tents_4x4.txt").read_text())
-    files = [str(EXAMPLES / "tents_4x4.txt"), str(other / "tents_4x4.txt")]
+    (other / "tents_4x4.txt").write_text((example("tents_4x4.txt")).read_text())
+    files = [str(example("tents_4x4.txt")), str(other / "tents_4x4.txt")]
     assert cli.main([*files, "--export", str(tmp_path / "site")]) == 2
     assert "tents_4x4" in capsys.readouterr().err
     assert not (tmp_path / "site").exists()
+
+
+def test_index_is_numbered_in_reading_order_with_category_sections(exported):
+    puzzles = json.loads((exported / "index.json").read_text())["puzzles"]
+    assert [entry["number"] for entry in puzzles] == list(range(1, len(puzzles) + 1))
+    assert puzzles[0]["section"] == "Murdoku \u00b7 Demo"
+    sections = list(dict.fromkeys(entry["section"] for entry in puzzles))
+    assert "Murdoku \u00b7 Japanese food" in sections
+    assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
+    assert _bundle(exported, "food-murdoku-1")["section"] == "Murdoku \u00b7 Japanese food"

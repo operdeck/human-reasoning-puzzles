@@ -1,0 +1,98 @@
+# Dierentuin-murdoku 5x5 - "Voedertijd" (relations)
+#
+# Dieren als personages, verblijven als gebieden. De leeuw is altijd alleen in zijn
+# verblijf; elke aap deelt zijn verblijf altijd met iemand (Rules:).
+# Doel: vind de verzorger. Hij staat alleen met precies een dier en wordt gebeten.
+#
+# Oplossing: Gibbon r3c3, Giraffe r4c2, Makaak r2c5, Leeuw r1c4, Verzorger r5c1.
+# De verzorger deelt de woestijn met Giraffe, dat hem bijt.
+#
+Size: 5
+Language: nl
+
+Words:
+savanne: in de savanne
+bergen: in de bergen
+gras: het gras
+moeras: in het moeras
+woestijn: in de woestijn
+target.attribute: een {name}
+role_has: {who} is een {role}
+role_not: {who} is geen {role}
+Leeuw: de leeuw
+Makaak: de makaak
+Gibbon: de gibbon
+Giraffe: de giraffe
+Verzorger: de verzorger
+
+Regions:
+savanne: savanne #E8CF96
+bergen: bergen #DCDEE2
+moeras: moeras #C8C29A
+woestijn: woestijn #FAEDB8
+
+Grid:
+savanne savanne savanne savanne savanne
+bergen bergen bergen bergen bergen
+bergen bergen bergen moeras moeras
+woestijn woestijn bergen moeras moeras
+woestijn woestijn woestijn moeras moeras
+
+Objects:
+acacia: blocking r1c2
+rots: blocking r2c4
+waterval: blocking r4c3
+gras: standable r2c2 r3c2
+
+Attributes:
+aap: Makaak Gibbon
+dier: Leeuw Makaak Gibbon Giraffe
+
+Roles:
+aap: 2
+
+RoleEligibility:
+aap: attribute:aap
+
+People:
+Leeuw
+Makaak
+Gibbon
+Giraffe
+Verzorger
+
+Rules:
+alone Leeuw
+role_occupant aap not_alone
+alone_with Verzorger attribute:dier
+
+Clues:
+in_region Makaak bergen
+above Gibbon Giraffe
+in_column Gibbon 3
+in_region Leeuw savanne
+not_next_to Makaak gras
+left_of Giraffe Gibbon
+within Gibbon Giraffe 2
+
+# Booklet text for --docx (optional).
+Title:
+Dierentuin-murdoku 5x5: Voedertijd
+
+Intro:
+Dieren zijn de personages en de verblijven zijn de gebieden. Zet iedereen op een vrij vakje; geen twee figuren staan in dezelfde rij of kolom.
+De leeuw is altijd alleen in zijn verblijf. Elke aap deelt zijn verblijf altijd met iemand.
+De verzorger wordt als laatste geplaatst en staat alleen met precies één dier.
+
+Figures:
+Leeuw: altijd alleen in zijn verblijf ; icon=U+1F981
+Makaak: een aap, nooit alleen ; icon=U+1F412
+Gibbon: een aap, nooit alleen ; icon=U+1F9A7
+Giraffe: ; icon=U+1F992
+Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
+
+Question:
+De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?
+
+Reveal:
+De verzorger deelt de woestijn met de giraffe, die hem bijt.
