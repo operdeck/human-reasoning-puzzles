@@ -19,6 +19,7 @@ import {
   type Named,
   type PaletteItem,
   type State,
+  type Verdict,
 } from "./game";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -70,6 +71,47 @@ interface Box {
 }
 
 /** One puzzle: the board from the export, an overlay for the player's moves, and the panel. */
+export function verdictText(verdict: Verdict, language: string, reveal?: string): string {
+  const nl = language === "nl";
+  if (verdict.status === "solved") {
+    const story = reveal?.trim() || (nl ? "Alles staat op de goede plek." : "Everything is in the right place.");
+    return `${nl ? "Opgelost!" : "Solved!"} ${story}`;
+  }
+  if (verdict.status === "wrong") {
+    const n = verdict.wrong;
+    if (nl) return `Nog niet goed: ${n} ${n === 1 ? "stuk staat" : "stukken staan"} op de verkeerde plek.`;
+    return `Not right: ${n} piece${n === 1 ? " is" : "s are"} in the wrong place.`;
+  }
+  const m = verdict.missing;
+  return nl ? `Nog geen fouten; nog ${m} te plaatsen.` : `No mistakes so far; ${m} still to place.`;
+}
+
+const BALLOON_COLOURS = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#e84393"];
+
+/** Let a handful of balloons float up over the page; skipped when the user prefers less motion. */
+export function celebrate(count = 18): void {
+  if (typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  document.querySelector(".balloons")?.remove();
+  const layer = el("div", { className: "balloons" });
+  layer.setAttribute("aria-hidden", "true");
+  let longest = 0;
+  for (let i = 0; i < count; i++) {
+    const balloon = el("span", { className: "balloon" });
+    const duration = 4 + Math.random() * 3;
+    const delay = Math.random() * 1.5;
+    longest = Math.max(longest, duration + delay);
+    balloon.style.left = `${Math.random() * 92}%`;
+    balloon.style.setProperty("--colour", BALLOON_COLOURS[i % BALLOON_COLOURS.length]);
+    balloon.style.setProperty("--sway", `${Math.round(Math.random() * 60 - 30)}px`);
+    balloon.style.animationDuration = `${duration}s`;
+    balloon.style.animationDelay = `${delay}s`;
+    balloon.style.transform = `scale(${0.7 + Math.random() * 0.6})`;
+    layer.append(balloon);
+  }
+  document.body.append(layer);
+  window.setTimeout(() => layer.remove(), longest * 1000 + 200);
+}
+
 export class PuzzleView {
   private history: History;
   private working: State | null = null;
@@ -291,10 +333,8 @@ export class PuzzleView {
   private showVerdict(): void {
     const verdict = check(this.bundle, this.state);
     this.verdict.className = `verdict ${verdict.status}`;
-    if (verdict.status === "solved") this.verdict.textContent = "Solved! Everything is in the right place.";
-    else if (verdict.status === "wrong")
-      this.verdict.textContent = `Not right: ${verdict.wrong} piece${verdict.wrong === 1 ? " is" : "s are"} in the wrong place.`;
-    else this.verdict.textContent = `No mistakes so far; ${verdict.missing} still to place.`;
+    this.verdict.textContent = verdictText(verdict, this.bundle.language, this.bundle.reveal);
+    if (verdict.status === "solved") celebrate();
   }
 
   // --- state changes -------------------------------------------------------

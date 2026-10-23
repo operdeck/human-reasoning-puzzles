@@ -108,4 +108,4 @@ Question:
 Met wie doet Wouter het?
 
 Reveal:
-Met Hanneke: zij is de enige die met Wouter in de slaapkamer is, en ze draagt een badjas.
+Wouter doet het met Hanneke: zij is de enige die met hem in de slaapkamer is, en ze draagt een badjas.
