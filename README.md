@@ -2,6 +2,8 @@
 
 **An explainable constraint solver for many kinds of logic puzzles.**
 
+[![Play the puzzles](https://img.shields.io/badge/%E2%96%B6%20Play%20the%20puzzles-online-2ea44f?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/)
+
 Murdoku, Sudoku, Calcudoku/KenKen, Futoshiki, Queens-style / DogDoku, Tectonic/Suguru, Star Battle, Zebra logic grids, binary puzzles, and count-based grids all compile to one generic constraint engine.
 
 ## Quick start
@@ -97,7 +99,7 @@ Each cell links to a representative example. The image shows the puzzle or its s
 
 ## Play in the browser
 
-`web/` is a small TypeScript + Vite player for every example, published to GitHub Pages
+`web/` is a small TypeScript + Vite player for every example, published to [GitHub Pages](https://operdeck.github.io/human-reasoning-puzzles/)
 by `.github/workflows/pages.yml` on each push to `main` (repository Settings → Pages →
 Source: GitHub Actions). Python stays the single source of truth: the player knows no
 puzzle family, it only reads the bundles from `--export`. Locally (Node 22.12 or later):
