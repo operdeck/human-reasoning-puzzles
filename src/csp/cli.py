@@ -19,6 +19,7 @@ from . import (
     binairo,
     bruteforce,
     calcudoku,
+    collection,
     futoshiki,
     icons,
     kakurasu,
@@ -357,10 +358,15 @@ def _booklet(files: list[Path], docx: Any) -> int:
     from . import docx_export
 
     entries = []
-    for file in sorted(set(files), key=lambda path: (path.name.casefold(), str(path))):
-        text = file.read_text()
+    texts = {file: file.read_text() for file in set(files)}
+    try:
+        listing = collection.arrange({file: detect(text) for file, text in texts.items()})
+    except ValueError as exc:
+        print(f"could not read a puzzle: {exc}", file=sys.stderr)
+        return 2
+    for listed in listing:
+        file, kind, text = listed.path, listed.kind, texts[listed.path]
         try:
-            kind = detect(text)
             model = load(text, kind).model
         except ValueError as exc:
             print(f"could not read {file.name}: {exc}", file=sys.stderr)
@@ -376,7 +382,15 @@ def _booklet(files: list[Path], docx: Any) -> int:
                 roles = murdoku.role_statuses(load_board(text)[0], model)
         else:
             print(f"warning: {file.name} is not solved by the rules; solution page omitted")
-        entry = docx_export.Entry(text, file, placed, roles, kind)
+        entry = docx_export.Entry(
+            text,
+            file,
+            placed,
+            roles,
+            kind,
+            number=listed.number if len(listing) > 1 else 0,
+            section=listed.section if len(listing) > 1 else "",
+        )
         if kind != "murdoku":
             entry = dataclasses.replace(
                 entry,
@@ -403,10 +417,17 @@ def _export(files: list[Path], out: Path) -> int:
     out.mkdir(parents=True, exist_ok=True)
     index = []
     failed = []
-    for file in files:
-        text = file.read_text(encoding="utf-8")
+    texts = {file: file.read_text(encoding="utf-8") for file in files}
+    kinds = {}
+    for file, text in texts.items():
         try:
-            kind = detect(text)
+            kinds[file] = detect(text)
+        except ValueError as exc:
+            print(f"could not export {file.name}: {exc}", file=sys.stderr)
+            failed.append(file.name)
+    for listed in collection.arrange(kinds):
+        file, kind, text = listed.path, listed.kind, texts[listed.path]
+        try:
             model = load(text, kind).model
             fired = _Fired()
             result = Solver(model.clone()).solve(on_step=fired.append_step)
@@ -421,6 +442,8 @@ def _export(files: list[Path], out: Path) -> int:
                 result.assignment,
                 picture,
                 report.grade(rule for rule, _ in fired.items),
+                number=listed.number,
+                section=listed.section,
             )
         except ValueError as exc:
             print(f"could not export {file.name}: {exc}", file=sys.stderr)
@@ -535,8 +558,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         const=_DOCX_DEFAULT,
         metavar="FILE",
         help=(
-            "Murdoku only: write an editable Word booklet to FILE (default: beside the puzzle, or "
-            "booklet.docx for a glob): all puzzles, then all solutions (needs python-docx: "
+            "write an editable Word booklet to FILE (default: beside the puzzle, or "
+            "booklet.docx for a glob): all puzzles, numbered and grouped by family and "
+            "category folder, then all solutions (needs python-docx: "
             "uv sync --extra docx)"
         ),
     )

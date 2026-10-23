@@ -106,7 +106,8 @@ export class PuzzleView {
       "header",
       { className: "puzzle-header" },
       el("a", { href: "#", className: "back", textContent: "← All puzzles" }),
-      el("h1", { textContent: b.title }),
+      ...(b.section ? [el("p", { className: "meta", textContent: b.section })] : []),
+      el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
     );
     if (b.playable && b.autoMark && (b.autoMark.onPlace.length > 0 || (b.notes && b.peers?.length))) {
       this.autoBox.checked = this.state.auto;
