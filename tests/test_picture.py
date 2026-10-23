@@ -186,7 +186,7 @@ def test_two_square_bench_keeps_its_proportions_and_is_not_stretched(fake_emoji)
         2,
         [["a", "a"], ["a", "a"]],
         {"a": "here"},
-        [BoardObject("bench", "standable", (Square(1, 0), Square(1, 1)))],
+        [BoardObject("bank", "standable", (Square(1, 0), Square(1, 1)))],
         ["A", "B"],
     )  # fmt: skip
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
