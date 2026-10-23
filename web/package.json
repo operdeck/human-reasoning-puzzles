@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "export": "cd .. && uv run csp \"examples/*.txt\" --export web/public/puzzles",
+    "export": "cd .. && uv run csp \"examples/**/*.txt\" --export web/public/puzzles",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
