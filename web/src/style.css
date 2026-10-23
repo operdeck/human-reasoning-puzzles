@@ -259,6 +259,55 @@ footer {
   color: var(--bad);
 }
 
+.balloons {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.balloon {
+  position: absolute;
+  bottom: -9rem;
+  width: 3rem;
+  height: 3.8rem;
+  border-radius: 50% 50% 48% 52% / 58% 58% 42% 42%;
+  background: radial-gradient(circle at 32% 28%, rgb(255 255 255 / 55%), transparent 30%), var(--colour);
+  opacity: 0.9;
+  animation-name: balloon-rise;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+
+.balloon::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 4.5rem;
+  background: rgb(0 0 0 / 35%);
+}
+
+@keyframes balloon-rise {
+  from {
+    translate: 0 0;
+  }
+  50% {
+    translate: var(--sway) -55vh;
+  }
+  to {
+    translate: 0 calc(-100vh - 14rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .balloons {
+    display: none;
+  }
+}
+
 .note {
   color: var(--muted);
 }

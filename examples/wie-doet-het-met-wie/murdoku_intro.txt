@@ -60,4 +60,4 @@ Question:
 Met wie doet Wouter het?
 
 Reveal:
-Met Ingrid: zij is de enige die met Wouter in de woonkamer is.
+Wouter doet het met Ingrid: zij is de enige die met hem in de woonkamer is.
