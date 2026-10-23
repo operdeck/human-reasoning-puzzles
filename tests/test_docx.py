@@ -189,9 +189,9 @@ def _read(name):
 
 def test_clues_are_grouped_per_person():
     paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
-    makaak = next(p for p in paragraphs if p.startswith("Makaak"))
-    assert makaak == "Makaak is in de bergen en zit niet naast het gras."
-    assert sum(p.startswith("Giraffe") for p in paragraphs) == 1
+    makaak = next(p for p in paragraphs if p.startswith("De makaak"))
+    assert makaak == "De makaak is in de bergen en zit niet naast het gras."
+    assert sum(p.startswith("De giraffe") for p in paragraphs) == 1
 
 
 def test_exactly_one_same_region_reads_as_either_or():
@@ -230,7 +230,10 @@ def test_zoo_roles_are_not_called_roles():
     from csp.story import explain
 
     text = explain(_read("zoo-murdoku-1"), numbered=False)
-    assert "de rol" not in text and "is geen aap" in text
+    assert "de rol" not in text
+    # The figure list already says which animals are apes; the booklet does not repeat it.
+    assert "is geen aap" not in text
+    assert "is geen aap" in explain(_read("zoo-murdoku-1"))
 
 
 def test_no_example_has_an_implied_clue():
@@ -335,3 +338,31 @@ def test_single_puzzle_booklet_has_no_contents(tmp_path):
     out = tmp_path / "s.docx"
     assert main([str(example("prrrdoku1.txt")), "--docx", str(out)]) == 0
     assert "Contents" not in [p.text for p in Document(str(out)).paragraphs]
+
+
+def test_booklet_solutions_have_no_empty_reasons_or_clue_numbers():
+    import re
+
+    from csp.story import explain
+
+    for name in ("menu-murdoku-3", "zoo-murdoku-1", "food-murdoku-2", "prrrdoku1"):
+        text = explain(_read(name), numbered=False)
+        assert ", ." not in text and ": ." not in text, name
+        assert not re.search(r"\b(clue|aanwijzing) \d", text), name
+        assert not re.search(r"\(via [\d, en]+\)", text), name
+
+
+def test_repeated_premises_are_merged():
+    import itertools
+    import re
+
+    from csp.story import explain
+
+    for name in ("menu-murdoku-3", "zoo-murdoku-1", "zoo-murdoku-3", "prrrdoku2"):
+        text = explain(_read(name), numbered=False)
+        premises = [
+            re.split(", (?:dus|so) ", s)[0] if re.search(", (?:dus|so) ", s) else None
+            for s in re.split(r"(?<=\.) ", text)
+        ]
+        repeats = [a for a, b in itertools.pairwise(premises) if a is not None and a == b]
+        assert not repeats, (name, repeats)

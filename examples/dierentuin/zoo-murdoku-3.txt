@@ -19,6 +19,12 @@ moeras: in het moeras
 target.attribute: een {name}
 role_has: {who} is een {role}
 role_not: {who} is geen {role}
+Tijger: de tijger
+Makaak: de makaak
+Gibbon: de gibbon
+Capibara: de capibara
+Ree: de ree
+Verzorger: de verzorger
 
 Regions:
 bos: bos #B5D3A0
@@ -88,10 +94,10 @@ Makaak: een aap, nooit alleen ; icon=U+1F412
 Gibbon: een aap, nooit alleen ; icon=U+1F9A7
 Capibara: ; icon=U+1F9AB
 Ree: ; icon=U+1F98C
-Verzorger: de verzorger, als laatste geplaatst ; icon=U+1F9D1
+Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
 
 Question:
-Waar staat de verzorger? Hij is alleen met precies één dier, en dat dier bijt hem. Welk dier?
+De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?
 
 Reveal:
-De verzorger deelt de bergen met Ree, dat hem bijt.
+De verzorger deelt de bergen met de ree, die hem bijt.

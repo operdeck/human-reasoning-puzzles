@@ -57,6 +57,10 @@ only_on Mametchi chair
 Title:
 Tamagotchi Murdoku 6x6: Where is the devil?
 
+Intro:
+Five friends and the devil Akumatchi wander through Tamagotchi Town. Akumatchi is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; standable objects can.
+
 Figures:
 Mametchi: ; icon=U+1F423
 Kuchipatchi: ; icon=U+1F425
@@ -67,3 +71,6 @@ Akumatchi: the devil ; icon=U+1F47F
 
 Question:
 Akumatchi is placed last and is alone with one friend. Which friend?
+
+Reveal:
+Akumatchi hides in the library with Memetchi.

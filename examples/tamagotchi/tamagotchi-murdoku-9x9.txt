@@ -76,7 +76,11 @@ above Kuchipatchi Memetchi
 
 # Booklet text for --docx (optional).
 Title:
-Tamagotchi Murdoku 9x9: Where is the devil?
+Tamagotchi Murdoku 9x9: The devil by the stream
+
+Intro:
+A stream splits Tamagotchi Town in two; the bridge is the only dry way across. Eight friends and the devil Akumatchi are out and about, and Akumatchi is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; standable objects can.
 
 Figures:
 Mametchi: ; icon=U+1F423
@@ -91,3 +95,6 @@ Akumatchi: the devil ; icon=U+1F47F
 
 Question:
 Akumatchi is placed last and is alone with one friend. Which friend?
+
+Reveal:
+Akumatchi waits in the playground with Memetchi.

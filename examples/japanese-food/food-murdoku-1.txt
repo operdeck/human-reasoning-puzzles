@@ -62,18 +62,18 @@ Title:
 Food Murdoku 5x5: The first Japanese case
 
 Intro:
-Japanese dishes are placed around the city. Jos is hungry and is placed last.
-No two figures share a row or a column; an object that blocks a square makes it unusable.
+Japanese dishes are spread over the cities of Japan. Jos is hungry and is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used.
 
 Figures:
-Ramen: a Japanese dish ; icon=U+1F35C
-Yakitori: a Japanese dish ; icon=U+1F362
-Tonkatsu: a Japanese dish ; icon=U+1F356
-Tempura: a Japanese dish ; icon=U+1F364
+Ramen: ; icon=U+1F35C
+Yakitori: ; icon=U+1F362
+Tonkatsu: ; icon=U+1F356
+Tempura: ; icon=U+1F364
 Jos: the hungry eater ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?
 
 Reveal:
-Jos shares Kyoto with Tempura.
+Jos shares Kyoto with the tempura: that is his meal today.

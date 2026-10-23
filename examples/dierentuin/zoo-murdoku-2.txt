@@ -19,6 +19,12 @@ bergen: in de bergen
 target.attribute: een {name}
 role_has: {who} is een {role}
 role_not: {who} is geen {role}
+Tijger: de tijger
+Makaak: de makaak
+Gibbon: de gibbon
+Nijlpaard: het nijlpaard
+Neushoorn: de neushoorn
+Verzorger: de verzorger
 
 Regions:
 moeras: moeras #C8C29A
@@ -88,10 +94,10 @@ Makaak: een aap, nooit alleen ; icon=U+1F412
 Gibbon: een aap, nooit alleen ; icon=U+1F9A7
 Nijlpaard: ; icon=U+1F99B
 Neushoorn: ; icon=U+1F98F
-Verzorger: de verzorger, als laatste geplaatst ; icon=U+1F9D1
+Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
 
 Question:
-Waar staat de verzorger? Hij is alleen met precies één dier, en dat dier bijt hem. Welk dier?
+De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?
 
 Reveal:
-De verzorger deelt de savanne met Neushoorn, die hem bijt.
+De verzorger deelt de savanne met de neushoorn, die hem bijt.

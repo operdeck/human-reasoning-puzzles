@@ -1,4 +1,4 @@
-# Tamagotchi Murdoku - "Where is the devil?" (hard)  (12x12)  (12x12)
+# Tamagotchi Murdoku - "Where is the devil?" (hard)  (12x12)
 #
 # Original puzzle made for this repo. Eleven friends and the devil Akumatchi
 # fill Tamagotchi Town, one per row and column. Akumatchi is placed last
@@ -95,7 +95,11 @@ adjacent_regions Lovelitchi Masktchi
 
 # Booklet text for --docx (optional).
 Title:
-Tamagotchi Murdoku 12x12: Where is the devil?
+Tamagotchi Murdoku 12x12: The devil in Tamagotchi Town
+
+Intro:
+Eleven friends and the devil Akumatchi fill Tamagotchi Town. Akumatchi is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; standable objects can.
 
 Figures:
 Mametchi: ; icon=U+1F423
@@ -113,3 +117,6 @@ Akumatchi: the devil ; icon=U+1F47F
 
 Question:
 Akumatchi is placed last and is alone with one friend. Which friend?
+
+Reveal:
+Akumatchi lurks in the toy shop with Tarakotchi.

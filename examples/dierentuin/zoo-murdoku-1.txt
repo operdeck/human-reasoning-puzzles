@@ -19,6 +19,11 @@ woestijn: in de woestijn
 target.attribute: een {name}
 role_has: {who} is een {role}
 role_not: {who} is geen {role}
+Leeuw: de leeuw
+Makaak: de makaak
+Gibbon: de gibbon
+Giraffe: de giraffe
+Verzorger: de verzorger
 
 Regions:
 savanne: savanne #E8CF96
@@ -84,10 +89,10 @@ Leeuw: altijd alleen in zijn verblijf ; icon=U+1F981
 Makaak: een aap, nooit alleen ; icon=U+1F412
 Gibbon: een aap, nooit alleen ; icon=U+1F9A7
 Giraffe: ; icon=U+1F992
-Verzorger: de verzorger, als laatste geplaatst ; icon=U+1F9D1
+Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
 
 Question:
-Waar staat de verzorger? Hij is alleen met precies één dier, en dat dier bijt hem. Welk dier?
+De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?
 
 Reveal:
-De verzorger deelt de woestijn met Giraffe, dat hem bijt.
+De verzorger deelt de woestijn met de giraffe, die hem bijt.

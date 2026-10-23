@@ -187,7 +187,9 @@ After changing `web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FIL
 an editable Word booklet, puzzles first and then solutions, one page each, from
 `docx_export`; new Murdoku puzzles should carry the optional `Title:`, `Intro:`,
 `Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku
-skill) and never commit generated `.docx` files.
+skill) and never commit generated `.docx` files. After significant puzzle or
+`story.py` wording changes, do the skill's whole-booklet "Booklet review": read the
+generated text for language and consistency, not for solving.
 
 ## Murdoku global counts
 
