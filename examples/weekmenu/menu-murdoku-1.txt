@@ -81,8 +81,8 @@ Figures:
 Aardappel: gekookt of gebakken, een zetmeelproduct ; icon=U+1F954
 Rijst: witte of zilvervliesrijst, een zetmeelproduct ; icon=U+1F35A
 Pasta: spaghetti of macaroni, een zetmeelproduct ; icon=U+1F35D
-Broccoli: groente ; icon=U+1F966
-Vis: eiwit: vis ; icon=U+1F41F
+Broccoli: een groente ; icon=U+1F966
+Vis: een eiwitbron ; icon=U+1F41F
 Vla: het toetje, zonder eigen aanwijzingen ; icon=U+1F36E
 
 Question:

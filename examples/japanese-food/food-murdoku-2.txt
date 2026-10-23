@@ -16,6 +16,7 @@ fukuoka: in Fukuoka
 tokyo: in Tokyo
 nagoya: in Nagoya
 target.attribute: a {name}
+tokyo_tower: the Tokyo Tower
 
 Regions:
 kobe: kobe #CBE6B9
@@ -69,19 +70,19 @@ Title:
 Food Murdoku 6x6: Five dishes, one wolverine
 
 Intro:
-Japanese dishes are placed around the city. Jos is hungry and is placed last.
-No two figures share a row or a column; an object that blocks a square makes it unusable.
+Japanese dishes are spread over the cities of Japan. Jos is hungry and is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used.
 
 Figures:
-Onigiri: a Japanese dish ; icon=U+1F359
-Okonomiyaki: a Japanese dish ; icon=U+1F95E
-Mochi: a Japanese dish ; icon=U+1F361
-Sushi: a Japanese dish ; icon=U+1F363
-Tonkatsu: a Japanese dish ; icon=U+1F356
+Onigiri: ; icon=U+1F359
+Okonomiyaki: ; icon=U+1F95E
+Mochi: ; icon=U+1F361
+Sushi: ; icon=U+1F363
+Tonkatsu: ; icon=U+1F356
 Jos: the hungry eater ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?
 
 Reveal:
-Jos shares Kobe with Sushi.
+Jos shares Kobe with the sushi: that is his meal today.

@@ -72,20 +72,20 @@ Title:
 Food Murdoku 7x7: The last bowl
 
 Intro:
-Japanese dishes are placed around the city. Jos is hungry and is placed last.
-No two figures share a row or a column; an object that blocks a square makes it unusable.
+Japanese dishes are spread over the cities of Japan. Jos is hungry and is placed last.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used.
 
 Figures:
-Tonkatsu: a Japanese dish ; icon=U+1F356
-Yakitori: a Japanese dish ; icon=U+1F362
-Tempura: a Japanese dish ; icon=U+1F364
-Okonomiyaki: a Japanese dish ; icon=U+1F95E
-Gyoza: a Japanese dish ; icon=U+1F95F
-Sushi: a Japanese dish ; icon=U+1F363
+Tonkatsu: ; icon=U+1F356
+Yakitori: ; icon=U+1F362
+Tempura: ; icon=U+1F364
+Okonomiyaki: ; icon=U+1F95E
+Gyoza: ; icon=U+1F95F
+Sushi: ; icon=U+1F363
 Jos: the hungry eater ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?
 
 Reveal:
-Jos shares Nagoya with Gyoza.
+Jos shares Nagoya with the gyoza: that is his meal today.

@@ -92,7 +92,7 @@ Murdoku: Het hotel
 
 Intro:
 Zeven gasten in een hotel, sommigen in een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Het tweepersoonsbed beslaat vier vakjes; je kunt erop liggen, net als op het zachte tapijt, de bank en het saunabankje.
+Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het zachte tapijt, de bank en het saunabankje mag je staan.
 Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
 
 Figures:

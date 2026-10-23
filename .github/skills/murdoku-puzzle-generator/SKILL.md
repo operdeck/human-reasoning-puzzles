@@ -204,7 +204,24 @@ One or two lines, true for the verified solution (check against --explain).
   `kantoor: op kantoor`), object nouns with their article (`gras: het gras`,
   `bed: het bed`; the Dutch default is "de"), and `role_has`, `role_not`,
   `target.attribute` so roles that are really kinds read naturally
-  ("Makaak is een aap"). Dutch region phrases are lower case.
+  ("Makaak is een aap"). Dutch region phrases are lower case. Give people that
+  are things or animals a display name with article (`Leeuw: de leeuw`).
+- Figure descriptions must not repeat clues, roles or rules ("placed last",
+  "a Japanese dish"). A `Reveal:` names the answer, checked against the solve
+  (e.g. the late-reveal companion); never point to text that is not printed.
+- A series (same folder) shares one title pattern; each puzzle gets its own
+  subtitle and its own `Reveal:`.
 - Check `uv run csp FILE --docx /tmp/check.docx` (needs `uv sync --extra docx`):
   one page per puzzle and solution, correct Dutch de/het, legible board. Never
   commit `.docx` files. Format details: `docs/model-and-puzzle-formats.md`.
+
+### Booklet review
+
+After significant changes (new puzzles, a series, `story.py` wording), build the
+whole booklet, `uv run csp "examples/*/*.txt" --docx /tmp/booklet.docx`, extract
+its text (python-docx, including table cells) and read all of it as a player
+would. Do not solve; check presentation: spelling and de/het, capitals, names
+with articles, consistent titles and subtitles, reveals present and correct,
+no repeated or empty sentences ("…, ."), no raw clue numbers in solutions, no
+facts already given by the figure list. Fix generic prose in `src/csp/story.py`
+(with a test) and one-off wording in the puzzle file (`Words:`, `| wording`).

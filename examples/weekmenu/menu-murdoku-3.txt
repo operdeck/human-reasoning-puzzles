@@ -98,9 +98,9 @@ Aardappel: gekookt of gebakken, een zetmeelproduct ; icon=U+1F954
 Rijst: witte of zilvervliesrijst, een zetmeelproduct ; icon=U+1F35A
 Pasta: spaghetti of macaroni, een zetmeelproduct ; icon=U+1F35D
 Noedels: mie of ramen, een zetmeelproduct ; icon=U+1F35C
-Vis: eiwit: vis ; icon=U+1F41F
-Bonen: eiwit: peulvruchten ; icon=U+1FAD8
-Wortel: groente ; icon=U+1F955
+Vis: een eiwitbron ; icon=U+1F41F
+Bonen: peulvruchten, een eiwitbron ; icon=U+1FAD8
+Wortel: een groente ; icon=U+1F955
 Vla: het toetje, zonder eigen aanwijzingen ; icon=U+1F36E
 
 Question:

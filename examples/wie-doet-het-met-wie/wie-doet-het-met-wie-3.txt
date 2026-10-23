@@ -72,7 +72,7 @@ Murdoku: Het logeerweekend
 
 Intro:
 Zes mensen logeren een weekend in een huis. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Het tweepersoonsbed beslaat vier vakjes; je kunt erop liggen, net als op het bed, het zachte tapijt, de stoel en het bankje.
+Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het bed, het zachte tapijt, de stoel en het bankje mag je staan.
 Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
 
 Figures:

@@ -24,7 +24,6 @@ Words:
 klimgebied_noord: in klimgebied noord
 klimgebied_zuid: in klimgebied zuid
 klimgebied: in een klimgebied
-klimgebied_en_kantoor: in een klimgebied of op kantoor
 helmholtzstraat: in de Helmholtzstraat
 bankastraat: in de Bankastraat
 kantoor: op kantoor
@@ -46,7 +45,6 @@ h: water #A9D6F0
 AreaTags:
 klimgebied: klimgebied_noord klimgebied_zuid
 amsterdam: helmholtzstraat bankastraat kantoor woonboot water
-klimgebied_en_kantoor: klimgebied_noord klimgebied_zuid kantoor
 
 # Amsterdam is hatched on the printed board.
 Hatched:
@@ -109,7 +107,7 @@ outside Mao water
 # Clue 15 is the question being asked.
 Clues:
 knight_from Tim klimwand boulder
-in_tagged Otto klimgebied_en_kantoor
+in_region Otto klimgebied_noord klimgebied_zuid kantoor | Otto is in een klimgebied of op kantoor.
 on Jos bankje
 next_to Anna koffer
 in_region Luna woonboot water
@@ -127,5 +125,12 @@ within Mao Otto 6
 Title:
 Prrrdoku 3: Een dagje Amsterdam
 
+Intro:
+Zes vrienden en de katten Mao, Luna en Vladimir gaan een dagje naar Amsterdam; Vladimir komt als laatste.
+Zet iedereen op een vrij vakje, één per rij en één per kolom. Op een bankje kun je staan, andere voorwerpen blokkeren een vakje. Alleen Luna kan in het water.
+
 Question:
 Wie krijgt Vladimir op schoot?
+
+Reveal:
+Vladimir ligt in de moestuin en kruipt bij Tim op schoot.

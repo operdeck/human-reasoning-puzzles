@@ -11,6 +11,11 @@ Language: en
 Words:
 mouse1: the mouse on the top edge
 mouse2: the mouse in the corner
+Patio: on the patio
+Greenhouse: in the greenhouse
+Lawn: on the lawn
+Shed: in the shed
+Orchard: in the orchard
 Regions:
 p: Patio
 g: Greenhouse
@@ -53,3 +58,6 @@ Whoever stands in a square touching such a point is next to it, even when that s
 
 Question:
 Where does everyone stand?
+
+Reveal:
+Ada r1c4, Bo r2c3, Cal r3c5, Dee r4c1, Eli r5c2.
