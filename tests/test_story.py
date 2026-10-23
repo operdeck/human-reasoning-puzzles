@@ -766,3 +766,11 @@ def test_story_explains_a_different_regions_role_step():
     story = explain((example("menu-murdoku-1.txt")).read_text())
 
     assert "zijn allebei zetmeel, en er staat nooit meer dan één zetmeel op dezelfde dag" in story
+
+
+def test_quantified_clue_is_only_said_with_its_upshot():
+    """A quantified step that only narrows its hidden witnesses says nothing."""
+    story = explain(example("wie-doet-het-met-wie-4.txt").read_text())
+    sentences = re.split(r"(?<=\.) ", story)
+    bare = [s for s in sentences if "iemand in een badjas" in s and ", dus " not in s]
+    assert not bare, bare
