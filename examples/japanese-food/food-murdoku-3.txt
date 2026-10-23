@@ -35,12 +35,11 @@ sapporo sapporo nagoya nagoya nagoya sendai sendai
 sapporo sapporo sapporo nagoya sendai sendai sendai
 
 Objects:
-bento: standable r1c1 r1c2
-table: blocking r6c7
-table: blocking r3c1
-table: blocking r3c3
-table: blocking r4c3
-bench: standable r4c2 r5c2
+tatami: standable r1c1 r1c2
+plate: blocking r6c7
+plate: blocking r3c1
+castle: blocking r3c3 r4c3
+tatami: standable r4c2 r5c2
 
 Attributes:
 food: Tonkatsu Yakitori Tempura Okonomiyaki Gyoza Sushi

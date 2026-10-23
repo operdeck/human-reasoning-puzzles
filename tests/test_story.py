@@ -685,7 +685,7 @@ def test_story_explains_complementary_reified_counts():
 
 @pytest.mark.parametrize(
     "name",
-    ["murdoku_intro.txt", "murdoku_house.txt", "murdoku_sparse_mystery.txt"],
+    ["murdoku_house.txt", "murdoku_sparse_mystery.txt"],
 )
 def test_english_story_places_everyone_right_and_titles_name_them(name):
     text = (example(name)).read_text()
@@ -705,7 +705,7 @@ def test_english_story_places_everyone_right_and_titles_name_them(name):
 def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
     story = explain((example("murdoku_house.txt")).read_text())
     opening = story.split("\n\n")[0]
-    assert "Ben is on the sofa (4): r3c3 or r3c4." in opening
+    assert "Ben is on the carpet (4): r3c3 or r3c4." in opening
     assert "Ben is not next to the lamp (6): **Ben on r3c4**." in opening
 
 

@@ -67,11 +67,11 @@ def test_murdoku_bundle_has_everything_to_play(exported):
         "r3c4": "Ingrid",
         "r4c2": "Lotte",
     }
-    assert bundle["clues"][0] == "Ingrid is on a chair."
+    assert bundle["clues"][0] == "Ingrid zit op een stoel."
     assert bundle["question"]
     assert bundle["rules"]
     names = [condition["name"] for condition in bundle["conditions"]]
-    assert names == ["on", "next to"]
+    assert names == ["op", "naast"]
 
 
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):

@@ -27,8 +27,8 @@ oven: blocking r1c5
 desk: blocking r4c1
 lamp: blocking r2c3
 
-# The sofa is a 1x2 standable object; so is the chair.
-sofa: standable r3c3 r3c4
+# The carpet is a 1x2 standable object; so is the chair.
+carpet: standable r3c3 r3c4
 chair: standable r5c2
 
 People:
@@ -42,7 +42,7 @@ Clues:
 exactly 1 in_region Ada study ; in_region Ben hall
 left_of Ada Dirk
 in_region Eva garden
-on Ben sofa
+on Ben carpet
 above Cleo Eva
 not_next_to Ben lamp
 

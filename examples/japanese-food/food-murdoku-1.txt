@@ -30,9 +30,9 @@ kobe kyoto kyoto kyoto kyoto
 kobe sapporo kyoto kyoto kyoto
 
 Objects:
-table: blocking r1c5
-table: blocking r3c4
-bench: standable r1c4 r2c4
+plate: blocking r1c5
+plate: blocking r3c4
+tatami: standable r1c4 r2c4
 
 Attributes:
 food: Ramen Yakitori Tonkatsu Tempura
@@ -48,13 +48,13 @@ Rules:
 alone_with Jos attribute:food
 
 Clues:
-next_to Ramen table
+next_to Ramen plate
 within Tempura Tonkatsu 2
 in_row Tempura 4
 different_region Tempura Yakitori
 left_of Yakitori Ramen
-in_column Tonkatsu 1
-in_row Tonkatsu 3
+in_region Tonkatsu kobe
+above Tonkatsu Tempura
 in_column Ramen 4
 
 # Booklet text for --docx (optional).
