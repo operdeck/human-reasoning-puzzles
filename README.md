@@ -10,13 +10,13 @@ Requires Python 3.12+. Run directly with `uv`:
 
 ```bash
 uv run csp examples/sudoku_4x4.txt
-uv run csp examples/murdoku_intro.txt --explain
+uv run csp examples/demo/murdoku_intro.txt --explain
 uv run csp examples/queens_4x4.txt --show-model
 uv run csp examples/logicgrid_3x3.txt --brute-force
 uv run csp examples/akari_2x2.txt --svg akari.svg
 ```
 
-`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. `--export DIR` writes everything the [web player](#play-in-the-browser) needs: per puzzle a JSON bundle and the interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails). Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network. `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`).
+`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` currently writes Murdoku narratives; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. `--export DIR` writes everything the [web player](#play-in-the-browser) needs: per puzzle a JSON bundle and the interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails). Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network. `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/**/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`).
 
 For the full [example index and grade notes](docs/examples.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
 
@@ -59,7 +59,7 @@ Each cell links to a representative example. The image shows the puzzle or its s
 
 <table>
 <tr>
-<td><strong><a href="docs/examples.md#first-murdoku-case">Murdoku</a></strong><br><a href="examples/murdoku_intro.txt">first case</a><br><img src="docs/images/murdoku_intro.png" width="150" alt="Murdoku first case"></td>
+<td><strong><a href="docs/examples.md#first-murdoku-case">Murdoku</a></strong><br><a href="examples/demo/murdoku_intro.txt">first case</a><br><img src="docs/images/murdoku_intro.png" width="150" alt="Murdoku first case"></td>
 <td><strong><a href="docs/examples.md#existing-families">Mini Sudoku</a></strong><br><a href="examples/sudoku_4x4.txt">4 × 4</a><br><img src="docs/images/sudoku_4x4-solution.png" width="150" alt="Mini Sudoku solution"></td>
 <td><strong><a href="docs/examples.md#existing-families">Calcudoku</a></strong><br><a href="examples/calcudoku_4x4_easy.txt">4 × 4</a><br><img src="docs/images/calcudoku_4x4_easy-solution.png" width="150" alt="Calcudoku solution"></td>
 <td><strong><a href="docs/examples.md#existing-families">Futoshiki</a></strong><br><a href="examples/futoshiki_5x5.txt">5 × 5</a><br><img src="docs/images/futoshiki_5x5-solution.png" width="150" alt="Futoshiki solution"></td>

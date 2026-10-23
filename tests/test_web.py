@@ -9,14 +9,13 @@ import pytest
 pytest.importorskip("fontTools")
 
 from csp import cli, murdoku, story, svg
-
-EXAMPLES = Path(__file__).parent.parent / "examples"
+from tests.examples import EXAMPLES, example, played_examples
 
 
 @pytest.fixture(scope="module")
 def exported(tmp_path_factory):
     out = tmp_path_factory.mktemp("site")
-    assert cli.main([str(EXAMPLES / "*.txt"), "--export", str(out)]) == 0
+    assert cli.main([str(EXAMPLES / "**" / "*.txt"), "--export", str(out)]) == 0
     return out
 
 
@@ -26,7 +25,7 @@ def _bundle(out: Path, name: str) -> dict:
 
 def test_every_example_is_exported_and_indexed(exported):
     index = json.loads((exported / "index.json").read_text())
-    names = sorted(path.stem for path in EXAMPLES.glob("*.txt"))
+    names = sorted(path.stem for path in played_examples())
     assert sorted(entry["id"] for entry in index["puzzles"]) == names
     assert "rights reserved" in index["license"]
     for name in names:
@@ -93,7 +92,7 @@ def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):
     broken = tmp_path / "broken.txt"
     broken.write_text("this is not a puzzle\n")
     assert (
-        cli.main([str(EXAMPLES / "tents_4x4.txt"), str(broken), "--export", str(tmp_path / "site")])
+        cli.main([str(example("tents_4x4.txt")), str(broken), "--export", str(tmp_path / "site")])
         == 1
     )
     assert "broken.txt" in capsys.readouterr().err
@@ -115,7 +114,7 @@ def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
 
 
 def test_conditions_only_list_the_kinds_a_puzzle_uses():
-    text = (EXAMPLES / "murdoku_intro.txt").read_text()
+    text = (example("murdoku_intro.txt")).read_text()
     used = {kind for kind, _ in re.findall(r"^\s*(\w+)\s+(.*)$", text, re.M)}
     assert len(story.condition_list(text)) <= len(used)
 
@@ -157,8 +156,8 @@ def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
 def test_export_refuses_two_puzzles_with_the_same_name(tmp_path, capsys):
     other = tmp_path / "copy"
     other.mkdir()
-    (other / "tents_4x4.txt").write_text((EXAMPLES / "tents_4x4.txt").read_text())
-    files = [str(EXAMPLES / "tents_4x4.txt"), str(other / "tents_4x4.txt")]
+    (other / "tents_4x4.txt").write_text((example("tents_4x4.txt")).read_text())
+    files = [str(example("tents_4x4.txt")), str(other / "tents_4x4.txt")]
     assert cli.main([*files, "--export", str(tmp_path / "site")]) == 2
     assert "tents_4x4" in capsys.readouterr().err
     assert not (tmp_path / "site").exists()

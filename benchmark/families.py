@@ -84,7 +84,7 @@ CASES = (
 
 
 def measure(name: str) -> tuple[str, float, float, float, float]:
-    text = (EXAMPLES / name).read_text()
+    text = next(EXAMPLES.rglob(name)).read_text()
     kind = detect(text)
 
     start = time.perf_counter()

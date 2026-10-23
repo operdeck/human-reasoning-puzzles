@@ -411,7 +411,7 @@ asks for a solver change.
 
 Every new or transcribed puzzle file should carry booklet text so that
 `uv run csp <file.txt> --docx` (or a quoted glob such as
-`--docx "examples/*.txt"` for a multi-puzzle booklet: all puzzles, one per page,
+`--docx "examples/**/*.txt"` for a multi-puzzle booklet: all puzzles, one per page,
 then all solutions) produces a nice document with no further editing. These
 sections are presentation only: the solver, `--lint`, `--brute-force` and
 `--png` ignore them, so they never change the puzzle. Append them after

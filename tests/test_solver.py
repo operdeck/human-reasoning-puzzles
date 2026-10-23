@@ -31,9 +31,7 @@ from csp.core import (
 )
 from csp.proof import Move, replay
 from csp.puzzlefile import load_board, parse_square
-
-EXAMPLES = Path(__file__).parent.parent / "examples"
-
+from tests.examples import all_examples, example
 
 # --- engine ---------------------------------------------------------------
 
@@ -994,7 +992,7 @@ def test_what_if_rules_out_the_value_with_the_shortest_refutation():
 
 
 def test_sudoku_model_shape():
-    model, _ = sudoku.compile_puzzle((EXAMPLES / "sudoku_easy.txt").read_text())
+    model, _ = sudoku.compile_puzzle((example("sudoku_easy.txt")).read_text())
     assert model.num_literals == 81 * 9
     assert len(model.constraints) == 81 + 3 * 81
     assert model.chosen("r1c1") == 5
@@ -1002,7 +1000,7 @@ def test_sudoku_model_shape():
 
 
 def test_sudoku_solves_to_a_valid_grid():
-    model, puzzle = sudoku.compile_puzzle((EXAMPLES / "sudoku_easy.txt").read_text())
+    model, puzzle = sudoku.compile_puzzle((example("sudoku_easy.txt")).read_text())
     grid = puzzle.grid
     result = Solver(model).solve()
     assert result.solved
@@ -1042,14 +1040,14 @@ GRADED = [
 
 @pytest.mark.parametrize("name, rule, pattern", GRADED)
 def test_graded_sudoku_shows_its_pattern(name, rule, pattern):
-    model, _ = sudoku.compile_puzzle((EXAMPLES / name).read_text())
+    model, _ = sudoku.compile_puzzle((example(name)).read_text())
     assert Solver(model).solve().solved
     assert any(s.rule == rule and re.search(pattern, s.reason) for s in model.log)
 
 
 @pytest.mark.parametrize("name, rule, pattern", GRADED)
 def test_graded_sudoku_stalls_without_its_rule(name, rule, pattern):
-    model, _ = sudoku.compile_puzzle((EXAMPLES / name).read_text())
+    model, _ = sudoku.compile_puzzle((example(name)).read_text())
     result = Solver(model, _before(rule)).solve()
     assert not result.solved and result.contradiction is None
 
@@ -1064,7 +1062,7 @@ def test_sudoku_rejects_a_malformed_grid():
 
 
 def test_mini_sudoku_has_two_by_two_boxes():
-    model, puzzle = sudoku.compile_puzzle((EXAMPLES / "sudoku_4x4.txt").read_text())
+    model, puzzle = sudoku.compile_puzzle((example("sudoku_4x4.txt")).read_text())
     grid = puzzle.grid
     boxes = [c for c in model.constraints if c.family == "each digit once per box"]
     assert len(grid) == 4 and len(boxes) == 4 * 4
@@ -1073,11 +1071,11 @@ def test_mini_sudoku_has_two_by_two_boxes():
 
 
 def test_jigsaw_boxes_and_x_diagonals_are_houses():
-    jigsaw = sudoku.parse((EXAMPLES / "sudoku_jigsaw.txt").read_text())
+    jigsaw = sudoku.parse((example("sudoku_jigsaw.txt")).read_text())
     assert jigsaw.size == 6 and jigsaw.jigsaw and not jigsaw.extra_houses()
     boxes = [cells for family, _, cells in jigsaw.houses() if family == "box"]
     assert len(boxes) == 6 and all(len(cells) == 6 for cells in boxes)
-    x = sudoku.parse((EXAMPLES / "sudoku_x.txt").read_text())
+    x = sudoku.parse((example("sudoku_x.txt")).read_text())
     assert not x.jigsaw and x.extra_houses() == {
         "x": [(i, i) for i in range(9)],
         "y": [(i, 8 - i) for i in range(9)],
@@ -1085,7 +1083,7 @@ def test_jigsaw_boxes_and_x_diagonals_are_houses():
 
 
 def test_x_sudoku_is_unique_only_because_of_its_diagonals():
-    text = (EXAMPLES / "sudoku_x.txt").read_text()
+    text = (example("sudoku_x.txt")).read_text()
     assert len(bruteforce.solutions(text)) == 1
     plain = text[: text.index("# The two diagonals")]
     assert len(bruteforce.solutions(plain)) == 2
@@ -1095,7 +1093,7 @@ def test_x_sudoku_is_unique_only_because_of_its_diagonals():
 
 
 def test_nrc_sudoku_extra_boxes_are_houses_it_needs():
-    text = (EXAMPLES / "sudoku_nrc.txt").read_text()
+    text = (example("sudoku_nrc.txt")).read_text()
     puzzle = sudoku.parse(text)
     extra = puzzle.extra_houses()
     assert sorted(extra) == ["a", "b", "c", "d"]
@@ -1131,7 +1129,7 @@ def test_jigsaw_boxes_must_tile_the_grid(boxes, problem):
 
 @pytest.fixture
 def prrrdoku1():
-    board, clues = load_board((EXAMPLES / "prrrdoku1.txt").read_text())
+    board, clues = load_board((example("prrrdoku1.txt")).read_text())
     return board, murdoku.compile_puzzle(board, clues)
 
 
@@ -1292,7 +1290,7 @@ def test_sparse_board_allows_empty_rows_and_columns():
 
 
 def test_sparse_murdoku_mystery_example_solves_unique_murderer():
-    text = (EXAMPLES / "murdoku_sparse_mystery.txt").read_text()
+    text = (example("murdoku_sparse_mystery.txt")).read_text()
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
     result = Solver(model).solve()
@@ -1505,10 +1503,10 @@ def test_parse_square_rejects_garbage():
         parse_square("r2x5")
 
 
-@pytest.mark.parametrize("name", sorted(p.name for p in EXAMPLES.glob("*.txt")))
+@pytest.mark.parametrize("name", [p.name for p in all_examples()])
 def test_every_step_is_logged_under_its_rule_name(name):
     """Narration groups steps by rule, so the names in the log must match the ladder."""
-    text = (EXAMPLES / name).read_text()
+    text = (example(name)).read_text()
     model = cli.load(text, cli.detect(text)).model
     fired: list[tuple[str, set[str]]] = []
     Solver(model).solve(on_step=lambda rule, steps: fired.append((rule, {s.rule for s in steps})))
@@ -1521,7 +1519,7 @@ def test_every_step_is_logged_under_its_rule_name(name):
 
 
 def _load(name):
-    board, clues = load_board((EXAMPLES / name).read_text())
+    board, clues = load_board((example(name)).read_text())
     return board, murdoku.compile_puzzle(board, clues)
 
 
@@ -2383,7 +2381,7 @@ above Ada role:guide
 
 def test_numeric_region_ids_still_read():
     """Ids are just tokens: older files numbered their regions."""
-    text = (EXAMPLES / "prrrdoku1.txt").read_text()
+    text = (example("prrrdoku1.txt")).read_text()
     numbered = text.replace("\na: ", "\n0: ").replace("\nb: ", "\n1: ")
     numbered = re.sub(
         r"(?m)^([a-f] )+[a-f]$",
@@ -2411,7 +2409,7 @@ CALCUDOKUS = [
 @pytest.mark.parametrize("name, rule", CALCUDOKUS)
 def test_calcudoku_solution_obeys_every_rule(name, rule):
     """A property check: Latin square, and every cage makes its target."""
-    text = (EXAMPLES / name).read_text()
+    text = (example(name)).read_text()
     model, puzzle = calcudoku.compile_puzzle(text)
     result = Solver(model).solve()
     assert result.solved
@@ -2424,7 +2422,7 @@ def test_calcudoku_solution_obeys_every_rule(name, rule):
 
 @pytest.mark.parametrize("name, rule", [c for c in CALCUDOKUS if c[1] != "relations"])
 def test_calcudoku_stalls_without_its_rule(name, rule):
-    model, _ = calcudoku.compile_puzzle((EXAMPLES / name).read_text())
+    model, _ = calcudoku.compile_puzzle((example(name)).read_text())
     result = Solver(model, _before(rule)).solve()
     assert not result.solved and result.contradiction is None
 
@@ -2455,16 +2453,16 @@ def test_cage_arithmetic():
 
 
 def test_cli_detects_calcudoku():
-    text = (EXAMPLES / "calcudoku_4x4_easy.txt").read_text()
+    text = (example("calcudoku_4x4_easy.txt")).read_text()
     assert cli.detect(text) == "calcudoku"
-    assert cli.main([str(EXAMPLES / "calcudoku_4x4_easy.txt")]) == 0
+    assert cli.main([str(example("calcudoku_4x4_easy.txt"))]) == 0
 
 
 # --- futoshiki ------------------------------------------------------------
 
 
 def test_futoshiki_solution_obeys_every_sign_and_needs_chains():
-    text = (EXAMPLES / "futoshiki_5x5.txt").read_text()
+    text = (example("futoshiki_5x5.txt")).read_text()
     assert cli.detect(text) == "futoshiki"
     model, puzzle = futoshiki.compile_puzzle(text)
     assert len(model.relations) == len(puzzle.signs) == 8
@@ -2504,9 +2502,9 @@ def test_futoshiki_rejects_malformed_files(grid, signs, problem):
 # --- brute force ----------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", sorted(p.name for p in EXAMPLES.glob("*.txt")))
+@pytest.mark.parametrize("name", [p.name for p in all_examples()])
 def test_every_example_is_unique_and_the_engine_finds_it(name):
-    text = (EXAMPLES / name).read_text()
+    text = (example(name)).read_text()
     (expected,) = bruteforce.solutions(text)
     result = Solver(cli.load(text, cli.detect(text)).model).solve()
     assert result.solved
@@ -2516,11 +2514,11 @@ def test_every_example_is_unique_and_the_engine_finds_it(name):
     }
 
 
-@pytest.mark.parametrize("name", sorted(p.name for p in EXAMPLES.glob("*.txt")))
+@pytest.mark.parametrize("name", [p.name for p in all_examples()])
 def test_no_step_ever_contradicts_the_brute_force_solution(name):
     """Every placement is right and every elimination removes a wrong value,
     compile time included: the soundness contract, checked step by step."""
-    text = (EXAMPLES / name).read_text()
+    text = (example(name)).read_text()
     (expected,) = bruteforce.solutions(text)
     model = cli.load(text, cli.detect(text)).model
     Solver(model).solve()
@@ -2572,7 +2570,7 @@ def test_bruteforce_sudoku_stops_at_the_limit():
 
 
 def test_cli_brute_force_exit_codes(tmp_path, capsys):
-    assert cli.main([str(EXAMPLES / "prrrdoku2.txt"), "--brute-force"]) == 0
+    assert cli.main([str(example("prrrdoku2.txt")), "--brute-force"]) == 0
     assert "unique solution" in capsys.readouterr().out
     two = tmp_path / "two.txt"
     two.write_text("Size: 2\nGrid:\na a\nb b\nCages:\na: 3+\nb: 3+\n")
@@ -2645,7 +2643,7 @@ Ada
 
 
 def test_cli_tracks_murdoku_person_candidates(capsys):
-    assert cli.main([str(EXAMPLES / "prrrdoku1.txt"), "--track-person", "Vladimir"]) == 0
+    assert cli.main([str(example("prrrdoku1.txt")), "--track-person", "Vladimir"]) == 0
     out = capsys.readouterr().out
     assert "tracked Vladimir:" in out
     assert "region-overlap companions:" in out
@@ -2654,7 +2652,7 @@ def test_cli_tracks_murdoku_person_candidates(capsys):
 
 @pytest.mark.parametrize("name", ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"])
 def test_prrrdokus_keep_vladimir_open_until_last(name):
-    board, clues = load_board((EXAMPLES / name).read_text())
+    board, clues = load_board((example(name)).read_text())
     model = murdoku.compile_puzzle(board, clues)
     placements = []
     before_last = []
@@ -2764,7 +2762,7 @@ def test_report_groups_unlabelled_constraints_by_name():
 
 
 def test_report_leaves_the_model_untouched():
-    model, _ = sudoku.compile_puzzle((EXAMPLES / "sudoku_xwing.txt").read_text())
+    model, _ = sudoku.compile_puzzle((example("sudoku_xwing.txt")).read_text())
     before = (len(model.log), model.assignment(), [model.options(v) for v in model.variables])
     report.describe(model)
     assert before == (
@@ -2794,12 +2792,12 @@ def test_grade_is_the_hardest_rung_used():
     ],
 )
 def test_cli_grade_prints_only_the_grade(name, grade, capsys):
-    assert cli.main([str(EXAMPLES / name), "--grade"]) == 0
+    assert cli.main([str(example(name)), "--grade"]) == 0
     assert capsys.readouterr().out == f"{grade}\n"
 
 
 def test_show_model_explains_and_does_not_solve(capsys):
-    assert cli.main([str(EXAMPLES / "sudoku_easy.txt"), "--show-model"]) == 0
+    assert cli.main([str(example("sudoku_easy.txt")), "--show-model"]) == 0
     out = capsys.readouterr().out
     assert "each digit once per box" in out
     assert "How the solver will run" in out
@@ -2841,8 +2839,6 @@ def _colour_family(hex_colour):
 
 
 def test_colour_words_in_region_names_match_their_background():
-    from pathlib import Path
-
     from csp.puzzlefile import load_board
 
     all_words = {
@@ -2851,7 +2847,7 @@ def test_colour_words_in_region_names_match_their_background():
         "grijs", "white", "wit", "violet", "lilac", "gold",
     }  # fmt: skip
     checked = 0
-    for path in sorted((Path(__file__).parent.parent / "examples").glob("*.txt")):
+    for path in all_examples():
         text = path.read_text()
         if "People:" not in text:
             continue
