@@ -685,7 +685,7 @@ def test_story_explains_complementary_reified_counts():
 
 @pytest.mark.parametrize(
     "name",
-    ["murdoku_house.txt", "murdoku_sparse_mystery.txt"],
+    ["murdoku_first_case.txt", "murdoku_house.txt", "murdoku_sparse_mystery.txt"],
 )
 def test_english_story_places_everyone_right_and_titles_name_them(name):
     text = (example(name)).read_text()
