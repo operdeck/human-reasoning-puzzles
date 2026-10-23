@@ -55,6 +55,7 @@ export interface Bundle {
   clues: string[];
   conditions: Named[];
   question: string;
+  reveal?: string;
   attributes?: Named[];
   roles?: Named[];
   objects?: Named[];
