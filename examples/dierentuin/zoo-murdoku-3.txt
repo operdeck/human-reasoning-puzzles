@@ -5,27 +5,27 @@
 # Doel: vind de verzorger. Hij staat alleen met precies een dier en wordt gebeten.
 #
 # Oplossing: Capibara r4c2, Gibbon r3c3, Makaak r2c1, Ree r5c4, Tijger r1c5, Verzorger r6c6.
-# De verzorger deelt bergen met Ree, dat hem bijt.
+# De verzorger deelt de bergen met Ree, dat hem bijt.
 #
 Size: 6
 Language: nl
 
 Words:
-bos: in de Bos
-bergen: in de Bergen
-jungle: in de Jungle
-weide: in de Weide
-moeras: in de Moeras
+bos: in het bos
+bergen: in de bergen
+jungle: in de jungle
+weide: in de weide
+moeras: in het moeras
 target.attribute: een {name}
 role_has: {who} is een {role}
 role_not: {who} is geen {role}
 
 Regions:
-bos: bos #C4DCF2
-bergen: bergen #BEE5D6
-jungle: jungle #F3EDA2
-weide: weide #FADFB5
-moeras: moeras #F4CBC3
+bos: bos #B5D3A0
+bergen: bergen #DCDEE2
+jungle: jungle #8FCB98
+weide: weide #E2F2B8
+moeras: moeras #C8C29A
 
 Grid:
 moeras moeras bos bos bos bos
@@ -36,10 +36,10 @@ moeras moeras weide bergen bos jungle
 weide weide weide bergen bergen bergen
 
 Objects:
-fontein: blocking r1c4
+den: blocking r1c4
 boom: blocking r6c3
 rots: blocking r4c5
-bank: standable r2c5 r3c5
+boomstam: standable r2c5 r3c5
 
 Attributes:
 aap: Makaak Gibbon
@@ -66,7 +66,7 @@ alone_with Verzorger attribute:dier
 
 Clues:
 in_region Gibbon moeras
-next_to Tijger bank
+next_to Tijger boomstam
 in_row Capibara 4
 above Makaak Gibbon
 within Capibara Ree 3
@@ -84,10 +84,10 @@ De verzorger wordt als laatste geplaatst en staat alleen met precies één dier.
 
 Figures:
 Tijger: altijd alleen in zijn verblijf ; icon=U+1F405
-Makaak: een aap: nooit alleen ; icon=U+1F412
-Gibbon: een aap: nooit alleen ; icon=U+1F9A7
-Capibara: een dier ; icon=U+1F9AB
-Ree: een dier ; icon=U+1F98C
+Makaak: een aap, nooit alleen ; icon=U+1F412
+Gibbon: een aap, nooit alleen ; icon=U+1F9A7
+Capibara: ; icon=U+1F9AB
+Ree: ; icon=U+1F98C
 Verzorger: de verzorger, als laatste geplaatst ; icon=U+1F9D1
 
 Question:

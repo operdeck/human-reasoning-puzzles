@@ -4,45 +4,45 @@
 # verblijf; elke aap deelt zijn verblijf altijd met iemand (Rules:).
 # Doel: vind de verzorger. Hij staat alleen met precies een dier en wordt gebeten.
 #
-# Oplossing: Gibbon r3c6, Makaak r2c5, Ree r5c3, Tijger r1c2, Verzorger r6c1, Zebra r4c4.
-# De verzorger deelt savanne met Ree, dat hem bijt.
+# Oplossing: Gibbon r3c6, Makaak r2c5, Neushoorn r5c3, Tijger r1c2, Verzorger r6c1, Nijlpaard r4c4.
+# De verzorger deelt de savanne met Neushoorn, die hem bijt.
 #
 Size: 6
 Language: nl
 
 Words:
-moeras: in de Moeras
-woestijn: in de Woestijn
-savanne: in de Savanne
-rivier: in de Rivier
-bergen: in de Bergen
+moeras: in het moeras
+jungle: in de jungle
+savanne: in de savanne
+rivier: in de rivier
+bergen: in de bergen
 target.attribute: een {name}
 role_has: {who} is een {role}
 role_not: {who} is geen {role}
 
 Regions:
-moeras: moeras #CBE6B9
-woestijn: woestijn #D8D2F0
-savanne: savanne #C4DCF2
-rivier: rivier #BEE5D6
-bergen: bergen #FADFB5
+moeras: moeras #C8C29A
+jungle: jungle #8FCB98
+savanne: savanne #E8CF96
+rivier: rivier #BFDDF2
+bergen: bergen #DCDEE2
 
 Grid:
-moeras bergen bergen bergen woestijn woestijn
-bergen bergen bergen rivier woestijn woestijn
-rivier rivier rivier rivier rivier woestijn
+moeras bergen bergen bergen jungle jungle
+bergen bergen bergen rivier jungle jungle
+rivier rivier rivier rivier rivier jungle
 savanne savanne savanne rivier rivier rivier
 savanne savanne savanne rivier rivier rivier
 savanne savanne savanne rivier rivier rivier
 
 Objects:
-boom: blocking r4c5
-ton: blocking r5c1
-bank: standable r1c1 r1c2
+waterlelie: blocking r4c5
+baobab: blocking r5c1
+boomstam: standable r1c1 r1c2
 
 Attributes:
 aap: Makaak Gibbon
-dier: Tijger Makaak Gibbon Zebra Ree
+dier: Tijger Makaak Gibbon Nijlpaard Neushoorn
 
 Roles:
 aap: 2
@@ -54,8 +54,8 @@ People:
 Tijger
 Makaak
 Gibbon
-Zebra
-Ree
+Nijlpaard
+Neushoorn
 Verzorger
 
 Rules:
@@ -64,13 +64,13 @@ role_occupant aap not_alone
 alone_with Verzorger attribute:dier
 
 Clues:
-at_least Makaak Ree 5
+at_least Makaak Neushoorn 5
 left_of Tijger Gibbon
-next_to Zebra boom
+next_to Nijlpaard waterlelie
 in_column Makaak 5
 outside Tijger moeras
 outside Gibbon rivier
-in_column Ree 3
+in_column Neushoorn 3
 in_row Tijger 1
 
 # Booklet text for --docx (optional).
@@ -84,14 +84,14 @@ De verzorger wordt als laatste geplaatst en staat alleen met precies één dier.
 
 Figures:
 Tijger: altijd alleen in zijn verblijf ; icon=U+1F405
-Makaak: een aap: nooit alleen ; icon=U+1F412
-Gibbon: een aap: nooit alleen ; icon=U+1F9A7
-Zebra: een dier ; icon=U+1F993
-Ree: een dier ; icon=U+1F98C
+Makaak: een aap, nooit alleen ; icon=U+1F412
+Gibbon: een aap, nooit alleen ; icon=U+1F9A7
+Nijlpaard: ; icon=U+1F99B
+Neushoorn: ; icon=U+1F98F
 Verzorger: de verzorger, als laatste geplaatst ; icon=U+1F9D1
 
 Question:
 Waar staat de verzorger? Hij is alleen met precies één dier, en dat dier bijt hem. Welk dier?
 
 Reveal:
-De verzorger deelt de savanne met Ree, dat hem bijt.
+De verzorger deelt de savanne met Neushoorn, die hem bijt.
