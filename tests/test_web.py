@@ -69,6 +69,7 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     }
     assert bundle["clues"][0] == "Ingrid zit op een stoel."
     assert bundle["question"]
+    assert bundle["reveal"].startswith("Wouter doet het met Ingrid")
     assert bundle["rules"]
     names = [condition["name"] for condition in bundle["conditions"]]
     assert names == ["op", "naast"]
