@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from . import akari, icons, queens, starbattle
+from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
 from .puzzlefile import language_of, load_board, load_presentation
@@ -26,6 +27,7 @@ from .story import (
     board_notes,
     clue_paragraphs,
     condition_list,
+    object_list,
     phrase,
     role_list,
 )
@@ -37,22 +39,6 @@ LICENSE = (
 )
 CELL = re.compile(r'<rect id="r(\d+)c(\d+)" class="cell"')
 DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru"})
-FAMILY_LABELS = {
-    "murdoku": "Murdoku",
-    "sudoku": "Sudoku",
-    "calcudoku": "Calcudoku",
-    "futoshiki": "Futoshiki",
-    "queens": "Queens",
-    "suguru": "Suguru",
-    "starbattle": "Star Battle",
-    "binairo": "Binairo and Tango",
-    "tents": "Tents and Trees",
-    "minesweeper": "Minesweeper",
-    "akari": "Akari",
-    "kakurasu": "Kakurasu",
-    "battleships": "Battleships",
-    "logicgrid": "Logic grid",
-}
 UNSUPPORTED = {"logicgrid": "The logic grid needs its own matrix view; not playable yet."}
 
 
@@ -155,13 +141,21 @@ def bundle(
     solution: Mapping[str, Any],
     picture: str,
     grade: str,
+    *,
+    number: int = 0,
+    section: str = "",
 ) -> dict[str, Any]:
-    """The JSON-ready bundle of one puzzle; `model` is compiled but not yet solved."""
+    """The JSON-ready bundle of one puzzle; `model` is compiled but not yet solved.
+
+    `number` and `section` place it in the collection (see `collection.arrange`).
+    """
     out: dict[str, Any] = {
         "schema": SCHEMA,
         "id": stem,
         "family": kind,
         "familyLabel": FAMILY_LABELS[kind],
+        "section": section or FAMILY_LABELS[kind],
+        "number": number,
         "title": _title(text, kind, stem),
         "grade": grade,
         "static": f"{stem}.svg",
@@ -211,6 +205,7 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
                 "figures",
                 "attributes",
                 "roles",
+                "objects",
             )
         },
         "rules": rules,
@@ -219,7 +214,23 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "question": presentation.question,
         "attributes": [{"name": n, "text": t} for n, t in attribute_list(text)],
         "roles": [{"name": n, "text": t} for n, t in role_list(text)],
+        "objects": _objects(text),
     }
+
+
+def _objects(text: str) -> list[dict[str, Any]]:
+    """Each kind of object with its picture and whether figures may stand on it."""
+    out = []
+    for kind, label, standable in object_list(text):
+        entry = {
+            "name": label,
+            "text": phrase(text, "doc.standable" if standable else "doc.blocking"),
+        }
+        icon = icons.object_icon(kind)
+        if icon is not None and (picture := icons.to_svg(icon)):
+            entry["svg"] = picture
+        out.append(entry)
+    return out
 
 
 def _family(
@@ -326,7 +337,17 @@ def _domain(model: Model, var: str) -> list[Any]:
 
 def index_entry(data: Mapping[str, Any]) -> dict[str, Any]:
     """The landing page's line for one bundle."""
-    keys = ("id", "title", "family", "familyLabel", "size", "grade", "playable")
+    keys = (
+        "id",
+        "number",
+        "section",
+        "title",
+        "family",
+        "familyLabel",
+        "size",
+        "grade",
+        "playable",
+    )
     entry = {key: data[key] for key in keys}
     if "unsupported" in data:
         entry["unsupported"] = data["unsupported"]

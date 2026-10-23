@@ -2,7 +2,6 @@
 
 import socket
 from io import BytesIO
-from pathlib import Path
 
 import pytest
 
@@ -14,8 +13,8 @@ from csp import bruteforce, cli, icons, svg  # noqa: E402
 from csp import picture as drawing  # noqa: E402
 from csp.murdoku import Board, BoardObject, EdgeItem, PointObject, RoleSpec, Square  # noqa: E402
 from csp.puzzlefile import load_board, load_presentation  # noqa: E402
+from tests.examples import all_examples, example  # noqa: E402
 
-EXAMPLES = Path(__file__).parent.parent / "examples"
 CELL = 100
 
 
@@ -61,6 +60,11 @@ def fake_emoji(monkeypatch):
         fakes[code] = f'<rect width="128" height="128" fill="rgb{rgb}"/>'
 
     return add
+
+
+def _bluish(pixel):
+    """A standable object is drawn faint, so pure blue blends with the region colour."""
+    return pixel[2] > pixel[0] + 40 and pixel[2] > pixel[1] + 40
 
 
 def _centre(image, board, r, c, coordinates=True):
@@ -115,7 +119,7 @@ def test_registry_icons_take_a_tint():
 def test_text_is_drawn_as_paths_from_the_bundled_font():
     from csp import sudoku
 
-    canvas = drawing.sudoku_picture(sudoku.parse((EXAMPLES / "sudoku_4x4.txt").read_text()))
+    canvas = drawing.sudoku_picture(sudoku.parse((example("sudoku_4x4.txt")).read_text()))
     text = canvas.to_svg()
     assert "<text" not in text and "aria-label" in text
 
@@ -129,7 +133,7 @@ def test_every_character_in_the_example_pictures_is_in_the_bundled_font():
     from csp.puzzlefile import detect
 
     font = svg.font()
-    for path in sorted(EXAMPLES.glob("*.txt")):
+    for path in all_examples():
         text = path.read_text()
         markup = cli.make_image(detect(text), text).to_svg()
         for label in re.findall(r'aria-label="([^"]*)"', markup):
@@ -141,7 +145,7 @@ def test_every_character_in_the_example_pictures_is_in_the_bundled_font():
 def test_interactive_variant_has_cell_ids_and_no_solution():
     from csp import sudoku
 
-    text = (EXAMPLES / "sudoku_4x4.txt").read_text()
+    text = (example("sudoku_4x4.txt")).read_text()
     grid = sudoku.parse(text)
     (solution,) = bruteforce.solutions(text)
     interactive = drawing.sudoku_picture(grid, solution, interactive=True)
@@ -152,7 +156,7 @@ def test_interactive_variant_has_cell_ids_and_no_solution():
 
 
 def test_interactive_murdoku_has_cell_ids_and_the_blank_board():
-    text = (EXAMPLES / "tamagotchi-murdoku-9x9.txt").read_text()
+    text = (example("tamagotchi-murdoku-9x9.txt")).read_text()
     board, _ = load_board(text)
     canvas = drawing.murdoku_picture(board, legend=False, interactive=True)
     assert "r1c1" in svg.ids(canvas.to_svg())
@@ -169,10 +173,10 @@ def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji
         [BoardObject("table", "standable", (Square(1, 0), Square(1, 1)))],
         ["A", "B"],
     )  # fmt: skip
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
     margin = CELL // 6
     row = margin + CELL + CELL // 2
-    blue = [x for x in range(image.width) if image.getpixel((x, row)) == (0, 0, 255)]
+    blue = [x for x in range(image.width) if _bluish(image.getpixel((x, row)))]
     assert blue[0] < margin + CELL // 4 and blue[-1] > margin + 2 * CELL - CELL // 4
 
 
@@ -182,13 +186,13 @@ def test_two_square_bench_keeps_its_proportions_and_is_not_stretched(fake_emoji)
         2,
         [["a", "a"], ["a", "a"]],
         {"a": "here"},
-        [BoardObject("bench", "standable", (Square(1, 0), Square(1, 1)))],
+        [BoardObject("bank", "standable", (Square(1, 0), Square(1, 1)))],
         ["A", "B"],
     )  # fmt: skip
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
     margin = CELL // 6
     row = margin + CELL + CELL // 2
-    blue = [x for x in range(image.width) if image.getpixel((x, row)) == (0, 0, 255)]
+    blue = [x for x in range(image.width) if _bluish(image.getpixel((x, row)))]
     # A square icon keeps its shape: about one square wide, not stretched across both.
     assert blue and blue[-1] - blue[0] < CELL
 
@@ -495,7 +499,7 @@ def test_couch_icon_loses_its_floor_lamp():
 
 
 def test_picture_shows_regions_objects_and_borders():
-    text = (EXAMPLES / "prrrdoku3.txt").read_text()
+    text = (example("prrrdoku3.txt")).read_text()
     board, _ = load_board(text)
     image = picture.murdoku_picture(board, cell=CELL)
     margin = CELL // 2
@@ -515,15 +519,15 @@ def test_picture_shows_regions_objects_and_borders():
 
 
 def test_without_legend_the_picture_is_square():
-    board, _ = load_board((EXAMPLES / "prrrdoku3.txt").read_text())
+    board, _ = load_board((example("prrrdoku3.txt")).read_text())
     with_legend = picture.murdoku_picture(board, cell=CELL)
     without = picture.murdoku_picture(board, cell=CELL, legend=False)
     assert without.width == without.height == with_legend.width < with_legend.height
 
 
 def test_hatching_only_on_hatched_regions():
-    board, _ = load_board((EXAMPLES / "prrrdoku3.txt").read_text())
-    image = picture.murdoku_picture(board, cell=CELL)
+    board, _ = load_board((example("prrrdoku3.txt")).read_text())
+    image = picture.murdoku_picture(board, cell=CELL, labels=False)
     margin = CELL // 2
 
     def colours(r, c):
@@ -535,7 +539,7 @@ def test_hatching_only_on_hatched_regions():
 
 
 def test_solution_picture_puts_name_tags_on_squares():
-    text = (EXAMPLES / "prrrdoku3.txt").read_text()
+    text = (example("prrrdoku3.txt")).read_text()
     board, _ = load_board(text)
     (solution,) = bruteforce.solutions(text, "murdoku")
     image = picture.murdoku_picture(board, solution, cell=CELL)
@@ -547,7 +551,7 @@ def test_solution_picture_puts_name_tags_on_squares():
 
 def test_default_palette_when_no_colours_given():
     board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
     assert _centre(image, board, 0, 0, coordinates=False)[:3] == picture._rgb(picture.PALETTE[0])
     assert _centre(image, board, 0, 1, coordinates=False)[:3] == picture._rgb(picture.PALETTE[1])
 
@@ -627,7 +631,7 @@ in_column Ben 2
 
 def test_cli_svg_writes_board_and_solution_beside_the_puzzle(tmp_path):
     puzzle = tmp_path / "tents.txt"
-    puzzle.write_text((EXAMPLES / "tents_4x4.txt").read_text())
+    puzzle.write_text((example("tents_4x4.txt")).read_text())
     assert cli.main([str(puzzle), "--svg"]) == 0
     board, solved = tmp_path / "tents.svg", tmp_path / "tents-solution.svg"
     assert board.read_text().startswith("<svg") and solved.read_text().startswith("<svg")
@@ -636,25 +640,25 @@ def test_cli_svg_writes_board_and_solution_beside_the_puzzle(tmp_path):
 
 def test_cli_interactive_svg_has_cell_ids_and_no_solution(tmp_path):
     target = tmp_path / "game.svg"
-    assert cli.main([str(EXAMPLES / "prrrdoku1.txt"), "--svg", str(target), "--interactive"]) == 0
+    assert cli.main([str(example("prrrdoku1.txt")), "--svg", str(target), "--interactive"]) == 0
     assert "r1c1" in svg.ids(target.read_text())
     assert [path.name for path in tmp_path.iterdir()] == ["game.svg"]
 
 
 def test_cli_interactive_needs_svg(tmp_path):
     with pytest.raises(SystemExit):
-        cli.main([str(EXAMPLES / "tents_4x4.txt"), "--interactive"])
+        cli.main([str(example("tents_4x4.txt")), "--interactive"])
 
 
 def test_cli_png_writes_board_and_solution(tmp_path, capsys):
     from csp import cli
 
     target = tmp_path / "board.png"
-    assert cli.main([str(EXAMPLES / "prrrdoku1.txt"), "--png", str(target)]) == 0
+    assert cli.main([str(example("prrrdoku1.txt")), "--png", str(target)]) == 0
     assert target.exists() and (tmp_path / "board-solution.png").exists()
     for name in ("sudoku_4x4.txt", "calcudoku_4x4_easy.txt"):
         target = tmp_path / f"{name}.png"
-        assert cli.main([str(EXAMPLES / name), "--png", str(target)]) == 0
+        assert cli.main([str(example(name)), "--png", str(target)]) == 0
         assert target.exists() and target.with_stem(f"{target.stem}-solution").exists()
 
 
@@ -679,7 +683,7 @@ def _has(image, r, c, colour):
 def test_sudoku_picture_shows_givens_in_ink_and_solved_numbers_in_blue():
     from csp import sudoku
 
-    text = (EXAMPLES / "sudoku_4x4.txt").read_text()
+    text = (example("sudoku_4x4.txt")).read_text()
     grid = sudoku.parse(text)
     (solution,) = bruteforce.solutions(text)
     image = picture.sudoku_picture(grid, solution, cell=CELL)
@@ -715,7 +719,7 @@ r2c1 r2c2
 def test_sudoku_picture_shades_alternate_boxes():
     from csp import sudoku
 
-    grid = sudoku.parse((EXAMPLES / "sudoku_4x4.txt").read_text())
+    grid = sudoku.parse((example("sudoku_4x4.txt")).read_text())
     image = picture.sudoku_picture(grid, cell=CELL)
     corner = lambda r, c: image.getpixel((CELL // 2 + c * CELL + 8, CELL // 2 + r * CELL + 8))  # noqa: E731
     assert corner(0, 0) == corner(2, 2) == picture.WHITE
@@ -729,7 +733,7 @@ def _corner(image, r, c):
 def test_jigsaw_picture_colours_touching_boxes_apart():
     from csp import sudoku
 
-    puzzle = sudoku.parse((EXAMPLES / "sudoku_jigsaw.txt").read_text())
+    puzzle = sudoku.parse((example("sudoku_jigsaw.txt")).read_text())
     image = picture.sudoku_picture(puzzle, cell=CELL)
     boxes = puzzle.boxes
     for r in range(6):
@@ -741,7 +745,7 @@ def test_jigsaw_picture_colours_touching_boxes_apart():
 def test_x_sudoku_picture_greys_the_diagonals():
     from csp import sudoku
 
-    puzzle = sudoku.parse((EXAMPLES / "sudoku_x.txt").read_text())
+    puzzle = sudoku.parse((example("sudoku_x.txt")).read_text())
     image = picture.sudoku_picture(puzzle, cell=CELL)
     assert _corner(image, 0, 0) == _corner(image, 0, 8) == _corner(image, 4, 4) == picture.EXTRA
     assert _corner(image, 0, 1) != picture.EXTRA
@@ -750,7 +754,7 @@ def test_x_sudoku_picture_greys_the_diagonals():
 def test_nrc_sudoku_picture_greys_the_extra_boxes():
     from csp import sudoku
 
-    puzzle = sudoku.parse((EXAMPLES / "sudoku_nrc.txt").read_text())
+    puzzle = sudoku.parse((example("sudoku_nrc.txt")).read_text())
     image = picture.sudoku_picture(puzzle, cell=CELL)
     assert _corner(image, 1, 1) == _corner(image, 7, 7) == picture.EXTRA
     assert _corner(image, 0, 0) == _corner(image, 4, 4) == picture.WHITE
@@ -770,7 +774,7 @@ def test_futoshiki_picture_points_each_sign_at_the_smaller_cell():
 def test_queens_picture_shows_regions_and_solution():
     from csp import queens
 
-    text = (EXAMPLES / "queens_4x4.txt").read_text()
+    text = (example("queens_4x4.txt")).read_text()
     puzzle = queens.parse(text)
     (solution,) = bruteforce.solutions(text)
     image = picture.queens_picture(puzzle, solution, cell=CELL)
@@ -787,7 +791,7 @@ def test_queens_picture_shows_regions_and_solution():
 def test_logicgrid_unsolved_picture_includes_clues():
     from csp import logicgrid
 
-    puzzle = logicgrid.parse((EXAMPLES / "logicgrid_3x3.txt").read_text())
+    puzzle = logicgrid.parse((example("logicgrid_3x3.txt")).read_text())
     image = picture.logicgrid_picture(puzzle, cell=48)
     table_height = sum(len(items) + 1 for items in puzzle.categories.values()) * 24
 
@@ -798,7 +802,7 @@ def test_logicgrid_unsolved_picture_includes_clues():
 def test_starbattle_picture_distinguishes_given_and_solved_stars():
     from csp import starbattle
 
-    base = (EXAMPLES / "starbattle_8x8.txt").read_text()
+    base = (example("starbattle_8x8.txt")).read_text()
     (first,) = bruteforce.solutions(base)
     given = next(name for name, star in first.items() if star)
     size = starbattle.parse(base).size
@@ -841,7 +845,7 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
     ],
 )
 def test_family_png_cli_writes_nonblank_solution(name, tmp_path):
-    text = (EXAMPLES / name).read_text()
+    text = (example(name)).read_text()
     kind = cli.detect(text)
     (solution,) = bruteforce.solutions(text, kind)
     path = tmp_path / f"{name}.png"
@@ -855,7 +859,7 @@ def test_family_png_cli_writes_nonblank_solution(name, tmp_path):
 def test_tango_picture_marks_equal_and_different_signs():
     from csp import binairo
 
-    text = (EXAMPLES / "tango_4x4.txt").read_text()
+    text = (example("tango_4x4.txt")).read_text()
     puzzle = binairo.parse(text)
     (solution,) = bruteforce.solutions(text)
     image = picture.binairo_picture(puzzle, solution, cell=CELL)
@@ -882,7 +886,7 @@ def test_touching_calcudoku_cages_never_share_a_colour():
     from csp import calcudoku
 
     for name in ("calcudoku_4x4_easy.txt", "calcudoku_7x7_hard.txt"):
-        puzzle = calcudoku.parse((EXAMPLES / name).read_text())
+        puzzle = calcudoku.parse((example(name)).read_text())
         fills = picture._cage_fills(puzzle)
         at = puzzle.cage_at
         for (r, c), cage in at.items():
@@ -894,7 +898,7 @@ def test_touching_calcudoku_cages_never_share_a_colour():
 def test_calcudoku_picture_writes_each_cage_target_in_its_first_cell():
     from csp import calcudoku
 
-    puzzle = calcudoku.parse((EXAMPLES / "calcudoku_4x4_easy.txt").read_text())
+    puzzle = calcudoku.parse((example("calcudoku_4x4_easy.txt")).read_text())
     image = picture.calcudoku_picture(puzzle, cell=CELL)
     for cage in puzzle.cages:
         r, c = min(cage.cells)
@@ -907,7 +911,7 @@ def test_walls_do_not_poke_into_cells():
     """Where a cage wall ends against a thin line, no ink spills past it."""
     from csp import calcudoku
 
-    puzzle = calcudoku.parse((EXAMPLES / "calcudoku_4x4_easy.txt").read_text())
+    puzzle = calcudoku.parse((example("calcudoku_4x4_easy.txt")).read_text())
     image = picture.calcudoku_picture(puzzle, cell=CELL)
     x, y = CELL // 2 + 2 * CELL, CELL // 2 + CELL  # top-left corner of r2c3
     corner = image.crop((x - 10, y - 10, x - 3, y - 3))
@@ -928,7 +932,7 @@ def test_hand_drawn_objects_never_fall_back_to_text(name):
 
 def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
     checked = 0
-    for path in sorted(EXAMPLES.glob("*.txt")):
+    for path in all_examples():
         text = path.read_text()
         if "People:" not in text:
             continue
@@ -942,7 +946,7 @@ def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
 
 
 def test_blocked_squares_are_shaded_darker_without_a_cross():
-    board, _ = load_board((EXAMPLES / "tamagotchi-murdoku-9x9.txt").read_text())
+    board, _ = load_board((example("tamagotchi-murdoku-9x9.txt")).read_text())
     image = picture.murdoku_picture(board, legend=False).convert("RGB")
     cell, margin = 120, 60
     blocked = sorted(board.blocked)[0]
@@ -956,14 +960,14 @@ def test_blocked_squares_are_shaded_darker_without_a_cross():
 
 def test_picture_ignores_role_booleans_in_the_assignment(tmp_path):
     out = tmp_path / "c.png"
-    assert cli.main([str(EXAMPLES / "murdoku_composition.txt"), "--png", str(out)]) == 0
+    assert cli.main([str(example("murdoku_composition.txt")), "--png", str(out)]) == 0
     assert out.exists()
 
 
 def test_dog_and_puppy_pieces_are_drawn_instead_of_the_crown():
     from csp import queens
 
-    base = (EXAMPLES / "queens_4x4.txt").read_text()
+    base = (example("queens_4x4.txt")).read_text()
     pictures = {}
     for icon in ("queen", "dog", "puppy"):
         text = base.replace("Family: queens", f"Family: queens\nIcon: {icon}")
@@ -984,7 +988,7 @@ def test_dog_and_puppy_pieces_are_drawn_instead_of_the_crown():
 def test_dog_puzzles_give_every_zone_its_own_colour():
     from csp import queens
 
-    text = (EXAMPLES / "dogdoku_9x9.txt").read_text()
+    text = (example("dogdoku_9x9.txt")).read_text()
     puzzle = queens.parse(text)
     image = picture.queens_picture(puzzle, None, cell=CELL)
     margin = CELL // 2
@@ -998,9 +1002,22 @@ def test_dog_puzzles_give_every_zone_its_own_colour():
 
 
 def test_dutch_legend_lists_fixed_role_holders_as_a_category():
-    text = Path("examples/menu-murdoku-3.txt").read_text()
+    text = example("menu-murdoku-3.txt").read_text()
     board, _ = load_board(text)
     legend = drawing._Legend(board, CELL, language="nl")
 
     assert legend.words["point"] == "Punt"
     assert legend._role_line("eiwit") == "Eiwit: Vis, Bonen (niet meer dan 1 hiervan per gebied)"
+
+
+def test_region_names_are_tagged_on_the_puzzle_but_not_the_solution():
+    board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
+
+    def top(**kw):
+        return _centre(
+            picture.murdoku_picture(board, cell=CELL, coordinates=False, **kw), board, 0, 0, False
+        )
+
+    plain = top(labels=False)
+    assert top() != plain
+    assert top(placed={"A": Square(1, 0), "B": Square(1, 1)}) == plain

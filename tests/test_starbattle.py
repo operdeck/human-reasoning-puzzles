@@ -1,13 +1,10 @@
-from pathlib import Path
-
 import pytest
 
 from csp import report, starbattle
 from csp.bruteforce import starbattle as brute
 from csp.core import Kind, Solver
 from csp.starbattle import compile_puzzle, render
-
-EXAMPLES = Path(__file__).parent.parent / "examples"
+from tests.examples import example
 
 PUZZLE = """Family: starbattle
 Size: 4
@@ -70,7 +67,7 @@ def test_regions_may_differ_in_size_but_must_be_connected_and_hold_the_stars():
     ],
 )
 def test_irregular_multi_star_examples_are_unique_and_graded(name, stars, size, grade):
-    text = (EXAMPLES / f"{name}.txt").read_text()
+    text = (example(f"{name}.txt")).read_text()
     puzzle = starbattle.parse(text)
     sizes = [len(cells) for cells in puzzle.areas.cells_by_region.values()]
 

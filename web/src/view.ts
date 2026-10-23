@@ -16,6 +16,7 @@ import {
   cellId,
   type Bundle,
   type CellId,
+  type Named,
   type PaletteItem,
   type State,
 } from "./game";
@@ -106,7 +107,8 @@ export class PuzzleView {
       "header",
       { className: "puzzle-header" },
       el("a", { href: "#", className: "back", textContent: "← All puzzles" }),
-      el("h1", { textContent: b.title }),
+      ...(b.section ? [el("p", { className: "meta", textContent: b.section })] : []),
+      el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
     );
     if (b.playable && b.autoMark && (b.autoMark.onPlace.length > 0 || (b.notes && b.peers?.length))) {
       this.autoBox.checked = this.state.auto;
@@ -179,11 +181,12 @@ export class PuzzleView {
       sections.push(["clues", this.heading("clues", "Clues"), section]);
     }
     const rules = el("div", {}, el("ul", {}, ...b.rules.map((rule) => el("li", { textContent: rule }))));
-    const described = (b.palette ?? []).filter((item) => item.description);
-    if (described.length > 0) rules.append(this.namedList(this.heading("figures", "The figures"),
-      described.map((item) => ({ name: item.label, text: item.description ?? "" }))));
+    const figures = b.family === "murdoku" ? (b.palette ?? []) : [];
+    if (figures.length > 0) rules.append(this.namedList(this.heading("figures", "The figures"),
+      figures.map((item) => ({ name: item.label, text: item.description ?? "", svg: item.svg }))));
     if (b.attributes?.length) rules.append(this.namedList(this.heading("attributes", "Attributes"), b.attributes));
     if (b.roles?.length) rules.append(this.namedList(this.heading("roles", "Roles"), b.roles));
+    if (b.objects?.length) rules.append(this.namedList(this.heading("objects", "Objects"), b.objects));
     sections.push(["rules", this.heading("rules_title", "Rules"), rules]);
     if (b.conditions.length > 0) {
       sections.push(["conditions", this.heading("conditions", "Conditions"), this.namedList(null, b.conditions)]);
@@ -212,9 +215,18 @@ export class PuzzleView {
     return aside;
   }
 
-  private namedList(title: string | null, items: { name: string; text: string }[]): HTMLElement {
+  private namedList(title: string | null, items: Named[]): HTMLElement {
     const list = el("dl", {});
-    for (const { name, text } of items) list.append(el("dt", { textContent: name }), el("dd", { textContent: text }));
+    for (const { name, text, svg } of items) {
+      const term = el("dt", {});
+      if (svg) {
+        const icon = el("span", { className: "icon" });
+        icon.innerHTML = svg;
+        term.append(icon);
+      }
+      term.append(name);
+      list.append(term, el("dd", { textContent: text }));
+    }
     return title ? el("div", {}, el("h3", { textContent: title }), list) : list;
   }
 

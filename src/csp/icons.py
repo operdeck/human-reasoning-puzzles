@@ -73,6 +73,73 @@ PUPPY = (
     '<g fill="#fff"><circle cx="37" cy="46" r="5"/><circle cx="63" cy="46" r="5"/></g>'
     '<g fill="currentColor"><circle cx="37" cy="46" r="2.5"/><circle cx="63" cy="46" r="2.5"/></g>'
 )
+# A tatami mat with its dark cloth edges, seen from above.
+TATAMI = (
+    '<rect x="6" y="4" width="88" height="92" rx="3" fill="#d6cf8f" stroke="#8a8450"'
+    ' stroke-width="2"/>'
+    '<g stroke="#bdb571" stroke-width="1.5">'
+    + "".join(f'<line x1="18" y1="{y}" x2="82" y2="{y}"/>' for y in range(12, 92, 8))
+    + "</g>"
+    '<g fill="#2f3b4c"><rect x="6" y="4" width="10" height="92"/>'
+    '<rect x="84" y="4" width="10" height="92"/></g>'
+)
+# A round Japanese plate with an indigo rim and two pieces of nigiri.
+PLATE = (
+    '<circle cx="50" cy="52" r="44" fill="#f6f1e7" stroke="#2c4a7a" stroke-width="4"/>'
+    '<circle cx="50" cy="52" r="35" fill="none" stroke="#2c4a7a" stroke-width="2"'
+    ' stroke-dasharray="5 4"/>'
+    '<g fill="#fff" stroke="#a0a0a0" stroke-width="1.5">'
+    '<rect x="28" y="34" width="20" height="36" rx="9"/>'
+    '<rect x="52" y="34" width="20" height="36" rx="9"/></g>'
+    '<g fill="#f08a5d"><rect x="30" y="31" width="16" height="34" rx="7"/>'
+    '<rect x="54" y="31" width="16" height="34" rx="7"/></g>'
+    '<g stroke="#fde3d5" stroke-width="2">'
+    '<path d="M32 42L44 38M32 52L44 48M56 42L68 38M56 52L68 48"/></g>'
+)
+# A zaisu: the legless Japanese floor chair, with a red cushion.
+ZAISU = (
+    '<ellipse cx="54" cy="90" rx="38" ry="5" fill="#000" opacity="0.15"/>'
+    '<path d="M16 14Q22 10 30 14L36 80H22Z" fill="#8b5a2b"/>'
+    '<rect x="20" y="70" width="70" height="16" rx="4" fill="#8b5a2b"/>'
+    '<rect x="34" y="58" width="56" height="15" rx="7" fill="#c0392b"/>'
+    '<path d="M21 22Q25 19 29 22L32 58H25Z" fill="#c0392b"/>'
+)
+# Savanna trees: the flat-topped acacia and the thick-trunked baobab.
+ACACIA = (
+    '<ellipse cx="50" cy="94" rx="22" ry="3.5" fill="#000" opacity="0.15"/>'
+    '<path d="M50 94L50 56L34 38M50 62L68 38" stroke="#6b4a2b" stroke-width="6" fill="none"'
+    ' stroke-linecap="round" stroke-linejoin="round"/>'
+    '<ellipse cx="50" cy="32" rx="45" ry="13" fill="#5f8a22"/>'
+    '<ellipse cx="50" cy="26" rx="36" ry="9" fill="#7fa83a"/>'
+)
+BAOBAB = (
+    '<ellipse cx="50" cy="94" rx="22" ry="3.5" fill="#000" opacity="0.15"/>'
+    '<path d="M40 40L26 20M50 38V12M60 40L76 20" stroke="#9b7653" stroke-width="7"'
+    ' stroke-linecap="round"/>'
+    '<path d="M34 94Q28 62 38 36H62Q72 62 66 94Z" fill="#a9825c"/>'
+    '<path d="M44 46Q42 70 44 90" stroke="#8a6644" stroke-width="2.5" fill="none"/>'
+    '<g fill="#6b8e23"><circle cx="24" cy="18" r="10"/><circle cx="50" cy="11" r="10"/>'
+    '<circle cx="78" cy="18" r="10"/></g>'
+)
+# A waterfall between two grey cliffs, falling into a pool.
+WATERFALL = (
+    '<rect x="6" y="8" width="32" height="84" rx="6" fill="#8d8f93"/>'
+    '<rect x="62" y="8" width="32" height="84" rx="6" fill="#7b7d81"/>'
+    '<rect x="36" y="6" width="28" height="80" fill="#5dade2"/>'
+    '<g stroke="#d6eaf8" stroke-width="3"><path d="M42 10V82M50 10V82M58 10V82"/></g>'
+    '<ellipse cx="50" cy="88" rx="34" ry="8" fill="#aed6f1"/>'
+)
+
+
+# A wooden park bench on cast-iron legs, wider than it is tall.
+BENCH = (
+    '<g stroke="#3d3d3d" stroke-width="4" stroke-linecap="round" fill="none">'
+    '<path d="M14 4V52M86 4V52M8 52L14 34M92 52L86 34"/></g>'
+    '<g fill="#b07a43" stroke="#7a5230" stroke-width="1.5">'
+    '<rect x="6" y="5" width="88" height="8" rx="2"/>'
+    '<rect x="6" y="16" width="88" height="8" rx="2"/>'
+    '<rect x="3" y="30" width="94" height="10" rx="2"/></g>'
+)
 # A patterned rug and a stone well, drawn here because Noto Emoji has neither.
 CARPET = (
     '<rect x="10" y="10" width="101" height="101" rx="10" fill="#9c3a2d"/>'
@@ -154,11 +221,23 @@ REGISTRY: dict[str, Icon] = {
         Icon("carpet", "\u25a6", "carpet", markup=CARPET, view=(0, 0, 121, 121)),
         Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
         Icon("allium", "\u273f", "allium", markup=ALLIUM),
+        Icon("bench", "\u2b0c", "park bench", markup=BENCH, view=(0, 0, 100, 56)),
+        Icon("tatami", "\u25a5", "tatami mat", markup=TATAMI),
+        Icon("plate", "\u25cd", "Japanese plate", markup=PLATE),
+        Icon("zaisu", "\u2441", "Japanese chair", markup=ZAISU),
+        Icon("acacia", "\u2663", "acacia", markup=ACACIA),
+        Icon("baobab", "\u2660", "baobab", markup=BAOBAB),
+        Icon("waterfall", "\u2307", "waterfall", markup=WATERFALL),
     )
 }
 
 # Murdoku object names drawn with a registry icon rather than an emoji.
-OBJECT_ICONS = {"tapijt": "carpet", "carpet": "carpet", "rug": "carpet", "tatami": "carpet",
+OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
+                "tapijt": "carpet", "carpet": "carpet", "rug": "carpet",
+                "tatami": "tatami", "plate": "plate", "sara": "plate",
+                "zaisu": "zaisu", "japanese_chair": "zaisu",
+                "acacia": "acacia", "baobab": "baobab",
+                "waterval": "waterfall", "waterfall": "waterfall",
                 "waterput": "well", "well": "well",
                 "sierui": "allium", "allium": "allium"}  # fmt: skip
 
@@ -166,6 +245,15 @@ OBJECT_ICONS = {"tapijt": "carpet", "carpet": "carpet", "rug": "carpet", "tatami
 CATALOGUE: dict[str, str] = {
     # outdoors
     "boom": "1f333", "tree": "1f333",
+    "den": "1f332", "dennenboom": "1f332", "pine": "1f332",
+    "palm": "1f334", "palmboom": "1f334", "palm_tree": "1f334",
+    "cactus": "1f335",
+    "gras": "1f33e", "helmgras": "1f33e", "grass": "1f33e", "riet": "1f33e", "reeds": "1f33e",
+    "boomstam": "1fab5", "stam": "1fab5", "log": "1fab5",
+    "waterlelie": "1fab7", "lotus": "1fab7",
+    "hut": "1f6d6", "berghut": "1f6d6",
+    "berg": "1f3d4", "mountain": "1f3d4",
+    "leeuw": "1f981", "lion": "1f981",
     "struik": "1f33f", "bush": "1f33f",
     "bloem": "1f337", "flower": "1f337", "tulp": "1f337", "tulip": "1f337",
     "zonnebloem": "1f33b", "sunflower": "1f33b",
@@ -194,17 +282,17 @@ CATALOGUE: dict[str, str] = {
     # Japanese
     "sakura": "1f338", "cherry_blossom": "1f338",
     "shrine": "26e9", "torii": "26e9",
-    "castle": "1f3ef", "fuji": "1f5fb",
+    "castle": "1f3ef", "fuji": "1f5fb", "tokyo_tower": "1f5fc",
     "taiko": "1f941", "drum": "1f941",
     "carp": "1f38f", "koinobori": "1f38f",
     "bonsai": "1f38d", "tanabata": "1f38b",
     "tea": "1f375", "sake": "1f376",
     "scroll": "1f4dc", "hanafuda": "1f3b4",
     # indoors
-    "bank": "1f6cb", "bankje": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bench": "1f6cb",
+    "bank": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bankstel": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",
     "window": "1fa9f",
-    "bed": "1f6cf",
+    "bed": "1f6cf", "tweepersoonsbed": "1f6cf", "double_bed": "1f6cf",
     "bad": "1f6c1", "bathtub": "1f6c1",
     "douche": "1f6bf", "shower": "1f6bf",
     "toilet": "1f6bd",
@@ -226,6 +314,14 @@ CATALOGUE: dict[str, str] = {
     "kombuis": "1f372", "galley": "1f372",
     "koffer": "1f9f3", "suitcase": "1f9f3",
     "kruik": "1f3fa", "amphora": "1f3fa", "vase": "1f3fa",
+    "taart": "1f370", "cake": "1f370",
+    "mand": "1f9fa", "basket": "1f9fa",
+    "schooltas": "1f392", "backpack": "1f392", "schoolbag": "1f392",
+    "arcade": "1f579", "joystick": "1f579",
+    "microfoon": "1f3a4", "microphone": "1f3a4",
+    "knuffel": "1f9f8", "teddy": "1f9f8", "teddy_bear": "1f9f8",
+    "bal": "26bd", "ball": "26bd", "voetbal": "26bd", "football": "26bd",
+    "emmer": "1faa3", "bucket": "1faa3",
 }  # fmt: skip
 
 

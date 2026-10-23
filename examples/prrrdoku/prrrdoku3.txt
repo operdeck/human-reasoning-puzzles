@@ -1,0 +1,136 @@
+# Prrrdoku 3 - "Een dagje Amsterdam"  (9x9, eight regions)
+#
+# Board based on the figure in proprietary puzzles/Prrrdoku 3.docx. For the late-reveal
+# variant, r2c5 moves to Helmholtzstraat, and r1c6/r2c6 move to Klimgebied Noord
+# so Bankastraat remains connected. Colours match the document's legend table.
+# Cross-checked against the solution's candidate lists:
+# vuurtje's neighbours outside the water are r4c1, r5c2; the
+# benches (bankjes) are r1c2, r1c3, r3c4, r3c5, r8c3, r8c4; a knight's move from klimwand
+# or boulder reaches r1c6, r3c6, r6c7, r6c9, r7c6, r9c6; eight free squares
+# border a koffer in the koffer's own region; woonboot plus water has 19 free
+# squares.
+#
+# The board first published put the koffer on r1c5 in Bankastraat. Since "next to"
+# never crosses a region boundary, that left the puzzle without a solution; the
+# document now has r1c5 in Helmholtzstraat, which keeps the published solution.
+#
+# Banks are 1x2 standable objects, so they do not block their squares.
+
+Size: 9
+Language: nl
+
+# How to write names in the explanation: a place as "where", a thing as a noun.
+Words:
+klimgebied_noord: in klimgebied noord
+klimgebied_zuid: in klimgebied zuid
+klimgebied: in een klimgebied
+helmholtzstraat: in de Helmholtzstraat
+bankastraat: in de Bankastraat
+kantoor: op kantoor
+woonboot: op de woonboot
+water: in het water
+vuurtje: het vuurtje
+bureau: het bureau
+
+Regions:
+a: klimgebied_noord #F4CBC3
+b: klimgebied_zuid #E0A79C
+c: moestuin #CBE6B9
+d: helmholtzstraat #FADFB5
+e: bankastraat #F3EDA2
+f: kantoor #DCDCDC
+g: woonboot #C79A6A
+h: water #A9D6F0
+
+AreaTags:
+klimgebied: klimgebied_noord klimgebied_zuid
+amsterdam: helmholtzstraat bankastraat kantoor woonboot water
+
+# Amsterdam is hatched on the printed board.
+Hatched:
+amsterdam
+
+Grid:
+d d d d d a a a a
+d d d e d a a a a
+d d e e e c a a a
+f f f f c c c c c
+f f f f c c c c c
+h h h h h b b b b
+h g g g h b b b b
+h g g g h b b b b
+h h h h h b b b b
+
+Objects:
+koffer: blocking r1c5
+koffer: blocking r4c7
+koffer: blocking r9c7
+boom: blocking r2c7
+boom: blocking r3c9
+boom: blocking r4c9
+boom: blocking r6c6
+boom: blocking r9c9
+lantaarn: blocking r2c2
+klimwand: blocking r2c8
+bureau: blocking r4c3
+vuurtje: blocking r5c1
+kas: blocking r5c6
+kombuis: blocking r7c3
+boulder: blocking r8c8
+bankje: standable r1c2 r1c3
+bankje: standable r3c4 r3c5
+bankje: standable r8c3 r8c4
+
+People:
+Tim
+Jos
+Otto
+Anna
+Pip
+Tjitske
+Vladimir
+Mao
+Luna
+
+# "In het water kan alleen Luna zijn" is a board rule, written out per person.
+Rules:
+outside Tim water
+outside Jos water
+outside Otto water
+outside Anna water
+outside Pip water
+outside Tjitske water
+outside Vladimir water
+outside Mao water
+
+# Clues 1-13 from the document, plus a late-reveal clue (14).
+# Clue 15 is the question being asked.
+Clues:
+knight_from Tim klimwand boulder
+in_region Otto klimgebied_noord klimgebied_zuid kantoor | Otto is in een klimgebied of op kantoor.
+on Jos bankje
+next_to Anna koffer
+in_region Luna woonboot water
+next_to Tjitske vuurtje | Tjitske zit nog steeds naast het vuurtje.
+same_region Otto Pip
+apart Anna Tim
+above Otto Luna
+above Luna Jos
+at_least Tjitske Mao 10
+alone Luna
+furthest Luna Mao
+within Mao Otto 6
+
+# Booklet text for --docx (optional).
+Title:
+Prrrdoku 3: Een dagje Amsterdam
+
+Intro:
+Zes vrienden en de katten Mao, Luna en Vladimir gaan een dagje naar Amsterdam; Vladimir komt als laatste.
+Zet iedereen op een vrij vakje, één per rij en één per kolom. Op een bankje kun je staan, andere voorwerpen blokkeren een vakje. Alleen Luna kan in het water.
+
+Question:
+Wie krijgt Vladimir op schoot?
+
+Reveal:
+Vladimir ligt in de moestuin en kruipt bij Tim op schoot.

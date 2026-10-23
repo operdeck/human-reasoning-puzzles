@@ -73,6 +73,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.attributes": "The attributes",
         "doc.attribute": "{people}",
         "doc.roles": "The roles",
+        "doc.objects": "The objects",
+        "doc.standable": "you can stand on it",
+        "doc.blocking": "nobody can stand here",
         "doc.role": "held by {count}{extra}",
         "doc.count_one": "exactly one person",
         "doc.count_exact": "exactly {n} people",
@@ -124,6 +127,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "then_on": "then {who} is on {square}",
         "nowhere": "then {who} has nowhere left",
         "nobody": "then nobody can fill {line}",
+        "breaks_said": "which goes against \u2018{clue}\u2019",
+        "breaks_said_first": "that goes against \u2018{clue}\u2019",
         "both": "then {who} are both {where}",
         "breaks": "which clue {n} does not allow",
         "breaks_first": "clue {n} does not allow that",
@@ -254,10 +259,13 @@ PHRASES: dict[str, dict[str, str]] = {
             "Vakjes met {abbr} zijn {name}-vakjes: wie daar staat, deelt het gebied met "
             "iemand anders."
         ),
-        "doc.area_tag": "De {tag} zijn {areas}.",
+        "doc.area_tag": "{Tag}: {areas}.",
         "doc.attributes": "De kenmerken",
         "doc.attribute": "{people}",
         "doc.roles": "De rollen",
+        "doc.objects": "De voorwerpen",
+        "doc.standable": "hier kun je op staan",
+        "doc.blocking": "hier kan niemand staan",
         "doc.role": "heeft {count}{extra}",
         "doc.count_one": "precies één persoon",
         "doc.count_exact": "precies {n} mensen",
@@ -309,6 +317,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "then_on": "dan zit {who} op {square}",
         "nowhere": "dan kan {who} nergens meer",
         "nobody": "dan kan niemand meer in {line}",
+        "breaks_said": "en dat strookt niet met \u2018{clue}\u2019",
+        "breaks_said_first": "dat strookt niet met \u2018{clue}\u2019",
         "both": "dan zitten {who} allebei {where}",
         "breaks": "en dat mag niet volgens aanwijzing {n}",
         "breaks_first": "dat mag niet volgens aanwijzing {n}",
@@ -332,7 +342,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.next_to": "{a} zit naast {things}",
         "clue.not_next_to": "{a} zit niet naast {things}",
         "clue.knight_from": "{a} staat een paardensprong van {things}",
-        "clue.on": "{a} ligt op {things}",
+        "clue.on": "{a} zit op {things}",
         "clue.not_on": "{a} zit niet op {things}",
         "clue.on_mark": "{a} staat op {things}",
         "clue.not_on_mark": "{a} staat niet op {things}",
@@ -673,6 +683,7 @@ class Wording:
     words: dict[str, str] = field(default_factory=dict)
     phrases: dict[str, str] = field(default_factory=dict)
     numbered: bool = True
+    people: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def read(cls, text: str) -> "Wording":
@@ -701,14 +712,24 @@ class Wording:
         if not self.numbered and key in ("breaks", "breaks_first"):
             key += "_plain"
         template = self.phrases.get(key) or PHRASES[self.language][key]
+        if self.people:
+            fields = {
+                k: self.people.get(v, v) if isinstance(v, str) else v for k, v in fields.items()
+            }
         return template.format(**fields)
+
+    def for_people(self, people: Iterable[str]) -> "Wording":
+        """The same wording that calls a person by their `Words:` phrase, like "de leeuw"."""
+        return dataclasses.replace(
+            self, people={p: self.words[p] for p in people if p in self.words}
+        )
 
     def number(self, n: int) -> str:
         names = NUMBERS[self.language]
         return names[n] if n < len(names) else str(n)
 
     def join(self, items: Sequence[str], word: str = "and") -> str:
-        items = list(items)
+        items = [self.people.get(item, item) for item in items]
         if len(items) <= 1:
             return "".join(items)
         return f"{', '.join(items[:-1])} {self(word)} {items[-1]}"
@@ -905,6 +926,7 @@ class Story:
     def __init__(self, board: Board, clues: Sequence[Clue], say: Wording) -> None:
         self.board = board
         self.clues = tuple(clues)
+        say = say.for_people(board.people)
         self.say = say
         self.places = Places(board, say)
         self.about = {rule.name: rule.about for rule in board_rules(board)}
@@ -1020,13 +1042,39 @@ class Story:
                 lead = self.say.join(named)
                 if last and len(named) > 3:
                     lead = self.say("the_rest")
-                paragraphs.append(f"**{lead}.** {' '.join(sentences)}")
+                paragraphs.append(f"**{lead}.** {' '.join(self._merged(sentences))}")
                 sentences, placed = [], []
                 mark = len(state.announced)
         sentences += self._refuted(refuted)
         if sentences:
-            paragraphs.append(" ".join(sentences))
+            paragraphs.append(" ".join(self._merged(sentences)))
         return "\n\n".join(f"- {p}" for p in paragraphs)
+
+    def _merged(self, sentences: Sequence[str]) -> list[str]:
+        """Say a reason once when consecutive sentences draw several conclusions from it."""
+        so = f", {self.say('so')} "
+        out: list[str] = []
+        premise: str | None = None
+        outcomes: list[str] = []
+
+        def flush() -> None:
+            if premise is not None:
+                out.append(f"{premise}{so}{self.say.join(outcomes)}.")
+
+        for sentence in sentences:
+            head, found, tail = sentence.partition(so)
+            if found and tail.endswith(".") and so not in tail:
+                if head == premise:
+                    outcomes.append(tail[:-1])
+                    continue
+                flush()
+                premise, outcomes = head, [tail[:-1]]
+                continue
+            flush()
+            premise, outcomes = None, []
+            out.append(sentence)
+        flush()
+        return out
 
     # --- paragraphs and sentences ------------------------------------------
 
@@ -1090,6 +1138,8 @@ class Story:
     def _firing(self, rule: str, steps: Sequence[Step], state: _State) -> str:
         before = {p: set(s) for p, s in state.options.items()}
         state.apply(steps)
+        if steps and all(self._fixed_role(step) for step in steps):
+            return ""
         role_sentences = [
             text
             for step in steps
@@ -1459,8 +1509,10 @@ class Story:
             clue = _cap(self._role_condition_text(role_rule))
             return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
         if (quantified := self._quantified_condition_for_source(source)) is not None:
+            if not outcome:  # only the clue's hidden witness variables changed
+                return ""
             clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
-            return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
+            return f"{clue}, {self.say('so')} {outcome}."
         if source not in self.conditions and (apart := self._role_apart(source)) is not None:
             return f"{_cap(apart)}, {self.say('so')} {outcome}." if outcome else f"{_cap(apart)}."
         condition = self.conditions[source]
@@ -1590,20 +1642,33 @@ class Story:
                 if global_count is not None and global_count.number is not None:
                     refs.append(global_count.number)
         parts.append(self._broken(step, first=not parts))
-        broken = self.conditions.get(step.sources[0]) if step.sources else None
+        source = step.sources[0] if step.sources else None
+        broken = self.conditions.get(source) if source else None
         broken_global = self._global_count_for_sources(step.sources)
+        other = None
+        if source is not None and broken is None and broken_global is None:
+            other = self._quantified_condition_for_source(
+                source
+            ) or self._role_condition_for_source(source)
         broken_number = (
             broken.number
             if broken is not None
             else broken_global.number
             if broken_global is not None
+            else other.number
+            if other is not None
             else None
         )
         cited = sorted(set(refs) - {broken_number})
-        if not cited:
+        if not cited or not self.say.numbered:
             return who, square, ", ".join(parts)
         listed = self.say.join([str(n) for n in cited])
-        ref = self.say("via", refs=listed) if broken else listed
+        explained = (
+            broken is not None
+            or other is not None
+            or (broken_global is None and source not in self.about)
+        )
+        ref = self.say("via", refs=listed) if explained else listed
         return who, square, f"{', '.join(parts)} ({ref})"
 
     def _refuted(self, refuted: Sequence[tuple[str, Square, str]]) -> list[str]:
@@ -1625,6 +1690,10 @@ class Story:
         if source in self.conditions:
             condition = self.conditions[source]
             suffix = "_first" if first else ""
+            if condition.number is not None and self.say.numbered:
+                return self.say(f"breaks{suffix}", n=condition.number)
+            if quoted := self._clue(condition):
+                return self.say(f"breaks_said{suffix}", clue=_cap(quoted))
             if condition.number is None:
                 return self.say(f"breaks_rule{suffix}")
             return self.say(f"breaks{suffix}", n=condition.number)
@@ -1641,7 +1710,26 @@ class Story:
                 where = self.say("in", what=self.places.line(kind, what))
                 return self.say("both", who=self.say.join(inside), where=where)
             return self.say("nobody", line=self.places.line(kind, what))
-        return ""
+        suffix = "_first" if first else ""
+        rule = None
+        if source is not None:
+            rule = self._quantified_condition_for_source(source) or self._role_condition_for_source(
+                source
+            )
+        if rule is not None and rule.number is not None and self.say.numbered:
+            return self.say(f"breaks{suffix}", n=rule.number)
+        said: str | None = None
+        if isinstance(rule, QuantifiedCondition):
+            said = self._quantified_text(rule)
+        elif rule is not None:
+            said = self._role_condition_text(rule)
+        elif source is not None:
+            said = self._role_apart(source)
+        if said:
+            return self.say(f"breaks_said{suffix}", clue=_cap(said))
+        if rule is not None and rule.number is None:
+            return self.say(f"breaks_rule{suffix}")
+        return self.say("breaks_first_plain" if first else "breaks_plain")
 
     @staticmethod
     def _in(kind: str, what: Any, sq: Square) -> bool:
@@ -1673,6 +1761,20 @@ class Story:
     def _clue(self, condition: Condition) -> str:
         return self._clue_text(condition.kind, condition.args, condition.people)
 
+    def _fixed_role(self, step: Step) -> bool:
+        """A role fact the booklet figure list gives: ineligible, or all eligible hold it."""
+        if self.say.numbered or step.var not in self.role_variables:
+            return False
+        person, role = self.role_variables[step.var]
+        present = step.value if step.asserted else not step.value
+        spec = next((r for r in self.board.roles if r.name == role), None)
+        if spec is None or spec.eligible_people is None:
+            return False
+        eligible = person in spec.eligible_people
+        if not present:
+            return not eligible
+        return eligible and spec.allowed_counts == {len(spec.eligible_people)}
+
     def _role_step_text(self, step: Step, state: _State) -> str:
         person, role = self.role_variables[step.var]
         present = step.value if step.asserted else not step.value
@@ -1680,6 +1782,8 @@ class Story:
         if state.role_told.get(key) == present:
             return ""
         state.role_told[key] = present
+        if self._fixed_role(step):
+            return ""
         name = self.say.words.get(role) or role.replace("_", " ")
         return self.say("role_has" if present else "role_not", who=person, role=name)
 
@@ -2012,17 +2116,18 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
     board, clues = load_board(text)
     story = Story(board, clues, Wording.read(text))
     texts = story.clue_texts()
-    owners = sorted(board.people, key=len, reverse=True)
+    shown = {p: _cap(story.say.people.get(p, p)) for p in board.people}
+    owners = sorted(board.people, key=lambda p: len(shown[p]), reverse=True)
     predicates: dict[str, list[str]] = {person: [] for person in board.people}
     extra: dict[str, list[str]] = {person: [] for person in board.people}
     loose: list[str] = []
     for number, generated in enumerate(texts, 1):
         sentence = (overrides or {}).get(number, generated)
-        owner = next((p for p in owners if sentence.startswith(f"{p} ")), None)
+        owner = next((p for p in owners if sentence.startswith(f"{shown[p]} ")), None)
         if owner is None:
             loose.append(sentence)
             continue
-        rest = sentence[len(owner) + 1 :].rstrip(".")
+        rest = sentence[len(shown[owner]) + 1 :].rstrip(".")
         if rest.split(" ", 1)[0] in (story.say("and"),):
             extra[owner].append(sentence)
         else:
@@ -2031,7 +2136,7 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
     for person in board.people:
         parts = []
         if predicates[person]:
-            parts.append(f"{person} {_merge_predicates(predicates[person], story.say)}.")
+            parts.append(f"{shown[person]} {_merge_predicates(predicates[person], story.say)}.")
         parts.extend(extra[person])
         if parts:
             out.append(" ".join(parts))
@@ -2058,8 +2163,11 @@ def board_notes(text: str) -> list[str]:
             board.region_names[r].replace("_", " ").capitalize()
             for r in sorted(board.region_ids(members))
         ]
-        label = re.sub(r"^(in |the )+", "", name(tag))
-        notes.append(say("doc.area_tag", tag=label, areas=say.join(areas)))
+        label = re.sub(r"^((in|op|the|a|an|een|de|het) )+", "", name(tag))
+        tagged = say.join(areas)
+        notes.append(
+            say("doc.area_tag", tag=label, Tag=label[:1].upper() + label[1:], areas=tagged)
+        )
     for mark in board.marks:
         key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
         notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
@@ -2106,6 +2214,24 @@ def attribute_list(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def object_list(text: str) -> list[tuple[str, str, bool]]:
+    """(object type, name to show, standable) for each kind of object on the board.
+
+    `boom1` and `boom2` are one type, `boom`; the type is what `icons.object_icon` finds.
+    """
+    board, _ = load_board(text)
+    words = Wording.read(text).words
+    out: dict[str, tuple[str, str, bool]] = {}
+    for obj in board.objects:
+        kind = obj.name.lower().rstrip("0123456789").rstrip("_")
+        said = words.get(obj.name) or words.get(kind)
+        bare = re.sub(r"^(the|a|an|de|het|een) ", "", said) if said else ""
+        # Keep the article before an adjective: "het zachte tapijt", not "zachte tapijt".
+        label = (bare if " " not in bare else said) if said else kind.replace("_", " ")
+        out.setdefault(kind, (kind, label[:1].upper() + label[1:], obj.kind == "standable"))
+    return list(out.values())
+
+
 def phrase(text: str, key: str) -> str:
     """A fixed phrase such as `doc.clues` in the puzzle's language."""
     return Wording.read(text)(key)
@@ -2142,4 +2268,10 @@ def explain(text: str, numbered: bool = True) -> str:
     board, clues = load_board(text)
     say = Wording.read(text)
     story = Story(board, clues, say if numbered else say.unnumbered()).tell()
+    story = re.sub(
+        r"((?:^- |\. |^- \*\*|\. \*\*))([a-z])",
+        lambda m: m.group(1) + m.group(2).upper(),
+        story,
+        flags=re.MULTILINE,
+    )
     return story if numbered else re.sub(r" \(\d+\)", "", story)
