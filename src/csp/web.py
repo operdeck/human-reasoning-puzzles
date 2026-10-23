@@ -212,6 +212,7 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "clues": clue_paragraphs(text, presentation.clue_text),
         "conditions": [{"name": n, "text": t} for n, t in condition_list(text)],
         "question": presentation.question,
+        "reveal": " ".join(presentation.reveal),
         "attributes": [{"name": n, "text": t} for n, t in attribute_list(text)],
         "roles": [{"name": n, "text": t} for n, t in role_list(text)],
         "objects": _objects(text),

@@ -77,4 +77,4 @@ Question:
 Met wie doet Wouter het?
 
 Reveal:
-Met Sanne: zij is de enige die met Wouter in de bosjes is.
+Wouter doet het met Sanne: zij is de enige die met hem in de bosjes is.

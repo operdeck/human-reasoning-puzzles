@@ -87,4 +87,4 @@ Question:
 Met wie doet Wouter het?
 
 Reveal:
-Met Inge: zij ligt met Wouter op het tweepersoonsbed in de slaapkamer.
+Wouter doet het met Inge: samen liggen ze op het tweepersoonsbed in de slaapkamer.
