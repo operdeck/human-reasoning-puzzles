@@ -6,11 +6,11 @@
 Size: 6
 
 Regions:
-a: green_garden #CBE6B9
+a: garden #CBE6B9
 b: school #FADFB5
 c: fountain_square #F4CBC3
-d: lilac_library #E0D2F2
-e: yellow_arcade #F3EDA2
+d: library #E0D2F2
+e: arcade #F3EDA2
 
 Grid:
 a a a b b b
@@ -22,10 +22,10 @@ d d d e e e
 
 Objects:
 sakura: blocking r1c1
-shrine: blocking r3c3
-castle: blocking r5c5
-taiko: standable r2c5
-tatami: standable r5c1 r5c2
+fountain: blocking r3c3
+arcade: blocking r5c5
+chair: standable r2c5
+carpet: standable r5c1 r5c2
 
 People:
 Mametchi
@@ -49,20 +49,20 @@ adjacent_regions Kuchipatchi Masktchi
 in_corner Memetchi
 adjacent_regions Kuchipatchi Lovelitchi
 left_of Memetchi Lovelitchi
-not_next_to Kuchipatchi shrine
+not_next_to Kuchipatchi fountain
 apart Memetchi Lovelitchi
-only_on Mametchi taiko
+only_on Mametchi chair
 
 # Booklet text for --docx (optional).
 Title:
 Tamagotchi Murdoku 6x6: Where is the devil?
 
 Figures:
-Mametchi: a friend ; icon=U+1F423
-Kuchipatchi: a friend ; icon=U+1F425
-Memetchi: a friend ; icon=U+1F338
-Lovelitchi: a friend ; icon=U+1F496
-Masktchi: a friend ; icon=U+1F3AD
+Mametchi: ; icon=U+1F423
+Kuchipatchi: ; icon=U+1F425
+Memetchi: ; icon=U+1F338
+Lovelitchi: ; icon=U+1F496
+Masktchi: ; icon=U+1F3AD
 Akumatchi: the devil ; icon=U+1F47F
 
 Question:

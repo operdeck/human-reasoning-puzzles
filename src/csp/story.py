@@ -338,7 +338,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.next_to": "{a} zit naast {things}",
         "clue.not_next_to": "{a} zit niet naast {things}",
         "clue.knight_from": "{a} staat een paardensprong van {things}",
-        "clue.on": "{a} ligt op {things}",
+        "clue.on": "{a} zit op {things}",
         "clue.not_on": "{a} zit niet op {things}",
         "clue.on_mark": "{a} staat op {things}",
         "clue.not_on_mark": "{a} staat niet op {things}",

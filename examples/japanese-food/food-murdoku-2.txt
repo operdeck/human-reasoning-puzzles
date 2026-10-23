@@ -1,4 +1,4 @@
-# Food Murdoku 6x6 - "Five suspects, one victim" (subsumption)
+# Food Murdoku 6x6 - "Five dishes, one wolverine" (subsumption)
 #
 # Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
 # deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
@@ -33,12 +33,12 @@ nagoya osaka osaka kobe tokyo tokyo
 nagoya osaka osaka kobe kobe kobe
 
 Objects:
-table: blocking r6c5
-table: blocking r2c6
-table: blocking r4c3
-table: blocking r4c4
-chair: standable r6c3
-chair: standable r6c4
+plate: blocking r6c5
+tokyo_tower: blocking r2c6
+plate: blocking r4c3
+plate: blocking r4c4
+zaisu: standable r6c3
+zaisu: standable r6c4
 
 Attributes:
 food: Onigiri Okonomiyaki Mochi Sushi Tonkatsu
@@ -66,7 +66,7 @@ left_of Mochi Okonomiyaki
 
 # Booklet text for --docx (optional).
 Title:
-Food Murdoku 6x6: Five suspects, one victim
+Food Murdoku 6x6: Five dishes, one wolverine
 
 Intro:
 Japanese dishes are placed around the city. Jos is hungry and is placed last.
