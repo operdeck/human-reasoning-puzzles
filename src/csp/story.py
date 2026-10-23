@@ -1465,8 +1465,10 @@ class Story:
             clue = _cap(self._role_condition_text(role_rule))
             return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
         if (quantified := self._quantified_condition_for_source(source)) is not None:
+            if not outcome:  # only the clue's hidden witness variables changed
+                return ""
             clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
-            return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
+            return f"{clue}, {self.say('so')} {outcome}."
         if source not in self.conditions and (apart := self._role_apart(source)) is not None:
             return f"{_cap(apart)}, {self.say('so')} {outcome}." if outcome else f"{_cap(apart)}."
         condition = self.conditions[source]

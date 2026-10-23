@@ -248,7 +248,7 @@ CATALOGUE: dict[str, str] = {
     "den": "1f332", "dennenboom": "1f332", "pine": "1f332",
     "palm": "1f334", "palmboom": "1f334", "palm_tree": "1f334",
     "cactus": "1f335",
-    "gras": "1f33e", "grass": "1f33e", "riet": "1f33e", "reeds": "1f33e",
+    "gras": "1f33e", "helmgras": "1f33e", "grass": "1f33e", "riet": "1f33e", "reeds": "1f33e",
     "boomstam": "1fab5", "stam": "1fab5", "log": "1fab5",
     "waterlelie": "1fab7", "lotus": "1fab7",
     "hut": "1f6d6", "berghut": "1f6d6",
@@ -292,7 +292,7 @@ CATALOGUE: dict[str, str] = {
     "bank": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bankstel": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",
     "window": "1fa9f",
-    "bed": "1f6cf",
+    "bed": "1f6cf", "tweepersoonsbed": "1f6cf", "double_bed": "1f6cf",
     "bad": "1f6c1", "bathtub": "1f6c1",
     "douche": "1f6bf", "shower": "1f6bf",
     "toilet": "1f6bd",
@@ -320,6 +320,8 @@ CATALOGUE: dict[str, str] = {
     "arcade": "1f579", "joystick": "1f579",
     "microfoon": "1f3a4", "microphone": "1f3a4",
     "knuffel": "1f9f8", "teddy": "1f9f8", "teddy_bear": "1f9f8",
+    "bal": "26bd", "ball": "26bd", "voetbal": "26bd", "football": "26bd",
+    "emmer": "1faa3", "bucket": "1faa3",
 }  # fmt: skip
 
 
