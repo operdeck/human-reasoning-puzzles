@@ -190,7 +190,7 @@ def _read(name):
 def test_clues_are_grouped_per_person():
     paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
     makaak = next(p for p in paragraphs if p.startswith("Makaak"))
-    assert makaak.startswith("Makaak is in de Bergen en zit niet naast de ")
+    assert makaak == "Makaak is in de bergen en zit niet naast het gras."
     assert sum(p.startswith("Giraffe") for p in paragraphs) == 1
 
 
@@ -260,9 +260,9 @@ def test_zoo_puzzles_have_no_one_person_role():
 
 
 def test_single_holder_role_is_linted():
-    text = _read("zoo-murdoku-1").replace("RoleEligibility:\n", "RoleEligibility:\nsolo: Tijger\n")
+    text = _read("zoo-murdoku-1").replace("RoleEligibility:\n", "RoleEligibility:\nsolo: Leeuw\n")
     text = text.replace("Roles:\n", "Roles:\nsolo: 1\n")
-    assert "role solo can only be held by Tijger" in _lint_output(text)
+    assert "role solo can only be held by Leeuw" in _lint_output(text)
 
 
 def test_furthest_clue_names_nobody_to_compare_with():

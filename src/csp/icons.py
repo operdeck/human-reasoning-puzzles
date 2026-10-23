@@ -249,6 +249,7 @@ CATALOGUE: dict[str, str] = {
     "palm": "1f334", "palmboom": "1f334", "palm_tree": "1f334",
     "cactus": "1f335",
     "gras": "1f33e", "grass": "1f33e", "riet": "1f33e", "reeds": "1f33e",
+    "boomstam": "1fab5", "stam": "1fab5", "log": "1fab5",
     "waterlelie": "1fab7", "lotus": "1fab7",
     "hut": "1f6d6", "berghut": "1f6d6",
     "berg": "1f3d4", "mountain": "1f3d4",

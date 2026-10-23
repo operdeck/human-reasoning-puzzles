@@ -257,7 +257,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "Vakjes met {abbr} zijn {name}-vakjes: wie daar staat, deelt het gebied met "
             "iemand anders."
         ),
-        "doc.area_tag": "De {tag} zijn {areas}.",
+        "doc.area_tag": "{Tag}: {areas}.",
         "doc.attributes": "De kenmerken",
         "doc.attribute": "{people}",
         "doc.roles": "De rollen",
@@ -2064,8 +2064,11 @@ def board_notes(text: str) -> list[str]:
             board.region_names[r].replace("_", " ").capitalize()
             for r in sorted(board.region_ids(members))
         ]
-        label = re.sub(r"^(in |the )+", "", name(tag))
-        notes.append(say("doc.area_tag", tag=label, areas=say.join(areas)))
+        label = re.sub(r"^((in|op|the|a|an|een|de|het) )+", "", name(tag))
+        tagged = say.join(areas)
+        notes.append(
+            say("doc.area_tag", tag=label, Tag=label[:1].upper() + label[1:], areas=tagged)
+        )
     for mark in board.marks:
         key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
         notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))

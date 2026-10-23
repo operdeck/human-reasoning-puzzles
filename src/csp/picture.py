@@ -301,7 +301,7 @@ def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
 # Objects drawn with the registry's own drawings because Noto Emoji has no suitable picture.
 CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "carpet")
 WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
-SEAT_NAMES = frozenset({"bench", "bank", "bankje"})
+SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"})
 
 
 def unknown_object_icons(board: Board) -> list[str]:
