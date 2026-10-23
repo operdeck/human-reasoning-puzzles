@@ -10,7 +10,7 @@ Requires Python 3.12+. Run directly with `uv`:
 
 ```bash
 uv run csp examples/sudoku_4x4.txt
-uv run csp examples/demo/murdoku_intro.txt --explain
+uv run csp examples/wie-doet-het-met-wie/murdoku_intro.txt --explain
 uv run csp examples/queens_4x4.txt --show-model
 uv run csp examples/logicgrid_3x3.txt --brute-force
 uv run csp examples/akari_2x2.txt --svg akari.svg
@@ -59,7 +59,7 @@ Each cell links to a representative example. The image shows the puzzle or its s
 
 <table>
 <tr>
-<td><strong><a href="docs/examples.md#first-murdoku-case">Murdoku</a></strong><br><a href="examples/demo/murdoku_intro.txt">first case</a><br><img src="docs/images/murdoku_intro.png" width="150" alt="Murdoku first case"></td>
+<td><strong><a href="docs/examples.md#first-murdoku-case">Murdoku</a></strong><br><a href="examples/wie-doet-het-met-wie/murdoku_intro.txt">first case</a><br><img src="docs/images/murdoku_intro.png" width="150" alt="Murdoku first case"></td>
 <td><strong><a href="docs/examples.md#existing-families">Mini Sudoku</a></strong><br><a href="examples/sudoku_4x4.txt">4 × 4</a><br><img src="docs/images/sudoku_4x4-solution.png" width="150" alt="Mini Sudoku solution"></td>
 <td><strong><a href="docs/examples.md#existing-families">Calcudoku</a></strong><br><a href="examples/calcudoku_4x4_easy.txt">4 × 4</a><br><img src="docs/images/calcudoku_4x4_easy-solution.png" width="150" alt="Calcudoku solution"></td>
 <td><strong><a href="docs/examples.md#existing-families">Futoshiki</a></strong><br><a href="examples/futoshiki_5x5.txt">5 × 5</a><br><img src="docs/images/futoshiki_5x5-solution.png" width="150" alt="Futoshiki solution"></td>

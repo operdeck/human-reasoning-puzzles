@@ -3,6 +3,8 @@ import { PuzzleView } from "./view";
 
 interface IndexEntry {
   id: string;
+  number: number;
+  section: string;
   title: string;
   family: string;
   familyLabel: string;
@@ -35,14 +37,14 @@ async function showIndex(current: () => boolean): Promise<void> {
   const index = JSON.parse(await fetchText("index.json")) as { license: string; puzzles: IndexEntry[] };
   if (!current()) return;
   document.title = "Human reasoning puzzles";
-  const families = new Map<string, IndexEntry[]>();
+  // The index is already in reading order, as in the booklet.
+  const groups = new Map<string, IndexEntry[]>();
   for (const entry of index.puzzles) {
-    const list = families.get(entry.familyLabel) ?? [];
+    const list = groups.get(entry.section) ?? [];
     list.push(entry);
-    families.set(entry.familyLabel, list);
+    groups.set(entry.section, list);
   }
-  const sections = [...families]
-    .sort(([a], [b]) => (a === "Murdoku" ? -1 : b === "Murdoku" ? 1 : a.localeCompare(b)))
+  const sections = [...groups]
     .map(([label, entries]) =>
       el(
         "section",
@@ -55,6 +57,7 @@ async function showIndex(current: () => boolean): Promise<void> {
             el(
               "li",
               {},
+              el("span", { className: "meta", textContent: `${entry.number}. ` }),
               el("a", { href: `#${encodeURIComponent(entry.id)}`, textContent: entry.title }),
               el("span", {
                 className: "meta",

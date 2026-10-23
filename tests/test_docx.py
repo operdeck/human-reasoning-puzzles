@@ -311,19 +311,21 @@ def test_board_notes_name_the_areas_of_a_tag():
     assert "The noble areas are Maras house and Blue hall." in notes
 
 
-def test_booklet_is_alphabetical_and_has_a_contents_page(tmp_path):
+def test_booklet_is_numbered_by_category_and_has_a_contents_page(tmp_path):
     out = tmp_path / "t.docx"
-    names = [str(example("zoo-murdoku-1.txt")), str(example("food-murdoku-1.txt"))]
+    names = [str(example("food-murdoku-1.txt")), str(example("zoo-murdoku-1.txt"))]
     assert main([*names, "--docx", str(out)]) == 0
     document = Document(str(out))
     texts = [p.text for p in document.paragraphs]
-    assert "Contents" in texts
-    lines = [t.split("\t")[0] for t in texts if "\t" in t and not t[0].isdigit()]
-    assert [line.split(":")[0] for line in lines] == [
-        "Food Murdoku 5x5",
-        "Dierentuin-murdoku 5x5",
-        "Solutions",
+    assert texts[0] == "Inhoud"  # the first puzzle, Dutch, sets the language
+    lines = [t.split("\t")[0] for t in texts if "\t" in t]
+    assert [line.split(":")[0] for line in lines[:3]] == [
+        "1. Dierentuin-murdoku 5x5",
+        "2. Food Murdoku 5x5",
+        "Oplossingen",
     ]
+    assert "Murdoku \u00b7 Japanese food" in texts
+    assert any(text.startswith("Solution 2") for text in texts)
     xml = document.element.xml
     assert 'w:anchor="puzzle0"' in xml and 'w:name="puzzle1"' in xml
 

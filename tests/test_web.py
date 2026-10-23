@@ -161,3 +161,13 @@ def test_export_refuses_two_puzzles_with_the_same_name(tmp_path, capsys):
     assert cli.main([*files, "--export", str(tmp_path / "site")]) == 2
     assert "tents_4x4" in capsys.readouterr().err
     assert not (tmp_path / "site").exists()
+
+
+def test_index_is_numbered_in_reading_order_with_category_sections(exported):
+    puzzles = json.loads((exported / "index.json").read_text())["puzzles"]
+    assert [entry["number"] for entry in puzzles] == list(range(1, len(puzzles) + 1))
+    assert puzzles[0]["section"] == "Murdoku \u00b7 Demo"
+    sections = list(dict.fromkeys(entry["section"] for entry in puzzles))
+    assert "Murdoku \u00b7 Japanese food" in sections
+    assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
+    assert _bundle(exported, "food-murdoku-1")["section"] == "Murdoku \u00b7 Japanese food"

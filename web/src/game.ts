@@ -31,6 +31,8 @@ export interface Bundle {
   schema: number;
   id: string;
   family: string;
+  section?: string;
+  number?: number;
   title: string;
   grade: string;
   static: string;

@@ -136,6 +136,12 @@ class Entry:
     puzzle_image: Any = None
     solution_image: Any = None
     steps: tuple[str, ...] = ()
+    number: int = 0
+    section: str = ""
+
+    def numbered(self, title: str) -> str:
+        """`title` with the puzzle's number in front, if it has one."""
+        return f"{self.number}. {title}" if self.number else title
 
 
 def _generic_title(entry: Entry) -> str:
@@ -153,7 +159,7 @@ def _add_generic(
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt
 
-    _title(document, title, new_page, bookmark)
+    _title(document, title, new_page, bookmark, entry.section)
     if not solved:
         document.add_heading("Rules", level=2)
         document.add_paragraph(FAMILY_RULES.get(entry.kind, ""), style="List Bullet")
@@ -169,15 +175,29 @@ def _add_generic(
                 run.font.size = Pt(8)
 
 
-def _title(document: Any, title: str, new_page: bool, bookmark: str | None = None) -> None:
+def _title(
+    document: Any, title: str, new_page: bool, bookmark: str | None = None, section: str = ""
+) -> None:
     """The big spaced title and, after a colon, an italic subtitle.
 
-    A `bookmark` name makes the title a target for the table of contents.
+    A `bookmark` name makes the title a target for the table of contents; a
+    `section` goes above it in small grey capitals.
     """
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt, RGBColor
 
     main, _, sub = title.partition(": ")
+    if section:
+        kicker = document.add_paragraph()
+        kicker.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        kicker.paragraph_format.page_break_before = new_page
+        kicker.paragraph_format.space_after = Pt(0)
+        kicker.paragraph_format.keep_with_next = True
+        run = kicker.add_run(section)
+        run.font.all_caps = True
+        run.font.size = Pt(8)
+        run.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+        new_page = False
     heading = document.add_heading(main, level=1)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
     heading.paragraph_format.page_break_before = new_page
@@ -252,15 +272,17 @@ def _board_and_figures(
 
 def _puzzle_title(entry: Entry) -> str:
     if entry.kind != "murdoku":
-        return _generic_title(entry)
+        return entry.numbered(_generic_title(entry))
     first_comment = next((line for line in entry.text.splitlines() if line.startswith("# ")), "")
     title = load_presentation(entry.text).title
-    return title or first_comment.removeprefix("# ").strip() or entry.path.stem
+    return entry.numbered(title or first_comment.removeprefix("# ").strip() or entry.path.stem)
 
 
 def _solution_title(entry: Entry) -> str:
-    title = _puzzle_title(entry) if entry.kind != "murdoku" else _murdoku_title(entry)
+    title = _generic_title(entry) if entry.kind != "murdoku" else _murdoku_title(entry)
     label = "Solution" if entry.kind != "murdoku" else phrase(entry.text, "doc.solution")
+    if entry.number:
+        label = f"{label} {entry.number}"
     return f"{label}: {title}"
 
 
@@ -271,12 +293,12 @@ def _murdoku_title(entry: Entry) -> str:
 def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | None = None) -> None:
     if entry.kind != "murdoku":
         _add_generic(
-            document, entry, _generic_title(entry), new_page, solved=False, bookmark=bookmark
+            document, entry, _puzzle_title(entry), new_page, solved=False, bookmark=bookmark
         )
         return
     text = entry.text
     presentation = load_presentation(text)
-    _title(document, _puzzle_title(entry), new_page, bookmark)
+    _title(document, _puzzle_title(entry), new_page, bookmark, entry.section)
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
     for line in presentation.intro or [phrase(text, "doc.rules")]:
         _runs(document.add_paragraph(style="List Bullet"), line)
@@ -306,7 +328,7 @@ def _add_solution(document: Any, entry: Entry, title: str, bookmark: str | None 
         return
     text = entry.text
     presentation = load_presentation(text)
-    _title(document, title, True, bookmark)
+    _title(document, title, True, bookmark, entry.section)
     stream, aspect = _picture_stream(text, entry.solution, entry.role_statuses)
     blocks = [b.strip().removeprefix("- ") for b in explain(text, numbered=False).split("\n\n")]
     blocks = [b for b in blocks if b]
@@ -354,15 +376,25 @@ def _bookmark(paragraph: Any, name: str) -> None:
     paragraph._p.append(end)
 
 
-def _contents(document: Any, heading: str, items: list[tuple[str, str]]) -> None:
-    """A table of contents: each line links to its bookmark; Word fills in the page number."""
+def _contents(document: Any, heading: str, items: list[tuple[str, str, str]]) -> None:
+    """A table of contents: each line links to its bookmark; Word fills in the page number.
+
+    Items are (section, label, bookmark); a new section gets a small heading.
+    """
     from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     from docx.shared import Cm, Pt
 
     document.add_heading(heading, level=1)
-    for label, name in items:
+    current = ""
+    for section, label, name in items:
+        if section and section != current:
+            current = section
+            title = document.add_paragraph()
+            title.paragraph_format.space_before = Pt(8)
+            title.paragraph_format.keep_with_next = True
+            _section_run(title.add_run(section))
         paragraph = document.add_paragraph()
         paragraph.paragraph_format.space_after = Pt(4)
         paragraph.paragraph_format.tab_stops.add_tab_stop(
@@ -513,9 +545,11 @@ def write_booklet(entries: list[Entry], path: Path) -> None:
     _footer(document)
     solved = [entry for entry in entries if entry.solution is not None]
     if len(entries) > 1:
-        items = [(_puzzle_title(entry), f"puzzle{n}") for n, entry in enumerate(entries)]
+        items = [
+            (entry.section, _puzzle_title(entry), f"puzzle{n}") for n, entry in enumerate(entries)
+        ]
         if solved:
-            items.append((phrase(solved[0].text, "doc.solutions"), "solution0"))
+            items.append(("", phrase(solved[0].text, "doc.solutions"), "solution0"))
         _contents(document, phrase(entries[0].text, "doc.contents"), items)
     for number, entry in enumerate(entries):
         _add_puzzle(
