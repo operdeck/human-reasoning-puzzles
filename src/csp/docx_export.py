@@ -20,6 +20,7 @@ from .story import (
     board_notes,
     clue_paragraphs,
     explain,
+    object_list,
     phrase,
     role_list,
 )
@@ -110,16 +111,30 @@ def _figure_list(cell: Any, text: str, presentation: Presentation, source: Path)
         paragraph.add_run(person).bold = True
         if figure is not None and figure.description:
             paragraph.add_run(f": {figure.description}")
-    for key, items in (("doc.attributes", attribute_list(text)), ("doc.roles", role_list(text))):
+    objects = [
+        (label, phrase(text, "doc.standable" if standable else "doc.blocking"), kind)
+        for kind, label, standable in object_list(text)
+    ]
+    lists: list[tuple[str, list[tuple[str, str, str | None]]]] = [
+        ("doc.attributes", [(n, d, None) for n, d in attribute_list(text)]),
+        ("doc.roles", [(n, d, None) for n, d in role_list(text)]),
+        ("doc.objects", list(objects)),
+    ]
+    for key, items in lists:
         if not items:
             continue
         heading = cell.add_paragraph()
         heading.paragraph_format.space_before = Pt(8)
         heading.paragraph_format.space_after = Pt(4)
         _section_run(heading.add_run(phrase(text, key)))
-        for name, description in items:
+        for name, description, kind in items:
             paragraph = cell.add_paragraph()
             paragraph.paragraph_format.space_after = Pt(3)
+            icon = icons.object_icon(kind) if kind else None
+            thumbnail = None if icon is None else icons.png(icon, 128)
+            if thumbnail is not None:
+                paragraph.add_run().add_picture(io.BytesIO(thumbnail), height=Cm(FIGURE_IMAGE_CM))
+                paragraph.add_run(" ")
             paragraph.add_run(name).bold = True
             paragraph.add_run(f": {description}")
 

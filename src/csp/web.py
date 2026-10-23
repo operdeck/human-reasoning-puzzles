@@ -27,6 +27,7 @@ from .story import (
     board_notes,
     clue_paragraphs,
     condition_list,
+    object_list,
     phrase,
     role_list,
 )
@@ -204,6 +205,7 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
                 "figures",
                 "attributes",
                 "roles",
+                "objects",
             )
         },
         "rules": rules,
@@ -212,7 +214,23 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "question": presentation.question,
         "attributes": [{"name": n, "text": t} for n, t in attribute_list(text)],
         "roles": [{"name": n, "text": t} for n, t in role_list(text)],
+        "objects": _objects(text),
     }
+
+
+def _objects(text: str) -> list[dict[str, Any]]:
+    """Each kind of object with its picture and whether figures may stand on it."""
+    out = []
+    for kind, label, standable in object_list(text):
+        entry = {
+            "name": label,
+            "text": phrase(text, "doc.standable" if standable else "doc.blocking"),
+        }
+        icon = icons.object_icon(kind)
+        if icon is not None and (picture := icons.to_svg(icon)):
+            entry["svg"] = picture
+        out.append(entry)
+    return out
 
 
 def _family(

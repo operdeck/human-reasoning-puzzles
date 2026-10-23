@@ -62,6 +62,11 @@ def fake_emoji(monkeypatch):
     return add
 
 
+def _bluish(pixel):
+    """A standable object is drawn faint, so pure blue blends with the region colour."""
+    return pixel[2] > pixel[0] + 40 and pixel[2] > pixel[1] + 40
+
+
 def _centre(image, board, r, c, coordinates=True):
     margin = CELL // 2 if coordinates else CELL // 6
     return image.getpixel((margin + c * CELL + CELL // 2, margin + r * CELL + CELL // 4))
@@ -168,10 +173,10 @@ def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji
         [BoardObject("table", "standable", (Square(1, 0), Square(1, 1)))],
         ["A", "B"],
     )  # fmt: skip
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
     margin = CELL // 6
     row = margin + CELL + CELL // 2
-    blue = [x for x in range(image.width) if image.getpixel((x, row)) == (0, 0, 255)]
+    blue = [x for x in range(image.width) if _bluish(image.getpixel((x, row)))]
     assert blue[0] < margin + CELL // 4 and blue[-1] > margin + 2 * CELL - CELL // 4
 
 
@@ -184,10 +189,10 @@ def test_two_square_bench_keeps_its_proportions_and_is_not_stretched(fake_emoji)
         [BoardObject("bench", "standable", (Square(1, 0), Square(1, 1)))],
         ["A", "B"],
     )  # fmt: skip
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
     margin = CELL // 6
     row = margin + CELL + CELL // 2
-    blue = [x for x in range(image.width) if image.getpixel((x, row)) == (0, 0, 255)]
+    blue = [x for x in range(image.width) if _bluish(image.getpixel((x, row)))]
     # A square icon keeps its shape: about one square wide, not stretched across both.
     assert blue and blue[-1] - blue[0] < CELL
 
@@ -522,7 +527,7 @@ def test_without_legend_the_picture_is_square():
 
 def test_hatching_only_on_hatched_regions():
     board, _ = load_board((example("prrrdoku3.txt")).read_text())
-    image = picture.murdoku_picture(board, cell=CELL)
+    image = picture.murdoku_picture(board, cell=CELL, labels=False)
     margin = CELL // 2
 
     def colours(r, c):
@@ -546,7 +551,7 @@ def test_solution_picture_puts_name_tags_on_squares():
 
 def test_default_palette_when_no_colours_given():
     board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
     assert _centre(image, board, 0, 0, coordinates=False)[:3] == picture._rgb(picture.PALETTE[0])
     assert _centre(image, board, 0, 1, coordinates=False)[:3] == picture._rgb(picture.PALETTE[1])
 
@@ -1003,3 +1008,16 @@ def test_dutch_legend_lists_fixed_role_holders_as_a_category():
 
     assert legend.words["point"] == "Punt"
     assert legend._role_line("eiwit") == "Eiwit: Vis, Bonen (niet meer dan 1 hiervan per gebied)"
+
+
+def test_region_names_are_tagged_on_the_puzzle_but_not_the_solution():
+    board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
+
+    def top(**kw):
+        return _centre(
+            picture.murdoku_picture(board, cell=CELL, coordinates=False, **kw), board, 0, 0, False
+        )
+
+    plain = top(labels=False)
+    assert top() != plain
+    assert top(placed={"A": Square(1, 0), "B": Square(1, 1)}) == plain

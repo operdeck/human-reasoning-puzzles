@@ -73,6 +73,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.attributes": "The attributes",
         "doc.attribute": "{people}",
         "doc.roles": "The roles",
+        "doc.objects": "The objects",
+        "doc.standable": "you can stand on it",
+        "doc.blocking": "nobody can stand here",
         "doc.role": "held by {count}{extra}",
         "doc.count_one": "exactly one person",
         "doc.count_exact": "exactly {n} people",
@@ -258,6 +261,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.attributes": "De kenmerken",
         "doc.attribute": "{people}",
         "doc.roles": "De rollen",
+        "doc.objects": "De voorwerpen",
+        "doc.standable": "hier kun je op staan",
+        "doc.blocking": "hier kan niemand staan",
         "doc.role": "heeft {count}{extra}",
         "doc.count_one": "precies één persoon",
         "doc.count_exact": "precies {n} mensen",
@@ -2104,6 +2110,20 @@ def attribute_list(text: str) -> list[tuple[str, str]]:
         name = say.words.get(attribute, attribute.replace("_", " "))
         out.append((name, say("doc.attribute", people=say.join(people))))
     return out
+
+
+def object_list(text: str) -> list[tuple[str, str, bool]]:
+    """(object type, name to show, standable) for each kind of object on the board.
+
+    `boom1` and `boom2` are one type, `boom`; the type is what `icons.object_icon` finds.
+    """
+    board, _ = load_board(text)
+    out: dict[str, tuple[str, str, bool]] = {}
+    for obj in board.objects:
+        kind = obj.name.lower().rstrip("0123456789").rstrip("_")
+        label = kind.replace("_", " ")
+        out.setdefault(kind, (kind, label[:1].upper() + label[1:], obj.kind == "standable"))
+    return list(out.values())
 
 
 def phrase(text: str, key: str) -> str:

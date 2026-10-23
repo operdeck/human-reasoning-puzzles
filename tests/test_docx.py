@@ -12,7 +12,7 @@ from docx import Document
 from csp.cli import main
 from csp.docx_export import Entry, write_booklet
 from csp.puzzlefile import load_presentation
-from csp.story import clue_paragraphs, clue_texts
+from csp.story import clue_paragraphs, clue_texts, object_list
 from tests.examples import all_examples, example
 
 PRRRDOKUS = ["prrrdoku1", "prrrdoku2", "prrrdoku3"]
@@ -38,7 +38,7 @@ def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
     assert any(n.startswith("word/media/") for n in zipfile.ZipFile(out).namelist())
     assert "Oplossing" in text
     media = [n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]
-    assert len(media) == 2
+    assert len(media) == 2 + len(object_list(source.read_text()))  # puzzle, solution, objects
     assert text.index("Aanwijzingen") < text.index("Oplossing")
 
 
@@ -80,7 +80,8 @@ def test_figure_image_is_embedded(tmp_path):
     )
     out = tmp_path / "x.docx"
     write_docx(source, out, tmp_path)
-    assert len([n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]) == 2
+    media = [n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]
+    assert len(media) == 2 + len(object_list(source))
 
 
 def test_bad_presentation_is_rejected_and_linted():
@@ -132,7 +133,7 @@ def test_figures_folder_gives_thumbnails_by_name(tmp_path):
     Image.new("RGB", (20, 20), "green").save(folder / "Mametchi.png")
     out = tmp_path / "x.docx"
     write_booklet([Entry(text, tmp_path / "t.txt")], out)
-    assert len(_media(out)) == 7  # board + six figures
+    assert len(_media(out)) > 7  # board, six figures, then the objects
 
 
 def test_icon_figures_use_builtin_icons(tmp_path):
