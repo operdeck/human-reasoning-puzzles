@@ -32,9 +32,11 @@ end run
 
 _PAGES_SCRIPT = """
 on run {source, target}
+    set sourceFile to POSIX file source
+    set targetFile to POSIX file target
     tell application "Pages"
-        set theDocument to open (POSIX file source)
-        export theDocument to (POSIX file target) as PDF
+        set theDocument to open sourceFile
+        export theDocument to targetFile as PDF
         close theDocument saving no
     end tell
 end run
