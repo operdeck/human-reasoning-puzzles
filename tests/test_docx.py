@@ -69,6 +69,31 @@ def test_missing_figure_image_falls_back_to_text(tmp_path):
     assert "Vladimir: de poes" in _text(out)
 
 
+def test_pages_pdf_export_converts_paths_to_posix_files(monkeypatch, tmp_path):
+    source = tmp_path / "booklet.docx"
+    target = tmp_path / "booklet.pdf"
+    source.write_bytes(b"docx")
+
+    called = {}
+
+    def fake_run(command):
+        called["command"] = command
+        target.write_bytes(b"pdf")
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr("csp.pdf_convert.converters", lambda: ["Pages"])
+    monkeypatch.setattr("csp.pdf_convert._run", fake_run)
+
+    from csp.pdf_convert import docx_to_pdf
+
+    assert docx_to_pdf(source, target) == "Pages"
+    script = called["command"][2]
+    assert "set sourceFile to POSIX file source" in script
+    assert "set targetFile to POSIX file target" in script
+    assert "export theDocument to targetFile as PDF" in script
+    assert target.exists()
+
+
 def test_figure_image_is_embedded(tmp_path):
     from PIL import Image
 
