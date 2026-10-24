@@ -160,6 +160,14 @@ uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
   grass; mountains have rocks, a hut, a waterfall; a Japanese restaurant has
   tatami, zaisu and plates; a garden has a park bench. Check every object
   against the region it sits in.
+- **Use object relations as genuine meta clues.** For a late-reveal mystery,
+  keep the story grounded in board objects rather than direct role-giveaways:
+  `next_to Mikhail klok`, `not_next_to Svetlana klok`, `next_to Katarina
+  info_bord`, `next_to Bogdan perron_bank`. These clues are about the board
+  layout and the objects' narrative role; they should narrow the placement
+  without naming the murderer outright. Do not replace middle-game logic with
+  a direct statement like `has_role Svetlana moordenaar` unless that is the
+  intended final reveal.
 - **Region colours mean something and stay consistent** across a series
   (desert sandy yellow, swamp green-brown, mountains grey-white, water blue,
   forest green). Keep neighbours distinguishable. Use plain region names

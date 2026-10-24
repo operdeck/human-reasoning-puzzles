@@ -16,8 +16,16 @@ coupe_1: in coupé 1
 coupe_2: in coupé 2
 gangpad: in het gangpad
 spoor: op het spoor
-train_bench: de treinbank
-platform_bench: het perronbankje
+trein_bank: de treinbank
+perron_bank: het perronbankje
+info_bord: het informatiebord
+koffer: de koffer
+raam_1: het raam
+eraam_2: het raam
+raam_3: het raam
+raam_4: het raam
+raam_5: het raam
+raam_6: het raam
 lijk: het lijk
 
 Regions:
@@ -27,9 +35,6 @@ coupe_1: coupe_1 #D8D2F0
 coupe_2: coupe_2 #F4CBC3
 gangpad: gangpad #F3E4B5
 perron_b: perron_b #DCE8D2
-
-AreaTags:
-misdaad: coupe_2
 
 Grid:
 locomotief locomotief perron_a perron_a perron_a perron_a perron_a perron_a perron_a perron_a
@@ -49,25 +54,25 @@ spoor: blocking r8c1 r8c2 r9c1 r9c2 r10c1 r10c2
 klok: blocking r2c4
 klok: blocking r9c9
 lijk: blocking r5c9 r6c9
-train_bench: standable r4c3 r5c3 r6c3
-train_bench: standable r4c6 r5c6 r6c6
-train_bench: standable r4c7 r5c7 r6c7
-train_bench: standable r4c10 r5c10 r6c10
-lantaarn: blocking r1c9
-lantaarn: blocking r8c8
-platform_bench: standable r3c7 r3c8
-platform_bench: standable r10c4 r10c5
+trein_bank: standable r4c3 r5c3 r6c3
+trein_bank: standable r4c6 r5c6 r6c6
+trein_bank: standable r4c7 r5c7 r6c7
+trein_bank: standable r4c10 r5c10 r6c10
+info_bord: blocking r1c9
+info_bord: blocking r8c8
+perron_bank: standable r3c7 r3c8
+perron_bank: standable r10c4 r10c5
 koffer: blocking r8c5
 
 EdgeItems:
-deur1: door r6c4 r7c4
-deur2: door r6c8 r7c8
-window: window r4c4
-window: window r4c5
-window: window r4c8
-window: window r4c9
-window: window r5c1
-window: window r6c1
+deur_1: door r6c4 r7c4
+deur_2: door r6c8 r7c8
+raam_1: window r4c4
+raam_2: window r4c5
+raam_3: window r4c8
+raam_4: window r4c9
+raam_5: window r5c1
+raam_6: window r6c1
 
 Attributes:
 vrouw: Svetlana Anastasia Katarina Ludmila
@@ -90,7 +95,6 @@ Ludmila
 
 Rules:
 role_occupant moordenaar not_alone
-min_role_in_tagged moordenaar misdaad 1
 
 Clues:
 in_region Dragomir gangpad
@@ -98,6 +102,7 @@ in_region Katarina perron_b
 in_region Anastasia locomotief
 in_region Svetlana coupe_2
 in_region Ludmila perron_b
+has_role Svetlana moordenaar
 left_of Ludmila Svetlana 5
 left_of Anastasia Katarina 7
 left_of Dragomir Svetlana 3

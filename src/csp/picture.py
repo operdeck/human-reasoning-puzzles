@@ -147,6 +147,34 @@ def murdoku_picture(
     _draw_edge_item_doors(canvas, board, margin, cell)
 
     occupied = set(placed.values())
+    for item in board.edge_items:
+        if item.kind == "window":
+            sq = item.cells[0]
+            x0, y0, x1, y1 = box(sq)
+            w, h = x1 - x0, y1 - y0
+            midx, midy = (x0 + x1) / 2, (y0 + y1) / 2
+            for neighbor in (
+                (sq.row - 1, sq.col),
+                (sq.row + 1, sq.col),
+                (sq.row, sq.col - 1),
+                (sq.row, sq.col + 1),
+            ):
+                if not (0 <= neighbor[0] < board.size and 0 <= neighbor[1] < board.size):
+                    continue
+                adjacent = Square(*neighbor)
+                if board.region_of(sq) != board.region_of(adjacent):
+                    if neighbor[0] < sq.row:
+                        area = (x0 + w * 0.2, y0, x1 - w * 0.2, y0 + h / 2)
+                    elif neighbor[0] > sq.row:
+                        area = (x0 + w * 0.2, y1 - h / 2, x1 - w * 0.2, y1)
+                    elif neighbor[1] < sq.col:
+                        area = (x0, y0 + h * 0.2, x0 + w / 2, y1 - h * 0.2)
+                    else:
+                        area = (x1 - w / 2, y0 + h * 0.2, x1, y1 - h * 0.2)
+                    _icon(canvas, "window", area, cell, stretch=True)
+                    break
+            else:
+                _icon(canvas, "window", (x0, y0, x1, y1), cell, stretch=True)
     for obj in board.objects:
         name = obj.name
         piece = obj.squares
@@ -175,9 +203,6 @@ def murdoku_picture(
                     _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
         else:
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch)
-    for item in board.edge_items:
-        if item.kind == "window":
-            _icon(canvas, item.name, box(item.cells[0]), cell, scale=1.0, stretch=True)
     for point in board.point_objects:
         row2, col2 = point.anchor
         x = margin + (col2 - 1) * cell // 2
