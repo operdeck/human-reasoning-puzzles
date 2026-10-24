@@ -177,7 +177,7 @@ def murdoku_picture(
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch)
     for item in board.edge_items:
         if item.kind == "window":
-            _icon(canvas, item.name, box(item.cells[0]), cell, scale=0.42)
+            _icon(canvas, item.name, box(item.cells[0]), cell, scale=1.0, stretch=True)
     for point in board.point_objects:
         row2, col2 = point.anchor
         x = margin + (col2 - 1) * cell // 2
@@ -301,7 +301,7 @@ def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
 # Objects drawn with the registry's own drawings because Noto Emoji has no suitable picture.
 CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "carpet")
 WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
-SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"})
+SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank", "train_bench", "platform_bench"})
 
 
 def unknown_object_icons(board: Board) -> list[str]:
