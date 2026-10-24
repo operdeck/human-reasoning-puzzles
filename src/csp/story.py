@@ -2195,22 +2195,10 @@ def role_list(text: str) -> list[tuple[str, str]]:
             count = say("doc.count_one_of", list=say.join([say.number(n) for n in counts], "or"))
         extra = say("doc.extra_regions") if role.different_regions and counts != [1] else ""
         name = say.words.get(role.name, role.name.replace("_", " "))
-        if counts == [1] and role.eligible_people is not None:
-            for attribute, holders in board.attributes.items():
-                if set(holders) == set(role.eligible_people):
-                    attr_name = say.words.get(attribute, attribute.replace("_", " "))
-                    out.append((name, say("doc.role_one_attribute", role=name, attribute=attr_name)))
-                    break
-            else:
-                if role.eligible_people is not None:
-                    chosen = [person for person in board.people if person in role.eligible_people]
-                    extra += say("doc.extra_from", people=say.join(chosen))
-                out.append((name, say("doc.role", count=count, extra=extra)))
-        else:
-            if role.eligible_people is not None:
-                chosen = [person for person in board.people if person in role.eligible_people]
-                extra += say("doc.extra_from", people=say.join(chosen))
-            out.append((name, say("doc.role", count=count, extra=extra)))
+        if role.eligible_people is not None:
+            chosen = [person for person in board.people if person in role.eligible_people]
+            extra += say("doc.extra_from", people=say.join(chosen))
+        out.append((name, say("doc.role", count=count, extra=extra)))
     return out
 
 

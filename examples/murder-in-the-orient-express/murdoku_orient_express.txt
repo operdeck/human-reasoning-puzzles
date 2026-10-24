@@ -1,0 +1,147 @@
+# Moord in de Oriënt Express 10x10 - "Wie is de moordenaar" (grade cover2)
+#
+# Thema: "Moord in de Oriënt Express".
+# De dossieroplossing: Dragomir r7c6, Bogdan r3c7, Svetlana r4c9, Mikhail r2c3,
+# Anastasia r6c1, Vladimir r5c10, Katarina r9c8, Ludmila r10c4.
+# De moordenaar is Svetlana: zij was in coupé 2 en was niet alleen.
+
+Size: 10
+Language: nl
+
+Words:
+perron_a: op perron A
+perron_b: op perron B
+locomotief: in de locomotief
+coupe_1: in coupé 1
+coupe_2: in coupé 2
+gangpad: in het gangpad
+spoor: op het spoor
+trein_bank: de treinbank
+perron_bank: het perronbankje
+info_bord: het informatiebord
+koffer: de koffer
+raam_1: het raam
+eraam_2: het raam
+raam_3: het raam
+raam_4: het raam
+raam_5: het raam
+raam_6: het raam
+lijk: het lijk
+
+Regions:
+perron_a: perron_a #E9E4D8
+locomotief: locomotief #CFD3DA
+coupe_1: coupe_1 #D8D2F0
+coupe_2: coupe_2 #F4CBC3
+gangpad: gangpad #F3E4B5
+perron_b: perron_b #DCE8D2
+
+Grid:
+locomotief locomotief perron_a perron_a perron_a perron_a perron_a perron_a perron_a perron_a
+locomotief locomotief perron_a perron_a perron_a perron_a perron_a perron_a perron_a perron_a
+locomotief locomotief perron_a perron_a perron_a perron_a perron_a perron_a perron_a perron_a
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2 coupe_2
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2 coupe_2
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2 coupe_2
+locomotief locomotief gangpad gangpad gangpad gangpad gangpad gangpad gangpad gangpad
+locomotief locomotief perron_b perron_b perron_b perron_b perron_b perron_b perron_b perron_b
+locomotief locomotief perron_b perron_b perron_b perron_b perron_b perron_b perron_b perron_b
+locomotief locomotief perron_b perron_b perron_b perron_b perron_b perron_b perron_b perron_b
+
+Objects:
+spoor: blocking r1c1 r1c2 r2c1 r2c2 r3c1 r3c2
+spoor: blocking r8c1 r8c2 r9c1 r9c2 r10c1 r10c2
+klok: blocking r2c4
+klok: blocking r9c9
+lijk: blocking r5c9 r6c9
+trein_bank: standable r4c3 r5c3 r6c3
+trein_bank: standable r4c6 r5c6 r6c6
+trein_bank: standable r4c7 r5c7 r6c7
+trein_bank: standable r4c10 r5c10 r6c10
+info_bord: blocking r1c9
+info_bord: blocking r8c8
+perron_bank: standable r3c7 r3c8
+perron_bank: standable r10c4 r10c5
+koffer: blocking r8c5
+
+EdgeItems:
+deur_1: door r6c4 r7c4
+deur_2: door r6c8 r7c8
+raam_1: window r4c4
+raam_2: window r4c5
+raam_3: window r4c8
+raam_4: window r4c9
+raam_5: window r5c1
+raam_6: window r6c1
+
+Attributes:
+vrouw: Svetlana Anastasia Katarina Ludmila
+
+Roles:
+moordenaar: 1
+
+RoleEligibility:
+moordenaar: attribute:vrouw
+
+People:
+Dragomir
+Bogdan
+Svetlana
+Mikhail
+Anastasia
+Vladimir
+Katarina
+Ludmila
+
+Rules:
+role_occupant moordenaar not_alone
+
+Clues:
+in_region Dragomir gangpad
+in_region Katarina perron_b
+in_region Anastasia locomotief
+in_region Svetlana coupe_2
+in_region Ludmila perron_b
+has_role Svetlana moordenaar
+next_to Mikhail klok
+next_to Katarina info_bord
+next_to Bogdan perron_bank
+next_to Ludmila perron_bank
+not_next_to Svetlana klok
+not_next_to Bogdan koffer
+not_next_to Vladimir raam_5
+left_of Ludmila Svetlana 5
+left_of Anastasia Katarina 7
+left_of Dragomir Svetlana 3
+above Mikhail Anastasia 4
+above Mikhail Bogdan 1
+not_in_row Ludmila 8
+at_least Mikhail Vladimir 9
+left_of Dragomir Vladimir 4
+within Bogdan Katarina 7
+
+# Booklet text for --docx (optional).
+Title:
+Moord in de Oriënt Express: Wie is de moordenaar?
+
+Intro:
+In de trein ligt een passagier vermoord in coupé 2. De sporen langs het perron zijn niet begaanbaar,
+maar de banken in de coupés en op de perrons wel. Zet iedereen op een vrij vakje; geen twee figuren
+staan in dezelfde rij of kolom. Een blokkerend voorwerp maakt een vakje onbruikbaar.
+De moordenaar is een vrouw, was in coupé 2 en was niet alleen.
+
+Figures:
+Dragomir: de conducteur ; icon=U+1F9D4
+Bogdan: de machinist ; icon=U+1F468
+Svetlana: de gravin ; icon=U+1F475
+Mikhail: de dokter ; icon=U+1F9D1
+Anastasia: de actrice ; icon=U+1F469
+Vladimir: de kolonel ; icon=U+1F474
+Katarina: de secretaresse ; icon=U+1F471
+Ludmila: de gouvernante ; icon=U+1F469
+
+Question:
+Wie is de moordenaar?
+
+Reveal:
+Svetlana is de moordenaar.
