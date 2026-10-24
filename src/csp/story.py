@@ -84,6 +84,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.extra_regions": ", all in different areas",
         "clue.role_apart": "there is at most one {role} per area ({a}, {b})",
         "doc.extra_from": ", chosen from {people}",
+        "doc.role_one_attribute": "one person is the {role}, and that person is a {attribute}",
         "doc.rules": (
             "Place every figure on a free square of the board. No two figures share a row or a "
             "column. Squares with an object that blocks cannot be used; squares with a standable "
@@ -274,6 +275,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.extra_regions": ", allemaal in verschillende gebieden",
         "clue.role_apart": "er is hoogstens één {role} per gebied ({a}, {b})",
         "doc.extra_from": ", gekozen uit {people}",
+        "doc.role_one_attribute": "één persoon is de {role}, en dat is een {attribute}",
         "doc.rules": (
             "Zet elke figuur op een vrij vakje van het bord. Twee figuren staan nooit in dezelfde "
             "rij of kolom. Vakjes met een blokkerend voorwerp kun je niet gebruiken; vakjes met "
@@ -2192,11 +2194,23 @@ def role_list(text: str) -> list[tuple[str, str]]:
         else:
             count = say("doc.count_one_of", list=say.join([say.number(n) for n in counts], "or"))
         extra = say("doc.extra_regions") if role.different_regions and counts != [1] else ""
-        if role.eligible_people is not None:
-            chosen = [person for person in board.people if person in role.eligible_people]
-            extra += say("doc.extra_from", people=say.join(chosen))
         name = say.words.get(role.name, role.name.replace("_", " "))
-        out.append((name, say("doc.role", count=count, extra=extra)))
+        if counts == [1] and role.eligible_people is not None:
+            for attribute, holders in board.attributes.items():
+                if set(holders) == set(role.eligible_people):
+                    attr_name = say.words.get(attribute, attribute.replace("_", " "))
+                    out.append((name, say("doc.role_one_attribute", role=name, attribute=attr_name)))
+                    break
+            else:
+                if role.eligible_people is not None:
+                    chosen = [person for person in board.people if person in role.eligible_people]
+                    extra += say("doc.extra_from", people=say.join(chosen))
+                out.append((name, say("doc.role", count=count, extra=extra)))
+        else:
+            if role.eligible_people is not None:
+                chosen = [person for person in board.people if person in role.eligible_people]
+                extra += say("doc.extra_from", people=say.join(chosen))
+            out.append((name, say("doc.role", count=count, extra=extra)))
     return out
 
 
