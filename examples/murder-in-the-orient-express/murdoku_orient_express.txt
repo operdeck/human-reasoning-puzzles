@@ -1,0 +1,138 @@
+# Moord in de Oriënt Express 8x8 - "Wie is de moordenaar?" (grade relations)
+#
+# Thema: "Moord in de Oriënt Express". Acht reizigers op een 8x8-bord, dus elke rij
+# en elke kolom bevat precies één persoon. De moordenaar is een vrouw, was in
+# coupé 2 en was daar niet alleen (Rules:); geen aanwijzing noemt haar.
+#
+# Oplossing: Mikhail r1c5, Dragomir r2c3, Svetlana r3c8, Ludmila r4c4,
+# Vladimir r5c6, Bogdan r6c1, Katarina r7c7, Anastasia r8c2.
+# De moordenaar is Svetlana: zij zat op de bank in coupé 2, samen met Vladimir.
+
+Size: 8
+Language: nl
+
+Words:
+locomotief: in de locomotief
+noordperron: op het noordperron
+coupe_1: in coupé 1
+coupe_2: in coupé 2
+gangpad: in het gangpad
+zuidperron: op het zuidperron
+plaats_delict: op de plaats delict
+trein_bank: de treinbank
+perron_bank: het perronbankje
+koffiebar: de koffiebar
+vuurkist: de vuurkist
+raam: het raam
+deur: de deur
+klok: de klok
+lijk: het lijk
+koffer: de koffer
+role_has: {who} is de {role}
+role_not: {who} is niet de {role}
+min_role_in_tagged_one: de {role} was {area}
+role_occupant.not_alone: de {role} was niet alleen
+role_area_in: {who} is de {role} en moet {area} zijn
+
+Regions:
+locomotief: locomotief #CFD3DA
+noordperron: noordperron #E9E4D8
+coupe_1: coupe_1 #D8D2F0
+coupe_2: coupe_2 #F4CBC3
+gangpad: gangpad #F3E4B5
+zuidperron: zuidperron #DCE8D2
+
+Grid:
+noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron
+noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2
+locomotief locomotief gangpad gangpad gangpad gangpad gangpad gangpad
+zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron
+zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron
+
+Objects:
+vuurkist: blocking r5c1 r5c2
+klok: blocking r1c4
+perron_bank: standable r2c6 r2c7
+trein_bank: standable r3c3 r4c3 r5c3
+trein_bank: standable r3c8 r4c8 r5c8 right
+lijk: blocking r4c7
+koffer: blocking r6c6
+koffiebar: blocking r8c7
+perron_bank: standable r8c2 r8c3
+
+EdgeItems:
+raam: window r3c4 top
+raam: window r3c7 top
+raam: window r4c1 left
+raam: window r6c1 left
+deur: door r5c4 r6c4
+deur: door r5c7 r6c7
+deur: door r6c5 r7c5
+
+AreaTags:
+plaats_delict: coupe_2
+
+Attributes:
+vrouw: Svetlana Anastasia Katarina Ludmila
+
+Roles:
+moordenaar: 1
+
+RoleEligibility:
+moordenaar: attribute:vrouw
+
+People:
+Dragomir
+Bogdan
+Svetlana
+Mikhail
+Anastasia
+Vladimir
+Katarina
+Ludmila
+
+Rules:
+role_occupant moordenaar not_alone
+min_role_in_tagged moordenaar plaats_delict 1
+
+Clues:
+in_region Ludmila coupe_1
+in_region Vladimir coupe_2
+next_to Ludmila trein_bank
+on Anastasia perron_bank
+next_to Bogdan vuurkist
+not_next_to Vladimir trein_bank
+above Ludmila Vladimir
+not_next_to Ludmila raam
+next_to Katarina koffiebar
+left_of Dragomir Ludmila
+left_of Anastasia Dragomir
+not_next_to Dragomir klok
+
+# Booklet text for --docx (optional).
+Title:
+Moord in de Oriënt Express: Wie is de moordenaar?
+
+Intro:
+In coupé 2 van de Oriënt Express ligt een passagier vermoord. Acht reizigers staan verspreid over de trein en de perrons.
+Zet iedereen op een vrij vakje: elke rij en elke kolom bevat precies één persoon. Op een bank mag je staan; een blokkerend voorwerp maakt een vakje onbruikbaar.
+De moordenaar is een vrouw, was in coupé 2 en was daar niet alleen.
+
+Figures:
+Dragomir: de conducteur ; icon=U+1F9D4
+Bogdan: de machinist ; icon=U+1F468
+Svetlana: de gravin ; icon=U+1F475
+Mikhail: de dokter ; icon=U+1F9D1
+Anastasia: de actrice ; icon=U+1F469
+Vladimir: de kolonel ; icon=U+1F474
+Katarina: de secretaresse ; icon=U+1F471
+Ludmila: de gouvernante ; icon=U+1F469
+
+Question:
+Wie is de moordenaar?
+
+Reveal:
+Svetlana, de gravin, is de moordenaar. Zij zat op de bank in coupé 2, samen met kolonel Vladimir.

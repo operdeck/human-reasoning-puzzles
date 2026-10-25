@@ -158,9 +158,16 @@ def murdoku_picture(
         stretch = len(piece) > 1 and not seat
         if base in WELL_NAMES:
             icons.draw(canvas, "well", (x0, y0, x1, y1), stretch=True)
+        elif base in TILED_NAMES:
+            for square in piece:
+                icons.draw(canvas, icons.OBJECT_ICONS[base], box(square), stretch=True)
         elif obj.kind == "standable":
             long_vertical = y1 - y0 > x1 - x0
-            rotate = (base == "bed" or seat) and long_vertical
+            # The drawings have their back at the top; a side turns the back to that wall.
+            if obj.side is not None:
+                rotate = BACK_TURN[obj.side]
+            else:
+                rotate = 90 if (base == "bed" or seat) and long_vertical else 0
             # Standable objects are drawn faint: figures stand on them.
             with canvas.group(opacity=STANDABLE_OPACITY):
                 if seat:
@@ -176,7 +183,9 @@ def murdoku_picture(
         else:
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch)
     for item in board.edge_items:
-        if item.kind == "window":
+        if item.kind == "window" and item.side is not None:
+            _draw_wall_window(canvas, box(item.cells[0]), item.side, cell)
+        elif item.kind == "window":
             _icon(canvas, item.name, box(item.cells[0]), cell, scale=0.42)
     for point in board.point_objects:
         row2, col2 = point.anchor
@@ -228,7 +237,7 @@ STANDABLE_OPACITY = 0.55
 def _region_labels(canvas: Canvas, board: Board, box: Callable[[Square], Box], cell: int) -> None:
     """A small name tag in each region, at the top of its first free square.
 
-    Squares with an object, a mark or a point object near their top edge are
+    Squares with an object, a mark, a top-wall window or a point object near their top edge are
     passed over when the region has another; a long name may run on into the
     next square of the same region.
     """
@@ -241,6 +250,9 @@ def _region_labels(canvas: Canvas, board: Board, box: Callable[[Square], Box], c
         for c in range(board.size)
         if point.anchor[0] in (2 * r + 1, 2 * r + 2)
         and point.anchor[1] in range(2 * c + 1, 2 * c + 4)
+    }
+    crowded |= {
+        item.cells[0] for item in board.edge_items if item.kind == "window" and item.side == "top"
     }
     fills = _fills(board)
     size = max(8, cell // 7)
@@ -301,7 +313,12 @@ def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
 # Objects drawn with the registry's own drawings because Noto Emoji has no suitable picture.
 CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "carpet")
 WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
-SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"})
+# Objects drawn once per square, so a long stretch of them repeats rather than stretches.
+TILED_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "rails")
+BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
+SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"}) | frozenset(
+    name for name, icon in icons.OBJECT_ICONS.items() if icon in ("train_bench", "platform_bench")
+)
 
 
 def unknown_object_icons(board: Board) -> list[str]:
@@ -1045,6 +1062,29 @@ def _draw_edge_item_doors(canvas: Canvas, board: Board, margin: int, cell: int) 
             canvas.line((x - cell // 4, y, x + cell // 4, y), fill=wood, width=width)
 
 
+def _draw_wall_window(canvas: Canvas, area: Box, side: str, cell: int) -> None:
+    """A shallow window pane as wide as the cell, set against its `side` wall."""
+    x0, y0, x1, y1 = area
+    depth, inset = max(4, cell // 7), cell // 10
+    pane = {
+        "top": (x0 + inset, y0, x1 - inset, y0 + depth),
+        "bottom": (x0 + inset, y1 - depth, x1 - inset, y1),
+        "left": (x0, y0 + inset, x0 + depth, y1 - inset),
+        "right": (x1 - depth, y0 + inset, x1, y1 - inset),
+    }[side]
+    frame = (73, 88, 106)
+    canvas.rectangle(pane, fill=(208, 228, 242), outline=frame, width=max(2, cell // 40))
+    px0, py0, px1, py1 = pane
+    if side in ("top", "bottom"):
+        for k in (1, 2):
+            x = px0 + (px1 - px0) * k / 3
+            canvas.line((x, py0, x, py1), fill=frame, width=max(1, cell // 60))
+    else:
+        for k in (1, 2):
+            y = py0 + (py1 - py0) * k / 3
+            canvas.line((px0, y, px1, y), fill=frame, width=max(1, cell // 60))
+
+
 # --- things on the board --------------------------------------------------
 
 
@@ -1055,7 +1095,7 @@ def _icon(
     cell: int,
     scale: float = 0.72,
     stretch: bool = False,
-    rotate: bool = False,
+    rotate: float = 0,
     fit_box: bool = False,
 ) -> None:
     """Draw `name`'s icon centred in `area`; `stretch` fills the area instead.
@@ -1063,13 +1103,14 @@ def _icon(
     `fit_box` keeps the aspect ratio but fits the icon to the whole area, so a
     long seat spanning two squares is drawn long rather than one square big.
     Registry drawings without a picture (carpet, well) always fill the area.
+    `rotate` turns the icon counter-clockwise by that many degrees.
     """
     x0, y0, x1, y1 = area
     icon = icons.object_icon(name)
     if icon is None:
         _centred_text(canvas, name[:6], area, cell // 5, INK)
         return
-    turn = 90 if rotate else 0
+    turn = rotate
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     if icon.emoji is None:
         icons.draw(canvas, icon, area, stretch=True, rotate=turn)
@@ -1127,11 +1168,11 @@ def _coordinates(canvas: Canvas, n: int, margin: int, cell: int) -> None:
 LEGEND_WORDS = {
     "en": {"door": "Door", "window": "Window", "point": "Point", "cells": "cells",
            "alone": "alone in area", "not_alone": "shares area", "global": "Global",
-           "maybe": "maybe", "apart": "at most one of these per area"},
+           "maybe": "maybe", "apart": "at most one of these per area", "one": "a {name}"},
     "nl": {"door": "Deur", "window": "Raam", "point": "Punt", "cells": "vakjes",
            "alone": "alleen in het gebied", "not_alone": "deelt het gebied",
            "global": "Telling", "maybe": "misschien",
-           "apart": "niet meer dan 1 hiervan per gebied"},
+           "apart": "niet meer dan 1 hiervan per gebied", "one": "een {name}"},
 }  # fmt: skip
 
 
@@ -1194,6 +1235,11 @@ class _Legend:
             + cell // 6
         )
 
+    def _item_label(self, kind: str, name: str) -> str:
+        """'Door: gate', or just 'Door' when the item is simply called that."""
+        word, shown = self.words[kind], name.replace("_", " ")
+        return word if shown.lower() in (word.lower(), kind) else f"{word}: {shown}"
+
     def draw(self, canvas: Canvas, x: int, y: int) -> None:
         fills = _fills(self.board)
         size = int(self.swatch * 0.8)
@@ -1226,11 +1272,11 @@ class _Legend:
                     fill=(117, 75, 47),
                     width=max(4, self.swatch // 5),
                 )
-                label(top, f"{self.words['door']}: {name}")
+                label(top, self._item_label("door", name))
             else:
                 _icon(canvas, name, area, self.cell, scale=0.8)
                 kind = "window" if name in self.board.edge_item_names else "point"
-                label(top, f"{self.words[kind]}: {name}")
+                label(top, self._item_label(kind, name))
         for i, name in enumerate(self.mark_names):
             top = y + (self.rows + len(self.item_names) + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
@@ -1288,7 +1334,14 @@ class _Legend:
             present = [person for person in status if status[person] is not False]
             unknown = []
         parts = [", ".join(present)] if present else []
-        if unknown:
+        group = next(
+            (attr for attr, holders in self.board.attributes.items() if holders == set(unknown)),
+            None,
+        )
+        if not present and group is not None and len(unknown) > 1:
+            # Say who may hold it by their shared attribute rather than naming every suspect.
+            parts.append(self.words["one"].format(name=group.replace("_", " ")))
+        elif unknown:
             maybe = ", ".join(unknown)
             parts.append(f"{self.words['maybe']} {maybe}" if present else maybe)
         line = f"{name.replace('_', ' ').capitalize()}: {'; '.join(parts) or '-'}"

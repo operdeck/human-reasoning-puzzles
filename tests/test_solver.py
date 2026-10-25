@@ -446,9 +446,10 @@ def test_role_below_and_sole_role_companion_match_brute_force():
     below_text = """Size: 2
 Regions:
 a: room
+b: hall
 Grid:
-a a
-a a
+a b
+a b
 People:
 A
 B
@@ -2600,7 +2601,7 @@ unused: any
     assert cli.main([str(puzzle), "--lint"]) == 0
     output = capsys.readouterr().out
     assert "missing icon for zeppelin" in output
-    assert "unreachable area attic" in output
+    assert "area attic is fully blocked" in output
     assert "role unused is declared but unused" in output
 
 
@@ -2900,3 +2901,82 @@ def test_alone_with_rejects_a_bad_count():
     base = "Size: 2\nRegions:\na: room\nGrid:\na a\na a\nPeople:\nA\nB\nRules:\n"
     with pytest.raises(ValueError, match="optional positive count"):
         murdoku.quantified_conditions(*load_board(base + "alone_with A 0\n"))
+
+
+def test_a_window_may_name_the_wall_it_sits_against():
+    text = """Size: 2
+Regions:
+a: room
+b: hall
+Grid:
+a b
+a b
+People:
+A
+B
+EdgeItems:
+raam: window r1c1 top
+deur: door r1c1 r1c2
+Clues:
+next_to A raam
+"""
+    board, _ = load_board(text)
+    sides = {item.name: item.side for item in board.edge_items}
+    assert sides == {"raam": "top", "deur": None}
+    with pytest.raises(ValueError):
+        load_board(text.replace("r1c1 top", "r1c1 up"))
+    with pytest.raises(ValueError):
+        murdoku.EdgeItem("deur", "door", (murdoku.Square(0, 0), murdoku.Square(0, 1)), side="top")
+
+
+def test_a_seat_may_name_the_wall_its_back_is_against():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Objects:
+bank: standable r1c2 r2c2 right
+kast: blocking r1c1
+"""
+    board, _ = load_board(text)
+    assert {obj.name: obj.side for obj in board.objects} == {"bank": "right", "kast": None}
+    with pytest.raises(ValueError):
+        murdoku.BoardObject("bank", "standable", (murdoku.Square(0, 0),), side="up")  # type: ignore[arg-type]
+
+
+def test_a_fully_blocked_area_does_not_break_area_occupancy_rules():
+    """`role_occupant` makes a count per area; an area with no free square must not crash it."""
+    base = """Size: 4
+Regions:
+a: west
+b: east
+c: rocks
+Grid:
+a a b b
+a c c b
+a c c b
+a a b b
+Objects:
+rots: blocking r2c2 r2c3 r3c2 r3c3
+Roles:
+dader: 1
+People:
+A
+B
+C
+D
+Rules:
+role_occupant dader not_alone
+Clues:
+above A B
+"""
+    merged = base.replace("c: rocks\n", "").replace("a c c b", "a a a b")
+    assert len(bruteforce.solutions(base, limit=500)) == len(
+        bruteforce.solutions(merged, limit=500)
+    )
+    assert len(bruteforce.solutions(base, limit=500)) > 0

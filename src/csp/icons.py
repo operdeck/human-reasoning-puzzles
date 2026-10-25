@@ -131,6 +131,50 @@ WATERFALL = (
 )
 
 
+# A train bench seen from above: a faint red cushion split into seats, a backrest
+# along one long side and an armrest at each end.
+TRAIN_BENCH = (
+    '<g stroke="#a65a52" stroke-width="2.5" stroke-linejoin="round">'
+    '<rect x="4" y="30" width="92" height="54" rx="8" fill="#f2c4be"/>'
+    '<rect x="4" y="8" width="92" height="22" rx="6" fill="#dd9a92"/>'
+    '<rect x="4" y="8" width="10" height="76" rx="4" fill="#dd9a92"/>'
+    '<rect x="86" y="8" width="10" height="76" rx="4" fill="#dd9a92"/>'
+    '<path d="M38 34V80M62 34V80" fill="none" stroke="#c4786f" stroke-width="2"/>'
+    "</g>"
+)
+# A simple platform bench with visible slats and a low back, typical for railway stations.
+PLATFORM_BENCH = (
+    '<g fill="#cfaa75" stroke="#6f4a2d" stroke-width="2" stroke-linecap="round">'
+    '<path d="M12 34H88V40H12Z"/>'
+    '<path d="M10 52H90V60H10Z"/>'
+    '<path d="M10 70H90V78H10Z"/>'
+    '<path d="M14 18H86V30H14Z"/>'
+    '<path d="M18 78V92M82 78V92M35 78V92M65 78V92" fill="none"/>'
+    "</g>"
+    '<g fill="none" stroke="#7c5638" stroke-width="2">'
+    '<line x1="20" y1="18" x2="20" y2="78"/>'
+    '<line x1="80" y1="18" x2="80" y2="78"/>'
+    "</g>"
+)
+# One square of railway track seen from above, running left to right: it tiles into a line.
+RAILS = (
+    '<rect width="100" height="100" fill="#b9b2a5"/>'
+    '<g fill="#7a5a3c" stroke="#5b3f27" stroke-width="1.5">'
+    '<rect x="6" y="14" width="14" height="72" rx="2"/>'
+    '<rect x="43" y="14" width="14" height="72" rx="2"/>'
+    '<rect x="80" y="14" width="14" height="72" rx="2"/></g>'
+    '<g fill="#8d9399" stroke="#4d5359" stroke-width="1.5">'
+    '<rect x="-1" y="26" width="102" height="8"/>'
+    '<rect x="-1" y="66" width="102" height="8"/></g>'
+)
+# A wooden gangplank seen from above, bridging the gap from top to bottom.
+GANGPLANK = (
+    '<g stroke="#6f4a2d" stroke-width="2">'
+    '<rect x="22" y="0" width="56" height="100" fill="#d2a46a"/>'
+    '<path d="M40.7 0V100M59.3 0V100" fill="none"/>'
+    '<path d="M22 22H78M22 50H78M22 78H78" fill="none" stroke="#8a6040" stroke-width="3"/>'
+    '<path d="M18 0V100M82 0V100" fill="none" stroke="#5b3f27" stroke-width="4"/></g>'
+)
 # A wooden park bench on cast-iron legs, wider than it is tall.
 BENCH = (
     '<g stroke="#3d3d3d" stroke-width="4" stroke-linecap="round" fill="none">'
@@ -139,6 +183,31 @@ BENCH = (
     '<rect x="6" y="5" width="88" height="8" rx="2"/>'
     '<rect x="6" y="16" width="88" height="8" rx="2"/>'
     '<rect x="3" y="30" width="94" height="10" rx="2"/></g>'
+)
+CORPSE = (
+    '<g fill="#d7d7d7" stroke="#2d2d2d" stroke-width="2.2" '
+    'stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M28 84L34 54C40 33 57 28 68 39L78 54L75 90H32Z"/>'
+    '<path d="M42 28L50 16L59 28L57 41H44Z" fill="#d6b88d"/>'
+    '<circle cx="58" cy="27" r="11" fill="#d7d7d7"/>'
+    '<path d="M40 47C48 57 57 60 66 58" fill="none" stroke="#232323" stroke-width="3"/>'
+    '<path d="M36 57L47 68M50 61L61 74" fill="none" stroke="#7b1d1d" stroke-width="4"/>'
+    '<path d="M62 52L70 56M65 60L74 64M51 77L58 85" fill="none" stroke="#7b1d1d" stroke-width="3"/>'
+    '<path d="M26 82L32 74L38 83" fill="none" stroke="#7b1d1d" stroke-width="3"/>'
+    "</g>"
+)
+INFO_BOARD = (
+    '<g fill="#d9c79a" stroke="#5a3e2a" stroke-width="2.5" '
+    'stroke-linecap="round" stroke-linejoin="round">'
+    '<rect x="18" y="18" width="64" height="58" rx="4"/>'
+    '<path d="M24 30H76M24 42H76M24 54H64" fill="none" stroke="#5a3e2a" stroke-width="2"/>'
+    '<path d="M30 22V12H70V22" fill="none"/>'
+    '<g fill="#c2a46d"><rect x="30" y="66" width="8" height="18"/>'
+    '<rect x="62" y="66" width="8" height="18"/></g>'
+    '<g fill="#4d4d4d"><rect x="40" y="24" width="20" height="12"/>'
+    '<rect x="36" y="42" width="28" height="8"/></g>'
+    '<g fill="none" stroke="#5a3e2a" stroke-width="2"><path d="M20 82H80"/></g>'
+    "</g>"
 )
 # A patterned rug and a stone well, drawn here because Noto Emoji has neither.
 CARPET = (
@@ -222,6 +291,18 @@ REGISTRY: dict[str, Icon] = {
         Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
         Icon("allium", "\u273f", "allium", markup=ALLIUM),
         Icon("bench", "\u2b0c", "park bench", markup=BENCH, view=(0, 0, 100, 56)),
+        Icon("train_bench", "\u2b0c", "train bench", markup=TRAIN_BENCH, view=(0, 0, 100, 92)),
+        Icon(
+            "platform_bench",
+            "\u2b0c",
+            "platform bench",
+            markup=PLATFORM_BENCH,
+            view=(0, 0, 100, 92),
+        ),
+        Icon("rails", "\u2550", "railway track", markup=RAILS, view=(0, 0, 100, 100)),
+        Icon("gangplank", "\u2551", "gangplank", markup=GANGPLANK, view=(0, 0, 100, 100)),
+        Icon("info_board", "\u2139", "information board", markup=INFO_BOARD, view=(0, 0, 100, 100)),
+        Icon("corpse", "\u2620", "corpse", markup=CORPSE, view=(0, 0, 100, 100)),
         Icon("tatami", "\u25a5", "tatami mat", markup=TATAMI),
         Icon("plate", "\u25cd", "Japanese plate", markup=PLATE),
         Icon("zaisu", "\u2441", "Japanese chair", markup=ZAISU),
@@ -233,13 +314,19 @@ REGISTRY: dict[str, Icon] = {
 
 # Murdoku object names drawn with a registry icon rather than an emoji.
 OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
+                "train_bench": "train_bench", "trein_bank": "train_bench",
+                "platform_bench": "platform_bench", "perron_bank": "platform_bench",
                 "tapijt": "carpet", "carpet": "carpet", "rug": "carpet",
                 "tatami": "tatami", "plate": "plate", "sara": "plate",
                 "zaisu": "zaisu", "japanese_chair": "zaisu",
                 "acacia": "acacia", "baobab": "baobab",
                 "waterval": "waterfall", "waterfall": "waterfall",
                 "waterput": "well", "well": "well",
-                "sierui": "allium", "allium": "allium"}  # fmt: skip
+                "sierui": "allium", "allium": "allium",
+                "info_bord": "info_board", "info_board": "info_board",
+                "lijk": "corpse", "corpse": "corpse",
+                "rails": "rails", "spoor": "rails", "track": "rails",
+                "loopplank": "gangplank", "gangplank": "gangplank"}  # fmt: skip
 
 # Dutch names as used in the puzzles, plus English synonyms.
 CATALOGUE: dict[str, str] = {
@@ -265,6 +352,7 @@ CATALOGUE: dict[str, str] = {
     "paard": "1f40e", "horse": "1f40e",
     "muis": "1f401", "mouse": "1f401",
     "vuurtje": "1f525", "kampvuur": "1f525", "campfire": "1f525", "fire": "1f525",
+    "vuurkist": "1f525", "firebox": "1f525",
     "tent": "26fa",
     "parasol": "26f1", "umbrella": "26f1",
     "fontein": "26f2", "fountain": "26f2",
@@ -291,7 +379,7 @@ CATALOGUE: dict[str, str] = {
     # indoors
     "bank": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bankstel": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",
-    "window": "1fa9f",
+    "raam": "1fa9f", "window": "1fa9f",
     "bed": "1f6cf", "tweepersoonsbed": "1f6cf", "double_bed": "1f6cf",
     "bad": "1f6c1", "bathtub": "1f6c1",
     "douche": "1f6bf", "shower": "1f6bf",
@@ -315,6 +403,7 @@ CATALOGUE: dict[str, str] = {
     "koffer": "1f9f3", "suitcase": "1f9f3",
     "kruik": "1f3fa", "amphora": "1f3fa", "vase": "1f3fa",
     "taart": "1f370", "cake": "1f370",
+    "koffiebar": "2615", "koffie": "2615", "coffee": "2615", "coffee_bar": "2615",
     "mand": "1f9fa", "basket": "1f9fa",
     "schooltas": "1f392", "backpack": "1f392", "schoolbag": "1f392",
     "arcade": "1f579", "joystick": "1f579",
