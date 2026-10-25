@@ -11,6 +11,11 @@ reasoning alone. Follow `AGENT.md` (branching, originality) and never overwrite
 an existing file. This skill is Murdoku-only: for other families use
 `docs/model-and-puzzle-formats.md` and never approximate them as Murdoku.
 
+**Let the repo do the searching.** Placements, uniqueness, clue thinning and
+grades are computed by repo tools (`uv run csp ...`, `csp.clue_search`), not by
+reasoning in the conversation or by throwaway scripts; see
+[Repo tools first](#repo-tools-first).
+
 ## Workflows
 
 **Transcribe an image** (photo or scan of an existing puzzle):
@@ -36,15 +41,89 @@ an existing file. This skill is Murdoku-only: for other families use
 1. Split the request into hard constraints (people, board facts, clue meanings,
    size, features) and choices (theme, wording, grade); state the defaults you
    chose. Accept plain-language clues; ask only when ambiguity blocks you.
-2. Design the intended assignment first (one person per row/column; with `N`
-   people on `N`×`N` every line is used), then the board and clues around it.
-   Add only clues needed for uniqueness and the target grade; avoid clues that
-   hand out a square outright (`in_row` + `in_column`, or one that pins a
-   person on step one) unless an easy puzzle is wanted.
-3. Never copy a published board, clue set, story or solution.
-4. If requirements conflict, explain instead of dropping one.
+2. Use `N` people on an `N`×`N` board so every row and column holds exactly
+   one person. If a board must have fewer people, say in the `Intro:` which
+   lines stay empty and why; never leave it unexplained.
+3. Design the intended assignment first, then the board (areas, objects,
+   doors) around it, then the clues: let `csp.clue_search suggest` propose
+   them and `thin` remove the unneeded ones (see [Repo tools first](#repo-tools-first)).
+   Follow [Fair clues](#fair-clues) and, for a mystery,
+   [Late-reveal mysteries](#late-reveal-mysteries).
+4. Add the booklet text ([Booklet text](#booklet-text)) once the clues are final,
+   then run [Validation](#validation) and the [completion checklist](#completion-checklist).
+5. Never copy a published board, clue set, story or solution.
+6. If requirements conflict, explain instead of dropping one.
 
 When both are given, transcribe first, then build a separate derived puzzle.
+
+## Repo tools first
+
+Agent tokens are expensive and the solver is fast. Search with the repo, read
+its short output, and decide:
+
+| Need | Tool |
+|---|---|
+| parse, solution count, grade, issues | `uv run csp FILE --show-model`, `--brute-force`, `--grade`, `--lint` |
+| worked solution, reveal order | `uv run csp FILE --explain` |
+| a person's live squares while solving | `uv run csp FILE --track-person P` |
+| clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
+| drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
+| which clues are redundant | `uv run python -m csp.clue_search report FILE` |
+| pictures, booklet | `--png`, `--docx` |
+| new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
+
+- Do not solve, enumerate placements or test clue subsets by hand or with
+  one-off code in `/tmp`. If a search you need is missing, add it to the repo
+  as a reusable, tested option (for example in `src/csp/clue_search.py` or the
+  `csp` CLI), document it here, and ship it in its own commit or PR.
+- Run tools with a timeout and do not re-run a long command to see more output;
+  read its saved output instead. Prefer `tail`/`grep` over whole outputs.
+- When a tool reveals an engine problem (a crash, English engine words in Dutch
+  prose, an awkward generated sentence), fix it in `src/csp/` with a test
+  rather than working around it in the puzzle.
+
+## Fair clues
+
+Clues should read like a detective's notes, not like arithmetic.
+
+- **Prefer areas, objects and simple relations:** `in_region`, `outside`,
+  `next_to`/`not_next_to` an object, `on` a bench, `same_region`,
+  `different_region`, and `left_of`/`above` **without** a number.
+- **Use exact numbers sparingly**: at most one or two of `left_of A B n`,
+  `above A B n`, `within`, `at_least`, `in_row`/`in_column`, `knight_from` and
+  `count` per puzzle, and only when they read naturally. `within`/`at_least`
+  count Manhattan steps (rows plus columns); say so in the wording if you use
+  them.
+- Never hand out a square outright (`in_row` + `in_column`, or a first clue
+  that pins someone) unless an easy puzzle is wanted.
+- Every clue must be needed: `thin` and `report` show which are not; `--lint`
+  flags implied and redundant clues.
+- Ground clues in the board's story: the clock on the platform, the bench in
+  the coupé, the window of the locomotive.
+
+## Late-reveal mysteries
+
+In a mystery the answer (murderer, victim, eater, carer) is the **last
+candidate**, deduced from board-wide rules, never told.
+
+- **No direct giveaways.** No `has_role`/`not_role` clue about the answer, and
+  the answer person appears in no clue (`suggest --exclude P`). Only `Rules:`
+  speak about them.
+- **Encode the story as rules**, not as a hint. For example: the murderer is a
+  woman (`Attributes:` + `RoleEligibility: moordenaar: attribute:vrouw`), was at
+  the crime scene (`AreaTags: plaats_delict: coupe_2` +
+  `min_role_in_tagged moordenaar plaats_delict 1`) and was not alone there
+  (`role_occupant moordenaar not_alone`). Mention these rules in the `Intro:`.
+  For the classic victim pattern use `alone_with P [selector] [n]`.
+- **Exactly one answer must follow.** Check with `--brute-force` (one
+  solution, one role holder) and read `--explain`: the answer should become
+  known by elimination ("De moordenaar was op de plaats delict, dus …") as late
+  as possible, ideally with the last placements. Until then the person keeps
+  ≥ 2 live squares and ≥ 2 companion candidates (`--track-person P`).
+- **Hide the answer in pictures.** The puzzle legend never names the holder:
+  when the open candidates share an attribute it says so ("Moordenaar: een
+  vrouw"); only the solution picture names them. Check with `--png`. Figure
+  descriptions must not hint at the role.
 
 ## Where files go
 
@@ -54,7 +133,14 @@ When both are given, transcribe first, then build a separate derived puzzle.
   showcase boards. `--docx "examples/**/*.txt"` numbers puzzles in a fixed order.
 - `tests/puzzles/` for test-only puzzles that are not meant to be played.
 - New examples need `uv run pytest -q` to pass (tests look them up with
-  `tests/examples.py` `example(name)`).
+  `tests/examples.py` `example(name)`, so file names must be unique).
+- One canonical file per puzzle: never leave a second copy elsewhere, and
+  never commit generated `.png` or `.docx` files.
+- List new examples in `docs/examples.md` (Murdoku overview, with size and
+  grade).
+- Keep a puzzle PR focused: engine, icon and wording changes the puzzle needs
+  may come along (with tests); unrelated refactors and skill rewrites go in
+  their own PR.
 
 ## Validation
 
@@ -76,25 +162,26 @@ uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
   `chains` < `what_if`), not universal difficulty. `--require-forward` forbids
   `what_if`.
 - `--track-person P` shows a person's live squares and companion candidates.
-- **Search clue sets with the repo tool, not throwaway scripts.** Each solve
-  runs in a child process with a hard `--timeout`; the tool only prints.
-
-  ```bash
-  uv run python -m csp.clue_search suggest FILE --solution "Ada=r1c2 Ben=r3c4 ..." \
-      [--exclude Ada] [--kinds in_region next_to ...] [--timeout 30]
-  uv run python -m csp.clue_search thin FILE [--max-grade subsumption] [--keep 3 7]
-  uv run python -m csp.clue_search report FILE   # per clue: solutions and grade without it
-  ```
-
-  `suggest` greedily adds true, simple clues (areas and objects first) until
-  the intended placement is unique; `--exclude` keeps a late-reveal person out
-  of the clues. When it reports "stuck", the remaining placements are
-  symmetric: move an object or change the intended placement and rerun.
-  `thin` drops clues while the puzzle stays unique and within `--max-grade`;
-  `report` shows which clues are redundant.
+- `--brute-force` must finish in < 5 s for a generated puzzle; if not, add
+  clues or shrink the board. `clue_search` runs every solve with `--timeout`.
+- For a transcription, `--brute-force` and `--grade` are diagnostics: report
+  them and compare with the image; never change clues to force a result.
 - Report path, parse result, solution count, actual grade, intended solution and
-  open doubts. Do not claim a grade `--grade` did not print. Do not change
-  solver code or weaken checks unless asked.
+  open doubts. Do not claim a grade `--grade` did not print. Never weaken
+  checks or change clue semantics to make a puzzle pass; engine fixes come
+  with a test (see [Repo tools first](#repo-tools-first)).
+
+### Completion checklist
+
+For a finished Murdoku under `examples/`, before reporting done:
+
+- `--brute-force`: exactly one solution; `--grade`: the target (or the actual
+  grade, reported as such); `--lint`: no issues.
+- Clues thinned (`clue_search thin`); few exact-number clues; no giveaway.
+- For a mystery: `--explain` reveals the answer by the rules, late.
+- `--png` looked at (puzzle and solution); `--docx` page check for booklet text.
+- `docs/examples.md` updated; `uv run pytest -q` and `ruff` pass.
+- Report path, solution, grade and any open doubts.
 
 ## Theme, objects and pictures
 
@@ -151,11 +238,13 @@ uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
 - `AreaTags:` tag regions (overlap allowed); `Hatched:` takes regions or tags.
   `Pronouns:` e.g. `Ada: she her her` (default they/them/their).
 - `Rules:` are unnumbered board-wide facts (`only_in_tagged`, `alone_with`,
-  `role_occupant`); `Clues:` are the numbered clues.
-- **Last-candidate rule:** the final character (victim, eater, carer) has no
-  clues and appears in nobody's clue; only a rule like `alone_with P [selector]
-  [n]` speaks of them. Until everyone else is placed they keep ≥ 2 live squares
-  and ≥ 2 companion candidates; check with `--track-person P` and grep `Clues:`.
+  `role_occupant`, `min_role_in_tagged`); `Clues:` are the numbered clues. See
+  [Late-reveal mysteries](#late-reveal-mysteries).
+- Non-standable strips (rails, water) are blocking objects; split them into
+  connected footprints and give each line a standable crossing (a gangplank,
+  a bridge) where its person must stand. Doors must lie on an area border. An
+  area made only of blocking squares is allowed (lint warns) but nobody can be
+  there.
 
 ## Supported clues
 
