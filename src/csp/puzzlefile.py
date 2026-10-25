@@ -202,7 +202,10 @@ def _split_clue(line: str) -> tuple[str, str]:
 
 
 def _object_placements(lines: list[str]) -> list[BoardObject]:
-    """Read explicit object kinds and one connected footprint per declaration."""
+    """Read explicit object kinds and one connected footprint per declaration.
+
+    A seat may end with the wall its back is against (`bank: standable r3c8 r4c8 right`).
+    """
     objects: list[BoardObject] = []
     kinds: dict[str, ObjectKind] = {}
     for line in lines:
@@ -216,9 +219,13 @@ def _object_placements(lines: list[str]) -> list[BoardObject]:
         if name.strip() in kinds and kinds[name.strip()] != kind:
             raise ValueError(f"object type {name.strip()!r} has conflicting kinds")
         kinds[name.strip()] = kind
+        side: WindowSide | None = None
+        if parts[-1] in WINDOW_SIDES:
+            side = parts.pop()  # type: ignore[assignment]
         if len(parts) == 1:
             raise ValueError(f"object {name.strip()!r} needs at least one cell")
-        objects.append(BoardObject(name.strip(), kind, tuple(parse_square(t) for t in parts[1:])))
+        cells = tuple(parse_square(t) for t in parts[1:])
+        objects.append(BoardObject(name.strip(), kind, cells, side))
     return objects
 
 

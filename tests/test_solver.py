@@ -2929,6 +2929,26 @@ next_to A raam
         murdoku.EdgeItem("deur", "door", (murdoku.Square(0, 0), murdoku.Square(0, 1)), side="top")
 
 
+def test_a_seat_may_name_the_wall_its_back_is_against():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Objects:
+bank: standable r1c2 r2c2 right
+kast: blocking r1c1
+"""
+    board, _ = load_board(text)
+    assert {obj.name: obj.side for obj in board.objects} == {"bank": "right", "kast": None}
+    with pytest.raises(ValueError):
+        murdoku.BoardObject("bank", "standable", (murdoku.Square(0, 0),), side="up")  # type: ignore[arg-type]
+
+
 def test_a_fully_blocked_area_does_not_break_area_occupancy_rules():
     """`role_occupant` makes a count per area; an area with no free square must not crash it."""
     base = """Size: 4

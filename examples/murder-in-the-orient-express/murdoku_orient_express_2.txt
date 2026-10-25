@@ -76,7 +76,7 @@ loopplank: standable r3c9
 koffer: blocking r4c6
 vuurkist: blocking r6c1 r6c2
 trein_bank: standable r5c3 r6c3 r7c3
-trein_bank: standable r5c10 r6c10 r7c10
+trein_bank: standable r5c10 r6c10 r7c10 right
 trein_bank: standable r5c8 r6c8
 tafel: blocking r5c5
 lijk: blocking r6c6

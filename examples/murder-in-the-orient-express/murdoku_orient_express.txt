@@ -57,7 +57,7 @@ vuurkist: blocking r5c1 r5c2
 klok: blocking r1c4
 perron_bank: standable r2c6 r2c7
 trein_bank: standable r3c3 r4c3 r5c3
-trein_bank: standable r3c8 r4c8 r5c8
+trein_bank: standable r3c8 r4c8 r5c8 right
 lijk: blocking r4c7
 koffer: blocking r6c6
 koffiebar: blocking r8c7
