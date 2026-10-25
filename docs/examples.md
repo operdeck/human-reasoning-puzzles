@@ -43,6 +43,41 @@ These previews are generated from the example files. The root README keeps a com
 <tr id="battleships"><td>Battleships, counts only</td><td>Mark ship cells to match the row and column counts (no fleet or shapes).</td><td><a href="../examples/battleships_counts_4x4.txt">4 × 4</a> / <a href="../examples/battleships_counts_8x8.txt">8 × 8</a></td><td><img src="images/battleships_counts_4x4.png" width="100" alt="Counts-only Battleships puzzle"></td><td><img src="images/battleships_counts_4x4-solution.png" width="100" alt="Counts-only Battleships solution"></td></tr>
 </table>
 
+## Verified non-Murdoku difficulty examples
+
+These tiers come from `puzzle-lab search examples --tier <easy|medium|hard>`.
+Every listed file is deductively solved by the repository solver and has a
+unique solution under independent search. The tier is an estimate for this
+solver, not a universal measure of human difficulty. `—` marks a coverage gap:
+the current generator/rule ladder has not produced a trustworthy example for
+that family and tier, so no candidate is promoted by hand. Queens/DogDoku and
+Binairo/Tango are listed separately because the gallery presents them as
+distinct puzzle types.
+
+| Puzzle type | Easy | Medium | Hard |
+|---|---|---|---|
+| Sudoku | [`sudoku_easy.txt`](../examples/sudoku_easy.txt) (`single`) | [`sudoku_naked_pair.txt`](../examples/sudoku_naked_pair.txt) (`cover2`) | [`sudoku_chains.txt`](../examples/sudoku_chains.txt) (`chains`) |
+| Calcudoku | [`calcudoku_4x4_easy.txt`](../examples/calcudoku_4x4_easy.txt) (`relations`) | [`calcudoku_6x6_medium.txt`](../examples/calcudoku_6x6_medium.txt) (`relations`) | [`calcudoku_7x7_hard.txt`](../examples/calcudoku_7x7_hard.txt) (`cover3`) |
+| Futoshiki | [`futoshiki_5x5_easy.txt`](../examples/futoshiki_5x5_easy.txt) (`single`) | [`futoshiki_5x5_medium.txt`](../examples/futoshiki_5x5_medium.txt) (`relations`) | [`futoshiki_5x5.txt`](../examples/futoshiki_5x5.txt) (`chains`) |
+| Queens | [`queens_4x4_easy.txt`](../examples/queens_4x4_easy.txt) (`single`) | [`queens_7x7_medium.txt`](../examples/queens_7x7_medium.txt) (`subsumption`) | [`queens_4x4.txt`](../examples/queens_4x4.txt) (`what_if`) |
+| DogDoku | [`dogdoku_5x5.txt`](../examples/dogdoku_5x5.txt) (`single`) | [`dogdoku_7x7.txt`](../examples/dogdoku_7x7.txt) (`subsumption`) | [`dogdoku_4x4_hard.txt`](../examples/dogdoku_4x4_hard.txt) (`what_if`) |
+| Tectonic / Suguru | [`suguru_4x4.txt`](../examples/suguru_4x4.txt) (`single`) | — | — |
+| Star Battle | [`starbattle_8x8_easy.txt`](../examples/starbattle_8x8_easy.txt) (`count`) | [`starbattle_8x8.txt`](../examples/starbattle_8x8.txt) (`cover2`) | [`starbattle_12x12.txt`](../examples/starbattle_12x12.txt) (`cover3`) |
+| Zebra logic grid | [`logicgrid_3x3.txt`](../examples/logicgrid_3x3.txt) (`relations`) | [`logicgrid_6x6.txt`](../examples/logicgrid_6x6.txt) (`relations`) | — |
+| Binairo / Takuzu | [`binairo_8x8_easy.txt`](../examples/binairo_8x8_easy.txt) (`relations`) | [`binairo_8x8_medium.txt`](../examples/binairo_8x8_medium.txt) (`relations`) | [`binairo_4x4.txt`](../examples/binairo_4x4.txt) (`what_if`) |
+| Tango | [`tango_8x8_easy.txt`](../examples/tango_8x8_easy.txt) (`relations`) | [`tango_4x4_medium.txt`](../examples/tango_4x4_medium.txt) (`relations`) | [`tango_4x4_hard.txt`](../examples/tango_4x4_hard.txt) (`what_if`) |
+| Tents and Trees | [`tents_8x8.txt`](../examples/tents_8x8.txt) (`single`) | [`tents_8x8_medium.txt`](../examples/tents_8x8_medium.txt) (`cover2`) | [`tents_4x4.txt`](../examples/tents_4x4.txt) (`what_if`) |
+| Minesweeper-style | [`minesweeper_8x8.txt`](../examples/minesweeper_8x8.txt) (`single`) | [`minesweeper_8x8_medium.txt`](../examples/minesweeper_8x8_medium.txt) (`subsumption`) | [`minesweeper_8x8_hard.txt`](../examples/minesweeper_8x8_hard.txt) (`cover3`) |
+| Light Up / Akari | [`akari_8x8.txt`](../examples/akari_8x8.txt) (`single`) | — | — |
+| Kakurasu | [`kakurasu_4x4.txt`](../examples/kakurasu_4x4.txt) (`relations`) | [`kakurasu_8x8.txt`](../examples/kakurasu_8x8.txt) (`relations`) | — |
+| Battleships, counts only | [`battleships_counts_4x4.txt`](../examples/battleships_counts_4x4.txt) (`count`) | [`battleships_counts_8x8.txt`](../examples/battleships_counts_8x8.txt) (`count`) | — |
+
+The most visible gaps are Tectonic/Suguru, Akari, counts-only Battleships,
+Kakurasu, and logic grids. In particular, the existing 8 × 8 Suguru file is
+trivial, and is intentionally excluded. These gaps require stronger
+family-specific deduction or generation support before a harder human-like
+example can be claimed.
+
 ## Rule-focused examples
 
 The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The 4 × 4 Queens example needs `what_if`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.

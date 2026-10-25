@@ -38,7 +38,7 @@ from . import (
     web,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
-from .puzzlefile import KINDS, detect, language_of, load_board, load_presentation
+from .puzzlefile import KINDS, detect, language_of, load_board, load_presentation, read_sections
 
 _PNG_DEFAULT = object()
 _DOCX_DEFAULT = object()
@@ -401,7 +401,13 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True) -> int:
     entries = []
     texts = {file: file.read_text() for file in set(files)}
     try:
-        listing = collection.arrange({file: detect(text) for file, text in texts.items()})
+        listing = collection.arrange(
+            {file: detect(text) for file, text in texts.items()},
+            {
+                file: (read_sections(text).get("Family") or [detect(text)])[0].casefold()
+                for file, text in texts.items()
+            },
+        )
     except ValueError as exc:
         print(f"could not read a puzzle: {exc}", file=sys.stderr)
         return 2
@@ -467,7 +473,11 @@ def _export(files: list[Path], out: Path) -> int:
         except ValueError as exc:
             print(f"could not export {file.name}: {exc}", file=sys.stderr)
             failed.append(file.name)
-    for listed in collection.arrange(kinds):
+    family_names = {
+        file: (read_sections(texts[file]).get("Family") or [kind])[0].casefold()
+        for file, kind in kinds.items()
+    }
+    for listed in collection.arrange(kinds, family_names):
         file, kind, text = listed.path, listed.kind, texts[listed.path]
         try:
             model = load(text, kind).model

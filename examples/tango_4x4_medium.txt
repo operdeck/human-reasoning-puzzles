@@ -1,0 +1,12 @@
+# Small Tango-style binary puzzle with equal and different signs.
+Family: tango
+Size: 4
+Givens:
+. 0 . .
+0 1 0 .
+. . . .
+. 1 0 .
+Equal:
+r1c1 r1c2
+Different:
+r1c2 r1c3
