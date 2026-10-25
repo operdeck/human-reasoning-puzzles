@@ -9,6 +9,7 @@ import re
 from dataclasses import dataclass, field
 
 from .murdoku import (
+    WINDOW_SIDES,
     Board,
     BoardObject,
     CellMark,
@@ -21,6 +22,7 @@ from .murdoku import (
     PronounSet,
     RoleSpec,
     Square,
+    WindowSide,
 )
 
 KINDS = (
@@ -221,7 +223,10 @@ def _object_placements(lines: list[str]) -> list[BoardObject]:
 
 
 def _edge_item_placements(lines: list[str]) -> list[EdgeItem]:
-    """Read named door pairs and window inside-cells; repeated names compose simple items."""
+    """Read named door pairs and window inside-cells; repeated names compose simple items.
+
+    A window may end with the wall it sits in (`raam: window r3c4 top`).
+    """
     items: list[EdgeItem] = []
     for line in lines:
         name, separator, definition = line.partition(":")
@@ -231,8 +236,11 @@ def _edge_item_placements(lines: list[str]) -> list[EdgeItem]:
         if not parts or parts[0] not in ("door", "window"):
             raise ValueError(f"edge item {name.strip()!r} must declare kind 'door' or 'window'")
         kind: EdgeItemKind = parts[0]  # type: ignore[assignment]
+        side: WindowSide | None = None
+        if parts[-1] in WINDOW_SIDES:
+            side = parts.pop()  # type: ignore[assignment]
         cells = tuple(parse_square(token) for token in parts[1:])
-        items.append(EdgeItem(name.strip(), kind, cells))
+        items.append(EdgeItem(name.strip(), kind, cells, side))
     return items
 
 

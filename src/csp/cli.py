@@ -276,7 +276,9 @@ def _murdoku_lint(
     }
     for region, name in board.region_names.items():
         free_cells = [square for square in board.free if board.region_of(square) == region]
-        if not free_cells or not (set(free_cells) & candidate_squares):
+        if not free_cells:
+            findings.append(f"warning: area {name} is fully blocked; nobody can stand there")
+        elif not set(free_cells) & candidate_squares:
             findings.append(f"warning: unreachable area {name}; no person candidate remains")
 
     role_references: set[str] = set()

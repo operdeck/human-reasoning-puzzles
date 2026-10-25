@@ -1021,3 +1021,57 @@ def test_region_names_are_tagged_on_the_puzzle_but_not_the_solution():
     plain = top(labels=False)
     assert top() != plain
     assert top(placed={"A": Square(1, 0), "B": Square(1, 1)}) == plain
+
+
+def test_legend_item_label_drops_a_name_that_only_repeats_the_kind():
+    board = Board(
+        2,
+        [["a", "a"], ["b", "b"]],
+        {"a": "a", "b": "b"},
+        [],
+        ["A", "B"],
+        edge_items=[
+            EdgeItem("deur", "door", (Square(0, 0), Square(1, 0))),
+            EdgeItem("achter_deur", "door", (Square(0, 1), Square(1, 1))),
+            EdgeItem("raam", "window", (Square(0, 0),)),
+        ],
+    )
+    legend = picture._Legend(board, CELL, language="nl")
+    assert legend._item_label("door", "deur") == legend.words["door"]
+    assert legend._item_label("window", "raam") == legend.words["window"]
+    assert legend._item_label("door", "achter_deur") == f"{legend.words['door']}: achter deur"
+
+
+def test_role_legend_names_an_attribute_group_instead_of_every_suspect():
+    board, _ = load_board(example("murdoku_orient_express.txt").read_text())
+    assert drawing._Legend(board, CELL, language="nl")._role_line("moordenaar") == (
+        "Moordenaar: een vrouw"
+    )
+    solved = {(person, "moordenaar"): person == "Svetlana" for person in board.people}
+    legend = drawing._Legend(board, CELL, role_statuses=solved, language="nl")
+    assert legend._role_line("moordenaar") == "Moordenaar: Svetlana"
+
+
+def test_a_window_with_a_side_is_drawn_against_that_wall():
+    def board(side):
+        return Board(
+            2,
+            [["a", "a"], ["a", "a"]],
+            {"a": "a"},
+            [],
+            ["A", "B"],
+            edge_items=[EdgeItem("raam", "window", (Square(0, 0),), side=side)],
+        )
+
+    glass = (208, 228, 242)
+
+    def near_glass(rgb):
+        return all(abs(x - y) < 12 for x, y in zip(rgb, glass, strict=True))
+
+    margin = CELL // 6
+    top = picture.murdoku_picture(board("top"), cell=CELL, coordinates=False, labels=False)
+    assert near_glass(top.getpixel((margin + 20, margin + 6)))
+    assert not near_glass(top.getpixel((margin + 50, margin + 50)))
+    left = picture.murdoku_picture(board("left"), cell=CELL, coordinates=False, labels=False)
+    assert near_glass(left.getpixel((margin + 6, margin + 20)))
+    assert not near_glass(left.getpixel((margin + 20, margin + 6)))

@@ -774,3 +774,11 @@ def test_quantified_clue_is_only_said_with_its_upshot():
     sentences = re.split(r"(?<=\.) ", story)
     bare = [s for s in sentences if "iemand in een badjas" in s and ", dus " not in s]
     assert not bare, bare
+
+
+def test_role_rules_are_told_without_engine_names():
+    story = explain(example("murdoku_orient_express.txt").read_text())
+    for leak in ("__", "role and area", "occupant count", "has role", "cardinality"):
+        assert leak not in story
+    assert "De moordenaar was op de plaats delict, dus Svetlana is de moordenaar" in story
+    assert "Svetlana is de moordenaar en moet in coupé 2 zijn" in story

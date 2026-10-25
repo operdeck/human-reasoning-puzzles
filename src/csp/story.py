@@ -84,7 +84,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.extra_regions": ", all in different areas",
         "clue.role_apart": "there is at most one {role} per area ({a}, {b})",
         "doc.extra_from": ", chosen from {people}",
-        "doc.role_one_attribute": "one person is the {role}, and that person is a {attribute}",
         "doc.rules": (
             "Place every figure on a free square of the board. No two figures share a row or a "
             "column. Squares with an object that blocks cannot be used; squares with a standable "
@@ -223,9 +222,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_below": "{who} is below a {role} holder",
         "role_below_n": "{who} is {n} rows below a {role} holder",
         "sole_role_companion": "{possessive} sole region companion has role {role}",
-        "role_occupant": (
-            "when a {role} holder is in an area, its occupant condition is {condition}"
-        ),
+        "role_occupant.alone": "every {role} holder is alone in their area",
+        "role_occupant.not_alone": "no {role} holder is alone in their area",
+        "min_role_in_tagged_one": "at least one {role} holder is {area}",
+        "role_area_in": "{who} has role {role} and must be {area}",
+        "role_only_one": "there is only one {role}",
+        "role_area_out": "{who} cannot both have role {role} and be {area}",
         "clue.above": "{a} is somewhere above {b}",
         "clue.above_n": "{a} is exactly {rows} above {b}",
         "clue.within": "{a} is at most {n} squares from {b}",
@@ -275,7 +277,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.extra_regions": ", allemaal in verschillende gebieden",
         "clue.role_apart": "er is hoogstens één {role} per gebied ({a}, {b})",
         "doc.extra_from": ", gekozen uit {people}",
-        "doc.role_one_attribute": "één persoon is de {role}, en dat is een {attribute}",
         "doc.rules": (
             "Zet elke figuur op een vrij vakje van het bord. Twee figuren staan nooit in dezelfde "
             "rij of kolom. Vakjes met een blokkerend voorwerp kun je niet gebruiken; vakjes met "
@@ -412,7 +413,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_below": "{who} staat onder een {role}-drager",
         "role_below_n": "{who} staat {n} rijen onder een {role}-drager",
         "sole_role_companion": "{possessive} enige gebiedsgenoot heeft de rol {role}",
-        "role_occupant": "als een {role}-drager in een gebied is, geldt daar: {condition}",
+        "role_occupant.alone": "elke {role}-drager is alleen in zijn gebied",
+        "role_occupant.not_alone": "geen enkele {role}-drager is alleen in zijn gebied",
+        "min_role_in_tagged_one": "minstens één {role}-drager is {area}",
+        "role_area_in": "{who} heeft de rol {role} en moet {area} zijn",
+        "role_only_one": "er is maar één {role}",
+        "role_area_out": "{who} kan niet de rol {role} hebben en tegelijk {area} zijn",
         "clue.above": "{a} is ergens boven {b}",
         "clue.above_n": "{a} is precies {rows} boven {b}",
         "clue.within": "{a} is hooguit {n} vakjes van {b}",
@@ -1173,6 +1179,8 @@ class Story:
                 )
                 return f"{clue}, {self.say('so')} {self.say.join(role_sentences)}."
             changed = [p for p in self.board.people if state.options[p] != before[p]]
+            if not changed and (reason := self._role_step_reason(steps)):
+                return f"{_cap(reason)}, {self.say('so')} {self.say.join(role_sentences)}."
             if changed:
                 return (
                     f"{self.say.join(role_sentences)}, {self.say('so')} "
@@ -1286,13 +1294,60 @@ class Story:
             if known is False:
                 allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
         counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
-        reason = self.say("count_reason", name=constraint.name, counts=counts)
+        reason = self._role_area_reason(constraint, allowed) or self.say(
+            "count_reason", name=constraint.name, counts=counts
+        )
         if changed:
             outcome = self._outcome(changed, before, state)
         else:
             key = "literal_true" if step.asserted else "literal_false"
             outcome = self.say(key, literal=step.literal)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
+
+    def _role_step_reason(self, steps: Sequence[Step]) -> str | None:
+        """Why a role became known: the role rule or role count behind its hidden constraint."""
+        by_name = {c.name: c for c in self.model.constraints}
+        for step in steps:
+            for source in step.sources:
+                if (rule := self._role_condition_for_source(source)) is not None:
+                    return self._role_condition_text(rule) + self._role_ref(rule)
+                constraint = by_name.get(source)
+                if constraint is None or step.var not in self.role_variables:
+                    continue
+                _, role = self.role_variables[step.var]
+                name = self.say.words.get(role) or role.replace("_", " ")
+                if constraint.family == "role cardinality" and constraint.allowed_counts == {1}:
+                    return self.say("role_only_one", role=name)
+                if constraint.family == "role area membership":
+                    rule = next(
+                        (
+                            r
+                            for r in self.role_conditions.values()
+                            if r.kind == "min_role_in_tagged" and r.args[0] == role
+                        ),
+                        None,
+                    )
+                    if rule is not None:
+                        return self._role_condition_text(rule) + self._role_ref(rule)
+        return None
+
+    def _role_area_reason(self, constraint: Any, allowed: frozenset[int]) -> str | None:
+        """'Ada has role guide and is therefore in the hall', for a hidden role-and-area count.
+
+        Such a count holds a role-membership literal followed by the squares of
+        one area; the person, role and area are read from those literals.
+        """
+        if constraint.family != "role area membership" or len(constraint.literals) < 2:
+            return None
+        first, square = constraint.literals[0], self.model.value_of(constraint.literals[1])
+        held = self.role_variables.get(self.model.var_of(first))
+        if held is None or not isinstance(square, Square):
+            return None
+        person, role = held
+        area = self.places.region(self.board.region_names[self.board.region_of(square)])
+        role_name = self.say.words.get(role) or role.replace("_", " ")
+        key = "role_area_in" if allowed == {2} else "role_area_out"
+        return self.say(key, who=person, role=role_name, area=area)
 
     def _global_count_for_sources(self, sources: Iterable[str]) -> GlobalCountCondition | None:
         for source in sources:
@@ -1867,7 +1922,7 @@ class Story:
         if kind == "min_role_in_tagged":
             area = self.places.regions(self.board.tagged_region_ids([args[1]]))
             return self.say(
-                "min_role_in_tagged",
+                "min_role_in_tagged_one" if args[2] == "1" else "min_role_in_tagged",
                 n=self.say.number(int(args[2])),
                 role=role(args[0]),
                 area=area,
@@ -1898,8 +1953,7 @@ class Story:
                 role=role(args[1]),
                 possessive=self._pronoun(args[0], "possessive"),
             )
-        condition = "alone" if args[1] == "alone" else "not alone"
-        return self.say("role_occupant", role=role(args[0]), condition=condition)
+        return self.say(f"role_occupant.{args[1]}", role=role(args[0]))
 
     def _role_target_name(self, name: str) -> str:
         if name in ("blocking", "standable"):
@@ -2194,10 +2248,10 @@ def role_list(text: str) -> list[tuple[str, str]]:
         else:
             count = say("doc.count_one_of", list=say.join([say.number(n) for n in counts], "or"))
         extra = say("doc.extra_regions") if role.different_regions and counts != [1] else ""
-        name = say.words.get(role.name, role.name.replace("_", " "))
         if role.eligible_people is not None:
             chosen = [person for person in board.people if person in role.eligible_people]
             extra += say("doc.extra_from", people=say.join(chosen))
+        name = say.words.get(role.name, role.name.replace("_", " "))
         out.append((name, say("doc.role", count=count, extra=extra)))
     return out
 
