@@ -78,7 +78,7 @@ def arrange(kinds: Mapping[Path, str]) -> list[Listed]:
     def key(path: Path) -> tuple[object, ...]:
         kind, category = kinds[path], found[path]
         family = (kind != "murdoku", FAMILY_LABELS.get(kind, kind).casefold())
-        place = (category is None, category != FIRST_CATEGORY, category_label(category or ""))
+        place = (category is not None, category != FIRST_CATEGORY, category_label(category or ""))
         return (*family, *place, _natural(path.stem.casefold()), str(path))
 
     ordered = sorted(kinds, key=key)
