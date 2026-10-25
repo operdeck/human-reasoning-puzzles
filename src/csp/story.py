@@ -1205,8 +1205,10 @@ class Story:
             if constraint is not None and constraint.kind is Kind.COUNT:
                 changed = [p for p in self.board.people if state.options[p] != before[p]]
                 return self._count(steps[0], changed, before, state)
+            if steps[0].var in self.role_variables:
+                return ""
             if steps[0].var not in self.board.people:
-                return self.say("literal_true", literal=steps[0].literal)
+                return self._literal_text(steps[0], asserted=True)
             return self._placement(steps[0], state)
         changed = [p for p in self.board.people if state.options[p] != before[p]]
         if rule == "count":
@@ -1265,13 +1267,7 @@ class Story:
             clue = _cap(self._quantified_text(target_condition)) + self._quantified_ref(
                 target_condition
             )
-            outcome = (
-                self._outcome(changed, before, state)
-                if changed
-                else self.say(
-                    "literal_true" if step.asserted else "literal_false", literal=step.literal
-                )
-            )
+            outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
             return f"{clue}, {self.say('so')} {outcome}."
         constraint = next(c for c in self.model.constraints if c.name == step.sources[0])
         allowed = constraint.allowed_counts
@@ -1297,11 +1293,7 @@ class Story:
         reason = self._role_area_reason(constraint, allowed) or self.say(
             "count_reason", name=constraint.name, counts=counts
         )
-        if changed:
-            outcome = self._outcome(changed, before, state)
-        else:
-            key = "literal_true" if step.asserted else "literal_false"
-            outcome = self.say(key, literal=step.literal)
+        outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
 
     def _role_step_reason(self, steps: Sequence[Step]) -> str | None:
@@ -1517,9 +1509,7 @@ class Story:
         elif changed:
             outcome = self._outcome(changed, before, state)
         else:
-            outcome = self.say(
-                "literal_true" if step.asserted else "literal_false", literal=step.literal
-            )
+            outcome = self._literal_text(step)
         return f"{clue}, {self.say('so')} {outcome}."
 
     def _global_empty_unit_text(self, step: Step) -> str:
@@ -1831,6 +1821,16 @@ class Story:
         if not present:
             return not eligible
         return eligible and spec.allowed_counts == {len(spec.eligible_people)}
+
+    def _literal_text(self, step: Step, asserted: bool | None = None) -> str:
+        """A fixed literal in words; role memberships read as "X is (not) the role"."""
+        holds = step.asserted if asserted is None else asserted
+        if step.var in self.role_variables:
+            person, role = self.role_variables[step.var]
+            present = step.value if holds else not step.value
+            name = self.say.words.get(role) or role.replace("_", " ")
+            return self.say("role_has" if present else "role_not", who=person, role=name)
+        return self.say("literal_true" if holds else "literal_false", literal=step.literal)
 
     def _role_step_text(self, step: Step, state: _State) -> str:
         person, role = self.role_variables[step.var]
