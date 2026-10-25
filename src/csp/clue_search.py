@@ -119,8 +119,9 @@ def _child(text: str, queue: Any) -> None:
 
 def outcome(text: str, timeout: float = 5.0) -> Outcome:
     """Solution count and grade of `text`, measured in a child process killed after `timeout`."""
-    methods = multiprocessing.get_all_start_methods()
-    context = multiprocessing.get_context("fork" if "fork" in methods else "spawn")
+    context: Any = multiprocessing.get_context(
+        "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
+    )
     queue = context.Queue()
     process = context.Process(target=_child, args=(text, queue), daemon=True)
     process.start()
