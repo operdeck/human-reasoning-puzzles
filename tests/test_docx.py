@@ -312,15 +312,21 @@ def test_board_notes_explain_marks_and_attributes_and_roles_are_listed_apart():
     )
 
 
-def test_booklet_lists_roles_beside_the_board(tmp_path):
+def test_booklet_lists_roles_under_the_board(tmp_path):
     out = tmp_path / "r.docx"
     assert main([str(example("murdoku_composition.txt")), "--docx", str(out)]) == 0
-    cell = Document(str(out)).tables[0].rows[0].cells[1]
-    texts = [p.text for p in cell.paragraphs]
-    assert "The attributes" in texts
-    assert "The roles" in texts
-    assert "trained: Cal and Dee" in texts
-    assert any(t.startswith("navigator: held by") for t in texts)
+    texts = [p.text for p in Document(str(out)).paragraphs]
+    assert any(t.startswith("The attributes") and "trained: Cal and Dee" in t for t in texts)
+    assert any(t.startswith("The roles") and "navigator: held by" in t for t in texts)
+
+
+def test_booklet_groups_objects_by_kind_on_one_line(tmp_path):
+    out = tmp_path / "o.docx"
+    assert main([str(example("murdoku_orient_express.txt")), "--docx", str(out)]) == 0
+    line = next(p.text for p in Document(str(out)).paragraphs if p.text.startswith("De voorwerpen"))
+    assert "Begaanbaar:" in line and "Blokkerend:" in line
+    assert line.index("Treinbank") < line.index("Blokkerend:") < line.index("Klok")
+    assert "hier kan niemand staan" not in line
 
 
 def test_booklet_numbers_the_clues_and_lists_the_figures_beside_the_board(tmp_path):

@@ -1010,7 +1010,7 @@ def test_dutch_legend_lists_fixed_role_holders_as_a_category():
     assert legend._role_line("eiwit") == "Eiwit: Vis, Bonen (niet meer dan 1 hiervan per gebied)"
 
 
-def test_region_names_are_tagged_on_the_puzzle_but_not_the_solution():
+def test_region_names_are_tagged_on_puzzle_and_solution_away_from_people():
     board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
 
     def top(**kw):
@@ -1020,7 +1020,16 @@ def test_region_names_are_tagged_on_the_puzzle_but_not_the_solution():
 
     plain = top(labels=False)
     assert top() != plain
-    assert top(placed={"A": Square(1, 0), "B": Square(1, 1)}) == plain
+    assert top(placed={"A": Square(1, 0), "B": Square(1, 1)}) != plain
+    # The tag moves off a square where someone stands.
+    assert top(placed={"A": Square(0, 0), "B": Square(1, 1)}) != top()
+
+
+def test_a_labelled_board_leaves_region_swatches_out_of_the_legend():
+    board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
+    with_swatches = picture.murdoku_picture(board, cell=CELL, labels=False)
+    labelled = picture.murdoku_picture(board, cell=CELL)
+    assert labelled.height < with_swatches.height
 
 
 def test_legend_item_label_drops_a_name_that_only_repeats_the_kind():
