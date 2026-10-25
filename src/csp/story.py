@@ -768,11 +768,11 @@ class Places:
         return self.say.words.get(name) or self.say("region", name=name.replace("_", " "))
 
     def thing(self, name: str) -> str:
-        if (
-            name in self.board.edge_item_names
-            or name in self.board.point_object_names
-            or name in self.board.mark_names
-        ):
+        if name in self.board.edge_item_names:
+            many = sum(item.name == name for item in self.board.edge_items) > 1
+        elif name in self.board.point_object_names:
+            many = sum(point.name == name for point in self.board.point_objects) > 1
+        elif name in self.board.mark_names:
             many = False
         else:
             many = len(_pieces(self.board.squares_of([name]))) > 1

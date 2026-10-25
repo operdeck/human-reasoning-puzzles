@@ -486,3 +486,9 @@ bench: the bench
     places = Places(board, Wording.read(text))
     assert places.thing("apple") == "an apple"
     assert places.thing("bench") == "a bench"
+
+
+def test_one_of_several_windows_is_named_indefinitely():
+    clues = clue_texts(_read("murdoku_orient_express_3"))
+    assert "Bogdan zit naast een raam." in clues
+    assert not any("het raam" in clue for clue in clues)

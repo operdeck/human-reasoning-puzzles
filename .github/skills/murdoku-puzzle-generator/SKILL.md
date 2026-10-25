@@ -337,8 +337,8 @@ no repeated or empty sentences ("…, ."), no raw clue numbers in solutions, no
 facts already given by the figure list. Fix generic prose in `src/csp/story.py`
 (with a test) and one-off wording in the puzzle file (`Words:`, `| wording`).
 
-Watch the articles in particular. An object with several pieces should be
-named indefinitely ("een treinbank", "a bench"; "het perronbankje" is
+Watch the articles in particular. An object, window, door or point object that
+occurs more than once should be named indefinitely ("een treinbank", "a bench"; "het perronbankje" is
 ambiguous when there are two). English picks "a"/"an" from the first letter,
 so "hour" gets "a" and "unicorn" gets "an", both wrong. When the pattern is general, fix
 it in `story.py` with a test; for a single odd word, use a `Words:` alias or a
