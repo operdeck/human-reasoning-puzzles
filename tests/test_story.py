@@ -782,3 +782,10 @@ def test_role_rules_are_told_without_engine_names():
         assert leak not in story
     assert "De moordenaar was op de plaats delict, dus Svetlana is de moordenaar" in story
     assert "Svetlana is de moordenaar en moet in coupé 2 zijn" in story
+
+
+@pytest.mark.parametrize("name", ["murdoku_orient_express_2.txt", "murdoku_orient_express_3.txt"])
+def test_role_literals_are_told_as_role_sentences(name):
+    story = explain(example(name).read_text())
+    for leak in ("has role", "letterlijke keuze", "=True", "=False"):
+        assert leak not in story
