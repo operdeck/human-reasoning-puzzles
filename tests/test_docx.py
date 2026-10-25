@@ -452,3 +452,37 @@ def test_docx_without_puzzle_files_takes_every_example_murdoku(tmp_path, monkeyp
     assert main(["--docx"]) == 0
     assert (tmp_path / "booklet.docx").exists()
     assert f"({len(files)} puzzles" in capsys.readouterr().out
+
+
+def test_an_object_with_several_pieces_is_named_indefinitely_despite_its_words():
+    clues = clue_texts(_read("murdoku_orient_express"))
+    assert "Anastasia zit op een perronbankje." in clues
+    assert "Vladimir zit niet naast een treinbank." in clues
+    assert not any("het perronbankje" in clue for clue in clues)
+
+
+def test_english_uses_an_before_a_vowel_for_one_of_several_objects():
+    from csp.story import Places, Wording, load_board
+
+    text = """Size: 3
+Language: en
+Regions:
+a: room #EEEEEE
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Objects:
+apple: standable r1c1
+apple: standable r3c3
+bench: standable r1c3
+bench: standable r3c1
+Words:
+bench: the bench
+"""
+    board, _ = load_board(text)
+    places = Places(board, Wording.read(text))
+    assert places.thing("apple") == "an apple"
+    assert places.thing("bench") == "a bench"
