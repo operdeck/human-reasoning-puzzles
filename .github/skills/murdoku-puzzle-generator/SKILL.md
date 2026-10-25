@@ -13,12 +13,6 @@ an existing file. This skill is Murdoku-only: for other families use
 
 ## Workflows
 
-Before persistent edits, follow `AGENT.md`, including the branch and
-originality requirements. Honor a requested output path, but never overwrite
-an existing file. For a new puzzle that will live under `examples/`, make the
-change on a separate branch from `main`, keep the working tree clean, and do
-not silently mix unrelated files or generated outputs into the same patch.
-
 **Transcribe an image** (photo or scan of an existing puzzle):
 
 1. First establish the user may reproduce it; a supplied image or ignored folder
@@ -48,15 +42,7 @@ not silently mix unrelated files or generated outputs into the same patch.
    hand out a square outright (`in_row` + `in_column`, or one that pins a
    person on step one) unless an easy puzzle is wanted.
 3. Never copy a published board, clue set, story or solution.
-4. If the puzzle is being added under tracked `examples/`, also update the
-   example index in `docs/examples.md` so the new board is discoverable in the
-   project gallery and narrative list. Do not leave a companion puzzle out of
-   the docs after adding the file.
-5. Add the optional booklet text described in [Booklet Metadata](#booklet-metadata)
-   once the puzzle is final.
-6. Run [Validation](#validation); if uniqueness or the requested grade is not
-   achieved, revise the board or added clues without weakening hard constraints,
-   then rerun the checks.
+4. If requirements conflict, explain instead of dropping one.
 
 When both are given, transcribe first, then build a separate derived puzzle.
 
@@ -70,32 +56,6 @@ When both are given, transcribe first, then build a separate derived puzzle.
 - New examples need `uv run pytest -q` to pass (tests look them up with
   `tests/examples.py` `example(name)`).
 
-### Paired Solution Evidence
-
-When a source includes a solved board or walkthrough, record its placements
-and stated answer separately from the puzzle clues. Cross-check those claims
-against row/column occupancy, areas, object kinds, and the playable source when
-available. If the screenshot, walkthrough, or live interaction disagree,
-preserve the discrepancy and report it; do not change clues or object kinds to
-force agreement. A coherent person-on-object placement is positive evidence
-that the object is standable, but an unoccupied icon does not prove it is
-blocking. If a kind remains unclear, ask rather than silently defaulting.
-
-### Example completion checklist
-
-For a finished Murdoku under `examples/`, the final pass should include all of
-these before closing the task:
-
-- file exists under `examples/` and parses cleanly
-- `--brute-force` reports exactly one solution
-- `--grade` reports the intended difficulty, or the actual solved grade
-- `--lint` reports no issues
-- every object name resolves to an icon in `src/csp/icons.py` or has a safe,
-  documented fallback; no unknown text-only object should remain in the board
-- `docs/examples.md` mentions the puzzle in the Murdoku overview
-- optional booklet/meta text is present when the puzzle is meant to ship as a
-  polished example
-
 ## Validation
 
 Run from the repo root, one option at a time:
@@ -108,40 +68,6 @@ uv run csp FILE --lint         # missing icons, unknown figures, implied/redunda
 uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
 ```
 
-- `--show-model` must parse and compile the file. This establishes format/model
-  acceptance, not that an image was transcribed correctly.
-- `--brute-force` reports whether the encoded puzzle has zero, one, or multiple
-  solutions. For a newly generated puzzle, require exactly one. For a
-  transcription, treat the result as a diagnostic and report it; compare
-  unexpected results with the image rather than changing the source puzzle.
-- A generated puzzle's `--brute-force` check must finish within 5 seconds. If it
-  takes longer, add clues or shrink the board rather than accepting a slow check.
-- Never wait on a solve or brute-force run: give every trial (also each one of a
-  clue-thinning loop) a limit of a few seconds, for example `signal.alarm(5)`, and
-  kill the process when it is exceeded. Treat a timeout as "not unique/solvable
-  with this clue set" and keep the clue; do not let a loop run for minutes.
-- `--grade` reports the hardest rule this solver used, or `unsolved`. For a
-  generated puzzle, require a solved grade and compare it with the user's
-  target. For a transcription, `unsolved` means this solver's deduction rules
-  did not finish it; it does not mean the text file is malformed.
-- `--lint` reports missing icons, unreachable areas, and unused roles; malformed
-  declarations are errors. A new object type like `lijk` or `spoor` must be
-  added to `src/csp/icons.py` before the example is accepted. `--require-forward`
-  also runs lint and requires a solve without the `what_if` rule when
-  forward-only solving is required.
-- For a new example in tracked `examples/`, run the full project suite as well:
-  `uv run pytest -q`. The puzzle may be unique and lint-clean yet still fail the
-  gallery and icon tests.
-- `--docx [FILE]` (also a glob) writes the booklet; see
-  [Booklet Metadata](#booklet-metadata). It needs `uv sync --extra docx`.
-- `--track-person` is for a normal Murdoku solve. For a late-reveal puzzle,
-  check that the tracked person has multiple live squares and multiple
-  region-overlap companion candidates until everyone else is placed, then
-  one square and one companion.
-- `--explain` can produce a worked solution when requested. Review it against
-  the intended assignment and clue meanings. Use `--png` to write `<puzzle-stem>.png`
-  beside the input, or `--png <file.png>` to choose an explicit path; the solved
-  image adds `-solution` before the extension.
 - Give every trial (also in clue-thinning loops) a hard timeout of a few seconds
   and kill it; treat a timeout as "not good enough", never wait minutes.
 - Uniqueness is relative to the implemented clue semantics; it proves neither a
@@ -160,14 +86,6 @@ uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
   grass; mountains have rocks, a hut, a waterfall; a Japanese restaurant has
   tatami, zaisu and plates; a garden has a park bench. Check every object
   against the region it sits in.
-- **Use object relations as genuine meta clues.** For a late-reveal mystery,
-  keep the story grounded in board objects rather than direct role-giveaways:
-  `next_to Mikhail klok`, `not_next_to Svetlana klok`, `next_to Katarina
-  info_bord`, `next_to Bogdan perron_bank`. These clues are about the board
-  layout and the objects' narrative role; they should narrow the placement
-  without naming the murderer outright. Do not replace middle-game logic with
-  a direct statement like `has_role Svetlana moordenaar` unless that is the
-  intended final reveal.
 - **Region colours mean something and stay consistent** across a series
   (desert sandy yellow, swamp green-brown, mountains grey-white, water blue,
   forest green). Keep neighbours distinguishable. Use plain region names
