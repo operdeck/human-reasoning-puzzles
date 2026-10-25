@@ -60,6 +60,8 @@ def knight_move(a: Square, b: Square) -> bool:
 
 type ObjectKind = Literal["blocking", "standable"]
 type EdgeItemKind = Literal["door", "window"]
+type WindowSide = Literal["top", "bottom", "left", "right"]
+WINDOW_SIDES: tuple[WindowSide, ...] = ("top", "bottom", "left", "right")
 type OccupantCondition = Literal["alone", "not_alone"]
 
 
@@ -105,6 +107,7 @@ class EdgeItem:
     name: str
     kind: EdgeItemKind
     cells: tuple[Square, ...]
+    side: WindowSide | None = None  # the wall a window sits in; only drawing uses it
 
     def __post_init__(self) -> None:
         if not self.name or any(char.isspace() for char in self.name):
@@ -117,6 +120,10 @@ class EdgeItem:
             raise ValueError(f"window {self.name!r} must list exactly one inside cell")
         if len(set(self.cells)) != len(self.cells):
             raise ValueError(f"edge item {self.name!r} repeats a touched cell")
+        if self.side is not None and (self.kind != "window" or self.side not in WINDOW_SIDES):
+            raise ValueError(
+                f"edge item {self.name!r}: only a window takes a side ({', '.join(WINDOW_SIDES)})"
+            )
 
 
 @dataclass(frozen=True)
@@ -1490,7 +1497,8 @@ def apply_occupant_condition(
     """
     triggers = tuple(dict.fromkeys(trigger_literals))
     occupants = tuple(dict.fromkeys(occupant_literals))
-    allowed = frozenset(allowed_counts)
+    # A count above the number of squares can never be met, e.g. in an area that is all blocked.
+    allowed = frozenset(n for n in allowed_counts if 0 <= n <= len(occupants))
     if not triggers:
         return
     if not allowed:
