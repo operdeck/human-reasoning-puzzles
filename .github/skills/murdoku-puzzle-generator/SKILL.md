@@ -76,6 +76,22 @@ uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
   `chains` < `what_if`), not universal difficulty. `--require-forward` forbids
   `what_if`.
 - `--track-person P` shows a person's live squares and companion candidates.
+- **Search clue sets with the repo tool, not throwaway scripts.** Each solve
+  runs in a child process with a hard `--timeout`; the tool only prints.
+
+  ```bash
+  uv run python -m csp.clue_search suggest FILE --solution "Ada=r1c2 Ben=r3c4 ..." \
+      [--exclude Ada] [--kinds in_region next_to ...] [--timeout 30]
+  uv run python -m csp.clue_search thin FILE [--max-grade subsumption] [--keep 3 7]
+  uv run python -m csp.clue_search report FILE   # per clue: solutions and grade without it
+  ```
+
+  `suggest` greedily adds true, simple clues (areas and objects first) until
+  the intended placement is unique; `--exclude` keeps a late-reveal person out
+  of the clues. When it reports "stuck", the remaining placements are
+  symmetric: move an object or change the intended placement and rerun.
+  `thin` drops clues while the puzzle stays unique and within `--max-grade`;
+  `report` shows which clues are redundant.
 - Report path, parse result, solution count, actual grade, intended solution and
   open doubts. Do not claim a grade `--grade` did not print. Do not change
   solver code or weaken checks unless asked.
@@ -120,6 +136,10 @@ uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
   rarely cross region borders (note it in the header if they do).
 - `EdgeItems:` doors (`gate: door r4c5 r4c6`, two neighbouring cells in
   different areas) and windows (`window: window r2c3`); they occupy nothing.
+  A window may name the wall it sits against (`raam: window r3c4 top`, also
+  `bottom`, `left`, `right`): the pane is drawn along that wall. The side only
+  affects the picture; put it on a wall the window really touches (the board
+  edge or an area border without a door).
 - `PointObjects:` on grid points by half-step anchors: `fountain: r3.5c3.5`
   touches four cells, `r0.5c4.5` two on the top edge, `r5.5c0.5` one corner,
   `r3.5c5` a side midpoint. Names must differ from objects (`mouse1`, `mouse2`).
