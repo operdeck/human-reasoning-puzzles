@@ -26,6 +26,33 @@ def test_rating_requires_a_deductive_unique_nontrivial_puzzle():
     assert result.placements > 0
 
 
+def test_suguru_small_board_is_not_misrated_by_given_density():
+    easy = rate(example("suguru_4x4.txt").read_text())
+    trivial = rate(example("suguru_8x8.txt").read_text())
+    assert easy.tier == "easy"
+    assert trivial.tier == "trivial"
+
+
+@pytest.mark.parametrize(
+    ("filename", "family", "tier"),
+    [
+        ("binairo_8x8_easy.txt", "binairo", "easy"),
+        ("binairo_8x8_medium.txt", "binairo", "medium"),
+        ("dogdoku_4x4_hard.txt", "dogdoku", "hard"),
+        ("minesweeper_8x8_hard.txt", "minesweeper", "hard"),
+        ("queens_7x7_medium.txt", "queens", "medium"),
+        ("tango_4x4_hard.txt", "tango", "hard"),
+        ("tango_4x4_medium.txt", "tango", "medium"),
+        ("tango_8x8_easy.txt", "tango", "easy"),
+    ],
+)
+def test_added_tier_examples_match_repository_ratings(filename, family, tier):
+    result = rate(example(filename).read_text())
+    assert result.family == family
+    assert result.tier == tier
+    assert result.solutions == "unique"
+
+
 def test_search_filters_by_display_family_and_tier(capsys):
     assert main(["search", "examples", "--family", "dogdoku", "--tier", "easy", "--json"]) == 0
     matches = json.loads(capsys.readouterr().out)

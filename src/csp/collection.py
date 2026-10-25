@@ -19,9 +19,11 @@ FAMILY_LABELS = {
     "calcudoku": "Calcudoku",
     "futoshiki": "Futoshiki",
     "queens": "Queens",
+    "dogdoku": "DogDoku",
     "suguru": "Suguru",
     "starbattle": "Star Battle",
-    "binairo": "Binairo and Tango",
+    "binairo": "Binairo",
+    "tango": "Tango",
     "tents": "Tents and Trees",
     "minesweeper": "Minesweeper",
     "akari": "Akari",
@@ -40,11 +42,12 @@ class Listed:
     kind: str
     category: str | None
     number: int
+    family_label: str | None = None
 
     @property
     def section(self) -> str:
         """The heading the puzzle is listed under."""
-        family = FAMILY_LABELS.get(self.kind, self.kind.capitalize())
+        family = self.family_label or FAMILY_LABELS.get(self.kind, self.kind.capitalize())
         return f"{family} \u00b7 {category_label(self.category)}" if self.category else family
 
 
@@ -71,15 +74,23 @@ def categories(paths: Iterable[Path]) -> dict[Path, str | None]:
     return out
 
 
-def arrange(kinds: Mapping[Path, str]) -> list[Listed]:
+def arrange(
+    kinds: Mapping[Path, str], family_names: Mapping[Path, str] | None = None
+) -> list[Listed]:
     """The files of `kinds` (path to family) in reading order, numbered."""
     found = categories(kinds)
+    labels = {
+        path: FAMILY_LABELS.get((family_names or {}).get(path, kind), FAMILY_LABELS.get(kind, kind))
+        for path, kind in kinds.items()
+    }
 
     def key(path: Path) -> tuple[object, ...]:
         kind, category = kinds[path], found[path]
-        family = (kind != "murdoku", FAMILY_LABELS.get(kind, kind).casefold())
+        family = (kind != "murdoku", labels[path].casefold())
         place = (category is not None, category != FIRST_CATEGORY, category_label(category or ""))
         return (*family, *place, _natural(path.stem.casefold()), str(path))
 
     ordered = sorted(kinds, key=key)
-    return [Listed(path, kinds[path], found[path], n) for n, path in enumerate(ordered, 1)]
+    return [
+        Listed(path, kinds[path], found[path], n, labels[path]) for n, path in enumerate(ordered, 1)
+    ]

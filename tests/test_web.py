@@ -97,6 +97,30 @@ def test_logic_grids_are_listed_but_not_playable(exported):
     assert bundle["unsupported"]
 
 
+def test_display_aliases_keep_their_labels_and_rules(exported):
+    dog = _bundle(exported, "dogdoku_5x5")
+    assert dog["family"] == "queens"
+    assert dog["familyLabel"] == "DogDoku"
+    assert "one dog" in dog["rules"][0]
+
+    tango = _bundle(exported, "tango_4x4")
+    assert tango["family"] == "binairo"
+    assert tango["familyLabel"] == "Tango"
+    assert "= signs" in tango["rules"][0]
+
+    binairo = _bundle(exported, "binairo_4x4")
+    assert binairo["familyLabel"] == "Binairo"
+
+
+def test_kakurasu_and_counts_only_battleships_rules_are_precise(exported):
+    kakurasu = _bundle(exported, "kakurasu_4x4")
+    assert "column number to the row sum" in kakurasu["rules"][0]
+    assert "row number to the column sum" in kakurasu["rules"][0]
+
+    battleships = _bundle(exported, "battleships_counts_4x4")
+    assert "does not model ship shapes" in battleships["rules"][0]
+
+
 def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):
     broken = tmp_path / "broken.txt"
     broken.write_text("this is not a puzzle\n")
@@ -180,3 +204,4 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
     assert "Murdoku \u00b7 Japanese food" in sections
     assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
     assert _bundle(exported, "food-murdoku-1")["section"] == "Murdoku \u00b7 Japanese food"
+    assert "DogDoku" in sections and "Tango" in sections

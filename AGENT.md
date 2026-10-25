@@ -256,6 +256,14 @@ in `docs/examples.md` and its model/file syntax in
 existing generic primitives; if they are insufficient, open a separate core
 design issue instead of adding puzzle-specific code to `core.py`.
 
+For non-Murdoku puzzle authoring, use the repository `puzzle-lab` CLI to
+generate, rate, and search examples. Keep difficulty claims tied to its
+deductive solving and uniqueness checks; if the current solver cannot support
+a tier for a family, document the gap rather than label an unsolved or trivial
+puzzle. Follow `.github/skills/non-murdoku-puzzle-authoring/SKILL.md`.
+Murdoku has its own generator skill and tools; do not change them for
+non-Murdoku work.
+
 ## Current rule coverage, measured
 
 Numbers from actual runs, not estimates:

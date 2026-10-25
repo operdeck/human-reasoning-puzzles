@@ -64,13 +64,29 @@ def rate(text: str, path: str = "<memory>") -> Rating:
         count = "not checked"
     tier = next((name for name, grades in TIERS.items() if grade in grades), "unrated")
     variable_count = len(model.variables)
+    board_size = int(variable_count**0.5)
     if grade == "relations" and (
         (family in {"calcudoku", "kakurasu", "tango"} and variable_count <= 16)
         or (family == "logicgrid" and variable_count <= 9)
     ):
         tier = "easy"
+    if grade == "relations" and family in {"binairo", "tango"}:
+        tier = "easy" if initial_open <= board_size else "medium"
     if grade == "count" and family == "battleships":
         tier = "easy" if variable_count <= 16 else "medium"
+    if family in {"suguru", "tectonic"} and grade in {"single", "count"}:
+        givens = sum(
+            token not in {".", "?"}
+            for line in read_sections(text).get("Givens", [])
+            for token in line.split()
+        )
+        density = givens / max(1, variable_count)
+        if board_size < 6 or density >= 0.68:
+            tier = "easy"
+        elif density >= 0.48:
+            tier = "medium"
+        elif density >= 0.3:
+            tier = "hard"
     if initial_open < 2 or not any(fired):
         tier = "trivial"
     return Rating(
@@ -327,6 +343,52 @@ def _generate_calcudoku(source: str, solution: Mapping[str, Any], rng: random.Ra
         + "\n".join(cage_lines)
         + "\n"
     )
+
+
+def _generate_minesweeper(text: str, rng: random.Random, tier: str) -> str:
+    sections = read_sections(text)
+    size = int(sections["Size"][0])
+    mine_count = int(sections["TotalMines"][0])
+    mines = set(rng.sample(range(size * size), mine_count))
+    visibility = {"easy": 0.9, "medium": 0.65, "hard": 0.4}[tier]
+    rows = []
+    for row in range(size):
+        cells = []
+        for col in range(size):
+            index = row * size + col
+            if index in mines or rng.random() > visibility:
+                cells.append(".")
+                continue
+            count = sum(
+                (near_row * size + near_col) in mines
+                for near_row in range(max(0, row - 1), min(size, row + 2))
+                for near_col in range(max(0, col - 1), min(size, col + 2))
+                if (near_row, near_col) != (row, col)
+            )
+            cells.append(str(count))
+        rows.append(" ".join(cells))
+    return (
+        f"Family: minesweeper\nSize: {size}\nClues:\n"
+        + "\n".join(rows)
+        + f"\nTotalMines:\n{mine_count}\n"
+    )
+
+
+def _generate_suguru(
+    text: str, solution: Mapping[str, Any], rng: random.Random, tier: str
+) -> str | None:
+    sections = read_sections(text)
+    size = int(sections["Size"][0])
+    fraction = {"easy": 0.82, "medium": 0.64, "hard": 0.5}[tier]
+    fraction = min(0.9, max(0.35, fraction + rng.uniform(-0.05, 0.05)))
+    matrix = [
+        " ".join(
+            _display_value(solution[f"r{row}c{col}"]) if rng.random() < fraction else "."
+            for col in range(1, size + 1)
+        )
+        for row in range(1, size + 1)
+    ]
+    return _replace_or_append_section(text, "Givens", matrix)
 
 
 def _add_minesweeper_clues(
@@ -601,10 +663,35 @@ def _search_command(args: argparse.Namespace) -> int:
 
 def _generate_command(args: argparse.Namespace) -> int:
     source = Path(args.source)
-    original = source.read_text()
+    source_text = source.read_text()
+    original = source_text
     if family_of(original) == "murdoku":
         print("Murdoku has its own puzzle tools and is out of scope here", file=sys.stderr)
         return 2
+    if args.as_family:
+        aliases = {
+            "queens": "queens",
+            "dogdoku": "queens",
+            "binairo": "binairo",
+            "tango": "binairo",
+        }
+        try:
+            target_kind = detect(f"Family: {args.as_family}\n")
+        except ValueError as error:
+            print(f"{source}: {error}", file=sys.stderr)
+            return 2
+        if target_kind != detect(original) or args.as_family not in aliases:
+            print(
+                f"{args.as_family} is not a compatible display family for {source}", file=sys.stderr
+            )
+            return 2
+        family_line = re.compile(r"(?m)^Family:\s*\S+\s*$")
+        replacement = f"Family: {args.as_family}"
+        original = (
+            family_line.sub(replacement, original)
+            if family_line.search(original)
+            else f"{replacement}\n{original}"
+        )
     kind = detect(original)
     try:
         solutions = bruteforce.solutions(original, kind, limit=1)
@@ -622,23 +709,27 @@ def _generate_command(args: argparse.Namespace) -> int:
             "medium": rng.uniform(0.12, 0.38),
             "hard": rng.uniform(0.28, 0.72),
         }[args.tier]
-        candidate = (
-            _generate_calcudoku(original, solutions[0], rng)
-            if family == "calcudoku" and args.tier == "easy"
-            else (
-                _mutate(original, rng, fraction)
-                if args.tier == "hard" or attempt % 2 == 0
-                else _add_givens(original, family, solutions[0], rng, rng.uniform(0.15, 0.7))
-            )
-        )
-        if candidate is None or candidate == original:
+        candidate: str | None
+        if args.as_family and attempt == 0:
+            candidate = original
+        elif family == "calcudoku" and args.tier == "easy":
+            candidate = _generate_calcudoku(original, solutions[0], rng)
+        elif family == "minesweeper":
+            candidate = _generate_minesweeper(original, rng, args.tier)
+        elif family in {"suguru", "tectonic"}:
+            candidate = _generate_suguru(original, solutions[0], rng, args.tier)
+        elif args.tier == "hard" or attempt % 2 == 0:
             candidate = _mutate(original, rng, fraction)
-        if candidate is None or candidate == original:
+        else:
+            candidate = _add_givens(original, family, solutions[0], rng, rng.uniform(0.15, 0.7))
+        if candidate is None or (candidate == original and not (args.as_family and attempt == 0)):
+            candidate = _mutate(original, rng, fraction)
+        if candidate is None or (candidate == original and not (args.as_family and attempt == 0)):
             candidate = _add_givens(original, family, solutions[0], rng, rng.uniform(0.15, 0.7))
         if candidate is None:
             print(f"{source}: no clue-removal strategy is available", file=sys.stderr)
             return 2
-        if candidate == original:
+        if candidate == original and (not args.as_family or original == source_text):
             continue
         try:
             result = rate(candidate, f"{source} (candidate {attempt + 1})")
@@ -674,10 +765,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     search_parser.add_argument("--json", action="store_true")
     search_parser.set_defaults(run=_search_command)
 
-    generate_parser = commands.add_parser("generate", help="search clue-thinned variants of a seed")
+    generate_parser = commands.add_parser(
+        "generate", help="generate or search for rated variants of a seed"
+    )
     generate_parser.add_argument("source")
     generate_parser.add_argument("--output", required=True)
     generate_parser.add_argument("--tier", choices=tuple(TIERS), required=True)
+    generate_parser.add_argument("--as-family", choices=("queens", "dogdoku", "binairo", "tango"))
     generate_parser.add_argument("--seed", type=int, default=0)
     generate_parser.add_argument("--attempts", type=int, default=100)
     generate_parser.set_defaults(run=_generate_command)
