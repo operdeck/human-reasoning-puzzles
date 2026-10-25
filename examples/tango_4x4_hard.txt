@@ -1,0 +1,8 @@
+# Small generated binary puzzle with unique rows and columns.
+Family: tango
+Size: 4
+Givens:
+0 0 . .
+. 1 0 .
+. . . .
+1 1 . .
