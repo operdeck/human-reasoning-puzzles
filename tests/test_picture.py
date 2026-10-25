@@ -474,11 +474,11 @@ def test_vertical_bed_icon_is_rotated(monkeypatch):
     rotations = []
 
     def capture(canvas, name, area, cell, **kwargs):
-        rotations.append(kwargs.get("rotate", False))
+        rotations.append(kwargs.get("rotate", 0))
 
     monkeypatch.setattr(drawing, "_icon", capture)
     picture.murdoku_picture(board, cell=CELL, coordinates=False)
-    assert rotations == [True]
+    assert rotations == [90]
 
 
 def test_custom_carpet_and_well_icons_draw_distinct_images():
@@ -1050,6 +1050,23 @@ def test_role_legend_names_an_attribute_group_instead_of_every_suspect():
     solved = {(person, "moordenaar"): person == "Svetlana" for person in board.people}
     legend = drawing._Legend(board, CELL, role_statuses=solved, language="nl")
     assert legend._role_line("moordenaar") == "Moordenaar: Svetlana"
+
+
+def test_a_seat_with_a_side_has_its_back_against_that_wall():
+    def board(side):
+        bench = BoardObject("trein_bank", "standable", (Square(0, 1), Square(1, 1)), side=side)
+        return Board(2, [["a", "a"], ["a", "a"]], {"a": "a"}, [bench], ["A", "B"])
+
+    def darkness(image, x):
+        return sum(image.getpixel((x, CELL // 6 + CELL))[:3])
+
+    margin = CELL // 6
+    left_x, right_x = margin + CELL + 18, margin + 2 * CELL - 18
+    left = picture.murdoku_picture(board(None), cell=CELL, coordinates=False, labels=False)
+    right = picture.murdoku_picture(board("right"), cell=CELL, coordinates=False, labels=False)
+    # The backrest is the darker band: by default on the left, with `right` on the right.
+    assert darkness(left, left_x) < darkness(left, right_x)
+    assert darkness(right, right_x) < darkness(right, left_x)
 
 
 def test_a_window_with_a_side_is_drawn_against_that_wall():

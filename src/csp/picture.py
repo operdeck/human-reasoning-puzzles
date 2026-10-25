@@ -163,7 +163,11 @@ def murdoku_picture(
                 icons.draw(canvas, icons.OBJECT_ICONS[base], box(square), stretch=True)
         elif obj.kind == "standable":
             long_vertical = y1 - y0 > x1 - x0
-            rotate = (base == "bed" or seat) and long_vertical
+            # The drawings have their back at the top; a side turns the back to that wall.
+            if obj.side is not None:
+                rotate = BACK_TURN[obj.side]
+            else:
+                rotate = 90 if (base == "bed" or seat) and long_vertical else 0
             # Standable objects are drawn faint: figures stand on them.
             with canvas.group(opacity=STANDABLE_OPACITY):
                 if seat:
@@ -311,6 +315,7 @@ CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if ic
 WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
 # Objects drawn once per square, so a long stretch of them repeats rather than stretches.
 TILED_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "rails")
+BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
 SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"}) | frozenset(
     name for name, icon in icons.OBJECT_ICONS.items() if icon in ("train_bench", "platform_bench")
 )
@@ -1090,7 +1095,7 @@ def _icon(
     cell: int,
     scale: float = 0.72,
     stretch: bool = False,
-    rotate: bool = False,
+    rotate: float = 0,
     fit_box: bool = False,
 ) -> None:
     """Draw `name`'s icon centred in `area`; `stretch` fills the area instead.
@@ -1098,13 +1103,14 @@ def _icon(
     `fit_box` keeps the aspect ratio but fits the icon to the whole area, so a
     long seat spanning two squares is drawn long rather than one square big.
     Registry drawings without a picture (carpet, well) always fill the area.
+    `rotate` turns the icon counter-clockwise by that many degrees.
     """
     x0, y0, x1, y1 = area
     icon = icons.object_icon(name)
     if icon is None:
         _centred_text(canvas, name[:6], area, cell // 5, INK)
         return
-    turn = 90 if rotate else 0
+    turn = rotate
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     if icon.emoji is None:
         icons.draw(canvas, icon, area, stretch=True, rotate=turn)

@@ -220,7 +220,9 @@ For a finished Murdoku under `examples/`, before reporting done:
   footprint per line (repeat the name for more). The kind is always explicit,
   never inferred from the name. Usually chairs, beds, mats and benches are
   standable; tables, trees and rocks blocking. Footprints may not overlap and
-  rarely cross region borders (note it in the header if they do).
+  rarely cross region borders (note it in the header if they do). A seat or
+  bed may end with the wall its back is against (`bank: standable r3c8 r4c8
+  right`); like a window side it only turns the picture.
 - `EdgeItems:` doors (`gate: door r4c5 r4c6`, two neighbouring cells in
   different areas) and windows (`window: window r2c3`); they occupy nothing.
   A window may name the wall it sits against (`raam: window r3c4 top`, also

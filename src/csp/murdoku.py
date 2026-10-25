@@ -72,10 +72,13 @@ class BoardObject:
     name: str
     kind: ObjectKind
     squares: tuple[Square, ...]
+    side: WindowSide | None = None  # the wall a seat's back is against; only drawing uses it
 
     def __post_init__(self) -> None:
         if not self.name or any(char.isspace() for char in self.name):
             raise ValueError(f"object name {self.name!r} must be a single token")
+        if self.side is not None and self.side not in WINDOW_SIDES:
+            raise ValueError(f"object {self.name!r}: side must be one of {', '.join(WINDOW_SIDES)}")
         if self.kind not in ("blocking", "standable"):
             raise ValueError(f"object {self.name!r} kind must be 'blocking' or 'standable'")
         cells = set(self.squares)
