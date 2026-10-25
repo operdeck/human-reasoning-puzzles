@@ -2956,5 +2956,7 @@ Clues:
 above A B
 """
     merged = base.replace("c: rocks\n", "").replace("a c c b", "a a a b")
-    assert len(bruteforce.solutions(base, limit=500)) == len(bruteforce.solutions(merged, limit=500))
+    assert len(bruteforce.solutions(base, limit=500)) == len(
+        bruteforce.solutions(merged, limit=500)
+    )
     assert len(bruteforce.solutions(base, limit=500)) > 0

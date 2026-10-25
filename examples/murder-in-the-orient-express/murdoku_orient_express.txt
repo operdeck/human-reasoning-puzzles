@@ -21,7 +21,7 @@ zuidperron: op het zuidperron
 plaats_delict: op de plaats delict
 trein_bank: de treinbank
 perron_bank: het perronbankje
-info_bord: het informatiebord
+koffiebar: de koffiebar
 vuurkist: de vuurkist
 raam: het raam
 deur: de deur
@@ -60,7 +60,7 @@ trein_bank: standable r3c3 r4c3 r5c3
 trein_bank: standable r3c8 r4c8 r5c8
 lijk: blocking r4c7
 koffer: blocking r6c6
-info_bord: blocking r8c7
+koffiebar: blocking r8c7
 perron_bank: standable r8c2 r8c3
 
 EdgeItems:
@@ -107,7 +107,7 @@ next_to Bogdan vuurkist
 not_next_to Vladimir trein_bank
 above Ludmila Vladimir
 not_next_to Ludmila raam
-next_to Katarina info_bord
+next_to Katarina koffiebar
 left_of Dragomir Ludmila
 left_of Anastasia Dragomir
 not_next_to Dragomir klok
