@@ -41,6 +41,10 @@ MANY_SOLUTION_LINES = 30
 SOLUTION_MIN_BOARD_CM = 5.0
 FIGURE_LINE_CM = 1.2
 FIGURE_IMAGE_CM = 0.7
+MIN_FIGURE_IMAGE_CM = 0.4
+FIGURE_HEADING_CM = 0.7
+FIGURE_GAP_CM = 0.27
+OBJECT_IMAGE_CM = 0.5
 GENERIC_BOARD_WIDTH_CM = 14.0
 
 
@@ -61,7 +65,9 @@ def _picture_stream(
 ) -> tuple[io.BytesIO, float]:
     """The board picture and its height/width ratio."""
     board, _ = load_board(text)
-    image = picture.murdoku_picture(board, solution, show_roles=False, language=language_of(text))
+    image = picture.murdoku_picture(
+        board, solution, show_roles=False, language=language_of(text), area_tags=False
+    )
     return io.BytesIO(image.to_png()), image.height / image.width
 
 
@@ -89,7 +95,19 @@ def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | io
     return None
 
 
-def _figure_list(cell: Any, text: str, presentation: Presentation, source: Path) -> None:
+def _figure_image_cm(board_height: float, people: int) -> float:
+    """Thumbnail height that keeps the list of `people` no taller than the board beside it."""
+    fit = (board_height - FIGURE_HEADING_CM) / max(1, people) - FIGURE_GAP_CM
+    return max(MIN_FIGURE_IMAGE_CM, min(FIGURE_IMAGE_CM, fit))
+
+
+def _figure_list(
+    cell: Any,
+    text: str,
+    presentation: Presentation,
+    source: Path,
+    image_cm: float = FIGURE_IMAGE_CM,
+) -> None:
     """One paragraph per person, with the thumbnail and the description if there are any."""
     from docx.shared import Cm, Pt
 
@@ -106,37 +124,64 @@ def _figure_list(cell: Any, text: str, presentation: Presentation, source: Path)
         image = _figure_image(person, figure, source)
         if image is not None:
             source_image = str(image) if isinstance(image, Path) else image
-            paragraph.add_run().add_picture(source_image, height=Cm(FIGURE_IMAGE_CM))
+            paragraph.add_run().add_picture(source_image, height=Cm(image_cm))
             paragraph.add_run(" ")
         paragraph.add_run(person).bold = True
         if figure is not None and figure.description:
             paragraph.add_run(f": {figure.description}")
-    objects = [
-        (label, phrase(text, "doc.standable" if standable else "doc.blocking"), kind)
-        for kind, label, standable in object_list(text)
-    ]
-    lists: list[tuple[str, list[tuple[str, str, str | None]]]] = [
-        ("doc.attributes", [(n, d, None) for n, d in attribute_list(text)]),
-        ("doc.roles", [(n, d, None) for n, d in role_list(text)]),
-        ("doc.objects", list(objects)),
-    ]
-    for key, items in lists:
-        if not items:
-            continue
-        heading = cell.add_paragraph()
-        heading.paragraph_format.space_before = Pt(8)
-        heading.paragraph_format.space_after = Pt(4)
-        _section_run(heading.add_run(phrase(text, key)))
-        for name, description, kind in items:
-            paragraph = cell.add_paragraph()
-            paragraph.paragraph_format.space_after = Pt(3)
-            icon = icons.object_icon(kind) if kind else None
-            thumbnail = None if icon is None else icons.png(icon, 128)
-            if thumbnail is not None:
-                paragraph.add_run().add_picture(io.BytesIO(thumbnail), height=Cm(FIGURE_IMAGE_CM))
-                paragraph.add_run(" ")
+
+
+def _list_lines(text: str) -> int:
+    """Rule-sized lines that `_board_lists` takes; object lines count extra for their icons."""
+    items = [f"{name}: {description}" for name, description in attribute_list(text)]
+    items += [f"{name}: {description}" for name, description in role_list(text)]
+    lines = sum(-(-(len(item) + 20) // CLUE_LINE_CHARS) for item in items)
+    objects = object_list(text)
+    if objects:
+        chars = 50 + sum(len(label) + 8 for _, label, _ in objects)
+        lines += 2 * -(-chars // CLUE_LINE_CHARS)
+    return lines
+
+
+def _board_lists(document: Any, text: str) -> None:
+    """Attributes, roles and objects under the board, one compact line per item or group."""
+    from docx.shared import Cm, Pt
+
+    def line(title: str) -> Any:
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(2)
+        _section_run(paragraph.add_run(title + "  "))
+        return paragraph
+
+    for key, items in (("doc.attributes", attribute_list(text)), ("doc.roles", role_list(text))):
+        for index, (name, description) in enumerate(items):
+            paragraph = line(phrase(text, key)) if index == 0 else document.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(2)
             paragraph.add_run(name).bold = True
             paragraph.add_run(f": {description}")
+    objects = object_list(text)
+    # Objects are grouped by kind and flow side by side, so a long list stays short.
+    paragraph = line(phrase(text, "doc.objects")) if objects else None
+    for standable in (True, False):
+        group = [(kind, label) for kind, label, can in objects if can == standable]
+        if not group or paragraph is None:
+            continue
+        if not standable and any(can for _, _, can in objects):
+            paragraph.add_run("   ")
+        paragraph.add_run(
+            phrase(text, "doc.standable_group" if standable else "doc.blocking_group") + ": "
+        ).italic = True
+        for index, (kind, label) in enumerate(group):
+            if index:
+                paragraph.add_run(", ")
+            icon = icons.object_icon(kind)
+            thumbnail = None if icon is None else icons.png(icon, 128)
+            if thumbnail is not None:
+                paragraph.add_run().add_picture(io.BytesIO(thumbnail), height=Cm(OBJECT_IMAGE_CM))
+                paragraph.add_run("\u00a0")
+            # Non-breaking spaces keep a multi-word name on one line with its icon.
+            paragraph.add_run(label.replace(" ", "\u00a0"))
 
 
 @dataclass(frozen=True)
@@ -274,7 +319,7 @@ def _board_and_figures(
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm
 
-    stream, _ = _picture_stream(entry.text, None, None)
+    stream, aspect = _picture_stream(entry.text, None, None)
     table = document.add_table(rows=1, cols=2)
     table.autofit = False
     left, right = table.rows[0].cells
@@ -282,7 +327,9 @@ def _board_and_figures(
     right.width = Cm(TEXT_WIDTH_CM * (1 - BOARD_SHARE))
     left.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     left.paragraphs[0].add_run().add_picture(stream, width=Cm(width))
-    _figure_list(right, entry.text, presentation, entry.path)
+    people = len(load_board(entry.text)[0].people)
+    image_cm = _figure_image_cm(width * aspect, people)
+    _figure_list(right, entry.text, presentation, entry.path, image_cm)
 
 
 def _puzzle_title(entry: Entry) -> str:
@@ -325,8 +372,10 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     clue_lines = sum(-(-len(clue) // CLUE_LINE_CHARS) for clue in clues)
     rules = [*(presentation.intro or [phrase(text, "doc.rules")]), *notes]
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
+    rules_lines += _list_lines(text)
     width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)
     _board_and_figures(document, entry, presentation, width)
+    _board_lists(document, text)
     document.add_heading(phrase(text, "doc.clues"), level=2)
     for number, clue in enumerate(clues, 1):
         _numbered(document, number, clue, clue_lines > MANY_CLUES)
