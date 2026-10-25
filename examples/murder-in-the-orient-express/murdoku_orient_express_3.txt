@@ -1,0 +1,173 @@
+# Moord in de Oriënt Express 3, 10x10 - "Wie is de moordenaar?" (grade chains)
+#
+# Drie coupés achter de locomotief; tussen elk perron en de trein ligt een rij spoor
+# (rails; niemand kan erop staan) met loopplanken naar de deuren. Tien reizigers op
+# een 10x10-bord, dus elke rij en kolom bevat precies één persoon; wie in een
+# spoorrij staat, staat op een loopplank. De moordenaar is een vrouw, was in coupé 3
+# en was daar alleen (Rules:); geen aanwijzing noemt haar.
+#
+# Oplossing: Igor r1c4, Olga r2c2, Dragomir r3c7, Svetlana r4c10, Ludmila r5c5,
+# Bogdan r6c1, Vladimir r7c8, Katarina r8c9, Mikhail r9c6, Anastasia r10c3.
+# De moordenaar is Svetlana: zij was alleen in coupé 3, bij het lijk.
+
+Size: 10
+Language: nl
+
+Words:
+locomotief: in de locomotief
+noordperron: op het noordperron
+spoor: op het spoor
+coupe_1: in coupé 1
+coupe_2: in coupé 2
+coupe_3: in coupé 3
+gangpad: in het gangpad
+zuidperron: op het zuidperron
+plaats_delict: op de plaats delict
+trein_bank: de treinbank
+perron_bank: het perronbankje
+koffiebar: de koffiebar
+loopplank: de loopplank
+rails: de rails
+vuurkist: de vuurkist
+raam: het raam
+deur: de deur
+klok: de klok
+lijk: het lijk
+koffer: de koffer
+role_has: {who} is de {role}
+role_not: {who} is niet de {role}
+min_role_in_tagged_one: de {role} was {area}
+role_occupant.alone: de {role} was alleen
+role_area_in: {who} is de {role} en moet {area} zijn
+
+Regions:
+noordperron: noordperron #E9E4D8
+spoor: spoor #B9B2A5
+locomotief: locomotief #CFD3DA
+coupe_1: coupe_1 #D8D2F0
+coupe_2: coupe_2 #F4CBC3
+coupe_3: coupe_3 #CFE6E3
+gangpad: gangpad #F3E4B5
+zuidperron: zuidperron #DCE8D2
+
+Grid:
+noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron
+noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron
+spoor spoor spoor spoor spoor spoor spoor spoor spoor spoor
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2 coupe_3 coupe_3
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2 coupe_3 coupe_3
+locomotief locomotief coupe_1 coupe_1 coupe_1 coupe_2 coupe_2 coupe_2 coupe_3 coupe_3
+locomotief locomotief gangpad gangpad gangpad gangpad gangpad gangpad gangpad gangpad
+spoor spoor spoor spoor spoor spoor spoor spoor spoor spoor
+zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron
+zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron
+
+Objects:
+klok: blocking r1c3
+koffer: blocking r1c9
+perron_bank: standable r2c5 r2c6
+rails: blocking r3c1 r3c2 r3c3
+rails: blocking r3c5 r3c6
+rails: blocking r3c8 r3c9
+loopplank: standable r3c4
+loopplank: standable r3c7
+loopplank: standable r3c10
+vuurkist: blocking r5c1 r5c2
+trein_bank: standable r4c3 r5c3 r6c3
+trein_bank: standable r4c5 r5c5 r6c5
+trein_bank: standable r4c6 r5c6 r6c6
+trein_bank: standable r4c8 r5c8 r6c8
+trein_bank: standable r5c10 r6c10
+lijk: blocking r5c9
+koffer: blocking r7c6
+rails: blocking r8c1 r8c2 r8c3 r8c4
+rails: blocking r8c6 r8c7 r8c8
+rails: blocking r8c10
+loopplank: standable r8c5
+loopplank: standable r8c9
+koffiebar: blocking r9c2
+perron_bank: standable r10c3 r10c4
+koffer: blocking r9c8
+
+EdgeItems:
+raam: window r4c1 left
+raam: window r6c1 left
+raam: window r4c5 top
+raam: window r4c8 top
+deur: door r3c4 r4c4
+deur: door r3c7 r4c7
+deur: door r3c10 r4c10
+deur: door r6c4 r7c4
+deur: door r6c7 r7c7
+deur: door r6c9 r7c9
+deur: door r7c2 r7c3
+deur: door r7c5 r8c5
+deur: door r7c9 r8c9
+
+AreaTags:
+plaats_delict: coupe_3
+
+Attributes:
+vrouw: Svetlana Anastasia Katarina Ludmila Olga
+
+Roles:
+moordenaar: 1
+
+RoleEligibility:
+moordenaar: attribute:vrouw
+
+People:
+Dragomir
+Bogdan
+Svetlana
+Mikhail
+Anastasia
+Vladimir
+Katarina
+Ludmila
+Igor
+Olga
+
+Rules:
+role_occupant moordenaar alone
+min_role_in_tagged moordenaar plaats_delict 1
+
+Clues:
+in_region Olga noordperron
+in_region Ludmila coupe_1
+on Anastasia perron_bank
+above Ludmila Bogdan
+not_next_to Ludmila raam
+same_region Dragomir Katarina
+next_to Igor klok
+left_of Olga Igor
+in_region Vladimir gangpad
+next_to Bogdan raam
+not_next_to Olga klok
+left_of Dragomir Vladimir
+
+Title:
+Moord in de Oriënt Express 3: Wie is de moordenaar?
+
+Intro:
+In coupé 3 van de Oriënt Express ligt een passagier vermoord. Tien reizigers staan verspreid over de trein, het spoor en de perrons.
+Zet iedereen op een vrij vakje: elke rij en elke kolom bevat precies één persoon. Op een bank of een loopplank mag je staan; op de rails en op een blokkerend voorwerp niet.
+De moordenaar is een vrouw, was in coupé 3 en was daar alleen.
+
+Figures:
+Dragomir: de conducteur ; icon=U+1F9D4
+Bogdan: de machinist ; icon=U+1F468
+Svetlana: de gravin ; icon=U+1F475
+Mikhail: de dokter ; icon=U+1F9D1
+Anastasia: de actrice ; icon=U+1F469
+Vladimir: de kolonel ; icon=U+1F474
+Katarina: de secretaresse ; icon=U+1F471
+Ludmila: de gouvernante ; icon=U+1F469
+Igor: de kruier ; icon=U+1F468
+Olga: de kamenierster ; icon=U+1F471
+
+Question:
+Wie is de moordenaar?
+
+Reveal:
+Svetlana, de gravin, is de moordenaar. Zij was alleen in coupé 3, bij het lijk.

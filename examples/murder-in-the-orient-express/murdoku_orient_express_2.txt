@@ -1,0 +1,175 @@
+# Moord in de Oriënt Express 2, 10x10 - "Wie is de moordenaar?" (grade subsumption)
+#
+# Een langere trein: tussen elk perron en de trein ligt een rij spoor (rails; niemand
+# kan erop staan) met loopplanken naar de deuren. Tien reizigers op een 10x10-bord,
+# dus elke rij en kolom bevat precies één persoon; wie in een spoorrij staat, staat
+# op een loopplank. De moordenaar is een man, was in de restauratiewagen en was daar
+# niet alleen (Rules:); geen aanwijzing noemt hem.
+#
+# Oplossing: Grigori r1c4, Vera r2c1, Natasja r3c9, Sergej r4c8, Boris r5c7,
+# Tatjana r6c5, Pjotr r7c2, Irina r8c3, Joeri r9c10, Fjodor r10c6.
+# De moordenaar is Boris: hij zat in de restauratiewagen, samen met Tatjana.
+
+Size: 10
+Language: nl
+
+Words:
+locomotief: in de locomotief
+noordperron: op het noordperron
+spoor: op het spoor
+coupe_1: in coupé 1
+coupe_2: in coupé 2
+restauratiewagen: in de restauratiewagen
+gangpad: in het gangpad
+zuidperron: op het zuidperron
+plaats_delict: op de plaats delict
+trein_bank: de treinbank
+perron_bank: het perronbankje
+koffiebar: de koffiebar
+loopplank: de loopplank
+rails: de rails
+vuurkist: de vuurkist
+tafel: de tafel
+raam: het raam
+deur: de deur
+klok: de klok
+lijk: het lijk
+koffer: de koffer
+role_has: {who} is de {role}
+role_not: {who} is niet de {role}
+min_role_in_tagged_one: de {role} was {area}
+role_occupant.not_alone: de {role} was niet alleen
+role_area_in: {who} is de {role} en moet {area} zijn
+
+Regions:
+noordperron: noordperron #E9E4D8
+spoor: spoor #B9B2A5
+locomotief: locomotief #CFD3DA
+gangpad: gangpad #F3E4B5
+coupe_1: coupe_1 #D8D2F0
+restauratiewagen: restauratiewagen #F4CBC3
+coupe_2: coupe_2 #CFE6E3
+zuidperron: zuidperron #DCE8D2
+
+Grid:
+noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron
+noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron noordperron
+spoor spoor spoor spoor spoor spoor spoor spoor spoor spoor
+locomotief locomotief gangpad gangpad gangpad gangpad gangpad gangpad gangpad gangpad
+locomotief locomotief coupe_1 coupe_1 restauratiewagen restauratiewagen restauratiewagen coupe_2 coupe_2 coupe_2
+locomotief locomotief coupe_1 coupe_1 restauratiewagen restauratiewagen restauratiewagen coupe_2 coupe_2 coupe_2
+locomotief locomotief coupe_1 coupe_1 restauratiewagen restauratiewagen restauratiewagen coupe_2 coupe_2 coupe_2
+spoor spoor spoor spoor spoor spoor spoor spoor spoor spoor
+zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron
+zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron
+
+Objects:
+perron_bank: standable r1c4 r1c5
+klok: blocking r1c7
+koffer: blocking r2c2
+koffiebar: blocking r2c9
+rails: blocking r3c1 r3c2 r3c3
+rails: blocking r3c5 r3c6 r3c7 r3c8
+rails: blocking r3c10
+loopplank: standable r3c4
+loopplank: standable r3c9
+koffer: blocking r4c6
+vuurkist: blocking r6c1 r6c2
+trein_bank: standable r5c3 r6c3 r7c3
+trein_bank: standable r5c10 r6c10 r7c10
+trein_bank: standable r5c8 r6c8
+tafel: blocking r5c5
+lijk: blocking r6c6
+tafel: blocking r7c7
+rails: blocking r8c1 r8c2
+rails: blocking r8c4 r8c5
+rails: blocking r8c7 r8c8 r8c9
+loopplank: standable r8c3
+loopplank: standable r8c6
+loopplank: standable r8c10
+koffiebar: blocking r10c5
+perron_bank: standable r10c6 r10c7
+koffer: blocking r9c8
+
+EdgeItems:
+raam: window r4c1 left
+raam: window r5c1 left
+raam: window r7c1 left
+raam: window r7c4 bottom
+raam: window r7c9 bottom
+deur: door r3c4 r4c4
+deur: door r3c9 r4c9
+deur: door r4c2 r4c3
+deur: door r4c4 r5c4
+deur: door r4c6 r5c6
+deur: door r4c9 r5c9
+deur: door r7c3 r8c3
+deur: door r7c6 r8c6
+deur: door r7c10 r8c10
+
+AreaTags:
+plaats_delict: restauratiewagen
+
+Attributes:
+man: Fjodor Boris Pjotr Grigori Sergej Joeri
+
+Roles:
+moordenaar: 1
+
+RoleEligibility:
+moordenaar: attribute:man
+
+People:
+Fjodor
+Tatjana
+Boris
+Natasja
+Pjotr
+Irina
+Grigori
+Vera
+Sergej
+Joeri
+
+Rules:
+role_occupant moordenaar not_alone
+min_role_in_tagged moordenaar plaats_delict 1
+
+Clues:
+in_region Grigori noordperron
+in_region Vera noordperron
+in_region Sergej gangpad
+in_region Pjotr locomotief
+next_to Vera koffer
+next_to Fjodor koffiebar
+in_region Joeri zuidperron
+left_of Irina Grigori
+next_to Tatjana lijk
+on Grigori perron_bank
+left_of Tatjana Fjodor
+
+Title:
+Moord in de Oriënt Express 2: Wie is de moordenaar?
+
+Intro:
+In de restauratiewagen van de Oriënt Express ligt een passagier vermoord. Tien reizigers staan verspreid over de trein, het spoor en de perrons.
+Zet iedereen op een vrij vakje: elke rij en elke kolom bevat precies één persoon. Op een bank of een loopplank mag je staan; op de rails en op een blokkerend voorwerp niet.
+De moordenaar is een man, was in de restauratiewagen en was daar niet alleen.
+
+Figures:
+Fjodor: de koopman ; icon=U+1F468
+Tatjana: de zangeres ; icon=U+1F469
+Boris: de kok ; icon=U+1F9D4
+Natasja: de kamenierster ; icon=U+1F471
+Pjotr: de stoker ; icon=U+1F9D1
+Irina: de lerares ; icon=U+1F469
+Grigori: de priester ; icon=U+1F474
+Vera: de weduwe ; icon=U+1F475
+Sergej: de kruier ; icon=U+1F468
+Joeri: de student ; icon=U+1F9D1
+
+Question:
+Wie is de moordenaar?
+
+Reveal:
+Boris, de kok, is de moordenaar. Hij zat in de restauratiewagen, samen met zangeres Tatjana.
