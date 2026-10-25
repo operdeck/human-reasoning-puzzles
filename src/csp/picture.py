@@ -102,12 +102,15 @@ def murdoku_picture(
     show_roles: bool = True,
     interactive: bool = False,
     language: str = "en",
+    area_tags: bool = True,
 ) -> Canvas:
     """The board, with `placed` people drawn on their squares if given.
 
     Without `legend` the picture is square, for documents with their own legend.
-    With `labels` an unsolved board names each region in a small tag.
-    Without `show_roles` the legend leaves out the solver's role lines.
+    With `labels` the board names each region in a small tag, and the legend
+    then leaves out the region swatches.
+    Without `show_roles` the legend leaves out the solver's role lines; without
+    `area_tags` it leaves out the area tags (for documents that state them).
     `language` ("en" or "nl") sets the legend wording.
     """
     margin = _murdoku_margin(board, cell, coordinates)
@@ -117,7 +120,16 @@ def murdoku_picture(
         placed = {}
     side = board.size * cell
     key = (
-        _Legend(board, cell, role_statuses or {}, global_counts, show_roles, language)
+        _Legend(
+            board,
+            cell,
+            role_statuses or {},
+            global_counts,
+            show_roles,
+            language,
+            regions=not labels,
+            area_tags=area_tags,
+        )
         if legend
         else None
     )
@@ -216,8 +228,8 @@ def murdoku_picture(
         )
         initials = "/".join(name[:2].upper() for name in sorted(names))
         _centred_text(canvas, initials, area, max(8, cell // 12), MARK_INK, max_width=cell // 3)
-    if labels and not placed:
-        _region_labels(canvas, board, box, cell)
+    if labels:
+        _region_labels(canvas, board, box, cell, set(placed.values()))
     standable = board.squares_of(obj.name for obj in board.standable_objects)
     for person, sq in placed.items():
         _name_tag(canvas, person, box(sq), cell, low=sq in standable)
@@ -234,13 +246,20 @@ def murdoku_picture(
 STANDABLE_OPACITY = 0.55
 
 
-def _region_labels(canvas: Canvas, board: Board, box: Callable[[Square], Box], cell: int) -> None:
+def _region_labels(
+    canvas: Canvas,
+    board: Board,
+    box: Callable[[Square], Box],
+    cell: int,
+    occupied: set[Square] | None = None,
+) -> None:
     """A small name tag in each region, at the top of its first free square.
 
-    Squares with an object, a mark, a top-wall window or a point object near their top edge are
-    passed over when the region has another; a long name may run on into the
-    next square of the same region.
+    Squares with an object, a mark, a top-wall window, a point object near their top edge or
+    a placed person are passed over when the region has another; a long name may run on
+    into the next square of the same region.
     """
+    occupied = occupied or set()
     taken = {sq for obj in board.objects for sq in obj.squares}
     taken |= {sq for mark in board.marks for sq in mark.cells}
     crowded = {
@@ -266,7 +285,10 @@ def _region_labels(canvas: Canvas, board: Board, box: Callable[[Square], Box], c
         )
         if not squares:
             continue
-        sq = min(squares, key=lambda s: (s in taken or s in board.blocked, s in crowded, s))
+        sq = min(
+            squares,
+            key=lambda s: (s in taken or s in board.blocked, s in crowded, s in occupied, s),
+        )
         text = name.replace("_", " ")
         text = text[:1].upper() + text[1:]
         x0, y0, x1, _ = box(sq)
@@ -1177,7 +1199,8 @@ LEGEND_WORDS = {
 
 
 class _Legend:
-    """Region swatches with names, two per row under the board, in file order."""
+    """Under the board, two per row: region swatches (unless the board names its regions),
+    then doors, windows and point objects; then marks, roles, area tags and counts."""
 
     def __init__(
         self,
@@ -1187,6 +1210,8 @@ class _Legend:
         global_counts: Sequence[GlobalCountCondition] = (),
         show_roles: bool = True,
         language: str = "en",
+        regions: bool = True,
+        area_tags: bool = True,
     ) -> None:
         self.words = LEGEND_WORDS.get(language, LEGEND_WORDS["en"])
         self.board = board
@@ -1195,8 +1220,10 @@ class _Legend:
         self.global_counts = tuple(global_counts)
         self.swatch = cell // 3
         self.line = int(self.swatch * 1.6)
-        self.rows = (len(board.region_names) + 1) // 2
+        self.region_items = list(board.region_names.items()) if regions else []
+        self.rows = (len(self.region_items) + 1) // 2
         self.item_names = sorted(board.edge_item_names | board.point_object_names)
+        self.item_rows = (len(self.item_names) + 1) // 2
         self.mark_names = sorted(board.mark_names)
         self.role_names = sorted(board.role_names) if show_roles else []
         self.tag_lines = [
@@ -1206,7 +1233,7 @@ class _Legend:
                 for rid in board.region_names
                 if rid in board.region_ids(members)
             )
-            for tag, members in board.area_tags.items()
+            for tag, members in (board.area_tags.items() if area_tags else ())
         ]
         self.count_size = max(10, cell // 10)
         self.count_line = int(self.count_size * 1.6)
@@ -1225,7 +1252,7 @@ class _Legend:
         self.height = (
             (
                 self.rows
-                + len(self.item_names)
+                + self.item_rows
                 + len(self.mark_names)
                 + len(self.role_names)
                 + len(self.tag_lines)
@@ -1245,11 +1272,11 @@ class _Legend:
         size = int(self.swatch * 0.8)
         column = self.board.size * self.cell // 2
 
-        def label(top: int, text: str, font_size: int = size) -> None:
-            middle = (x + self.swatch + self.swatch // 2, top + self.swatch / 2)
+        def label(top: int, text: str, font_size: int = size, left: int = x) -> None:
+            middle = (left + self.swatch + self.swatch // 2, top + self.swatch / 2)
             canvas.text(middle, text, INK, font_size, anchor="lm")
 
-        for i, (rid, name) in enumerate(self.board.region_names.items()):
+        for i, (rid, name) in enumerate(self.region_items):
             left = x + (i % 2) * column
             top = y + (i // 2) * self.line
             square = (left, top, left + self.swatch, top + self.swatch)
@@ -1264,21 +1291,22 @@ class _Legend:
             middle = (left + self.swatch + self.swatch // 2, top + self.swatch / 2)
             canvas.text(middle, name.replace("_", " ").capitalize(), INK, size, anchor="lm")
         for i, name in enumerate(self.item_names):
-            top = y + (self.rows + i) * self.line
-            area = (x, top, x + self.swatch, top + self.swatch)
+            left = x + (i % 2) * column
+            top = y + (self.rows + i // 2) * self.line
+            area = (left, top, left + self.swatch, top + self.swatch)
             if name in self.board.edge_item_names and self.board.edge_item_kind(name) == "door":
                 canvas.line(
-                    (x, top + self.swatch // 2, x + self.swatch, top + self.swatch // 2),
+                    (left, top + self.swatch // 2, left + self.swatch, top + self.swatch // 2),
                     fill=(117, 75, 47),
                     width=max(4, self.swatch // 5),
                 )
-                label(top, self._item_label("door", name))
+                label(top, self._item_label("door", name), left=left)
             else:
                 _icon(canvas, name, area, self.cell, scale=0.8)
                 kind = "window" if name in self.board.edge_item_names else "point"
-                label(top, self._item_label(kind, name))
+                label(top, self._item_label(kind, name), left=left)
         for i, name in enumerate(self.mark_names):
-            top = y + (self.rows + len(self.item_names) + i) * self.line
+            top = y + (self.rows + self.item_rows + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
             canvas.rounded_rectangle(
                 area,
@@ -1303,7 +1331,7 @@ class _Legend:
                 if condition
                 else f"{name} {self.words['cells']}",
             )
-        role_offset = self.rows + len(self.item_names) + len(self.mark_names)
+        role_offset = self.rows + self.item_rows + len(self.mark_names)
         for i, name in enumerate(self.role_names):
             top = y + (role_offset + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
