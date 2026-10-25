@@ -446,3 +446,10 @@ def test_docx_without_puzzle_files_takes_every_example_murdoku(tmp_path, monkeyp
     assert main(["--docx"]) == 0
     assert (tmp_path / "booklet.docx").exists()
     assert f"({len(files)} puzzles" in capsys.readouterr().out
+
+
+def test_an_object_with_several_pieces_is_named_indefinitely_despite_its_words():
+    clues = clue_texts(_read("murdoku_orient_express"))
+    assert "Anastasia zit op een perronbankje." in clues
+    assert "Vladimir zit niet naast een treinbank." in clues
+    assert not any("het perronbankje" in clue for clue in clues)
