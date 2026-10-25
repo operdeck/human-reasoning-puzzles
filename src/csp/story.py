@@ -451,21 +451,25 @@ FAMILY_RULES = {
     "inequality sign between neighbouring cells holds.",
     "queens": "Place one queen in every row, column and region; queens may not touch, "
     "not even diagonally.",
+    "dogdoku": "Place one dog in every row, column and region; dogs may not touch, "
+    "not even diagonally.",
     "suguru": "Fill every region of n cells with 1..n; equal digits may not touch, "
     "not even diagonally.",
     "starbattle": "Place stars so each row, column and region holds the same number; "
     "stars may not touch, not even diagonally.",
     "binairo": "Fill the grid with two symbols: no three equal in a row or column, "
     "each row and column has equally many of each, and no two rows or columns are identical.",
+    "tango": "Follow the Binairo rules; = signs join equal neighbouring cells and x signs "
+    "join different neighbouring cells.",
     "tents": "Put a tent next to each tree (horizontally or vertically), one tent per tree; "
     "tents never touch each other, and the numbers give the tents per row and column.",
     "minesweeper": "Mark the mines: each number tells how many of its eight neighbours are mines.",
     "akari": "Place lights so every white cell is lit and no two lights see each other; "
     "a number tells how many lights touch that black cell.",
-    "kakurasu": "Shade cells so each row and column adds up to its target, where a "
-    "shaded cell counts its position number.",
-    "battleships": "Place the fleet without ships touching, even diagonally; the numbers "
-    "give the ship cells per row and column.",
+    "kakurasu": "Shade cells so each row and column adds up to its target; a shaded cell "
+    "contributes its column number to the row sum and its row number to the column sum.",
+    "battleships": "Mark cells to match the ship-cell counts for each row and column; "
+    "this counts-only puzzle does not model ship shapes or non-touching rules.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }

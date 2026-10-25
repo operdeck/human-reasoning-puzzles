@@ -20,7 +20,7 @@ from . import akari, icons, queens, starbattle
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
-from .puzzlefile import language_of, load_board, load_presentation
+from .puzzlefile import language_of, load_board, load_presentation, read_sections
 from .story import (
     FAMILY_RULES,
     attribute_list,
@@ -149,12 +149,14 @@ def bundle(
 
     `number` and `section` place it in the collection (see `collection.arrange`).
     """
+    display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
+    family_label = FAMILY_LABELS.get(display_family, FAMILY_LABELS[kind])
     out: dict[str, Any] = {
         "schema": SCHEMA,
         "id": stem,
         "family": kind,
-        "familyLabel": FAMILY_LABELS[kind],
-        "section": section or FAMILY_LABELS[kind],
+        "familyLabel": family_label,
+        "section": section or family_label,
         "number": number,
         "title": _title(text, kind, stem),
         "grade": grade,
@@ -238,10 +240,11 @@ def _family(
     text: str, kind: str, model: Model, solution: Mapping[str, Any], picture: str
 ) -> dict[str, Any]:
     cells = grid_cells(picture)
+    display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
     out: dict[str, Any] = {
         "language": "en",
         "size": [max(r for r, _ in cells), max(c for _, c in cells)] if cells else [0, 0],
-        "rules": [FAMILY_RULES[kind]],
+        "rules": [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])],
         "clues": [],
         "conditions": [],
         "question": "",
