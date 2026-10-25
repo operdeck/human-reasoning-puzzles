@@ -762,8 +762,6 @@ class Places:
         return self.say.words.get(name) or self.say("region", name=name.replace("_", " "))
 
     def thing(self, name: str) -> str:
-        if name in self.say.words:
-            return self.say.words[name]
         if (
             name in self.board.edge_item_names
             or name in self.board.point_object_names
@@ -772,6 +770,14 @@ class Places:
             many = False
         else:
             many = len(_pieces(self.board.squares_of([name]))) > 1
+        if name in self.say.words:
+            said = self.say.words[name]
+            article, _, noun = said.partition(" ")
+            # "het perronbankje" names one of several benches as "een perronbankje";
+            # a phrase with an adjective keeps its wording, as Dutch inflection may change.
+            if many and article.lower() in DEFINITE and noun and " " not in noun:
+                return self.say("a", name=noun)
+            return said
         return self.say("a" if many else "the", name=name.replace("_", " "))
 
     def where_regions(self, names: Iterable[str]) -> str:
@@ -2129,6 +2135,7 @@ def _pieces(squares: set[Square]) -> list[set[Square]]:
 
 
 ARTICLES = frozenset({"the", "a", "an", "de", "het", "een"})
+DEFINITE = frozenset({"the", "de", "het"})
 NEGATIONS = frozenset({"not", "niet"})
 LINE_WORDS = frozenset({"row", "column", "rij", "kolom"})
 
