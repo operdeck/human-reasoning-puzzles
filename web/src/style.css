@@ -413,6 +413,12 @@ dd {
     max-height: 62vh;
   }
 
+  .board svg .area-label {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scale(1.5);
+  }
+
   .tabs {
     display: flex;
     gap: 0.25rem;
