@@ -72,7 +72,7 @@ rails: blocking r3c8 r3c9
 loopplank: standable r3c4
 loopplank: standable r3c7
 loopplank: standable r3c10
-bedieningspaneel: blocking r5c1 r5c2
+bedieningspaneel: blocking r4c1 r5c1
 trein_bank: standable r4c3 r5c3 r6c3
 trein_bank: standable r4c5 r5c5 r6c5 right
 trein_bank: standable r4c6 r5c6 r6c6
@@ -91,7 +91,9 @@ koffer: blocking r9c8
 
 EdgeItems:
 raam: window r4c1 left
+raam: window r5c1 left
 raam: window r6c1 left
+raam: window r7c1 left
 raam: window r4c5 top
 raam: window r4c8 top
 deur: door r3c4 r4c4

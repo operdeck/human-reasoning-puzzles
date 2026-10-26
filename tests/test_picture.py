@@ -101,8 +101,18 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.object_icon("zeppelin") is None
 
 
-def test_vertical_control_panel_rotates_to_match_its_footprint(monkeypatch):
-    board, _ = load_board(example("murdoku_orient_express.txt").read_text())
+@pytest.mark.parametrize(
+    ("name", "panel_row", "window_row"),
+    [
+        ("murdoku_orient_express.txt", 4, 3),
+        ("murdoku_orient_express_2.txt", 5, 4),
+        ("murdoku_orient_express_3.txt", 4, 4),
+    ],
+)
+def test_vertical_control_panel_rotates_to_match_its_footprint(
+    monkeypatch, name, panel_row, window_row
+):
+    board, _ = load_board(example(name).read_text())
     calls = []
     original = drawing._icon
 
@@ -114,8 +124,20 @@ def test_vertical_control_panel_rotates_to_match_its_footprint(monkeypatch):
     monkeypatch.setattr(drawing, "_icon", capture)
     picture.murdoku_picture(board, cell=CELL, legend=False)
 
-    expected_area = (CELL // 2, CELL // 2 + 3 * CELL, CELL // 2 + CELL, CELL // 2 + 5 * CELL)
+    row = panel_row - 1
+    expected_area = (
+        CELL // 2,
+        CELL // 2 + row * CELL,
+        CELL // 2 + CELL,
+        CELL // 2 + (row + 2) * CELL,
+    )
     assert calls == [(expected_area, 90)]
+    front_windows = {
+        item.cells[0].row + 1
+        for item in board.edge_items
+        if item.kind == "window" and item.side == "left" and item.cells[0].col == 0
+    }
+    assert front_windows == set(range(window_row, window_row + 4))
 
 
 @pytest.mark.parametrize("name", sorted(icons.REGISTRY))
