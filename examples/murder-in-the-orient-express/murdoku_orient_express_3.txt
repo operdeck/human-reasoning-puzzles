@@ -29,6 +29,7 @@ koffiebar: de koffiebar
 loopplank: de loopplank
 rails: de rails
 bedieningspaneel: het bedieningspaneel
+stoel: de stoel
 raam: het raam
 deur: de deur
 klok: de klok
@@ -73,6 +74,7 @@ loopplank: standable r3c4
 loopplank: standable r3c7
 loopplank: standable r3c10
 bedieningspaneel: blocking r4c1 r5c1
+stoel: standable r5c2
 trein_bank: standable r4c3 r5c3 r6c3
 trein_bank: standable r4c5 r5c5 r6c5 right
 trein_bank: standable r4c6 r5c6 r6c6
