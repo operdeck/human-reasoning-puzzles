@@ -101,6 +101,25 @@ footer {
   flex-wrap: wrap;
 }
 
+.puzzle-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.puzzle-nav a {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.puzzle-nav a:hover,
+.puzzle-nav a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .puzzle-header h1 {
   flex: 1;
   font-size: 1.3rem;
