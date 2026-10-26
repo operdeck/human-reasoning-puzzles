@@ -1,0 +1,71 @@
+# Wie doet het met wie? Na het tuinfeest (4x4, four areas)
+#
+# Four people after a garden party, one per row and column. Wouter has no
+# clues and is named in none: he is placed last and is alone with exactly one
+# other person.
+#
+# Intended solution: Eva r1c1, Bram r2c3, Noor r3c4, Wouter r4c2.
+# Wouter is doing it with Noor in the garden.
+
+Size: 4
+Language: nl
+
+Words:
+keuken: in de keuken
+woonkamer: in de woonkamer
+hal: in de hal
+tuin: in de tuin
+bankje: het tuinbankje
+
+Regions:
+k: keuken #E8DCC8
+w: woonkamer #FADFB5
+h: hal #E6D3F0
+t: tuin #CBE6B9
+
+Grid:
+k k h h
+k w w t
+t w w t
+t t t t
+
+Objects:
+tafel: blocking r1c2
+kast: blocking r1c4
+plant: blocking r3c3
+struik: blocking r2c4
+bankje: standable r4c1 r4c2
+
+People:
+Eva
+Bram
+Noor
+Wouter
+
+Rules:
+alone_with Wouter
+
+Clues:
+next_to Eva tafel
+next_to Bram plant
+next_to Noor struik
+
+Title:
+Murdoku: Na het tuinfeest
+
+Intro:
+Na een tuinfeest blijven vier gasten nog even napraten in huis. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Voorwerpen blokkeren hun vakje, behalve het tuinbankje: daar kun je op staan.
+Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet.
+
+Figures:
+Eva: ; icon=U+1F469
+Bram: ; icon=U+1F468
+Noor: ; icon=U+1F471
+Wouter: ; icon=U+1F9D1
+
+Question:
+Met wie doet Wouter het?
+
+Reveal:
+Wouter doet het met Noor: ze staan samen in de tuin.
