@@ -322,12 +322,16 @@ export class PuzzleView {
     this.undoButton.addEventListener("click", () => this.undo());
     this.redoButton.addEventListener("click", () => this.redo());
     const clear = el("button", { type: "button", textContent: "Clear" });
-    clear.addEventListener("click", () => {
-      if (confirm("Clear the board?")) this.commit({ ...emptyState(this.bundle), auto: this.state.auto });
-    });
+    clear.addEventListener("click", () => this.clearBoard());
     const checkButton = el("button", { type: "button", textContent: "Check", className: "primary" });
     checkButton.addEventListener("click", () => this.showVerdict());
     return el("div", { className: "controls" }, this.undoButton, this.redoButton, clear, checkButton);
+  }
+
+  private clearBoard(): void {
+    this.commit({ ...emptyState(this.bundle), auto: this.state.auto });
+    this.verdict.textContent = "";
+    this.verdict.className = "verdict";
   }
 
   private showVerdict(): void {

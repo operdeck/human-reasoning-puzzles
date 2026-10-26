@@ -1013,6 +1013,9 @@ def test_dutch_legend_lists_fixed_role_holders_as_a_category():
 def test_region_names_are_tagged_on_puzzle_and_solution_away_from_people():
     board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
 
+    markup = drawing.murdoku_picture(board, cell=CELL).to_svg()
+    assert markup.count('class="area-label"') == 2
+
     def top(**kw):
         return _centre(
             picture.murdoku_picture(board, cell=CELL, coordinates=False, **kw), board, 0, 0, False
