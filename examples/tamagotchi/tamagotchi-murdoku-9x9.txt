@@ -33,7 +33,7 @@ cake: blocking r5c2
 books: blocking r6c7
 basket: blocking r8c2
 slide: blocking r9c9
-bench: standable r2c3
+bench: standable r1c3 r2c3
 chair: standable r2c8
 tatami: standable r6c1 r6c2
 bridge: standable r7c4 r7c5 r7c6

@@ -14,7 +14,7 @@ def test_rating_preserves_display_names_and_rejects_murdoku():
     assert rate(dog).family == "dogdoku"
     assert rate(tango).family == "tango"
     with pytest.raises(ValueError, match="Murdoku"):
-        rate(example("murdoku_intro.txt").read_text())
+        rate(example("wie-doet-het-met-wie-1.txt").read_text())
 
 
 def test_rating_requires_a_deductive_unique_nontrivial_puzzle():
@@ -87,7 +87,7 @@ def test_generate_refuses_murdoku(tmp_path, capsys):
         main(
             [
                 "generate",
-                str(example("murdoku_intro.txt")),
+                str(example("wie-doet-het-met-wie-1.txt")),
                 "--tier",
                 "easy",
                 "--output",
