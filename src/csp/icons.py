@@ -53,6 +53,30 @@ CROWN = (
     '<circle cx="90" cy="25" r="5.6"/></g>'
 )
 TONGUE = "#e86a7e"
+STAIRCASE = (
+    '<path d="M12 84h19V66h19V48h19V30h19V12" fill="none" stroke="currentColor"'
+    ' stroke-width="11" stroke-linejoin="round"/>'
+    '<path d="M12 84h76" fill="none" stroke="currentColor" stroke-width="6"/>'
+)
+COUNTER = (
+    '<path d="M8 29h84v19H8z" fill="#8b5a37" stroke="#4c3524" stroke-width="4"/>'
+    '<path d="M15 48h70v38H15z" fill="#b98552" stroke="#4c3524" stroke-width="4"/>'
+    '<path d="M26 57h48v21H26z" fill="#e4c391" stroke="#785333" stroke-width="3"/>'
+)
+TABLE = (
+    '<rect x="13" y="15" width="74" height="70" rx="7" fill="#8b5a37" stroke="#4c3524"'
+    ' stroke-width="5"/>'
+    '<rect x="22" y="24" width="56" height="52" rx="3" fill="#e4c391" stroke="#785333"'
+    ' stroke-width="3"/>'
+    '<path d="M26 50h48M50 28v44" stroke="#a87949" stroke-width="2"/>'
+)
+ELEVATOR = (
+    '<rect x="12" y="7" width="76" height="86" rx="6" fill="#c6d0d5" stroke="#43545d"'
+    ' stroke-width="5"/>'
+    '<rect x="21" y="16" width="58" height="68" rx="3" fill="#f2f5f5" stroke="#65777f"'
+    ' stroke-width="3"/>'
+    '<path d="M50 17v66M44 50h2m8 0h2" stroke="#65777f" stroke-width="3"/>'
+)
 # A dog has pointed, upright ears; a puppy a rounder head, floppy ears and a tongue.
 DOG = (
     '<g fill="currentColor"><polygon points="42,34 30,8 19,40"/>'
@@ -317,6 +341,10 @@ REGISTRY: dict[str, Icon] = {
         Icon("cross", "\u2717", "no", markup=SHAPES["cross"]),
         Icon("carpet", "\u25a6", "carpet", markup=CARPET, view=(0, 0, 121, 121)),
         Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
+        Icon("staircase", "\u21d7", "staircase", markup=STAIRCASE),
+        Icon("counter", "\u25a4", "reception counter", markup=COUNTER),
+        Icon("table", "\u25a4", "table", markup=TABLE),
+        Icon("elevator", "\u21f5", "elevator", markup=ELEVATOR),
         Icon("allium", "\u273f", "allium", markup=ALLIUM),
         Icon("bench", "\u2b0c", "park bench", markup=BENCH, view=(0, 0, 100, 56)),
         Icon("train_bench", "\u2b0c", "train bench", markup=TRAIN_BENCH, view=(0, 0, 100, 92)),
@@ -358,6 +386,10 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
                 "lijk": "corpse", "corpse": "corpse",
+                "staircase": "staircase", "stairs": "staircase",
+                "reception_counter": "counter", "counter": "counter",
+                "table": "table", "tafel": "table",
+                "elevator_car": "elevator", "wall": "wall",
                 "rails": "rails", "spoor": "rails", "track": "rails",
                 "loopplank": "gangplank", "gangplank": "gangplank"}  # fmt: skip
 
