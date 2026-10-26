@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from functools import cache
 from pathlib import Path
 from typing import Any
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 ASSETS = Path(__file__).parent / "assets"
 FONT = ASSETS / "fonts" / "NotoSans-Regular.ttf"
@@ -310,9 +310,13 @@ class Canvas:
     # --- groups and cells -------------------------------------------------
 
     @contextmanager
-    def group(self, opacity: float = 1, clip: Sequence[Box] = ()) -> Iterator[None]:
+    def group(
+        self, opacity: float = 1, clip: Sequence[Box] = (), class_name: str | None = None
+    ) -> Iterator[None]:
         """Draw the enclosed calls as one layer, faded and clipped as a whole."""
         attributes = f' opacity="{opacity:.3f}"' if opacity < 1 else ""
+        if class_name:
+            attributes += f" class={quoteattr(class_name)}"
         if clip:
             self._clips += 1
             clip_id = f"clip{self._clips}"
