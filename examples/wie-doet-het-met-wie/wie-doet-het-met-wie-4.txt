@@ -46,10 +46,10 @@ tapijt: standable r3c2
 kast: blocking r1c3
 bad: blocking r1c5
 toilet: blocking r2c4
-bankje: standable r2c6
+bankje: standable r2c6 r2c7
 emmer: blocking r1c7
 plant: blocking r3c4
-bank: standable r4c5
+bank: standable r4c5 r4c6
 koffer: blocking r4c7
 knuffel: blocking r5c1
 bal: blocking r6c4
@@ -68,7 +68,7 @@ Jeroen
 Wouter
 
 Attributes:
-badjas: Mieke Sven Hanneke
+badjas: Sven Hanneke
 
 Rules:
 alone_with Wouter attribute:badjas
@@ -91,7 +91,7 @@ Title:
 Murdoku: Het hotel
 
 Intro:
-Zeven gasten in een hotel, sommigen in een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Zeven gasten logeren in een hotel; twee dragen een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
 Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het zachte tapijt, de bank en het saunabankje mag je staan.
 Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
 

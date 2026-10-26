@@ -45,7 +45,7 @@ plant: blocking r4c6
 tafel: blocking r5c2
 stoel: standable r6c2
 boom: blocking r6c6
-bankje: standable r5c5
+bankje: standable r5c5 r5c6
 
 People:
 Marloes
@@ -55,11 +55,16 @@ Kees
 Inge
 Wouter
 
+Attributes:
+badjas: Bas Kees
+
 Rules:
 alone_with Wouter
 
 Clues:
+not_attribute Marloes badjas | Marloes heeft geen badjas aan.
 next_to Marloes bankje
+not_on Marloes bankje
 at_least Bas Marloes 4
 not_on Esther tweepersoonsbed
 not_next_to Kees bed
@@ -71,7 +76,7 @@ Title:
 Murdoku: Het logeerweekend
 
 Intro:
-Zes mensen logeren een weekend in een huis. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Zes mensen logeren een weekend in een huis; twee gasten dragen een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
 Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het bed, het zachte tapijt, de stoel en het bankje mag je staan.
 Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
 

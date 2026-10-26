@@ -96,7 +96,7 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
 - **Never force-push** or rewrite history that is on `origin`.
 - **Published puzzles are not copied.** `prrrdoku1-3.txt` are the owner's
   own puzzles. Anything taken from a book or newspaper gets new names or is
-  generated instead, as `murdoku_intro.txt` and the graded Sudokus and
+  generated instead, as `wie-doet-het-met-wie-1.txt` and the graded Sudokus and
   Calcudokus are.
 - **README pictures and solutions are generated**, never hand-edited: redraw
   `docs/images/*.png` with `--png` (rasterised from the SVG renderer) and re-run `--explain` whenever drawing or
@@ -282,7 +282,7 @@ Numbers from actual runs, not estimates:
 | `sudoku_jigsaw.txt` | solved, 35 iterations | `single` 30, `subsumption` 3, `cover2` 1 |
 | `sudoku_nrc.txt` | solved, 54 iterations | `single` 53 (two solutions without its extra boxes) |
 | `futoshiki_5x5.txt` | solved, 49 iterations | `single` 25, `relations` 12, `chains` 8, `cover2` 3 |
-| `murdoku_intro.txt` | solved, 5 iterations | `single` 4 |
+| `wie-doet-het-met-wie-1.txt` | solved, 10 iterations | `single` 7, `relations` 2 |
 | `murdoku_house.txt` | solved, 11 iterations | `single` 5, `relations` 4, `subsumption` 1 |
 | `murdoku_sparse_mystery.txt` | solved, 5 iterations | `single` 4 |
 | `murdoku_global_counts.txt` | solved, 13 iterations | `single` 9, `count` 3 |
