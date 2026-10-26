@@ -49,10 +49,14 @@ reasoning in the conversation or by throwaway scripts; see
    them and `thin` remove the unneeded ones (see [Repo tools first](#repo-tools-first)).
    Follow [Fair clues](#fair-clues) and, for a mystery,
    [Late-reveal mysteries](#late-reveal-mysteries).
-4. Add the booklet text ([Booklet text](#booklet-text)) once the clues are final,
+4. Render the puzzle and solution PNGs and get an independent, image-based
+   critique from another LLM (see [Independent visual critique](#independent-visual-critique)).
+   Review the suggestions against the user's constraints; incorporate useful
+   changes and rerender.
+5. Add the booklet text ([Booklet text](#booklet-text)) once the clues are final,
    then run [Validation](#validation) and the [completion checklist](#completion-checklist).
-5. Never copy a published board, clue set, story or solution.
-6. If requirements conflict, explain instead of dropping one.
+6. Never copy a published board, clue set, story or solution.
+7. If requirements conflict, explain instead of dropping one.
 
 When both are given, transcribe first, then build a separate derived puzzle.
 
@@ -188,7 +192,8 @@ For a finished Murdoku under `examples/`, before reporting done:
   grade, reported as such); `--lint`: no issues.
 - Clues thinned (`clue_search thin`); few exact-number clues; no giveaway.
 - For a mystery: `--explain` reveals the answer by the rules, late.
-- `--png` looked at (puzzle and solution); `--docx` page check for booklet text.
+- `--png` looked at (puzzle and solution), independently critiqued, and useful
+  visual suggestions considered; `--docx` page check for booklet text.
 - `docs/examples.md` updated; `uv run pytest -q` and `ruff` pass.
 - Report path, solution, grade and any open doubts.
 
@@ -217,6 +222,22 @@ For a finished Murdoku under `examples/`, before reporting done:
   4. Render and look: the icon must read at cell size and on dark shading.
      Multi-square objects are stretched across the footprint; names in
      `picture.SEAT_NAMES` (benches) keep proportions instead.
+
+## Independent visual critique
+
+For every newly authored board or substantial layout/theme change, ask a
+second, image-capable LLM to inspect the rendered puzzle and solution PNGs.
+Provide the actual images (not only the puzzle text or file paths) and the
+user's hard layout constraints. Ask for actionable feedback on circulation,
+area boundaries, floor/room coherence, object-to-area fit, icon legibility,
+and consistency across a series.
+
+Treat this critique as suggestions, not authority. Check each point against
+the requested design and puzzle rules before changing anything; for example,
+do not add lift stops on guest-room floors if the user specified otherwise.
+Apply useful suggestions, rerender, and inspect the revised images yourself.
+If no independent image-capable reviewer is available, state that limitation
+instead of presenting a text-only review as visual feedback.
 
 ## Board rules
 
