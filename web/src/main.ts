@@ -1,4 +1,5 @@
 import type { Bundle } from "./game";
+import { adjacentPuzzles } from "./navigation";
 import { PuzzleView } from "./view";
 
 interface IndexEntry {
@@ -14,13 +15,31 @@ interface IndexEntry {
   unsupported?: string;
 }
 
+interface PuzzleIndex {
+  license: string;
+  puzzles: IndexEntry[];
+}
+
 const base = new URL("puzzles/", document.baseURI);
 const app = document.getElementById("app")!;
+let indexRequest: Promise<PuzzleIndex> | undefined;
 
 async function fetchText(name: string): Promise<string> {
   const response = await fetch(new URL(name, base));
   if (!response.ok) throw new Error(`${name}: ${response.status} ${response.statusText}`);
   return response.text();
+}
+
+function fetchIndex(): Promise<PuzzleIndex> {
+  if (!indexRequest) {
+    indexRequest = fetchText("index.json")
+      .then((text) => JSON.parse(text) as PuzzleIndex)
+      .catch((error: unknown) => {
+        indexRequest = undefined;
+        throw error;
+      });
+  }
+  return indexRequest;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -34,7 +53,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 async function showIndex(current: () => boolean): Promise<void> {
-  const index = JSON.parse(await fetchText("index.json")) as { license: string; puzzles: IndexEntry[] };
+  const index = await fetchIndex();
   if (!current()) return;
   document.title = "Human reasoning puzzles";
   // The index is already in reading order, as in the booklet.
@@ -101,10 +120,14 @@ async function showIndex(current: () => boolean): Promise<void> {
 }
 
 async function showPuzzle(id: string, current: () => boolean): Promise<void> {
-  const [bundleText, svg] = await Promise.all([fetchText(`${id}.json`), fetchText(`${id}.svg`)]);
+  const [bundleText, svg, index] = await Promise.all([
+    fetchText(`${id}.json`),
+    fetchText(`${id}.svg`),
+    fetchIndex(),
+  ]);
   if (!current()) return;
   const bundle = JSON.parse(bundleText) as Bundle;
-  new PuzzleView(bundle, svg).render(app);
+  new PuzzleView(bundle, svg, adjacentPuzzles(index.puzzles, id)).render(app);
 }
 
 let routing = 0;
