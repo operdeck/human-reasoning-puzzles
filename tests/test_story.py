@@ -789,3 +789,56 @@ def test_role_literals_are_told_as_role_sentences(name):
     story = explain(example(name).read_text())
     for leak in ("has role", "letterlijke keuze", "=True", "=False"):
         assert leak not in story
+
+
+ON_OR_NEXT_TO = """Size: 4
+Language: {lang}
+Regions:
+a: Room #FFFFFF
+Grid:
+a a a a
+a a a a
+a a a a
+a a a a
+Objects:
+bench: standable r1c1 r1c2
+chair: standable r3c3
+stool: standable r4c1
+stool: standable r4c2
+table: blocking r2c4 r3c4
+People:
+Ann
+Bob
+Cy
+Di
+Clues:
+not_next_to Ann bench
+next_to Bob chair
+not_next_to Cy table
+next_to Di stool
+"""
+
+
+def test_next_to_a_multi_square_object_says_on_or_next_to():
+    board, _ = load_board(ON_OR_NEXT_TO.format(lang="en"))
+    assert murdoku.next_to_covers_own_squares(board, "bench")
+    assert murdoku.next_to_covers_own_squares(board, "stool"), "two touching stools"
+    assert not murdoku.next_to_covers_own_squares(board, "chair"), "one square"
+    assert not murdoku.next_to_covers_own_squares(board, "table"), "blocking"
+    text = ON_OR_NEXT_TO.format(lang="en")
+    assert Story(*load_board(text), Wording.read(text)).clue_texts() == [
+        "Ann is neither on nor next to the bench.",
+        "Bob is next to the chair.",
+        "Cy is not next to the table.",
+        "Di is on or next to the stool.",
+    ]
+    text = ON_OR_NEXT_TO.format(lang="nl")
+    dutch = Story(*load_board(text), Wording.read(text)).clue_texts()
+    assert dutch[0] == "Ann zit niet op of naast de bench."
+    assert dutch[1] == "Bob zit naast de chair."
+
+
+def test_merged_predicates_keep_on_or_next_to_whole():
+    text = ON_OR_NEXT_TO.format(lang="nl").replace("next_to Bob chair", "not_on Ann chair")
+    paragraphs = csp.story.clue_paragraphs(text)
+    assert "Ann zit niet op of naast de bench en zit niet op de chair." in paragraphs

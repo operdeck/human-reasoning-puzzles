@@ -215,7 +215,7 @@ def _read(name):
 def test_clues_are_grouped_per_person():
     paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
     makaak = next(p for p in paragraphs if p.startswith("De makaak"))
-    assert makaak == "De makaak is in de bergen en zit niet naast het gras."
+    assert makaak == "De makaak is in de bergen en zit niet op of naast het gras."
     assert sum(p.startswith("De giraffe") for p in paragraphs) == 1
 
 
@@ -457,7 +457,7 @@ def test_docx_without_puzzle_files_takes_every_example_murdoku(tmp_path, monkeyp
 def test_an_object_with_several_pieces_is_named_indefinitely_despite_its_words():
     clues = clue_texts(_read("murdoku_orient_express"))
     assert "Anastasia zit op een perronbankje." in clues
-    assert "Vladimir zit niet naast een treinbank." in clues
+    assert "Vladimir zit niet op of naast een treinbank." in clues
     assert not any("het perronbankje" in clue for clue in clues)
 
 
