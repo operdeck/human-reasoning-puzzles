@@ -1,10 +1,14 @@
 # Human Reasoning Puzzles
 
-**An explainable constraint solver for many kinds of logic puzzles.**
+**Create, solve, play, and print original logic puzzles.**
 
 [![Play the puzzles](https://img.shields.io/badge/%E2%96%B6%20Play%20the%20puzzles-online-2ea44f?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/)
 
-Murdoku, Sudoku, Calcudoku/KenKen, Futoshiki, Queens-style / DogDoku, Tectonic/Suguru, Star Battle, Zebra logic grids, binary puzzles, and count-based grids all compile to one generic constraint engine.
+Explore a growing collection of playable and printable puzzles, from Sudoku,
+Star Battle, and Zebra grids to custom Murdoku mystery series. An explainable
+constraint engine powers the solver; Puzzle Lab helps create and validate new
+puzzles from seeds and specifications, while dedicated Murdoku tools turn loose
+clues and board sketches into original mysteries.
 
 ## Quick start
 
