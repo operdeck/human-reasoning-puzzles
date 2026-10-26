@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
 
-from .core import Kind, Solver, Step
+from .core import Kind, Model, Solver, Step
 from .murdoku import (
     COUNTING,
     FILTERS,
@@ -46,6 +46,7 @@ from .murdoku import (
     next_to_covers_own_squares,
     quantified_conditions,
     role_conditions,
+    role_statuses,
 )
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, read_sections
@@ -71,6 +72,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "with someone else."
         ),
         "doc.area_tag": "The {tag} are {areas}.",
+        "doc.area_tag_one": "The {tag} is {areas}.",
         "doc.attributes": "The attributes",
         "doc.attribute": "{people}",
         "doc.roles": "The roles",
@@ -233,6 +235,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_occupant.alone": "every {role} holder is alone in their area",
         "role_occupant.not_alone": "no {role} holder is alone in their area",
         "min_role_in_tagged_one": "at least one {role} holder is {area}",
+        "min_role_in_tagged_one_unique": "the {role} is {area}",
         "role_area_in": "{who} has role {role} and must be {area}",
         "role_only_one": "there is only one {role}",
         "role_area_out": "{who} cannot both have role {role} and be {area}",
@@ -245,6 +248,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.furthest_all": "{a} is the furthest from {b} of all the figures",
         "target.attribute": "someone with the {name} attribute",
         "target.role": "a {name} holder",
+        "target.unique_role": "the {name}",
         "target.area": "someone {where}",
         "target.on": "someone on {what}",
         "target.at": "someone at {what}",
@@ -271,6 +275,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "iemand anders."
         ),
         "doc.area_tag": "{Tag}: {areas}.",
+        "doc.area_tag_one": "{Tag}: {areas}.",
         "doc.attributes": "De kenmerken",
         "doc.attribute": "{people}",
         "doc.roles": "De rollen",
@@ -431,6 +436,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_occupant.alone": "elke {role}-drager is alleen in zijn gebied",
         "role_occupant.not_alone": "geen enkele {role}-drager is alleen in zijn gebied",
         "min_role_in_tagged_one": "minstens één {role}-drager is {area}",
+        "min_role_in_tagged_one_unique": "de {role} is {area}",
         "role_area_in": "{who} heeft de rol {role} en moet {area} zijn",
         "role_only_one": "er is maar één {role}",
         "role_area_out": "{who} kan niet de rol {role} hebben en tegelijk {area} zijn",
@@ -443,6 +449,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.furthest_all": "{a} is van alle figuren het verst van {b}",
         "target.attribute": "iemand met het kenmerk {name}",
         "target.role": "een {name}-drager",
+        "target.unique_role": "de {name}",
         "target.area": "iemand {where}",
         "target.on": "iemand op {what}",
         "target.at": "iemand bij {what}",
@@ -1040,7 +1047,8 @@ class Story:
                 ):
                     role_moves.add(id(move))
 
-        Solver(self.model.clone()).solve(on_step=collect)
+        solved = self.model.clone()
+        Solver(solved).solve(on_step=collect)
         firings: list[tuple[str, Sequence[Step]]] = []
         necessary = {id(move) for move in shortest(start, moves)} | role_moves
         replay(
@@ -1090,7 +1098,38 @@ class Story:
         sentences += self._refuted(refuted)
         if sentences:
             paragraphs.append(" ".join(self._merged(sentences)))
+        paragraphs.extend(self._final_role_reveals(solved, state))
         return "\n\n".join(f"- {p}" for p in paragraphs)
+
+    def _final_role_reveals(self, model: Model, state: _State) -> list[str]:
+        """Close the explanation with a role identity inferred from solved positions."""
+        statuses = role_statuses(self.board, model)
+        holders = [
+            (person, role.name)
+            for role in self.board.roles
+            for person in self.board.people
+            if statuses[person, role.name] is True
+            and state.role_told.get((person, role.name)) is not True
+        ]
+        reveals: list[str] = []
+        for person, role in holders:
+            condition = next(
+                (
+                    candidate
+                    for candidate in reversed(tuple(self.quantified_conditions.values()))
+                    if candidate.selector.kind == "role" and candidate.selector.name == role
+                ),
+                None,
+            )
+            name = self.say.words.get(role) or role.replace("_", " ")
+            outcome = self.say("role_has", who=person, role=name)
+            if condition is None:
+                reveals.append(f"{_cap(outcome)}.")
+            else:
+                clue = _cap(self._quantified_text(condition)) + self._quantified_ref(condition)
+                reveals.append(f"{clue}, {self.say('so')} {outcome}.")
+            state.role_told[person, role] = True
+        return reveals
 
     def _merged(self, sentences: Sequence[str]) -> list[str]:
         """Say a reason once when consecutive sentences draw several conclusions from it."""
@@ -1620,7 +1659,12 @@ class Story:
         outer = [self.about.get(name, ("constraint", name)) for name in step.scope]
         kinds_in = {k for k, _ in inner}
         kinds_out = {k for k, _ in outer}
-        if len(kinds_in) == 1 and len(kinds_out) == 1 and kinds_out <= {"row", "col"}:
+        if (
+            len(kinds_in) == 1
+            and kinds_in <= {"person", "row", "col"}
+            and len(kinds_out) == 1
+            and kinds_out <= {"row", "col"}
+        ):
             ((kind_in,), (kind,)) = (kinds_in, kinds_out)
             where = self.say("in", what=self.places.lines(kind, [i for _, i in outer], "or"))
             many = "_many" if len(inner) > 1 else "_one"
@@ -1955,8 +1999,13 @@ class Story:
             return self.say(kind, who=args[0], role=role(args[1]), area=area)
         if kind == "min_role_in_tagged":
             area = self.places.regions(self.board.tagged_region_ids([args[1]]))
+            role_def = next((r for r in self.board.roles if r.name == args[0]), None)
+            if args[2] == "1" and role_def is not None and role_def.allowed_counts == {1}:
+                key = "min_role_in_tagged_one_unique"
+            else:
+                key = "min_role_in_tagged_one" if args[2] == "1" else "min_role_in_tagged"
             return self.say(
-                "min_role_in_tagged_one" if args[2] == "1" else "min_role_in_tagged",
+                key,
                 n=self.say.number(int(args[2])),
                 role=role(args[0]),
                 area=area,
@@ -2071,6 +2120,9 @@ class Story:
             return self.say("target.attribute", name=name)
         if selector.kind == "role":
             name = self.say.words.get(selector.name, selector.name.replace("_", " "))
+            role = next((r for r in self.board.roles if r.name == selector.name), None)
+            if role is not None and role.allowed_counts == {1}:
+                return self.say("target.unique_role", name=name)
             return self.say("target.role", name=name)
         if selector.kind in ("area", "tag"):
             ids = (
@@ -2257,14 +2309,24 @@ def board_notes(text: str) -> list[str]:
 
     notes = []
     for tag, members in board.area_tags.items():
+        region_ids = board.region_ids(members)
         areas = [
-            board.region_names[r].replace("_", " ").capitalize()
-            for r in sorted(board.region_ids(members))
+            re.sub(
+                r"^((in|op|the|a|an|een|de|het) )+",
+                "",
+                say.words.get(r, board.region_names[r].replace("_", " ")),
+            ).capitalize()
+            for r in sorted(region_ids)
         ]
         label = re.sub(r"^((in|op|the|a|an|een|de|het) )+", "", name(tag))
         tagged = say.join(areas)
         notes.append(
-            say("doc.area_tag", tag=label, Tag=label[:1].upper() + label[1:], areas=tagged)
+            say(
+                "doc.area_tag_one" if len(region_ids) == 1 else "doc.area_tag",
+                tag=label,
+                Tag=label[:1].upper() + label[1:],
+                areas=tagged,
+            )
         )
     for mark in board.marks:
         key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"

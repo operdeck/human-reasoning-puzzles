@@ -99,6 +99,11 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.object_icon("rug2").name == "carpet"
     assert icons.object_icon("bedieningspaneel").name == "control_panel"
     assert icons.object_icon("kruk").name == "stool"
+    assert icons.object_icon("table").name == "table"
+    assert icons.object_icon("reception_counter").name == "counter"
+    assert icons.object_icon("staircase").name == "staircase"
+    assert icons.object_icon("elevator_car").name == "elevator"
+    assert icons.object_icon("wall").name == "wall"
     assert icons.object_icon("zeppelin") is None
 
 

@@ -1,0 +1,159 @@
+# The Murder Hotel 9x9 - "The housekeeper's discovery" (grade: subsumption)
+# The main stairwell runs through the guest corridor; the lift has no guest-floor doors.
+#
+# Solution: Lorenzo r1c7, Lucia r2c9, Matteo r3c1, Paolo r4c4,
+# Marco r5c2, Sofia r6c3, Raffaele r7c8, Giulia r8c6, Vittoria r9c5.
+# Sofia is the murderer; she was in the west guest room with Marco.
+
+Size: 9
+Language: en
+
+Words:
+roof: on the roof terrace
+restaurant: in the restaurant
+room_west: in the west guest room
+room_east: in the east guest room
+corridor: in the guest corridor
+lobby: in the lobby
+lift: in the lift shaft
+entrance: in the entrance vestibule
+elevator_car: the lift car
+table: a table
+chair: a chair
+bench: a terrace bench
+bed: a bed
+reception_counter: the reception counter
+staircase: the staircase
+sofa: a lobby sofa
+corpse: the body
+
+Regions:
+roof: roof #BFE3E8
+restaurant: restaurant #F4D6A0
+room_west: room_west #E8CDB5
+room_east: room_east #D8D2F0
+corridor: corridor #D6E2E7
+lobby: lobby #DCE8D2
+lift: lift #CFD3DA
+entrance: entrance #C8D8CB
+
+Grid:
+roof roof roof roof roof roof roof roof roof
+roof roof roof roof roof roof roof roof roof
+restaurant restaurant restaurant restaurant restaurant restaurant restaurant restaurant lift
+restaurant restaurant restaurant restaurant restaurant restaurant restaurant restaurant lift
+room_west room_west room_west room_west corridor corridor room_east room_east lift
+room_west room_west room_west room_west corridor corridor room_east room_east lift
+room_west room_west room_west room_west corridor corridor room_east room_east lift
+lobby lobby lobby lobby lobby lobby lobby lobby lift
+entrance lobby lobby lobby lobby lobby lobby lobby lift
+
+Objects:
+tree: blocking r1c1
+bench: standable r1c4 r1c5
+table: blocking r1c8
+tree: blocking r2c1
+plant: blocking r2c2
+bench: standable r2c7 r2c8
+chair: standable r3c1
+table: blocking r3c2
+elevator_car: standable r3c9
+wall: blocking r4c9 r5c9 r6c9 r7c9 r8c9 r9c9
+staircase: standable r3c5
+staircase: standable r4c5
+staircase: standable r5c5
+staircase: standable r6c5
+staircase: standable r7c5
+staircase: standable r8c5
+staircase: standable r9c5
+chair: standable r4c4
+table: blocking r4c8
+bed: standable r5c1 r5c2
+suitcase: blocking r6c1
+corpse: blocking r6c2
+bed: standable r6c7 r6c8
+lamp: blocking r7c1
+vase: blocking r7c7
+plant: blocking r8c2
+sofa: standable r8c7 r8c8
+reception_counter: blocking r9c7 r9c8
+
+EdgeItems:
+door: door r6c4 r6c5
+door: door r6c6 r6c7
+door: door r3c8 r3c9
+door: door r8c8 r8c9
+door: door r9c1 r9c2
+window: window r1c3 top
+window: window r5c1 left
+
+AreaTags:
+crime_scene: room_west
+
+Attributes:
+woman: Lucia Sofia Giulia Vittoria
+
+Roles:
+murderer: 1
+
+RoleEligibility:
+murderer: attribute:woman
+
+People:
+Lorenzo
+Lucia
+Matteo
+Sofia
+Paolo
+Giulia
+Raffaele
+Vittoria
+Marco
+
+Rules:
+role_occupant murderer not_alone
+min_role_in_tagged murderer crime_scene 1
+
+Clues:
+in_region Lorenzo roof
+in_region Matteo restaurant
+on Paolo chair
+on Marco bed
+in_region Raffaele room_east
+next_to Lorenzo table
+next_to Matteo table
+next_to Lorenzo bench
+next_to Marco corpse
+next_to Raffaele vase
+on Vittoria staircase
+next_to Giulia sofa
+not_next_to Lucia corpse
+not_in_row Raffaele 6
+above Lorenzo Lucia
+
+Title:
+The Murder Hotel: The housekeeper's discovery
+
+Intro:
+The housekeeper has discovered a body in the west guest room. Nine guests and staff are spread across the Murder Hotel.
+Place everyone on a free square, with one person in every row and column. Beds, chairs, benches, the lobby sofa, the lift car, and staircases are standable; other furnishings block their squares.
+The central staircase connects the Lobby, guest corridor, and Restaurant. The one-column lift runs along the east side, stopping only at the Lobby and Restaurant; its shaft is blocked except for the elevator car.
+The street-side entrance vestibule opens into the Lobby.
+The murderer is a woman, was in the west room, and was not alone there.
+
+Figures:
+Lorenzo: the concierge ; icon=U+1F468
+Lucia: the violinist ; icon=U+1F469
+Matteo: the florist ; icon=U+1F9D1
+Sofia: the novelist ; icon=U+1F471
+Paolo: the waiter ; icon=U+1F9D4
+Giulia: the translator ; icon=U+1F469
+Raffaele: the tailor ; icon=U+1F474
+Vittoria: the dancer ; icon=U+1F475
+Marco: the clerk ; icon=U+1F9D1
+
+Question:
+Who is the murderer?
+
+Reveal:
+Sofia is the murderer. She shared the west guest room with Marco.

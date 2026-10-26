@@ -1,0 +1,151 @@
+# The Murder Hotel 10x10 - "The last lift ride" (grade: subsumption)
+# The main stairwell runs through the guest corridor; the lift has no guest-floor doors.
+#
+# Solution: Antonio r1c4, Beatrice r2c10, Carlo r3c1, Daniela r4c6,
+# Edoardo r5c2, Francesca r6c3, Giorgio r7c8, Isabella r8c7,
+# Luca r9c9, Marcella r10c5.
+# Marcella is the murderer, identified by the role clue.
+
+Size: 10
+Language: en
+
+Words:
+roof: on the roof terrace
+restaurant: in the restaurant
+room_west: in the west guest room
+room_east: in the east guest room
+corridor: in the guest corridor
+lobby: in the lobby
+lift: in the lift shaft
+entrance: in the entrance vestibule
+elevator_car: the lift car
+table: a table
+chair: a chair
+bench: a terrace bench
+bed: a bed
+reception_counter: the reception counter
+staircase: the staircase
+sofa: a lobby sofa
+corpse: the body
+
+Regions:
+roof: roof #BFE3E8
+restaurant: restaurant #F4D6A0
+room_west: room_west #E8CDB5
+room_east: room_east #D8D2F0
+corridor: corridor #D6E2E7
+lobby: lobby #DCE8D2
+lift: lift #CFD3DA
+entrance: entrance #C8D8CB
+
+Grid:
+roof roof roof roof roof roof roof roof roof roof
+roof roof roof roof roof roof roof roof roof roof
+restaurant restaurant restaurant restaurant restaurant restaurant restaurant restaurant restaurant lift
+restaurant restaurant restaurant restaurant restaurant restaurant restaurant restaurant restaurant lift
+room_west room_west room_west corridor corridor corridor corridor room_east room_east lift
+room_west room_west room_west corridor corridor corridor corridor room_east room_east lift
+room_west room_west room_west corridor corridor corridor corridor room_east room_east lift
+room_west room_west room_west corridor corridor corridor room_east room_east room_east lift
+lobby lobby lobby lobby lobby lobby lobby lobby lobby lift
+entrance lobby lobby lobby lobby lobby lobby lobby lobby lift
+
+Objects:
+tree: blocking r1c1
+bench: standable r1c4 r1c5
+table: blocking r1c8
+plant: blocking r1c2
+bench: standable r2c2 r2c3
+tree: blocking r2c4
+chair: standable r3c3
+table: blocking r3c2
+elevator_car: standable r3c10
+wall: blocking r4c10 r5c10 r6c10 r7c10 r8c10 r9c10
+corpse: blocking r10c10
+staircase: standable r3c5
+staircase: standable r4c5
+staircase: standable r5c5
+staircase: standable r6c5
+staircase: standable r7c5
+staircase: standable r8c5
+staircase: standable r9c5
+staircase: standable r10c5
+chair: standable r4c7
+table: blocking r4c9
+bed: standable r5c1 r5c2
+suitcase: blocking r6c1
+vase: blocking r6c9
+bed: standable r7c8 r7c9
+lamp: blocking r8c8
+plant: blocking r9c2
+sofa: standable r9c7 r9c8
+reception_counter: blocking r10c7 r10c8
+table: blocking r10c6
+
+EdgeItems:
+door: door r6c3 r6c4
+door: door r6c7 r6c8
+door: door r3c9 r3c10
+door: door r9c9 r9c10
+door: door r10c1 r10c2
+window: window r1c3 top
+window: window r5c1 left
+
+Roles:
+murderer: 1
+
+People:
+Antonio
+Beatrice
+Carlo
+Daniela
+Edoardo
+Francesca
+Giorgio
+Isabella
+Luca
+Marcella
+
+Clues:
+in_region Edoardo room_west
+in_region Francesca room_west
+next_to Antonio tree
+next_to Carlo table
+in_region Beatrice roof
+on Marcella staircase
+next_to Daniela chair
+on Giorgio bed
+next_to Francesca door
+next_to Luca sofa
+next_to Luca door
+next_to Edoardo bed
+in_region Isabella room_east
+above Luca role:murderer
+
+Title:
+The Murder Hotel: The last lift ride
+
+Intro:
+A body has been found at the bottom of the lift. Ten people are somewhere in the hotel, and exactly one holds the murderer role.
+Place everyone on a free square, one per row and column. Beds, chairs, benches, the lobby sofa, the lift car, and staircases are standable; other furnishings block.
+The central staircase connects the Lobby, guest corridor, and Restaurant. The one-column lift runs along the east side, stopping only at the Lobby and Restaurant; its shaft is blocked except for the elevator car.
+The street-side entrance vestibule opens into the Lobby.
+The murderer need not be near the body. Use the clue that refers to the murderer to determine the role's position, then identify which person stands there.
+
+Figures:
+Antonio: the pianist ; icon=U+1F9D4
+Beatrice: the art dealer ; icon=U+1F469
+Carlo: the gardener ; icon=U+1F9D1
+Daniela: the journalist ; icon=U+1F471
+Edoardo: the chef ; icon=U+1F468
+Francesca: the tailor ; icon=U+1F475
+Giorgio: the architect ; icon=U+1F474
+Isabella: the singer ; icon=U+1F469
+Luca: the porter ; icon=U+1F9D1
+Marcella: the translator ; icon=U+1F471
+
+Question:
+Who is the murderer?
+
+Reveal:
+Marcella is the murderer. She stands below Luca, as the clue about the murderer reveals.
