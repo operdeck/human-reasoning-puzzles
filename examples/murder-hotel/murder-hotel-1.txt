@@ -1,0 +1,156 @@
+# The Murder Hotel 8x8 - "The west room" (grade: relations)
+# The main stairwell runs through the guest corridor; the lift has no guest-floor doors.
+#
+# Solution: Fiorella r1c6, Enzo r2c8, Bianca r3c3, Camillo r4c2,
+# Donatella r5c1, Alessio r6c7, Gabriele r7c4, Isabella r8c5.
+# Donatella is the murderer; she was in the west guest room with Camillo.
+
+Size: 8
+Language: en
+
+Words:
+roof: on the roof terrace
+restaurant: in the restaurant
+room_west: in the west guest room
+room_east: in the east guest room
+corridor: in the guest corridor
+lobby: in the lobby
+lift: in the lift shaft
+entrance: in the entrance vestibule
+elevator_car: the lift car
+table: a table
+chair: a chair
+bench: a terrace bench
+sofa: a lobby sofa
+bed: a bed
+reception_counter: the reception counter
+staircase: the staircase
+corpse: the body
+
+Regions:
+roof: roof #BFE3E8
+restaurant: restaurant #F4D6A0
+room_west: room_west #E8CDB5
+room_east: room_east #D8D2F0
+corridor: corridor #D6E2E7
+lobby: lobby #DCE8D2
+lift: lift #CFD3DA
+entrance: entrance #C8D8CB
+
+Grid:
+roof roof roof roof roof roof roof roof
+roof roof roof roof roof roof roof roof
+restaurant restaurant restaurant restaurant restaurant restaurant restaurant lift
+room_west room_west corridor corridor corridor room_east room_east lift
+room_west room_west corridor corridor corridor room_east room_east lift
+room_west room_west corridor corridor corridor room_east room_east lift
+lobby lobby lobby lobby lobby lobby lobby lift
+entrance lobby lobby lobby lobby lobby lobby lift
+
+Objects:
+tree: blocking r1c1
+table: blocking r1c5
+bench: standable r2c1 r2c2
+plant: blocking r2c3
+chair: standable r3c1
+table: blocking r3c2
+chair: standable r3c3
+table: blocking r3c5
+elevator_car: standable r3c8
+wall: blocking r4c8 r5c8 r6c8 r7c8 r8c8
+staircase: standable r3c4
+staircase: standable r4c4
+staircase: standable r5c4
+staircase: standable r6c4
+staircase: standable r7c4
+staircase: standable r8c4
+bed: standable r4c1 r4c2
+corpse: blocking r5c2
+suitcase: blocking r6c1
+bed: standable r5c6 r5c7
+lamp: blocking r6c2
+vase: blocking r6c6
+reception_counter: blocking r8c6 r8c7
+sofa: standable r7c6 r7c7
+plant: blocking r7c2
+
+EdgeItems:
+door: door r5c2 r5c3
+door: door r5c5 r5c6
+door: door r3c7 r3c8
+door: door r7c7 r7c8
+door: door r8c1 r8c2
+window: window r1c3 top
+window: window r4c1 left
+
+AreaTags:
+crime_scene: room_west
+
+Attributes:
+woman: Bianca Donatella Fiorella Isabella
+
+Roles:
+murderer: 1
+
+RoleEligibility:
+murderer: attribute:woman
+
+People:
+Alessio
+Bianca
+Camillo
+Donatella
+Enzo
+Fiorella
+Gabriele
+Isabella
+
+Rules:
+role_occupant murderer not_alone
+min_role_in_tagged murderer crime_scene 1
+
+Clues:
+in_region Enzo roof
+in_row Enzo 2
+not_next_to Fiorella corpse
+in_region Fiorella roof
+in_region Camillo room_west
+in_region Alessio room_east
+on Gabriele staircase
+in_region Gabriele lobby
+in_region Isabella lobby
+left_of Isabella Enzo
+above Fiorella Gabriele
+left_of Alessio Enzo
+on Camillo bed
+next_to Camillo corpse
+next_to Alessio vase
+next_to Isabella reception_counter
+in_region Bianca restaurant
+on Bianca chair
+
+Title:
+The Murder Hotel: The west room
+
+Intro:
+A guest has been found dead in the west room of the Murder Hotel. Eight guests and staff are somewhere in the building.
+Place everyone on a free square, with one person in every row and column. Beds, chairs, terrace benches, the lobby sofa, the lift car, and staircases are standable; other furnishings block.
+The central staircase connects the Lobby, guest corridor, and Restaurant. The one-column lift runs along the east side, stopping only at the Lobby and Restaurant; its shaft is blocked except for the elevator car.
+The street-side entrance vestibule opens into the Lobby.
+The murderer is a woman, was in the west room, and was not alone there.
+
+Figures:
+Alessio: the porter ; icon=U+1F9D4
+Bianca: the pianist ; icon=U+1F469
+Camillo: the gardener ; icon=U+1F9D1
+Donatella: the jeweler ; icon=U+1F475
+Enzo: the chef ; icon=U+1F468
+Fiorella: the photographer ; icon=U+1F471
+Gabriele: the architect ; icon=U+1F474
+Isabella: the singer ; icon=U+1F469
+
+Question:
+Who is the murderer?
+
+Reveal:
+Donatella is the murderer. She was in the west guest room with Camillo.

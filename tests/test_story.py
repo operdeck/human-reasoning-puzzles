@@ -15,7 +15,7 @@ from csp import bruteforce, cli, murdoku
 from csp.core import Kind, Model, Solver
 from csp.proof import Move, replay, shortest
 from csp.puzzlefile import load_board
-from csp.story import Story, Wording, explain
+from csp.story import Story, Wording, board_notes, explain
 from tests.examples import example
 
 PRRRDOKUS = ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"]
@@ -702,6 +702,26 @@ def test_english_story_places_everyone_right_and_titles_name_them(name):
         assert title == "The rest" or all(who in title for who in placed), paragraph
 
 
+def test_murder_hotel_story_handles_role_rule_covering_rows():
+    story = explain(example("murder-hotel-1.txt").read_text())
+    assert "Donatella has the murderer role" in story
+    assert "murderer holder" not in story
+
+
+def test_area_tag_note_uses_singular_grammar_for_one_region():
+    notes = board_notes(example("murder-hotel-1.txt").read_text())
+
+    assert "The crime scene is West guest room." in notes
+
+
+def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():
+    story = explain(example("murder-hotel-3.txt").read_text())
+    reveal = "Luca is somewhere above the murderer (14), so Marcella has the murderer role."
+
+    assert reveal in story
+    assert story.index("Marcella on r10c5") < story.index(reveal)
+
+
 def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
     story = explain((example("murdoku_house.txt")).read_text())
     opening = story.split("\n\n")[0]
@@ -780,7 +800,7 @@ def test_role_rules_are_told_without_engine_names():
     story = explain(example("murdoku_orient_express.txt").read_text())
     for leak in ("__", "role and area", "occupant count", "has role", "cardinality"):
         assert leak not in story
-    assert "De moordenaar was op de plaats delict, dus Svetlana is de moordenaar" in story
+    assert "De moordenaar is op de plaats delict, dus Svetlana is de moordenaar" in story
     assert "Svetlana is de moordenaar en moet in coupé 2 zijn" in story
 
 

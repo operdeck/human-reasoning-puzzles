@@ -16,6 +16,8 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* Added the English Murder Hotel Murdoku series in `examples/murder-hotel/`, with Italian-named guests, themed hotel floors, and a separate murderer-role position reveal in the final puzzle. The 8×8 opener uses a simpler `relations` grade; the 9×9 and 10×10 puzzles grade `subsumption`.
+    * Added custom staircase, reception counter, table, and elevator icons; the Murdoku authoring workflow now requires an independent image-based critique for new or substantially changed boards.
 * Orient Express puzzles now show a hand-drawn control panel instead of a locomotive firebox;
   each locomotive has a vertical panel at the front, windows along its front wall, and a
   decorative driver's stool.
