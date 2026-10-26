@@ -21,6 +21,7 @@ import {
   type State,
   type Verdict,
 } from "./game";
+import type { PuzzleNavigationEntry } from "./navigation";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CROSS = "__cross__";
@@ -132,6 +133,7 @@ export class PuzzleView {
   constructor(
     private bundle: Bundle,
     private boardSvg: string,
+    private navigation: { previous?: PuzzleNavigationEntry; next?: PuzzleNavigationEntry } = {},
   ) {
     this.history = new History(load(bundle));
     this.tool = bundle.palette?.[0]?.id ?? CROSS;
@@ -145,10 +147,42 @@ export class PuzzleView {
   render(root: HTMLElement): void {
     const b = this.bundle;
     document.title = `${b.title} · Human reasoning puzzles`;
+    const puzzleLink = (
+      entry: PuzzleNavigationEntry,
+      direction: "Previous" | "Next",
+      text: string,
+    ): HTMLAnchorElement => {
+      const link = el("a", {
+        href: `#${encodeURIComponent(entry.id)}`,
+        textContent: text,
+        title: entry.title,
+      });
+      link.setAttribute("aria-label", `${direction} puzzle: ${entry.title}`);
+      return link;
+    };
+    const puzzleNav = el(
+      "nav",
+      { className: "puzzle-nav" },
+      el("a", { href: "#", className: "back", textContent: "← All puzzles" }),
+      ...(this.navigation.previous
+        ? [puzzleLink(this.navigation.previous, "Previous", "← Previous")]
+        : []),
+      ...(this.navigation.next
+        ? [puzzleLink(this.navigation.next, "Next", "Next →")]
+        : []),
+      el("a", {
+        href: "https://github.com/operdeck/human-reasoning-puzzles",
+        textContent: "GitHub",
+        target: "_blank",
+        rel: "noreferrer",
+        title: "View the source repository on GitHub",
+      }),
+    );
+    puzzleNav.setAttribute("aria-label", "Puzzle navigation");
     const header = el(
       "header",
       { className: "puzzle-header" },
-      el("a", { href: "#", className: "back", textContent: "← All puzzles" }),
+      puzzleNav,
       ...(b.section ? [el("p", { className: "meta", textContent: b.section })] : []),
       el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
     );
