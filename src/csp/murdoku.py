@@ -568,6 +568,18 @@ def _next_to(board: Board, *things: str) -> SquareTest:
     return test
 
 
+def next_to_covers_own_squares(board: Board, *things: str) -> bool:
+    """True when standing on one of the things already counts as next to them.
+
+    A square of a multi-square standable object borders another square of it, so
+    `next_to bench` includes the bench itself; clue text must then say "on or next to".
+    """
+    beside = _next_to(board, *things)
+    standable = {obj.name for obj in board.standable_objects}
+    own = board.squares_of([t for t in things if t in standable])
+    return any(beside(square) for square in own)
+
+
 def _knight_from(board: Board, *things: str) -> SquareTest:
     targets = board.squares_of(things)
     return lambda sq: any(knight_move(sq, t) for t in targets)

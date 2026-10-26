@@ -96,6 +96,15 @@ Clues should read like a detective's notes, not like arithmetic.
   them.
 - Never hand out a square outright (`in_row` + `in_column`, or a first clue
   that pins someone) unless an easy puzzle is wanted.
+- **Multi-square objects:** standing on a bench of several squares also counts
+  as `next_to` it, and `not_next_to` keeps the person off it. The generated
+  sentence says so ("zit niet op of naast een treinbank"); never override it
+  with a `| wording` that drops the "op of"/"on or". If you mean only *on* or
+  only *beside*, use `on`/`not_on`, or combine `next_to` with `not_on`.
+- **Read every generated clue as a player would** (`clue_paragraphs`, `--docx`)
+  and ask whether another reading of the sentence allows other squares. If it
+  does, fix the generated text in `src/csp/story.py` with a test; do not
+  redesign the board or swap a multi-square object for single squares.
 - Every clue must be needed: `thin` and `report` show which are not; `--lint`
   flags implied and redundant clues.
 - Ground clues in the board's story: the clock on the platform, the bench in
@@ -256,7 +265,7 @@ Arguments are one-token names; `[n]` is optional.
 |---|---|
 | `in_region` / `outside P region...` | in one of / none of the regions |
 | `in_tagged` / `not_in_tagged` / `only_in_tagged P tag...` | in / not in tagged regions; `only_` is for `Rules:` |
-| `next_to` / `not_next_to P thing...` | shares a side with an object cell **in the same area**; doors and point objects count across borders; no diagonals |
+| `next_to` / `not_next_to P thing...` | shares a side with an object cell **in the same area**; doors and point objects count across borders; no diagonals. On a multi-square standable object you are also next to it (text: "on or next to") |
 | `on` / `not_on` / `only_on P standable...` | on one / none; `only_on` also keeps everyone else off them |
 | `at P edge-item...` | on a door or window cell |
 | `on_mark` / `not_on_mark P mark...` | on / off marked cells |
