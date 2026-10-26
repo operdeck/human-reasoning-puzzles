@@ -16,7 +16,8 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
-* Orient Express puzzles now show a hand-drawn control panel instead of a locomotive firebox.
+* Orient Express puzzles now show a hand-drawn control panel instead of a locomotive firebox;
+  the first puzzle places it centrally at the front, with windows along the front wall.
     * `src/csp/icons.py`: added a reusable control-panel icon for all three puzzles.
 * [#83 Murdoku: objects on any grid point](https://github.com/operdeck/human-reasoning-puzzles/issues/83)
     * `CornerObjects:` is renamed `PointObjects:` (no alias; the old name gives an error) and takes a half-step anchor instead of four cells: `fountain: r2.5c2.5`. Point objects may sit on an interior vertex (4 cells), a vertex on the outer edge or the middle of an inner cell side (2 cells), or a board corner or the middle of an outer cell side (1 cell). Any touched cell counts for `next_to`, across area boundaries. The typed selector is now `point_object:name`.

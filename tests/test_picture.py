@@ -101,6 +101,23 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.object_icon("zeppelin") is None
 
 
+def test_vertical_control_panel_rotates_to_match_its_footprint(monkeypatch):
+    board, _ = load_board(example("murdoku_orient_express.txt").read_text())
+    calls = []
+    original = drawing._icon
+
+    def capture(canvas, name, area, cell, **kwargs):
+        if name == "bedieningspaneel":
+            calls.append((area, kwargs.get("rotate", 0)))
+        original(canvas, name, area, cell, **kwargs)
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    picture.murdoku_picture(board, cell=CELL, legend=False)
+
+    expected_area = (CELL // 2, CELL // 2 + 3 * CELL, CELL // 2 + CELL, CELL // 2 + 5 * CELL)
+    assert calls == [(expected_area, 90)]
+
+
 @pytest.mark.parametrize("name", sorted(icons.REGISTRY))
 def test_every_registry_icon_renders(name):
     icon = icons.REGISTRY[name]
