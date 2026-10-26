@@ -45,7 +45,7 @@ plant: blocking r4c6
 tafel: blocking r5c2
 stoel: standable r6c2
 boom: blocking r6c6
-bankje: standable r5c5
+bankje: standable r5c5 r5c6
 
 People:
 Marloes
@@ -60,6 +60,7 @@ alone_with Wouter
 
 Clues:
 next_to Marloes bankje
+not_on Marloes bankje
 at_least Bas Marloes 4
 not_on Esther tweepersoonsbed
 not_next_to Kees bed

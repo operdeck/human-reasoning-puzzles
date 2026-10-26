@@ -160,19 +160,19 @@ Zet iedereen op een vrij vakje: elke rij en elke kolom bevat precies één perso
 De moordenaar is een man, was in de restauratiewagen en was daar niet alleen.
 
 Figures:
-Fjodor: de koopman ; icon=U+1F468
-Tatjana: de zangeres ; icon=U+1F469
-Boris: de kok ; icon=U+1F9D4
-Natasja: de kamenierster ; icon=U+1F471
-Pjotr: de stoker ; icon=U+1F9D1
-Irina: de lerares ; icon=U+1F469
-Grigori: de priester ; icon=U+1F474
-Vera: de weduwe ; icon=U+1F475
-Sergej: de kruier ; icon=U+1F468
-Joeri: de student ; icon=U+1F9D1
+Fjodor: ; icon=U+1F468
+Tatjana: ; icon=U+1F469
+Boris: ; icon=U+1F9D4
+Natasja: ; icon=U+1F471
+Pjotr: ; icon=U+1F9D1
+Irina: ; icon=U+1F469
+Grigori: ; icon=U+1F474
+Vera: ; icon=U+1F475
+Sergej: ; icon=U+1F468
+Joeri: ; icon=U+1F9D1
 
 Question:
 Wie is de moordenaar?
 
 Reveal:
-Boris, de kok, is de moordenaar. Hij zat in de restauratiewagen, samen met zangeres Tatjana.
+Boris is de moordenaar. Hij zat in de restauratiewagen, samen met Tatjana.

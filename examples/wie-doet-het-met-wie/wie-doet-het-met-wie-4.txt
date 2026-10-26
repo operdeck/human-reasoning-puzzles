@@ -46,10 +46,10 @@ tapijt: standable r3c2
 kast: blocking r1c3
 bad: blocking r1c5
 toilet: blocking r2c4
-bankje: standable r2c6
+bankje: standable r2c6 r2c7
 emmer: blocking r1c7
 plant: blocking r3c4
-bank: standable r4c5
+bank: standable r4c5 r4c6
 koffer: blocking r4c7
 knuffel: blocking r5c1
 bal: blocking r6c4
