@@ -23,6 +23,7 @@ trein_bank: de treinbank
 perron_bank: het perronbankje
 koffiebar: de koffiebar
 bedieningspaneel: het bedieningspaneel
+stoel: de stoel
 raam: het raam
 deur: de deur
 klok: de klok
@@ -54,6 +55,7 @@ zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zui
 
 Objects:
 bedieningspaneel: blocking r4c1 r5c1
+stoel: standable r5c2
 klok: blocking r1c4
 perron_bank: standable r2c6 r2c7
 trein_bank: standable r3c3 r4c3 r5c3

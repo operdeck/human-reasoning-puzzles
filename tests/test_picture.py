@@ -124,6 +124,8 @@ def test_vertical_control_panel_rotates_to_match_its_footprint(
     monkeypatch.setattr(drawing, "_icon", capture)
     picture.murdoku_picture(board, cell=CELL, legend=False)
 
+    chair = next(obj for obj in board.objects if obj.name == "stoel")
+    assert chair.kind == "standable" and chair.squares == (Square(4, 1),)
     row = panel_row - 1
     expected_area = (
         CELL // 2,
