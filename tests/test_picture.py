@@ -97,7 +97,50 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.lookup("tree").emoji == "1f332"
     assert icons.object_icon("tree").emoji == "1f333"
     assert icons.object_icon("rug2").name == "carpet"
+    assert icons.object_icon("bedieningspaneel").name == "control_panel"
+    assert icons.object_icon("kruk").name == "stool"
     assert icons.object_icon("zeppelin") is None
+
+
+@pytest.mark.parametrize(
+    ("name", "panel_row", "window_row"),
+    [
+        ("murdoku_orient_express.txt", 4, 3),
+        ("murdoku_orient_express_2.txt", 5, 4),
+        ("murdoku_orient_express_3.txt", 4, 4),
+    ],
+)
+def test_vertical_control_panel_rotates_to_match_its_footprint(
+    monkeypatch, name, panel_row, window_row
+):
+    board, _ = load_board(example(name).read_text())
+    calls = []
+    original = drawing._icon
+
+    def capture(canvas, name, area, cell, **kwargs):
+        if name == "bedieningspaneel":
+            calls.append((area, kwargs.get("rotate", 0)))
+        original(canvas, name, area, cell, **kwargs)
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    picture.murdoku_picture(board, cell=CELL, legend=False)
+
+    stool = next(obj for obj in board.objects if obj.name == "kruk")
+    assert stool.kind == "standable" and stool.squares == (Square(4, 1),)
+    row = panel_row - 1
+    expected_area = (
+        CELL // 2,
+        CELL // 2 + row * CELL,
+        CELL // 2 + CELL,
+        CELL // 2 + (row + 2) * CELL,
+    )
+    assert calls == [(expected_area, 90)]
+    front_windows = {
+        item.cells[0].row + 1
+        for item in board.edge_items
+        if item.kind == "window" and item.side == "left" and item.cells[0].col == 0
+    }
+    assert front_windows == set(range(window_row, window_row + 4))
 
 
 @pytest.mark.parametrize("name", sorted(icons.REGISTRY))
