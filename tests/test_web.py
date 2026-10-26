@@ -56,23 +56,23 @@ def test_every_playable_cell_is_on_the_board(exported):
 
 
 def test_murdoku_bundle_has_everything_to_play(exported):
-    bundle = _bundle(exported, "murdoku_intro")
+    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
     assert bundle["family"] == "murdoku"
     assert bundle["playable"]
     assert bundle["placement"]["perItem"] == 1
-    assert [item["id"] for item in bundle["palette"]] == ["Ingrid", "Joost", "Lotte", "Wouter"]
+    assert [item["id"] for item in bundle["palette"]] == ["Eva", "Bram", "Noor", "Wouter"]
     assert bundle["solution"] == {
-        "r1c1": "Joost",
-        "r2c3": "Wouter",
-        "r3c4": "Ingrid",
-        "r4c2": "Lotte",
+        "r1c1": "Eva",
+        "r2c3": "Bram",
+        "r3c4": "Noor",
+        "r4c2": "Wouter",
     }
-    assert bundle["clues"][0] == "Ingrid zit op een stoel."
+    assert bundle["clues"][0] == "Eva zit naast de tafel."
     assert bundle["question"]
-    assert bundle["reveal"].startswith("Wouter doet het met Ingrid")
+    assert bundle["reveal"].startswith("Wouter doet het met Noor")
     assert bundle["rules"]
     names = [condition["name"] for condition in bundle["conditions"]]
-    assert names == ["op", "naast"]
+    assert names == ["alleen met", "naast"]
 
 
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
@@ -147,7 +147,7 @@ def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
 
 
 def test_conditions_only_list_the_kinds_a_puzzle_uses():
-    text = (example("murdoku_intro.txt")).read_text()
+    text = (example("wie-doet-het-met-wie-1.txt")).read_text()
     used = {kind for kind, _ in re.findall(r"^\s*(\w+)\s+(.*)$", text, re.M)}
     assert len(story.condition_list(text)) <= len(used)
 
@@ -181,7 +181,7 @@ def test_akari_lights_what_a_bulb_sees(exported):
 
 
 def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
-    bundle = _bundle(exported, "murdoku_intro")
+    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
     assert "peers" not in bundle
     assert "notes" not in bundle
 
