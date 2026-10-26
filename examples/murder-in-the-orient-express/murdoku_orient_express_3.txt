@@ -159,19 +159,19 @@ Zet iedereen op een vrij vakje: elke rij en elke kolom bevat precies één perso
 De moordenaar is een vrouw, was in coupé 3 en was daar alleen.
 
 Figures:
-Dragomir: de conducteur ; icon=U+1F9D4
-Bogdan: de machinist ; icon=U+1F468
-Svetlana: de gravin ; icon=U+1F475
-Mikhail: de dokter ; icon=U+1F9D1
-Anastasia: de actrice ; icon=U+1F469
-Vladimir: de kolonel ; icon=U+1F474
-Katarina: de secretaresse ; icon=U+1F471
-Ludmila: de gouvernante ; icon=U+1F469
-Igor: de kruier ; icon=U+1F468
-Olga: de kamenierster ; icon=U+1F471
+Dragomir: ; icon=U+1F9D4
+Bogdan: ; icon=U+1F468
+Svetlana: ; icon=U+1F475
+Mikhail: ; icon=U+1F9D1
+Anastasia: ; icon=U+1F469
+Vladimir: ; icon=U+1F474
+Katarina: ; icon=U+1F471
+Ludmila: ; icon=U+1F469
+Igor: ; icon=U+1F468
+Olga: ; icon=U+1F471
 
 Question:
 Wie is de moordenaar?
 
 Reveal:
-Svetlana, de gravin, is de moordenaar. Zij was alleen in coupé 3, bij het lijk.
+Svetlana is de moordenaar. Zij was alleen in coupé 3, bij het lijk.

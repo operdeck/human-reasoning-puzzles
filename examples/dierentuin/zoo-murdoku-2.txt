@@ -44,7 +44,8 @@ savanne savanne savanne rivier rivier rivier
 Objects:
 waterlelie: blocking r4c5
 baobab: blocking r5c1
-boomstam: standable r1c1 r1c2
+boomstam: standable r1c1
+boomstam: standable r1c2
 
 Attributes:
 aap: Makaak Gibbon
