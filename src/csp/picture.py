@@ -297,7 +297,7 @@ def _region_labels(
         if wide and right in squares and right not in taken and right not in board.blocked:
             x1 = box(right)[2]
         tag = (x0 + pad, y0 + pad, x1 - pad, y0 + pad + int(size * 1.5))
-        with canvas.group(opacity=0.9):
+        with canvas.group(opacity=0.9, class_name="area-label"):
             canvas.rounded_rectangle(
                 tag,
                 radius=max(2, cell // 16),
