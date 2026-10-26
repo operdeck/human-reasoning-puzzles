@@ -98,6 +98,7 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.object_icon("tree").emoji == "1f333"
     assert icons.object_icon("rug2").name == "carpet"
     assert icons.object_icon("bedieningspaneel").name == "control_panel"
+    assert icons.object_icon("kruk").name == "stool"
     assert icons.object_icon("zeppelin") is None
 
 
@@ -124,8 +125,8 @@ def test_vertical_control_panel_rotates_to_match_its_footprint(
     monkeypatch.setattr(drawing, "_icon", capture)
     picture.murdoku_picture(board, cell=CELL, legend=False)
 
-    chair = next(obj for obj in board.objects if obj.name == "stoel")
-    assert chair.kind == "standable" and chair.squares == (Square(4, 1),)
+    stool = next(obj for obj in board.objects if obj.name == "kruk")
+    assert stool.kind == "standable" and stool.squares == (Square(4, 1),)
     row = panel_row - 1
     expected_area = (
         CELL // 2,

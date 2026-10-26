@@ -160,6 +160,16 @@ CONTROL_PANEL = (
     '<g fill="none" stroke="#46535c" stroke-width="2"><circle cx="34" cy="75" r="4"/>'
     '<circle cx="66" cy="75" r="4"/></g>'
 )
+# A small round wooden stool with no back.
+STOOL = (
+    '<ellipse cx="50" cy="86" rx="28" ry="6" fill="#000" opacity="0.16"/>'
+    '<g fill="#80552f" stroke="#57391f" stroke-width="3" stroke-linejoin="round">'
+    '<path d="M31 49L20 83L29 86L42 53Z"/><path d="M61 50L72 84L81 81L70 47Z"/>'
+    '<path d="M45 57L46 91L55 91L54 57Z"/></g>'
+    '<circle cx="50" cy="43" r="34" fill="#bd8954" stroke="#654426" stroke-width="4"/>'
+    '<circle cx="50" cy="43" r="26" fill="#d9ad78" stroke="#94653d" stroke-width="2"/>'
+    '<path d="M35 43H65M50 28V58" fill="none" stroke="#c79560" stroke-width="2"/>'
+)
 # A simple platform bench with visible slats and a low back, typical for railway stations.
 PLATFORM_BENCH = (
     '<g fill="#cfaa75" stroke="#6f4a2d" stroke-width="2" stroke-linecap="round">'
@@ -311,6 +321,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("bench", "\u2b0c", "park bench", markup=BENCH, view=(0, 0, 100, 56)),
         Icon("train_bench", "\u2b0c", "train bench", markup=TRAIN_BENCH, view=(0, 0, 100, 92)),
         Icon("control_panel", "\u25a6", "control panel", markup=CONTROL_PANEL),
+        Icon("stool", "\u25cf", "stool", markup=STOOL),
         Icon(
             "platform_bench",
             "\u2b0c",
@@ -336,6 +347,7 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "train_bench": "train_bench", "trein_bank": "train_bench",
                 "bedieningspaneel": "control_panel", "control_panel": "control_panel",
                 "controlpanel": "control_panel",
+                "kruk": "stool", "stool": "stool",
                 "platform_bench": "platform_bench", "perron_bank": "platform_bench",
                 "tapijt": "carpet", "carpet": "carpet", "rug": "carpet",
                 "tatami": "tatami", "plate": "plate", "sara": "plate",
