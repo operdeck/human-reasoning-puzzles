@@ -43,6 +43,7 @@ from .murdoku import (
     global_count_conditions,
     global_count_unit_prefix,
     line_indices,
+    next_to_covers_own_squares,
     quantified_conditions,
     role_conditions,
 )
@@ -106,6 +107,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "on": "on {what}",
         "at": "at {what}",
         "next_to": "next to {what}",
+        "on_or_next_to": "on or next to {what}",
         "is": "{who} is {where}",
         "is_not": "{who} is not {where}",
         "count": "{who} has {n} squares left",
@@ -154,6 +156,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.only_in_tagged": "{a} is only {where}",
         "clue.next_to": "{a} is next to {things}",
         "clue.not_next_to": "{a} is not next to {things}",
+        "clue.on_or_next_to": "{a} is on or next to {things}",
+        "clue.not_on_or_next_to": "{a} is neither on nor next to {things}",
         "clue.knight_from": "{a} is a knight's move from {things}",
         "clue.on": "{a} is on {things}",
         "clue.not_on": "{a} is not on {things}",
@@ -222,6 +226,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_on": "if {who} has role {role}, {subject} must be on {things}",
         "role_not_on": "if {who} has role {role}, {subject} must not be on {things}",
         "role_next_to": "if {who} has role {role}, {subject} must be next to {things}",
+        "role_on_or_next_to": "if {who} has role {role}, {subject} must be on or next to {things}",
         "role_below": "{who} is below a {role} holder",
         "role_below_n": "{who} is {n} rows below a {role} holder",
         "sole_role_companion": "{possessive} sole region companion has role {role}",
@@ -302,6 +307,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "on": "op {what}",
         "at": "bij {what}",
         "next_to": "naast {what}",
+        "on_or_next_to": "op of naast {what}",
         "is": "{who} zit {where}",
         "is_not": "{who} zit niet {where}",
         "count": "{who} kan nog op {n} vakjes",
@@ -350,6 +356,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.only_in_tagged": "{a} is alleen {where}",
         "clue.next_to": "{a} zit naast {things}",
         "clue.not_next_to": "{a} zit niet naast {things}",
+        "clue.on_or_next_to": "{a} zit op of naast {things}",
+        "clue.not_on_or_next_to": "{a} zit niet op of naast {things}",
         "clue.knight_from": "{a} staat een paardensprong van {things}",
         "clue.on": "{a} zit op {things}",
         "clue.not_on": "{a} zit niet op {things}",
@@ -416,6 +424,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_on": "als {who} de rol {role} heeft, staat {subject} op {things}",
         "role_not_on": "als {who} de rol {role} heeft, staat {subject} niet op {things}",
         "role_next_to": "als {who} de rol {role} heeft, staat {subject} naast {things}",
+        "role_on_or_next_to": "als {who} de rol {role} heeft, staat {subject} op of naast {things}",
         "role_below": "{who} staat onder een {role}-drager",
         "role_below_n": "{who} staat {n} rijen onder een {role}-drager",
         "sole_role_companion": "{possessive} enige gebiedsgenoot heeft de rol {role}",
@@ -541,7 +550,8 @@ CONDITION_PHRASES = {
         "cond.next_to.name": "next to",
         "cond.next_to": "The figure's square shares a side with a square of the object, in the "
         "same area; diagonals do not count. A door, window or corner object counts across an "
-        "area border.",
+        "area border. On an object of several squares you are also next to it, so such clues "
+        "say 'on or next to'.",
         "cond.at.name": "at a door or window",
         "cond.at": "The figure stands on one of the squares on either side of the door or window.",
         "cond.on_mark.name": "on a marked square",
@@ -610,7 +620,8 @@ CONDITION_PHRASES = {
         "cond.next_to.name": "naast",
         "cond.next_to": "Het vakje van het figuur deelt een zijde met een vakje van het object, "
         "in hetzelfde gebied; schuin telt niet. Een deur, raam of hoekobject telt ook over een "
-        "gebiedsgrens heen.",
+        "gebiedsgrens heen. Wie op een object van meerdere vakjes staat, staat er ook naast; "
+        "zulke aanwijzingen zeggen daarom 'op of naast'.",
         "cond.at.name": "bij een deur of raam",
         "cond.at": "Het figuur staat op een van de vakjes aan weerszijden van de deur of het raam.",
         "cond.on_mark.name": "op een gemarkeerd vakje",
@@ -891,7 +902,8 @@ class Places:
                 if abs(sq.row - t.row) + abs(sq.col - t.col) == 1
                 and board.region_of(sq) == board.region_of(t)
             }
-            areas.append((self.say("next_to", what=self.thing(name)), near.__contains__))
+            phrase = "on_or_next_to" if next_to_covers_own_squares(board, name) else "next_to"
+            areas.append((self.say(phrase, what=self.thing(name)), near.__contains__))
         for name in sorted(board.edge_item_names):
             cells = board.edge_item_cells([name])
             areas.append((self.say("at", what=self.thing(name)), cells.__contains__))
@@ -1951,6 +1963,8 @@ class Story:
             )
         if kind in ("role_on", "role_not_on", "role_next_to"):
             what = self.say.join([self._role_target_name(name) for name in args[2:]], "or")
+            if kind == "role_next_to" and next_to_covers_own_squares(self.board, *args[2:]):
+                kind = "role_on_or_next_to"
             return self.say(
                 kind,
                 who=args[0],
@@ -2045,6 +2059,8 @@ class Story:
             )
         elif kind in ("within", "at_least"):
             fields["n"] = self.say.number(int(args[2]))
+        if kind in ("next_to", "not_next_to") and next_to_covers_own_squares(self.board, *rest):
+            kind = kind.replace("next_to", "on_or_next_to")
         return self.say(f"clue.{kind}", **fields)
 
     def _target_text(self, selector: TargetSelector) -> str:
@@ -2152,7 +2168,8 @@ def _pieces(squares: set[Square]) -> list[set[Square]]:
 
 ARTICLES = frozenset({"the", "a", "an", "de", "het", "een"})
 DEFINITE = frozenset({"the", "de", "het"})
-NEGATIONS = frozenset({"not", "niet"})
+NEGATIONS = frozenset({"not", "niet", "neither"})
+CONNECTORS = frozenset({"or", "of", "nor"})
 LINE_WORDS = frozenset({"row", "column", "rij", "kolom"})
 
 
@@ -2177,7 +2194,9 @@ def _merge_predicates(predicates: Sequence[str], say: Wording) -> str:
             shared.pop()
         tails = [" ".join(words[len(shared) :]) for words in members]
         lines_only = all(tail.split(" ", 1)[0] in LINE_WORDS for tail in tails)
-        if len(members) == 1 or not all(tails) or len(shared) < (2 if lines_only else 3):
+        split_phrase = any(tail.split(" ", 1)[0] in CONNECTORS for tail in tails)
+        too_short = len(shared) < (2 if lines_only else 3)
+        if len(members) == 1 or not all(tails) or split_phrase or too_short:
             segments.extend(" ".join(words) for words in members)
             continue
         joiner = "or" if shared[1] in NEGATIONS else "and"
