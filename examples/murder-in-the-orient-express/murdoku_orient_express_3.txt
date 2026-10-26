@@ -28,7 +28,7 @@ perron_bank: het perronbankje
 koffiebar: de koffiebar
 loopplank: de loopplank
 rails: de rails
-vuurkist: de vuurkist
+bedieningspaneel: het bedieningspaneel
 raam: het raam
 deur: de deur
 klok: de klok
@@ -72,7 +72,7 @@ rails: blocking r3c8 r3c9
 loopplank: standable r3c4
 loopplank: standable r3c7
 loopplank: standable r3c10
-vuurkist: blocking r5c1 r5c2
+bedieningspaneel: blocking r5c1 r5c2
 trein_bank: standable r4c3 r5c3 r6c3
 trein_bank: standable r4c5 r5c5 r6c5 right
 trein_bank: standable r4c6 r5c6 r6c6
