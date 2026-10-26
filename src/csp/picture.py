@@ -194,9 +194,7 @@ def murdoku_picture(
                     _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
         else:
             icon = icons.object_icon(name)
-            vertical_panel = (
-                icon is not None and icon.name == "control_panel" and y1 - y0 > x1 - x0
-            )
+            vertical_panel = icon is not None and icon.name == "control_panel" and y1 - y0 > x1 - x0
             rotate = 90 if vertical_panel else 0
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
     for item in board.edge_items:
