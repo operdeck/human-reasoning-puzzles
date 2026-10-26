@@ -1,8 +1,8 @@
-# The Murder Hotel 8x8 - "The west room" (grade: subsumption)
+# The Murder Hotel 8x8 - "The west room" (grade: relations)
 # The main stairwell runs through the guest corridor; the lift has no guest-floor doors.
 #
-# Solution: Isabella r1c6, Enzo r2c8, Bianca r3c3, Camillo r4c2,
-# Donatella r5c1, Alessio r6c7, Fiorella r7c5, Gabriele r8c4.
+# Solution: Fiorella r1c6, Enzo r2c8, Bianca r3c3, Camillo r4c2,
+# Donatella r5c1, Alessio r6c7, Gabriele r7c4, Isabella r8c5.
 # Donatella is the murderer; she was in the west guest room with Camillo.
 
 Size: 8
@@ -113,10 +113,12 @@ Clues:
 in_region Enzo roof
 in_row Enzo 2
 not_next_to Fiorella corpse
+in_region Fiorella roof
 in_region Camillo room_west
 in_region Alessio room_east
 on Gabriele staircase
 in_region Gabriele lobby
+in_region Isabella lobby
 left_of Isabella Enzo
 above Fiorella Gabriele
 left_of Alessio Enzo
