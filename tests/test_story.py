@@ -704,7 +704,7 @@ def test_english_story_places_everyone_right_and_titles_name_them(name):
 
 def test_murder_hotel_story_handles_role_rule_covering_rows():
     story = explain(example("murder-hotel-1.txt").read_text())
-    assert "The murderer is in the crime scene" in story
+    assert "Donatella has the murderer role" in story
     assert "murderer holder" not in story
 
 

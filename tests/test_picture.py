@@ -213,12 +213,12 @@ def test_interactive_murdoku_has_cell_ids_and_the_blank_board():
 
 
 def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji):
-    fake_emoji("1f37d", (0, 0, 255))  # a blue block
+    fake_emoji("1f6cf", (0, 0, 255))  # a blue block
     board = Board(
         2,
         [["a", "a"], ["a", "a"]],
         {"a": "here"},
-        [BoardObject("table", "standable", (Square(1, 0), Square(1, 1)))],
+        [BoardObject("bed", "standable", (Square(1, 0), Square(1, 1)))],
         ["A", "B"],
     )  # fmt: skip
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False, labels=False)
