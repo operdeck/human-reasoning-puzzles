@@ -22,7 +22,7 @@ plaats_delict: op de plaats delict
 trein_bank: de treinbank
 perron_bank: het perronbankje
 koffiebar: de koffiebar
-vuurkist: de vuurkist
+bedieningspaneel: het bedieningspaneel
 raam: het raam
 deur: de deur
 klok: de klok
@@ -53,7 +53,7 @@ zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zui
 zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron zuidperron
 
 Objects:
-vuurkist: blocking r5c1 r5c2
+bedieningspaneel: blocking r5c1 r5c2
 klok: blocking r1c4
 perron_bank: standable r2c6 r2c7
 trein_bank: standable r3c3 r4c3 r5c3
@@ -103,7 +103,7 @@ in_region Ludmila coupe_1
 in_region Vladimir coupe_2
 next_to Ludmila trein_bank
 on Anastasia perron_bank
-next_to Bogdan vuurkist
+next_to Bogdan bedieningspaneel
 not_next_to Vladimir trein_bank
 above Ludmila Vladimir
 not_next_to Ludmila raam

@@ -142,6 +142,24 @@ TRAIN_BENCH = (
     '<path d="M38 34V80M62 34V80" fill="none" stroke="#c4786f" stroke-width="2"/>'
     "</g>"
 )
+# A modern locomotive control panel, viewed from above, with a display and buttons.
+CONTROL_PANEL = (
+    '<rect x="7" y="12" width="86" height="76" rx="8" fill="#697783" stroke="#303b44"'
+    ' stroke-width="3"/>'
+    '<rect x="13" y="18" width="74" height="64" rx="5" fill="#d7dde2" stroke="#56636d"'
+    ' stroke-width="2"/>'
+    '<rect x="20" y="25" width="36" height="20" rx="2" fill="#263d4b"/>'
+    '<path d="M24 39L31 34L37 37L44 29L52 31" fill="none" stroke="#67c6b4" stroke-width="2"/>'
+    '<g stroke="#47545d" stroke-width="1"><circle cx="66" cy="30" r="4" fill="#d9574f"/>'
+    '<circle cx="77" cy="30" r="4" fill="#e3b94f"/><circle cx="66" cy="41" r="4"'
+    ' fill="#69a86d"/><circle cx="77" cy="41" r="4" fill="#6b9ac2"/></g>'
+    '<g stroke="#8a3434" stroke-width="1"><circle cx="26" cy="61" r="5" fill="#e35b51"/>'
+    '<circle cx="42" cy="61" r="5" fill="#e5b84c"/></g>'
+    '<g stroke="#45654b" stroke-width="1"><circle cx="58" cy="61" r="5" fill="#74ad77"/>'
+    '<circle cx="74" cy="61" r="5" fill="#78a4ca"/></g>'
+    '<g fill="none" stroke="#46535c" stroke-width="2"><circle cx="34" cy="75" r="4"/>'
+    '<circle cx="66" cy="75" r="4"/></g>'
+)
 # A simple platform bench with visible slats and a low back, typical for railway stations.
 PLATFORM_BENCH = (
     '<g fill="#cfaa75" stroke="#6f4a2d" stroke-width="2" stroke-linecap="round">'
@@ -292,6 +310,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("allium", "\u273f", "allium", markup=ALLIUM),
         Icon("bench", "\u2b0c", "park bench", markup=BENCH, view=(0, 0, 100, 56)),
         Icon("train_bench", "\u2b0c", "train bench", markup=TRAIN_BENCH, view=(0, 0, 100, 92)),
+        Icon("control_panel", "\u25a6", "control panel", markup=CONTROL_PANEL),
         Icon(
             "platform_bench",
             "\u2b0c",
@@ -315,6 +334,8 @@ REGISTRY: dict[str, Icon] = {
 # Murdoku object names drawn with a registry icon rather than an emoji.
 OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "train_bench": "train_bench", "trein_bank": "train_bench",
+                "bedieningspaneel": "control_panel", "control_panel": "control_panel",
+                "controlpanel": "control_panel",
                 "platform_bench": "platform_bench", "perron_bank": "platform_bench",
                 "tapijt": "carpet", "carpet": "carpet", "rug": "carpet",
                 "tatami": "tatami", "plate": "plate", "sara": "plate",

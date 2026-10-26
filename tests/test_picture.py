@@ -97,6 +97,7 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.lookup("tree").emoji == "1f332"
     assert icons.object_icon("tree").emoji == "1f333"
     assert icons.object_icon("rug2").name == "carpet"
+    assert icons.object_icon("bedieningspaneel").name == "control_panel"
     assert icons.object_icon("zeppelin") is None
 
 
