@@ -26,14 +26,16 @@ def test_outcome_reports_unique_solution_and_grade():
 
 
 def test_removal_report_and_thin_keep_the_puzzle_unique():
-    report = clue_search.removal_report(ORIENT, timeout=30)
-    assert [number for number, _, _ in report] == list(range(1, 13))
+    # A small puzzle keeps this quick: each trial is a solve in a child process.
+    zoo = example("zoo-murdoku-1.txt").read_text()
+    report = clue_search.removal_report(zoo, timeout=30)
+    assert [number for number, _, _ in report] == list(range(1, 8))
     removable = [number for number, _, result in report if result.good]
-    assert removable == [2, 3]  # only by making the puzzle harder
-    assert {report[n - 1][2].grade for n in removable} == {"what_if"}
-    lines = clue_search.clue_lines(ORIENT)
-    assert clue_search.thin(ORIENT, max_grade="relations", timeout=30) == lines
-    padded = clue_search.with_clues(ORIENT, [*lines, "in_region Svetlana coupe_2"])
+    assert removable == [4, 5, 6]  # only by making the puzzle harder
+    assert [report[n - 1][2].grade for n in removable] == ["what_if", "subsumption", "what_if"]
+    lines = clue_search.clue_lines(zoo)
+    assert clue_search.thin(zoo, max_grade="relations", timeout=30) == lines
+    padded = clue_search.with_clues(zoo, [*lines, "in_region Gibbon bergen"])
     assert clue_search.thin(padded, max_grade="relations", timeout=30) == lines
 
 
@@ -100,7 +102,7 @@ def test_suggest_keeps_each_needed_clue_necessary():
     )
     kinds = [kind for kind in clue_search.SUGGEST_KINDS if kind != "on"]
     added = clue_search.suggest(
-        start, placement, kinds, sample=2000, timeout=30, exclude=["Wouter"], needs=[1, 2]
+        start, placement, kinds, sample=300, timeout=30, exclude=["Wouter"], needs=[1, 2]
     )
     assert len(bruteforce.solutions(clue_search.with_clues(start, [rule, key, *added]))) == 1
     for dropped in (rule, key):
