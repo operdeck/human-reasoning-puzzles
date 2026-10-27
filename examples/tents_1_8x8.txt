@@ -1,0 +1,16 @@
+# Tents and Trees 8x8: easy, each tree has one tent beside it.
+Family: tents
+Size: 8
+Trees:
+T . . T . . . .
+. . . . . T . .
+. . . . . . . T
+. . . . . . . .
+. . . . . . . .
+. T . . . . . .
+. . . T . . . .
+. T . . . . . .
+RowCounts:
+1 2 1 0 1 0 1 1
+ColumnCounts:
+1 1 2 0 2 0 1 0

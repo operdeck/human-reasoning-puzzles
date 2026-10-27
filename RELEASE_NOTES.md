@@ -10,9 +10,9 @@
     * `examples/murdoku_sparse_mystery.txt`: "Blue hall" is now blue instead of grey; all other examples audited, no other mismatches.
     * Added a test that colour words in region names match their background colour, plus guidance in the Murdoku skill and `AGENT.md`.
 * Murdoku PNG: the English `carpet` (and `rug`) object now draws the hand-made rug icon instead of the literal word, as `tapijt` already did.
-    * `src/csp/icons.py`: added the `oven` icon, which `murdoku_house.txt` lacked.
+    * `src/csp/icons.py`: added the `oven` icon, which `murdoku_3_house.txt` lacked.
     * `src/csp/picture.py`: shared `CARPET_NAMES`/`WELL_NAMES` drive both drawing and the missing-icon check; `tests/test_picture.py` checks every object in the Murdoku examples has an icon.
-* [#117 Queens icon](https://github.com/operdeck/human-reasoning-puzzles/issues/117): `queens_7x7_medium.txt` uses the queen piece; a test keeps Queens/DogDoku file names, families and pieces aligned.
+* [#117 Queens icon](https://github.com/operdeck/human-reasoning-puzzles/issues/117): `queens_3_7x7.txt` uses the queen piece; a test keeps Queens/DogDoku file names, families and pieces aligned.
 * [#118 Overly prefilled examples](https://github.com/operdeck/human-reasoning-puzzles/issues/118): replaced the near-full Binairo, Tango, Queens and Suguru 8×8 examples with fresh boards; `binairo_8x8.txt` and `tango_8x8.txt` became `*_8x8_medium.txt`. Boards with under a quarter of their cells open now rate `trivial`, and a test rejects trivial gallery examples.
 * [#26 Handle empty domains in --show-model](https://github.com/operdeck/human-reasoning-puzzles/issues/26)
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
@@ -28,7 +28,7 @@
 * [#83 Murdoku: objects on any grid point](https://github.com/operdeck/human-reasoning-puzzles/issues/83)
     * `CornerObjects:` is renamed `PointObjects:` (no alias; the old name gives an error) and takes a half-step anchor instead of four cells: `fountain: r2.5c2.5`. Point objects may sit on an interior vertex (4 cells), a vertex on the outer edge or the middle of an inner cell side (2 cells), or a board corner or the middle of an outer cell side (1 cell). Any touched cell counts for `next_to`, across area boundaries. The typed selector is now `point_object:name`.
     * Pictures centre the small icon on the point and widen the margin when a point lies on the outer edge, so it is not clipped or drawn over the coordinates; an object without an icon gets a small labelled badge. New `mouse`/`muis` and `cheese`/`kaas` icons.
-    * `examples/murdoku_composition.txt` migrated; new example `examples/murdoku_point_objects.txt` (unique, grade `single`).
+    * `examples/murdoku_composition.txt` migrated; new example `examples/murdoku_2_point_objects.txt` (unique, grade `single`).
     * Three Dutch menu puzzles `examples/menu-murdoku-1/2/3.txt` (grades `relations`, `subsumption`, `what_if`): foods on days of the week, sunflowers and ornamental onions on grid points, one starch per day, and the vla is found last.
     * `alone_with <person> [selector] [n]`: the selector is now optional (anyone) and `n` sets how many companions (default 1), e.g. `alone_with Vla 2`.
     * New hand-drawn `sierui`/`allium` icon (purple ornamental onion) and flower/food emoji (zonnebloem, roos, madeliefje, hibiscus, aardappel, rijst, pasta, broccoli, spinazie, wortel, vis, kip, bonen, vla).
@@ -41,11 +41,11 @@
     * Extras: `svg` (fonttools), `png` (+ resvg-py, no system libraries; Pillow no longer needed), `docx` (+ python-docx). Without them `--svg`/`--png`/`--docx` print which extra to install.
     * Murdoku: blocked squares are now shown by a clearly darker shade of their region instead of a red cross.
     * `--lint` also warns when a figure `icon=` is a valid code point whose picture is not vendored; tests check every object and figure in `examples/` has a vendored icon and every character in the example pictures is in the bundled font. The Murdoku skill and `AGENT.md` describe how to add icons for new objects and families.
-* Star Battle examples now have irregular regions and two or three stars: `starbattle_8x8.txt` and `starbattle_10x10.txt` (two stars) and `starbattle_12x12.txt` (three stars), unique and graded `cover2`, `chains` and `cover3`. They replace `starbattle_4x4.txt` (one star, which is just a Queens puzzle) and the old row-region 8 × 8.
+* Star Battle examples now have irregular regions and two or three stars: `starbattle_2_8x8.txt` and `starbattle_4_10x10.txt` (two stars) and `starbattle_3_12x12.txt` (three stars), unique and graded `cover2`, `chains` and `cover3`. They replace `starbattle_4x4.txt` (one star, which is just a Queens puzzle) and the old row-region 8 × 8.
     * Star Battle regions may now have any size from `Stars:` cells up, as long as each is connected (it used to require exactly N cells each).
 * DogDoku ([#71](https://github.com/operdeck/human-reasoning-puzzles/issues/71)): `Family: dogdoku` (a Queens puzzle with dogs) and an optional `Icon:` section (`queen`, `dog`, `puppy`) for Queens files, drawn in `--png` and shown in the text board. Dog puzzles colour every zone differently.
     * Queens zones may now have any size from one cell up, as long as each is connected (it used to require exactly N cells each).
-    * New examples `dogdoku_5x5.txt`, `dogdoku_7x7.txt`, `dogdoku_9x9.txt`: unique, built backwards from a solving order, and solvable by eliminations only; grades `single`, `subsumption`, `cover2`.
+    * New examples `dogdoku_1_5x5.txt`, `dogdoku_2_7x7.txt`, `dogdoku_3_9x9.txt`: unique, built backwards from a solving order, and solvable by eliminations only; grades `single`, `subsumption`, `cover2`.
 * Booklets list the puzzles alphabetically by file name and, with more than one puzzle, start with a clickable table of contents (page numbers fill in when Word opens it).
 * Murdoku PNG: blocked squares are marked so blocking and standable objects are told apart (now a darker shade, see #75).
 * Booklet lists attributes and roles beside the board; area tags (e.g. "noble areas") are now named in the PNG legend and the booklet rules.
@@ -59,7 +59,7 @@
     * New optional puzzle-file sections `Title:`, `Intro:`, `Question:`, `Figures:` (with optional `image=`) and `Reveal:`, plus an optional `| wording` after a clue in `Clues:`; they never affect solving, lint or PNG. Added to the prrrdoku and Tamagotchi examples.
 * Tamagotchi Murdoku puzzles now use Japanese objects (shrine, castle, Mount Fuji, sakura, lanterns, taiko, tatami, ...); new icons added to `src/csp/icons.py`, `tatami` draws the rug icon.
 * New Murdoku example puzzles
-    * `examples/food-murdoku-1.txt`, `-2.txt`, `-3.txt`: Japanese food and cities (5x5 to 7x7).
+    * `examples/food-murdoku-2.txt`, `-2.txt`, `-3.txt`: Japanese food and cities (5x5 to 7x7).
     * `examples/tamagotchi-murdoku-6x6.txt`, `-9x9.txt` (stream and bridge), `-12x12.txt`: "where is the devil?" late-reveal puzzles; new `bridge` icon.
     * `tests/test_picture.py`: the icon check covers every example with a `People:` section.
 * [#12 Murdoku: Migrate the format and verify feature composition](https://github.com/operdeck/human-reasoning-puzzles/issues/12)

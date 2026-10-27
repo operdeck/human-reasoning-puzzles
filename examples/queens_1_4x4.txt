@@ -1,0 +1,13 @@
+# Queens 4x4: easy, one queen per row, column and region.
+Family: queens
+Size: 4
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+Grid:
+a a a a
+a a b b
+c d d d
+d d d d
