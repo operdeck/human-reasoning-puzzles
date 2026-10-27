@@ -1,71 +1,92 @@
-# Wie doet het met wie? Na het tuinfeest (4x4, four areas)
+# Wie doet het met wie? De logeeravond (5x5, three rooms)
 #
-# Four people after a garden party, one per row and column. Wouter has no
-# clues and is named in none: he is placed last and is alone with exactly one
-# other person.
+# Five guests stay the night. Three bathrobes and three pairs of slippers lie
+# at fixed places in the house; whoever stands on one is wearing it. Exactly
+# two guests wear a bathrobe and exactly one wears only slippers, but who is
+# not given. Wouter has no clues: he is placed last and is alone with exactly
+# one other person.
 #
-# Intended solution: Eva r1c1, Bram r2c3, Noor r3c4, Wouter r4c2.
-# Wouter is doing it with Noor in the garden.
+# Intended solution: Wouter r1c1 (bed) and Marloes r2c2 (badjas) in the
+# slaapkamer, Bas r3c4 (badjas, badkamer), Cato r4c3 (sloffen) and Daan r5c5
+# in the gang. Wouter is doing it with Marloes.
 
-Size: 4
+Size: 5
 Language: nl
 
 Words:
-keuken: in de keuken
-woonkamer: in de woonkamer
-hal: in de hal
-tuin: in de tuin
-bankje: het tuinbankje
+slaapkamer: in de slaapkamer
+badkamer: in de badkamer
+gang: in de gang
+badjas: een badjas
+sloffen: een paar sloffen
+bed: het bed
+kast: de kast
+toilet: het toilet
+plant: de plant
+tafel: de tafel
 
 Regions:
-k: keuken #E8DCC8
-w: woonkamer #FADFB5
-h: hal #E6D3F0
-t: tuin #CBE6B9
+s: slaapkamer #E6D3F0
+b: badkamer #CFE8F0
+g: gang #FADFB5
 
 Grid:
-k k h h
-k w w t
-t w w t
-t t t t
+s s s b b
+s s s b b
+g g g b b
+g g g g g
+g g g g g
 
 Objects:
-tafel: blocking r1c2
-kast: blocking r1c4
-plant: blocking r3c3
-struik: blocking r2c4
-bankje: standable r4c1 r4c2
+bed: standable r1c1
+badjas: standable r2c2
+badjas: standable r3c4
+badjas: standable r1c5
+sloffen: standable r4c3
+sloffen: standable r1c2
+sloffen: standable r5c1
+kast: blocking r1c3
+douche: blocking r1c4
+toilet: blocking r2c4
+plant: blocking r4c1
+tafel: blocking r5c3
 
 People:
-Eva
-Bram
-Noor
+Marloes
+Bas
+Cato
+Daan
 Wouter
 
 Rules:
 alone_with Wouter
+count people on object:badjas = 2 | Precies twee mensen dragen een badjas.
+count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
 
 Clues:
-next_to Eva tafel
-next_to Bram plant
-next_to Noor struik
+above object:badjas object:sloffen 1 | Een van de gasten met een badjas staat precies één rij boven de gast met sloffen.
+on Marloes badjas | Marloes heeft alleen een badjas aan.
+next_to Bas toilet
+left_of Cato Daan
+in_region Cato gang
 
 Title:
-Murdoku: Na het tuinfeest
+Murdoku: De logeeravond
 
 Intro:
-Na een tuinfeest blijven vier gasten nog even napraten in huis. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Voorwerpen blokkeren hun vakje, behalve het tuinbankje: daar kun je op staan.
-Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet.
+Vijf gasten blijven logeren. Er liggen drie badjassen en drie paar sloffen in huis; wie op zo'n vakje staat, heeft het aan.
+Zet iedereen op een vrij vakje, één per rij en één per kolom. Op het bed, de badjassen en de sloffen mag je staan; andere voorwerpen blokkeren hun vakje.
+Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
 
 Figures:
-Eva: ; icon=U+1F469
-Bram: ; icon=U+1F468
-Noor: ; icon=U+1F471
+Marloes: ; icon=U+1F469
+Bas: ; icon=U+1F468
+Cato: ; icon=U+1F471
+Daan: ; icon=U+1F474
 Wouter: ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?
 
 Reveal:
-Wouter doet het met Noor: ze staan samen in de tuin.
+Wouter doet het met Marloes: zij staat in haar badjas met hem in de slaapkamer.

@@ -2980,3 +2980,87 @@ above A B
         bruteforce.solutions(merged, limit=500)
     )
     assert len(bruteforce.solutions(base, limit=500)) > 0
+
+
+SELECTOR_SUBJECT = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+Objects:
+robe: standable r1c1
+robe: standable r1c3
+slippers: standable r2c2
+slippers: standable r3c1
+People:
+A
+B
+C
+Attributes:
+tall: B
+Clues:
+{clue}
+"""
+
+
+@pytest.mark.parametrize(
+    ("clue", "subject_holds"),
+    [
+        ("above object:robe object:slippers 1", lambda person, square: square.row == 0),
+        ("above attribute:tall object:slippers 1", lambda person, square: person == "B"),
+    ],
+)
+def test_selector_subject_clue_matches_an_independent_count(clue, subject_holds):
+    """`above X Y 1` with selectors on both sides: somebody X is one row above somebody Y."""
+    from itertools import permutations
+
+    text = SELECTOR_SUBJECT.format(clue=clue)
+    board, clues = load_board(text)
+    robes = {murdoku.Square(0, 0), murdoku.Square(0, 2)}
+    slippers = {murdoku.Square(1, 1), murdoku.Square(2, 0)}
+
+    def holds(placed):
+        return any(
+            first != second
+            and (placed[first] in robes if "object:robe" in clue else subject_holds(first, None))
+            and placed[second] in slippers
+            and placed[second].row == placed[first].row + 1
+            for first in placed
+            for second in placed
+        )
+
+    expected = []
+    for rows in permutations(range(3)):
+        for cols in permutations(range(3)):
+            placed = {
+                person: murdoku.Square(rows[i], cols[i]) for i, person in enumerate(board.people)
+            }
+            if holds(placed):
+                expected.append(placed)
+    found = bruteforce.solutions(text, "murdoku", limit=1000)
+    as_sets = {tuple(sorted(solution.items())) for solution in found}
+    assert as_sets == {tuple(sorted(placed.items())) for placed in expected}
+
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, found)
+
+
+def test_cell_selectors_on_both_sides_compile_to_square_pairs():
+    board, clues = load_board(SELECTOR_SUBJECT.format(clue="above object:robe object:slippers 1"))
+    model = murdoku.compile_puzzle(board, clues)
+    witnesses = [c for c in model.constraints if "witness r" in c.name and c.kind is Kind.COUNT]
+    # Only robe r1c1 / r1c3 above slippers r2c2 fits one row apart.
+    assert sorted(c.name.split("witness ")[1] for c in witnesses) == ["r1c1 r2c2", "r1c3 r2c2"]
+    assert all(c.reified_by is not None and c.allowed_counts == {2} for c in witnesses)
+
+
+def test_selector_subject_rejects_a_role():
+    text = SELECTOR_SUBJECT.format(clue="above role:spy object:slippers 1").replace(
+        "Clues:", "Roles:\nspy: 1\nClues:"
+    )
+    board, clues = load_board(text)
+    with pytest.raises(ValueError, match="role as its subject"):
+        murdoku.compile_puzzle(board, clues)
