@@ -71,7 +71,8 @@ its short output, and decide:
 | worked solution, reveal order | `uv run csp FILE --explain` |
 | a person's live squares while solving | `uv run csp FILE --track-person P` |
 | clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
-| ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` |
+| ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` (several numbers: each stays necessary) |
+| which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
 | pictures, booklet | `--png`, `--docx` |
@@ -127,6 +128,24 @@ Clues should read like a detective's notes, not like arithmetic.
   exactly one pair, and read `--explain` to see which step is hard.
 - Do not name the answer of a "who wears it?" puzzle in a clue: leave `on`
   out of `suggest --kinds` when it would hand out the item's owner.
+- **Decoys must be usable.** A decoy on a square no allowed placement can use
+  changes nothing, and the key clue is then redundant from the start. Take the
+  decoy squares from another legal placement of the people (solve the board
+  without items and clues), then confirm with `occupancy` that every item
+  square is sometimes used. Also check that some placement breaks the key
+  clue; a clue that every item pairing satisfies can never matter.
+- **Easing a garment puzzle:** deciding which of two identical items is worn
+  is case analysis (`what_if`). Name one wearer directly ("Daan heeft een
+  zonnebril op") or pair a person with an item ("Noor staat rechts van de gast
+  met de badjas") to bring the grade down while the key clue stays needed.
+- **A rule can be the key fact.** To keep a board rule necessary (Wouter's
+  partner wears a bathrobe), move it into the clues while searching, run
+  `suggest --needs` on it, then move it back to `Rules:`.
+- **Declutter.** Standable objects no clue mentions never change the
+  solution, and many blocking objects are interchangeable; remove clutter that
+  is not part of the theme, re-checking uniqueness, grade and key clues after
+  each removal. Keep the objects that carry the series' story.
+- Every person except the late-reveal one gets at least one clue.
 - Ground clues in the board's story: the clock on the platform, the bench in
   the coupé, the window of the locomotive.
 
