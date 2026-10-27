@@ -23,7 +23,6 @@ from ..murdoku import (
 )
 from ..puzzlefile import load_board
 
-
 _Checks = tuple[
     dict[str, list[Condition]],
     list[RoleCondition],
