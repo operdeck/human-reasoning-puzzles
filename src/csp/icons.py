@@ -529,6 +529,7 @@ CATALOGUE: dict[str, str] = {
     "bot": "1f9b4", "bone": "1f9b4", "fossil": "1f9b4",
     "schedel": "1f480", "skull": "1f480",
     "souvenirs": "1f6cd", "souvenir": "1f6cd", "shopping_bags": "1f6cd",
+    "ezel": "1f3a8", "easel": "1f3a8", "palet": "1f3a8", "palette": "1f3a8",
 }  # fmt: skip
 
 
