@@ -1,8 +1,10 @@
 # Wie doet het met wie? Het logeerweekend (6x6, six rooms; grade: cover2)
 #
-# Six people in a house with a 2x2 double bed (standable). Wouter has no
-# clues and is named in none: he is placed last and is alone with exactly one
-# other person.
+# Six people in a house with a 2x2 double bed (standable). Three bathrobes,
+# two pairs of slippers and two pairs of glasses lie on the board; exactly two
+# guests wear a bathrobe (Kees, Bas), one slippers (Esther) and one only
+# glasses (Marloes). Wouter has no clues: he is placed last and is alone with
+# exactly one other person.
 #
 # Solution: Wouter r1c2 and Inge r2c1 (both on the tweepersoonsbed in the
 # slaapkamer), Kees r3c6 (logeerkamer), Bas r4c3 and Esther r5c4
@@ -15,7 +17,9 @@ Words:
 tweepersoonsbed: het tweepersoonsbed
 bed: het bed
 tapijt: het zachte tapijt
-bankje: het bankje
+badjas: een badjas
+sloffen: een paar sloffen
+bril: een bril
 
 Regions:
 s: slaapkamer #E6D3F0
@@ -40,12 +44,16 @@ bed: standable r1c6
 tapijt: standable r2c5
 bad: blocking r3c1
 toilet: blocking r4c2
-tapijt: standable r3c4
 plant: blocking r4c6
 tafel: blocking r5c2
-stoel: standable r6c2
 boom: blocking r6c6
-bankje: standable r5c5 r5c6
+badjas: standable r4c3
+badjas: standable r3c6
+badjas: standable r2c3
+sloffen: standable r5c4
+sloffen: standable r3c5
+bril: standable r6c5
+bril: standable r4c4
 
 People:
 Marloes
@@ -55,31 +63,26 @@ Kees
 Inge
 Wouter
 
-Attributes:
-badjas: Bas Kees
-
 Rules:
 alone_with Wouter
+count people on object:badjas = 2 | Precies twee mensen dragen een badjas.
+count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
+count people on object:bril = 1 | Precies één persoon heeft een bril op.
 
 Clues:
-not_attribute Marloes badjas | Marloes heeft geen badjas aan.
-next_to Marloes bankje
-not_on Marloes bankje
-at_least Bas Marloes 4
-not_on Esther tweepersoonsbed
-not_next_to Kees bed
-above Inge Bas
-left_of Inge Kees 5
-above Inge attribute:badjas 1 | Een gast met een badjas staat precies één rij onder Inge.
+above Inge object:badjas 1 | Een gast met een badjas staat precies één rij onder Inge.
+same_region Bas Esther
 in_region Kees logeerkamer
-in_region Bas woonkamer
+not_next_to Inge badjas
+on Marloes bril | Marloes heeft alleen een bril op.
+on Esther sloffen | Esther heeft sloffen aan.
 
 Title:
 Murdoku: Het logeerweekend
 
 Intro:
-Zes mensen logeren een weekend in een huis; twee gasten dragen een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het bed, het zachte tapijt, de stoel en het bankje mag je staan.
+Zes mensen logeren een weekend in een huis. Er liggen drie badjassen, twee paar sloffen en twee brillen; wie op zo'n vakje staat, heeft het aan. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het bed, het zachte tapijt, de badjassen, sloffen en brillen mag je staan; andere voorwerpen blokkeren hun vakje.
 Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
 
 Figures:
