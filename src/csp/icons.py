@@ -64,13 +64,13 @@ DOUBLE_BED = (
     '<path d="M50 36V86" stroke="#879aaa" stroke-width="2"/>'
     '<path d="M14 54H86M14 70H86" stroke="#d7e0e7" stroke-width="2"/>'
 )
-# A folded bathrobe and a pair of house slippers, drawn as simple icons.
+# A white bathrobe and a pair of house slippers, drawn as simple icons.
 BATHROBE = (
     '<path d="M31 12L15 25L22 40L29 36V87H71V36L78 40L85 25L69 12L60 23H40Z"'
-    ' fill="#8bb4c7" stroke="#385a6a" stroke-width="4" stroke-linejoin="round"/>'
-    '<path d="M40 23L50 40L60 23M50 40V86M35 55H65" fill="none" stroke="#385a6a"'
+    ' fill="#ffffff" stroke="#5a6670" stroke-width="4" stroke-linejoin="round"/>'
+    '<path d="M40 23L50 40L60 23M50 40V86M35 55H65" fill="none" stroke="#5a6670"'
     ' stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
-    '<path d="M43 40L50 47L57 40" fill="#e9f1f3" stroke="#385a6a" stroke-width="2"/>'
+    '<path d="M43 40L50 47L57 40" fill="#f2f2f2" stroke="#5a6670" stroke-width="2"/>'
 )
 SLIPPERS = (
     '<g stroke="#594936" stroke-width="4" stroke-linejoin="round">'
@@ -500,6 +500,7 @@ CATALOGUE: dict[str, str] = {
     "kookeiland": "1f373", "fornuis": "1f373", "stove": "1f373", "oven": "1f373",
     "kombuis": "1f372", "galley": "1f372",
     "koffer": "1f9f3", "suitcase": "1f9f3",
+    "bril": "1f453", "glasses": "1f453",
     "kruik": "1f3fa", "amphora": "1f3fa", "vase": "1f3fa",
     "taart": "1f370", "cake": "1f370",
     "koffiebar": "2615", "koffie": "2615", "coffee": "2615", "coffee_bar": "2615",
