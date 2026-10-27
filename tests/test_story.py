@@ -790,9 +790,9 @@ def test_story_explains_a_different_regions_role_step():
 
 def test_quantified_clue_is_only_said_with_its_upshot():
     """A quantified step that only narrows its hidden witnesses says nothing."""
-    story = explain(example("wie-doet-het-met-wie-4.txt").read_text())
+    story = explain(example("wie-doet-het-met-wie-5.txt").read_text())
     sentences = re.split(r"(?<=\.) ", story)
-    bare = [s for s in sentences if "iemand in een badjas" in s and ", dus " not in s]
+    bare = [s for s in sentences if "iemand op een badjas" in s and ", dus " not in s]
     assert not bare, bare
 
 
@@ -889,3 +889,22 @@ def test_next_to_and_not_on_a_single_square_object_keep_existing_wording():
         if paragraph.startswith("Bob ")
     )
     assert bob == "Bob is next to the chair and is not on the chair."
+
+
+def test_rule_wording_and_garment_clue_are_told_in_the_opener():
+    from csp.story import board_notes, global_count_texts
+
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    assert global_count_texts(text) == [
+        "Precies twee mensen dragen een badjas",
+        "Precies één persoon heeft sloffen aan",
+    ]
+    assert board_notes(text)[-2:] == [
+        "Precies twee mensen dragen een badjas.",
+        "Precies één persoon heeft sloffen aan.",
+    ]
+    story = explain(text)
+    # Author wordings are for players; worked solutions keep the generated text.
+    assert "dragen een badjas" not in story and "heeft alleen een badjas aan" not in story
+    assert "Precies twee mensen staan op een badjas" in story
+    assert "Iemand op een badjas is precies één rij boven iemand op een paar sloffen (1)" in story

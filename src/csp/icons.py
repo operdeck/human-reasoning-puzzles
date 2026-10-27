@@ -52,6 +52,34 @@ CROWN = (
     '<circle cx="10" cy="25" r="5.6"/><circle cx="50" cy="12.5" r="5.6"/>'
     '<circle cx="90" cy="25" r="5.6"/></g>'
 )
+# A double bed seen from above, with two pillows and a shared bedspread.
+DOUBLE_BED = (
+    '<rect x="4" y="4" width="92" height="92" rx="7" fill="#9b7254" stroke="#59402f"'
+    ' stroke-width="4"/>'
+    '<rect x="10" y="10" width="80" height="20" rx="4" fill="#f5f0e5" stroke="#76624f"'
+    ' stroke-width="2"/>'
+    '<path d="M50 11V29" stroke="#b3a38e" stroke-width="2"/>'
+    '<rect x="10" y="34" width="80" height="54" rx="5" fill="#b7c8d6" stroke="#64798b"'
+    ' stroke-width="3"/>'
+    '<path d="M50 36V86" stroke="#879aaa" stroke-width="2"/>'
+    '<path d="M14 54H86M14 70H86" stroke="#d7e0e7" stroke-width="2"/>'
+)
+# A white bathrobe and a pair of house slippers, drawn as simple icons.
+BATHROBE = (
+    '<path d="M31 12L15 25L22 40L29 36V87H71V36L78 40L85 25L69 12L60 23H40Z"'
+    ' fill="#ffffff" stroke="#5a6670" stroke-width="4" stroke-linejoin="round"/>'
+    '<path d="M40 23L50 40L60 23M50 40V86M35 55H65" fill="none" stroke="#5a6670"'
+    ' stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
+    '<path d="M43 40L50 47L57 40" fill="#f2f2f2" stroke="#5a6670" stroke-width="2"/>'
+)
+SLIPPERS = (
+    '<g stroke="#594936" stroke-width="4" stroke-linejoin="round">'
+    '<path d="M18 18Q38 11 43 32L47 77Q48 88 38 90L21 88Q12 86 13 76Z" fill="#e6bb65"/>'
+    '<path d="M57 18Q77 11 82 32L86 77Q87 88 77 90L60 88Q51 86 52 76Z" fill="#e6bb65"/>'
+    "</g>"
+    '<path d="M20 53Q31 43 42 53M59 53Q70 43 81 53" fill="none" stroke="#fff4cf"'
+    ' stroke-width="5" stroke-linecap="round"/>'
+)
 TONGUE = "#e86a7e"
 STAIRCASE = (
     '<path d="M12 84h19V66h19V48h19V30h19V12" fill="none" stroke="currentColor"'
@@ -367,6 +395,9 @@ REGISTRY: dict[str, Icon] = {
         Icon("acacia", "\u2663", "acacia", markup=ACACIA),
         Icon("baobab", "\u2660", "baobab", markup=BAOBAB),
         Icon("waterfall", "\u2307", "waterfall", markup=WATERFALL),
+        Icon("double_bed", "\U0001f6cf", "double bed", markup=DOUBLE_BED),
+        Icon("bathrobe", "\U0001f9ba", "bathrobe", markup=BATHROBE),
+        Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
     )
 }
 
@@ -383,6 +414,9 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "acacia": "acacia", "baobab": "baobab",
                 "waterval": "waterfall", "waterfall": "waterfall",
                 "waterput": "well", "well": "well",
+                "tweepersoonsbed": "double_bed", "double_bed": "double_bed",
+                "badjas": "bathrobe", "bathrobe": "bathrobe",
+                "sloffen": "slippers", "slippers": "slippers",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
                 "lijk": "corpse", "corpse": "corpse",
@@ -466,6 +500,8 @@ CATALOGUE: dict[str, str] = {
     "kookeiland": "1f373", "fornuis": "1f373", "stove": "1f373", "oven": "1f373",
     "kombuis": "1f372", "galley": "1f372",
     "koffer": "1f9f3", "suitcase": "1f9f3",
+    "bril": "1f453", "glasses": "1f453",
+    "zonnebril": "1f576", "sunglasses": "1f576",
     "kruik": "1f3fa", "amphora": "1f3fa", "vase": "1f3fa",
     "taart": "1f370", "cake": "1f370",
     "koffiebar": "2615", "koffie": "2615", "coffee": "2615", "coffee_bar": "2615",

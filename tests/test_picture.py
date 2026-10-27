@@ -104,7 +104,59 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.object_icon("staircase").name == "staircase"
     assert icons.object_icon("elevator_car").name == "elevator"
     assert icons.object_icon("wall").name == "wall"
+    assert icons.object_icon("tweepersoonsbed").name == "double_bed"
+    assert icons.object_icon("badjas").name == "bathrobe"
+    assert icons.object_icon("sloffen").name == "slippers"
     assert icons.object_icon("zeppelin") is None
+
+
+def test_double_bed_uses_a_single_top_down_icon_across_its_footprint(monkeypatch):
+    bed = BoardObject(
+        "tweepersoonsbed",
+        "standable",
+        (Square(0, 0), Square(0, 1), Square(1, 0), Square(1, 1)),
+    )
+    board = Board(2, [["a", "a"], ["a", "a"]], {"a": "room"}, [bed], ["A", "B"])
+    calls = []
+
+    def capture(canvas, name, area, cell, **kwargs):
+        calls.append((name, area, kwargs))
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+
+    margin = CELL // 6
+    assert len(calls) == 1
+    name, area, options = calls[0]
+    assert name == "tweepersoonsbed"
+    assert area == (margin, margin, margin + 2 * CELL, margin + 2 * CELL)
+    assert options["stretch"] is True
+    assert icons.object_icon(name).markup == icons.DOUBLE_BED
+
+
+def test_attribute_icons_and_holders_appear_in_the_legend(monkeypatch):
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "room"},
+        [],
+        ["Ada", "Ben"],
+        attributes={"badjas": frozenset({"Ada"}), "sloffen": frozenset({"Ben"})},
+    )
+    calls = []
+    original = drawing._icon
+
+    def capture(canvas, name, area, cell, **kwargs):
+        calls.append(name)
+        original(canvas, name, area, cell, **kwargs)
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    image = drawing.murdoku_picture(board, cell=CELL)
+
+    assert calls == ["badjas", "sloffen"]
+    markup = image.to_svg()
+    assert "Badjas: Ada" in markup
+    assert "Sloffen: Ben" in markup
 
 
 @pytest.mark.parametrize(
@@ -1154,3 +1206,16 @@ def test_a_window_with_a_side_is_drawn_against_that_wall():
     left = picture.murdoku_picture(board("left"), cell=CELL, coordinates=False, labels=False)
     assert near_glass(left.getpixel((margin + 6, margin + 20)))
     assert not near_glass(left.getpixel((margin + 20, margin + 6)))
+
+
+def test_count_legend_uses_the_given_plain_language_texts():
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    board, clues = load_board(text)
+    from csp import murdoku, story
+
+    counts = murdoku.global_count_conditions(board, clues)
+    markup = drawing.murdoku_picture(
+        board, global_counts=counts, count_texts=story.global_count_texts(text), language="nl"
+    ).to_svg()
+    assert "Precies twee mensen dragen een badjas" in markup
+    assert "object:badjas" not in markup

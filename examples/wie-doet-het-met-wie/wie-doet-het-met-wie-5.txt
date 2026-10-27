@@ -1,0 +1,113 @@
+# Wie doet het met wie? Het hotel (7x7, seven areas; grade: cover2)
+#
+# Seven people in a hotel with a 2x2 double bed (standable). Four bathrobes,
+# two pairs of slippers and two pairs of glasses lie on the board; exactly two
+# guests wear a bathrobe (Hanneke, Ruud), one slippers (Jeroen) and one
+# glasses (Karin). Wouter has no clues: he is placed last and is alone with
+# exactly one other person, who wears a bathrobe. Both the bathrobe rule and
+# the slippers/glasses clue are needed for a unique solution.
+#
+# Solution: Wouter r1c2 (on the bed), Sven r2c7 (sauna), Hanneke r3c1
+# (slaapkamer), Mieke r4c5 and Ruud r5c4 (lobby), Jeroen r6c3
+# (speelgoedwinkel), Karin r7c6 (fietsenstalling): Wouter is doing it with
+# Hanneke.
+
+Size: 7
+Language: nl
+
+Words:
+tweepersoonsbed: het tweepersoonsbed
+tapijt: het zachte tapijt
+bad: het bad
+toilet: het toilet
+bankje: het saunabankje
+bosjes: in de bosjes
+badjas: een badjas
+sloffen: een paar sloffen
+bril: een bril
+
+Regions:
+s: slaapkamer #E6D3F0
+b: badkamer #CFE8F0
+z: sauna #F2D0B0
+l: lobby #FADFB5
+w: speelgoedwinkel #F7D3E6
+f: fietsenstalling #DCDEE2
+o: bosjes #B5D3A0
+
+Grid:
+s s s b b z z
+s s s b b z z
+s s s l l l z
+w w l l l l l
+w w w l f f f
+o o w w f f f
+o o o w w f f
+
+Objects:
+tweepersoonsbed: standable r1c1 r1c2 r2c1 r2c2
+tapijt: standable r3c2
+bad: blocking r1c5
+toilet: blocking r2c4
+bankje: standable r2c6 r2c7
+emmer: blocking r1c7
+bank: standable r4c5 r4c6
+koffer: blocking r4c7
+knuffel: blocking r5c1
+fiets: blocking r7c7
+struik: blocking r6c1
+badjas: standable r3c1
+badjas: standable r5c4
+badjas: standable r3c5
+badjas: standable r6c6
+sloffen: standable r6c3
+sloffen: standable r7c4
+bril: standable r7c6
+bril: standable r5c7
+
+People:
+Ruud
+Mieke
+Sven
+Karin
+Hanneke
+Jeroen
+Wouter
+
+Rules:
+alone_with Wouter object:badjas | Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
+count people on object:badjas = 2 | Precies twee mensen dragen een badjas.
+count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
+count people on object:bril = 1 | Precies één persoon heeft een bril op.
+
+Clues:
+above object:sloffen object:bril 1 | De gast met sloffen staat precies één rij boven de gast met de bril.
+next_to Hanneke tapijt
+next_to Mieke bank
+in_region Jeroen speelgoedwinkel
+in_region Karin fietsenstalling
+not_next_to Ruud bankje
+not_next_to Sven koffer
+
+Title:
+Murdoku: Het hotel
+
+Intro:
+Zeven gasten logeren in een hotel. Overal liggen badjassen, sloffen en brillen; wie op zo'n vakje staat, heeft het aan. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het zachte tapijt, de bank, het saunabankje en de kledingstukken mag je staan.
+Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
+
+Figures:
+Ruud: ; icon=U+1F468
+Mieke: ; icon=U+1F469
+Sven: ; icon=U+1F9D4
+Karin: ; icon=U+1F475
+Hanneke: ; icon=U+1F471
+Jeroen: ; icon=U+1F474
+Wouter: ; icon=U+1F9D1
+
+Question:
+Met wie doet Wouter het?
+
+Reveal:
+Wouter doet het met Hanneke: zij is de enige die met hem in de slaapkamer is, en ze draagt een badjas.
