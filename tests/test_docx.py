@@ -444,14 +444,17 @@ def test_pdf_without_an_office_program_explains_what_to_install(tmp_path, monkey
         pdf_convert.docx_to_pdf(tmp_path / "x.docx", tmp_path / "x.pdf")
 
 
-def test_docx_without_puzzle_files_takes_every_example_murdoku(tmp_path, monkeypatch, capsys):
+def test_docx_without_puzzle_files_takes_the_example_murdoku(tmp_path, monkeypatch, capsys):
+    # The PDF test above builds the booklet of every example; two puzzles are
+    # enough to check the default --docx name and count.
     from csp import cli
 
+    files = [file.resolve() for file in cli._murdoku_examples()[:2]]
+    monkeypatch.setattr(cli, "_murdoku_examples", lambda: files)
     monkeypatch.chdir(tmp_path)
-    files = cli._murdoku_examples()
     assert main(["--docx"]) == 0
     assert (tmp_path / "booklet.docx").exists()
-    assert f"({len(files)} puzzles" in capsys.readouterr().out
+    assert "(2 puzzles" in capsys.readouterr().out
 
 
 def test_an_object_with_several_pieces_is_named_indefinitely_despite_its_words():
