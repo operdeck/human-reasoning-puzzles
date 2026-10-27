@@ -501,6 +501,7 @@ CATALOGUE: dict[str, str] = {
     "kombuis": "1f372", "galley": "1f372",
     "koffer": "1f9f3", "suitcase": "1f9f3",
     "bril": "1f453", "glasses": "1f453",
+    "zonnebril": "1f576", "sunglasses": "1f576",
     "kruik": "1f3fa", "amphora": "1f3fa", "vase": "1f3fa",
     "taart": "1f370", "cake": "1f370",
     "koffiebar": "2615", "koffie": "2615", "coffee": "2615", "coffee_bar": "2615",
