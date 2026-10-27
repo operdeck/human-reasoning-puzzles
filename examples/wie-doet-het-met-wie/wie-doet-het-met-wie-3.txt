@@ -1,97 +1,80 @@
-# Wie doet het met wie? Het logeerweekend (6x6, six rooms; grade: cover2)
+# Wie doet het met wie? Op het strand (5x5, six areas)
 #
-# Six people in a house with a 2x2 double bed (standable). Wouter has no
-# clues and is named in none: he is placed last and is alone with exactly one
-# other person.
+# Five people at the beach, one per row and column. Wouter has no clues and
+# is named in none: he is placed last and is alone with exactly one other
+# person, the one he is doing it with.
 #
-# Solution: Wouter r1c2 and Inge r2c1 (both on the tweepersoonsbed in the
-# slaapkamer), Kees r3c6 (logeerkamer), Bas r4c3 and Esther r5c4
-# (woonkamer), Marloes r6c5 (tuin): Wouter is doing it with Inge.
+# Solution: Femke r1c4 (zee), Daan r2c3 (strand), Pieter r3c5 (strandtent),
+# Sanne r4c1 (bosjes), Wouter r5c2 (bosjes): Wouter is doing it with Sanne.
 
-Size: 6
+Size: 5
 Language: nl
 
 Words:
-tweepersoonsbed: het tweepersoonsbed
-bed: het bed
-tapijt: het zachte tapijt
-bankje: het bankje
+zee: in de zee
+strand: op het strand
+duinen: in de duinen
+bosjes: in de bosjes
+helmgras: het helmgras
 
 Regions:
-s: slaapkamer #E6D3F0
-l: logeerkamer #F4CBC3
-b: badkamer #CFE8F0
-w: woonkamer #FADFB5
-k: keuken #E8DCC8
-t: tuin #CBE6B9
+z: zee #BFDDF2
+s: strand #FAEDB8
+t: strandtent #F4D7B5
+d: duinen #E3D9A8
+b: bosjes #B5D3A0
+f: fietsenstalling #DCDEE2
 
 Grid:
-s s s l l l
-s s s l l l
-b b w w w l
-b b w w w w
-k k w w t t
-k k k t t t
+z z z z z
+s s s t t
+s s d t t
+b b d d f
+b b d f f
 
 Objects:
-tweepersoonsbed: standable r1c1 r1c2 r2c1 r2c2
-kast: blocking r1c3
-bed: standable r1c6
-tapijt: standable r2c5
-bad: blocking r3c1
-toilet: blocking r4c2
-tapijt: standable r3c4
-plant: blocking r4c6
-tafel: blocking r5c2
-stoel: standable r6c2
-boom: blocking r6c6
-bankje: standable r5c5 r5c6
+boot: blocking r1c2
+parasol: blocking r2c2
+tafel: blocking r2c5
+stoel: standable r3c4
+helmgras: standable r4c3
+struik: blocking r5c1
+fiets: blocking r5c5
 
 People:
-Marloes
-Bas
-Esther
-Kees
-Inge
+Sanne
+Pieter
+Femke
+Daan
 Wouter
-
-Attributes:
-badjas: Bas Kees
 
 Rules:
 alone_with Wouter
 
 Clues:
-not_attribute Marloes badjas | Marloes heeft geen badjas aan.
-next_to Marloes bankje
-not_on Marloes bankje
-at_least Bas Marloes 4
-not_on Esther tweepersoonsbed
-not_next_to Kees bed
-above Inge Bas
-left_of Inge Kees 5
-above Inge attribute:badjas 1 | Een gast met een badjas staat precies één rij onder Inge.
-in_region Kees logeerkamer
-in_region Bas woonkamer
+left_of Sanne Daan 2
+outside Sanne strandtent zee
+next_to Pieter tafel
+outside Femke bosjes strandtent
+next_to Daan parasol
 
 Title:
-Murdoku: Het logeerweekend
+Murdoku: Op het strand
 
 Intro:
-Zes mensen logeren een weekend in een huis; twee gasten dragen een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het bed, het zachte tapijt, de stoel en het bankje mag je staan.
-Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
+Een warme dag aan zee. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Voorwerpen blokkeren hun vakje, behalve een stoel of het helmgras: daar kun je op staan.
+Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet.
 
 Figures:
-Marloes: ; icon=U+1F469
-Bas: ; icon=U+1F468
-Esther: ; icon=U+1F475
-Kees: ; icon=U+1F474
-Inge: ; icon=U+1F471
+Sanne: ; icon=U+1F469
+Pieter: ; icon=U+1F468
+Femke: ; icon=U+1F471
+Daan: ; icon=U+1F9D4
 Wouter: ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?
 
 Reveal:
-Wouter doet het met Inge: samen liggen ze op het tweepersoonsbed in de slaapkamer.
+Wouter doet het met Sanne: zij is de enige die met hem in de bosjes is.

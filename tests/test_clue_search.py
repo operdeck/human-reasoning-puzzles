@@ -60,3 +60,19 @@ def test_parse_solution_reads_one_based_squares():
     placement = clue_search.parse_solution("Ada=r1c2, Ben=r3c4")
     assert (placement["Ada"].row, placement["Ada"].col) == (0, 1)
     assert (placement["Ben"].row, placement["Ben"].col) == (2, 3)
+
+
+def test_suggest_keeps_needed_clues_necessary():
+    opener = example("wie-doet-het-met-wie-1.txt").read_text()
+    lines = clue_search.clue_lines(opener)
+    assert lines[0].startswith("above object:badjas object:sloffen 1")
+    start = clue_search.with_clues(opener, lines[:2])
+    placement = clue_search.parse_solution("Wouter=r1c1 Marloes=r2c2 Bas=r3c4 Cato=r4c3 Daan=r5c5")
+    kinds = [kind for kind in clue_search.SUGGEST_KINDS if kind != "on"]
+    added = clue_search.suggest(
+        start, placement, kinds, sample=300, timeout=30, exclude=["Wouter"], needs=[1]
+    )
+    final = clue_search.with_clues(start, [*lines[:2], *added])
+    assert len(bruteforce.solutions(final)) == 1
+    without = clue_search.with_clues(start, [lines[1], *added])
+    assert len(bruteforce.solutions(without)) > 1
