@@ -1,4 +1,4 @@
-# Small generated binary puzzle with unique rows and columns.
+# Hard Tango puzzle with equality and difference signs.
 Family: tango
 Size: 4
 Givens:
@@ -6,3 +6,9 @@ Givens:
 . 1 0 .
 . . . .
 1 1 . .
+Equal:
+r1c3 r1c4
+r4c1 r4c2
+Different:
+r1c3 r2c3
+r2c4 r3c4

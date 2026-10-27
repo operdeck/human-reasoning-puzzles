@@ -1,12 +1,12 @@
-# Larger Light Up board with individually illuminated floor cells.
+# Large Akari board with a fresh wall layout.
 Family: akari
 Size: 8
 Grid:
-. W . W . W . W
-W W W W W W W W
-. W . W . W . W
-W W W W W W W W
-. W . W . W . W
-W W W W W W W W
-. W . W . W . W
-W W W W W W W W
+. 0 . 0 0 W . 1
+. . . . . . . .
+. . 2 . . 0 0 .
+. 1 . . . . . .
+. 0 . . . 1 . .
+. 0 . . . . 1 .
+. . . 2 . . . 0
+1 . . . . . . .
