@@ -27,10 +27,20 @@ def test_rating_requires_a_deductive_unique_nontrivial_puzzle():
 
 
 def test_suguru_small_board_is_not_misrated_by_given_density():
-    easy = rate(example("suguru_4x4.txt").read_text())
-    trivial = rate(example("suguru_8x8.txt").read_text())
-    assert easy.tier == "easy"
-    assert trivial.tier == "trivial"
+    assert rate(example("suguru_4x4.txt").read_text()).tier == "easy"
+
+
+def test_mostly_prefilled_board_is_trivial():
+    import random
+
+    from csp import fresh
+
+    rows = [list(map(str, row)) for row in fresh.binairo_solution(8, random.Random(0))]
+    rows[0][3] = rows[7][4] = "."
+    text = "Family: binairo\nSize: 8\nGivens:\n" + "\n".join(map(" ".join, rows)) + "\n"
+    result = rate(text)
+    assert result.initial_open == 2
+    assert result.tier == "trivial"
 
 
 @pytest.mark.parametrize(
@@ -44,6 +54,8 @@ def test_suguru_small_board_is_not_misrated_by_given_density():
         ("tango_4x4_hard.txt", "tango", "hard"),
         ("tango_4x4_medium.txt", "tango", "medium"),
         ("tango_8x8_easy.txt", "tango", "easy"),
+        ("tango_8x8_medium.txt", "tango", "medium"),
+        ("queens_8x8.txt", "queens", "medium"),
     ],
 )
 def test_added_tier_examples_match_repository_ratings(filename, family, tier):
@@ -98,3 +110,28 @@ def test_generate_refuses_murdoku(tmp_path, capsys):
     )
     assert "Murdoku" in capsys.readouterr().err
     assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    ("family", "size", "open_share"),
+    [("binairo", 6, 0.5), ("tango", 6, 0.5), ("queens", 5, 0.5), ("suguru", 5, 0.5)],
+)
+def test_fresh_boards_have_their_own_unique_solution(family, size, open_share):
+    import random
+
+    from csp import fresh
+
+    text = fresh.fresh(family, size, random.Random(3), open_share)
+    assert text is not None
+    result = rate(text)
+    assert result.family == family
+    assert result.solutions == "unique"
+    assert result.tier != "trivial"
+
+
+def test_fresh_command_writes_a_rated_board(tmp_path, capsys):
+    out = tmp_path / "binairo.txt"
+    args = ["fresh", "binairo", "--size", "6", "--tier", "easy", "--open-share", "0.4"]
+    assert main([*args, "--seed", "1", "--attempts", "20", "--output", str(out)]) == 0
+    assert rate(out.read_text()).tier == "easy"
+    assert "wrote" in capsys.readouterr().out

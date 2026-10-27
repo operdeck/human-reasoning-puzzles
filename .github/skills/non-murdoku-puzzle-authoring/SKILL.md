@@ -22,15 +22,23 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 2. Use an existing original example as a seed, or create an original seed in
    the family format. Never transcribe published puzzles unless the user has
    permission and explicitly asks for transcription.
-3. Generate a candidate with a fixed seed so it can be reproduced:
+3. Generate a candidate with a fixed seed so it can be reproduced. For a new
+   example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
+   layout (Binairo, Tango, Queens, DogDoku, Suguru), so the example does not
+   share a solution with the rest of the gallery:
 
    ```bash
-   uv run puzzle-lab generate examples/SEED.txt \
-     --tier medium --seed 42 --attempts 100 --output /tmp/candidate.txt
+   uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
+     --seed 26 --output /tmp/candidate.txt --comment "Tango 8x8: medium, ..."
    ```
 
-   Use `--as-family` only for compatible aliases. Do not use it to disguise a
-   puzzle from another rule family.
+   `--open-share` sets the share of empty Binairo/Tango cells; more open
+   cells usually means harder. Queens and Suguru drop givens while the
+   solution stays unique. Large Suguru boards can take many minutes.
+   `puzzle-lab generate` only re-masks or mutates a seed and keeps its
+   solution, so use it for variations, never to fill a gallery tier with
+   copies of one board. Use `--as-family` only for compatible aliases. Do not
+   use it to disguise a puzzle from another rule family.
 4. Rate before adding or describing a candidate:
 
    ```bash
@@ -62,7 +70,11 @@ that rule, with limited family-aware calibration for small relational and
 count-only puzzles. These are repository-specific estimates, not universal
 human difficulty ratings. A tier is not enough by itself: inspect the actual
 deductions and puzzle presentation, confirm that the puzzle is not simply
-prefilled, and report any limitation of the solver's grading ladder.
+prefilled, and report any limitation of the solver's grading ladder. A board
+with under a quarter of its cells open (`PREFILLED_OPEN_SHARE`) rates
+`trivial`, whatever rule its last cells need. `tests/test_example_quality.py`
+rejects trivial or non-unique gallery examples. Known exceptions there must
+link to an open issue.
 
 For Murdoku, stop here and use `.github/skills/murdoku-puzzle-generator/` and
 its own workflow. Do not change Murdoku examples, skills, tools, or behavior

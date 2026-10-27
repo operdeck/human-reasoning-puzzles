@@ -1,29 +1,21 @@
-# An 8x8 Queens-style board with one final region/row/column placement.
+# Queens 8x8: medium, irregular regions and no givens.
 Family: queens
 Size: 8
 Regions:
-a: first_column
-b: second_column
-c: third_column
-d: fourth_column
-e: fifth_column
-f: sixth_column
-g: seventh_column
-h: eighth_column
+a: amber
+b: blue
+c: coral
+d: green
+e: violet
+f: silver
+g: gold
+h: teal
 Grid:
-a b c d e f g h
-a b c d e f g h
-a b c d e f g h
-a b c d e f g h
-a b c d e f g h
-a b c d e f g h
-a b c d e f g h
-a b c d e f g h
-Givens:
-b r1c2
-d r2c4
-f r3c6
-h r4c8
-a r5c1
-c r6c3
-e r7c5
+a b b b c c c c
+b b b f c c c c
+b d f f c c c c
+b d f f f f c e
+f f f f c c c e
+f f f f g g g g
+f f f f h g g g
+f f f f h g g g
