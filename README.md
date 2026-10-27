@@ -19,7 +19,7 @@ uv run csp examples/sudoku_4x4.txt
 uv run csp examples/demo/murdoku_first_case.txt --explain
 uv run csp examples/queens_4x4.txt --show-model
 uv run csp examples/logicgrid_3x3.txt --brute-force
-uv run csp examples/akari_2x2.txt --svg akari.svg
+uv run csp examples/akari_6x6.txt --svg akari.svg
 uv run puzzle-lab rate examples/queens_4x4_easy.txt
 uv run puzzle-lab search examples --family tango --tier hard
 ```
@@ -77,7 +77,7 @@ The solver handles very different kinds of logic. Here are a few; [play the full
 <tr>
 <td><strong><a href="examples/logicgrid_3x3.txt">Zebra logic grid</a></strong><br>Use clues to match items across categories.<br><img src="docs/images/logicgrid_3x3-solution.png" width="150" alt="Solved logic grid"></td>
 <td><strong><a href="examples/tents_4x4.txt">Tents and Trees</a></strong><br>Pair each tree with a tent, while satisfying line counts.<br><img src="docs/images/tents_4x4-solution.png" width="150" alt="Solved Tents and Trees puzzle"></td>
-<td><strong><a href="examples/akari_2x2.txt">Light Up / Akari</a></strong><br>Light every open cell without bulbs seeing each other.<br><img src="docs/images/akari_2x2-solution.png" width="150" alt="Solved Akari puzzle"></td>
+<td><strong><a href="examples/akari_6x6.txt">Light Up / Akari</a></strong><br>Light every open cell without bulbs seeing each other.<br><img src="docs/images/akari_6x6-solution.png" width="150" alt="Solved Akari puzzle"></td>
 </tr>
 </table>
 

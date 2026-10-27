@@ -16,7 +16,7 @@ from csp.puzzlefile import detect
 type Cell = tuple[int, int]
 type Pair = tuple[Cell, Cell]
 
-FAMILIES = ("binairo", "tango", "queens", "dogdoku", "suguru", "minesweeper")
+FAMILIES = ("binairo", "tango", "queens", "dogdoku", "suguru", "minesweeper", "akari")
 REGION_NAMES = [
     "amber",
     "blue",
@@ -332,14 +332,70 @@ def fresh_minesweeper(
     return "\n".join(lines) + "\n"
 
 
+def fresh_akari(size: int, rng: random.Random, tier: str, comment: str = "") -> str | None:
+    """Build an Akari board with a new wall layout and clues derived from its solution."""
+    if size < 4:
+        raise ValueError("fresh Akari boards need to be at least 4x4")
+    wall_share = 0.32 if size <= 6 else 0.25
+    clue_share = {"easy": 0.9, "medium": 0.75, "hard": 0.75}[tier]
+    for _ in range(10):
+        board = [
+            ["W" if rng.random() < wall_share else "." for _ in range(size)] for _ in range(size)
+        ]
+        if not any(cell == "W" for row in board for cell in row):
+            continue
+        blank = f"Family: akari\nSize: {size}\nGrid:\n" + "\n".join(" ".join(row) for row in board)
+        solutions = bruteforce.solutions(blank, "akari", limit=1)
+        if not solutions:
+            continue
+        bulbs = {
+            (row, col)
+            for row in range(size)
+            for col in range(size)
+            if solutions[0].get(f"r{row + 1}c{col + 1}", False)
+        }
+        numbered = 0
+        for row in range(size):
+            for col in range(size):
+                if board[row][col] != "W":
+                    continue
+                count = sum(
+                    (near_row, near_col) in bulbs
+                    for near_row, near_col in (
+                        (row - 1, col),
+                        (row + 1, col),
+                        (row, col - 1),
+                        (row, col + 1),
+                    )
+                    if 0 <= near_row < size and 0 <= near_col < size
+                )
+                if rng.random() < clue_share:
+                    board[row][col] = str(count)
+                    numbered += 1
+        if numbered == 0:
+            return None
+        lines = [f"# {comment}"] if comment else []
+        lines += ["Family: akari", f"Size: {size}", "Grid:"]
+        lines += [" ".join(row) for row in board]
+        return "\n".join(lines) + "\n"
+    return None
+
+
 def fresh(
-    family: str, size: int, rng: random.Random, open_share: float = 0.5, comment: str = ""
+    family: str,
+    size: int,
+    rng: random.Random,
+    open_share: float = 0.5,
+    comment: str = "",
+    tier: str = "easy",
 ) -> str | None:
     """A new puzzle of `family`; `open_share` applies to Binairo, Tango and Minesweeper."""
     if family in {"binairo", "tango"}:
         return fresh_binairo(size, rng, open_share, family, comment=comment)
     if family == "minesweeper":
         return fresh_minesweeper(size, rng, open_share, comment)
+    if family == "akari":
+        return fresh_akari(size, rng, tier, comment)
     if family in {"queens", "dogdoku"}:
         return fresh_queens(size, rng, family, comment=comment)
     if family == "suguru":

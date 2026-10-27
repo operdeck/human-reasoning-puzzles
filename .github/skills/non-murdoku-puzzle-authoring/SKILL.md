@@ -24,18 +24,22 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    permission and explicitly asks for transcription.
 3. Generate a candidate with a fixed seed so it can be reproduced. For a new
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
-   layout (Binairo, Tango, Queens, DogDoku, Suguru, Minesweeper), so the
+   layout (Binairo, Tango, Queens, DogDoku, Suguru, Minesweeper, Akari), so the
    example does not share a solution with the rest of the gallery:
 
    ```bash
    uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
      --seed 26 --output /tmp/candidate.txt --comment "Tango 8x8: medium, ..."
+   uv run puzzle-lab fresh akari --size 6 --tier medium \
+     --seed 122 --output /tmp/akari.txt --comment "Akari 6x6: medium, ..."
    ```
 
    `--open-share` sets the share of empty Binairo/Tango cells; more open
    cells usually means harder. For Minesweeper, it sets the share of unknown
    cells, including mines, on the fresh board. Queens and Suguru drop givens
-   while the solution stays unique. Large Suguru boards can take many minutes.
+   while the solution stays unique. Akari builds a fresh wall layout and
+   derives numbered-wall clues from a valid bulb placement. Large Suguru boards
+   can take many minutes.
    `puzzle-lab generate` only re-masks or mutates a seed and keeps its
    solution, so use it for variations, never to fill a gallery tier with
    copies of one board. Use `--as-family` only for compatible aliases. Do not

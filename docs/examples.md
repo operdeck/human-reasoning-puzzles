@@ -9,7 +9,7 @@ uv run csp examples/sudoku_4x4.txt
 uv run csp examples/queens_4x4.txt --show-model
 uv run csp examples/demo/murdoku_first_case.txt --explain
 uv run csp examples/logicgrid_3x3.txt --brute-force
-uv run csp examples/akari_2x2.txt --png
+uv run csp examples/akari_6x6.txt --png
 ```
 
 For each family example below, add `--png FILE.png` to write the puzzle image and a solved image named `FILE-solution.png`.
@@ -42,7 +42,7 @@ These previews are generated from the example files. The root README keeps a com
 <tr id="tango"><td>Tango</td><td>Binairo rules plus = and × signs between neighbouring cells (equal or different).</td><td><a href="../examples/tango_4x4.txt">4 × 4</a> / <a href="../examples/tango_8x8_medium.txt">8 × 8</a></td><td><img src="images/tango_4x4.png" width="100" alt="Tango puzzle"></td><td><img src="images/tango_4x4-solution.png" width="100" alt="Tango solution"></td></tr>
 <tr id="tents"><td>Tents and Trees</td><td>One tent beside each tree (not diagonally); tents never touch; numbers count tents per line.</td><td><a href="../examples/tents_4x4.txt">4 × 4</a> / <a href="../examples/tents_8x8.txt">8 × 8</a></td><td><img src="images/tents_4x4.png" width="100" alt="Tents and Trees puzzle"></td><td><img src="images/tents_4x4-solution.png" width="100" alt="Tents and Trees solution"></td></tr>
 <tr id="minesweeper"><td>Minesweeper-style</td><td>Mark the mines: each number counts the mines among its eight neighbours.</td><td><a href="../examples/minesweeper_5x5.txt">5 × 5</a> / <a href="../examples/minesweeper_8x8.txt">8 × 8</a></td><td><img src="images/minesweeper_5x5.png" width="100" alt="Minesweeper puzzle"></td><td><img src="images/minesweeper_5x5-solution.png" width="100" alt="Minesweeper solution"></td></tr>
-<tr id="akari"><td>Light Up / Akari</td><td>Light every white cell; bulbs may not see each other; numbers count adjacent bulbs.</td><td><a href="../examples/akari_2x2.txt">2 × 2</a> / <a href="../examples/akari_8x8.txt">8 × 8</a></td><td><img src="images/akari_2x2.png" width="100" alt="Akari puzzle"></td><td><img src="images/akari_2x2-solution.png" width="100" alt="Akari solution"></td></tr>
+<tr id="akari"><td>Light Up / Akari</td><td>Light every white cell; bulbs may not see each other; numbers count adjacent bulbs.</td><td><a href="../examples/akari_6x6.txt">6 × 6</a> / <a href="../examples/akari_8x8.txt">8 × 8</a></td><td><img src="images/akari_6x6.png" width="100" alt="Akari puzzle"></td><td><img src="images/akari_6x6-solution.png" width="100" alt="Akari solution"></td></tr>
 <tr id="kakurasu"><td>Kakurasu</td><td>Shade cells so each line adds up to its target; a shaded cell counts its position.</td><td><a href="../examples/kakurasu_4x4.txt">4 × 4</a> / <a href="../examples/kakurasu_8x8.txt">8 × 8</a></td><td><img src="images/kakurasu_4x4.png" width="100" alt="Kakurasu puzzle"></td><td><img src="images/kakurasu_4x4-solution.png" width="100" alt="Kakurasu solution"></td></tr>
 <tr id="battleships"><td>Battleships, counts only</td><td>Mark ship cells to match the row and column counts (no fleet or shapes).</td><td><a href="../examples/battleships_counts_4x4.txt">4 × 4</a> / <a href="../examples/battleships_counts_8x8.txt">8 × 8</a></td><td><img src="images/battleships_counts_4x4.png" width="100" alt="Counts-only Battleships puzzle"></td><td><img src="images/battleships_counts_4x4-solution.png" width="100" alt="Counts-only Battleships solution"></td></tr>
 </table>
@@ -72,12 +72,12 @@ distinct puzzle types.
 | Tango | [`tango_8x8_easy.txt`](../examples/tango_8x8_easy.txt) (`relations`) | [`tango_8x8_medium.txt`](../examples/tango_8x8_medium.txt) (`relations`) | [`tango_4x4_hard.txt`](../examples/tango_4x4_hard.txt) (`what_if`) |
 | Tents and Trees | [`tents_8x8.txt`](../examples/tents_8x8.txt) (`single`) | [`tents_8x8_medium.txt`](../examples/tents_8x8_medium.txt) (`cover2`) | [`tents_4x4.txt`](../examples/tents_4x4.txt) (`what_if`) |
 | Minesweeper-style | — | [`minesweeper_8x8_medium.txt`](../examples/minesweeper_8x8_medium.txt) (`subsumption`) | [`minesweeper_8x8_hard.txt`](../examples/minesweeper_8x8_hard.txt) (`cover3`) |
-| Light Up / Akari | [`akari_8x8.txt`](../examples/akari_8x8.txt) (`single`) | — | — |
+| Light Up / Akari | — | [`akari_6x6.txt`](../examples/akari_6x6.txt) (`subsumption`) | [`akari_8x8.txt`](../examples/akari_8x8.txt) (`chains`) |
 | Kakurasu | [`kakurasu_4x4.txt`](../examples/kakurasu_4x4.txt) (`relations`) | [`kakurasu_8x8.txt`](../examples/kakurasu_8x8.txt) (`relations`) | — |
 | Battleships, counts only | [`battleships_counts_4x4.txt`](../examples/battleships_counts_4x4.txt) (`count`) | [`battleships_counts_8x8.txt`](../examples/battleships_counts_8x8.txt) (`count`) | — |
 
-The most visible gaps are Tectonic/Suguru, Akari, counts-only Battleships,
-Kakurasu, and logic grids. In particular, the existing 8 × 8 Suguru file is
+The most visible gaps are Tectonic/Suguru, counts-only Battleships, Kakurasu,
+and logic grids. In particular, the existing 8 × 8 Suguru file is
 trivial, and is intentionally excluded. These gaps require stronger
 family-specific deduction or generation support before a harder human-like
 example can be claimed.
@@ -100,7 +100,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Tango | `tango_4x4.txt` | `tango_8x8_medium.txt` |
 | Tents and Trees | `tents_4x4.txt` | `tents_8x8.txt` |
 | Minesweeper-style | `minesweeper_5x5.txt` | `minesweeper_8x8.txt` |
-| Light Up / Akari | `akari_2x2.txt` | `akari_8x8.txt` |
+| Light Up / Akari | `akari_6x6.txt` | `akari_8x8.txt` |
 | Kakurasu | `kakurasu_4x4.txt` | `kakurasu_8x8.txt` |
 | Battleships, counts only | `battleships_counts_4x4.txt` | `battleships_counts_8x8.txt` |
 
