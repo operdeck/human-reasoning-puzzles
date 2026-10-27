@@ -1203,7 +1203,7 @@ LEGEND_WORDS = {
 
 class _Legend:
     """Under the board, two per row: region swatches (unless the board names its regions),
-    then doors, windows and point objects; then marks, roles, area tags and counts."""
+    then doors, windows and point objects; then marks, roles, attributes, area tags and counts."""
 
     def __init__(
         self,
@@ -1229,6 +1229,7 @@ class _Legend:
         self.item_rows = (len(self.item_names) + 1) // 2
         self.mark_names = sorted(board.mark_names)
         self.role_names = sorted(board.role_names) if show_roles else []
+        self.attribute_names = sorted(board.attributes)
         self.tag_lines = [
             f"{tag.replace('_', ' ').capitalize()}: "
             + ", ".join(
@@ -1258,6 +1259,7 @@ class _Legend:
                 + self.item_rows
                 + len(self.mark_names)
                 + len(self.role_names)
+                + len(self.attribute_names)
                 + len(self.tag_lines)
             )
             * self.line
@@ -1342,6 +1344,14 @@ class _Legend:
             _centred_text(canvas, name[:2].upper(), area, max(8, self.swatch // 2), MARK_INK)
             label(top, self._role_line(name), max(8, self.swatch // 2))
         tag_offset = role_offset + len(self.role_names)
+        attribute_offset = tag_offset
+        for i, name in enumerate(self.attribute_names):
+            top = y + (attribute_offset + i) * self.line
+            area = (x, top, x + self.swatch, top + self.swatch)
+            _icon(canvas, name, area, self.cell, scale=0.8)
+            holders = ", ".join(sorted(self.board.attributes[name]))
+            label(top, f"{name.replace('_', ' ').capitalize()}: {holders}")
+        tag_offset = attribute_offset + len(self.attribute_names)
         for i, line in enumerate(self.tag_lines):
             top = y + (tag_offset + i) * self.line
             canvas.text((x, top + self.swatch / 2), line, INK, size, anchor="lm")
