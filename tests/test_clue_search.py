@@ -86,7 +86,7 @@ def test_occupancy_shows_unused_decoys():
     assert 0 < seen < 2000
     used = {(name, square): times for name, square, times in rows}
     # Without clues the sunglasses on r2c3 and on r4c4 are both still possible.
-    assert used["bril", "r2c3"] > 0 and used["bril", "r4c4"] > 0
+    assert used["zonnebril", "r2c3"] > 0 and used["zonnebril", "r4c4"] > 0
 
 
 def test_suggest_keeps_each_needed_clue_necessary():
