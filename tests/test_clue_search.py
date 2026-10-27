@@ -2,6 +2,8 @@
 
 import re
 
+import pytest
+
 from csp import bruteforce, clue_search
 from csp.puzzlefile import load_board
 from tests.examples import example
@@ -152,3 +154,17 @@ def test_accepts_checks_role_rules():
     full = clue_search.with_clues(museum, [])
     assert any(not bruteforce.murdoku.accepts(full, placement) for placement in found)
     assert all(bruteforce.murdoku.accepts(loose, placement) for placement in found)
+
+
+def test_candidate_clues_offer_lines_only_on_request():
+    museum = example("halloween-museum-1.txt").read_text()
+    board, _ = load_board(museum)
+    placement = clue_search.parse_solution(
+        "Alba=r1c5 Bernardo=r2c1 Carmen=r3c3 Diego=r4c6 Fernando=r5c2 Elena=r6c4"
+    )
+    assert not any("row" in clue for clue in clue_search.candidate_clues(board, placement))
+    lines = clue_search.candidate_clues(board, placement, ["not_in_row", "in_column"])
+    assert "not_in_row Alba 2" in lines and "in_column Alba 5" in lines
+    assert "not_in_row Alba 1" not in lines
+    with pytest.raises(ValueError, match="unknown clue kinds"):
+        clue_search.candidate_clues(board, placement, ["nearby"])

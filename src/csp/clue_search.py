@@ -52,6 +52,8 @@ SUGGEST_KINDS = (
     "left_of",
     "above",
 )
+# Also available on request (`--kinds`): exact lines are fair only sparingly.
+EXTRA_KINDS = ("not_on", "in_row", "not_in_row", "in_column", "not_in_column")
 
 _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
@@ -221,6 +223,7 @@ def candidate_clues(
     standable = sorted({o.name for o in board.objects if o.kind == "standable"})
     edges = sorted(board.edge_item_names)
     pairs = [(a, b) for a in people for b in people if a != b]
+    lines = range(1, board.size + 1)
     options: dict[str, list[str]] = {
         "in_region": [f"in_region {p} {r}" for p in people for r in regions],
         "outside": [f"outside {p} {r}" for p in people for r in regions],
@@ -232,7 +235,14 @@ def candidate_clues(
         "different_region": [f"different_region {a} {b}" for a, b in pairs if a < b],
         "left_of": [f"left_of {a} {b}" for a, b in pairs],
         "above": [f"above {a} {b}" for a, b in pairs],
+        "not_on": [f"not_on {p} {t}" for p in people for t in standable],
+        "in_row": [f"in_row {p} {n}" for p in people for n in lines],
+        "not_in_row": [f"not_in_row {p} {n}" for p in people for n in lines],
+        "in_column": [f"in_column {p} {n}" for p in people for n in lines],
+        "not_in_column": [f"not_in_column {p} {n}" for p in people for n in lines],
     }
+    if unknown := [kind for kind in kinds if kind not in options]:
+        raise ValueError(f"unknown clue kinds {unknown}; choose from {sorted(options)}")
     found = (clue for kind in kinds for clue in options.get(kind, []))
     return [clue for clue in found if _true_for(board, clue, placement)]
 
@@ -352,7 +362,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--max-grade", choices=GRADES, help="thin: hardest grade allowed")
     parser.add_argument("--solution", help='suggest: intended placement, "Ada=r1c2 Ben=r3c4"')
     parser.add_argument(
-        "--kinds", nargs="*", default=list(SUGGEST_KINDS), help="suggest: clue kinds to try"
+        "--kinds",
+        nargs="*",
+        default=list(SUGGEST_KINDS),
+        help=f"suggest: clue kinds to try (default: all but {' '.join(EXTRA_KINDS)})",
     )
     parser.add_argument(
         "--exclude", nargs="*", default=[], help="suggest: people no clue may mention"
