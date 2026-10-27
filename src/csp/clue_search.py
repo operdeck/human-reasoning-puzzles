@@ -9,7 +9,10 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   optionally within `--max-grade`; `--keep` protects clue numbers.
 - `suggest`: given the intended placement (`--solution "Ada=r1c2 Ben=r3c4"`),
   list simple clues that are true for it and greedily add the ones that rule
-  out the most other placements until the puzzle is unique.
+  out the most other placements until the puzzle is unique. `--needs` names
+  clue numbers that must stay necessary: no added clue may rule out every
+  placement that only those clues exclude, so a themed clue cannot be made
+  redundant by the suggestions.
 
 Every solve runs in a child process with a hard `--timeout` (seconds); a
 timeout counts as "not good enough" and is reported as such. The tools only
@@ -243,12 +246,18 @@ def suggest(
     timeout: float = 5.0,
     log: Callable[[str], None] = lambda _line: None,
     exclude: Iterable[str] = (),
+    needs: Iterable[int] = (),
 ) -> list[str]:
     """Clues to add to `text` so that `placement` becomes its only solution.
 
     Each round samples up to `sample` solutions of the current puzzle and adds
     the true candidate clue that rules out most other placements (earlier
     `kinds` win ties). Stops when unique, or when no candidate helps.
+
+    `needs` lists clue numbers that must remain necessary. Their rivals are the
+    placements allowed without them; a candidate that would rule out all
+    remaining rivals is skipped, so removing those clues still leaves another
+    solution.
     """
     board, _ = load_board(text)
     unknown = set(board.people) ^ set(placement)
@@ -256,11 +265,23 @@ def suggest(
         raise ValueError(f"--solution must place exactly the people {board.people}")
     candidates = candidate_clues(board, placement, kinds, exclude)
     lines = clue_lines(text)
+    needed = set(needs)
+    if bad := sorted(n for n in needed if not 1 <= n <= len(lines)):
+        raise ValueError(f"--needs names clue numbers {bad}; the puzzle has {len(lines)} clues")
+    loose = [line for number, line in enumerate(lines, 1) if number not in needed]
     added: list[str] = []
     while True:
         current = with_clues(text, lines + added)
         others = [_placement(found, board.people) for found in brute.solutions(current, sample)]
         others = [other for other in others if other != placement]
+        rivals: list[dict[str, murdoku.Square]] = []
+        if needed:
+            without = with_clues(text, loose + added)
+            found = [_placement(f, board.people) for f in brute.solutions(without, sample)]
+            rivals = [other for other in found if other != placement and other not in others]
+            if not rivals:
+                log(f"needed clues {sorted(needed)} are already redundant; add fewer clues first")
+                return added
         if not others:
             result = outcome(current, timeout)
             log(f"unique with {len(added)} added clues ({result})")
@@ -268,6 +289,8 @@ def suggest(
         best, best_cut = None, 0
         for clue in candidates:
             if clue in lines or clue in added:
+                continue
+            if rivals and not any(_true_for(board, clue, rival) for rival in rivals):
                 continue
             cut = sum(not _true_for(board, clue, other) for other in others)
             if cut > best_cut:
@@ -297,6 +320,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--exclude", nargs="*", default=[], help="suggest: people no clue may mention"
     )
     parser.add_argument("--sample", type=int, default=400, help="suggest: solutions per round")
+    parser.add_argument(
+        "--needs",
+        type=int,
+        nargs="*",
+        default=[],
+        help="suggest: clue numbers that must stay needed",
+    )
     args = parser.parse_args(argv)
     text = args.puzzle.read_text()
     print(f"start: {outcome(text, args.timeout)}")
@@ -313,7 +343,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args.solution:
         parser.error("suggest needs --solution")
     placement = parse_solution(args.solution)
-    added = suggest(text, placement, args.kinds, args.sample, args.timeout, print, args.exclude)
+    added = suggest(
+        text, placement, args.kinds, args.sample, args.timeout, print, args.exclude, args.needs
+    )
     print("Clues to add:")
     print("\n".join(added))
     return 0
