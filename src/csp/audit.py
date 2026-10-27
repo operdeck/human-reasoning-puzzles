@@ -188,6 +188,18 @@ def profiles(paths: Iterable[Path]) -> list[Profile]:
     return [profile(item.path, item.section, item.category) for item in arrange(kinds, names)]
 
 
+def boards(paths: Iterable[Path]) -> list[Profile]:
+    """Fingerprints only, without grading: enough to find shared solutions and layouts."""
+    found = []
+    for path in paths:
+        text = path.read_text()
+        kind = detect(text)
+        found.append(
+            Profile(path, kind, "", None, "", "", solution_key(text, kind), layout_key(text, kind))
+        )
+    return found
+
+
 def audit(items: Sequence[Profile]) -> Audit:
     found = Audit()
     for attribute, target in (

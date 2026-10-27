@@ -996,8 +996,8 @@ def test_sudoku_model_shape():
     model, _ = sudoku.compile_puzzle((example("sudoku_easy.txt")).read_text())
     assert model.num_literals == 81 * 9
     assert len(model.constraints) == 81 + 3 * 81
-    assert model.chosen("r1c1") == 5
-    assert model.chosen("r1c3") is None
+    assert model.chosen("r1c6") == 8
+    assert model.chosen("r1c1") is None
 
 
 def test_sudoku_solves_to_a_valid_grid():

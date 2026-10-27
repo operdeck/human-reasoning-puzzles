@@ -541,35 +541,132 @@ def fresh_calcudoku(
     return None
 
 
+def star_placement(size: int, stars: int, rng: random.Random) -> set[Cell] | None:
+    """Random cells with `stars` per row and column, none touching, even diagonally."""
+    chosen: set[Cell] = set()
+    columns = [0] * size
+
+    def fill(row: int) -> bool:
+        if row == size:
+            return True
+        options = [
+            combo
+            for combo in itertools.combinations(range(size), stars)
+            if all(b - a > 1 for a, b in itertools.pairwise(combo))
+            and all(columns[c] < stars for c in combo)
+            and not any((row - 1, c + d) in chosen for c in combo for d in (-1, 0, 1))
+        ]
+        rng.shuffle(options)
+        for combo in options:
+            for c in combo:
+                chosen.add((row, c))
+                columns[c] += 1
+            if fill(row + 1):
+                return True
+            for c in combo:
+                chosen.discard((row, c))
+                columns[c] -= 1
+        return False
+
+    return chosen if fill(0) and all(count == stars for count in columns) else None
+
+
+def _star_regions(
+    size: int, placement: set[Cell], stars: int, rng: random.Random
+) -> dict[Cell, int] | None:
+    """Group the stars `stars` at a time into connected regions, then fill the board."""
+    owner: dict[Cell, int] = {}
+    left = sorted(placement)
+    rng.shuffle(left)
+    region = 0
+    while left:
+        group = [left.pop()]
+        while len(group) < stars:
+            group.append(min(left, key=lambda s: abs(s[0] - group[0][0]) + abs(s[1] - group[0][1])))
+            left.remove(group[-1])
+        for star in group[1:]:
+            path = _path(size, group[0], star, owner, placement)
+            if path is None:
+                return None
+            for cell in path:
+                owner[cell] = region
+        owner[group[0]] = region
+        region += 1
+    while len(owner) < size * size:
+        options = [
+            ((r + dr, c + dc), i)
+            for (r, c), i in owner.items()
+            for dr, dc in STEPS
+            if 0 <= r + dr < size and 0 <= c + dc < size and (r + dr, c + dc) not in owner
+        ]
+        cell, chosen = rng.choice(options)
+        owner[cell] = chosen
+    return owner
+
+
+def _path(
+    size: int, start: Cell, goal: Cell, owner: dict[Cell, int], stars: set[Cell]
+) -> list[Cell] | None:
+    """A shortest free path between two stars that passes no other star or region."""
+    previous: dict[Cell, Cell | None] = {start: None}
+    queue = [start]
+    for cell in queue:
+        if cell == goal:
+            path = []
+            step: Cell | None = cell
+            while step is not None:
+                path.append(step)
+                step = previous[step]
+            return path
+        r, c = cell
+        for dr, dc in STEPS:
+            nxt = (r + dr, c + dc)
+            if (
+                0 <= nxt[0] < size
+                and 0 <= nxt[1] < size
+                and nxt not in previous
+                and nxt not in owner
+                and (nxt not in stars or nxt == goal)
+            ):
+                previous[nxt] = cell
+                queue.append(nxt)
+    return None
+
+
 def fresh_starbattle(
-    size: int, rng: random.Random, stars: int, attempts: int = 200, comment: str = ""
+    size: int,
+    rng: random.Random,
+    stars: int,
+    open_share: float = 1.0,
+    attempts: int = 200,
+    comment: str = "",
 ) -> str | None:
-    """A new Star Battle: random regions, a solver-found placement, then minimal givens."""
+    """A new Star Battle: a random star placement, regions grown around it, then givens
+    only where the regions alone allow more than one solution."""
     for _ in range(attempts):
-        owner = _grow(size, rng.sample(_cells(size), size), rng)
+        placement = star_placement(size, stars, rng)
+        owner = _star_regions(size, placement, stars, rng) if placement else None
+        if owner is None or placement is None:
+            continue
         blank = _region_text("starbattle", size, owner, [], comment).replace(
             "Regions:", f"Stars: {stars}\nRegions:", 1
         )
-        found = bruteforce.solutions(blank, "starbattle", limit=2)
-        if not found:
-            continue
-        if len(found) == 1:
+        if open_share >= 1 and is_unique(blank):
             return blank
-        solution = found[0]
+        solution = placement
 
-        def build(
-            givens: set[Cell], blank: str = blank, solution: dict[str, object] = solution
-        ) -> str:
+        def build(givens: set[Cell], blank: str = blank, solution: set[Cell] = solution) -> str:
             rows = [
                 " ".join(
-                    ("*" if solution[_name((r, c))] else ".") if (r, c) in givens else "?"
+                    ("*" if (r, c) in solution else ".") if (r, c) in givens else "?"
                     for c in range(size)
                 )
                 for r in range(size)
             ]
             return blank + "Givens:\n" + "\n".join(rows) + "\n"
 
-        return build(thin(_cells(size), build, rng))
+        keep = _keep(size, open_share) if open_share < 1 else 0
+        return build(thin(_cells(size), build, rng, keep_at_least=keep))
     return None
 
 
@@ -586,12 +683,15 @@ def fresh_tents(
             near = {(r + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
             if (r, c) in trees or near & tents:
                 continue
+            if any((r + dr, c + dc) in trees for dr, dc in STEPS):
+                continue
             spots = [
                 (r + dr, c + dc)
                 for dr, dc in STEPS
                 if 0 <= r + dr < size
                 and 0 <= c + dc < size
-                and (r + dr, c + dc) not in trees | tents
+                and (r + dr, c + dc) not in trees
+                and not any((r + dr + a, c + dc + b) in tents for a, b in STEPS)
             ]
             if spots:
                 tents.add((r, c))
@@ -606,8 +706,11 @@ def fresh_tents(
             " ".join(str(sum(t[1] == c for t in tents)) for c in range(size)),
         ]
         text = "\n".join(lines) + "\n"
-        if is_unique(text):
-            return text
+        try:
+            if is_unique(text):
+                return text
+        except ValueError:  # a tree without a free neighbour
+            continue
     return None
 
 
@@ -620,7 +723,7 @@ def fresh(
     tier: str = "easy",
 ) -> str | None:
     """A new puzzle of `family`; `open_share` applies to Binairo, Tango, Minesweeper,
-    Sudoku and Futoshiki."""
+    Sudoku and Futoshiki, and sets the least share of Star Battle cells left unknown."""
     if family in {"binairo", "tango"}:
         return fresh_binairo(size, rng, open_share, family, comment=comment)
     if family == "minesweeper":
@@ -638,7 +741,8 @@ def fresh(
     if family == "calcudoku":
         return fresh_calcudoku(size, rng, comment=comment)
     if family == "starbattle":
-        return fresh_starbattle(size, rng, 2 if size >= 8 else 1, comment=comment)
+        stars = 2 if size >= 8 else 1
+        return fresh_starbattle(size, rng, stars, open_share or 1.0, comment=comment)
     if family == "tents":
         return fresh_tents(size, rng, comment=comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

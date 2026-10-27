@@ -1,4 +1,4 @@
-# Generated 4x4 Queens-style example with one unique placement.
+# Queens 4x4: easy, one queen per row, column and region.
 Family: queens
 Size: 4
 Regions:
@@ -7,10 +7,7 @@ b: blue
 c: coral
 d: green
 Grid:
-a a a b
-a b b b
-c c c c
+a a a a
+a a b b
+c d d d
 d d d d
-
-Givens:
-c r3c1

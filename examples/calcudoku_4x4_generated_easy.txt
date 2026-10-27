@@ -1,18 +1,15 @@
+# Calcudoku 4x4: easy, cage arithmetic and singles are enough.
 Size: 4
 Grid:
-cage2 cage0 cage0 cage4
-cage3 cage0 cage5 cage6
-cage7 cage1 cage1 cage1
-cage8 cage1 cage9 cage10
+a b b b
+c c c d
+e e d d
+f e d g
 Cages:
-cage0: 12x
-cage1: 9+
-cage2: 1
-cage3: 3
-cage4: 2
-cage5: 2
-cage6: 4
-cage7: 4
-cage8: 2
-cage9: 4
-cage10: 1
+a: 4
+b: 6+
+c: 24x
+d: 12+
+e: 6x
+f: 1
+g: 2

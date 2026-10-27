@@ -788,7 +788,7 @@ def test_sudoku_picture_shows_givens_in_ink_and_solved_numbers_in_blue():
     (solution,) = bruteforce.solutions(text)
     image = picture.sudoku_picture(grid, solution, cell=CELL)
     assert image.size == (5 * CELL, 5 * CELL)
-    assert _has(image, 0, 2, picture.INK) and not _has(image, 0, 2, picture.SOLVED)
+    assert _has(image, 0, 3, picture.INK) and not _has(image, 0, 3, picture.SOLVED)
     assert _has(image, 0, 0, picture.SOLVED) and not _has(image, 0, 0, picture.INK)
     blank = picture.sudoku_picture(grid, cell=CELL)
     assert not _has(blank, 0, 0, picture.SOLVED)

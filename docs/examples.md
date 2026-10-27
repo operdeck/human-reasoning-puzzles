@@ -63,8 +63,8 @@ distinct puzzle types.
 | Sudoku | [`sudoku_easy.txt`](../examples/sudoku_easy.txt) (`single`) | [`sudoku_naked_pair.txt`](../examples/sudoku_naked_pair.txt) (`cover2`) | [`sudoku_chains.txt`](../examples/sudoku_chains.txt) (`chains`) |
 | Calcudoku | [`calcudoku_4x4_easy.txt`](../examples/calcudoku_4x4_easy.txt) (`relations`) | [`calcudoku_6x6_medium.txt`](../examples/calcudoku_6x6_medium.txt) (`relations`) | [`calcudoku_7x7_hard.txt`](../examples/calcudoku_7x7_hard.txt) (`cover3`) |
 | Futoshiki | [`futoshiki_5x5_easy.txt`](../examples/futoshiki_5x5_easy.txt) (`single`) | [`futoshiki_5x5_medium.txt`](../examples/futoshiki_5x5_medium.txt) (`relations`) | [`futoshiki_5x5.txt`](../examples/futoshiki_5x5.txt) (`chains`) |
-| Queens | [`queens_4x4_easy.txt`](../examples/queens_4x4_easy.txt) (`single`) | [`queens_7x7_medium.txt`](../examples/queens_7x7_medium.txt) (`subsumption`) | [`queens_4x4.txt`](../examples/queens_4x4.txt) (`what_if`) |
-| DogDoku | [`dogdoku_5x5.txt`](../examples/dogdoku_5x5.txt) (`single`) | [`dogdoku_7x7.txt`](../examples/dogdoku_7x7.txt) (`subsumption`) | [`dogdoku_4x4_hard.txt`](../examples/dogdoku_4x4_hard.txt) (`what_if`) |
+| Queens | [`queens_4x4_easy.txt`](../examples/queens_4x4_easy.txt) (`single`) | [`queens_7x7_medium.txt`](../examples/queens_7x7_medium.txt) (`cover2`) | [`queens_4x4.txt`](../examples/queens_4x4.txt) (`what_if`) |
+| DogDoku | [`dogdoku_5x5.txt`](../examples/dogdoku_5x5.txt) (`single`) | [`dogdoku_7x7.txt`](../examples/dogdoku_7x7.txt) (`subsumption`) | [`dogdoku_4x4_hard.txt`](../examples/dogdoku_4x4_hard.txt) (`chains`) |
 | Tectonic / Suguru | [`suguru_4x4.txt`](../examples/suguru_4x4.txt) (`single`) | — | [`suguru_8x8.txt`](../examples/suguru_8x8.txt) (`chains`) |
 | Star Battle | [`starbattle_8x8_easy.txt`](../examples/starbattle_8x8_easy.txt) (`count`) | [`starbattle_8x8.txt`](../examples/starbattle_8x8.txt) (`cover2`) | [`starbattle_12x12.txt`](../examples/starbattle_12x12.txt) (`cover3`) |
 | Zebra logic grid | [`logicgrid_3x3.txt`](../examples/logicgrid_3x3.txt) (`relations`) | [`logicgrid_6x6.txt`](../examples/logicgrid_6x6.txt) (`relations`) | — |

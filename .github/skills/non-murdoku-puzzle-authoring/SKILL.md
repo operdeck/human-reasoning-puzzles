@@ -78,7 +78,11 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    Murdoku a solution counts together with its region map), or when a gallery
    section is not listed from easier to harder (tier, then grade). Fix a
    collision with `puzzle-lab fresh` or a new seed, never by turning or
-   relabelling a copy. Run the repository example tests after adding files.
+   relabelling a copy. Give every new example its own seed: the same family,
+   size and seed rebuild the same solution, and older generators used the same
+   random grids, so a common seed such as 1 can recreate an existing example.
+   `tests/test_example_quality.py` fails on any shared solution or layout.
+   Run the repository example tests after adding files.
 7. If the generator cannot find a candidate in its attempt budget, report that
    honestly. Improve the family-specific generator or choose another seed;
    do not loosen uniqueness checks, relabel a trivial puzzle, or fall back to
