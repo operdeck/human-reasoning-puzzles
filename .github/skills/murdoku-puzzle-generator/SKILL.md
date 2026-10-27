@@ -104,7 +104,10 @@ Clues should read like a detective's notes, not like arithmetic.
   as `next_to` it, and `not_next_to` keeps the person off it. The generated
   sentence says so ("zit niet op of naast een treinbank"); never override it
   with a `| wording` that drops the "op of"/"on or". If you mean only *on* or
-  only *beside*, use `on`/`not_on`, or combine `next_to` with `not_on`.
+  only *beside*, use `on`/`not_on`, or combine `next_to` with `not_on`; for the
+  same multi-square object, that combination means "beside it but not on it".
+  Keep explicit `| wording` overrides authoritative, and leave single-cell
+  object wording unchanged.
 - **Read every generated clue as a player would** (`clue_paragraphs`, `--docx`)
   and ask whether another reading of the sentence allows other squares. If it
   does, fix the generated text in `src/csp/story.py` with a test; do not
