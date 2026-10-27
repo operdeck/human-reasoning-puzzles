@@ -220,6 +220,7 @@ def make_image(
         global_counts=global_counts,
         interactive=interactive,
         language=language_of(text),
+        count_texts=story.global_count_texts(text),
     )
 
 
