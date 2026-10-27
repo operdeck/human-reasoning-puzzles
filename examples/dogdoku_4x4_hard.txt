@@ -1,4 +1,4 @@
-# Generated 4x4 Queens-style example with one unique placement.
+# DogDoku 4x4: hard, needs a what-if step.
 Family: dogdoku
 Size: 4
 Regions:
@@ -7,7 +7,7 @@ b: blue
 c: coral
 d: green
 Grid:
-a a a b
-a b b b
-c c c c
-d d d d
+b b a c
+b b a c
+b c c c
+b d d d

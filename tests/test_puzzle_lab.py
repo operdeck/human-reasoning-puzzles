@@ -85,7 +85,7 @@ def test_generate_is_repeatable_and_writes_only_a_valid_candidate(tmp_path):
         "--tier",
         "medium",
         "--seed",
-        "933",
+        "5",
         "--attempts",
         "40",
     ]

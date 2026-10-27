@@ -2,7 +2,7 @@
 
 import pytest
 
-from csp import queens
+from csp import audit, queens
 from csp.puzzle_lab import family_of, rate
 from csp.puzzlefile import detect
 from tests.examples import played_examples
@@ -26,3 +26,9 @@ def test_examples_leave_enough_to_deduce(path):
     result = rate(path.read_text(), str(path))
     assert result.solutions == "unique"
     assert result.tier != "trivial", f"{path.name} is prefilled or needs no deduction"
+
+
+def test_no_two_examples_share_a_solution_or_a_layout():
+    found = audit.audit(audit.boards(played_examples()))
+    assert not found.shared_solutions, [[p.name for p in group] for group in found.shared_solutions]
+    assert not found.shared_layouts, [[p.name for p in group] for group in found.shared_layouts]
