@@ -753,6 +753,40 @@ def _generate_command(args: argparse.Namespace) -> int:
     return 1
 
 
+def _audit_command(args: argparse.Namespace) -> int:
+    from csp import audit
+
+    items = audit.profiles(audit.puzzle_files(args.paths))
+    found = audit.audit(items)
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "shared_solutions": [[str(p) for p in g] for g in found.shared_solutions],
+                    "shared_layouts": [[str(p) for p in g] for g in found.shared_layouts],
+                    "out_of_order": {
+                        name: [{"path": str(m.path), "level": m.label} for m in members]
+                        for name, members in found.out_of_order.items()
+                    },
+                },
+                indent=2,
+            )
+        )
+        return 0 if found.clean else 1
+    for title, groups in (
+        ("Shared solution", found.shared_solutions),
+        ("Shared layout", found.shared_layouts),
+    ):
+        for group in groups:
+            print(f"{title}: {', '.join(path.name for path in group)}")
+    for name, members in found.out_of_order.items():
+        listed = ", ".join(f"{m.path.name} {m.label}" for m in members)
+        print(f"Not easy to hard: {name}: {listed}")
+    if found.clean:
+        print(f"{len(items)} puzzles: distinct solutions and layouts, each section easy to hard")
+    return 0 if found.clean else 1
+
+
 def _fresh_command(args: argparse.Namespace) -> int:
     rng = random.Random(args.seed)
     for attempt in range(args.attempts):
@@ -819,6 +853,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     fresh_parser.add_argument("--seed", type=int, default=0)
     fresh_parser.add_argument("--attempts", type=int, default=10)
     fresh_parser.set_defaults(run=_fresh_command)
+
+    audit_parser = commands.add_parser(
+        "audit",
+        help="find shared solutions or layouts and sections not ordered easy to hard",
+    )
+    audit_parser.add_argument("paths", nargs="+", help="puzzle files or folders, e.g. examples")
+    audit_parser.add_argument("--json", action="store_true")
+    audit_parser.set_defaults(run=_audit_command)
 
     args = parser.parse_args(argv)
     return cast(Callable[[argparse.Namespace], int], args.run)(args)
