@@ -1353,7 +1353,9 @@ class _Legend:
         for i, name in enumerate(self.attribute_names):
             top = y + (attribute_offset + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
-            _icon(canvas, name, area, self.cell, scale=0.8)
+            if icons.object_icon(name) is not None:
+                # Without a picture the swatch stays empty: the label names the trait.
+                _icon(canvas, name, area, self.cell, scale=0.8)
             holders = ", ".join(sorted(self.board.attributes[name]))
             label(top, f"{name.replace('_', ' ').capitalize()}: {holders}")
         tag_offset = attribute_offset + len(self.attribute_names)

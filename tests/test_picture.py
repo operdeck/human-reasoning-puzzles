@@ -159,6 +159,22 @@ def test_attribute_icons_and_holders_appear_in_the_legend(monkeypatch):
     assert "Sloffen: Ben" in markup
 
 
+def test_an_attribute_without_a_picture_is_named_only_once_in_the_legend():
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "room"},
+        [],
+        ["Ada", "Ben"],
+        attributes={"guest_in_costume": frozenset({"Ada"})},
+    )
+
+    markup = drawing.murdoku_picture(board, cell=CELL).to_svg()
+
+    assert "Guest in costume: Ada" in markup
+    assert 'aria-label="guest_"' not in markup
+
+
 @pytest.mark.parametrize(
     ("name", "panel_row", "window_row"),
     [
