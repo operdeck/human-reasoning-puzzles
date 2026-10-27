@@ -14,7 +14,11 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 
 1. Read `docs/model-and-puzzle-formats.md` for the exact family syntax and
    `docs/examples.md` for the existing gallery. Preserve displayed aliases:
-   Queens and DogDoku are separate names, as are Binairo and Tango.
+   Queens and DogDoku are separate names, as are Binairo and Tango. The file
+   name, `Family:`, comment and pieces must agree: a `queens_*` file uses
+   `Family: queens` and the queen piece; dog or puppy pieces belong only in
+   `Family: dogdoku` files named `dogdoku_*`. `tests/test_example_quality.py`
+   enforces this.
 2. Use an existing original example as a seed, or create an original seed in
    the family format. Never transcribe published puzzles unless the user has
    permission and explicitly asks for transcription.
