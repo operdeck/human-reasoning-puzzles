@@ -117,7 +117,17 @@ def test_generate_refuses_murdoku(tmp_path, capsys):
 
 @pytest.mark.parametrize(
     ("family", "size", "open_share"),
-    [("binairo", 6, 0.5), ("tango", 6, 0.5), ("queens", 5, 0.5), ("suguru", 5, 0.5)],
+    [
+        ("binairo", 6, 0.5),
+        ("tango", 6, 0.5),
+        ("queens", 5, 0.5),
+        ("suguru", 5, 0.5),
+        ("sudoku", 4, 0.6),
+        ("futoshiki", 5, 0.7),
+        ("calcudoku", 4, 0.0),
+        ("starbattle", 6, 0.0),
+        ("tents", 6, 0.0),
+    ],
 )
 def test_fresh_boards_have_their_own_unique_solution(family, size, open_share):
     import random

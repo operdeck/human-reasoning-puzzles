@@ -249,7 +249,8 @@ confirms a unique solution; `search` applies the same checks across files.
 `generate` searches reproducible family-aware variants and refuses to write a
 candidate that misses the requested tier; it keeps the seed's solution.
 `fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
-DogDoku and Suguru, then removes givens while the solution stays unique.
+DogDoku, Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
+and Tents, then removes givens while the solution stays unique.
 Boards with under a quarter of their cells open rate `trivial`. `audit`
 reports examples that share a solution or a layout (up to rotation,
 reflection and renamed regions) and gallery sections that are not listed from
