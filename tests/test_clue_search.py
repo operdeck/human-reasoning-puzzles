@@ -108,3 +108,47 @@ def test_suggest_keeps_each_needed_clue_necessary():
     for dropped in (rule, key):
         rest = [line for line in (rule, key) if line != dropped]
         assert len(bruteforce.solutions(clue_search.with_clues(start, [*rest, *added]))) > 1
+
+
+def test_sample_spreads_over_the_search_space():
+    # The first solutions of one search share their early choices; a clue that
+    # rules them out looks perfect to `suggest` while ruling out little else.
+    open_board = clue_search.with_clues(example("halloween-museum-1.txt").read_text(), [])
+    first = bruteforce.murdoku.solutions(open_board, 40)
+    spread = bruteforce.murdoku.sample(open_board, 40)
+    assert len(spread) == 40
+    assert len({tuple(sorted(map(str, s.items()))) for s in spread}) == 40
+
+    def squares(found):
+        return len({(person, str(square)) for s in found for person, square in s.items()})
+
+    assert squares(spread) > squares(first)
+
+
+def test_sample_never_hides_a_second_solution():
+    puzzle = example("halloween-museum-1.txt").read_text()
+    assert len(bruteforce.murdoku.sample(puzzle, 40)) == 1
+    lines = clue_search.clue_lines(puzzle)
+    for number in range(len(lines)):
+        fewer = clue_search.with_clues(puzzle, lines[:number] + lines[number + 1 :])
+        assert len(bruteforce.murdoku.sample(fewer, 40)) >= 2
+
+
+def test_mentions_counts_each_person_once_per_clue():
+    counts = clue_search._mentions(
+        ["Ada", "Ben", "Cy"], ["left_of Ada Ben", "next_to Ada Ada_bench | Ada sits", "on Ben bed"]
+    )
+    assert counts == {"Ada": 2, "Ben": 2, "Cy": 0}
+
+
+def test_accepts_checks_role_rules():
+    # `suggest --needs` finds the rivals of a role rule with `accepts`.
+    museum = example("halloween-museum-1.txt").read_text()
+    loose = clue_search.with_clues(museum.replace("role_occupant thief not_alone\n", ""), [])
+    found = [
+        clue_search._placement(f, ["Alba", "Bernardo", "Carmen", "Diego", "Elena", "Fernando"])
+        for f in bruteforce.murdoku.sample(loose, 60)
+    ]
+    full = clue_search.with_clues(museum, [])
+    assert any(not bruteforce.murdoku.accepts(full, placement) for placement in found)
+    assert all(bruteforce.murdoku.accepts(loose, placement) for placement in found)
