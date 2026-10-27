@@ -12,10 +12,13 @@
 * Murdoku PNG: the English `carpet` (and `rug`) object now draws the hand-made rug icon instead of the literal word, as `tapijt` already did.
     * `src/csp/icons.py`: added the `oven` icon, which `murdoku_house.txt` lacked.
     * `src/csp/picture.py`: shared `CARPET_NAMES`/`WELL_NAMES` drive both drawing and the missing-icon check; `tests/test_picture.py` checks every object in the Murdoku examples has an icon.
+* [#117 Queens icon](https://github.com/operdeck/human-reasoning-puzzles/issues/117): `queens_7x7_medium.txt` uses the queen piece; a test keeps Queens/DogDoku file names, families and pieces aligned.
+* [#118 Overly prefilled examples](https://github.com/operdeck/human-reasoning-puzzles/issues/118): replaced the near-full Binairo, Tango, Queens and Suguru 8×8 examples with fresh boards; `binairo_8x8.txt` and `tango_8x8.txt` became `*_8x8_medium.txt`. Boards with under a quarter of their cells open now rate `trivial`, and a test rejects trivial gallery examples.
 * [#26 Handle empty domains in --show-model](https://github.com/operdeck/human-reasoning-puzzles/issues/26)
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
+* `puzzle-lab fresh` builds brand-new Binairo, Tango, Queens, DogDoku and Suguru boards with their own solution, rated to a requested tier (`src/csp/fresh.py`).
 * Added the English Murder Hotel Murdoku series in `examples/murder-hotel/`, with Italian-named guests, themed hotel floors, and a separate murderer-role position reveal in the final puzzle. The 8×8 opener uses a simpler `relations` grade; the 9×9 and 10×10 puzzles grade `subsumption`.
     * Added custom staircase, reception counter, table, and elevator icons; the Murdoku authoring workflow now requires an independent image-based critique for new or substantially changed boards.
 * Orient Express puzzles now show a hand-drawn control panel instead of a locomotive firebox;

@@ -236,13 +236,18 @@ uv run puzzle-lab rate examples/<family-example>.txt --json
 uv run puzzle-lab search examples --family tango --tier hard
 uv run puzzle-lab generate examples/tents_8x8.txt --tier medium \
   --seed 42 --attempts 100 --output /tmp/tents-medium.txt
+uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
+  --seed 26 --output /tmp/tango-medium.txt
 ```
 
 `puzzle-lab` is the repository-native non-Murdoku authoring tool. It rates a
 puzzle only when the deductive solver completes it and independent search
 confirms a unique solution; `search` applies the same checks across files.
 `generate` searches reproducible family-aware variants and refuses to write a
-candidate that misses the requested tier. Tiers are estimates tied to this
+candidate that misses the requested tier; it keeps the seed's solution.
+`fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
+DogDoku and Suguru, then removes givens while the solution stays unique.
+Boards with under a quarter of their cells open rate `trivial`. Tiers are estimates tied to this
 solver's rule ladder, not universal human-difficulty guarantees. Report gaps
 where a family's current solver cannot support a trustworthy tier. Murdoku
 continues to use its separate tools and skill.

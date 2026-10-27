@@ -886,8 +886,8 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
         "binairo_4x4.txt",
         "tango_4x4.txt",
         "tents_4x4.txt",
-        "minesweeper_3x3.txt",
-        "akari_2x2.txt",
+        "minesweeper_5x5.txt",
+        "akari_6x6.txt",
         "kakurasu_4x4.txt",
         "battleships_counts_4x4.txt",
     ],
@@ -904,11 +904,13 @@ def test_family_png_cli_writes_nonblank_solution(name, tmp_path):
     assert image.getbbox() is not None
 
 
-def test_tango_picture_marks_equal_and_different_signs():
+@pytest.mark.parametrize("filename", ["tango_4x4.txt", "tango_4x4_hard.txt"])
+def test_tango_picture_marks_equal_and_different_signs(filename):
     from csp import binairo
 
-    text = (example("tango_4x4.txt")).read_text()
+    text = example(filename).read_text()
     puzzle = binairo.parse(text)
+    assert {sign.kind for sign in puzzle.signs} == {"equal", "different"}
     (solution,) = bruteforce.solutions(text)
     image = picture.binairo_picture(puzzle, solution, cell=CELL)
     margin = CELL // 2
