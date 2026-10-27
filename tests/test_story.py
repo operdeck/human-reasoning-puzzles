@@ -792,7 +792,7 @@ def test_quantified_clue_is_only_said_with_its_upshot():
     """A quantified step that only narrows its hidden witnesses says nothing."""
     story = explain(example("wie-doet-het-met-wie-5.txt").read_text())
     sentences = re.split(r"(?<=\.) ", story)
-    bare = [s for s in sentences if "iemand in een badjas" in s and ", dus " not in s]
+    bare = [s for s in sentences if "iemand op een badjas" in s and ", dus " not in s]
     assert not bare, bare
 
 
