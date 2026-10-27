@@ -197,6 +197,9 @@ For a finished Murdoku under `examples/`, before reporting done:
 - For a mystery: `--explain` reveals the answer by the rules, late.
 - `--png` looked at (puzzle and solution), independently critiqued, and useful
   visual suggestions considered; `--docx` page check for booklet text.
+- An independent clue review used only player-facing material; each clue was
+  restated as a constraint, alternate readings were checked, and solvability
+  findings were verified against the source and rendered clue count.
 - `docs/examples.md` updated; `uv run pytest -q` and `ruff` pass.
 - Report path, solution, grade and any open doubts.
 
@@ -241,6 +244,25 @@ do not add lift stops on guest-room floors if the user specified otherwise.
 Apply useful suggestions, rerender, and inspect the revised images yourself.
 If no independent image-capable reviewer is available, state that limitation
 instead of presenting a text-only review as visual feedback.
+
+## Independent clue review
+
+For every newly authored puzzle, ask a fresh, independent LLM/session to review
+only the player-facing puzzle. Give it the intro, legend, numbered rendered
+clues, question, and either the player-facing web puzzle or puzzle-only DOCX
+pages. Do not provide the puzzle definition, source file, solution, solution
+image, answer, or author solving notes; omit a `Reveal:` that names the answer.
+The reviewer must restate each clue as a constraint, flag plausible alternate
+readings, and assess whether and how the puzzle can be solved from the supplied
+material. Ask it to identify missing or ambiguous clues without guessing at
+hidden source details.
+
+Treat review findings as hypotheses. If the reviewer reports a missing clue or
+an unsolvable puzzle, verify the source clue list and count the rendered clue
+lines before accepting the finding, then check it against the solver. Route
+wording fixes through `src/csp/story.py` with regression tests. If an
+independent reviewer is unavailable, state that limitation rather than
+claiming a review was completed.
 
 ## Board rules
 
