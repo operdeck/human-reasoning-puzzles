@@ -103,6 +103,7 @@ def murdoku_picture(
     interactive: bool = False,
     language: str = "en",
     area_tags: bool = True,
+    count_texts: Sequence[str] | None = None,
 ) -> Canvas:
     """The board, with `placed` people drawn on their squares if given.
 
@@ -111,7 +112,8 @@ def murdoku_picture(
     then leaves out the region swatches.
     Without `show_roles` the legend leaves out the solver's role lines; without
     `area_tags` it leaves out the area tags (for documents that state them).
-    `language` ("en" or "nl") sets the legend wording.
+    `language` ("en" or "nl") sets the legend wording; `count_texts` gives
+    the plain-language global counts (from `story`), else their clue syntax.
     """
     margin = _murdoku_margin(board, cell, coordinates)
     # Solver assignments also hold role booleans; only squares are people.
@@ -129,6 +131,7 @@ def murdoku_picture(
             language,
             regions=not labels,
             area_tags=area_tags,
+            count_texts=count_texts,
         )
         if legend
         else None
@@ -1215,6 +1218,7 @@ class _Legend:
         language: str = "en",
         regions: bool = True,
         area_tags: bool = True,
+        count_texts: Sequence[str] | None = None,
     ) -> None:
         self.words = LEGEND_WORDS.get(language, LEGEND_WORDS["en"])
         self.board = board
@@ -1247,7 +1251,8 @@ class _Legend:
             for index, condition in enumerate(self.global_counts, 1)
             for lines in [
                 textwrap.wrap(
-                    f"{self.words['global']} {condition.number or index}: {condition.description}",
+                    f"{self.words['global']} {condition.number or index}: "
+                    + (count_texts[index - 1] if count_texts else condition.description),
                     width=max_chars,
                 )
             ]

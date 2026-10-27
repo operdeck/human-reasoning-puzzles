@@ -722,10 +722,16 @@ class Wording:
     phrases: dict[str, str] = field(default_factory=dict)
     numbered: bool = True
     people: dict[str, str] = field(default_factory=dict)
+    rules: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def read(cls, text: str) -> "Wording":
-        """The `Language:` and `Words:` sections of a puzzle file."""
+        """The `Language:` and `Words:` sections of a puzzle file, and `Rules:` wordings.
+
+        A rule line may end in `| wording`, like a clue. That sentence is shown
+        to players (booklet and web rules, picture legend) but never used in
+        worked solutions, which keep the generated wording.
+        """
         section = read_sections(text)
         language = section.get("Language", ["en"])[0]
         if language not in PHRASES:
@@ -740,7 +746,13 @@ class Wording:
                 phrases[name.strip()] = phrase.strip()
             else:
                 words[name.strip()] = phrase.strip()
-        return cls(language, words, phrases)
+        rules = {
+            " ".join(rule.split()): wording.strip().rstrip(".")
+            for line in section.get("Rules", [])
+            for rule, _, wording in [line.partition("|")]
+            if wording.strip()
+        }
+        return cls(language, words, phrases, rules=rules)
 
     def unnumbered(self) -> "Wording":
         """The same wording that never points at clue numbers."""
@@ -1657,6 +1669,17 @@ class Story:
         """Some people fill some rows (or columns), or some rows only fit some people."""
         if (condition := self._global_count_for_sources(step.sources)) is not None:
             return self._global_count_deduction(condition, step, changed, before, state)
+        quantified = next(
+            (
+                found
+                for source in step.sources
+                if (found := self._quantified_condition_for_source(source)) is not None
+            ),
+            None,
+        )
+        if quantified is not None and changed:
+            clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
+            return f"{clue}, {self.say('so')} {self._outcome(changed, before, state)}."
         inner = [self.about.get(name, ("constraint", name)) for name in step.sources]
         outer = [self.about.get(name, ("constraint", name)) for name in step.scope]
         kinds_in = {k for k, _ in inner}
@@ -2166,7 +2189,12 @@ class Story:
             if anyone:
                 return self.say("clue.alone_with_anyone", a=condition.subject)
             return self.say("clue.alone_with", a=condition.subject, target=target)
-        fields: dict[str, Any] = {"a": condition.subject, "b": target}
+        subject = (
+            condition.subject
+            if condition.subject_selector is None
+            else self._target_text(condition.subject_selector)
+        )
+        fields: dict[str, Any] = {"a": subject, "b": target}
         if condition.kind == "above" and condition.rest:
             rows = int(condition.rest[0])
             fields["rows"] = self.say("one_row") if rows == 1 else self.say("n_rows", n=rows)
@@ -2178,7 +2206,7 @@ class Story:
         if condition.kind in ("within", "at_least") and condition.rest:
             fields["n"] = self.say.number(int(condition.rest[0]))
         if condition.kind in ("same_region", "different_region", "apart", "adjacent_regions"):
-            return self.say(f"clue.{condition.kind}_target", a=condition.subject, target=target)
+            return self.say(f"clue.{condition.kind}_target", a=subject, target=target)
         return self.say(f"clue.{condition.kind}", **fields)
 
     def _quantified_condition_for_source(self, source: str) -> QuantifiedCondition | None:
@@ -2329,8 +2357,19 @@ def clue_texts(text: str) -> list[str]:
     return Story(board, clues, Wording.read(text)).clue_texts()
 
 
+def global_count_texts(text: str) -> list[str]:
+    """Each global count of a Murdoku puzzle file as one plain sentence, in file order."""
+    board, clues = load_board(text)
+    told = Story(board, clues, Wording.read(text))
+    return [
+        told.say.rules.get(condition.description) or _cap(told._global_count_text(condition))
+        for condition in global_count_conditions(board, clues)
+    ]
+
+
 def board_notes(text: str) -> list[str]:
-    """Plain sentences for what the board picture only abbreviates: marks, attributes, roles."""
+    """Plain sentences for what the board picture only abbreviates: area tags, marks, and
+    the author's `| wording` of board rules."""
     board, _ = load_board(text)
     say = Wording.read(text)
 
@@ -2361,6 +2400,7 @@ def board_notes(text: str) -> list[str]:
     for mark in board.marks:
         key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
         notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
+    notes.extend(f"{wording}." for wording in say.rules.values())
     return notes
 
 
