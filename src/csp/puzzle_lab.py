@@ -756,7 +756,9 @@ def _generate_command(args: argparse.Namespace) -> int:
 def _fresh_command(args: argparse.Namespace) -> int:
     rng = random.Random(args.seed)
     for attempt in range(args.attempts):
-        candidate = fresh.fresh(args.family, args.size, rng, args.open_share, args.comment)
+        candidate = fresh.fresh(
+            args.family, args.size, rng, args.open_share, args.comment, args.tier
+        )
         if candidate is None:
             continue
         result = rate(candidate, f"fresh {args.family} (candidate {attempt + 1})")

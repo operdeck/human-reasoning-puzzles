@@ -1,6 +1,0 @@
-# Small Light Up board: the numbered wall forces the two diagonal bulbs.
-Family: akari
-Size: 2
-Grid:
-. 2
-. .

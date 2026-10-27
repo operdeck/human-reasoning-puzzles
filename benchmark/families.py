@@ -74,7 +74,7 @@ CASES = (
     "tents_8x8.txt",
     "minesweeper_5x5.txt",
     "minesweeper_8x8.txt",
-    "akari_2x2.txt",
+    "akari_6x6.txt",
     "akari_8x8.txt",
     "kakurasu_4x4.txt",
     "kakurasu_8x8.txt",
