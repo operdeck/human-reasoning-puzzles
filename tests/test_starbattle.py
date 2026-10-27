@@ -61,9 +61,9 @@ def test_regions_may_differ_in_size_but_must_be_connected_and_hold_the_stars():
 @pytest.mark.parametrize(
     "name, stars, size, grade",
     [
-        ("starbattle_8x8", 2, 8, "cover2"),
-        ("starbattle_10x10", 2, 10, "chains"),
-        ("starbattle_12x12", 3, 12, "cover3"),
+        ("starbattle_2_8x8", 2, 8, "cover2"),
+        ("starbattle_4_10x10", 2, 10, "chains"),
+        ("starbattle_3_12x12", 3, 12, "cover3"),
     ],
 )
 def test_irregular_multi_star_examples_are_unique_and_graded(name, stars, size, grade):

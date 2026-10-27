@@ -2,7 +2,7 @@
 and the web player's index.
 
 A puzzle's category is the folder it sits in below the folder all the files have
-in common, so `examples/japanese-food/food-murdoku-1.txt` is in "Japanese food".
+in common, so `examples/japanese-food/food-murdoku-2.txt` is in "Japanese food".
 Murdoku comes first, by category ("Demo" leads), then the other families. Within
 a section files sort naturally, so `x-6x6` comes before `x-12x12`.
 """

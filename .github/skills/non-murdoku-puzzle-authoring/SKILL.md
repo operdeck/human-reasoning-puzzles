@@ -65,8 +65,14 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    uv run puzzle-lab search examples --family tango --tier hard --json
    ```
 
-6. Place approved original examples under `examples/`, give each a descriptive
-   filename and short comment, and update the tier table in `docs/examples.md`.
+6. Place approved original examples under `examples/` as
+   `<family>_<n>_<size>[_<variant>].txt`, where `n` is the board's place in its
+   gallery section from easiest to hardest (for example `sudoku_9_4x4_kropki`).
+   Leave tier words such as `easy` or `hard` out of the name: the number carries
+   the order and `docs/examples.md` shows the tier. When a new board lands in
+   the middle, renumber the later files (with their `docs/images` pictures) and
+   update every reference. Give each a short comment, and update the tier table
+   in `docs/examples.md`.
    Then audit the whole collection:
 
    ```bash

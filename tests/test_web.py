@@ -92,32 +92,32 @@ def test_dutch_murdoku_is_worded_in_dutch(exported):
 
 
 def test_logic_grids_are_listed_but_not_playable(exported):
-    bundle = _bundle(exported, "logicgrid_3x3")
+    bundle = _bundle(exported, "logicgrid_1_3x3")
     assert not bundle["playable"]
     assert bundle["unsupported"]
 
 
 def test_display_aliases_keep_their_labels_and_rules(exported):
-    dog = _bundle(exported, "dogdoku_5x5")
+    dog = _bundle(exported, "dogdoku_1_5x5")
     assert dog["family"] == "queens"
     assert dog["familyLabel"] == "DogDoku"
     assert "one dog" in dog["rules"][0]
 
-    tango = _bundle(exported, "tango_4x4")
+    tango = _bundle(exported, "tango_2_4x4")
     assert tango["family"] == "binairo"
     assert tango["familyLabel"] == "Tango"
     assert "= signs" in tango["rules"][0]
 
-    binairo = _bundle(exported, "binairo_4x4")
+    binairo = _bundle(exported, "binairo_3_4x4")
     assert binairo["familyLabel"] == "Binairo"
 
 
 def test_kakurasu_and_counts_only_battleships_rules_are_precise(exported):
-    kakurasu = _bundle(exported, "kakurasu_4x4")
+    kakurasu = _bundle(exported, "kakurasu_1_4x4")
     assert "column number to the row sum" in kakurasu["rules"][0]
     assert "row number to the column sum" in kakurasu["rules"][0]
 
-    battleships = _bundle(exported, "battleships_counts_4x4")
+    battleships = _bundle(exported, "battleships_1_4x4_counts")
     assert "does not model ship shapes" in battleships["rules"][0]
 
 
@@ -125,7 +125,7 @@ def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):
     broken = tmp_path / "broken.txt"
     broken.write_text("this is not a puzzle\n")
     assert (
-        cli.main([str(example("tents_4x4.txt")), str(broken), "--export", str(tmp_path / "site")])
+        cli.main([str(example("tents_3_4x4.txt")), str(broken), "--export", str(tmp_path / "site")])
         == 1
     )
     assert "broken.txt" in capsys.readouterr().err
@@ -153,7 +153,7 @@ def test_conditions_only_list_the_kinds_a_puzzle_uses():
 
 
 def test_digit_puzzles_get_pencil_marks_and_peer_groups(exported):
-    bundle = _bundle(exported, "sudoku_4x4")
+    bundle = _bundle(exported, "sudoku_1_4x4")
     assert bundle["notes"] is True
     assert bundle["autoMark"]["default"] is True
     groups = [frozenset(group["cells"]) for group in bundle["peers"]]
@@ -165,16 +165,18 @@ def test_digit_puzzles_get_pencil_marks_and_peer_groups(exported):
 
 
 def test_anti_knight_pairs_are_peers(exported):
-    groups = {frozenset(group["cells"]) for group in _bundle(exported, "sudoku_anti_4x4")["peers"]}
+    groups = {
+        frozenset(group["cells"]) for group in _bundle(exported, "sudoku_2_4x4_anti")["peers"]
+    }
     assert frozenset({"r1c1", "r2c3"}) in groups
 
 
 def test_akari_lights_what_a_bulb_sees(exported):
     from csp.akari import parse
 
-    text = example("akari_6x6.txt").read_text()
+    text = example("akari_1_6x6.txt").read_text()
     puzzle = parse(text)
-    bundle = _bundle(exported, "akari_6x6")
+    bundle = _bundle(exported, "akari_1_6x6")
     assert "notes" not in bundle
     assert bundle["autoMark"] == {"default": True, "mark": "light", "onPlace": [{"scope": "peers"}]}
     # Only lines of sight, never the cells around a numbered wall.
@@ -195,10 +197,10 @@ def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
 def test_export_refuses_two_puzzles_with_the_same_name(tmp_path, capsys):
     other = tmp_path / "copy"
     other.mkdir()
-    (other / "tents_4x4.txt").write_text((example("tents_4x4.txt")).read_text())
-    files = [str(example("tents_4x4.txt")), str(other / "tents_4x4.txt")]
+    (other / "tents_3_4x4.txt").write_text((example("tents_3_4x4.txt")).read_text())
+    files = [str(example("tents_3_4x4.txt")), str(other / "tents_3_4x4.txt")]
     assert cli.main([*files, "--export", str(tmp_path / "site")]) == 2
-    assert "tents_4x4" in capsys.readouterr().err
+    assert "tents_3_4x4" in capsys.readouterr().err
     assert not (tmp_path / "site").exists()
 
 
@@ -209,7 +211,7 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
     sections = list(dict.fromkeys(entry["section"] for entry in puzzles))
     assert "Murdoku \u00b7 Japanese food" in sections
     assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
-    assert _bundle(exported, "food-murdoku-1")["section"] == "Murdoku \u00b7 Japanese food"
+    assert _bundle(exported, "food-murdoku-2")["section"] == "Murdoku \u00b7 Japanese food"
     assert "DogDoku" in sections and "Tango" in sections
 
 
