@@ -11,8 +11,8 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   list simple clues that are true for it and greedily add the ones that rule
   out the most other placements until the puzzle is unique. `--needs` names
   clue numbers that must each stay necessary, so a themed clue (or a rule
-  moved into the clues while searching) cannot be made redundant.
-
+  moved into the clues while searching, role rules included) cannot be made
+  redundant.
 - `occupancy`: how often each object square is used across the placements the
   puzzle still allows (up to `--sample`). A decoy that is never used, or a
   square that is always used, cannot make a clue about that object matter.
@@ -237,26 +237,18 @@ def candidate_clues(
     return [clue for clue in found if _true_for(board, clue, placement)]
 
 
-def _satisfies(text: str, placement: dict[str, murdoku.Square]) -> bool:
-    """Whether `placement` meets every rule and clue of `text` that needs no roles."""
-    board, clues = load_board(text)
-    simple = all(
-        check.test(*(placement[person] for person in check.people))
-        for check in murdoku.conditions(board, clues)
-    )
-    targets = all(
-        condition.holds(board, placement, {})
-        for condition in murdoku.quantified_conditions(board, clues)
-    )
-    counts = all(
-        condition.count(board, placement, {}) in condition.allowed_counts
-        for condition in murdoku.global_count_conditions(board, clues)
-    )
-    return simple and targets and counts
-
-
 def _placement(solution: dict[str, Any], people: Sequence[str]) -> dict[str, murdoku.Square]:
     return {person: solution[person] for person in people}
+
+
+def _mentions(people: Sequence[str], clues: Iterable[str]) -> dict[str, int]:
+    """How many of `clues` name each person."""
+    counts = dict.fromkeys(people, 0)
+    for clue in clues:
+        for word in set(clue.split("|")[0].split()[1:]):
+            if word in counts:
+                counts[word] += 1
+    return counts
 
 
 def suggest(
@@ -272,13 +264,15 @@ def suggest(
     """Clues to add to `text` so that `placement` becomes its only solution.
 
     Each round samples up to `sample` solutions of the current puzzle and adds
-    the true candidate clue that rules out most other placements (earlier
-    `kinds` win ties). Stops when unique, or when no candidate helps.
+    the true candidate clue that rules out most other placements; ties go to
+    clues about the people named least so far, then to earlier `kinds`. Stops
+    when unique, or when no candidate helps.
 
     `needs` lists clue numbers that must each remain necessary. A clue's rivals
-    are the placements allowed without it that break it (role clues are not
-    checked); a candidate that would rule out every rival of some needed clue
-    is skipped, so removing any one of them still leaves another solution.
+    are the placements allowed without it that break it (for a role clue: that
+    leave no valid set of role holders); a candidate that would rule out every
+    rival of some needed clue is skipped, so removing any one of them still
+    leaves another solution.
     """
     board, _ = load_board(text)
     unknown = set(board.people) ^ set(placement)
@@ -292,15 +286,15 @@ def suggest(
     added: list[str] = []
     while True:
         current = with_clues(text, lines + added)
-        others = [_placement(found, board.people) for found in brute.solutions(current, sample)]
+        others = [_placement(found, board.people) for found in brute.sample(current, sample)]
         others = [other for other in others if other != placement]
         rival_sets: list[list[dict[str, murdoku.Square]]] = []
         for number in needed:
             without = with_clues(text, lines[: number - 1] + lines[number:] + added)
             only = with_clues(text, [lines[number - 1]])
-            found = [_placement(f, board.people) for f in brute.solutions(without, sample)]
+            found = [_placement(f, board.people) for f in brute.sample(without, sample)]
             rivals = [
-                other for other in found if other != placement and not _satisfies(only, other)
+                other for other in found if other != placement and not brute.accepts(only, other)
             ]
             if not rivals:
                 log(f"needed clue {number} is already redundant; add fewer clues first")
@@ -310,7 +304,8 @@ def suggest(
             result = outcome(current, timeout)
             log(f"unique with {len(added)} added clues ({result})")
             return added
-        best, best_cut = None, 0
+        best, best_cut, best_key = None, 0, (0, 0)
+        mentions = _mentions(board.people, lines + added)
         for clue in candidates:
             if clue in lines or clue in added:
                 continue
@@ -319,8 +314,11 @@ def suggest(
             ):
                 continue
             cut = sum(not _true_for(board, clue, other) for other in others)
-            if cut > best_cut:
-                best, best_cut = clue, cut
+            # Equal cuts (often "all sampled") go to the least-mentioned people, so
+            # the clues spread over the cast instead of piling up on one person.
+            spread = -sum(mentions.get(word, 0) for word in clue.split()[1:])
+            if cut and (cut, spread) > best_key:
+                best, best_cut, best_key = clue, cut, (cut, spread)
         if best is None:
             log(f"stuck: {len(others)} other placements remain and no candidate separates them")
             for other in others[:3]:
@@ -334,7 +332,7 @@ def suggest(
 def occupancy(text: str, sample: int = 400) -> tuple[int, list[tuple[str, str, int]]]:
     """(placements seen, [(object, square, times occupied)]) over the allowed placements."""
     board, _ = load_board(text)
-    found = brute.solutions(text, sample)
+    found = brute.sample(text, sample)
     used = [{found_one[person] for person in board.people} for found_one in found]
     rows = [
         (obj.name, str(square), sum(square in squares for squares in used))

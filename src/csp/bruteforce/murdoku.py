@@ -24,12 +24,17 @@ from ..murdoku import (
 from ..puzzlefile import load_board
 
 
-def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
+_Checks = tuple[
+    dict[str, list[Condition]],
+    list[RoleCondition],
+    list[QuantifiedCondition],
+    list[GlobalCountCondition],
+]
+
+
+def _prepare(text: str) -> tuple[Board, list[str], dict[str, list[Square]], _Checks]:
     board, clues = load_board(text)
     checks = conditions(board, clues)
-    role_checks = role_conditions(board, clues)
-    target_checks = quantified_conditions(board, clues)
-    global_checks = global_count_conditions(board, clues)
     allowed = {
         person: [
             sq for sq in board.free if all(c.test(sq) for c in checks if c.people == (person,))
@@ -43,10 +48,78 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
     for check in checks:
         if len(check.people) > 1:
             due[max(check.people, key=later.__getitem__)].append(check)
+    rest: _Checks = (
+        due,
+        role_conditions(board, clues),
+        quantified_conditions(board, clues),
+        global_count_conditions(board, clues),
+    )
+    return board, order, allowed, rest
 
+
+def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
+    """Up to `limit` solutions, in depth-first order."""
+    board, order, allowed, rest = _prepare(text)
     found: list[dict[str, Any]] = []
-    _search(board, order, allowed, due, role_checks, target_checks, global_checks, {}, found, limit)
+    _search(board, order, allowed, *rest, {}, found, limit)
     return found
+
+
+def accepts(text: str, placement: dict[str, Square]) -> bool:
+    """Whether `placement` meets every rule and clue, with some valid set of role holders."""
+    board, clues = load_board(text)
+    if any(
+        not check.test(*(placement[p] for p in check.people)) for check in conditions(board, clues)
+    ):
+        return False
+    return bool(
+        _role_assignments(
+            board,
+            role_conditions(board, clues),
+            quantified_conditions(board, clues),
+            global_count_conditions(board, clues),
+            placement,
+            1,
+        )
+    )
+
+
+def sample(text: str, limit: int) -> list[dict[str, Any]]:
+    """Up to `limit` distinct solutions spread over the search space.
+
+    The first solutions of one depth-first search share their early choices,
+    so a clue that rules them all out may rule out little else. Besides one
+    plain search (so a second solution is never hidden), this takes the first
+    solutions under each square of the most restricted person, each branch
+    within a share of the plain search's work, and interleaves the branches.
+    """
+    board, order, allowed, rest = _prepare(text)
+    found: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+    def keep(batch: list[dict[str, Any]]) -> None:
+        for solution in batch:
+            found.setdefault(tuple(sorted(map(str, solution.items()))), solution)
+
+    plain: list[dict[str, Any]] = []
+    spent = [10**12]
+    _search(board, order, allowed, *rest, {}, plain, limit, spent)
+    keep(plain)
+    first = order[0]
+    branches = allowed[first]
+    # Give each branch about the work the plain search needed, so dead branches stay cheap.
+    nodes = max(200, (10**12 - spent[0]) // max(1, len(branches)))
+    each = max(1, -(-limit // max(1, len(branches))))
+    for square in branches:
+        batch: list[dict[str, Any]] = []
+        _search(board, order, allowed, *rest, {first: square}, batch, each, [nodes])
+        keep(batch)
+    # Round-robin over the branches so a short sample still covers all of them.
+    by_first: dict[str, list[dict[str, Any]]] = {}
+    for solution in found.values():
+        by_first.setdefault(str(solution[first]), []).append(solution)
+    groups = list(by_first.values())
+    spread = [g[i] for i in range(max(map(len, groups), default=0)) for g in groups if i < len(g)]
+    return spread[:limit]
 
 
 def _search(
@@ -60,7 +133,12 @@ def _search(
     placed: dict[str, Square],
     found: list[dict[str, Any]],
     limit: int,
+    budget: list[int] | None = None,
 ) -> None:
+    if budget is not None:
+        budget[0] -= 1
+        if budget[0] < 0:
+            return
     if len(placed) == len(order):
         for roles in _role_assignments(
             board, role_checks, target_checks, global_checks, placed, limit - len(found)
@@ -90,9 +168,10 @@ def _search(
                 placed,
                 found,
                 limit,
+                budget,
             )
         del placed[person]
-        if len(found) >= limit:
+        if len(found) >= limit or (budget is not None and budget[0] < 0):
             return
 
 
