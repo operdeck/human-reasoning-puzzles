@@ -62,7 +62,18 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 
 6. Place approved original examples under `examples/`, give each a descriptive
    filename and short comment, and update the tier table in `docs/examples.md`.
-   Run the repository example tests after adding files.
+   Then audit the whole collection:
+
+   ```bash
+   uv run puzzle-lab audit examples
+   ```
+
+   It fails when two examples share a solution or a layout (compared up to
+   rotation, reflection and renamed regions; for Queens, Star Battle and
+   Murdoku a solution counts together with its region map), or when a gallery
+   section is not listed from easier to harder (tier, then grade). Fix a
+   collision with `puzzle-lab fresh` or a new seed, never by turning or
+   relabelling a copy. Run the repository example tests after adding files.
 7. If the generator cannot find a candidate in its attempt budget, report that
    honestly. Improve the family-specific generator or choose another seed;
    do not loosen uniqueness checks, relabel a trivial puzzle, or fall back to
