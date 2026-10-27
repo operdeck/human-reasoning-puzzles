@@ -170,14 +170,20 @@ def test_anti_knight_pairs_are_peers(exported):
 
 
 def test_akari_lights_what_a_bulb_sees(exported):
-    bundle = _bundle(exported, "akari_2x2")
+    from csp.akari import parse
+
+    text = example("akari_6x6.txt").read_text()
+    puzzle = parse(text)
+    bundle = _bundle(exported, "akari_6x6")
     assert "notes" not in bundle
     assert bundle["autoMark"] == {"default": True, "mark": "light", "onPlace": [{"scope": "peers"}]}
     # Only lines of sight, never the cells around a numbered wall.
-    assert sorted(sorted(group["cells"]) for group in bundle["peers"]) == [
-        ["r1c1", "r2c1"],
-        ["r2c1", "r2c2"],
-    ]
+    expected = {
+        frozenset(f"r{row + 1}c{col + 1}" for row, col in segment)
+        for segment in puzzle.segments
+        if len(segment) > 1
+    }
+    assert {frozenset(group["cells"]) for group in bundle["peers"]} == expected
 
 
 def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):

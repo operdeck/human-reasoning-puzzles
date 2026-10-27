@@ -1,7 +1,6 @@
-# DogDoku 7x7: medium, needs a zone that is confined to one line.
+# Queens 7x7: medium, needs a region that is confined to one line.
 Family: queens
 Size: 7
-Icon: dog
 Regions:
 a: coral
 b: amber

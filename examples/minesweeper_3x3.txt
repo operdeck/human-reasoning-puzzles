@@ -1,9 +1,0 @@
-# Small Minesweeper board with one hidden mine.
-Family: minesweeper
-Size: 3
-Clues:
-1 1 1
-1 . 1
-1 1 1
-TotalMines:
-1

@@ -1,12 +1,12 @@
-# Larger generated binary puzzle with cyclically shifted balanced rows.
+# Binairo 8x8: easy, a fresh board with 28 open cells.
 Family: binairo
 Size: 8
 Givens:
-0 0 1 1 0 1 0 1
-0 1 1 0 1 0 . 0
-1 1 0 1 0 1 0 0
-1 0 1 0 1 0 0 1
-0 1 0 1 0 0 1 1
-1 0 1 0 0 1 1 0
-0 1 0 0 1 . 0 1
-1 0 0 1 1 0 1 0
+0 0 . 1 0 . 1 .
+1 . 0 1 0 1 1 .
+1 . . . . . . .
+0 0 1 . 1 . . .
+. 1 . . 0 . 0 1
+. 0 . 0 1 0 1 .
+0 1 . 0 1 0 0 1
+. . 0 . . . 0 0
