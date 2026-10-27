@@ -1,7 +1,8 @@
-# Wie doet het met wie? Het hotel (7x7, seven areas)
+# Wie doet het met wie? Het hotel (7x7, seven areas; grade: cover3)
 #
-# Seven people in a hotel with a 2x2 double bed (standable). Mieke, Sven and
-# Hanneke wear a bathrobe (badjas). Wouter has no clues and is named in none:
+# Seven people in a hotel with a 2x2 double bed (standable). Sven and Hanneke
+# wear a bathrobe (badjas); that fact is needed for a unique solution. Wouter
+# has no clues and is named in none:
 # he is placed last and is alone with exactly one other person, who wears a
 # bathrobe.
 #
@@ -82,7 +83,6 @@ outside Mieke badkamer fietsenstalling
 not_next_to Sven koffer
 next_to Karin fiets
 left_of Hanneke Ruud 3
-within Hanneke Sven 7
 not_on Hanneke tweepersoonsbed
 next_to Hanneke tweepersoonsbed
 within Jeroen Ruud 2
