@@ -48,7 +48,7 @@ def test_clue_text_override_wins():
 
 
 def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
-    source = example("murdoku_house.txt")
+    source = example("murdoku_3_house.txt")
     plain = source.read_text().split("# Booklet text")[0]
     assert not load_presentation(plain).title
     out = tmp_path / "plain.docx"
@@ -163,16 +163,16 @@ def test_figures_folder_gives_thumbnails_by_name(tmp_path):
 
 def test_icon_figures_use_builtin_icons(tmp_path):
     # Every icon= in the example is vendored, so each figure gets a thumbnail.
-    text = (example("food-murdoku-1.txt")).read_text()
+    text = (example("food-murdoku-2.txt")).read_text()
     out = tmp_path / "x.docx"
-    write_booklet([Entry(text, example("food-murdoku-1.txt"))], out)
+    write_booklet([Entry(text, example("food-murdoku-2.txt"))], out)
     figures = sum(1 for line in text.splitlines() if "icon=" in line)
     assert figures >= 4
     assert len(_media(out)) >= 1 + figures
 
 
 def test_unknown_icon_is_linted(tmp_path, capsys):
-    text = (example("food-murdoku-1.txt")).read_text().replace("U+1F35C", "nonsense")
+    text = (example("food-murdoku-2.txt")).read_text().replace("U+1F35C", "nonsense")
     (tmp_path / "f.txt").write_text(text)
     main([str(tmp_path / "f.txt"), "--lint"])
     assert "unknown icon nonsense" in capsys.readouterr().out
@@ -180,7 +180,7 @@ def test_unknown_icon_is_linted(tmp_path, capsys):
 
 def test_icon_that_is_not_vendored_is_linted(tmp_path, capsys):
     # A valid code point whose picture was never vendored would print as text.
-    text = (example("food-murdoku-1.txt")).read_text().replace("U+1F35C", "U+1F680")
+    text = (example("food-murdoku-2.txt")).read_text().replace("U+1F35C", "U+1F680")
     (tmp_path / "f.txt").write_text(text)
     main([str(tmp_path / "f.txt"), "--lint"])
     assert "unknown icon U+1F680" in capsys.readouterr().out
@@ -196,7 +196,7 @@ def test_booklet_footer_carries_copyright_notice(tmp_path):
     assert COPYRIGHT_NOTICE in Document(str(out)).sections[0].footer.paragraphs[0].text
 
 
-@pytest.mark.parametrize("name", ["sudoku_easy", "queens_4x4", "tents_4x4", "calcudoku_4x4_easy"])
+@pytest.mark.parametrize("name", ["sudoku_5_9x9", "queens_4_4x4", "tents_3_4x4", "calcudoku_1_4x4"])
 def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     out = tmp_path / "b.docx"
     assert main([str(example(f"{name}.txt")), "--docx", str(out)]) == 0
@@ -225,7 +225,7 @@ def test_exactly_one_same_region_reads_as_either_or():
 
 
 def test_two_alternatives_read_as_either_or_not_both():
-    clues = clue_texts(_read("murdoku_house"))
+    clues = clue_texts(_read("murdoku_3_house"))
     assert any(c.startswith("Either Ada is in the study, or Ben is in the hall") for c in clues)
 
 
@@ -348,7 +348,7 @@ def test_board_notes_name_the_areas_of_a_tag():
 
 def test_booklet_is_numbered_by_category_and_has_a_contents_page(tmp_path):
     out = tmp_path / "t.docx"
-    names = [str(example("food-murdoku-1.txt")), str(example("zoo-murdoku-1.txt"))]
+    names = [str(example("food-murdoku-2.txt")), str(example("zoo-murdoku-1.txt"))]
     assert main([*names, "--docx", str(out)]) == 0
     document = Document(str(out))
     texts = [p.text for p in document.paragraphs]
@@ -376,7 +376,7 @@ def test_booklet_solutions_have_no_empty_reasons_or_clue_numbers():
 
     from csp.story import explain
 
-    for name in ("menu-murdoku-3", "zoo-murdoku-1", "food-murdoku-2", "prrrdoku1"):
+    for name in ("menu-murdoku-3", "zoo-murdoku-1", "food-murdoku-1", "prrrdoku1"):
         text = explain(_read(name), numbered=False)
         assert ", ." not in text and ": ." not in text, name
         assert not re.search(r"\b(clue|aanwijzing) \d", text), name

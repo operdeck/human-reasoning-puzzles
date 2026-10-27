@@ -1,88 +1,79 @@
-# Food Murdoku 6x6 - "Five dishes, one wolverine" (subsumption)
+# Food Murdoku 5x5 - "Four cities, one hungry Jos" (needs chains)
 #
 # Japanese food as suspects, Japanese cities as areas. Jos is the eater. Hint: Jos
 # deelt zijn stad met precies een food item, dat hij stiekem op gaat eten (Rules:).
 #
-# Solution: Onigiri r1c2, Okonomiyaki r2c3, Mochi r3c1, Sushi r4c5, Tonkatsu r5c6, Jos r6c4.
-# Jos shares Kobe with Sushi, the food he is about to eat.
+# Solution: Ramen r1c4, Yakitori r2c3, Tonkatsu r3c1, Tempura r4c2, Jos r5c5.
+# Jos shares Kyoto with Tempura, the food he is about to eat.
 #
-Size: 6
+Size: 5
 Language: en
 
 Words:
 kobe: in Kobe
-osaka: in Osaka
-fukuoka: in Fukuoka
 tokyo: in Tokyo
-nagoya: in Nagoya
+sapporo: in Sapporo
+kyoto: in Kyoto
 target.attribute: a {name}
-tokyo_tower: the Tokyo Tower
 
 Regions:
-kobe: kobe #CBE6B9
-osaka: osaka #F3EDA2
-fukuoka: fukuoka #D8D2F0
+kobe: kobe #DCDCDC
 tokyo: tokyo #FADFB5
-nagoya: nagoya #BEE5D6
+sapporo: sapporo #D8D2F0
+kyoto: kyoto #CBE6B9
 
 Grid:
-nagoya fukuoka fukuoka fukuoka fukuoka fukuoka
-nagoya fukuoka fukuoka fukuoka fukuoka tokyo
-nagoya fukuoka fukuoka fukuoka fukuoka tokyo
-nagoya fukuoka fukuoka kobe kobe tokyo
-nagoya osaka osaka kobe tokyo tokyo
-nagoya osaka osaka kobe kobe kobe
+kobe tokyo tokyo tokyo tokyo
+kobe kobe tokyo tokyo tokyo
+kobe kyoto kyoto kyoto kyoto
+kobe kyoto kyoto kyoto kyoto
+kobe sapporo kyoto kyoto kyoto
 
 Objects:
-plate: blocking r6c5
-tokyo_tower: blocking r2c6
-plate: blocking r4c3
-plate: blocking r4c4
-zaisu: standable r6c3
-zaisu: standable r6c4
+plate: blocking r1c5
+plate: blocking r3c4
+tatami: standable r1c4 r2c4
 
 Attributes:
-food: Onigiri Okonomiyaki Mochi Sushi Tonkatsu
+food: Ramen Yakitori Tonkatsu Tempura
 
 People:
-Onigiri
-Okonomiyaki
-Mochi
-Sushi
+Ramen
+Yakitori
 Tonkatsu
+Tempura
 Jos
 
 Rules:
 alone_with Jos attribute:food
 
 Clues:
-same_region Okonomiyaki Onigiri
-outside Tonkatsu kobe
-left_of Onigiri Tonkatsu
-at_least Okonomiyaki Tonkatsu 6
-at_least Onigiri Tonkatsu 8
-in_row Sushi 4
-above Mochi Tonkatsu
-left_of Mochi Okonomiyaki
+next_to Ramen plate
+within Tempura Tonkatsu 2
+in_row Tempura 4
+different_region Tempura Yakitori
+left_of Yakitori Ramen
+in_region Tonkatsu kobe
+above Tonkatsu Tempura
+in_column Ramen 4
 
 # Booklet text for --docx (optional).
 Title:
-Food Murdoku 6x6: Five dishes, one wolverine
+Food Murdoku 5x5: Four cities, one hungry Jos
 
 Intro:
 Japanese dishes are spread over the cities of Japan. Jos is hungry and is placed last.
 Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used.
 
 Figures:
-Onigiri: ; icon=U+1F359
-Okonomiyaki: ; icon=U+1F95E
-Mochi: ; icon=U+1F361
-Sushi: ; icon=U+1F363
+Ramen: ; icon=U+1F35C
+Yakitori: ; icon=U+1F362
 Tonkatsu: ; icon=U+1F356
+Tempura: ; icon=U+1F364
 Jos: the hungry eater ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?
 
 Reveal:
-Jos shares Kobe with the sushi: that is his meal today.
+Jos shares Kyoto with the tempura: that is his meal today.

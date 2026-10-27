@@ -15,12 +15,12 @@ clues and board sketches into original mysteries.
 Requires Python 3.12+. Run directly with `uv`:
 
 ```bash
-uv run csp examples/sudoku_4x4.txt
-uv run csp examples/demo/murdoku_first_case.txt --explain
-uv run csp examples/queens_4x4.txt --show-model
-uv run csp examples/logicgrid_3x3.txt --brute-force
-uv run csp examples/akari_6x6.txt --svg akari.svg
-uv run puzzle-lab rate examples/queens_4x4_easy.txt
+uv run csp examples/sudoku_1_4x4.txt
+uv run csp examples/demo/murdoku_1_first_case.txt --explain
+uv run csp examples/queens_4_4x4.txt --show-model
+uv run csp examples/logicgrid_1_3x3.txt --brute-force
+uv run csp examples/akari_1_6x6.txt --svg akari.svg
+uv run puzzle-lab rate examples/queens_1_4x4.txt
 uv run puzzle-lab search examples --family tango --tier hard
 ```
 
@@ -38,7 +38,7 @@ different row and column. Trees, bushes, tables, and cabinets block cells;
 chairs and the bed are standable.
 
 <table>
-<tr><td><img src="docs/images/murdoku_first_case.png" width="230" alt="Murdoku first case"></td><td>
+<tr><td><img src="docs/images/murdoku_1_first_case.png" width="230" alt="Murdoku first case"></td><td>
 
 **Clues**
 
@@ -61,7 +61,7 @@ the complete syntax and supported rules, see [Model and puzzle formats](docs/mod
 Joost is at r1c1. Lotte is at r4c2, so Ingrid can only be at r3c4. Wouter is
 at r2c3. Wouter and Ingrid share the sitting room, so **Ingrid did it**.
 
-<img src="docs/images/murdoku_first_case-solution.png" width="230" alt="Murdoku solution">
+<img src="docs/images/murdoku_1_first_case-solution.png" width="230" alt="Murdoku solution">
 </details>
 
 ## A few examples
@@ -70,14 +70,14 @@ The solver handles very different kinds of logic. Here are a few; [play the full
 
 <table>
 <tr>
-<td><strong><a href="examples/dogdoku_7x7.txt">DogDoku</a></strong><br>Place one dog in each row, column, and region; dogs may not touch.<br><img src="docs/images/dogdoku_7x7-solution.png" width="150" alt="Solved DogDoku puzzle"></td>
-<td><strong><a href="examples/sudoku_kropki_4x4.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_kropki_4x4.png" width="150" alt="Kropki Sudoku puzzle"></td>
-<td><strong><a href="examples/starbattle_8x8.txt">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
+<td><strong><a href="examples/dogdoku_2_7x7.txt">DogDoku</a></strong><br>Place one dog in each row, column, and region; dogs may not touch.<br><img src="docs/images/dogdoku_2_7x7-solution.png" width="150" alt="Solved DogDoku puzzle"></td>
+<td><strong><a href="examples/sudoku_9_4x4_kropki.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_9_4x4_kropki.png" width="150" alt="Kropki Sudoku puzzle"></td>
+<td><strong><a href="examples/starbattle_2_8x8.txt">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_2_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
 </tr>
 <tr>
-<td><strong><a href="examples/logicgrid_3x3.txt">Zebra logic grid</a></strong><br>Use clues to match items across categories.<br><img src="docs/images/logicgrid_3x3-solution.png" width="150" alt="Solved logic grid"></td>
-<td><strong><a href="examples/tents_4x4.txt">Tents and Trees</a></strong><br>Pair each tree with a tent, while satisfying line counts.<br><img src="docs/images/tents_4x4-solution.png" width="150" alt="Solved Tents and Trees puzzle"></td>
-<td><strong><a href="examples/akari_6x6.txt">Light Up / Akari</a></strong><br>Light every open cell without bulbs seeing each other.<br><img src="docs/images/akari_6x6-solution.png" width="150" alt="Solved Akari puzzle"></td>
+<td><strong><a href="examples/logicgrid_1_3x3.txt">Zebra logic grid</a></strong><br>Use clues to match items across categories.<br><img src="docs/images/logicgrid_1_3x3-solution.png" width="150" alt="Solved logic grid"></td>
+<td><strong><a href="examples/tents_3_4x4.txt">Tents and Trees</a></strong><br>Pair each tree with a tent, while satisfying line counts.<br><img src="docs/images/tents_3_4x4-solution.png" width="150" alt="Solved Tents and Trees puzzle"></td>
+<td><strong><a href="examples/akari_1_6x6.txt">Light Up / Akari</a></strong><br>Light every open cell without bulbs seeing each other.<br><img src="docs/images/akari_1_6x6-solution.png" width="150" alt="Solved Akari puzzle"></td>
 </tr>
 </table>
 

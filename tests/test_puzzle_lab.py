@@ -7,8 +7,8 @@ from tests.examples import example
 
 
 def test_rating_preserves_display_names_and_rejects_murdoku():
-    dog = example("dogdoku_5x5.txt").read_text()
-    tango = example("tango_4x4.txt").read_text()
+    dog = example("dogdoku_1_5x5.txt").read_text()
+    tango = example("tango_2_4x4.txt").read_text()
     assert family_of(dog) == "dogdoku"
     assert family_of(tango) == "tango"
     assert rate(dog).family == "dogdoku"
@@ -18,7 +18,7 @@ def test_rating_preserves_display_names_and_rejects_murdoku():
 
 
 def test_rating_requires_a_deductive_unique_nontrivial_puzzle():
-    result = rate(example("dogdoku_5x5.txt").read_text())
+    result = rate(example("dogdoku_1_5x5.txt").read_text())
     assert result.solved
     assert result.solutions == "unique"
     assert result.tier == "easy"
@@ -27,7 +27,7 @@ def test_rating_requires_a_deductive_unique_nontrivial_puzzle():
 
 
 def test_suguru_small_board_is_not_misrated_by_given_density():
-    assert rate(example("suguru_4x4.txt").read_text()).tier == "easy"
+    assert rate(example("suguru_1_4x4.txt").read_text()).tier == "easy"
 
 
 def test_mostly_prefilled_board_is_trivial():
@@ -46,19 +46,19 @@ def test_mostly_prefilled_board_is_trivial():
 @pytest.mark.parametrize(
     ("filename", "family", "tier"),
     [
-        ("binairo_8x8_easy.txt", "binairo", "easy"),
-        ("binairo_8x8_medium.txt", "binairo", "medium"),
-        ("dogdoku_4x4_hard.txt", "dogdoku", "hard"),
-        ("akari_8x8.txt", "akari", "hard"),
-        ("minesweeper_8x8_hard.txt", "minesweeper", "hard"),
-        ("minesweeper_8x8.txt", "minesweeper", "medium"),
-        ("akari_6x6.txt", "akari", "medium"),
-        ("queens_7x7_medium.txt", "queens", "medium"),
-        ("tango_4x4_hard.txt", "tango", "hard"),
-        ("tango_4x4_medium.txt", "tango", "medium"),
-        ("tango_8x8_easy.txt", "tango", "easy"),
-        ("tango_8x8_medium.txt", "tango", "medium"),
-        ("queens_8x8.txt", "queens", "medium"),
+        ("binairo_1_8x8.txt", "binairo", "easy"),
+        ("binairo_2_8x8.txt", "binairo", "medium"),
+        ("dogdoku_4_4x4.txt", "dogdoku", "hard"),
+        ("akari_2_8x8.txt", "akari", "hard"),
+        ("minesweeper_4_8x8.txt", "minesweeper", "hard"),
+        ("minesweeper_3_8x8.txt", "minesweeper", "medium"),
+        ("akari_1_6x6.txt", "akari", "medium"),
+        ("queens_3_7x7.txt", "queens", "medium"),
+        ("tango_5_4x4.txt", "tango", "hard"),
+        ("tango_3_4x4.txt", "tango", "medium"),
+        ("tango_1_8x8.txt", "tango", "easy"),
+        ("tango_4_8x8.txt", "tango", "medium"),
+        ("queens_2_8x8.txt", "queens", "medium"),
     ],
 )
 def test_added_tier_examples_match_repository_ratings(filename, family, tier):
@@ -78,7 +78,7 @@ def test_search_filters_by_display_family_and_tier(capsys):
 def test_generate_is_repeatable_and_writes_only_a_valid_candidate(tmp_path):
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"
-    source = "examples/tents_8x8.txt"
+    source = "examples/tents_1_8x8.txt"
     args = [
         "generate",
         source,
