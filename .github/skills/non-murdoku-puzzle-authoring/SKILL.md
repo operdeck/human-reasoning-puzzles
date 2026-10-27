@@ -73,13 +73,14 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 `puzzle-lab rate` reports the hardest solver rule used and a tier derived from
 that rule, with limited family-aware calibration for small relational and
 count-only puzzles. These are repository-specific estimates, not universal
-human difficulty ratings. A tier is not enough by itself: inspect the actual
-deductions and puzzle presentation, confirm that the puzzle is not simply
-prefilled, and report any limitation of the solver's grading ladder. A board
-with under a quarter of its cells open (`PREFILLED_OPEN_SHARE`) rates
-`trivial`, whatever rule its last cells need. `tests/test_example_quality.py`
-rejects trivial or non-unique gallery examples. Known exceptions there must
-link to an open issue.
+human difficulty ratings. Reserve `what_if`, the final fallback rule, for only
+the very hardest puzzles; ordinary hard examples should be solved by the other
+deduction rules. A tier is not enough by itself: inspect the actual deductions
+and puzzle presentation, confirm that the puzzle is not simply prefilled, and
+report any limitation of the solver's grading ladder. A board with under a
+quarter of its cells open (`PREFILLED_OPEN_SHARE`) rates `trivial`, whatever
+rule its last cells need. `tests/test_example_quality.py` rejects trivial or
+non-unique gallery examples. Known exceptions there must link to an open issue.
 
 For Murdoku, stop here and use `.github/skills/murdoku-puzzle-generator/` and
 its own workflow. Do not change Murdoku examples, skills, tools, or behavior
