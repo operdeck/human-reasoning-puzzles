@@ -1,0 +1,11 @@
+# Small Minesweeper board with a fresh minefield.
+Family: minesweeper
+Size: 5
+Clues:
+. . . . 1
+1 . 2 . .
+. 2 . 2 .
+. . 1 . 1
+1 1 1 1 1
+TotalMines:
+4

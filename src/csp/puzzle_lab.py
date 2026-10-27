@@ -808,7 +808,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     fresh_parser.add_argument("--output", required=True)
     fresh_parser.add_argument("--tier", choices=tuple(TIERS), required=True)
     fresh_parser.add_argument(
-        "--open-share", type=float, default=0.5, help="Binairo/Tango share of empty cells"
+        "--open-share",
+        type=float,
+        default=0.5,
+        help="empty-cell share for Binairo/Tango or unknown-cell share for Minesweeper",
     )
     fresh_parser.add_argument("--comment", default="")
     fresh_parser.add_argument("--seed", type=int, default=0)

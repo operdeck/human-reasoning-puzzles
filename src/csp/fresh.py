@@ -16,7 +16,7 @@ from csp.puzzlefile import detect
 type Cell = tuple[int, int]
 type Pair = tuple[Cell, Cell]
 
-FAMILIES = ("binairo", "tango", "queens", "dogdoku", "suguru")
+FAMILIES = ("binairo", "tango", "queens", "dogdoku", "suguru", "minesweeper")
 REGION_NAMES = [
     "amber",
     "blue",
@@ -298,12 +298,48 @@ def fresh_suguru(
     return None
 
 
+def fresh_minesweeper(
+    size: int, rng: random.Random, unknown_share: float = 0.5, comment: str = ""
+) -> str:
+    """Build a Minesweeper board from a new mine layout and hidden safe cells."""
+    if size < 4:
+        raise ValueError("fresh Minesweeper boards need to be at least 4x4")
+    cells = _cells(size)
+    mine_count = max(3, round(size * size * 0.14))
+    unknown_count = max(mine_count + 1, round(size * size * unknown_share))
+    unknown_count = min(size * size - 1, unknown_count)
+    mines = set(rng.sample(cells, mine_count))
+    safe_cells = [cell for cell in cells if cell not in mines]
+    hidden = mines | set(rng.sample(safe_cells, unknown_count - mine_count))
+    lines = [f"# {comment}"] if comment else []
+    lines += ["Family: minesweeper", f"Size: {size}", "Clues:"]
+    for row in range(size):
+        clues = []
+        for col in range(size):
+            cell = (row, col)
+            if cell in hidden:
+                clues.append(".")
+                continue
+            count = sum(
+                (near_row, near_col) in mines
+                for near_row in range(max(0, row - 1), min(size, row + 2))
+                for near_col in range(max(0, col - 1), min(size, col + 2))
+                if (near_row, near_col) != cell
+            )
+            clues.append(str(count))
+        lines.append(" ".join(clues))
+    lines += ["TotalMines:", str(mine_count)]
+    return "\n".join(lines) + "\n"
+
+
 def fresh(
     family: str, size: int, rng: random.Random, open_share: float = 0.5, comment: str = ""
 ) -> str | None:
-    """A new puzzle of `family`; `open_share` applies to Binairo and Tango."""
+    """A new puzzle of `family`; `open_share` applies to Binairo, Tango and Minesweeper."""
     if family in {"binairo", "tango"}:
         return fresh_binairo(size, rng, open_share, family, comment=comment)
+    if family == "minesweeper":
+        return fresh_minesweeper(size, rng, open_share, comment)
     if family in {"queens", "dogdoku"}:
         return fresh_queens(size, rng, family, comment=comment)
     if family == "suguru":

@@ -50,6 +50,7 @@ def test_mostly_prefilled_board_is_trivial():
         ("binairo_8x8_medium.txt", "binairo", "medium"),
         ("dogdoku_4x4_hard.txt", "dogdoku", "hard"),
         ("minesweeper_8x8_hard.txt", "minesweeper", "hard"),
+        ("minesweeper_8x8.txt", "minesweeper", "medium"),
         ("queens_7x7_medium.txt", "queens", "medium"),
         ("tango_4x4_hard.txt", "tango", "hard"),
         ("tango_4x4_medium.txt", "tango", "medium"),
@@ -134,4 +135,30 @@ def test_fresh_command_writes_a_rated_board(tmp_path, capsys):
     args = ["fresh", "binairo", "--size", "6", "--tier", "easy", "--open-share", "0.4"]
     assert main([*args, "--seed", "1", "--attempts", "20", "--output", str(out)]) == 0
     assert rate(out.read_text()).tier == "easy"
+    assert "wrote" in capsys.readouterr().out
+
+
+def test_fresh_minesweeper_command_writes_a_rated_board(tmp_path, capsys):
+    out = tmp_path / "minesweeper.txt"
+    args = [
+        "fresh",
+        "minesweeper",
+        "--size",
+        "5",
+        "--tier",
+        "medium",
+        "--open-share",
+        "0.52",
+        "--seed",
+        "119",
+        "--attempts",
+        "60",
+        "--output",
+        str(out),
+    ]
+    assert main(args) == 0
+    result = rate(out.read_text())
+    assert result.family == "minesweeper"
+    assert result.solutions == "unique"
+    assert result.tier == "medium"
     assert "wrote" in capsys.readouterr().out
