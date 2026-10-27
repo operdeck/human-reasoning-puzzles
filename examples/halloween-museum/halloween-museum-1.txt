@@ -1,0 +1,112 @@
+# Halloween at the Museum 6x6 - "The stolen scarab"
+# Solution: Agnes r1c5, Boris r2c1, Clara r3c3, Desmond r4c6, Felix r5c2, Edith r6c4.
+# Clara is the thief; she was in the Egyptian hall with Felix.
+
+Size: 6
+Language: en
+
+Words:
+painting_gallery: in the painting gallery
+armoury: in the armoury
+egyptian_hall: in the Egyptian hall
+dinosaur_hall: in the dinosaur hall
+gift_shop: in the gift shop
+sarcophagus: the sarcophagus
+scarab: the scarab case
+painting: a painting
+armour: a suit of armour
+t_rex: the T. rex skeleton
+sauropod: the sauropod skeleton
+pumpkin: a pumpkin
+counter: the shop counter
+
+Regions:
+painting_gallery: painting_gallery #E9D8B4
+armoury: armoury #C9CED6
+egyptian_hall: egyptian_hall #EBCB7A
+dinosaur_hall: dinosaur_hall #B9D3A8
+gift_shop: gift_shop #E6C3D6
+
+Grid:
+painting_gallery painting_gallery painting_gallery armoury armoury armoury
+painting_gallery painting_gallery painting_gallery armoury armoury armoury
+egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
+gift_shop gift_shop gift_shop dinosaur_hall dinosaur_hall dinosaur_hall
+
+Objects:
+painting: blocking r1c1
+bench: standable r2c2 r2c3
+painting: blocking r1c3
+armour: blocking r1c4
+armour: blocking r1c6
+swords: blocking r2c5
+pumpkin: blocking r3c1
+sarcophagus: standable r4c2 r5c2
+scarab: blocking r4c3
+t_rex: blocking r3c5 r3c6 r4c5
+sauropod: blocking r5c5 r5c6
+bone: blocking r6c6
+counter: blocking r6c1 r6c2
+pumpkin: blocking r5c4
+
+EdgeItems:
+door: door r2c2 r3c2
+door: door r2c4 r3c4
+door: door r4c3 r4c4
+door: door r5c3 r6c3
+door: door r6c3 r6c4
+
+AreaTags:
+crime_scene: egyptian_hall
+
+Attributes:
+guest_in_costume: Clara Desmond Edith
+
+Roles:
+thief: 1
+
+RoleEligibility:
+thief: attribute:guest_in_costume
+
+People:
+Agnes
+Boris
+Clara
+Desmond
+Edith
+Felix
+
+Rules:
+role_occupant thief not_alone
+min_role_in_tagged thief crime_scene 1
+
+Clues:
+next_to Boris painting
+in_region Agnes armoury
+left_of Agnes Desmond
+on Felix sarcophagus
+in_region Edith dinosaur_hall
+
+Title:
+Halloween at the Museum: The stolen scarab
+
+Intro:
+On Halloween night the museum throws a costume party among its exhibits. At midnight the golden scarab has vanished from its case in the Egyptian hall.
+Place everyone on a free square, with one person in every row and column. The bench and the sarcophagus are standable; all other exhibits block.
+The thief wore a costume, was in the Egyptian hall, and was not alone there.
+
+Figures:
+Agnes: the curator ; icon=U+1F475
+Boris: the night guard ; icon=U+1F9D4
+Clara: dressed as a witch ; icon=U+1F9D9
+Desmond: dressed as a vampire ; icon=U+1F9DB
+Edith: dressed as a zombie ; icon=U+1F9DF
+Felix: the tour guide ; icon=U+1F468
+
+Question:
+Who stole the scarab?
+
+Reveal:
+Clara stole the scarab. She was in the Egyptian hall with Felix, who lay in the sarcophagus.
