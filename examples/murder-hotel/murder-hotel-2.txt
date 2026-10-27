@@ -130,6 +130,7 @@ next_to Giulia sofa
 not_next_to Lucia corpse
 not_in_row Raffaele 6
 above Lorenzo Lucia
+above Paolo Sofia
 
 Title:
 The Murder Hotel: The housekeeper's discovery
