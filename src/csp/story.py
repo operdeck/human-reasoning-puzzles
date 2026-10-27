@@ -160,6 +160,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_next_to": "{a} is not next to {things}",
         "clue.on_or_next_to": "{a} is on or next to {things}",
         "clue.not_on_or_next_to": "{a} is neither on nor next to {things}",
+        "clue.beside_but_not_on": "{a} is beside {things}, but not on {things}",
         "clue.knight_from": "{a} is a knight's move from {things}",
         "clue.on": "{a} is on {things}",
         "clue.not_on": "{a} is not on {things}",
@@ -363,6 +364,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_next_to": "{a} zit niet naast {things}",
         "clue.on_or_next_to": "{a} zit op of naast {things}",
         "clue.not_on_or_next_to": "{a} zit niet op of naast {things}",
+        "clue.beside_but_not_on": "{a} zit naast {things}, maar niet op {things}",
         "clue.knight_from": "{a} staat een paardensprong van {things}",
         "clue.on": "{a} zit op {things}",
         "clue.not_on": "{a} zit niet op {things}",
@@ -2266,13 +2268,41 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
     board, clues = load_board(text)
     story = Story(board, clues, Wording.read(text))
     texts = story.clue_texts()
+    combined: dict[int, str] = {}
+    skipped: set[int] = set()
+    for number, (kind, args) in enumerate(clues, 1):
+        if number in skipped or number in (overrides or {}) or kind != "next_to" or len(args) != 2:
+            continue
+        person, thing = args
+        if not next_to_covers_own_squares(board, thing):
+            continue
+        for other_number, (other_kind, other_args) in enumerate(clues, 1):
+            if (
+                other_number == number
+                or other_number in skipped
+                or other_number in (overrides or {})
+                or other_kind != "not_on"
+                or other_args != [person, thing]
+            ):
+                continue
+            first = min(number, other_number)
+            text = story.say(
+                "clue.beside_but_not_on",
+                a=person,
+                things=story.places.thing(thing),
+            )
+            combined[first] = f"{_cap(text)}."
+            skipped.update((number, other_number))
+            break
     shown = {p: _cap(story.say.people.get(p, p)) for p in board.people}
     owners = sorted(board.people, key=lambda p: len(shown[p]), reverse=True)
     predicates: dict[str, list[str]] = {person: [] for person in board.people}
     extra: dict[str, list[str]] = {person: [] for person in board.people}
     loose: list[str] = []
     for number, generated in enumerate(texts, 1):
-        sentence = (overrides or {}).get(number, generated)
+        if number in skipped and number not in combined:
+            continue
+        sentence = (overrides or {}).get(number, combined.get(number, generated))
         owner = next((p for p in owners if sentence.startswith(f"{shown[p]} ")), None)
         if owner is None:
             loose.append(sentence)

@@ -862,3 +862,30 @@ def test_merged_predicates_keep_on_or_next_to_whole():
     text = ON_OR_NEXT_TO.format(lang="nl").replace("next_to Bob chair", "not_on Ann chair")
     paragraphs = csp.story.clue_paragraphs(text)
     assert "Ann zit niet op of naast de bench en zit niet op de chair." in paragraphs
+
+
+def test_next_to_and_not_on_a_multi_square_object_say_beside_but_not_on():
+    text = ON_OR_NEXT_TO.replace(
+        "not_next_to Ann bench",
+        "next_to Ann bench\nnot_on Ann bench",
+    )
+    english = text.format(lang="en")
+    assert "Ann is beside the bench, but not on the bench." in csp.story.clue_paragraphs(english)
+    dutch = text.format(lang="nl")
+    assert "Ann zit naast de bench, maar niet op de bench." in csp.story.clue_paragraphs(dutch)
+
+    override = csp.story.clue_paragraphs(english, {1: "Ann is on or beside the bench."})
+    assert "Ann is on or beside the bench and is not on the bench." in override
+
+
+def test_next_to_and_not_on_a_single_square_object_keep_existing_wording():
+    text = ON_OR_NEXT_TO.replace(
+        "next_to Bob chair",
+        "next_to Bob chair\nnot_on Bob chair",
+    )
+    bob = next(
+        paragraph
+        for paragraph in csp.story.clue_paragraphs(text.format(lang="en"))
+        if paragraph.startswith("Bob ")
+    )
+    assert bob == "Bob is next to the chair and is not on the chair."
