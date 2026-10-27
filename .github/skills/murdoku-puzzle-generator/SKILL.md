@@ -182,6 +182,11 @@ candidate**, deduced from board-wide rules, never told.
 - `tests/puzzles/` for test-only puzzles that are not meant to be played.
 - New examples need `uv run pytest -q` to pass (tests look them up with
   `tests/examples.py` `example(name)`, so file names must be unique).
+- Keep tests quick: run `pytest --durations=10` after adding one. Tests of the
+  search tools (`suggest`, `thin`, `report`) use the smallest puzzle that shows
+  the behaviour and a small `sample`; build the whole booklet in one test only.
+  When a test is slow, profile before trimming it: the cause may be a hot spot
+  in shared code (as with recomputed count cells in brute force).
 - One canonical file per puzzle: never leave a second copy elsewhere, and
   never commit generated `.png` or `.docx` files.
 - List new examples in `docs/examples.md` (Murdoku overview, with size and

@@ -842,15 +842,34 @@ class GlobalCountCondition:
     number: int | None
     index: int
     tokens: tuple[str, ...]
+    # Cells, areas and maximum for the board last asked about. Brute force asks
+    # at every search node, so they are worked out once, not each time.
+    _cache: dict[str, Any] = field(default_factory=dict, compare=False, hash=False, repr=False)
 
     @property
     def description(self) -> str:
         return " ".join((GLOBAL_COUNTING, *self.tokens))
 
-    def cells(self, board: Board) -> set[Square]:
-        if self.selector is None:
-            return set()
-        return _selector_cells(board, self.selector) & set(board.free)
+    def _cached(self, board: Board, key: str, make: Callable[[], Any]) -> Any:
+        if self._cache.get("board") is not board:
+            self._cache.clear()
+            self._cache["board"] = board
+        if key not in self._cache:
+            self._cache[key] = make()
+        return self._cache[key]
+
+    def cells(self, board: Board) -> frozenset[Square]:
+        selector = self.selector
+        if selector is None:
+            return frozenset()
+        return cast(
+            frozenset[Square],
+            self._cached(
+                board,
+                "cells",
+                lambda: frozenset(_selector_cells(board, selector) & set(board.free)),
+            ),
+        )
 
     def scope_cells(self, board: Board) -> set[Square]:
         if self.kind == "empty_areas":
@@ -858,9 +877,17 @@ class GlobalCountCondition:
             return {square for square in board.free if board.region_of(square) in regions}
         if self.kind == "people_with":
             return set()
-        return self.cells(board)
+        return set(self.cells(board))
 
     def regions(self, board: Board) -> set[str]:
+        return set(
+            cast(
+                frozenset[str],
+                self._cached(board, "regions", lambda: frozenset(self._regions(board))),
+            )
+        )
+
+    def _regions(self, board: Board) -> set[str]:
         if self.selector is None:
             return set(board.region_names)
         if self.selector.kind == "area":
@@ -870,6 +897,9 @@ class GlobalCountCondition:
         raise ValueError(f"selector {self.selector.kind!r} does not identify areas")
 
     def maximum(self, board: Board) -> int:
+        return cast(int, self._cached(board, "maximum", lambda: self._maximum(board)))
+
+    def _maximum(self, board: Board) -> int:
         if self.kind in ("people_on", "people_in"):
             return min(len(board.people), len(self.cells(board)))
         if self.kind == "people_with":
@@ -900,7 +930,8 @@ class GlobalCountCondition:
             return sum(board.has_attribute(person, self.selector.name) for person in board.people)
         if self.kind == "empty_areas":
             occupied = {board.region_of(square) for square in placed.values()}
-            return sum(region not in occupied for region in self.regions(board))
+            regions = self._cached(board, "regions", lambda: frozenset(self._regions(board)))
+            return sum(region not in occupied for region in regions)
         cells = self.cells(board)
         return len(cells - set(placed.values()))
 
