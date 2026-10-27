@@ -870,13 +870,9 @@ def test_next_to_and_not_on_a_multi_square_object_say_beside_but_not_on():
         "next_to Ann bench\nnot_on Ann bench",
     )
     english = text.format(lang="en")
-    assert "Ann is beside the bench, but not on the bench." in csp.story.clue_paragraphs(
-        english
-    )
+    assert "Ann is beside the bench, but not on the bench." in csp.story.clue_paragraphs(english)
     dutch = text.format(lang="nl")
-    assert "Ann zit naast de bench, maar niet op de bench." in csp.story.clue_paragraphs(
-        dutch
-    )
+    assert "Ann zit naast de bench, maar niet op de bench." in csp.story.clue_paragraphs(dutch)
 
     override = csp.story.clue_paragraphs(english, {1: "Ann is on or beside the bench."})
     assert "Ann is on or beside the bench and is not on the bench." in override
