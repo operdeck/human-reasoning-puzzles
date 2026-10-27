@@ -1,4 +1,4 @@
-# Wie doet het met wie? Het logeerweekend (6x6, six rooms)
+# Wie doet het met wie? Het logeerweekend (6x6, six rooms; grade: cover2)
 #
 # Six people in a house with a 2x2 double bed (standable). Wouter has no
 # clues and is named in none: he is placed last and is alone with exactly one
@@ -70,7 +70,9 @@ not_on Esther tweepersoonsbed
 not_next_to Kees bed
 above Inge Bas
 left_of Inge Kees 5
-above Inge Kees 1
+above Inge attribute:badjas 1 | Een gast met een badjas staat precies één rij onder Inge.
+in_region Kees logeerkamer
+in_region Bas woonkamer
 
 Title:
 Murdoku: Het logeerweekend
