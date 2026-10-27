@@ -56,7 +56,7 @@ def test_every_playable_cell_is_on_the_board(exported):
 
 
 def test_murdoku_bundle_has_everything_to_play(exported):
-    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
+    bundle = _bundle(exported, "wie-doet-het-met-wie-2")
     assert bundle["family"] == "murdoku"
     assert bundle["playable"]
     assert bundle["placement"]["perItem"] == 1
@@ -147,7 +147,7 @@ def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
 
 
 def test_conditions_only_list_the_kinds_a_puzzle_uses():
-    text = (example("wie-doet-het-met-wie-1.txt")).read_text()
+    text = (example("wie-doet-het-met-wie-2.txt")).read_text()
     used = {kind for kind, _ in re.findall(r"^\s*(\w+)\s+(.*)$", text, re.M)}
     assert len(story.condition_list(text)) <= len(used)
 
@@ -181,7 +181,7 @@ def test_akari_lights_what_a_bulb_sees(exported):
 
 
 def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
-    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
+    bundle = _bundle(exported, "wie-doet-het-met-wie-2")
     assert "peers" not in bundle
     assert "notes" not in bundle
 
@@ -205,3 +205,10 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
     assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
     assert _bundle(exported, "food-murdoku-1")["section"] == "Murdoku \u00b7 Japanese food"
     assert "DogDoku" in sections and "Tango" in sections
+
+
+def test_author_wordings_reach_the_web_player(exported):
+    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
+    assert "Precies twee mensen dragen een badjas." in bundle["rules"]
+    assert "Precies één persoon heeft sloffen aan." in bundle["rules"]
+    assert "Marloes heeft alleen een badjas aan." in bundle["clues"]

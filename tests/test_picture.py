@@ -1204,3 +1204,16 @@ def test_a_window_with_a_side_is_drawn_against_that_wall():
     left = picture.murdoku_picture(board("left"), cell=CELL, coordinates=False, labels=False)
     assert near_glass(left.getpixel((margin + 6, margin + 20)))
     assert not near_glass(left.getpixel((margin + 20, margin + 6)))
+
+
+def test_count_legend_uses_the_given_plain_language_texts():
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    board, clues = load_board(text)
+    from csp import murdoku, story
+
+    counts = murdoku.global_count_conditions(board, clues)
+    markup = drawing.murdoku_picture(
+        board, global_counts=counts, count_texts=story.global_count_texts(text), language="nl"
+    ).to_svg()
+    assert "Precies twee mensen dragen een badjas" in markup
+    assert "object:badjas" not in markup

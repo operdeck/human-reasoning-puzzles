@@ -1,111 +1,97 @@
-# Wie doet het met wie? Het hotel (7x7, seven areas)
+# Wie doet het met wie? Het logeerweekend (6x6, six rooms; grade: cover2)
 #
-# Seven people in a hotel with a 2x2 double bed (standable). Mieke, Sven and
-# Hanneke wear a bathrobe (badjas). Wouter has no clues and is named in none:
-# he is placed last and is alone with exactly one other person, who wears a
-# bathrobe.
+# Six people in a house with a 2x2 double bed (standable). Wouter has no
+# clues and is named in none: he is placed last and is alone with exactly one
+# other person.
 #
-# Solution: Wouter r1c2 (on the bed), Sven r2c7 (sauna), Hanneke r3c1
-# (slaapkamer), Mieke r4c5 and Ruud r5c4 (lobby), Jeroen r6c3
-# (speelgoedwinkel), Karin r7c6 (fietsenstalling): Wouter is doing it with
-# Hanneke.
+# Solution: Wouter r1c2 and Inge r2c1 (both on the tweepersoonsbed in the
+# slaapkamer), Kees r3c6 (logeerkamer), Bas r4c3 and Esther r5c4
+# (woonkamer), Marloes r6c5 (tuin): Wouter is doing it with Inge.
 
-Size: 7
+Size: 6
 Language: nl
 
 Words:
 tweepersoonsbed: het tweepersoonsbed
+bed: het bed
 tapijt: het zachte tapijt
-bad: het bad
-toilet: het toilet
-bankje: het saunabankje
-bosjes: in de bosjes
-target.attribute: iemand in een {name}
+bankje: het bankje
 
 Regions:
 s: slaapkamer #E6D3F0
+l: logeerkamer #F4CBC3
 b: badkamer #CFE8F0
-z: sauna #F2D0B0
-l: lobby #FADFB5
-w: speelgoedwinkel #F7D3E6
-f: fietsenstalling #DCDEE2
-o: bosjes #B5D3A0
+w: woonkamer #FADFB5
+k: keuken #E8DCC8
+t: tuin #CBE6B9
 
 Grid:
-s s s b b z z
-s s s b b z z
-s s s l l l z
-w w l l l l l
-w w w l f f f
-o o w w f f f
-o o o w w f f
+s s s l l l
+s s s l l l
+b b w w w l
+b b w w w w
+k k w w t t
+k k k t t t
 
 Objects:
 tweepersoonsbed: standable r1c1 r1c2 r2c1 r2c2
-tapijt: standable r3c2
 kast: blocking r1c3
-bad: blocking r1c5
-toilet: blocking r2c4
-bankje: standable r2c6 r2c7
-emmer: blocking r1c7
-plant: blocking r3c4
-bank: standable r4c5 r4c6
-koffer: blocking r4c7
-knuffel: blocking r5c1
-bal: blocking r6c4
-fiets: blocking r5c6
-fiets: blocking r7c7
-struik: blocking r6c1
-boom: blocking r7c2
+bed: standable r1c6
+tapijt: standable r2c5
+bad: blocking r3c1
+toilet: blocking r4c2
+tapijt: standable r3c4
+plant: blocking r4c6
+tafel: blocking r5c2
+stoel: standable r6c2
+boom: blocking r6c6
+bankje: standable r5c5 r5c6
 
 People:
-Ruud
-Mieke
-Sven
-Karin
-Hanneke
-Jeroen
+Marloes
+Bas
+Esther
+Kees
+Inge
 Wouter
 
 Attributes:
-badjas: Sven Hanneke
+badjas: Bas Kees
 
 Rules:
-alone_with Wouter attribute:badjas
+alone_with Wouter
 
 Clues:
-left_of Ruud Mieke 1
-outside Ruud speelgoedwinkel
-within Mieke Sven 4
-left_of Mieke attribute:badjas
-outside Mieke badkamer fietsenstalling
-not_next_to Sven koffer
-next_to Karin fiets
-left_of Hanneke Ruud 3
-within Hanneke Sven 7
-not_on Hanneke tweepersoonsbed
-next_to Hanneke tweepersoonsbed
-within Jeroen Ruud 2
+not_attribute Marloes badjas | Marloes heeft geen badjas aan.
+next_to Marloes bankje
+not_on Marloes bankje
+at_least Bas Marloes 4
+not_on Esther tweepersoonsbed
+not_next_to Kees bed
+above Inge Bas
+left_of Inge Kees 5
+above Inge attribute:badjas 1 | Een gast met een badjas staat precies één rij onder Inge.
+in_region Kees logeerkamer
+in_region Bas woonkamer
 
 Title:
-Murdoku: Het hotel
+Murdoku: Het logeerweekend
 
 Intro:
-Zeven gasten logeren in een hotel; twee dragen een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het zachte tapijt, de bank en het saunabankje mag je staan.
-Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
+Zes mensen logeren een weekend in een huis; twee gasten dragen een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het bed, het zachte tapijt, de stoel en het bankje mag je staan.
+Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
 
 Figures:
-Ruud: ; icon=U+1F468
-Mieke: ; icon=U+1F469
-Sven: ; icon=U+1F9D4
-Karin: ; icon=U+1F475
-Hanneke: ; icon=U+1F471
-Jeroen: ; icon=U+1F474
+Marloes: ; icon=U+1F469
+Bas: ; icon=U+1F468
+Esther: ; icon=U+1F475
+Kees: ; icon=U+1F474
+Inge: ; icon=U+1F471
 Wouter: ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?
 
 Reveal:
-Wouter doet het met Hanneke: zij is de enige die met hem in de slaapkamer is, en ze draagt een badjas.
+Wouter doet het met Inge: samen liggen ze op het tweepersoonsbed in de slaapkamer.
