@@ -1,14 +1,14 @@
-# Larger Minesweeper board with four hidden mines among numbered safe cells.
+# Larger Minesweeper board with a fresh minefield.
 Family: minesweeper
 Size: 8
 Clues:
-1 1 1 0 1 1 1 0
-1 . 1 0 1 . 1 0
-1 1 1 0 1 1 1 0
-0 0 0 0 0 0 0 0
-0 1 1 1 0 0 0 0
-0 1 . 1 0 1 1 1
-0 1 1 1 0 1 . 1
-0 0 0 0 0 1 1 1
+. 0 0 0 0 0 . .
+. . 1 1 1 . 0 0
+. . . . . 0 . 0
+1 2 3 2 1 0 1 1
+. . . . 1 1 . .
+2 . 4 . . . 3 1
+. . 2 . 3 . . 0
+. . 1 1 . . . 0
 TotalMines:
-4
+9

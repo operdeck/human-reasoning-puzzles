@@ -18,13 +18,7 @@ def test_queens_examples_use_the_piece_of_their_family(path):
     assert path.name.split("_")[0] == family_of(text)
 
 
-# Known prefilled boards tracked in their own issues: Minesweeper (#119) and Akari (#121).
-PREFILLED_EXCEPTIONS = {"minesweeper_3x3.txt", "minesweeper_8x8.txt", "akari_7x7.txt"}
-NON_MURDOKU_FILES = [
-    path
-    for path in played_examples()
-    if detect(path.read_text()) != "murdoku" and path.name not in PREFILLED_EXCEPTIONS
-]
+NON_MURDOKU_FILES = [path for path in played_examples() if detect(path.read_text()) != "murdoku"]
 
 
 @pytest.mark.parametrize("path", NON_MURDOKU_FILES, ids=lambda path: path.name)

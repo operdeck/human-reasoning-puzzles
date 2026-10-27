@@ -1,0 +1,10 @@
+# Small Akari board with numbered walls and intersecting sight lines.
+Family: akari
+Size: 6
+Grid:
+. . . . W .
+0 . . . 0 2
+. . . W W .
+. 3 . . . 2
+. . 2 . 1 .
+. . 1 . . .
