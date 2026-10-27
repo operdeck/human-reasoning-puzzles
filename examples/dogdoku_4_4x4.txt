@@ -1,0 +1,13 @@
+# DogDoku 4x4: hard, needs a what-if step.
+Family: dogdoku
+Size: 4
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+Grid:
+b b a c
+b b a c
+b c c c
+b d d d

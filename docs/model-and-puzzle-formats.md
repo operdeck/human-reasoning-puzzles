@@ -119,7 +119,7 @@ d d d d
 
 There must be N regions on an N×N board; each is one connected area of any size from one cell up (a one-cell region fixes its queen at once). The solver places one queen in every region, row, and column, with at most one queen in every 2×2 window. Optional `Givens:` lines are `region rNcN`, for example `a r1c2`. A queen in any of the eight neighboring cells counts as touching. Unlike a chess queen, nothing reaches further than one step: only the eight neighbors are off limits.
 
-**DogDoku.** `Family: dogdoku` is the same puzzle with dogs. An optional `Icon:` section (`queen`, `dog` or `puppy`) picks the piece in the picture and the text board; `dogdoku` defaults to `dog` and `queens` to `queen`. The icon never changes the rules. Dog puzzles are drawn with a different colour for every zone, so zone names can be colour words. A one-cell zone fixes its dog at once; the examples `dogdoku_5x5.txt`, `dogdoku_7x7.txt` and `dogdoku_9x9.txt` are built backwards from a solving order and need only eliminations (`single`, `subsumption`, `cover2`), never `chains` or `what_if`.
+**DogDoku.** `Family: dogdoku` is the same puzzle with dogs. An optional `Icon:` section (`queen`, `dog` or `puppy`) picks the piece in the picture and the text board; `dogdoku` defaults to `dog` and `queens` to `queen`. The icon never changes the rules. Dog puzzles are drawn with a different colour for every zone, so zone names can be colour words. A one-cell zone fixes its dog at once; the examples `dogdoku_1_5x5.txt`, `dogdoku_2_7x7.txt` and `dogdoku_3_9x9.txt` are built backwards from a solving order and need only eliminations (`single`, `subsumption`, `cover2`), never `chains` or `what_if`.
 
 ### Tectonic / Suguru
 
@@ -194,7 +194,7 @@ Sign cell pairs must be orthogonal neighbors. The unique-line encoding uses exis
 
 Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are required. Optional sections include `Rules:`, numbered `Clues:`, `AreaTags:`, `Objects:`, `EdgeItems:`, `PointObjects:`, `Marks:`, `Roles:`, `RoleEligibility:`, `Attributes:`, `Pronouns:`, `Hatched:`, and `Words:`. See [`tests/puzzles/murdoku_composition.txt`](../tests/puzzles/murdoku_composition.txt) for a neutral composition and the [`Murdoku authoring skill`](../.github/skills/murdoku-puzzle-generator/SKILL.md) for the complete clue vocabulary.
 
-Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_point_objects.txt`](../examples/demo/murdoku_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
+Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
 
 A relation clue may take a selector on both sides: `above object:badjas object:sloffen 1` holds when somebody standing on a bathrobe is exactly one row above somebody standing on slippers (see [`wie-doet-het-met-wie-1.txt`](../examples/wie-doet-het-met-wie/wie-doet-het-met-wie-1.txt)). Role selectors are not allowed as the subject.
 
@@ -236,7 +236,8 @@ uv run csp examples/<family-example>.txt --svg board.svg
 uv run csp examples/<family-example>.txt --png board.png
 uv run puzzle-lab rate examples/<family-example>.txt --json
 uv run puzzle-lab search examples --family tango --tier hard
-uv run puzzle-lab generate examples/tents_8x8.txt --tier medium \
+uv run puzzle-lab audit examples
+uv run puzzle-lab generate examples/tents_1_8x8.txt --tier medium \
   --seed 42 --attempts 100 --output /tmp/tents-medium.txt
 uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
   --seed 26 --output /tmp/tango-medium.txt
@@ -248,8 +249,12 @@ confirms a unique solution; `search` applies the same checks across files.
 `generate` searches reproducible family-aware variants and refuses to write a
 candidate that misses the requested tier; it keeps the seed's solution.
 `fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
-DogDoku and Suguru, then removes givens while the solution stays unique.
-Boards with under a quarter of their cells open rate `trivial`. Tiers are estimates tied to this
+DogDoku, Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
+and Tents, then removes givens while the solution stays unique.
+Boards with under a quarter of their cells open rate `trivial`. `audit`
+reports examples that share a solution or a layout (up to rotation,
+reflection and renamed regions) and gallery sections that are not listed from
+easier to harder. Tiers are estimates tied to this
 solver's rule ladder, not universal human-difficulty guarantees. Report gaps
 where a family's current solver cannot support a trustworthy tier. Murdoku
 continues to use its separate tools and skill.

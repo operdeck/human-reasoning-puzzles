@@ -993,15 +993,15 @@ def test_what_if_rules_out_the_value_with_the_shortest_refutation():
 
 
 def test_sudoku_model_shape():
-    model, _ = sudoku.compile_puzzle((example("sudoku_easy.txt")).read_text())
+    model, _ = sudoku.compile_puzzle((example("sudoku_5_9x9.txt")).read_text())
     assert model.num_literals == 81 * 9
     assert len(model.constraints) == 81 + 3 * 81
-    assert model.chosen("r1c1") == 5
-    assert model.chosen("r1c3") is None
+    assert model.chosen("r1c6") == 8
+    assert model.chosen("r1c1") is None
 
 
 def test_sudoku_solves_to_a_valid_grid():
-    model, puzzle = sudoku.compile_puzzle((example("sudoku_easy.txt")).read_text())
+    model, puzzle = sudoku.compile_puzzle((example("sudoku_5_9x9.txt")).read_text())
     grid = puzzle.grid
     result = Solver(model).solve()
     assert result.solved
@@ -1030,12 +1030,20 @@ HOUSE = r"\d once in [a-z]+ [\d,]+"  # any digit in any row, column or box
 
 # file, the rule it needs, and the deduction pattern it must show
 GRADED = [
-    ("sudoku_pointing.txt", "subsumption", r"once in box"),
-    ("sudoku_naked_pair.txt", "cover2", r"^r\dc\d holds one digit, r\dc\d holds one digit use up"),
-    ("sudoku_hidden_pair.txt", "cover2", rf"^{HOUSE}, {HOUSE} use up r\dc\d holds"),
-    ("sudoku_xwing.txt", "cover2", rf"^{FISH}, \1 {LINE} use up \1 once in (?!\2)"),
-    ("sudoku_swordfish.txt", "cover3", rf"^{FISH}, \1 {LINE}, \1 {LINE} use up \1 once in (?!\2)"),
-    ("sudoku_chains.txt", "chains", r"holds, by a chain of"),
+    ("sudoku_10_9x9_pointing.txt", "subsumption", r"once in box"),
+    (
+        "sudoku_13_9x9_naked_pair.txt",
+        "cover2",
+        r"^r\dc\d holds one digit, r\dc\d holds one digit use up",
+    ),
+    ("sudoku_11_9x9_hidden_pair.txt", "cover2", rf"^{HOUSE}, {HOUSE} use up r\dc\d holds"),
+    ("sudoku_14_9x9_xwing.txt", "cover2", rf"^{FISH}, \1 {LINE} use up \1 once in (?!\2)"),
+    (
+        "sudoku_15_9x9_swordfish.txt",
+        "cover3",
+        rf"^{FISH}, \1 {LINE}, \1 {LINE} use up \1 once in (?!\2)",
+    ),
+    ("sudoku_17_9x9_chains.txt", "chains", r"holds, by a chain of"),
 ]
 
 
@@ -1063,7 +1071,7 @@ def test_sudoku_rejects_a_malformed_grid():
 
 
 def test_mini_sudoku_has_two_by_two_boxes():
-    model, puzzle = sudoku.compile_puzzle((example("sudoku_4x4.txt")).read_text())
+    model, puzzle = sudoku.compile_puzzle((example("sudoku_1_4x4.txt")).read_text())
     grid = puzzle.grid
     boxes = [c for c in model.constraints if c.family == "each digit once per box"]
     assert len(grid) == 4 and len(boxes) == 4 * 4
@@ -1072,11 +1080,11 @@ def test_mini_sudoku_has_two_by_two_boxes():
 
 
 def test_jigsaw_boxes_and_x_diagonals_are_houses():
-    jigsaw = sudoku.parse((example("sudoku_jigsaw.txt")).read_text())
+    jigsaw = sudoku.parse((example("sudoku_12_6x6_jigsaw.txt")).read_text())
     assert jigsaw.size == 6 and jigsaw.jigsaw and not jigsaw.extra_houses()
     boxes = [cells for family, _, cells in jigsaw.houses() if family == "box"]
     assert len(boxes) == 6 and all(len(cells) == 6 for cells in boxes)
-    x = sudoku.parse((example("sudoku_x.txt")).read_text())
+    x = sudoku.parse((example("sudoku_8_9x9_x.txt")).read_text())
     assert not x.jigsaw and x.extra_houses() == {
         "x": [(i, i) for i in range(9)],
         "y": [(i, 8 - i) for i in range(9)],
@@ -1084,7 +1092,7 @@ def test_jigsaw_boxes_and_x_diagonals_are_houses():
 
 
 def test_x_sudoku_is_unique_only_because_of_its_diagonals():
-    text = (example("sudoku_x.txt")).read_text()
+    text = (example("sudoku_8_9x9_x.txt")).read_text()
     assert len(bruteforce.solutions(text)) == 1
     plain = text[: text.index("# The two diagonals")]
     assert len(bruteforce.solutions(plain)) == 2
@@ -1094,7 +1102,7 @@ def test_x_sudoku_is_unique_only_because_of_its_diagonals():
 
 
 def test_nrc_sudoku_extra_boxes_are_houses_it_needs():
-    text = (example("sudoku_nrc.txt")).read_text()
+    text = (example("sudoku_6_9x9_nrc.txt")).read_text()
     puzzle = sudoku.parse(text)
     extra = puzzle.extra_houses()
     assert sorted(extra) == ["a", "b", "c", "d"]
@@ -2399,11 +2407,11 @@ def test_numeric_region_ids_still_read():
 
 # file, the rule it needs
 CALCUDOKUS = [
-    ("calcudoku_4x4_easy.txt", "relations"),
-    ("calcudoku_6x6_medium.txt", "relations"),
-    ("calcudoku_6x6_hard.txt", "cover2"),
-    ("calcudoku_6x6_fiendish.txt", "what_if"),
-    ("calcudoku_7x7_hard.txt", "cover3"),
+    ("calcudoku_1_4x4.txt", "relations"),
+    ("calcudoku_3_6x6.txt", "relations"),
+    ("calcudoku_4_6x6.txt", "cover2"),
+    ("calcudoku_6_6x6.txt", "what_if"),
+    ("calcudoku_5_7x7.txt", "cover3"),
 ]
 
 
@@ -2454,16 +2462,16 @@ def test_cage_arithmetic():
 
 
 def test_cli_detects_calcudoku():
-    text = (example("calcudoku_4x4_easy.txt")).read_text()
+    text = (example("calcudoku_1_4x4.txt")).read_text()
     assert cli.detect(text) == "calcudoku"
-    assert cli.main([str(example("calcudoku_4x4_easy.txt"))]) == 0
+    assert cli.main([str(example("calcudoku_1_4x4.txt"))]) == 0
 
 
 # --- futoshiki ------------------------------------------------------------
 
 
 def test_futoshiki_solution_obeys_every_sign_and_needs_chains():
-    text = (example("futoshiki_5x5.txt")).read_text()
+    text = (example("futoshiki_3_5x5.txt")).read_text()
     assert cli.detect(text) == "futoshiki"
     model, puzzle = futoshiki.compile_puzzle(text)
     assert len(model.relations) == len(puzzle.signs) == 8
@@ -2763,7 +2771,7 @@ def test_report_groups_unlabelled_constraints_by_name():
 
 
 def test_report_leaves_the_model_untouched():
-    model, _ = sudoku.compile_puzzle((example("sudoku_xwing.txt")).read_text())
+    model, _ = sudoku.compile_puzzle((example("sudoku_14_9x9_xwing.txt")).read_text())
     before = (len(model.log), model.assignment(), [model.options(v) for v in model.variables])
     report.describe(model)
     assert before == (
@@ -2784,10 +2792,10 @@ def test_grade_is_the_hardest_rung_used():
 @pytest.mark.parametrize(
     "name, grade",
     [
-        ("sudoku_easy.txt", "single"),
-        ("sudoku_pointing.txt", "subsumption"),
-        ("sudoku_swordfish.txt", "cover3"),
-        ("sudoku_chains.txt", "chains"),
+        ("sudoku_5_9x9.txt", "single"),
+        ("sudoku_10_9x9_pointing.txt", "subsumption"),
+        ("sudoku_15_9x9_swordfish.txt", "cover3"),
+        ("sudoku_17_9x9_chains.txt", "chains"),
         ("prrrdoku2.txt", "what_if"),
         ("prrrdoku3.txt", "what_if"),
     ],
@@ -2798,7 +2806,7 @@ def test_cli_grade_prints_only_the_grade(name, grade, capsys):
 
 
 def test_show_model_explains_and_does_not_solve(capsys):
-    assert cli.main([str(example("sudoku_easy.txt")), "--show-model"]) == 0
+    assert cli.main([str(example("sudoku_5_9x9.txt")), "--show-model"]) == 0
     out = capsys.readouterr().out
     assert "each digit once per box" in out
     assert "How the solver will run" in out

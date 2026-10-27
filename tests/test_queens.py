@@ -6,7 +6,7 @@ from csp.core import Kind, Solver
 from csp.queens import DOG_MARK, PUPPY_MARK, QUEEN_MARK, Cell, compile_puzzle, render
 from tests.examples import example
 
-EXAMPLE = example("queens_4x4.txt")
+EXAMPLE = example("queens_4_4x4.txt")
 
 EXPECTED = {
     "a": Cell(0, 1),
@@ -72,7 +72,7 @@ def test_zones_may_differ_in_size_but_must_be_connected():
 
 
 def test_the_first_deduction_places_a_one_cell_zone():
-    text = (example("dogdoku_5x5.txt")).read_text()
+    text = (example("dogdoku_1_5x5.txt")).read_text()
     puzzle = queens.parse(text)
     lone = {region for region, cells in puzzle.cells_by_region.items() if len(cells) == 1}
     assert lone
@@ -112,7 +112,7 @@ def test_unknown_icon_is_rejected():
 def test_dogdoku_examples_are_unique_and_get_harder():
     ladder = ["single", "subsumption", "cover2"]
     grades = []
-    for name in ("dogdoku_5x5", "dogdoku_7x7", "dogdoku_9x9"):
+    for name in ("dogdoku_1_5x5", "dogdoku_2_7x7", "dogdoku_3_9x9"):
         text = (example(f"{name}.txt")).read_text()
         puzzle = queens.parse(text)
         assert len(brute.solutions(text)) == 1

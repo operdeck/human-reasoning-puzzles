@@ -270,31 +270,31 @@ Numbers from actual runs, not estimates:
 
 | Puzzle | Result | Rules that fired |
 |---|---|---|
-| `sudoku_4x4.txt` | solved, 12 iterations | `single` 11 |
-| `sudoku_easy.txt` | solved, 52 iterations | `single` 51 |
-| `sudoku_pointing.txt` | solved, 60 iterations | `single` 57, `subsumption` 2 |
-| `sudoku_naked_pair.txt` | solved, 65 iterations | `single` 58, `subsumption` 4, `cover2` 2 |
-| `sudoku_hidden_pair.txt` | solved, 59 iterations | `single` 56, `cover2` 1, `subsumption` 1 |
-| `sudoku_xwing.txt` | solved, 57 iterations | `single` 54, `cover2` 2 |
-| `sudoku_swordfish.txt` | solved, 59 iterations | `single` 56, `cover2` 1, `cover3` 1 |
-| `sudoku_chains.txt` | solved, 74 iterations | `single` 55, `subsumption` 9, `chains` 6, `cover2` 3 |
-| `sudoku_x.txt` | solved, 56 iterations | `single` 55 (two solutions without its diagonals) |
-| `sudoku_jigsaw.txt` | solved, 35 iterations | `single` 30, `subsumption` 3, `cover2` 1 |
-| `sudoku_nrc.txt` | solved, 54 iterations | `single` 53 (two solutions without its extra boxes) |
-| `futoshiki_5x5.txt` | solved, 49 iterations | `single` 25, `relations` 12, `chains` 8, `cover2` 3 |
+| `sudoku_1_4x4.txt` | solved, 11 iterations | `single` 10 |
+| `sudoku_5_9x9.txt` | solved, 50 iterations | `single` 49 |
+| `sudoku_10_9x9_pointing.txt` | solved, 60 iterations | `single` 57, `subsumption` 2 |
+| `sudoku_13_9x9_naked_pair.txt` | solved, 65 iterations | `single` 58, `subsumption` 4, `cover2` 2 |
+| `sudoku_11_9x9_hidden_pair.txt` | solved, 59 iterations | `single` 56, `cover2` 1, `subsumption` 1 |
+| `sudoku_14_9x9_xwing.txt` | solved, 57 iterations | `single` 54, `cover2` 2 |
+| `sudoku_15_9x9_swordfish.txt` | solved, 59 iterations | `single` 56, `cover2` 1, `cover3` 1 |
+| `sudoku_17_9x9_chains.txt` | solved, 74 iterations | `single` 55, `subsumption` 9, `chains` 6, `cover2` 3 |
+| `sudoku_8_9x9_x.txt` | solved, 56 iterations | `single` 55 (two solutions without its diagonals) |
+| `sudoku_12_6x6_jigsaw.txt` | solved, 35 iterations | `single` 30, `subsumption` 3, `cover2` 1 |
+| `sudoku_6_9x9_nrc.txt` | solved, 54 iterations | `single` 53 (two solutions without its extra boxes) |
+| `futoshiki_3_5x5.txt` | solved, 49 iterations | `single` 25, `relations` 12, `chains` 8, `cover2` 3 |
 | `wie-doet-het-met-wie-1.txt` | solved, 23 iterations | `single` 10, `relations` 6, `subsumption` 4, `cover2` 2 |
-| `murdoku_house.txt` | solved, 11 iterations | `single` 5, `relations` 4, `subsumption` 1 |
+| `murdoku_3_house.txt` | solved, 11 iterations | `single` 5, `relations` 4, `subsumption` 1 |
 | `murdoku_sparse_mystery.txt` | solved, 5 iterations | `single` 4 |
 | `murdoku_global_counts.txt` | solved, 13 iterations | `single` 9, `count` 3 |
 | `murdoku_composition.txt` | solved, 38 iterations | `single` 20, `count` 14, `relations` 3 |
 | `prrrdoku1.txt` | solved, 14 iterations | `single` 7, `relations` 4, `subsumption` 2 |
 | `prrrdoku2.txt` | solved, 27 iterations | `single` 9, `relations` 14, `chains` 2, `what_if` 1 |
 | `prrrdoku3.txt` | solved, 40 iterations | `single` 9, `relations` 18, `subsumption` 5, `cover2` 2, `what_if` 5 |
-| `calcudoku_4x4_easy.txt` | solved, 22 iterations | `single` 15, `relations` 6 |
-| `calcudoku_6x6_medium.txt` | solved, 57 iterations | `single` 35, `relations` 21 |
-| `calcudoku_6x6_hard.txt` | solved, 60 iterations | `single` 36, `relations` 20, `cover2` 3 |
-| `calcudoku_6x6_fiendish.txt` | solved, 73 iterations | `single` 35, `relations` 30, `cover2` 4, `what_if` 3 |
-| `calcudoku_7x7_hard.txt` | solved, 80 iterations | `single` 47, `relations` 26, `cover2` 4, `cover3` 2 |
+| `calcudoku_1_4x4.txt` | solved, 22 iterations | `single` 15, `relations` 6 |
+| `calcudoku_3_6x6.txt` | solved, 57 iterations | `single` 35, `relations` 21 |
+| `calcudoku_4_6x6.txt` | solved, 60 iterations | `single` 36, `relations` 20, `cover2` 3 |
+| `calcudoku_6_6x6.txt` | solved, 73 iterations | `single` 35, `relations` 30, `cover2` 4, `what_if` 3 |
+| `calcudoku_5_7x7.txt` | solved, 80 iterations | `single` 47, `relations` 26, `cover2` 4, `cover3` 2 |
 
 The Calcudokus were generated the same way as the graded Sudokus (random
 Latin square, random cages, uniqueness checked by brute force) because

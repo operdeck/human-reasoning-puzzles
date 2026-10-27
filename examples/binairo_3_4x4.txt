@@ -1,0 +1,8 @@
+# Binairo 4x4: hard, needs a what-if step.
+Family: binairo
+Size: 4
+Givens:
+. . . .
+. 1 . .
+1 . 0 .
+. 0 0 .

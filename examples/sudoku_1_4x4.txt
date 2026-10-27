@@ -1,0 +1,6 @@
+# Sudoku 4x4: easy, every digit appears once per row, column and box.
+Givens:
+. . . 3
+. 1 . .
+2 . . 1
+1 . 3 .

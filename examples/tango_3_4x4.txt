@@ -1,0 +1,13 @@
+# Tango 4x4: medium, equal and different signs settle the pairs.
+Family: tango
+Size: 4
+Givens:
+. 1 . 0
+. . . .
+. . 0 .
+1 . 0 .
+Equal:
+r2c1 r2c2
+r2c3 r2c4
+Different:
+r3c2 r3c3

@@ -16,7 +16,21 @@ from csp.puzzlefile import detect
 type Cell = tuple[int, int]
 type Pair = tuple[Cell, Cell]
 
-FAMILIES = ("binairo", "tango", "queens", "dogdoku", "suguru", "minesweeper", "akari")
+FAMILIES = (
+    "binairo",
+    "tango",
+    "queens",
+    "dogdoku",
+    "suguru",
+    "minesweeper",
+    "akari",
+    "sudoku",
+    "futoshiki",
+    "calcudoku",
+    "starbattle",
+    "tents",
+)
+SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
     "amber",
     "blue",
@@ -381,6 +395,325 @@ def fresh_akari(size: int, rng: random.Random, tier: str, comment: str = "") -> 
     return None
 
 
+def latin_square(
+    size: int, rng: random.Random, box: tuple[int, int] | None = None
+) -> list[list[int]]:
+    """A random grid with 1..size once per row and column (and per box, for Sudoku)."""
+    grid = [[0] * size for _ in range(size)]
+
+    def allowed(r: int, c: int, value: int) -> bool:
+        if value in grid[r] or any(grid[i][c] == value for i in range(r)):
+            return False
+        if box:
+            top, left = r - r % box[0], c - c % box[1]
+            block = (
+                grid[i][j] for i in range(top, top + box[0]) for j in range(left, left + box[1])
+            )
+            return value not in block
+        return True
+
+    def fill(index: int) -> bool:
+        if index == size * size:
+            return True
+        r, c = divmod(index, size)
+        values = list(range(1, size + 1))
+        rng.shuffle(values)
+        for value in values:
+            if allowed(r, c, value):
+                grid[r][c] = value
+                if fill(index + 1):
+                    return True
+        grid[r][c] = 0
+        return False
+
+    fill(0)
+    return grid
+
+
+def _keep(size: int, open_share: float) -> int:
+    return size * size - round(open_share * size * size)
+
+
+def _given_rows(grid: list[list[int]], givens: set[Cell]) -> list[str]:
+    size = len(grid)
+    return [
+        " ".join(str(grid[r][c]) if (r, c) in givens else "." for c in range(size))
+        for r in range(size)
+    ]
+
+
+def _header(comment: str, *lines: str) -> list[str]:
+    return ([f"# {comment}"] if comment else []) + list(lines)
+
+
+def fresh_sudoku(size: int, rng: random.Random, open_share: float, comment: str = "") -> str:
+    """A new Sudoku (4x4, 6x6 or 9x9) with about `open_share` of the cells empty."""
+    if size not in SUDOKU_BOXES:
+        raise ValueError(f"fresh Sudoku boards are {', '.join(map(str, SUDOKU_BOXES))} wide")
+    grid = latin_square(size, rng, SUDOKU_BOXES[size])
+
+    def build(givens: set[Cell]) -> str:
+        return "\n".join(_header(comment, "Givens:", *_given_rows(grid, givens))) + "\n"
+
+    return build(thin(_cells(size), build, rng, keep_at_least=_keep(size, open_share)))
+
+
+def fresh_futoshiki(
+    size: int, rng: random.Random, open_share: float, sign_share: float = 0.3, comment: str = ""
+) -> str:
+    """A new Futoshiki: a random Latin square, some inequality signs, then fewer givens."""
+    grid = latin_square(size, rng)
+    pairs = [((r, c), (r, c + 1)) for r in range(size) for c in range(size - 1)]
+    pairs += [((r, c), (r + 1, c)) for r in range(size - 1) for c in range(size)]
+    signs = {pair for pair in pairs if rng.random() < sign_share}
+
+    def build(givens: set[Cell], chosen: set[Pair] = signs) -> str:
+        lines = _header(comment, "Grid:", *_given_rows(grid, givens), "Signs:")
+        for a, b in sorted(chosen):
+            sign = ">" if grid[a[0]][a[1]] > grid[b[0]][b[1]] else "<"
+            lines.append(f"{_name(a)} {sign} {_name(b)}")
+        return "\n".join(lines) + "\n"
+
+    givens = thin(_cells(size), build, rng, keep_at_least=_keep(size, open_share))
+    kept = thin(signs, lambda chosen: build(givens, chosen), rng, keep_at_least=len(signs) // 2)
+    return build(givens, kept)
+
+
+def _cages(size: int, rng: random.Random, sizes: tuple[int, ...]) -> dict[Cell, int]:
+    """Cut the board into connected cages whose sizes are drawn from `sizes`."""
+    owner: dict[Cell, int] = {}
+    for start in _cells(size):
+        if start in owner:
+            continue
+        cage, target = len(set(owner.values())), rng.choice(sizes)
+        members = [start]
+        owner[start] = cage
+        while len(members) < target:
+            options = [
+                (r + dr, c + dc)
+                for r, c in members
+                for dr, dc in STEPS
+                if 0 <= r + dr < size and 0 <= c + dc < size and (r + dr, c + dc) not in owner
+            ]
+            if not options:
+                break
+            cell = rng.choice(options)
+            owner[cell] = cage
+            members.append(cell)
+    return owner
+
+
+def _cage_clue(values: list[int], rng: random.Random) -> str:
+    if len(values) == 1:
+        return str(values[0])
+    if len(values) == 2:
+        high, low = max(values), min(values)
+        options = [f"{high - low}-", f"{sum(values)}+"]
+        if high % low == 0:
+            options.append(f"{high // low}/")
+        return rng.choice(options)
+    product = 1
+    for value in values:
+        product *= value
+    return rng.choice([f"{sum(values)}+", f"{product}x"])
+
+
+def fresh_calcudoku(
+    size: int, rng: random.Random, attempts: int = 200, comment: str = ""
+) -> str | None:
+    """A new Calcudoku: a random Latin square cut into cages with arithmetic clues."""
+    for _ in range(attempts):
+        grid = latin_square(size, rng)
+        owner = _cages(size, rng, (1, 2, 2, 2, 3, 3, 4))
+        count = len(set(owner.values()))
+        if count > 26:
+            continue
+        ids = [chr(97 + i) for i in range(count)]
+        lines = _header(comment, f"Size: {size}", "Grid:")
+        lines += [" ".join(ids[owner[(r, c)]] for c in range(size)) for r in range(size)]
+        lines.append("Cages:")
+        for cage in range(count):
+            values = [grid[r][c] for (r, c), i in owner.items() if i == cage]
+            lines.append(f"{ids[cage]}: {_cage_clue(values, rng)}")
+        text = "\n".join(lines) + "\n"
+        if is_unique(text):
+            return text
+    return None
+
+
+def star_placement(size: int, stars: int, rng: random.Random) -> set[Cell] | None:
+    """Random cells with `stars` per row and column, none touching, even diagonally."""
+    chosen: set[Cell] = set()
+    columns = [0] * size
+
+    def fill(row: int) -> bool:
+        if row == size:
+            return True
+        options = [
+            combo
+            for combo in itertools.combinations(range(size), stars)
+            if all(b - a > 1 for a, b in itertools.pairwise(combo))
+            and all(columns[c] < stars for c in combo)
+            and not any((row - 1, c + d) in chosen for c in combo for d in (-1, 0, 1))
+        ]
+        rng.shuffle(options)
+        for combo in options:
+            for c in combo:
+                chosen.add((row, c))
+                columns[c] += 1
+            if fill(row + 1):
+                return True
+            for c in combo:
+                chosen.discard((row, c))
+                columns[c] -= 1
+        return False
+
+    return chosen if fill(0) and all(count == stars for count in columns) else None
+
+
+def _star_regions(
+    size: int, placement: set[Cell], stars: int, rng: random.Random
+) -> dict[Cell, int] | None:
+    """Group the stars `stars` at a time into connected regions, then fill the board."""
+    owner: dict[Cell, int] = {}
+    left = sorted(placement)
+    rng.shuffle(left)
+    region = 0
+    while left:
+        group = [left.pop()]
+        while len(group) < stars:
+            group.append(min(left, key=lambda s: abs(s[0] - group[0][0]) + abs(s[1] - group[0][1])))
+            left.remove(group[-1])
+        for star in group[1:]:
+            path = _path(size, group[0], star, owner, placement)
+            if path is None:
+                return None
+            for cell in path:
+                owner[cell] = region
+        owner[group[0]] = region
+        region += 1
+    while len(owner) < size * size:
+        options = [
+            ((r + dr, c + dc), i)
+            for (r, c), i in owner.items()
+            for dr, dc in STEPS
+            if 0 <= r + dr < size and 0 <= c + dc < size and (r + dr, c + dc) not in owner
+        ]
+        cell, chosen = rng.choice(options)
+        owner[cell] = chosen
+    return owner
+
+
+def _path(
+    size: int, start: Cell, goal: Cell, owner: dict[Cell, int], stars: set[Cell]
+) -> list[Cell] | None:
+    """A shortest free path between two stars that passes no other star or region."""
+    previous: dict[Cell, Cell | None] = {start: None}
+    queue = [start]
+    for cell in queue:
+        if cell == goal:
+            path = []
+            step: Cell | None = cell
+            while step is not None:
+                path.append(step)
+                step = previous[step]
+            return path
+        r, c = cell
+        for dr, dc in STEPS:
+            nxt = (r + dr, c + dc)
+            if (
+                0 <= nxt[0] < size
+                and 0 <= nxt[1] < size
+                and nxt not in previous
+                and nxt not in owner
+                and (nxt not in stars or nxt == goal)
+            ):
+                previous[nxt] = cell
+                queue.append(nxt)
+    return None
+
+
+def fresh_starbattle(
+    size: int,
+    rng: random.Random,
+    stars: int,
+    open_share: float = 1.0,
+    attempts: int = 200,
+    comment: str = "",
+) -> str | None:
+    """A new Star Battle: a random star placement, regions grown around it, then givens
+    only where the regions alone allow more than one solution."""
+    for _ in range(attempts):
+        placement = star_placement(size, stars, rng)
+        owner = _star_regions(size, placement, stars, rng) if placement else None
+        if owner is None or placement is None:
+            continue
+        blank = _region_text("starbattle", size, owner, [], comment).replace(
+            "Regions:", f"Stars: {stars}\nRegions:", 1
+        )
+        if open_share >= 1 and is_unique(blank):
+            return blank
+        solution = placement
+
+        def build(givens: set[Cell], blank: str = blank, solution: set[Cell] = solution) -> str:
+            rows = [
+                " ".join(
+                    ("*" if (r, c) in solution else ".") if (r, c) in givens else "?"
+                    for c in range(size)
+                )
+                for r in range(size)
+            ]
+            return blank + "Givens:\n" + "\n".join(rows) + "\n"
+
+        keep = _keep(size, open_share) if open_share < 1 else 0
+        return build(thin(_cells(size), build, rng, keep_at_least=keep))
+    return None
+
+
+def fresh_tents(
+    size: int, rng: random.Random, attempts: int = 400, comment: str = ""
+) -> str | None:
+    """A new Tents and Trees board: random tent and tree pairs, then row and column counts."""
+    for _ in range(attempts):
+        tents: set[Cell] = set()
+        trees: set[Cell] = set()
+        cells = _cells(size)
+        rng.shuffle(cells)
+        for r, c in cells[: size * size // 4]:
+            near = {(r + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
+            if (r, c) in trees or near & tents:
+                continue
+            if any((r + dr, c + dc) in trees for dr, dc in STEPS):
+                continue
+            spots = [
+                (r + dr, c + dc)
+                for dr, dc in STEPS
+                if 0 <= r + dr < size
+                and 0 <= c + dc < size
+                and (r + dr, c + dc) not in trees
+                and not any((r + dr + a, c + dc + b) in tents for a, b in STEPS)
+            ]
+            if spots:
+                tents.add((r, c))
+                trees.add(rng.choice(spots))
+        lines = _header(comment, "Family: tents", f"Size: {size}", "Trees:")
+        lines += [
+            " ".join("T" if (r, c) in trees else "." for c in range(size)) for r in range(size)
+        ]
+        lines += ["RowCounts:", " ".join(str(sum(t[0] == r for t in tents)) for r in range(size))]
+        lines += [
+            "ColumnCounts:",
+            " ".join(str(sum(t[1] == c for t in tents)) for c in range(size)),
+        ]
+        text = "\n".join(lines) + "\n"
+        try:
+            if is_unique(text):
+                return text
+        except ValueError:  # a tree without a free neighbour
+            continue
+    return None
+
+
 def fresh(
     family: str,
     size: int,
@@ -389,7 +722,8 @@ def fresh(
     comment: str = "",
     tier: str = "easy",
 ) -> str | None:
-    """A new puzzle of `family`; `open_share` applies to Binairo, Tango and Minesweeper."""
+    """A new puzzle of `family`; `open_share` applies to Binairo, Tango, Minesweeper,
+    Sudoku and Futoshiki, and sets the least share of Star Battle cells left unknown."""
     if family in {"binairo", "tango"}:
         return fresh_binairo(size, rng, open_share, family, comment=comment)
     if family == "minesweeper":
@@ -400,4 +734,15 @@ def fresh(
         return fresh_queens(size, rng, family, comment=comment)
     if family == "suguru":
         return fresh_suguru(size, rng, comment=comment)
+    if family == "sudoku":
+        return fresh_sudoku(size, rng, open_share, comment)
+    if family == "futoshiki":
+        return fresh_futoshiki(size, rng, open_share, comment=comment)
+    if family == "calcudoku":
+        return fresh_calcudoku(size, rng, comment=comment)
+    if family == "starbattle":
+        stars = 2 if size >= 8 else 1
+        return fresh_starbattle(size, rng, stars, open_share or 1.0, comment=comment)
+    if family == "tents":
+        return fresh_tents(size, rng, comment=comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")
