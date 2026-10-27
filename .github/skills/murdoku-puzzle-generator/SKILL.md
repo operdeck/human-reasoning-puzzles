@@ -71,6 +71,7 @@ its short output, and decide:
 | worked solution, reveal order | `uv run csp FILE --explain` |
 | a person's live squares while solving | `uv run csp FILE --track-person P` |
 | clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
+| ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
 | pictures, booklet | `--png`, `--docx` |
@@ -114,6 +115,18 @@ Clues should read like a detective's notes, not like arithmetic.
   redesign the board or swap a multi-square object for single squares.
 - Every clue must be needed: `thin` and `report` show which are not; `--lint`
   flags implied and redundant clues.
+- **The theme's key clue must do work.** Global counts and greedy suggestions
+  easily make a themed clue (the bathrobe/slippers clue, a stated trait)
+  redundant. Check it with `report`; if it is removable, rebuild the other
+  clues with `suggest --needs N`, or drop clues that `report` shows are fully
+  redundant until the themed fact is needed. A fact stated in the intro must
+  be needed too.
+- **Decoys raise the grade.** Extra items let a key clue fit more than one
+  pair of squares; even an impossible pair (both squares in one column) can
+  force `what_if`. For an easy puzzle, place decoys so the key clue fits
+  exactly one pair, and read `--explain` to see which step is hard.
+- Do not name the answer of a "who wears it?" puzzle in a clue: leave `on`
+  out of `suggest --kinds` when it would hand out the item's owner.
 - Ground clues in the board's story: the clock on the platform, the bench in
   the coupé, the window of the locomotive.
 
@@ -196,7 +209,12 @@ For a finished Murdoku under `examples/`, before reporting done:
 - Clues thinned (`clue_search thin`); few exact-number clues; no giveaway.
 - For a mystery: `--explain` reveals the answer by the rules, late.
 - `--png` looked at (puzzle and solution), independently critiqued, and useful
-  visual suggestions considered; `--docx` page check for booklet text.
+  visual suggestions considered; `--docx` page check for booklet text. Look at
+  the pages themselves: `--pdf FILE` (via Word) and `pdftoppm -png` give images.
+- The picture legend and booklet rules show no engine syntax (`count people
+  on object:...`); author wordings appear on player pages, never in solutions.
+- The themed key clue is necessary (`report`), and the series order follows
+  `--grade`; report any conflict with the requested order instead of hiding it.
 - An independent clue review used only player-facing material; each clue was
   restated as a constraint, alternate readings were checked, and solvability
   findings were verified against the source and rendered clue count.
@@ -214,6 +232,24 @@ For a finished Murdoku under `examples/`, before reporting done:
   forest green). Keep neighbours distinguishable. Use plain region names
   ("Garden", not "Green garden"); a name that does mention a colour must match
   its background (`tests/test_solver.py` checks this).
+- **Order a numbered series by measured difficulty.** Run `--grade` on every
+  candidate and place simpler puzzles before harder ones; update all numbered
+  links, tests, and booklet references when inserting a puzzle. Compare solved
+  boards across the series too: avoid repeating the same placement pattern or
+  a trivially rotated/reflected layout.
+- **Items whose owner must be deduced lie on the board.** When the puzzle is
+  "who wears the bathrobe?", draw the items as standable objects at fixed
+  squares (more items than wearers) and state the totals as `Rules:` counts
+  (`count people on object:badjas = 2`). Standing on the square means wearing
+  it. Use `Attributes:` only for traits the player is told up front; the
+  legend then lists the holders with the trait's icon.
+- **Selectors on both sides** of a relation clue say "somebody X ... somebody
+  Y": `above object:badjas object:sloffen 1` is "one bathrobe wearer is
+  exactly one row above the slippers wearer". When both selectors name cells
+  the engine reasons over squares, as a person would.
+- If a visualization or authoring step is useful beyond one puzzle, prefer a
+  shared renderer, helper, `clue_search` option or skill improvement over a
+  puzzle-specific workaround.
 - The picture labels each region with its name and draws standable objects
   faint; blocking squares are shaded darker. The booklet and web player list
   the puzzle's objects with icon and standable/blocking. You need not add these.
@@ -365,7 +401,10 @@ One or two lines, true for the verified solution (check against --explain).
 - Figures: give everyone an icon. Leave the description empty (`Name: ; icon=...`)
   rather than a role-only filler like "a suspect", "the victim" or "een dier".
 - `clue | wording` overrides one generated sentence; it must mean exactly the
-  clue. Use it only where the generated text reads badly or for flavour.
+  clue. Use it only where the generated text reads badly or for flavour. A
+  `Rules:` line takes `| wording` too; it is then listed with the rules in the
+  booklet and web player and used in the picture legend. Author wordings are
+  for players only: worked solutions always keep the generated text.
 - `Words:` fixes phrasing: region phrases (`moeras: in het moeras`,
   `kantoor: op kantoor`), object nouns with their article (`gras: het gras`,
   `bed: het bed`; the Dutch default is "de"), and `role_has`, `role_not`,
@@ -380,6 +419,15 @@ One or two lines, true for the verified solution (check against --explain).
 - Check `uv run csp FILE --docx /tmp/check.docx` (needs `uv sync --extra docx`):
   one page per puzzle and solution, correct Dutch de/het, legible board. Never
   commit `.docx` files. Format details: `docs/model-and-puzzle-formats.md`.
+
+### Feeding lessons back
+
+When an authoring session uncovers something general (a pitfall, a missing
+tool option, a wording rule), add it to this skill and, if it applies to all
+families, to the non-Murdoku skill, in the same PR. Fix the cause in code with
+a test (`clue_search`, `story.py`, `picture.py`) rather than working around it
+in one puzzle. Keep account names, tokens and other machine-local setup out of
+the repository.
 
 ### Booklet review
 

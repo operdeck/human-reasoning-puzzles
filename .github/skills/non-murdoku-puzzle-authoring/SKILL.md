@@ -60,6 +60,16 @@ human difficulty ratings. A tier is not enough by itself: inspect the actual
 deductions and puzzle presentation, confirm that the puzzle is not simply
 prefilled, and report any limitation of the solver's grading ladder.
 
+## Feeding lessons back
+
+When authoring uncovers a general pitfall or a missing capability, improve the
+repository tool (`puzzle-lab`, a family generator, the renderer) with a test
+and record the lesson in this skill in the same PR, rather than solving it
+ad hoc for one puzzle. Order puzzles within a series or tier table by measured
+difficulty, never reuse a board layout or solution across examples, and
+reject candidates that are fully or almost fully prefilled. Keep account
+names, tokens and other machine-local setup out of the repository.
+
 For Murdoku, stop here and use `.github/skills/murdoku-puzzle-generator/` and
 its own workflow. Do not change Murdoku examples, skills, tools, or behavior
 while authoring non-Murdoku puzzles.
