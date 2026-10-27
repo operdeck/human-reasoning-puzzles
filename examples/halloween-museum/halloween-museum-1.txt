@@ -1,6 +1,6 @@
 # Halloween at the Museum 6x6 - "The stolen scarab"
-# Solution: Agnes r1c5, Boris r2c1, Clara r3c3, Desmond r4c6, Felix r5c2, Edith r6c4.
-# Clara is the thief; she was in the Egyptian hall with Felix.
+# Solution: Alba r1c5, Bernardo r2c1, Carmen r3c3, Diego r4c6, Fernando r5c2, Elena r6c4.
+# Carmen is the thief; she was in the Egyptian hall with Fernando.
 
 Size: 6
 Language: en
@@ -62,7 +62,7 @@ AreaTags:
 crime_scene: egyptian_hall
 
 Attributes:
-guest_in_costume: Clara Desmond Edith
+guest_in_costume: Carmen Diego Elena
 
 Roles:
 thief: 1
@@ -71,23 +71,23 @@ RoleEligibility:
 thief: attribute:guest_in_costume
 
 People:
-Agnes
-Boris
-Clara
-Desmond
-Edith
-Felix
+Alba
+Bernardo
+Carmen
+Diego
+Elena
+Fernando
 
 Rules:
 role_occupant thief not_alone
 min_role_in_tagged thief crime_scene 1
 
 Clues:
-next_to Boris painting
-in_region Agnes armoury
-left_of Agnes Desmond
-on Felix sarcophagus
-in_region Edith dinosaur_hall
+next_to Bernardo painting
+in_region Alba armoury
+left_of Alba Diego
+on Fernando sarcophagus
+in_region Elena dinosaur_hall
 
 Title:
 Halloween at the Museum: The stolen scarab
@@ -98,15 +98,15 @@ Place everyone on a free square, with one person in every row and column. The be
 The thief wore a costume, was in the Egyptian hall, and was not alone there.
 
 Figures:
-Agnes: the curator ; icon=U+1F475
-Boris: the night guard ; icon=U+1F9D4
-Clara: dressed as a witch ; icon=U+1F9D9
-Desmond: dressed as a vampire ; icon=U+1F9DB
-Edith: dressed as a zombie ; icon=U+1F9DF
-Felix: the tour guide ; icon=U+1F468
+Alba: the curator ; icon=U+1F475
+Bernardo: the night guard ; icon=U+1F9D4
+Carmen: dressed as a witch ; icon=U+1F9D9
+Diego: dressed as a vampire ; icon=U+1F9DB
+Elena: dressed as a zombie ; icon=U+1F9DF
+Fernando: the tour guide ; icon=U+1F468
 
 Question:
 Who stole the scarab?
 
 Reveal:
-Clara stole the scarab. She was in the Egyptian hall with Felix, who lay in the sarcophagus.
+Carmen stole the scarab. She was in the Egyptian hall with Fernando, who lay in the sarcophagus.
