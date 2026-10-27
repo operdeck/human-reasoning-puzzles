@@ -13,7 +13,7 @@ from glob import glob
 from pathlib import Path
 from typing import Any, cast
 
-from csp import bruteforce, cli, report
+from csp import bruteforce, cli, fresh, report
 from csp.core import Solver
 from csp.puzzlefile import detect, read_sections
 
@@ -22,6 +22,8 @@ TIERS = {
     "medium": frozenset({"relations", "subsumption", "cover2"}),
     "hard": frozenset({"cover3", "chains", "what_if"}),
 }
+# A board with fewer open cells than this share is a prefilled exercise, not a puzzle.
+PREFILLED_OPEN_SHARE = 0.25
 
 
 @dataclass(frozen=True)
@@ -65,13 +67,14 @@ def rate(text: str, path: str = "<memory>") -> Rating:
     tier = next((name for name, grades in TIERS.items() if grade in grades), "unrated")
     variable_count = len(model.variables)
     board_size = int(variable_count**0.5)
+    open_share = initial_open / max(1, variable_count)
     if grade == "relations" and (
         (family in {"calcudoku", "kakurasu", "tango"} and variable_count <= 16)
         or (family == "logicgrid" and variable_count <= 9)
     ):
         tier = "easy"
     if grade == "relations" and family in {"binairo", "tango"}:
-        tier = "easy" if initial_open <= board_size else "medium"
+        tier = "easy" if open_share <= 0.5 else "medium"
     if grade == "count" and family == "battleships":
         tier = "easy" if variable_count <= 16 else "medium"
     if family in {"suguru", "tectonic"} and grade in {"single", "count"}:
@@ -87,7 +90,7 @@ def rate(text: str, path: str = "<memory>") -> Rating:
             tier = "medium"
         elif density >= 0.3:
             tier = "hard"
-    if initial_open < 2 or not any(fired):
+    if initial_open < 2 or not any(fired) or open_share < PREFILLED_OPEN_SHARE:
         tier = "trivial"
     return Rating(
         path=path,
@@ -750,6 +753,27 @@ def _generate_command(args: argparse.Namespace) -> int:
     return 1
 
 
+def _fresh_command(args: argparse.Namespace) -> int:
+    rng = random.Random(args.seed)
+    for attempt in range(args.attempts):
+        candidate = fresh.fresh(args.family, args.size, rng, args.open_share, args.comment)
+        if candidate is None:
+            continue
+        result = rate(candidate, f"fresh {args.family} (candidate {attempt + 1})")
+        if result.tier != args.tier:
+            continue
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(candidate)
+        print(f"wrote {output}: {result.family} {result.tier} ({result.grade}), unique")
+        return 0
+    print(
+        f"no unique {args.tier} {args.family} found in {args.attempts} attempts (seed {args.seed})",
+        file=sys.stderr,
+    )
+    return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -775,6 +799,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     generate_parser.add_argument("--seed", type=int, default=0)
     generate_parser.add_argument("--attempts", type=int, default=100)
     generate_parser.set_defaults(run=_generate_command)
+
+    fresh_parser = commands.add_parser(
+        "fresh", help="build an original board with its own solution and rate it"
+    )
+    fresh_parser.add_argument("family", choices=fresh.FAMILIES)
+    fresh_parser.add_argument("--size", type=int, required=True)
+    fresh_parser.add_argument("--output", required=True)
+    fresh_parser.add_argument("--tier", choices=tuple(TIERS), required=True)
+    fresh_parser.add_argument(
+        "--open-share", type=float, default=0.5, help="Binairo/Tango share of empty cells"
+    )
+    fresh_parser.add_argument("--comment", default="")
+    fresh_parser.add_argument("--seed", type=int, default=0)
+    fresh_parser.add_argument("--attempts", type=int, default=10)
+    fresh_parser.set_defaults(run=_fresh_command)
 
     args = parser.parse_args(argv)
     return cast(Callable[[argparse.Namespace], int], args.run)(args)
