@@ -886,7 +886,7 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
         "binairo_4x4.txt",
         "tango_4x4.txt",
         "tents_4x4.txt",
-        "minesweeper_3x3.txt",
+        "minesweeper_5x5.txt",
         "akari_2x2.txt",
         "kakurasu_4x4.txt",
         "battleships_counts_4x4.txt",
