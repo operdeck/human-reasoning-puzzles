@@ -512,6 +512,23 @@ CATALOGUE: dict[str, str] = {
     "knuffel": "1f9f8", "teddy": "1f9f8", "teddy_bear": "1f9f8",
     "bal": "26bd", "ball": "26bd", "voetbal": "26bd", "football": "26bd",
     "emmer": "1faa3", "bucket": "1faa3",
+    # museum and Halloween
+    "sarcofaag": "26b0", "sarcophagus": "26b0", "doodskist": "26b0", "coffin": "26b0",
+    "dinosaurus": "1f996", "dinosaur": "1f996", "t_rex": "1f996", "trex": "1f996",
+    "sauropod": "1f995", "brontosaurus": "1f995", "diplodocus": "1f995",
+    "harnas": "1f6e1", "armour": "1f6e1", "armor": "1f6e1", "schild": "1f6e1",
+    "shield": "1f6e1",
+    "zwaarden": "2694", "swords": "2694", "weapons": "2694",
+    "pompoen": "1f383", "pumpkin": "1f383", "jack_o_lantern": "1f383",
+    "spook": "1f47b", "ghost": "1f47b",
+    "vleermuis": "1f987", "bat": "1f987",
+    "spinnenweb": "1f578", "cobweb": "1f578", "spider_web": "1f578",
+    "kaars": "1f56f", "candle": "1f56f",
+    "juweel": "1f48e", "gem": "1f48e", "jewel": "1f48e", "diamond": "1f48e",
+    "scarabee": "1fab2", "scarab": "1fab2", "beetle": "1fab2",
+    "bot": "1f9b4", "bone": "1f9b4", "fossil": "1f9b4",
+    "schedel": "1f480", "skull": "1f480",
+    "souvenirs": "1f6cd", "souvenir": "1f6cd", "shopping_bags": "1f6cd",
 }  # fmt: skip
 
 
