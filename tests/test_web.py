@@ -72,7 +72,7 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     assert bundle["reveal"].startswith("Wouter doet het met Noor")
     assert bundle["rules"]
     names = [condition["name"] for condition in bundle["conditions"]]
-    assert names == ["alleen met", "naast"]
+    assert names == ["alleen met", "aantallen", "op", "links van", "naast"]
 
 
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
