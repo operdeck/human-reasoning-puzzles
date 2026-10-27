@@ -1047,7 +1047,12 @@ def _parse_count_comparison(
 
 @dataclass(frozen=True)
 class QuantifiedCondition:
-    """A bounded-arity clue that asks for a person matching a target selector."""
+    """A bounded-arity clue that asks for a person matching a target selector.
+
+    The subject is a named person, or, with `subject_selector`, anyone matching
+    that selector: `above object:badjas object:sloffen 1` holds when somebody on
+    a bathrobe is exactly one row above somebody on the slippers.
+    """
 
     label: str
     kind: str
@@ -1056,6 +1061,7 @@ class QuantifiedCondition:
     pair_test: PairTest | None = None
     number: int | None = None
     rest: tuple[str, ...] = ()
+    subject_selector: TargetSelector | None = None
 
     @property
     def companions(self) -> int:
@@ -1095,6 +1101,14 @@ class QuantifiedCondition:
                     return False
                 count += witness
             return count == self.companions
+        if self.subject_selector is not None:
+            return any(
+                first != second
+                and _target_matches(board, self.subject_selector, first, placed[first], roles)
+                and self.pair_state(board, placed[first], second, placed[second], roles)[0]
+                for first in board.people
+                for second in board.people
+            )
         return any(
             person != self.subject
             and self.pair_state(board, placed[self.subject], person, placed[person], roles)[0]
@@ -1145,7 +1159,9 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
 
 
 def _is_quantified_target(kind: str, args: Sequence[str]) -> bool:
-    return kind == "alone_with" or (kind in RELATIONS and len(args) > 1 and ":" in args[1])
+    return kind == "alone_with" or (
+        kind in RELATIONS and len(args) > 1 and (":" in args[0] or ":" in args[1])
+    )
 
 
 def _positive(token: str) -> bool:
@@ -1178,7 +1194,12 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
                 raise ValueError(f"quantified {kind} expects a person and target selector: {args}")
             subject, selector_text, *rest = args
             pair_test = RELATIONS[kind](board, *rest)
-        if subject not in board.people:
+        subject_selector = None
+        if kind != "alone_with" and ":" in subject:
+            subject_selector = _target_selector(board, subject)
+            if subject_selector.kind == "role":
+                raise ValueError(f"quantified {kind} cannot take a role as its subject: {args}")
+        elif subject not in board.people:
             raise ValueError(f"clue {kind!r} names unknown person {subject!r}")
         selector = (
             _target_selector(board, selector_text)
@@ -1187,7 +1208,14 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
         )
         out.append(
             QuantifiedCondition(
-                " ".join((kind, *args)), kind, subject, selector, pair_test, number, tuple(rest)
+                " ".join((kind, *args)),
+                kind,
+                subject,
+                selector,
+                pair_test,
+                number,
+                tuple(rest),
+                subject_selector,
             )
         )
     return out
@@ -1893,6 +1921,9 @@ def _compile_global_counts(
 def _compile_quantified_condition(
     model: Model, board: Board, condition: QuantifiedCondition
 ) -> None:
+    if condition.subject_selector is not None:
+        _compile_selector_subject_condition(model, board, condition)
+        return
     witnesses: list[int] = []
     for person in board.people:
         if person == condition.subject:
@@ -1940,6 +1971,122 @@ def _compile_quantified_condition(
         Kind.COUNT,
         witnesses,
         allowed_counts=allowed,
+        family="quantified target",
+    )
+
+
+def _compile_selector_subject_condition(
+    model: Model, board: Board, condition: QuantifiedCondition
+) -> None:
+    """At least one ordered pair of people matches subject, target and relation.
+
+    When both selectors name cells (objects, areas, marks, lines, ...), the
+    clue is only about which squares are taken: each fitting pair of squares
+    gets a witness that is true exactly when both are occupied. Otherwise each
+    ordered pair of people gets a witness relation.
+    """
+    subject_selector = condition.subject_selector
+    assert subject_selector is not None
+    if subject_selector.kind in CELL_SELECTOR_KINDS and condition.selector.kind in (
+        CELL_SELECTOR_KINDS
+    ):
+        _compile_cell_pair_condition(model, board, condition)
+        return
+    witnesses: list[int] = []
+    for first in board.people:
+        for second in board.people:
+            if first == second:
+                continue
+            role_variable = (
+                board.role_variable(second, condition.selector.name)
+                if condition.selector.kind == "role"
+                else None
+            )
+            variable, is_match, _ = _hidden_boolean(
+                model,
+                "target_witness",
+                f"{condition.label} witness {first} {second}",
+                "target witness",
+            )
+            witnesses.append(is_match)
+            variables: tuple[str, ...] = (first, second, variable)
+            if role_variable is not None:
+                variables = (first, second, role_variable, variable)
+
+            def holds(
+                *values: Any,
+                subject: str = first,
+                candidate: str = second,
+                has_role_var: str | None = role_variable,
+            ) -> bool:
+                if has_role_var is not None:
+                    subject_square, candidate_square, has_role, witness = values
+                    role_values = {(candidate, condition.selector.name): has_role}
+                else:
+                    subject_square, candidate_square, witness = values
+                    role_values = {}
+                selected = _target_matches(
+                    board, subject_selector, subject, subject_square, role_values
+                )
+                expected = (
+                    selected
+                    and condition.pair_state(
+                        board, subject_square, candidate, candidate_square, role_values
+                    )[0]
+                )
+                return bool(witness == expected)
+
+            model.relate(f"{condition.label} witness {first} {second}", variables, holds)
+    model.constrain(
+        condition.label,
+        Kind.COUNT,
+        witnesses,
+        allowed_counts=range(1, len(witnesses) + 1),
+        family="quantified target",
+    )
+
+
+CELL_SELECTOR_KINDS = frozenset(
+    {"area", "tag", "object_kind", "object", "mark", "edge_item", "point_object", "rows", "columns"}
+)
+
+
+def _compile_cell_pair_condition(
+    model: Model, board: Board, condition: QuantifiedCondition
+) -> None:
+    assert condition.subject_selector is not None and condition.pair_test is not None
+    free = set(board.free)
+    firsts = sorted(set(_selector_cells(board, condition.subject_selector)) & free)
+    seconds = sorted(set(_selector_cells(board, condition.selector)) & free)
+    witnesses: list[int] = []
+    for first in firsts:
+        for second in seconds:
+            if first == second or not condition.pair_test(first, second):
+                continue
+            _, is_match, _ = _hidden_boolean(
+                model,
+                "target_witness",
+                f"{condition.label} witness {first} {second}",
+                "target witness",
+            )
+            occupants = [model.literal(person, square) for person in board.people
+                         for square in (first, second)]  # fmt: skip
+            model.constrain(
+                f"{condition.label} witness {first} {second}",
+                Kind.COUNT,
+                occupants,
+                allowed_counts={2},
+                reified_by=is_match,
+                family="quantified target",
+            )
+            witnesses.append(is_match)
+    if not witnesses:
+        raise ValueError(f"clue {condition.label!r} can never hold on this board")
+    model.constrain(
+        condition.label,
+        Kind.COUNT,
+        witnesses,
+        allowed_counts=range(1, len(witnesses) + 1),
         family="quantified target",
     )
 

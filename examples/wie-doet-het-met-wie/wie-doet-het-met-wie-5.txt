@@ -1,0 +1,111 @@
+# Wie doet het met wie? Het hotel (7x7, seven areas; grade: cover3)
+#
+# Seven people in a hotel with a 2x2 double bed (standable). Sven and Hanneke
+# wear a bathrobe (badjas); that fact is needed for a unique solution. Wouter
+# has no clues and is named in none:
+# he is placed last and is alone with exactly one other person, who wears a
+# bathrobe.
+#
+# Solution: Wouter r1c2 (on the bed), Sven r2c7 (sauna), Hanneke r3c1
+# (slaapkamer), Mieke r4c5 and Ruud r5c4 (lobby), Jeroen r6c3
+# (speelgoedwinkel), Karin r7c6 (fietsenstalling): Wouter is doing it with
+# Hanneke.
+
+Size: 7
+Language: nl
+
+Words:
+tweepersoonsbed: het tweepersoonsbed
+tapijt: het zachte tapijt
+bad: het bad
+toilet: het toilet
+bankje: het saunabankje
+bosjes: in de bosjes
+target.attribute: iemand in een {name}
+
+Regions:
+s: slaapkamer #E6D3F0
+b: badkamer #CFE8F0
+z: sauna #F2D0B0
+l: lobby #FADFB5
+w: speelgoedwinkel #F7D3E6
+f: fietsenstalling #DCDEE2
+o: bosjes #B5D3A0
+
+Grid:
+s s s b b z z
+s s s b b z z
+s s s l l l z
+w w l l l l l
+w w w l f f f
+o o w w f f f
+o o o w w f f
+
+Objects:
+tweepersoonsbed: standable r1c1 r1c2 r2c1 r2c2
+tapijt: standable r3c2
+kast: blocking r1c3
+bad: blocking r1c5
+toilet: blocking r2c4
+bankje: standable r2c6 r2c7
+emmer: blocking r1c7
+plant: blocking r3c4
+bank: standable r4c5 r4c6
+koffer: blocking r4c7
+knuffel: blocking r5c1
+bal: blocking r6c4
+fiets: blocking r5c6
+fiets: blocking r7c7
+struik: blocking r6c1
+boom: blocking r7c2
+
+People:
+Ruud
+Mieke
+Sven
+Karin
+Hanneke
+Jeroen
+Wouter
+
+Attributes:
+badjas: Sven Hanneke
+
+Rules:
+alone_with Wouter attribute:badjas
+
+Clues:
+left_of Ruud Mieke 1
+outside Ruud speelgoedwinkel
+within Mieke Sven 4
+left_of Mieke attribute:badjas
+outside Mieke badkamer fietsenstalling
+not_next_to Sven koffer
+next_to Karin fiets
+left_of Hanneke Ruud 3
+not_on Hanneke tweepersoonsbed
+next_to Hanneke tweepersoonsbed
+within Jeroen Ruud 2
+
+Title:
+Murdoku: Het hotel
+
+Intro:
+Zeven gasten logeren in een hotel; twee dragen een badjas. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Het tweepersoonsbed beslaat vier vakjes; wie wil kan erop gaan liggen. Ook op het zachte tapijt, de bank en het saunabankje mag je staan.
+Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
+
+Figures:
+Ruud: ; icon=U+1F468
+Mieke: ; icon=U+1F469
+Sven: ; icon=U+1F9D4
+Karin: ; icon=U+1F475
+Hanneke: ; icon=U+1F471
+Jeroen: ; icon=U+1F474
+Wouter: ; icon=U+1F9D1
+
+Question:
+Met wie doet Wouter het?
+
+Reveal:
+Wouter doet het met Hanneke: zij is de enige die met hem in de slaapkamer is, en ze draagt een badjas.
