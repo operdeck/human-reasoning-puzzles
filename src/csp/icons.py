@@ -524,6 +524,8 @@ CATALOGUE: dict[str, str] = {
     "vleermuis": "1f987", "bat": "1f987",
     "spinnenweb": "1f578", "cobweb": "1f578", "spider_web": "1f578",
     "kaars": "1f56f", "candle": "1f56f",
+    "dolk": "1f5e1", "dagger": "1f5e1", "kruisboog": "1f3f9", "crossbow": "1f3f9",
+    "kandelaar": "1f56f", "candlestick": "1f56f",
     "juweel": "1f48e", "gem": "1f48e", "jewel": "1f48e", "diamond": "1f48e",
     "scarabee": "1fab2", "scarab": "1fab2", "beetle": "1fab2",
     "bot": "1f9b4", "bone": "1f9b4", "fossil": "1f9b4",
