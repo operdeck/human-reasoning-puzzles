@@ -39,6 +39,9 @@ chair: standable r3c4
 chair: standable r4c3
 bed: standable r4c1 r4c2
 
+Backdrop:
+U+1F50D
+
 People:
 Ingrid
 Joost

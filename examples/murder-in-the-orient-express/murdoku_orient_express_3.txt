@@ -120,6 +120,9 @@ moordenaar: 1
 RoleEligibility:
 moordenaar: attribute:vrouw
 
+Backdrop:
+U+1F682
+
 People:
 Dragomir
 Bogdan

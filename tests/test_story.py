@@ -711,7 +711,18 @@ def test_murder_hotel_story_handles_role_rule_covering_rows():
 def test_area_tag_note_uses_singular_grammar_for_one_region():
     notes = board_notes(example("murder-hotel-1.txt").read_text())
 
-    assert "The crime scene is West guest room." in notes
+    assert "The crime scene is the west guest room." in notes
+
+
+def test_area_tag_note_keeps_the_article_and_case_of_an_english_room_phrase():
+    notes = board_notes(example("halloween-museum-2.txt").read_text())
+    assert "The crime scene is the armoury." in notes
+    text = (
+        example("halloween-museum-2.txt")
+        .read_text()
+        .replace("crime_scene: armoury", "crime_scene: El_Greco_room")
+    )
+    assert "The crime scene is the El Greco room." in board_notes(text)
 
 
 def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():

@@ -43,6 +43,9 @@ badjas: standable r4c4
 sloffen: standable r3c4
 sloffen: standable r3c2
 
+Backdrop:
+U+1F6C1
+
 People:
 Eva
 Bram

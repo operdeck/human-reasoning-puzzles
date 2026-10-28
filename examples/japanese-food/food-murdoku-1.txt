@@ -44,6 +44,9 @@ zaisu: standable r6c4
 Attributes:
 food: Onigiri Okonomiyaki Mochi Sushi Tonkatsu
 
+Backdrop:
+ramen_bowl
+
 People:
 Onigiri
 Okonomiyaki

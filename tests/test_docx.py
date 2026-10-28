@@ -186,6 +186,25 @@ def test_icon_that_is_not_vendored_is_linted(tmp_path, capsys):
     assert "unknown icon U+1F680" in capsys.readouterr().out
 
 
+def test_unknown_backdrop_is_linted(tmp_path, capsys):
+    text = (
+        example("food-murdoku-2.txt")
+        .read_text()
+        .replace("People:", "Backdrop:\nzorblax\n\nPeople:", 1)
+    )
+    (tmp_path / "f.txt").write_text(text)
+    main([str(tmp_path / "f.txt"), "--lint"])
+    assert "unknown backdrop icon zorblax" in capsys.readouterr().out
+
+
+def test_unknown_decoration_is_linted(tmp_path, capsys):
+    text = example("food-murdoku-2.txt").read_text()
+    text = text.replace("People:", "Decorations:\nzorblax: r0.5c0.5\n\nPeople:", 1)
+    (tmp_path / "f.txt").write_text(text)
+    main([str(tmp_path / "f.txt"), "--lint"])
+    assert "unknown decoration icon zorblax" in capsys.readouterr().out
+
+
 def test_booklet_footer_carries_copyright_notice(tmp_path):
     from docx import Document
 
@@ -495,3 +514,21 @@ def test_one_of_several_windows_is_named_indefinitely():
     clues = clue_texts(_read("murdoku_orient_express_3"))
     assert "Bogdan zit naast een raam." in clues
     assert not any("het raam" in clue for clue in clues)
+
+
+@pytest.mark.parametrize(
+    ("name", "kept"), [("halloween-museum-1.txt", True), ("murder-hotel-3.txt", False)]
+)
+def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_path, monkeypatch):
+    import csp.docx_export as docx_export
+
+    used = []
+    original = docx_export._picture_stream
+
+    def record(text, solution, role_statuses, backdrop=True):
+        used.append(backdrop)
+        return original(text, solution, role_statuses, backdrop)
+
+    monkeypatch.setattr(docx_export, "_picture_stream", record)
+    write_docx(example(name).read_text(), tmp_path / "b.docx", tmp_path)
+    assert used[-1] is kept

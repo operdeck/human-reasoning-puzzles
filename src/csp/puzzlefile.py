@@ -186,6 +186,8 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     board.hatched = board.area_ids(
         name for line in section.get("Hatched", []) for name in line.split()
     )
+    board.backdrop = " ".join(section.get("Backdrop", [])) or None
+    board.decorations = _decorations(section.get("Decorations", []))
     board.rules = _clues(section.get("Rules", []))
     return board, clues
 
@@ -259,6 +261,17 @@ def _point_object_placements(lines: list[str], size: int) -> list[PointObject]:
         if not separator or not name.strip() or len(position.split()) != 1:
             raise ValueError(f"bad point object {line!r}, expected 'name: r2.5c3.5'")
         items.append(PointObject.at(name.strip(), parse_anchor(position.split()[0]), size))
+    return items
+
+
+def _decorations(lines: list[str]) -> list[tuple[str, tuple[int, int]]]:
+    """Read picture-only icons, such as 'bat: r0.5c3.5 r6.5c1'."""
+    items: list[tuple[str, tuple[int, int]]] = []
+    for line in lines:
+        name, separator, positions = line.partition(":")
+        if not separator or not name.strip() or not positions.split():
+            raise ValueError(f"bad decoration {line!r}, expected 'icon: r0.5c0.5 ...'")
+        items += [(name.strip(), parse_anchor(token)) for token in positions.split()]
     return items
 
 

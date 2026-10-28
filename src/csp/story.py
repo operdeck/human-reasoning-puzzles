@@ -2367,6 +2367,18 @@ def global_count_texts(text: str) -> list[str]:
     ]
 
 
+def _tagged_area(say: Wording, rid: str, name: str) -> str:
+    """An area named in an area-tag note: "the Egyptian hall" from an English
+    `Words:` phrase, otherwise the region name with only its first letter raised."""
+    phrase = say.words.get(rid)
+    if phrase and say.language == "en":
+        kept = re.sub(r"^((in|at|on) )+", "", phrase)
+        if re.match(r"(the|a|an) ", kept):
+            return kept
+    text = re.sub(r"^((in|op|the|a|an|een|de|het) )+", "", phrase or name.replace("_", " "))
+    return text[:1].upper() + text[1:]
+
+
 def board_notes(text: str) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
     the author's `| wording` of board rules."""
@@ -2379,14 +2391,7 @@ def board_notes(text: str) -> list[str]:
     notes = []
     for tag, members in board.area_tags.items():
         region_ids = board.region_ids(members)
-        areas = [
-            re.sub(
-                r"^((in|op|the|a|an|een|de|het) )+",
-                "",
-                say.words.get(r, board.region_names[r].replace("_", " ")),
-            ).capitalize()
-            for r in sorted(region_ids)
-        ]
+        areas = [_tagged_area(say, r, board.region_names[r]) for r in sorted(region_ids)]
         label = re.sub(r"^((in|op|the|a|an|een|de|het) )+", "", name(tag))
         tagged = say.join(areas)
         notes.append(

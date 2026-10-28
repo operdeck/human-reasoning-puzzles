@@ -46,6 +46,9 @@ bank: blocking r6c6
 vuurtje: blocking r6c2
 glijbaan: blocking r8c4
 
+Backdrop:
+lapjeskat
+
 People:
 Tim
 Jos

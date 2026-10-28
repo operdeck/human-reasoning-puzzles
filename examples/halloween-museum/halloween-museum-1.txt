@@ -1,0 +1,125 @@
+# Halloween at the Museum 6x6 - "The cursed dagger"
+# Solution: Alba r1c5, Bernardo r2c1, Carmen r3c3, Diego r4c6, Fernando r5c2, Elena r6c4.
+# Carmen is the murderer: the only woman in the Egyptian hall, where the dagger lies.
+
+Size: 6
+Language: en
+
+Words:
+target.attribute: a {name}
+Velázquez_room: in the Velázquez room
+Goya_room: in the Goya room
+egyptian_hall: in the Egyptian hall
+dinosaur_hall: in the dinosaur hall
+gift_shop: in the gift shop
+sarcophagus: the sarcophagus
+scarab: the scarab case
+painting: a painting
+easel: the easel
+t_rex: the T. rex skeleton
+sauropod: the sauropod skeleton
+pumpkin: a pumpkin
+counter: the shop counter
+dagger: the cursed dagger
+spider: the giant spider
+headstone: a headstone
+museum_bench: the bench
+
+Regions:
+Velázquez_room: Velázquez_room #E9D8B4
+Goya_room: Goya_room #DDBF9A
+egyptian_hall: egyptian_hall #EBCB7A
+dinosaur_hall: dinosaur_hall #B9D3A8
+gift_shop: gift_shop #E6C3D6
+
+Grid:
+Velázquez_room Velázquez_room Velázquez_room Goya_room Goya_room Goya_room
+Velázquez_room Velázquez_room Velázquez_room Goya_room Goya_room Goya_room
+egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
+gift_shop gift_shop gift_shop dinosaur_hall dinosaur_hall dinosaur_hall
+
+Objects:
+painting: blocking r1c1
+museum_bench: standable r2c2 r2c3
+painting: blocking r1c3
+painting: blocking r1c4
+painting: blocking r1c6
+easel: blocking r2c5
+dagger: blocking r3c1
+sarcophagus: standable r4c2 r5c2
+scarab: blocking r4c3
+t_rex: blocking r3c5 r4c5
+spider: blocking r3c6
+sauropod: blocking r5c5 r5c6
+headstone: blocking r6c6
+counter: blocking r6c1 r6c2
+pumpkin: blocking r5c4
+
+EdgeItems:
+door: door r2c3 r2c4
+door: door r2c2 r3c2
+door: door r2c4 r3c4
+door: door r4c3 r4c4
+door: door r5c3 r6c3
+door: door r6c3 r6c4
+
+Decorations:
+cobweb: r0.5c0.5 r0.5c6.5
+bat: r3.5c0.5 r6.5c3.5
+
+Backdrop:
+pumpkin
+
+AreaTags:
+crime_scene: egyptian_hall
+
+Attributes:
+woman: Alba Carmen Elena
+
+Roles:
+murderer: 1
+
+RoleEligibility:
+murderer: attribute:woman
+
+People:
+Alba
+Bernardo
+Carmen
+Diego
+Elena
+Fernando
+
+Rules:
+min_role_in_tagged murderer crime_scene 1
+
+Clues:
+next_to Bernardo painting
+in_region Alba Goya_room
+on Fernando sarcophagus
+next_to Diego sauropod
+not_next_to Elena scarab
+
+Title:
+Halloween at the Museum: The cursed dagger
+
+Intro:
+On Halloween night the museum throws a costume party among its mummies and skeletons. At the stroke of midnight the lights flicker, a scream rings out, and a guest lies dead. Beside the body in the Egyptian hall lies a cursed dagger.
+Place everyone on a free square, with one person in every row and column. The bench and the sarcophagus are standable; all other exhibits block.
+The murderer is a woman and was in the room where the weapon lies.
+
+Figures:
+Alba: the curator ; icon=U+1F475
+Bernardo: the night guard ; icon=U+1F9D4
+Carmen: dressed as a witch ; icon=U+1F9D9
+Diego: dressed as a vampire ; icon=U+1F9DB
+Elena: dressed as a zombie ; icon=U+1F9DF
+Fernando: the tour guide ; icon=U+1F468
+
+Question:
+Who wielded the cursed dagger?
+
+Reveal:
+Carmen, dressed as a witch, struck with the dagger in the Egyptian hall.

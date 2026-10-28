@@ -39,6 +39,9 @@ tatami: standable r6c1 r6c2
 bridge: standable r7c4 r7c5 r7c6
 carpet: standable r9c3
 
+Backdrop:
+tamagotchi
+
 People:
 Mametchi
 Kuchipatchi
