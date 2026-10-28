@@ -175,6 +175,21 @@ def test_an_attribute_without_a_picture_is_named_only_once_in_the_legend():
     assert 'aria-label="guest_"' not in markup
 
 
+def test_the_area_tag_legend_keeps_the_case_of_region_names():
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "El_Greco_room"},
+        [],
+        ["Ada", "Ben"],
+        area_tags={"crime_scene": ["El_Greco_room"]},
+    )
+
+    markup = drawing.murdoku_picture(board, cell=CELL).to_svg()
+
+    assert "Crime scene: El Greco room" in markup
+
+
 @pytest.mark.parametrize(
     ("name", "panel_row", "window_row"),
     [

@@ -84,6 +84,11 @@ class Mark:
 type Value = str | int | Mark | None
 
 
+def _upper_first(text: str) -> str:
+    """Capitalise the first letter only, keeping names such as "El Greco"."""
+    return text[:1].upper() + text[1:]
+
+
 def cell_id(row: int, col: int) -> str:
     """The id of a cell in the interactive variant, as in the solver: r1c1 is top left."""
     return f"r{row + 1}c{col + 1}"
@@ -295,8 +300,7 @@ def _region_labels(
             squares,
             key=lambda s: (s in taken or s in board.blocked, s in crowded, s in occupied, s),
         )
-        text = name.replace("_", " ")
-        text = text[:1].upper() + text[1:]
+        text = _upper_first(name.replace("_", " "))
         x0, y0, x1, _ = box(sq)
         right = Square(sq.row, sq.col + 1)
         wide = canvas.textlength(text, size) > cell - 4 * pad
@@ -1237,7 +1241,7 @@ class _Legend:
         self.tag_lines = [
             f"{tag.replace('_', ' ').capitalize()}: "
             + ", ".join(
-                board.region_names[rid].replace("_", " ").capitalize()
+                _upper_first(board.region_names[rid].replace("_", " "))
                 for rid in board.region_names
                 if rid in board.region_ids(members)
             )
