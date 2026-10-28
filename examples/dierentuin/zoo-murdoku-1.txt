@@ -54,6 +54,9 @@ aap: 2
 RoleEligibility:
 aap: attribute:aap
 
+Backdrop:
+U+1F981
+
 People:
 Leeuw
 Makaak

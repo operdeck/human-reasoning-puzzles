@@ -31,6 +31,9 @@ lamp: blocking r2c3
 carpet: standable r3c3 r3c4
 chair: standable r5c2
 
+Backdrop:
+U+1F50D
+
 People:
 Ada
 Ben

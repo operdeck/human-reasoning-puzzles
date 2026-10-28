@@ -81,6 +81,9 @@ bankje: standable r1c2 r1c3
 bankje: standable r3c4 r3c5
 bankje: standable r8c3 r8c4
 
+Backdrop:
+lapjeskat
+
 People:
 Tim
 Jos
