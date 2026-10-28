@@ -186,6 +186,17 @@ def test_icon_that_is_not_vendored_is_linted(tmp_path, capsys):
     assert "unknown icon U+1F680" in capsys.readouterr().out
 
 
+def test_unknown_backdrop_is_linted(tmp_path, capsys):
+    text = (
+        example("food-murdoku-2.txt")
+        .read_text()
+        .replace("People:", "Backdrop:\nzorblax\n\nPeople:", 1)
+    )
+    (tmp_path / "f.txt").write_text(text)
+    main([str(tmp_path / "f.txt"), "--lint"])
+    assert "unknown backdrop icon zorblax" in capsys.readouterr().out
+
+
 def test_booklet_footer_carries_copyright_notice(tmp_path):
     from docx import Document
 

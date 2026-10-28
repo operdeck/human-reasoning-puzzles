@@ -257,6 +257,11 @@ def _murdoku_lint(
             f"warning: missing icon for {name}; the picture will use a text label "
             "(add it to icons.CATALOGUE and vendor it with scripts/vendor_emoji.py)"
         )
+    if board.backdrop and icons.object_icon(board.backdrop) is None:
+        findings.append(
+            f"warning: unknown backdrop icon {board.backdrop} "
+            "(not in icons.CATALOGUE or not vendored; see scripts/vendor_emoji.py)"
+        )
     for number, other in murdoku.implied_clues(clues):
         findings.append(f"warning: clue {number} is already implied by clue {other}")
 
