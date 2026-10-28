@@ -22,11 +22,8 @@ armour: a suit of armour
 crossbow: the crossbow
 easel: the easel
 t_rex: the T. rex skeleton
-sauropod: the sauropod skeleton
-bone: the giant bone
+headstone: a headstone
 pumpkin: the pumpkin
-candle: the candle stand
-souvenirs: the souvenir rack
 counter: the shop counter
 
 AreaTags:
@@ -63,7 +60,8 @@ pumpkin: blocking r3c5
 scarab: blocking r5c3
 sarcophagus: standable r6c2 r7c2
 t_rex: blocking r3c6 r4c6
-sauropod: blocking r6c6 r6c7
+headstone: blocking r6c6
+headstone: blocking r6c7
 counter: blocking r7c4 r7c5
 
 EdgeItems:
@@ -74,6 +72,14 @@ door: door r3c2 r4c2
 door: door r5c5 r5c6
 door: door r5c4 r6c4
 door: door r6c3 r6c4
+
+Decorations:
+cobweb: r0.5c0.5 r0.5c7.5
+bat: r4.5c7.5 r7.5c1.5
+ghost: r7.5c7.5
+
+Backdrop:
+pumpkin
 
 Attributes:
 guest_in_costume: Carmen Diego Elena
