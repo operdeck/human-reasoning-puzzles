@@ -141,7 +141,9 @@ def murdoku_picture(
         if legend
         else None
     )
-    height = side + 2 * margin + (key.height if key else 0)
+    # A backdrop widens the margin; the coordinates stay beside the board.
+    reach = int(side * BACKDROP_REACH) if board.backdrop else 0
+    height = side + 2 * margin + reach + (key.height if key else 0)
     canvas = Canvas(side + 2 * margin, height)
     fills = _fills(board)
 
@@ -149,6 +151,8 @@ def murdoku_picture(
         x, y = margin + sq.col * cell, margin + sq.row * cell
         return x, y, x + cell, y + cell
 
+    if board.backdrop:
+        _backdrop(canvas, board.backdrop, margin, side)
     blocked = board.blocked
     count_scope = {square for condition in global_counts for square in condition.scope_cells(board)}
     for r in range(board.size):
@@ -246,9 +250,9 @@ def murdoku_picture(
         _name_tag(canvas, person, box(sq), cell, low=sq in standable)
 
     if coordinates:
-        _coordinates(canvas, board.size, margin, cell)
+        _coordinates(canvas, board.size, margin, cell, gap=cell // 4 if reach else None)
     if key:
-        key.draw(canvas, margin, margin + side + cell // 3)
+        key.draw(canvas, margin, margin + side + reach + cell // 3)
     if interactive:
         _cells(canvas, board.size, margin, margin, cell)
     return canvas
@@ -318,13 +322,34 @@ def _region_labels(
         _centred_text(canvas, text, tag, size, INK, max_width=tag[2] - tag[0] - 2 * pad)
 
 
+BACKDROP_REACH = 0.16  # how far a backdrop reaches past each board side, in board sides
+BACKDROP_OPACITY = 0.85
+
+
+def _backdrop(canvas: Canvas, name: str, margin: int, side: int) -> None:
+    """Draw `name` (an icon name or `U+XXXX`) centred behind the board, reaching
+    `BACKDROP_REACH` board sides past it, so the board seems to lie on it."""
+    icon = icons.object_icon(name)
+    if icon is None:
+        return
+    reach = int(side * BACKDROP_REACH)
+    middle = margin + side // 2
+    half = side // 2 + reach
+    with canvas.group(opacity=BACKDROP_OPACITY):
+        box = (middle - half, middle - half, middle + half, middle + half)
+        icons.draw(canvas, icon, box, crop=True, stretch=True)
+
+
 def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
-    """Room around the board, widened so point objects on the outer edge are not clipped.
+    """Room around the board, widened so point objects on the outer edge are not clipped
+    and a backdrop shows around the board.
 
     A point icon reaches `0.72 * cell / 3` (about 0.24 cell) past its anchor.
     Coordinate labels sit halfway into the top and left margins, so a point on
     those edges gets extra room to keep its icon off the labels.
     """
+    if board.backdrop:
+        return int(board.size * cell * BACKDROP_REACH) + cell // 4
     outer = {1, 2 * board.size + 1}
     if not coordinates:
         on_edge = any(set(point.anchor) & outer for point in board.point_objects)
@@ -1186,13 +1211,16 @@ def _centred_text(
     canvas.text(((x0 + x1) / 2, (y0 + y1) / 2), text, colour, size, anchor="mm")
 
 
-def _coordinates(canvas: Canvas, n: int, margin: int, cell: int) -> None:
+def _coordinates(canvas: Canvas, n: int, margin: int, cell: int, gap: float | None = None) -> None:
+    """Row and column numbers `gap` pixels (default half the margin) left of and
+    above the board; a smaller gap, over a backdrop, gets darker numbers."""
     size = cell // 5
-    grey = (120, 120, 120)
+    grey = (120, 120, 120) if gap is None else (60, 40, 30)
+    gap = margin / 2 if gap is None else gap
     for i in range(n):
         middle = margin + i * cell + cell / 2
-        canvas.text((middle, margin / 2), str(i + 1), grey, size, anchor="mm")
-        canvas.text((margin / 2, middle), str(i + 1), grey, size, anchor="mm")
+        canvas.text((middle, margin - gap), str(i + 1), grey, size, anchor="mm")
+        canvas.text((margin - gap, middle), str(i + 1), grey, size, anchor="mm")
 
 
 # --- legend ---------------------------------------------------------------

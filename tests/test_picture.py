@@ -1250,3 +1250,30 @@ def test_count_legend_uses_the_given_plain_language_texts():
     ).to_svg()
     assert "Precies twee mensen dragen een badjas" in markup
     assert "object:badjas" not in markup
+
+
+def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
+    plain = _point_board()
+    backdrop = _point_board()
+    backdrop.backdrop = "pumpkin"
+    drawn = []
+    original = icons.draw
+
+    def capture(canvas, icon, box, **kwargs):
+        drawn.append((icon, box))
+        original(canvas, icon, box, **kwargs)
+
+    monkeypatch.setattr(icons, "draw", capture)
+    small = picture.murdoku_picture(plain, cell=CELL, coordinates=False, legend=False)
+    large = picture.murdoku_picture(backdrop, cell=CELL, coordinates=False, legend=False)
+
+    assert large.width > small.width and large.height > small.height
+    icon, (left, top, right, bottom) = drawn[0]
+    assert icon == icons.object_icon("pumpkin")
+    assert right - left > 3 * CELL and bottom - top > 3 * CELL
+
+
+def test_a_backdrop_is_read_from_the_puzzle_file():
+    text = example("halloween-museum-1.txt").read_text()
+    text = text.replace("People:", "Backdrop:\nU+1F383\n\nPeople:", 1)
+    assert load_board(text)[0].backdrop == "U+1F383"

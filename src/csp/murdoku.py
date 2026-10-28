@@ -239,7 +239,8 @@ class Board:
     of one type may share a name. `edge_items` and `point_objects` are named
     cell sets that occupy no square. `marks` are named cell sets that may
     overlap and optionally carry an occupant condition. `colours`
-    (region id -> '#RRGGBB') and `hatched` (region ids) only affect pictures.
+    (region id -> '#RRGGBB'), `hatched` (region ids) and `backdrop` (an icon
+    name or `U+XXXX` drawn large behind the board) only affect pictures.
 
     `area_tags` map reusable tags to named regions. `attributes` are fixed
     traits on named people, while `roles` are solver-managed memberships;
@@ -256,6 +257,7 @@ class Board:
     area_tags: dict[str, list[str]] = field(default_factory=dict)
     colours: dict[str, str] = field(default_factory=dict)
     hatched: set[str] = field(default_factory=set)
+    backdrop: str | None = None
     rules: list["Clue"] = field(default_factory=list)
     edge_items: list[EdgeItem] = field(default_factory=list)
     point_objects: list[PointObject] = field(default_factory=list)

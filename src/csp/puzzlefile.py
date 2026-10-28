@@ -186,6 +186,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     board.hatched = board.area_ids(
         name for line in section.get("Hatched", []) for name in line.split()
     )
+    board.backdrop = " ".join(section.get("Backdrop", [])) or None
     board.rules = _clues(section.get("Rules", []))
     return board, clues
 
