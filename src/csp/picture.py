@@ -23,6 +23,7 @@ ones inside, givens in black and solved numbers in blue. Calcudoku cages get
 pastel fills, no two touching cages alike, and their target in the corner.
 """
 
+import math
 import textwrap
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass
@@ -144,7 +145,8 @@ def murdoku_picture(
     # A backdrop widens the margin; the coordinates stay beside the board.
     reach = int(side * BACKDROP_REACH) if board.backdrop else 0
     height = side + 2 * margin + reach + (key.height if key else 0)
-    canvas = Canvas(side + 2 * margin, height)
+    headroom = _backdrop_headroom(board.backdrop, margin, side) if board.backdrop else 0
+    canvas = Canvas(side + 2 * margin, height, headroom=headroom)
     fills = _fills(board)
 
     def box(sq: Square) -> Box:
@@ -343,6 +345,18 @@ def _backdrop(canvas: Canvas, name: str, margin: int, side: int) -> None:
     with canvas.group(opacity=BACKDROP_OPACITY):
         box = (middle - half, middle - half, middle + half, middle + half)
         icons.draw(canvas, icon, box, crop=True, stretch=True)
+
+
+def _backdrop_headroom(name: str, margin: int, side: int) -> int:
+    """Pixels a backdrop sticks out above the picture: a drawing with `bounds`
+    (a cat with its ears) may reach past the part that lies behind the board."""
+    icon = icons.object_icon(name)
+    if icon is None or icon.bounds is None:
+        return 0
+    reach = int(side * BACKDROP_REACH)
+    above = icon.bounds[1] - icon.view[1]
+    scale = (side + 2 * reach) / (icon.bounds[3] - icon.bounds[1])
+    return max(0, math.ceil(above * scale) - (margin - reach))
 
 
 def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
@@ -1222,14 +1236,16 @@ def _centred_text(
 
 def _coordinates(canvas: Canvas, n: int, margin: int, cell: int, gap: float | None = None) -> None:
     """Row and column numbers `gap` pixels (default half the margin) left of and
-    above the board; a smaller gap, over a backdrop, gets darker numbers."""
+    above the board; a smaller gap, over a backdrop, gets darker numbers with a
+    white halo so they read on any picture."""
     size = cell // 5
     grey = (120, 120, 120) if gap is None else (60, 40, 30)
+    halo = None if gap is None else (255, 255, 255)
     gap = margin / 2 if gap is None else gap
     for i in range(n):
         middle = margin + i * cell + cell / 2
-        canvas.text((middle, margin - gap), str(i + 1), grey, size, anchor="mm")
-        canvas.text((margin - gap, middle), str(i + 1), grey, size, anchor="mm")
+        canvas.text((middle, margin - gap), str(i + 1), grey, size, anchor="mm", halo=halo)
+        canvas.text((margin - gap, middle), str(i + 1), grey, size, anchor="mm", halo=halo)
 
 
 # --- legend ---------------------------------------------------------------

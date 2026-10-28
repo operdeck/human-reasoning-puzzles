@@ -35,6 +35,7 @@ class Icon:
     emoji: str | None = None  # code point of a vendored Noto Emoji picture
     markup: str | None = None  # SVG drawing in `view` units
     view: Box = (0, 0, 100, 100)
+    bounds: Box | None = None  # the visible part of `markup`, used by `draw(crop=True)`
 
 
 def _star() -> str:
@@ -65,6 +66,69 @@ DOUBLE_BED = (
     '<path d="M14 54H86M14 70H86" stroke="#d7e0e7" stroke-width="2"/>'
 )
 # A white bathrobe and a pair of house slippers, drawn as simple icons.
+# A tortoiseshell cat to lie behind a board: the square y = 22..122 goes behind
+# the board; ears and eyes peek over its top edge and the front paws below it.
+TORTIE_CAT = (
+    '<g fill="#2a1f1a" stroke="#1c1512" stroke-width="1.5" stroke-linejoin="round">'
+    '<path d="M8 36L14 2Q15 0 17 2L38 14H62L83 2Q85 0 86 2L92 36Z"/>'
+    '<path d="M4 44Q4 16 22 11Q50 4 78 11Q96 16 96 44V122H4Z"/>'
+    "</g>"
+    '<path d="M16 17L17 6L31 14Z" fill="#c98466"/>'
+    '<path d="M84 17L83 6L69 14Z" fill="#a8664a"/>'
+    '<path d="M20 15l-1 -6M25 15l2 -5M80 15l1 -6M75 15l-2 -5"'
+    ' stroke="#e8c9a8" stroke-width="0.8" stroke-linecap="round"/>'
+    '<g fill="#b86f38">'
+    '<path d="M46 7Q50 5 55 7Q58 20 54 34H47Q43 20 46 7Z"/>'
+    '<path d="M4 58Q12 52 14 62Q10 74 4 76Z" opacity="0.85"/>'
+    '<path d="M96 84Q88 80 87 92Q90 104 96 106Z" opacity="0.85"/>'
+    '<path d="M4 102Q10 98 14 106L12 122H4Z" opacity="0.85"/>'
+    '<path d="M62 116Q74 110 86 116L86 122H60Z" opacity="0.85"/>'
+    "</g>"
+    '<path d="M27 18Q34 14 41 18" fill="none" stroke="#14100d" stroke-width="1.6"'
+    ' stroke-linecap="round"/>'
+    '<path d="M28 18.5Q34 16 40 18.5" fill="none" stroke="#7a8a3a" stroke-width="0.8"/>'
+    '<path d="M59 18Q66 12 73 18Q66 22 59 18Z" fill="#b5c84a" stroke="#14100d"'
+    ' stroke-width="1"/>'
+    '<ellipse cx="66" cy="18" rx="1.1" ry="2.6" fill="#14100d"/>'
+    '<circle cx="67.1" cy="16.6" r="0.7" fill="#ffffff"/>'
+    '<g stroke="#1c1512" stroke-width="1.5">'
+    '<ellipse cx="30" cy="121" rx="10" ry="5.5" fill="#2a1f1a"/>'
+    '<ellipse cx="70" cy="121" rx="10" ry="5.5" fill="#3a2a20"/>'
+    "</g>"
+    '<path d="M66 118Q70 116 75 119" fill="none" stroke="#b86f38" stroke-width="2"/>'
+    '<path d="M27 123v3M33 123v3M67 123v3M73 123v3" stroke="#14100d" stroke-width="1"/>'
+)
+# A lacquered ramen bowl: the board is the broth, chopsticks and steam rise above it.
+RAMEN_BOWL = (
+    '<g fill="none" stroke="#b9c2c8" stroke-width="2.5" stroke-linecap="round">'
+    '<path d="M22 21Q17 15 22 10T22 0"/><path d="M36 21Q31 15 36 10T36 1"/>'
+    '<path d="M50 21Q45 15 50 10T50 2"/>'
+    "</g>"
+    '<path d="M0 26H100V96Q100 122 50 122Q0 122 0 96Z" fill="#b8322a" stroke="#5c1712"'
+    ' stroke-width="1.5"/>'
+    '<path d="M0 104Q50 112 100 104M0 110Q50 118 100 110" fill="none" stroke="#f1d9a0"'
+    ' stroke-width="1.5"/>'
+    '<rect x="0" y="22" width="100" height="8" rx="4" fill="#2b1b17"/>'
+    '<rect x="3" y="24" width="94" height="5" rx="2.5" fill="#f2d49b"/>'
+    '<path d="M8 26.5h14M30 26q4 -2 8 0t8 0M66 26.5h10" stroke="#f7e7c4" stroke-width="1"/>'
+    '<circle cx="85" cy="26.5" r="2" fill="#fff" stroke="#e46a8a" stroke-width="0.8"/>'
+    '<g stroke-linecap="round"><path d="M58 29L97 1" stroke="#7a4a26" stroke-width="3"/>'
+    '<path d="M64 30L100 6" stroke="#9a6236" stroke-width="3"/></g>'
+)
+# An egg-shaped virtual-pet toy: the board is its screen, the shell and key ring
+# rise above it and three buttons sit below it.
+TAMAGOTCHI = (
+    '<circle cx="50" cy="4" r="3.5" fill="none" stroke="#9aa3ab" stroke-width="2"/>'
+    '<path d="M50 8C80 8 100 26 100 56V100Q100 122 50 122Q0 122 0 100V56C0 26 20 8 50 8Z"'
+    ' fill="#8e6cc9" stroke="#4b3378" stroke-width="1.5"/>'
+    '<g fill="#b9a1e6"><circle cx="30" cy="16" r="2.5"/><circle cx="44" cy="13" r="2"/>'
+    '<circle cx="62" cy="14" r="2.5"/><circle cx="74" cy="19" r="2"/>'
+    '<circle cx="4" cy="60" r="1.8"/><circle cx="96" cy="74" r="1.8"/>'
+    '<circle cx="4" cy="92" r="1.8"/><circle cx="96" cy="44" r="1.8"/></g>'
+    '<g fill="#f6c945" stroke="#7a5b12" stroke-width="1">'
+    '<circle cx="34" cy="118.5" r="2.6"/><circle cx="50" cy="119.3" r="2.6"/>'
+    '<circle cx="66" cy="118.5" r="2.6"/></g>'
+)
 BATHROBE = (
     '<path d="M31 12L15 25L22 40L29 36V87H71V36L78 40L85 25L69 12L60 23H40Z"'
     ' fill="#ffffff" stroke="#5a6670" stroke-width="4" stroke-linejoin="round"/>'
@@ -409,6 +473,30 @@ REGISTRY: dict[str, Icon] = {
         Icon("waterfall", "\u2307", "waterfall", markup=WATERFALL),
         Icon("double_bed", "\U0001f6cf", "double bed", markup=DOUBLE_BED),
         Icon("bathrobe", "\U0001f9ba", "bathrobe", markup=BATHROBE),
+        Icon(
+            "ramen_bowl",
+            "\U0001f35c",
+            "ramen bowl",
+            markup=RAMEN_BOWL,
+            view=(0, 0, 100, 122),
+            bounds=(0, 22, 100, 122),
+        ),
+        Icon(
+            "tamagotchi",
+            "\U0001f95a",
+            "virtual pet toy",
+            markup=TAMAGOTCHI,
+            view=(0, 0, 100, 122),
+            bounds=(0, 22, 100, 122),
+        ),
+        Icon(
+            "tortie_cat",
+            "\U0001f408",
+            "tortoiseshell cat",
+            markup=TORTIE_CAT,
+            view=(0, 0, 100, 128),
+            bounds=(0, 22, 100, 122),
+        ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
     )
 }
@@ -429,6 +517,9 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "waterput": "well", "well": "well",
                 "tweepersoonsbed": "double_bed", "double_bed": "double_bed",
                 "badjas": "bathrobe", "bathrobe": "bathrobe",
+                "lapjeskat": "tortie_cat", "tortie_cat": "tortie_cat",
+                "ramenkom": "ramen_bowl", "ramen_bowl": "ramen_bowl",
+                "tamagotchi": "tamagotchi",
                 "sloffen": "slippers", "slippers": "slippers",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
@@ -611,8 +702,17 @@ def draw(
     if icon.emoji is not None:
         return canvas.emoji(icon.emoji, box, crop=crop, stretch=stretch, rotate=rotate)
     assert icon.markup is not None
+    overflow = crop and icon.bounds is not None
+    view = icon.bounds if overflow and icon.bounds is not None else icon.view
     canvas.place(
-        f"icon-{icon.name}", icon.markup, icon.view, box, stretch=stretch, rotate=rotate, tint=tint
+        f"icon-{icon.name}",
+        icon.markup,
+        view,
+        box,
+        stretch=stretch,
+        rotate=rotate,
+        tint=tint,
+        overflow=overflow,
     )
     return True
 
