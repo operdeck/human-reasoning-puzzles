@@ -264,6 +264,17 @@ BENCH = (
     '<rect x="6" y="16" width="88" height="8" rx="2"/>'
     '<rect x="3" y="30" width="94" height="10" rx="2"/></g>'
 )
+# A museum gallery bench: an upholstered seat on short wooden legs, without a back or arms.
+MUSEUM_BENCH = (
+    '<g fill="#6b4a2f" stroke="#4a3220" stroke-width="1.5">'
+    '<rect x="10" y="24" width="7" height="20" rx="1.5"/>'
+    '<rect x="83" y="24" width="7" height="20" rx="1.5"/>'
+    '<rect x="5" y="20" width="90" height="7" rx="2"/></g>'
+    '<rect x="4" y="6" width="92" height="16" rx="6" fill="#8e2f3a" stroke="#5e1c24" '
+    'stroke-width="1.5"/>'
+    '<path d="M27 9V19M50 9V19M73 9V19" stroke="#6f2430" stroke-width="1.5"/>'
+    '<path d="M10 10H90" stroke="#b55a64" stroke-width="2" stroke-linecap="round"/>'
+)
 CORPSE = (
     '<g fill="#d7d7d7" stroke="#2d2d2d" stroke-width="2.2" '
     'stroke-linecap="round" stroke-linejoin="round">'
@@ -375,6 +386,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("elevator", "\u21f5", "elevator", markup=ELEVATOR),
         Icon("allium", "\u273f", "allium", markup=ALLIUM),
         Icon("bench", "\u2b0c", "park bench", markup=BENCH, view=(0, 0, 100, 56)),
+        Icon("museum_bench", "\u2b0c", "museum bench", markup=MUSEUM_BENCH, view=(0, 0, 100, 46)),
         Icon("train_bench", "\u2b0c", "train bench", markup=TRAIN_BENCH, view=(0, 0, 100, 92)),
         Icon("control_panel", "\u25a6", "control panel", markup=CONTROL_PANEL),
         Icon("stool", "\u25cf", "stool", markup=STOOL),
@@ -404,6 +416,7 @@ REGISTRY: dict[str, Icon] = {
 # Murdoku object names drawn with a registry icon rather than an emoji.
 OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "train_bench": "train_bench", "trein_bank": "train_bench",
+                "museum_bench": "museum_bench", "museumbank": "museum_bench",
                 "bedieningspaneel": "control_panel", "control_panel": "control_panel",
                 "controlpanel": "control_panel",
                 "kruk": "stool", "stool": "stool",
