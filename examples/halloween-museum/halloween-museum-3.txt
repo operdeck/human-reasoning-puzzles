@@ -25,10 +25,10 @@ armour: a suit of armour
 swords: the crossed swords
 t_rex: the T. rex skeleton
 sauropod: the sauropod skeleton
-bone: the giant bone
+headstone: a headstone
 pumpkin: the pumpkin
 counter: the shop counter
-souvenirs: the souvenir rack
+crystal_ball: the crystal ball
 target.attribute: a {name}
 
 Regions:
@@ -67,12 +67,12 @@ armour: blocking r2c8
 swords: blocking r3c7
 pumpkin: blocking r5c5
 t_rex: blocking r4c7 r5c7
-bone: blocking r6c8
+headstone: blocking r6c8
 sauropod: blocking r7c6 r7c7
 scarab: blocking r6c2
 sarcophagus: standable r7c1 r8c1
 amphora: blocking r8c3
-souvenirs: blocking r7c5
+crystal_ball: blocking r7c5
 counter: blocking r8c4 r8c5
 
 EdgeItems:
@@ -88,6 +88,14 @@ door: door r3c8 r4c8
 
 AreaTags:
 crime_scene: Goya_room
+
+Decorations:
+cobweb: r0.5c0.5 r0.5c8.5
+bat: r5.5c0.5 r8.5c4.5
+ghost: r8.5c8.5
+
+Backdrop:
+pumpkin
 
 Attributes:
 staff_member: Alba Bernardo Fernando Gonzalo
@@ -127,7 +135,7 @@ Halloween at the Museum: The candlestick
 Intro:
 The last Halloween party ends in the dark: a storm cuts the power and the museum is lit by candles only. When the lights come back on, a guest lies dead in the Goya room, a heavy candlestick beside the body.
 Place everyone on a free square, with one person in every row and column. The benches and the sarcophagus are standable; all other exhibits block.
-The murderer works at the museum and was in the room where the weapon lies.
+The murderer is a staff member and was in the room where the weapon lies.
 
 Figures:
 Alba: the curator ; icon=U+1F475
