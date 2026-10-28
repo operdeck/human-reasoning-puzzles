@@ -327,7 +327,7 @@ def _region_labels(
         _centred_text(canvas, text, tag, size, INK, max_width=tag[2] - tag[0] - 2 * pad)
 
 
-BACKDROP_REACH = 0.16  # how far a backdrop reaches past each board side, in board sides
+BACKDROP_REACH = 0.08  # how far a backdrop reaches past each board side, in board sides
 BACKDROP_OPACITY = 0.85
 
 
