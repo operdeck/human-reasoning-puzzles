@@ -13,6 +13,8 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   clue numbers that must each stay necessary, so a themed clue (or a rule
   moved into the clues while searching, role rules included) cannot be made
   redundant.
+- `ease`: add true clues to a unique puzzle until it is within `--max-grade`,
+  keeping each `--needs` clue necessary (same `--solution`/`--kinds`/`--exclude`).
 - `occupancy`: how often each object square is used across the placements the
   puzzle still allows (up to `--sample`). A decoy that is never used, or a
   square that is always used, cannot make a clue about that object matter.
@@ -279,8 +281,8 @@ def suggest(
     when unique, or when no candidate helps.
 
     `needs` lists clue numbers that must each remain necessary. A clue's rivals
-    are the placements allowed without it that break it (for a role clue: that
-    leave no valid set of role holders); a candidate that would rule out every
+    are the placements allowed without it but not with it (role rules are
+    judged together, as one role holder must meet them all); a candidate that would rule out every
     rival of some needed clue is skipped, so removing any one of them still
     leaves another solution.
     """
@@ -301,10 +303,9 @@ def suggest(
         rival_sets: list[list[dict[str, murdoku.Square]]] = []
         for number in needed:
             without = with_clues(text, lines[: number - 1] + lines[number:] + added)
-            only = with_clues(text, [lines[number - 1]])
             found = [_placement(f, board.people) for f in brute.sample(without, sample)]
             rivals = [
-                other for other in found if other != placement and not brute.accepts(only, other)
+                other for other in found if other != placement and not brute.accepts(current, other)
             ]
             if not rivals:
                 log(f"needed clue {number} is already redundant; add fewer clues first")
@@ -339,6 +340,56 @@ def suggest(
         log(f"add {best} (rules out {best_cut} of {len(others)} sampled placements)")
 
 
+def ease(
+    text: str,
+    placement: dict[str, murdoku.Square],
+    max_grade: str,
+    kinds: Sequence[str] = SUGGEST_KINDS,
+    timeout: float = 5.0,
+    log: Callable[[str], None] = lambda _line: None,
+    exclude: Iterable[str] = (),
+    needs: Iterable[int] = (),
+) -> list[str]:
+    """Clues to add to a unique `text` until its grade is at most `max_grade`.
+
+    Each round adds the true candidate clue that gives the easiest grade while
+    every clue numbered in `needs` stays necessary; ties go to clues about the
+    people named least so far. Stops within `max_grade` or when nothing helps.
+    """
+    board, _ = load_board(text)
+    candidates = candidate_clues(board, placement, kinds, exclude)
+    lines = clue_lines(text)
+    needed = sorted(set(needs))
+    added: list[str] = []
+    current = outcome(text, timeout)
+    while not _within(current.grade, max_grade):
+        mentions = _mentions(board.people, lines + added)
+        best: tuple[int, int, str, Outcome] | None = None
+        for clue in candidates:
+            if clue in lines or clue in added:
+                continue
+            if any(
+                len(brute.solutions(with_clues(text, [*lines[: n - 1], *lines[n:], *added, clue])))
+                == 1
+                for n in needed
+            ):
+                continue
+            result = outcome(with_clues(text, [*lines, *added, clue]), timeout)
+            if not result.good or result.grade is None:
+                continue
+            spread = sum(mentions.get(word, 0) for word in clue.split()[1:])
+            key = (GRADES.index(result.grade), spread, clue, result)
+            if best is None or key[:2] < best[:2]:
+                best = key
+        if best is None or best[3].grade == current.grade:
+            log(f"stuck at grade {current.grade}: no clue eases it while keeping {needed} needed")
+            return added
+        added.append(best[2])
+        current = best[3]
+        log(f"add {best[2]} ({current})")
+    return added
+
+
 def occupancy(text: str, sample: int = 400) -> tuple[int, list[tuple[str, str, int]]]:
     """(placements seen, [(object, square, times occupied)]) over the allowed placements."""
     board, _ = load_board(text)
@@ -355,11 +406,11 @@ def occupancy(text: str, sample: int = 400) -> tuple[int, list[tuple[str, str, i
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m csp.clue_search", description=__doc__)
-    parser.add_argument("command", choices=("report", "thin", "suggest", "occupancy"))
+    parser.add_argument("command", choices=("report", "thin", "suggest", "ease", "occupancy"))
     parser.add_argument("puzzle", type=Path)
     parser.add_argument("--timeout", type=float, default=5.0, help="seconds per trial")
     parser.add_argument("--keep", type=int, nargs="*", default=[], help="thin: clue numbers")
-    parser.add_argument("--max-grade", choices=GRADES, help="thin: hardest grade allowed")
+    parser.add_argument("--max-grade", choices=GRADES, help="thin, ease: hardest grade allowed")
     parser.add_argument("--solution", help='suggest: intended placement, "Ada=r1c2 Ben=r3c4"')
     parser.add_argument(
         "--kinds",
@@ -368,7 +419,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=f"suggest: clue kinds to try (default: all but {' '.join(EXTRA_KINDS)})",
     )
     parser.add_argument(
-        "--exclude", nargs="*", default=[], help="suggest: people no clue may mention"
+        "--exclude", nargs="*", default=[], help="suggest, ease: people no clue may mention"
     )
     parser.add_argument("--sample", type=int, default=400, help="suggest: solutions per round")
     parser.add_argument(
@@ -376,7 +427,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=int,
         nargs="*",
         default=[],
-        help="suggest: clue numbers that must stay needed",
+        help="suggest, ease: clue numbers that must stay needed",
     )
     args = parser.parse_args(argv)
     text = args.puzzle.read_text()
@@ -399,8 +450,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("\n".join(kept))
         return 0
     if not args.solution:
-        parser.error("suggest needs --solution")
+        parser.error(f"{args.command} needs --solution")
     placement = parse_solution(args.solution)
+    if args.command == "ease":
+        if not args.max_grade:
+            parser.error("ease needs --max-grade")
+        added = ease(
+            text,
+            placement,
+            args.max_grade,
+            args.kinds,
+            args.timeout,
+            print,
+            args.exclude,
+            args.needs,
+        )
+        print("Clues to add:")
+        print("\n".join(added))
+        return 0
     added = suggest(
         text, placement, args.kinds, args.sample, args.timeout, print, args.exclude, args.needs
     )

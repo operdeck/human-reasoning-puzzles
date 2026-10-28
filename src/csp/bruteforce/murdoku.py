@@ -31,7 +31,10 @@ _Checks = tuple[
 ]
 
 
-def _prepare(text: str) -> tuple[Board, list[str], dict[str, list[Square]], _Checks]:
+def _prepare(
+    text: str, first: str | None = None
+) -> tuple[Board, list[str], dict[str, list[Square]], _Checks]:
+    """Board, search order (most restricted first, or `first` first), squares, checks."""
     board, clues = load_board(text)
     checks = conditions(board, clues)
     allowed = {
@@ -40,7 +43,7 @@ def _prepare(text: str) -> tuple[Board, list[str], dict[str, list[Square]], _Che
         ]
         for person in board.people
     }
-    order = sorted(board.people, key=lambda p: len(allowed[p]))
+    order = sorted(board.people, key=lambda p: (p != first, len(allowed[p])))
     later = {person: i for i, person in enumerate(order)}
     # Test each multi-person condition when the last person it names is placed.
     due: dict[str, list[Condition]] = {p: [] for p in board.people}
@@ -89,34 +92,39 @@ def sample(text: str, limit: int) -> list[dict[str, Any]]:
     The first solutions of one depth-first search share their early choices,
     so a clue that rules them all out may rule out little else. Besides one
     plain search (so a second solution is never hidden), this takes the first
-    solutions under each square of the most restricted person, each branch
+    solutions with each person fixed on each of their squares, every branch
     within a share of the plain search's work, and interleaves the branches.
     """
     board, order, allowed, rest = _prepare(text)
     found: dict[tuple[Any, ...], dict[str, Any]] = {}
+    groups: list[list[dict[str, Any]]] = []
 
     def keep(batch: list[dict[str, Any]]) -> None:
+        group = []
         for solution in batch:
-            found.setdefault(tuple(sorted(map(str, solution.items()))), solution)
+            key = tuple(sorted(map(str, solution.items())))
+            if key not in found:
+                found[key] = solution
+                group.append(solution)
+        groups.append(group)
 
     plain: list[dict[str, Any]] = []
     spent = [10**12]
     _search(board, order, allowed, *rest, {}, plain, limit, spent)
-    keep(plain)
-    first = order[0]
-    branches = allowed[first]
+    branches = sum(len(squares) for squares in allowed.values())
     # Give each branch about the work the plain search needed, so dead branches stay cheap.
-    nodes = max(200, (10**12 - spent[0]) // max(1, len(branches)))
-    each = max(1, -(-limit // max(1, len(branches))))
-    for square in branches:
-        batch: list[dict[str, Any]] = []
-        _search(board, order, allowed, *rest, {first: square}, batch, each, [nodes])
-        keep(batch)
+    nodes = max(200, (10**12 - spent[0]) // max(1, branches))
+    each = max(1, -(-limit // max(1, branches)))
+    for person in board.people:
+        _, person_order, _, person_rest = _prepare(text, person)
+        for square in allowed[person]:
+            batch: list[dict[str, Any]] = []
+            _search(
+                board, person_order, allowed, *person_rest, {person: square}, batch, each, [nodes]
+            )
+            keep(batch)
+    keep(plain)
     # Round-robin over the branches so a short sample still covers all of them.
-    by_first: dict[str, list[dict[str, Any]]] = {}
-    for solution in found.values():
-        by_first.setdefault(str(solution[first]), []).append(solution)
-    groups = list(by_first.values())
     spread = [g[i] for i in range(max(map(len, groups), default=0)) for g in groups if i < len(g)]
     return spread[:limit]
 
