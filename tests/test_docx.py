@@ -514,3 +514,21 @@ def test_one_of_several_windows_is_named_indefinitely():
     clues = clue_texts(_read("murdoku_orient_express_3"))
     assert "Bogdan zit naast een raam." in clues
     assert not any("het raam" in clue for clue in clues)
+
+
+@pytest.mark.parametrize(
+    ("name", "kept"), [("halloween-museum-1.txt", True), ("murder-hotel-3.txt", False)]
+)
+def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_path, monkeypatch):
+    import csp.docx_export as docx_export
+
+    used = []
+    original = docx_export._picture_stream
+
+    def record(text, solution, role_statuses, backdrop=True):
+        used.append(backdrop)
+        return original(text, solution, role_statuses, backdrop)
+
+    monkeypatch.setattr(docx_export, "_picture_stream", record)
+    write_docx(example(name).read_text(), tmp_path / "b.docx", tmp_path)
+    assert used[-1] is kept
