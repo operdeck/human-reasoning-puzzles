@@ -21,6 +21,8 @@ sauropod: the sauropod skeleton
 pumpkin: a pumpkin
 counter: the shop counter
 dagger: the cursed dagger
+spider: the giant spider
+headstone: a headstone
 
 Regions:
 Velázquez_room: Velázquez_room #E9D8B4
@@ -47,9 +49,10 @@ easel: blocking r2c5
 dagger: blocking r3c1
 sarcophagus: standable r4c2 r5c2
 scarab: blocking r4c3
-t_rex: blocking r3c5 r3c6 r4c5
+t_rex: blocking r3c5 r4c5
+spider: blocking r3c6
 sauropod: blocking r5c5 r5c6
-bone: blocking r6c6
+headstone: blocking r6c6
 counter: blocking r6c1 r6c2
 pumpkin: blocking r5c4
 
@@ -60,6 +63,13 @@ door: door r2c4 r3c4
 door: door r4c3 r4c4
 door: door r5c3 r6c3
 door: door r6c3 r6c4
+
+Decorations:
+cobweb: r0.5c0.5 r0.5c6.5
+bat: r3.5c0.5 r6.5c3.5
+
+Backdrop:
+pumpkin
 
 AreaTags:
 crime_scene: egyptian_hall
