@@ -30,6 +30,7 @@ pumpkin: the pumpkin
 counter: the shop counter
 crystal_ball: the crystal ball
 target.attribute: a {name}
+museum_bench: the bench
 
 Regions:
 Velázquez_room: Velázquez_room #E9D8B4
@@ -56,12 +57,12 @@ painting: blocking r1c1
 painting: blocking r1c3
 painting: blocking r1c4
 painting: blocking r1c6
-bench: standable r3c5 r3c6
+museum_bench: standable r3c5 r3c6
 easel: blocking r2c4
 candlestick: blocking r1c5
 painting: blocking r3c1
 painting: blocking r3c3
-bench: standable r4c2 r4c3
+museum_bench: standable r4c2 r4c3
 armour: blocking r1c7
 armour: blocking r2c8
 swords: blocking r3c7

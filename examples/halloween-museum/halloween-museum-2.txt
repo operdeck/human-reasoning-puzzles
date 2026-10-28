@@ -25,6 +25,7 @@ t_rex: the T. rex skeleton
 headstone: a headstone
 pumpkin: the pumpkin
 counter: the shop counter
+museum_bench: the bench
 
 AreaTags:
 crime_scene: armoury
@@ -55,7 +56,7 @@ painting: blocking r1c5
 easel: blocking r2c5
 painting: blocking r1c6
 painting: blocking r1c7
-bench: standable r2c6 r2c7
+museum_bench: standable r2c6 r2c7
 pumpkin: blocking r3c5
 scarab: blocking r5c3
 sarcophagus: standable r6c2 r7c2

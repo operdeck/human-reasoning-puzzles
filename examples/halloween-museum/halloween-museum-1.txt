@@ -23,6 +23,7 @@ counter: the shop counter
 dagger: the cursed dagger
 spider: the giant spider
 headstone: a headstone
+museum_bench: the bench
 
 Regions:
 Velázquez_room: Velázquez_room #E9D8B4
@@ -41,7 +42,7 @@ gift_shop gift_shop gift_shop dinosaur_hall dinosaur_hall dinosaur_hall
 
 Objects:
 painting: blocking r1c1
-bench: standable r2c2 r2c3
+museum_bench: standable r2c2 r2c3
 painting: blocking r1c3
 painting: blocking r1c4
 painting: blocking r1c6
