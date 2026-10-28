@@ -224,6 +224,11 @@ def murdoku_picture(
             _badge(canvas, point.name, area, cell)
         else:
             _icon(canvas, point.name, area, cell)
+    for name, (row2, col2) in board.decorations:
+        x = margin + (col2 - 1) * cell // 2
+        y = margin + (row2 - 1) * cell // 2
+        radius = cell // 3
+        _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
     for square in count_scope:
         canvas.rectangle(box(square), outline=COUNT_SCOPE, width=max(2, cell // 40))
     marks_by_cell: dict[Square, list[str]] = {}
@@ -351,10 +356,12 @@ def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
     if board.backdrop:
         return int(board.size * cell * BACKDROP_REACH) + cell // 4
     outer = {1, 2 * board.size + 1}
+    anchors = [point.anchor for point in board.point_objects]
+    anchors += [anchor for _, anchor in board.decorations]
     if not coordinates:
-        on_edge = any(set(point.anchor) & outer for point in board.point_objects)
+        on_edge = any(set(anchor) & outer for anchor in anchors)
         return cell // 4 + cell // 20 if on_edge else cell // 6
-    top_left = any(1 in point.anchor for point in board.point_objects)
+    top_left = any(1 in anchor for anchor in anchors)
     return cell // 2 + cell // 4 if top_left else cell // 2
 
 

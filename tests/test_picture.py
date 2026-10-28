@@ -1274,6 +1274,30 @@ def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
 
 
 def test_a_backdrop_is_read_from_the_puzzle_file():
-    text = example("halloween-museum-1.txt").read_text()
+    text = example("food-murdoku-2.txt").read_text()
+    assert load_board(text)[0].backdrop is None
     text = text.replace("People:", "Backdrop:\nU+1F383\n\nPeople:", 1)
     assert load_board(text)[0].backdrop == "U+1F383"
+
+
+def test_decorations_are_drawn_at_their_anchors_but_never_enter_the_puzzle(monkeypatch):
+    text = example("halloween-museum-1.txt").read_text()
+    board = load_board(text)[0]
+    assert ("bat", (7, 1)) in board.decorations and ("cobweb", (1, 13)) in board.decorations
+    assert not board.point_objects
+    drawn = []
+    original = drawing._icon
+
+    def capture(canvas, name, area, cell, **kwargs):
+        drawn.append(name)
+        original(canvas, name, area, cell, **kwargs)
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    picture.murdoku_picture(board, cell=CELL)
+    assert drawn.count("bat") == 2 and drawn.count("cobweb") == 2
+
+
+def test_a_bad_decoration_line_is_rejected():
+    text = example("halloween-museum-1.txt").read_text().replace("bat: r3.5c0.5", "bat r3.5c0.5", 1)
+    with pytest.raises(ValueError, match="bad decoration"):
+        load_board(text)
