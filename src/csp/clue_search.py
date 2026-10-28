@@ -352,9 +352,11 @@ def ease(
 ) -> list[str]:
     """Clues to add to a unique `text` until its grade is at most `max_grade`.
 
-    Each round adds the true candidate clue that gives the easiest grade while
-    every clue numbered in `needs` stays necessary; ties go to clues about the
-    people named least so far. Stops within `max_grade` or when nothing helps.
+    Each round adds a true candidate clue while every clue numbered in `needs`
+    stays necessary. A clue that reaches `max_grade` or below is preferred,
+    the hardest such grade first, so the puzzle is not made easier than asked;
+    otherwise the easiest grade wins. Ties go to clues about the people named
+    least so far. Stops within `max_grade` or when nothing helps.
     """
     board, _ = load_board(text)
     candidates = candidate_clues(board, placement, kinds, exclude)
@@ -364,7 +366,7 @@ def ease(
     current = outcome(text, timeout)
     while not _within(current.grade, max_grade):
         mentions = _mentions(board.people, lines + added)
-        best: tuple[int, int, str, Outcome] | None = None
+        best: tuple[tuple[int, int], int, str, Outcome] | None = None
         for clue in candidates:
             if clue in lines or clue in added:
                 continue
@@ -378,7 +380,9 @@ def ease(
             if not result.good or result.grade is None:
                 continue
             spread = sum(mentions.get(word, 0) for word in clue.split()[1:])
-            key = (GRADES.index(result.grade), spread, clue, result)
+            level = GRADES.index(result.grade)
+            rank = (0, -level) if _within(result.grade, max_grade) else (1, level)
+            key = (rank, spread, clue, result)
             if best is None or key[:2] < best[:2]:
                 best = key
         if best is None or best[3].grade == current.grade:
