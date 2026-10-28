@@ -59,6 +59,9 @@ RoleEligibility:
 zetmeel: attribute:zetmeel
 eiwit: attribute:eiwit
 
+Backdrop:
+U+1F37D
+
 People:
 Aardappel
 Rijst

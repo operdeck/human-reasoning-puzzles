@@ -62,9 +62,13 @@ def _picture_stream(
     text: str,
     solution: dict[str, Any] | None,
     role_statuses: dict[tuple[str, str], bool | None] | None,
+    backdrop: bool = True,
 ) -> tuple[io.BytesIO, float]:
-    """The board picture and its height/width ratio."""
+    """The board picture and its height/width ratio; `backdrop=False` leaves the
+    backdrop out, for pages too full to give it room."""
     board, _ = load_board(text)
+    if not backdrop:
+        board.backdrop = None
     image = picture.murdoku_picture(
         board, solution, show_roles=False, language=language_of(text), area_tags=False
     )
@@ -313,13 +317,13 @@ def _numbered(document: Any, number: int, text: str, small: bool) -> None:
 
 
 def _board_and_figures(
-    document: Any, entry: Entry, presentation: Presentation, width: float
+    document: Any, entry: Entry, presentation: Presentation, width: float, backdrop: bool = True
 ) -> None:
     """The board at 70% of the text width, the list of people in the other 30%."""
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm
 
-    stream, aspect = _picture_stream(entry.text, None, None)
+    stream, aspect = _picture_stream(entry.text, None, None, backdrop)
     table = document.add_table(rows=1, cols=2)
     table.autofit = False
     left, right = table.rows[0].cells
@@ -374,7 +378,11 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)
     width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)
-    _board_and_figures(document, entry, presentation, width)
+    backdrop = width > MIN_BOARD_WIDTH_CM
+    if not backdrop:
+        _, aspect = _picture_stream(text, None, None, backdrop=False)
+        width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)
+    _board_and_figures(document, entry, presentation, width, backdrop)
     _board_lists(document, text)
     document.add_heading(phrase(text, "doc.clues"), level=2)
     for number, clue in enumerate(clues, 1):
@@ -399,6 +407,9 @@ def _add_solution(document: Any, entry: Entry, title: str, bookmark: str | None 
     lines = sum(-(-len(b) // CLUE_LINE_CHARS) for b in blocks)
     small = lines > MANY_SOLUTION_LINES
     width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0, 6)
+    if width <= max(MIN_BOARD_WIDTH_CM, SOLUTION_MIN_BOARD_CM):
+        stream, aspect = _picture_stream(text, entry.solution, entry.role_statuses, False)
+        width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0, 6)
     document.add_picture(stream, width=Cm(max(width, SOLUTION_MIN_BOARD_CM)))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     document.add_heading(phrase(text, "doc.how"), level=2)

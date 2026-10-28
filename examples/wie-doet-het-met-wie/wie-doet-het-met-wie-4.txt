@@ -55,6 +55,9 @@ sloffen: standable r3c5
 bril: standable r6c5
 bril: standable r4c4
 
+Backdrop:
+U+1F6C1
+
 People:
 Marloes
 Bas

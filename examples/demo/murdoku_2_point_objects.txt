@@ -34,6 +34,9 @@ mouse1: r0.5c4.5
 mouse2: r5.5c0.5
 cheese: r3.5c5
 lantern: r5.5c2
+Backdrop:
+U+1F50D
+
 People:
 Ada
 Bo

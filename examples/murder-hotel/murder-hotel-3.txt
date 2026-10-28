@@ -94,6 +94,9 @@ window: window r5c1 left
 Roles:
 murderer: 1
 
+Backdrop:
+U+1F6CE
+
 People:
 Antonio
 Beatrice

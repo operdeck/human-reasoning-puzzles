@@ -159,6 +159,37 @@ def test_attribute_icons_and_holders_appear_in_the_legend(monkeypatch):
     assert "Sloffen: Ben" in markup
 
 
+def test_an_attribute_without_a_picture_is_named_only_once_in_the_legend():
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "room"},
+        [],
+        ["Ada", "Ben"],
+        attributes={"guest_in_costume": frozenset({"Ada"})},
+    )
+
+    markup = drawing.murdoku_picture(board, cell=CELL).to_svg()
+
+    assert "Guest in costume: Ada" in markup
+    assert 'aria-label="guest_"' not in markup
+
+
+def test_the_area_tag_legend_keeps_the_case_of_region_names():
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "El_Greco_room"},
+        [],
+        ["Ada", "Ben"],
+        area_tags={"crime_scene": ["El_Greco_room"]},
+    )
+
+    markup = drawing.murdoku_picture(board, cell=CELL).to_svg()
+
+    assert "Crime scene: El Greco room" in markup
+
+
 @pytest.mark.parametrize(
     ("name", "panel_row", "window_row"),
     [
@@ -171,6 +202,7 @@ def test_vertical_control_panel_rotates_to_match_its_footprint(
     monkeypatch, name, panel_row, window_row
 ):
     board, _ = load_board(example(name).read_text())
+    board.backdrop = None  # the layout below assumes the plain margin
     calls = []
     original = drawing._icon
 
@@ -601,6 +633,7 @@ def test_couch_icon_loses_its_floor_lamp():
 def test_picture_shows_regions_objects_and_borders():
     text = (example("prrrdoku3.txt")).read_text()
     board, _ = load_board(text)
+    board.backdrop = None
     image = picture.murdoku_picture(board, cell=CELL)
     margin = CELL // 2
     assert image.width == 2 * margin + 9 * CELL
@@ -620,6 +653,7 @@ def test_picture_shows_regions_objects_and_borders():
 
 def test_without_legend_the_picture_is_square():
     board, _ = load_board((example("prrrdoku3.txt")).read_text())
+    board.backdrop = None
     with_legend = picture.murdoku_picture(board, cell=CELL)
     without = picture.murdoku_picture(board, cell=CELL, legend=False)
     assert without.width == without.height == with_legend.width < with_legend.height
@@ -627,6 +661,7 @@ def test_without_legend_the_picture_is_square():
 
 def test_hatching_only_on_hatched_regions():
     board, _ = load_board((example("prrrdoku3.txt")).read_text())
+    board.backdrop = None
     image = picture.murdoku_picture(board, cell=CELL, labels=False)
     margin = CELL // 2
 
@@ -641,6 +676,7 @@ def test_hatching_only_on_hatched_regions():
 def test_solution_picture_puts_name_tags_on_squares():
     text = (example("prrrdoku3.txt")).read_text()
     board, _ = load_board(text)
+    board.backdrop = None
     (solution,) = bruteforce.solutions(text, "murdoku")
     image = picture.murdoku_picture(board, solution, cell=CELL)
     tim = solution["Tim"]
@@ -1049,6 +1085,7 @@ def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
 
 def test_blocked_squares_are_shaded_darker_without_a_cross():
     board, _ = load_board((example("tamagotchi-murdoku-9x9.txt")).read_text())
+    board.backdrop = None
     image = picture.murdoku_picture(board, legend=False).convert("RGB")
     cell, margin = 120, 60
     blocked = sorted(board.blocked)[0]
@@ -1219,3 +1256,65 @@ def test_count_legend_uses_the_given_plain_language_texts():
     ).to_svg()
     assert "Precies twee mensen dragen een badjas" in markup
     assert "object:badjas" not in markup
+
+
+def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
+    plain = _point_board()
+    backdrop = _point_board()
+    backdrop.backdrop = "pumpkin"
+    drawn = []
+    original = icons.draw
+
+    def capture(canvas, icon, box, **kwargs):
+        drawn.append((icon, box))
+        original(canvas, icon, box, **kwargs)
+
+    monkeypatch.setattr(icons, "draw", capture)
+    small = picture.murdoku_picture(plain, cell=CELL, coordinates=False, legend=False)
+    large = picture.murdoku_picture(backdrop, cell=CELL, coordinates=False, legend=False)
+
+    assert large.width > small.width and large.height > small.height
+    icon, (left, top, right, bottom) = drawn[0]
+    assert icon == icons.object_icon("pumpkin")
+    assert right - left > 3 * CELL and bottom - top > 3 * CELL
+
+
+def test_a_backdrop_is_read_from_the_puzzle_file():
+    text = example("food-murdoku-2.txt").read_text().replace("Backdrop:\nramen_bowl\n\n", "")
+    assert load_board(text)[0].backdrop is None
+    text = text.replace("People:", "Backdrop:\nU+1F383\n\nPeople:", 1)
+    assert load_board(text)[0].backdrop == "U+1F383"
+
+
+def test_decorations_are_drawn_at_their_anchors_but_never_enter_the_puzzle(monkeypatch):
+    text = example("halloween-museum-1.txt").read_text()
+    board = load_board(text)[0]
+    assert ("bat", (7, 1)) in board.decorations and ("cobweb", (1, 13)) in board.decorations
+    assert not board.point_objects
+    drawn = []
+    original = drawing._icon
+
+    def capture(canvas, name, area, cell, **kwargs):
+        drawn.append(name)
+        original(canvas, name, area, cell, **kwargs)
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    picture.murdoku_picture(board, cell=CELL)
+    assert drawn.count("bat") == 2 and drawn.count("cobweb") == 2
+
+
+def test_a_bad_decoration_line_is_rejected():
+    text = example("halloween-museum-1.txt").read_text().replace("bat: r3.5c0.5", "bat r3.5c0.5", 1)
+    with pytest.raises(ValueError, match="bad decoration"):
+        load_board(text)
+
+
+def test_a_backdrop_with_bounds_sticks_out_above_the_board():
+    board = load_board(example("prrrdoku1.txt").read_text())[0]
+    assert board.backdrop == "lapjeskat"
+    image = drawing.murdoku_picture(board, cell=CELL, legend=False)
+    assert image.headroom > 0
+    assert f'viewBox="0 {-image.headroom} ' in image.to_svg()
+    assert 'overflow="visible"' in image.to_svg()
+    board.backdrop = "pumpkin"  # a plain picture fits its box: no headroom
+    assert drawing.murdoku_picture(board, cell=CELL, legend=False).headroom == 0

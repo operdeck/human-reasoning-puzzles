@@ -24,6 +24,10 @@ Murdoku examples live in category folders under `examples/` (for example `japane
 
 The English Murder Hotel trilogy gives the guests Italian names and moves the mystery through the roof terrace, restaurant, guest rooms, and lobby. Each board has a guest corridor with doors into the room wings, a main staircase connecting the Lobby, guest corridor, and Restaurant, and a one-column lift along the east side that stops only at the Lobby and Restaurant. A street-side vestibule opens into the Lobby. The first two puzzles use a conventional crime-scene mystery; the final puzzle leaves the murderer as a separate role and asks the solver to identify the guest at the deduced position. Its body is at the base of the lift shaft. The 8×8 opener is grade `relations`; the 9×9 and 10×10 puzzles are grade `subsumption`. See [`murder-hotel-1.txt`](../examples/murder-hotel/murder-hotel-1.txt), [`murder-hotel-2.txt`](../examples/murder-hotel/murder-hotel-2.txt), and [`murder-hotel-3.txt`](../examples/murder-hotel/murder-hotel-3.txt).
 
+## Halloween at the Museum
+
+The English Halloween at the Museum series sets three costume-party murders in one museum, with a Spanish cast and painter rooms (Velázquez, Goya, El Greco) next to the armoury, the Egyptian and dinosaur halls and the gift shop. Every puzzle shares one rule: the murderer was in the room where the weapon lies. Each puzzle narrows the suspects with a trait (a woman, a guest in costume, a member of staff), and the murderer appears in no clue. The cursed dagger (6×6) and the crossbow (7×7) are grade `subsumption`; the candlestick (8×8) is grade `cover2`. See [`halloween-museum-1.txt`](../examples/halloween-museum/halloween-museum-1.txt), [`halloween-museum-2.txt`](../examples/halloween-museum/halloween-museum-2.txt), and [`halloween-museum-3.txt`](../examples/halloween-museum/halloween-museum-3.txt).
+
 ## New family gallery
 
 These previews are generated from the example files. The root README keeps a compact all-family gallery; this page provides the expanded visual index, file inventory, and grading notes.

@@ -1,0 +1,137 @@
+# Halloween at the Museum 7x7 - "The crossbow"
+# Solution: Diego r1c3, Alba r2c6, Bernardo r3c1, Fernando r4c5, Carmen r5c2,
+# Gonzalo r6c4, Elena r7c7. Diego is the murderer: the only guest in costume in the armoury.
+
+Size: 7
+Language: en
+
+Words:
+target.attribute: a {name}
+Goya_room: in the Goya room
+El_Greco_room: in the El Greco room
+armoury: in the armoury
+entrance_hall: in the entrance hall
+egyptian_hall: in the Egyptian hall
+dinosaur_hall: in the dinosaur hall
+gift_shop: in the gift shop
+sarcophagus: the sarcophagus
+scarab: the scarab case
+amphora: an amphora
+painting: a painting
+armour: a suit of armour
+crossbow: the crossbow
+easel: the easel
+t_rex: the T. rex skeleton
+headstone: a headstone
+pumpkin: the pumpkin
+counter: the shop counter
+museum_bench: the bench
+
+AreaTags:
+crime_scene: armoury
+
+Regions:
+armoury: armoury #C9CED6
+Goya_room: Goya_room #DDBF9A
+El_Greco_room: El_Greco_room #E9D8B4
+entrance_hall: entrance_hall #D9CBB8
+egyptian_hall: egyptian_hall #EBCB7A
+dinosaur_hall: dinosaur_hall #B9D3A8
+gift_shop: gift_shop #E6C3D6
+
+Grid:
+armoury armoury armoury Goya_room Goya_room El_Greco_room El_Greco_room
+armoury armoury armoury Goya_room Goya_room El_Greco_room El_Greco_room
+armoury armoury armoury entrance_hall entrance_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall entrance_hall entrance_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall entrance_hall entrance_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall gift_shop gift_shop dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall gift_shop gift_shop dinosaur_hall dinosaur_hall
+
+Objects:
+armour: blocking r1c1
+armour: blocking r2c3
+crossbow: blocking r3c3
+painting: blocking r1c5
+easel: blocking r2c5
+painting: blocking r1c6
+painting: blocking r1c7
+museum_bench: standable r2c6 r2c7
+pumpkin: blocking r3c5
+scarab: blocking r5c3
+sarcophagus: standable r6c2 r7c2
+t_rex: blocking r3c6 r4c6
+headstone: blocking r6c6
+headstone: blocking r6c7
+counter: blocking r7c4 r7c5
+
+EdgeItems:
+door: door r1c3 r1c4
+door: door r2c4 r3c4
+door: door r1c5 r1c6
+door: door r3c2 r4c2
+door: door r5c5 r5c6
+door: door r5c4 r6c4
+door: door r6c3 r6c4
+
+Decorations:
+cobweb: r0.5c0.5 r0.5c7.5
+bat: r4.5c7.5 r7.5c1.5
+ghost: r7.5c7.5
+
+Backdrop:
+pumpkin
+
+Attributes:
+guest_in_costume: Carmen Diego Elena
+
+Roles:
+murderer: 1
+
+RoleEligibility:
+murderer: attribute:guest_in_costume
+
+People:
+Alba
+Bernardo
+Carmen
+Diego
+Elena
+Fernando
+Gonzalo
+
+Rules:
+min_role_in_tagged murderer crime_scene 1
+
+Clues:
+next_to Fernando pumpkin
+in_region Alba El_Greco_room
+next_to Carmen scarab
+in_region Bernardo armoury
+left_of Alba Elena
+in_region Gonzalo gift_shop
+not_next_to Bernardo door
+next_to Carmen sarcophagus
+
+Title:
+Halloween at the Museum: The crossbow
+
+Intro:
+The Halloween party has moved upstairs, past the painters' rooms. At midnight the candles gutter, a scream echoes through the halls, and another guest lies dead. In the armoury, among the suits of armour, lies a crossbow.
+Place everyone on a free square, with one person in every row and column. The bench and the sarcophagus are standable; all other exhibits block.
+The murderer is a guest in costume and was in the room where the weapon lies.
+
+Figures:
+Alba: the curator ; icon=U+1F475
+Bernardo: the night guard ; icon=U+1F9D4
+Carmen: dressed as a witch ; icon=U+1F9D9
+Diego: dressed as a vampire ; icon=U+1F9DB
+Elena: dressed as a zombie ; icon=U+1F9DF
+Fernando: the tour guide ; icon=U+1F468
+Gonzalo: the restorer ; icon=U+1F474
+
+Question:
+Who fired the crossbow?
+
+Reveal:
+Diego, dressed as a vampire, was the only guest in costume in the armoury.

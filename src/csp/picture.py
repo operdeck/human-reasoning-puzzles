@@ -23,6 +23,7 @@ ones inside, givens in black and solved numbers in blue. Calcudoku cages get
 pastel fills, no two touching cages alike, and their target in the corner.
 """
 
+import math
 import textwrap
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass
@@ -84,6 +85,11 @@ class Mark:
 type Value = str | int | Mark | None
 
 
+def _upper_first(text: str) -> str:
+    """Capitalise the first letter only, keeping names such as "El Greco"."""
+    return text[:1].upper() + text[1:]
+
+
 def cell_id(row: int, col: int) -> str:
     """The id of a cell in the interactive variant, as in the solver: r1c1 is top left."""
     return f"r{row + 1}c{col + 1}"
@@ -136,14 +142,19 @@ def murdoku_picture(
         if legend
         else None
     )
-    height = side + 2 * margin + (key.height if key else 0)
-    canvas = Canvas(side + 2 * margin, height)
+    # A backdrop widens the margin; the coordinates stay beside the board.
+    reach = int(side * BACKDROP_REACH) if board.backdrop else 0
+    height = side + 2 * margin + reach + (key.height if key else 0)
+    headroom = _backdrop_headroom(board.backdrop, margin, side) if board.backdrop else 0
+    canvas = Canvas(side + 2 * margin, height, headroom=headroom)
     fills = _fills(board)
 
     def box(sq: Square) -> Box:
         x, y = margin + sq.col * cell, margin + sq.row * cell
         return x, y, x + cell, y + cell
 
+    if board.backdrop:
+        _backdrop(canvas, board.backdrop, margin, side)
     blocked = board.blocked
     count_scope = {square for condition in global_counts for square in condition.scope_cells(board)}
     for r in range(board.size):
@@ -215,6 +226,11 @@ def murdoku_picture(
             _badge(canvas, point.name, area, cell)
         else:
             _icon(canvas, point.name, area, cell)
+    for name, (row2, col2) in board.decorations:
+        x = margin + (col2 - 1) * cell // 2
+        y = margin + (row2 - 1) * cell // 2
+        radius = cell // 3
+        _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
     for square in count_scope:
         canvas.rectangle(box(square), outline=COUNT_SCOPE, width=max(2, cell // 40))
     marks_by_cell: dict[Square, list[str]] = {}
@@ -241,9 +257,9 @@ def murdoku_picture(
         _name_tag(canvas, person, box(sq), cell, low=sq in standable)
 
     if coordinates:
-        _coordinates(canvas, board.size, margin, cell)
+        _coordinates(canvas, board.size, margin, cell, gap=cell // 4 if reach else None)
     if key:
-        key.draw(canvas, margin, margin + side + cell // 3)
+        key.draw(canvas, margin, margin + side + reach + cell // 3)
     if interactive:
         _cells(canvas, board.size, margin, margin, cell)
     return canvas
@@ -295,8 +311,7 @@ def _region_labels(
             squares,
             key=lambda s: (s in taken or s in board.blocked, s in crowded, s in occupied, s),
         )
-        text = name.replace("_", " ")
-        text = text[:1].upper() + text[1:]
+        text = _upper_first(name.replace("_", " "))
         x0, y0, x1, _ = box(sq)
         right = Square(sq.row, sq.col + 1)
         wide = canvas.textlength(text, size) > cell - 4 * pad
@@ -314,18 +329,53 @@ def _region_labels(
         _centred_text(canvas, text, tag, size, INK, max_width=tag[2] - tag[0] - 2 * pad)
 
 
+BACKDROP_REACH = 0.08  # how far a backdrop reaches past each board side, in board sides
+BACKDROP_OPACITY = 0.85
+
+
+def _backdrop(canvas: Canvas, name: str, margin: int, side: int) -> None:
+    """Draw `name` (an icon name or `U+XXXX`) centred behind the board, reaching
+    `BACKDROP_REACH` board sides past it, so the board seems to lie on it."""
+    icon = icons.object_icon(name)
+    if icon is None:
+        return
+    reach = int(side * BACKDROP_REACH)
+    middle = margin + side // 2
+    half = side // 2 + reach
+    with canvas.group(opacity=BACKDROP_OPACITY):
+        box = (middle - half, middle - half, middle + half, middle + half)
+        icons.draw(canvas, icon, box, crop=True, stretch=True)
+
+
+def _backdrop_headroom(name: str, margin: int, side: int) -> int:
+    """Pixels a backdrop sticks out above the picture: a drawing with `bounds`
+    (a cat with its ears) may reach past the part that lies behind the board."""
+    icon = icons.object_icon(name)
+    if icon is None or icon.bounds is None:
+        return 0
+    reach = int(side * BACKDROP_REACH)
+    above = icon.bounds[1] - icon.view[1]
+    scale = (side + 2 * reach) / (icon.bounds[3] - icon.bounds[1])
+    return max(0, math.ceil(above * scale) - (margin - reach))
+
+
 def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
-    """Room around the board, widened so point objects on the outer edge are not clipped.
+    """Room around the board, widened so point objects on the outer edge are not clipped
+    and a backdrop shows around the board.
 
     A point icon reaches `0.72 * cell / 3` (about 0.24 cell) past its anchor.
     Coordinate labels sit halfway into the top and left margins, so a point on
     those edges gets extra room to keep its icon off the labels.
     """
+    if board.backdrop:
+        return int(board.size * cell * BACKDROP_REACH) + cell // 4
     outer = {1, 2 * board.size + 1}
+    anchors = [point.anchor for point in board.point_objects]
+    anchors += [anchor for _, anchor in board.decorations]
     if not coordinates:
-        on_edge = any(set(point.anchor) & outer for point in board.point_objects)
+        on_edge = any(set(anchor) & outer for anchor in anchors)
         return cell // 4 + cell // 20 if on_edge else cell // 6
-    top_left = any(1 in point.anchor for point in board.point_objects)
+    top_left = any(1 in anchor for anchor in anchors)
     return cell // 2 + cell // 4 if top_left else cell // 2
 
 
@@ -345,7 +395,9 @@ WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon
 TILED_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "rails")
 BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
 SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"}) | frozenset(
-    name for name, icon in icons.OBJECT_ICONS.items() if icon in ("train_bench", "platform_bench")
+    name
+    for name, icon in icons.OBJECT_ICONS.items()
+    if icon in ("train_bench", "platform_bench", "museum_bench")
 )
 
 
@@ -1182,13 +1234,18 @@ def _centred_text(
     canvas.text(((x0 + x1) / 2, (y0 + y1) / 2), text, colour, size, anchor="mm")
 
 
-def _coordinates(canvas: Canvas, n: int, margin: int, cell: int) -> None:
+def _coordinates(canvas: Canvas, n: int, margin: int, cell: int, gap: float | None = None) -> None:
+    """Row and column numbers `gap` pixels (default half the margin) left of and
+    above the board; a smaller gap, over a backdrop, gets darker numbers with a
+    white halo so they read on any picture."""
     size = cell // 5
-    grey = (120, 120, 120)
+    grey = (120, 120, 120) if gap is None else (60, 40, 30)
+    halo = None if gap is None else (255, 255, 255)
+    gap = margin / 2 if gap is None else gap
     for i in range(n):
         middle = margin + i * cell + cell / 2
-        canvas.text((middle, margin / 2), str(i + 1), grey, size, anchor="mm")
-        canvas.text((margin / 2, middle), str(i + 1), grey, size, anchor="mm")
+        canvas.text((middle, margin - gap), str(i + 1), grey, size, anchor="mm", halo=halo)
+        canvas.text((margin - gap, middle), str(i + 1), grey, size, anchor="mm", halo=halo)
 
 
 # --- legend ---------------------------------------------------------------
@@ -1237,7 +1294,7 @@ class _Legend:
         self.tag_lines = [
             f"{tag.replace('_', ' ').capitalize()}: "
             + ", ".join(
-                board.region_names[rid].replace("_", " ").capitalize()
+                _upper_first(board.region_names[rid].replace("_", " "))
                 for rid in board.region_names
                 if rid in board.region_ids(members)
             )
@@ -1353,7 +1410,9 @@ class _Legend:
         for i, name in enumerate(self.attribute_names):
             top = y + (attribute_offset + i) * self.line
             area = (x, top, x + self.swatch, top + self.swatch)
-            _icon(canvas, name, area, self.cell, scale=0.8)
+            if icons.object_icon(name) is not None:
+                # Without a picture the swatch stays empty: the label names the trait.
+                _icon(canvas, name, area, self.cell, scale=0.8)
             holders = ", ".join(sorted(self.board.attributes[name]))
             label(top, f"{name.replace('_', ' ').capitalize()}: {holders}")
         tag_offset = attribute_offset + len(self.attribute_names)

@@ -27,6 +27,9 @@ arcade: blocking r5c5
 chair: standable r2c5
 carpet: standable r5c1 r5c2
 
+Backdrop:
+tamagotchi
+
 People:
 Mametchi
 Kuchipatchi

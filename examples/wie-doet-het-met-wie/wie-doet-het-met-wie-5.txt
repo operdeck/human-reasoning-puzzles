@@ -65,6 +65,9 @@ sloffen: standable r7c4
 bril: standable r7c6
 bril: standable r5c7
 
+Backdrop:
+U+1F6C1
+
 People:
 Ruud
 Mieke

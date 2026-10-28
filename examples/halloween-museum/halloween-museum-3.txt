@@ -1,0 +1,155 @@
+# Halloween at the Museum 8x8 - "The candlestick"
+# Solution: Carmen r1c2, Gonzalo r2c5, Elena r3c8, Hugo r4c1, Bernardo r5c6,
+# Fernando r6c4, Alba r7c3, Diego r8c7. Gonzalo is the murderer: the only museum staff member in the Goya room,
+# where the candlestick lies.
+
+Size: 8
+Language: en
+
+Words:
+Velázquez_room: in the Velázquez room
+Goya_room: in the Goya room
+El_Greco_room: in the El Greco room
+armoury: in the armoury
+entrance_hall: in the entrance hall
+egyptian_hall: in the Egyptian hall
+dinosaur_hall: in the dinosaur hall
+gift_shop: in the gift shop
+sarcophagus: the sarcophagus
+scarab: the scarab case
+amphora: the amphora
+painting: a painting
+easel: the easel
+candlestick: the candlestick
+armour: a suit of armour
+swords: the crossed swords
+t_rex: the T. rex skeleton
+sauropod: the sauropod skeleton
+headstone: a headstone
+pumpkin: the pumpkin
+counter: the shop counter
+crystal_ball: the crystal ball
+target.attribute: a {name}
+museum_bench: the bench
+
+Regions:
+Velázquez_room: Velázquez_room #E9D8B4
+Goya_room: Goya_room #DDBF9A
+El_Greco_room: El_Greco_room #E3CFC0
+armoury: armoury #C9CED6
+entrance_hall: entrance_hall #D9CBB8
+egyptian_hall: egyptian_hall #EBCB7A
+dinosaur_hall: dinosaur_hall #B9D3A8
+gift_shop: gift_shop #E6C3D6
+
+Grid:
+Velázquez_room Velázquez_room Velázquez_room Goya_room Goya_room Goya_room armoury armoury
+Velázquez_room Velázquez_room Velázquez_room Goya_room Goya_room Goya_room armoury armoury
+El_Greco_room El_Greco_room El_Greco_room Goya_room Goya_room Goya_room armoury armoury
+El_Greco_room El_Greco_room El_Greco_room entrance_hall entrance_hall dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall entrance_hall entrance_hall dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall entrance_hall entrance_hall dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall gift_shop gift_shop dinosaur_hall dinosaur_hall dinosaur_hall
+egyptian_hall egyptian_hall egyptian_hall gift_shop gift_shop dinosaur_hall dinosaur_hall dinosaur_hall
+
+Objects:
+painting: blocking r1c1
+painting: blocking r1c3
+painting: blocking r1c4
+painting: blocking r1c6
+museum_bench: standable r3c5 r3c6
+easel: blocking r2c4
+candlestick: blocking r1c5
+painting: blocking r3c1
+painting: blocking r3c3
+museum_bench: standable r4c2 r4c3
+armour: blocking r1c7
+armour: blocking r2c8
+swords: blocking r3c7
+pumpkin: blocking r5c5
+t_rex: blocking r4c7 r5c7
+headstone: blocking r6c8
+sauropod: blocking r7c6 r7c7
+scarab: blocking r6c2
+sarcophagus: standable r7c1 r8c1
+amphora: blocking r8c3
+crystal_ball: blocking r7c5
+counter: blocking r8c4 r8c5
+
+EdgeItems:
+door: door r2c3 r2c4
+door: door r2c6 r2c7
+door: door r2c2 r3c2
+door: door r3c4 r4c4
+door: door r4c2 r5c2
+door: door r6c5 r6c6
+door: door r6c4 r7c4
+door: door r7c3 r7c4
+door: door r3c8 r4c8
+
+AreaTags:
+crime_scene: Goya_room
+
+Decorations:
+cobweb: r0.5c0.5 r0.5c8.5
+bat: r5.5c0.5 r8.5c4.5
+ghost: r8.5c8.5
+
+Backdrop:
+pumpkin
+
+Attributes:
+staff_member: Alba Bernardo Fernando Gonzalo
+
+Roles:
+murderer: 1
+
+RoleEligibility:
+murderer: attribute:staff_member
+
+People:
+Alba
+Bernardo
+Carmen
+Diego
+Elena
+Fernando
+Gonzalo
+Hugo
+
+Rules:
+min_role_in_tagged murderer crime_scene 1
+
+Clues:
+in_region Hugo El_Greco_room
+in_region Bernardo dinosaur_hall
+in_region Elena armoury
+above Carmen Elena
+left_of Bernardo Diego
+next_to Alba amphora
+above Bernardo Fernando
+next_to Diego sauropod
+
+Title:
+Halloween at the Museum: The candlestick
+
+Intro:
+The last Halloween party ends in the dark: a storm cuts the power and the museum is lit by candles only. When the lights come back on, a guest lies dead in the Goya room, a heavy candlestick beside the body.
+Place everyone on a free square, with one person in every row and column. The benches and the sarcophagus are standable; all other exhibits block.
+The murderer is a staff member and was in the room where the weapon lies.
+
+Figures:
+Alba: the curator ; icon=U+1F475
+Bernardo: the night guard ; icon=U+1F9D4
+Carmen: dressed as a witch ; icon=U+1F9D9
+Diego: dressed as a vampire ; icon=U+1F9DB
+Elena: dressed as a zombie ; icon=U+1F9DF
+Fernando: the tour guide ; icon=U+1F468
+Gonzalo: the restorer ; icon=U+1F474
+Hugo: dressed as a skeleton ; icon=U+1F480
+
+Question:
+Who swung the candlestick?
+
+Reveal:
+Gonzalo, the restorer, was the only member of staff in the Goya room.

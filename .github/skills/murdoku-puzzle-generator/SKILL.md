@@ -277,6 +277,16 @@ For a finished Murdoku under `examples/`, before reporting done:
   Y": `above object:badjas object:sloffen 1` is "one bathrobe wearer is
   exactly one row above the slippers wearer". When both selectors name cells
   the engine reasons over squares, as a person would.
+- **Backdrops and decorations** are cosmetic (`Backdrop:` one icon behind the
+  board, `Decorations:` icons at anchors); they never change the solution.
+  Give a series one backdrop. Only a thin ring around the board shows, so pick
+  pictures recognisable by their outline: fork and knife at the sides, a
+  locomotive's smoke and wheels, a lion's mane. Faces, logos, box contents and
+  plain convex shapes (egg, bento, a white bathrobe) read as blobs. When no
+  emoji works, draw an original SVG with `bounds` (the part behind the board)
+  so ears, steam or a key ring stick out above it (see `TORTIE_CAT`). Keep
+  eyes and stems off the coordinate line, and get an independent visual review
+  of the whole set.
 - If a visualization or authoring step is useful beyond one puzzle, prefer a
   shared renderer, helper, `clue_search` option or skill improvement over a
   puzzle-specific workaround.

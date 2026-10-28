@@ -51,6 +51,9 @@ toilet: blocking r2c4
 plant: blocking r4c1
 tafel: blocking r5c3
 
+Backdrop:
+U+1F6C1
+
 People:
 Marloes
 Bas

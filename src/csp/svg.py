@@ -102,14 +102,19 @@ def textlength(text: str, size: float) -> float:
 class Canvas:
     """An SVG picture built with Pillow-like drawing calls."""
 
-    def __init__(self, width: int, height: int, background: Colour = (255, 255, 255)) -> None:
+    def __init__(
+        self, width: int, height: int, background: Colour = (255, 255, 255), headroom: int = 0
+    ) -> None:
+        """`headroom` adds that many pixels above y = 0, for drawings that stick out at the
+        top; coordinates stay the same, so the picture's height grows by it."""
         self.width = width
-        self.height = height
+        self.height = height + headroom
+        self.headroom = headroom
         self._defs: dict[str, str] = {}
         self._body: list[str] = []
         self._cells: list[str] = []
         self._clips = 0
-        self.rectangle((0, 0, width - 1, height - 1), fill=background)
+        self.rectangle((0, -headroom, width - 1, height - 1), fill=background)
 
     @property
     def size(self) -> tuple[int, int]:
@@ -217,8 +222,11 @@ class Canvas:
         fill: Colour,
         size: float,
         anchor: str = "la",
+        halo: Colour | None = None,
     ) -> None:
-        """Write `text` as glyph paths; `anchor` is Pillow's two-letter anchor."""
+        """Write `text` as glyph paths; `anchor` is Pillow's two-letter anchor.
+
+        `halo` outlines the letters in that colour, to keep them readable on a picture."""
         if not text:
             return
         f = font()
@@ -248,8 +256,14 @@ class Canvas:
                 uses.append(f'<use href="#{gid}" x="{advance}"/>')
             advance += f.advance[name]
         label = escape(text, {'"': "&quot;"})
+        outline = (
+            f' stroke="{colour(halo)}" stroke-width="{_n(size * 0.2 / scale)}"'
+            ' stroke-linejoin="round" paint-order="stroke"'
+            if halo is not None
+            else ""
+        )
         self._add(
-            f'<g aria-label="{label}" fill="{colour(fill)}"'
+            f'<g aria-label="{label}" fill="{colour(fill)}"{outline}'
             f' transform="translate({_n(x)} {_n(y)}) scale({scale:.5f} {-scale:.5f})">'
             + "".join(uses)
             + "</g>"
@@ -267,12 +281,14 @@ class Canvas:
         stretch: bool = False,
         rotate: float = 0,
         tint: Colour | None = None,
+        overflow: bool = False,
     ) -> None:
         """Draw the drawing `markup` (in `view` units) into `box`.
 
         The drawing is defined once and reused. It keeps its aspect ratio and
         is centred unless `stretch`; `rotate` turns it that many degrees
         counter-clockwise first. `tint` sets `currentColor` for drawings that use it.
+        `overflow` also shows the parts of the drawing outside `view`.
         """
         if ref not in self._defs:
             self._defs[ref] = f'<g id="{ref}">{markup}</g>'
@@ -284,6 +300,8 @@ class Canvas:
         vx0, vy0, vx1, vy1 = view
         aspect = "none" if stretch else "xMidYMid meet"
         tinted = f' color="{colour(tint)}"' if tint is not None else ""
+        if overflow:
+            tinted += ' overflow="visible"'
         element = (
             f'<svg x="{_n(cx - w / 2)}" y="{_n(cy - h / 2)}" width="{_n(w)}" height="{_n(h)}"'
             f' viewBox="{_n(vx0)} {_n(vy0)} {_n(vx1 - vx0)} {_n(vy1 - vy0)}"'
@@ -349,7 +367,7 @@ class Canvas:
         return (
             '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
             f' width="{self.width}" height="{self.height}"'
-            f' viewBox="0 0 {self.width} {self.height}">\n'
+            f' viewBox="0 {-self.headroom} {self.width} {self.height}">\n'
             + defs
             + "\n"
             + "\n".join(self._body)

@@ -44,6 +44,9 @@ tatami: standable r4c2 r5c2
 Attributes:
 food: Tonkatsu Yakitori Tempura Okonomiyaki Gyoza Sushi
 
+Backdrop:
+ramen_bowl
+
 People:
 Tonkatsu
 Yakitori

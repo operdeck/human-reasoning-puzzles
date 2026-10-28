@@ -2,9 +2,13 @@
 
 import re
 
+import pytest
+
 from csp import bruteforce, clue_search
 from csp.puzzlefile import load_board
 from tests.examples import example
+
+SOLUTION_1 = "Alba=r1c5 Bernardo=r2c1 Carmen=r3c3 Diego=r4c6 Fernando=r5c2 Elena=r6c4"
 
 ORIENT = example("murdoku_orient_express.txt").read_text()
 
@@ -108,3 +112,81 @@ def test_suggest_keeps_each_needed_clue_necessary():
     for dropped in (rule, key):
         rest = [line for line in (rule, key) if line != dropped]
         assert len(bruteforce.solutions(clue_search.with_clues(start, [*rest, *added]))) > 1
+
+
+def test_sample_spreads_over_the_search_space():
+    # The first solutions of one search share their early choices; a clue that
+    # rules them out looks perfect to `suggest` while ruling out little else.
+    open_board = clue_search.with_clues(example("halloween-museum-1.txt").read_text(), [])
+    first = bruteforce.murdoku.solutions(open_board, 40)
+    spread = bruteforce.murdoku.sample(open_board, 40)
+    assert len(spread) == 40
+    assert len({tuple(sorted(map(str, s.items()))) for s in spread}) == 40
+
+    def squares(found):
+        return len({(person, str(square)) for s in found for person, square in s.items()})
+
+    assert squares(spread) > squares(first)
+
+
+def test_sample_never_hides_a_second_solution():
+    puzzle = example("halloween-museum-1.txt").read_text()
+    lines = clue_search.clue_lines(puzzle)
+    for number in range(len(lines) + 1):
+        fewer = clue_search.with_clues(puzzle, lines[:number] + lines[number + 1 :])
+        several = len(bruteforce.murdoku.solutions(fewer, 2)) > 1
+        assert (len(bruteforce.murdoku.sample(fewer, 40)) > 1) == several
+
+
+def test_mentions_counts_each_person_once_per_clue():
+    counts = clue_search._mentions(
+        ["Ada", "Ben", "Cy"], ["left_of Ada Ben", "next_to Ada Ada_bench | Ada sits", "on Ben bed"]
+    )
+    assert counts == {"Ada": 2, "Ben": 2, "Cy": 0}
+
+
+def test_accepts_checks_role_rules():
+    # `suggest --needs` finds the rivals of a role rule with `accepts`.
+    hotel = example("murder-hotel-1.txt").read_text()
+    rule = "role_occupant murderer not_alone\n"
+    loose = clue_search.with_clues(hotel.replace(rule, ""), [])
+    people = load_board(hotel)[0].people
+    found = [clue_search._placement(f, people) for f in bruteforce.murdoku.sample(loose, 60)]
+    full = clue_search.with_clues(hotel, [])
+    assert any(not bruteforce.murdoku.accepts(full, placement) for placement in found)
+    assert all(bruteforce.murdoku.accepts(loose, placement) for placement in found)
+
+
+def test_candidate_clues_offer_lines_only_on_request():
+    museum = example("halloween-museum-1.txt").read_text()
+    board, _ = load_board(museum)
+    placement = clue_search.parse_solution(SOLUTION_1)
+    assert not any("row" in clue for clue in clue_search.candidate_clues(board, placement))
+    lines = clue_search.candidate_clues(board, placement, ["not_in_row", "in_column"])
+    assert "not_in_row Alba 2" in lines and "in_column Alba 5" in lines
+    assert "not_in_row Alba 1" not in lines
+    with pytest.raises(ValueError, match="unknown clue kinds"):
+        clue_search.candidate_clues(board, placement, ["nearby"])
+
+
+def test_suggest_keeps_a_role_rule_necessary():
+    museum = example("halloween-museum-1.txt").read_text()
+    rule = "min_role_in_tagged murderer crime_scene 1"
+    start = clue_search.with_clues(museum.replace(rule + "\n", ""), [rule])
+    placement = clue_search.parse_solution(SOLUTION_1)
+    added = clue_search.suggest(start, placement, sample=200, exclude=["Carmen"], needs=[1])
+    assert len(bruteforce.solutions(clue_search.with_clues(start, [rule, *added]))) == 1
+    assert len(bruteforce.solutions(clue_search.with_clues(start, added))) > 1
+
+
+def test_ease_adds_a_clue_that_lowers_the_grade():
+    museum = example("halloween-museum-1.txt").read_text()
+    placement = clue_search.parse_solution(SOLUTION_1)
+    added = clue_search.ease(museum, placement, "relations", exclude=["Carmen"], needs=[1])
+    assert added and all("Carmen" not in clue for clue in added)
+    eased = clue_search.outcome(
+        clue_search.with_clues(museum, clue_search.clue_lines(museum) + added)
+    )
+    assert eased.good and clue_search.GRADES.index(eased.grade) <= clue_search.GRADES.index(
+        "relations"
+    )

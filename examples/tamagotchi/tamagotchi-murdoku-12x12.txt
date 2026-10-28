@@ -47,6 +47,9 @@ carpet: standable r9c10
 chair: standable r12c10
 chair: standable r4c7
 
+Backdrop:
+tamagotchi
+
 People:
 Mametchi
 Kuchipatchi
