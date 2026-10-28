@@ -37,6 +37,9 @@ tatami: standable r1c4 r2c4
 Attributes:
 food: Ramen Yakitori Tonkatsu Tempura
 
+Backdrop:
+ramen_bowl
+
 People:
 Ramen
 Yakitori

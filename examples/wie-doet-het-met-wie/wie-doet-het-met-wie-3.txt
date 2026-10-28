@@ -51,6 +51,9 @@ sloffen: standable r3c2
 badjas: standable r4c1
 badjas: standable r5c3
 
+Backdrop:
+U+1F6C1
+
 People:
 Sanne
 Pieter

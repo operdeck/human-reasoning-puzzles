@@ -48,6 +48,9 @@ zetmeel: 3 different_regions
 RoleEligibility:
 zetmeel: attribute:zetmeel
 
+Backdrop:
+U+1F37D
+
 People:
 Aardappel
 Rijst

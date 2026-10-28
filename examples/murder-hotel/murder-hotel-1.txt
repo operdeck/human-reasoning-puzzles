@@ -95,6 +95,9 @@ murderer: 1
 RoleEligibility:
 murderer: attribute:woman
 
+Backdrop:
+U+1F6CE
+
 People:
 Alessio
 Bianca

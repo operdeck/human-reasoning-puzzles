@@ -122,6 +122,9 @@ moordenaar: 1
 RoleEligibility:
 moordenaar: attribute:man
 
+Backdrop:
+U+1F682
+
 People:
 Fjodor
 Tatjana
