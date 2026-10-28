@@ -7,8 +7,8 @@ Language: en
 
 Words:
 target.attribute: a {name}
-velazquez_room: in the Velázquez room
-goya_room: in the Goya room
+Velázquez_room: in the Velázquez room
+Goya_room: in the Goya room
 egyptian_hall: in the Egyptian hall
 dinosaur_hall: in the dinosaur hall
 gift_shop: in the gift shop
@@ -23,15 +23,15 @@ counter: the shop counter
 dagger: the cursed dagger
 
 Regions:
-velazquez_room: velazquez_room #E9D8B4
-goya_room: goya_room #DDBF9A
+Velázquez_room: Velázquez_room #E9D8B4
+Goya_room: Goya_room #DDBF9A
 egyptian_hall: egyptian_hall #EBCB7A
 dinosaur_hall: dinosaur_hall #B9D3A8
 gift_shop: gift_shop #E6C3D6
 
 Grid:
-velazquez_room velazquez_room velazquez_room goya_room goya_room goya_room
-velazquez_room velazquez_room velazquez_room goya_room goya_room goya_room
+Velázquez_room Velázquez_room Velázquez_room Goya_room Goya_room Goya_room
+Velázquez_room Velázquez_room Velázquez_room Goya_room Goya_room Goya_room
 egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
 egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
 egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
@@ -86,7 +86,7 @@ min_role_in_tagged murderer crime_scene 1
 
 Clues:
 next_to Bernardo painting
-in_region Alba goya_room
+in_region Alba Goya_room
 on Fernando sarcophagus
 next_to Diego sauropod
 not_next_to Elena scarab
