@@ -1,35 +1,37 @@
-# Halloween at the Museum 6x6 - "The stolen scarab"
+# Halloween at the Museum 6x6 - "The cursed dagger"
 # Solution: Alba r1c5, Bernardo r2c1, Carmen r3c3, Diego r4c6, Fernando r5c2, Elena r6c4.
-# Carmen is the thief; she was in the Egyptian hall with Fernando.
+# Carmen is the murderer: the only woman in the Egyptian hall, where the dagger lies.
 
 Size: 6
 Language: en
 
 Words:
-painting_gallery: in the painting gallery
-armoury: in the armoury
+target.attribute: a {name}
+velazquez_room: in the Velázquez room
+goya_room: in the Goya room
 egyptian_hall: in the Egyptian hall
 dinosaur_hall: in the dinosaur hall
 gift_shop: in the gift shop
 sarcophagus: the sarcophagus
 scarab: the scarab case
 painting: a painting
-armour: a suit of armour
+easel: the easel
 t_rex: the T. rex skeleton
 sauropod: the sauropod skeleton
 pumpkin: a pumpkin
 counter: the shop counter
+dagger: the cursed dagger
 
 Regions:
-painting_gallery: painting_gallery #E9D8B4
-armoury: armoury #C9CED6
+velazquez_room: velazquez_room #E9D8B4
+goya_room: goya_room #DDBF9A
 egyptian_hall: egyptian_hall #EBCB7A
 dinosaur_hall: dinosaur_hall #B9D3A8
 gift_shop: gift_shop #E6C3D6
 
 Grid:
-painting_gallery painting_gallery painting_gallery armoury armoury armoury
-painting_gallery painting_gallery painting_gallery armoury armoury armoury
+velazquez_room velazquez_room velazquez_room goya_room goya_room goya_room
+velazquez_room velazquez_room velazquez_room goya_room goya_room goya_room
 egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
 egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
 egyptian_hall egyptian_hall egyptian_hall dinosaur_hall dinosaur_hall dinosaur_hall
@@ -39,10 +41,10 @@ Objects:
 painting: blocking r1c1
 bench: standable r2c2 r2c3
 painting: blocking r1c3
-armour: blocking r1c4
-armour: blocking r1c6
-swords: blocking r2c5
-pumpkin: blocking r3c1
+painting: blocking r1c4
+painting: blocking r1c6
+easel: blocking r2c5
+dagger: blocking r3c1
 sarcophagus: standable r4c2 r5c2
 scarab: blocking r4c3
 t_rex: blocking r3c5 r3c6 r4c5
@@ -52,6 +54,7 @@ counter: blocking r6c1 r6c2
 pumpkin: blocking r5c4
 
 EdgeItems:
+door: door r2c3 r2c4
 door: door r2c2 r3c2
 door: door r2c4 r3c4
 door: door r4c3 r4c4
@@ -62,13 +65,13 @@ AreaTags:
 crime_scene: egyptian_hall
 
 Attributes:
-guest_in_costume: Carmen Diego Elena
+woman: Alba Carmen Elena
 
 Roles:
-thief: 1
+murderer: 1
 
 RoleEligibility:
-thief: attribute:guest_in_costume
+murderer: attribute:woman
 
 People:
 Alba
@@ -79,23 +82,22 @@ Elena
 Fernando
 
 Rules:
-role_occupant thief not_alone
-min_role_in_tagged thief crime_scene 1
+min_role_in_tagged murderer crime_scene 1
 
 Clues:
 next_to Bernardo painting
-in_region Alba armoury
-left_of Alba Diego
+in_region Alba goya_room
 on Fernando sarcophagus
-in_region Elena dinosaur_hall
+next_to Diego sauropod
+not_next_to Elena scarab
 
 Title:
-Halloween at the Museum: The stolen scarab
+Halloween at the Museum: The cursed dagger
 
 Intro:
-On Halloween night the museum throws a costume party among its exhibits. At midnight the golden scarab has vanished from its case in the Egyptian hall.
+On Halloween night the museum throws a costume party among its mummies and skeletons. At the stroke of midnight the lights flicker, a scream rings out, and a guest lies dead. Beside the body in the Egyptian hall lies a cursed dagger.
 Place everyone on a free square, with one person in every row and column. The bench and the sarcophagus are standable; all other exhibits block.
-The thief wore a costume, was in the Egyptian hall, and was not alone there.
+The murderer is a woman and was in the room where the weapon lies.
 
 Figures:
 Alba: the curator ; icon=U+1F475
@@ -106,7 +108,7 @@ Elena: dressed as a zombie ; icon=U+1F9DF
 Fernando: the tour guide ; icon=U+1F468
 
 Question:
-Who stole the scarab?
+Who wielded the cursed dagger?
 
 Reveal:
-Carmen stole the scarab. She was in the Egyptian hall with Fernando, who lay in the sarcophagus.
+Carmen, dressed as a witch, struck with the dagger in the Egyptian hall.
