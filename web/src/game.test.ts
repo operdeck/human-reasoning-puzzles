@@ -157,7 +157,28 @@ describe("history and storage", () => {
       notes: {},
       usedClues: [0],
       auto: false,
+      warnings: true,
     });
+  });
+
+  it("defaults warnings on for new and older saved games", () => {
+    const b = digits();
+    expect(emptyState(b).warnings).toBe(true);
+    expect(restore(b, { auto: false }).warnings).toBe(true);
+    expect(restore(b, { warnings: "false" }).warnings).toBe(true);
+  });
+
+  it("saves the warnings choice independently from auto-mark and supports undo", () => {
+    const b = digits();
+    const history = new History(emptyState(b));
+    history.push({ ...history.current, warnings: false });
+    const restored = restore(b, JSON.parse(JSON.stringify(history.current)));
+    expect(restored.warnings).toBe(false);
+    expect(restored.auto).toBe(true);
+    expect(history.undo()).toBe(true);
+    expect(history.current.warnings).toBe(true);
+    expect(history.redo()).toBe(true);
+    expect(history.current.warnings).toBe(false);
   });
 });
 
@@ -179,6 +200,16 @@ function digits(): Bundle {
 }
 
 describe("placement conflicts", () => {
+  it("can be disabled independently from auto-mark without changing placements", () => {
+    const b = digits();
+    const state = place(b, { ...emptyState(b), warnings: false }, "r1c2", "1");
+    expect(state.placed.r1c2).toBe("1");
+    expect(state.auto).toBe(true);
+    expect(placementConflict(b, state, "r1c2", "1")).toBeNull();
+    expect(placementConflict(b, { ...state, warnings: true, auto: false }, "r1c2", "1")?.cell)
+      .toBe("r1c1");
+  });
+
   it("uses visible givens and exported rule descriptions, not the solution", () => {
     const b = digits();
     b.peers = [{ cells: ["r1c1", "r2c3"], description: "anti-knight rule" }];
