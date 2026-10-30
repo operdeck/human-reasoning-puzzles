@@ -3,16 +3,17 @@ import pytest
 from csp import bruteforce, cli, queens, report
 from csp.bruteforce import queens as brute
 from csp.core import Kind, Solver
+from csp.puzzle_lab import rate
 from csp.queens import DOG_MARK, PUPPY_MARK, QUEEN_MARK, Cell, compile_puzzle, render
 from tests.examples import example
 
 EXAMPLE = example("queens_1_4x4.txt")
 
 EXPECTED = {
-    "a": Cell(0, 1),
-    "b": Cell(1, 3),
-    "c": Cell(2, 0),
-    "d": Cell(3, 2),
+    "a": Cell(0, 2),
+    "b": Cell(1, 0),
+    "c": Cell(2, 3),
+    "d": Cell(3, 1),
 }
 
 
@@ -71,17 +72,12 @@ def test_zones_may_differ_in_size_but_must_be_connected():
         queens.parse(split)
 
 
-def test_the_first_deduction_places_a_one_cell_zone():
+def test_easy_queens_has_an_explicit_starter_instead_of_one_cell_zones():
     text = (example("queens_2_5x5.txt")).read_text()
     puzzle = queens.parse(text)
-    lone = {region for region, cells in puzzle.cells_by_region.items() if len(cells) == 1}
-    assert lone
-    model, _ = compile_puzzle(text)
-    steps = []
-    Solver(model).solve(on_step=lambda rule, fired: steps.append((rule, fired)))
-    rule, fired = steps[0]
-    assert rule == "single"
-    assert {step.var for step in fired} & lone
+    assert len(puzzle.givens) == 1
+    assert min(map(len, puzzle.cells_by_region.values())) >= 2
+    assert rate(text).grade == "single"
 
 
 def test_queens_default_icon_is_a_queen():

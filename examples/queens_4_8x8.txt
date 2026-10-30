@@ -1,4 +1,4 @@
-# Queens 8x8: medium, irregular regions and no givens (subsumption).
+# Queens 8x8: medium, no givens or single-cell regions (seed 13808).
 Family: queens
 Size: 8
 Regions:
@@ -11,11 +11,11 @@ f: silver
 g: gold
 h: teal
 Grid:
-a b b b c c c c
-b b b f c c c c
-b d f f c c c c
-b d f f f f c e
-f f f f c c c e
-f f f f g g g g
-f f f f h g g g
-f f f f h g g g
+a a c c b b b b
+c c c c c c c b
+c c c c c c d d
+c c c c c c d d
+c c e e c f d d
+c c g f f f f d
+c c g g g f f f
+c h h g g g g f

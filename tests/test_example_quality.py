@@ -29,7 +29,9 @@ def test_gallery_links_and_images_exist(relative):
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
 def test_queens_examples_use_the_piece_of_their_family(path):
     text = path.read_text()
-    assert queens.parse(text).icon == "queen"
+    puzzle = queens.parse(text)
+    assert puzzle.icon == "queen"
+    assert all(len(cells) >= 2 for cells in puzzle.cells_by_region.values())
     assert path.name.split("_")[0] == family_of(text)
 
 

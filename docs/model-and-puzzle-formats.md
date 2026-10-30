@@ -134,9 +134,14 @@ colour when the board fits the palette, regardless of the piece.
 
 The six gallery boards run from easy 4x4 and 5x5 (`single`), through medium
 7x7 and 8x8 (`subsumption`) and 9x9 (`cover2`), to a hard 4x4 (`chains`).
-A one-cell region fixes its queen immediately. The hard board needs chains,
-not the `what_if` step formerly stated in its comment. All are independently
-unique; the collection audit compares solutions together with their region maps.
+Published and freshly generated Queens boards have at least two cells per
+region: a one-cell region gives away its queen. The easy boards and the 9x9
+use one explicit given queen each; the 7x7, 8x8 and hard 4x4 have no givens.
+`puzzle-lab fresh queens --tier easy` uses one visible starter rather than
+a singleton region, and still checks the requested tier and uniqueness.
+The hard board needs chains, not the `what_if` step formerly stated in its
+comment. All are independently unique; the collection audit compares
+solutions together with their region maps.
 
 ### Tectonic / Suguru
 

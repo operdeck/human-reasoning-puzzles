@@ -84,6 +84,11 @@ trivial, and is intentionally excluded. These gaps require stronger
 family-specific deduction or generation support before a harder human-like
 example can be claimed.
 
+Every Queens region has at least two cells. The easy 4 × 4 and 5 × 5 and the
+medium 9 × 9 have one visible given queen each; the other three boards have
+no givens. The starter queens are explicit clues, not single-cell regions
+that silently give away a placement.
+
 ## Rule-focused examples
 
 The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The Queens collection progresses from `single` through `subsumption` and `cover2` to `chains`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.

@@ -1,4 +1,4 @@
-# Queens 4x4: easy, one queen per row, column and region.
+# Queens 4x4: easy, one given queen; no single-cell regions (seed 13804).
 Family: queens
 Size: 4
 Regions:
@@ -7,7 +7,9 @@ b: blue
 c: coral
 d: green
 Grid:
-a a a a
-a a b b
-c d d d
-d d d d
+b a a a
+b a a a
+b c c c
+b d d d
+Givens:
+b r2c1

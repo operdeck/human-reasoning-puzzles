@@ -8,6 +8,7 @@ solution and layout. Use these builders when an example needs its own board.
 import itertools
 import random
 import re
+from collections import Counter
 from collections.abc import Callable, Iterable
 
 from csp import battleships, bruteforce
@@ -205,8 +206,9 @@ def _region_text(
 
 
 def _grow(size: int, seeds: list[Cell], rng: random.Random) -> dict[Cell, int]:
-    """Grow one connected region from each seed until the board is covered."""
+    """Give each seed a neighbour before growing the connected regions further."""
     owner = {cell: i for i, cell in enumerate(seeds)}
+    sizes = Counter(owner.values())
     while len(owner) < size * size:
         options = [
             ((r + dr, c + dc), i)
@@ -214,22 +216,35 @@ def _grow(size: int, seeds: list[Cell], rng: random.Random) -> dict[Cell, int]:
             for dr, dc in STEPS
             if 0 <= r + dr < size and 0 <= c + dc < size and (r + dr, c + dc) not in owner
         ]
-        cell, region = rng.choice(options)
+        small = [option for option in options if sizes[option[1]] < 2]
+        cell, region = rng.choice(small or options)
         owner[cell] = region
+        sizes[region] += 1
     return owner
 
 
 def fresh_queens(
-    size: int, rng: random.Random, attempts: int = 4000, comment: str = ""
+    size: int,
+    rng: random.Random,
+    attempts: int = 4000,
+    comment: str = "",
+    *,
+    tier: str = "medium",
 ) -> str | None:
-    """A new Queens board with no givens: regions grown around a hidden placement."""
+    """Grow non-singleton regions; easy boards get one explicit starter queen."""
     for _ in range(attempts):
         cols = list(range(size))
         rng.shuffle(cols)
         if any(abs(cols[i] - cols[i + 1]) < 2 for i in range(size - 1)):
             continue
         owner = _grow(size, [(row, cols[row]) for row in range(size)], rng)
-        text = _region_text("queens", size, owner, [], comment)
+        if min(Counter(owner.values()).values()) < 2:
+            continue
+        extra: list[str] = []
+        if tier == "easy":
+            row = rng.randrange(size)
+            extra = ["Givens:", f"{chr(97 + row)} {_name((row, cols[row]))}"]
+        text = _region_text("queens", size, owner, extra, comment)
         if is_unique(text):
             return text
     return None
@@ -796,7 +811,7 @@ def fresh(
     if family == "akari":
         return fresh_akari(size, rng, tier, comment)
     if family == "queens":
-        return fresh_queens(size, rng, comment=comment)
+        return fresh_queens(size, rng, comment=comment, tier=tier)
     if family == "suguru":
         return fresh_suguru(size, rng, comment=comment)
     if family == "sudoku":

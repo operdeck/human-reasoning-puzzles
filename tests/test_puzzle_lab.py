@@ -155,6 +155,23 @@ def test_fresh_command_writes_a_rated_board(tmp_path, capsys):
     assert "wrote" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize(
+    "size,tier,seed", [(4, "easy", 13804), (5, "easy", 13805), (4, "medium", 138)]
+)
+def test_fresh_queens_have_no_single_cell_regions(size, tier, seed):
+    import random
+
+    from csp import fresh, queens
+
+    text = fresh.fresh("queens", size, random.Random(seed), tier=tier)
+    assert text is not None
+    puzzle = queens.parse(text)
+    assert min(map(len, puzzle.cells_by_region.values())) >= 2
+    assert len(puzzle.givens) == (1 if tier == "easy" else 0)
+    assert fresh.is_unique(text)
+    assert text == fresh.fresh("queens", size, random.Random(seed), tier=tier)
+
+
 def test_fresh_minesweeper_command_writes_a_rated_board(tmp_path, capsys):
     out = tmp_path / "minesweeper.txt"
     args = [
