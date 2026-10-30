@@ -114,6 +114,20 @@ def test_logic_grids_are_listed_but_not_playable(exported):
     assert bundle["unsupported"]
 
 
+def test_calcudoku_cage_targets_are_editable_clues_not_hidden_givens(tmp_path):
+    source = example("calcudoku_single_cell_cages.txt")
+    assert cli.main([str(source), "--export", str(tmp_path)]) == 0
+    bundle = _bundle(tmp_path, source.stem)
+    assert bundle["givens"] == {}
+    assert bundle["placement"]["blocked"] == []
+    assert bundle["solution"]["r1c1"] == "4"
+    assert bundle["solution"]["r4c1"] == "1"
+    assert bundle["solution"]["r4c4"] == "2"
+    assert len(bundle["solution"]) == 16
+    assert {piece["id"] for piece in bundle["palette"]} == {"1", "2", "3", "4"}
+    assert {"r1c1", "r4c1", "r4c4"} <= set(svg.ids((tmp_path / bundle["static"]).read_text()))
+
+
 def test_display_aliases_keep_their_labels_and_rules(exported):
     queens = _bundle(exported, "queens_2_5x5")
     assert queens["family"] == "queens"

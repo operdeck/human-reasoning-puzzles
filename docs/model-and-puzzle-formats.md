@@ -266,6 +266,9 @@ In the Murdoku picture, blocked squares are shaded clearly darker than their reg
 ## Other existing formats
 
 - **Calcudoku:** `Size:`, `Grid:` cage IDs, and `Cages:` arithmetic targets/operators. Cages must be connected; subtraction and division are two-cell cages.
+  Single-cell cages remain valid input, but their targets are clues, not hidden
+  prefilled digits: the web player lets the user enter their values normally.
+  Every cell must be filled for Check to report a solved puzzle.
 - **Futoshiki:** `Grid:` givens/dots plus `Signs:` lines such as `r1c4 < r2c4`; signs join orthogonally adjacent cells.
 - **Sudoku:** see the earlier section. Plain format is a grid; variants use sectioned `Givens:`, `Boxes:`, and `Extra:`.
 

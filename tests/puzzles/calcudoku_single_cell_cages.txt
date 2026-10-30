@@ -1,0 +1,15 @@
+# Legacy single-cell cages remain playable even though authoring avoids them.
+Size: 4
+Grid:
+a b b b
+c c c d
+e e d d
+f e d g
+Cages:
+a: 4
+b: 6+
+c: 24x
+d: 12+
+e: 6x
+f: 1
+g: 2

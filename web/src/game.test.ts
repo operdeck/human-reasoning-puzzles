@@ -121,6 +121,28 @@ describe("placing", () => {
 });
 
 describe("check", () => {
+  it("requires editable clue cells too and lets the player fill them", () => {
+    const b: Bundle = {
+      ...murdoku(),
+      family: "calcudoku",
+      size: [2, 2],
+      palette: ["1", "2"].map((id) => ({ id, label: id, symbol: id })),
+      placement: { perCell: 1, blocked: [] },
+      autoMark: { default: false, mark: "cross", onPlace: [] },
+      givens: {},
+      solution: { r1c1: "2", r1c2: "1", r2c1: "1", r2c2: "2" },
+    };
+    let state = emptyState(b);
+    for (const cell of ["r1c2", "r2c1", "r2c2"]) {
+      state = place(b, state, cell, b.solution![cell]);
+    }
+    expect(check(b, state)).toEqual({ status: "incomplete", missing: 1 });
+    state = place(b, state, "r1c1", "1");
+    expect(check(b, state)).toEqual({ status: "wrong", wrong: 1 });
+    state = place(b, state, "r1c1", "2");
+    expect(check(b, state)).toEqual({ status: "solved" });
+  });
+
   it("tells solved, incomplete and wrong apart", () => {
     const b = murdoku();
     let state = place(b, emptyState(b), "r1c1", "Joost");
