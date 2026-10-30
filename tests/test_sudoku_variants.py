@@ -37,6 +37,45 @@ def test_sudoku_variants_parse_and_compile_to_existing_primitives():
     assert puzzle.links[0].holds(1, 3) is False
 
 
+@pytest.mark.parametrize(
+    ("language", "fragments"),
+    [
+        (
+            "en",
+            ["knight's move", "diagonally", "white Kropki", "twice", "bar", "bulb", "Missing dots"],
+        ),
+        (
+            "nl",
+            [
+                "paardensprong",
+                "diagonaal",
+                "witte Kropki",
+                "tweemaal",
+                "streepje",
+                "bolletje",
+                "Ontbrekende stippen",
+            ],
+        ),
+    ],
+)
+def test_variant_rules_describe_every_active_constraint(language, fragments):
+    from csp.story import family_rules
+
+    text = VARIANTS + f"\nLanguage:\n{language}\n"
+    rules = family_rules(text, "sudoku")
+    assert len(rules) == 8
+    for fragment in fragments:
+        assert any(fragment in rule for rule in rules)
+
+
+def test_plain_sudoku_does_not_get_inactive_variant_rules():
+    from csp.story import family_rules
+
+    assert family_rules(". . . .\n" * 4, "sudoku") == [
+        "Fill the grid so every row, column and box contains each digit once."
+    ]
+
+
 def test_anti_king_adds_peers_across_jigsaw_regions():
     text = """Givens:
 . . . .
