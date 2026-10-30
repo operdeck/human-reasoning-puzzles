@@ -112,6 +112,8 @@ expansion adds alternative placements, so a visible given may be necessary.
 Re-rate the result, audit it against the rest of the gallery and regenerate
 both puzzle and solution pictures. Do not ban valid singleton syntax from
 the parser: this is an authoring-quality rule, not a change to Queens rules.
+When tests mutate a gallery seed, assert that the text actually changes;
+regenerated layouts can turn literal replacements into silent no-ops.
 
 When consolidating cosmetic families, compare the actual rules, sizes, region
 layouts and measured deductions, not just names or icons. Keep distinct technique

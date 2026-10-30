@@ -1,6 +1,7 @@
+import re
 from pathlib import Path
 
-from csp import audit
+from csp import audit, bruteforce
 from csp.puzzle_lab import main
 from tests.examples import example
 
@@ -41,13 +42,17 @@ def test_turned_copy_shares_a_solution(tmp_path):
 
 def test_relabelled_regions_share_a_layout():
     text = example("queens_1_4x4.txt").read_text()
-    relabelled = text.replace("a a a a\na a b b", "z z z z\nz z y y")
+    aliases = {"a": "w", "b": "x", "c": "y", "d": "z"}
+    relabelled = re.sub(r"\b[a-d]\b", lambda match: aliases[match[0]], text)
+    assert relabelled != text
     assert audit.layout_key(text, "queens") == audit.layout_key(relabelled, "queens")
 
 
 def test_same_placement_on_another_region_map_is_a_different_solution():
     text = example("queens_1_4x4.txt").read_text()
-    other = text.replace("a a a a\na a b b", "a a b b\na a b b")
+    other = text.replace("b a a a\nb a a a", "b b a a\nb a a a")
+    assert other != text
+    assert bruteforce.solutions(text) == bruteforce.solutions(other)
     assert audit.solution_key(text, "queens") != audit.solution_key(other, "queens")
 
 
