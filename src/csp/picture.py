@@ -590,8 +590,8 @@ def queens_picture(
     canvas = Canvas(side + 2 * margin, side + 2 * margin)
     region_at = {(r, c): puzzle.grid[r][c] for r in range(n) for c in range(n)}
     fills = _group_fills(region_at)
-    if puzzle.icon != "queen" and n <= len(PALETTE):
-        # dog puzzles give every zone its own colour, in region order
+    if n <= len(PALETTE):
+        # A region keeps its own colour regardless of the cosmetic piece.
         fills = {region: _rgb(PALETTE[i]) for i, region in enumerate(puzzle.region_ids)}
     for (row, col), region in region_at.items():
         x, y = margin + col * cell, margin + row * cell

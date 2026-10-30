@@ -1,6 +1,13 @@
 # Release Notes
 
 ## Unreleased
+
+**BREAKING**
+* [#138 Consolidate Queens](https://github.com/operdeck/human-reasoning-puzzles/issues/138): removed DogDoku as a separate family and generator target; `Family: dogdoku` is rejected rather than retained as an alias. Change older files to `Family: queens`; `Icon:` remains an optional cosmetic choice, not a family.
+    * The consolidated Queens gallery has six unique boards, numbered by measured difficulty: 4x4/5x5 (`single`), 7x7/8x8 (`subsumption`), 9x9 (`cover2`), and hard 4x4 (`chains`). Removed the overlapping 7x7 and surplus 4x4; regenerated pictures with queens and updated gallery, web/booklet, benchmarks and authoring guidance.
+    * Migration: `dogdoku_1_5x5.txt` → `queens_2_5x5.txt`, `dogdoku_2_7x7.txt` → `queens_3_7x7.txt`, `queens_2_8x8.txt` → `queens_4_8x8.txt`, `dogdoku_3_9x9.txt` → `queens_5_9x9.txt`, `dogdoku_4_4x4.txt` → `queens_6_4x4.txt`. The easy `queens_1_4x4.txt` keeps its name. The former Queens 7x7 was replaced by a `subsumption` board (the 9x9 already covers `cover2`); the surplus `queens_4_4x4.txt` was removed.
+    * Follow-up authoring improvement: every Queens region now contains at least two cells. Regenerated the 4x4/5x5/7x7/8x8 boards and expanded the 9x9's singleton; the hard 4x4 already met the rule. The easy boards and 9x9 have one visible given queen each. The fresh builder prioritizes growing each seed to two cells and rejects singletons; gallery and generator regressions enforce the rule without changing the parser's valid input format.
+
 **Licensing**
 * The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
 **Bug Fix(es)**
@@ -12,13 +19,13 @@
 * Murdoku PNG: the English `carpet` (and `rug`) object now draws the hand-made rug icon instead of the literal word, as `tapijt` already did.
     * `src/csp/icons.py`: added the `oven` icon, which `murdoku_3_house.txt` lacked.
     * `src/csp/picture.py`: shared `CARPET_NAMES`/`WELL_NAMES` drive both drawing and the missing-icon check; `tests/test_picture.py` checks every object in the Murdoku examples has an icon.
-* [#117 Queens icon](https://github.com/operdeck/human-reasoning-puzzles/issues/117): `queens_3_7x7.txt` uses the queen piece; a test keeps Queens/DogDoku file names, families and pieces aligned.
+* [#117 Queens icon](https://github.com/operdeck/human-reasoning-puzzles/issues/117): Queens examples use the queen piece; a test keeps file names, families and pieces aligned.
 * [#118 Overly prefilled examples](https://github.com/operdeck/human-reasoning-puzzles/issues/118): replaced the near-full Binairo, Tango, Queens and Suguru 8×8 examples with fresh boards; `binairo_8x8.txt` and `tango_8x8.txt` became `*_8x8_medium.txt`. Boards with under a quarter of their cells open now rate `trivial`, and a test rejects trivial gallery examples.
 * [#26 Handle empty domains in --show-model](https://github.com/operdeck/human-reasoning-puzzles/issues/26)
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
-* `puzzle-lab fresh` builds brand-new Binairo, Tango, Queens, DogDoku and Suguru boards with their own solution, rated to a requested tier (`src/csp/fresh.py`).
+* `puzzle-lab fresh` builds brand-new Binairo, Tango, Queens and Suguru boards with their own solution, rated to a requested tier (`src/csp/fresh.py`).
 * Added the English Murder Hotel Murdoku series in `examples/murder-hotel/`, with Italian-named guests, themed hotel floors, and a separate murderer-role position reveal in the final puzzle. The 8×8 opener uses a simpler `relations` grade; the 9×9 and 10×10 puzzles grade `subsumption`.
     * Added custom staircase, reception counter, table, and elevator icons; the Murdoku authoring workflow now requires an independent image-based critique for new or substantially changed boards.
 * Orient Express puzzles now show a hand-drawn control panel instead of a locomotive firebox;
@@ -36,16 +43,16 @@
     * The picture legend follows the puzzle's `Language:` (`Punt`, `Deur`, `Raam`, ...). Role lines are readable: a role whose candidates must all hold it is shown as a category ("Zetmeel: Aardappel, Rijst, Pasta, Noedels (niet meer dan 1 hiervan per gebied)"); otherwise the holders, then "maybe" for the open candidates. Point icons are a third larger.
 * [#75 Better icons for the puzzles](https://github.com/operdeck/human-reasoning-puzzles/issues/75)
     * One renderer: `picture.py` now draws every family as SVG (`src/csp/svg.py`); `--png`, the README images and `--docx` booklets are rasterised from it with resvg. New `--svg [FILE]` writes the SVG (blank and `-solution`), and `--svg --interactive` writes the blank board with a transparent `r<row>c<col>` element per cell for an app.
-    * Icon registry (`src/csp/icons.py`): stars, tents, trees, mines, bulbs, walls, discs, signs and DogDoku pieces each have a picture and a Unicode fallback used by the text boards (★ ▲ ♣ ✱ ● ■ ○). Calcudoku prints − × ÷.
+    * Icon registry (`src/csp/icons.py`): stars, tents, trees, mines, bulbs, walls, discs, signs and custom Queens pieces each have a picture and a Unicode fallback used by the text boards (★ ▲ ♣ ✱ ● ■ ○). Calcudoku prints − × ÷.
     * Icons and font are vendored under `src/csp/assets/` (Noto Emoji SVGs and a Noto Sans subset at pinned commits, licences in `NOTICE.md`); rendering never uses the network and text is drawn as paths, so output does not depend on installed fonts. `scripts/vendor_emoji.py` and `scripts/subset_font.py` rebuild them.
     * Extras: `svg` (fonttools), `png` (+ resvg-py, no system libraries; Pillow no longer needed), `docx` (+ python-docx). Without them `--svg`/`--png`/`--docx` print which extra to install.
     * Murdoku: blocked squares are now shown by a clearly darker shade of their region instead of a red cross.
     * `--lint` also warns when a figure `icon=` is a valid code point whose picture is not vendored; tests check every object and figure in `examples/` has a vendored icon and every character in the example pictures is in the bundled font. The Murdoku skill and `AGENT.md` describe how to add icons for new objects and families.
 * Star Battle examples now have irregular regions and two or three stars: `starbattle_2_8x8.txt` and `starbattle_4_10x10.txt` (two stars) and `starbattle_3_12x12.txt` (three stars), unique and graded `cover2`, `chains` and `cover3`. They replace `starbattle_4x4.txt` (one star, which is just a Queens puzzle) and the old row-region 8 × 8.
     * Star Battle regions may now have any size from `Stars:` cells up, as long as each is connected (it used to require exactly N cells each).
-* DogDoku ([#71](https://github.com/operdeck/human-reasoning-puzzles/issues/71)): `Family: dogdoku` (a Queens puzzle with dogs) and an optional `Icon:` section (`queen`, `dog`, `puppy`) for Queens files, drawn in `--png` and shown in the text board. Dog puzzles colour every zone differently.
+* Queens presentation ([#71](https://github.com/operdeck/human-reasoning-puzzles/issues/71)): an optional `Icon:` section (`queen`, `dog`, `puppy`), drawn in `--png` and shown in the text board. Each zone has its own colour.
     * Queens zones may now have any size from one cell up, as long as each is connected (it used to require exactly N cells each).
-    * New examples `dogdoku_1_5x5.txt`, `dogdoku_2_7x7.txt`, `dogdoku_3_9x9.txt`: unique, built backwards from a solving order, and solvable by eliminations only; grades `single`, `subsumption`, `cover2`.
+    * Queens examples at 5x5, 7x7 and 9x9: unique, built backwards from a solving order, and solvable by eliminations only; grades `single`, `subsumption`, `cover2`.
 * Booklets list the puzzles alphabetically by file name and, with more than one puzzle, start with a clickable table of contents (page numbers fill in when Word opens it).
 * Murdoku PNG: blocked squares are marked so blocking and standable objects are told apart (now a darker shade, see #75).
 * Booklet lists attributes and roles beside the board; area tags (e.g. "noble areas") are now named in the PNG legend and the booklet rules.

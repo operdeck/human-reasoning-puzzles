@@ -7,18 +7,18 @@ from tests.examples import example
 
 
 def test_rating_preserves_display_names_and_rejects_murdoku():
-    dog = example("dogdoku_1_5x5.txt").read_text()
+    queens = example("queens_2_5x5.txt").read_text()
     tango = example("tango_2_4x4.txt").read_text()
-    assert family_of(dog) == "dogdoku"
+    assert family_of(queens) == "queens"
     assert family_of(tango) == "tango"
-    assert rate(dog).family == "dogdoku"
+    assert rate(queens).family == "queens"
     assert rate(tango).family == "tango"
     with pytest.raises(ValueError, match="Murdoku"):
         rate(example("wie-doet-het-met-wie-1.txt").read_text())
 
 
 def test_rating_requires_a_deductive_unique_nontrivial_puzzle():
-    result = rate(example("dogdoku_1_5x5.txt").read_text())
+    result = rate(example("queens_2_5x5.txt").read_text())
     assert result.solved
     assert result.solutions == "unique"
     assert result.tier == "easy"
@@ -48,7 +48,7 @@ def test_mostly_prefilled_board_is_trivial():
     [
         ("binairo_1_8x8.txt", "binairo", "easy"),
         ("binairo_2_8x8.txt", "binairo", "medium"),
-        ("dogdoku_4_4x4.txt", "dogdoku", "hard"),
+        ("queens_6_4x4.txt", "queens", "hard"),
         ("akari_2_8x8.txt", "akari", "hard"),
         ("minesweeper_4_8x8.txt", "minesweeper", "hard"),
         ("minesweeper_3_8x8.txt", "minesweeper", "medium"),
@@ -58,7 +58,7 @@ def test_mostly_prefilled_board_is_trivial():
         ("tango_3_4x4.txt", "tango", "medium"),
         ("tango_1_8x8.txt", "tango", "easy"),
         ("tango_4_8x8.txt", "tango", "medium"),
-        ("queens_2_8x8.txt", "queens", "medium"),
+        ("queens_4_8x8.txt", "queens", "medium"),
     ],
 )
 def test_added_tier_examples_match_repository_ratings(filename, family, tier):
@@ -69,10 +69,14 @@ def test_added_tier_examples_match_repository_ratings(filename, family, tier):
 
 
 def test_search_filters_by_display_family_and_tier(capsys):
-    assert main(["search", "examples", "--family", "dogdoku", "--tier", "easy", "--json"]) == 0
+    assert main(["search", "examples", "--family", "queens", "--tier", "easy", "--json"]) == 0
     matches = json.loads(capsys.readouterr().out)
-    assert [item["family"] for item in matches] == ["dogdoku"]
-    assert [item["tier"] for item in matches] == ["easy"]
+    assert [item["family"] for item in matches] == ["queens", "queens"]
+    assert {item["path"].split("/")[-1] for item in matches} == {
+        "queens_1_4x4.txt",
+        "queens_2_5x5.txt",
+    }
+    assert [item["tier"] for item in matches] == ["easy", "easy"]
 
 
 def test_generate_is_repeatable_and_writes_only_a_valid_candidate(tmp_path):
@@ -149,6 +153,23 @@ def test_fresh_command_writes_a_rated_board(tmp_path, capsys):
     assert main([*args, "--seed", "1", "--attempts", "20", "--output", str(out)]) == 0
     assert rate(out.read_text()).tier == "easy"
     assert "wrote" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "size,tier,seed", [(4, "easy", 13804), (5, "easy", 13805), (4, "medium", 138)]
+)
+def test_fresh_queens_have_no_single_cell_regions(size, tier, seed):
+    import random
+
+    from csp import fresh, queens
+
+    text = fresh.fresh("queens", size, random.Random(seed), tier=tier)
+    assert text is not None
+    puzzle = queens.parse(text)
+    assert min(map(len, puzzle.cells_by_region.values())) >= 2
+    assert len(puzzle.givens) == (1 if tier == "easy" else 0)
+    assert fresh.is_unique(text)
+    assert text == fresh.fresh("queens", size, random.Random(seed), tier=tier)
 
 
 def test_fresh_minesweeper_command_writes_a_rated_board(tmp_path, capsys):

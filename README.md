@@ -17,7 +17,7 @@ Requires Python 3.12+. Run directly with `uv`:
 ```bash
 uv run csp examples/sudoku_1_4x4.txt
 uv run csp examples/demo/murdoku_1_first_case.txt --explain
-uv run csp examples/queens_4_4x4.txt --show-model
+uv run csp examples/queens_6_4x4.txt --show-model
 uv run csp examples/logicgrid_1_3x3.txt --brute-force
 uv run csp examples/akari_1_6x6.txt --svg akari.svg
 uv run csp examples/battleships_1_6x6_fleet.txt --explain
@@ -78,7 +78,7 @@ The solver handles very different kinds of logic. Here are a few; [play the full
 
 <table>
 <tr>
-<td><strong><a href="examples/dogdoku_2_7x7.txt">DogDoku</a></strong><br>Place one dog in each row, column, and region; dogs may not touch.<br><img src="docs/images/dogdoku_2_7x7-solution.png" width="150" alt="Solved DogDoku puzzle"></td>
+<td><strong><a href="examples/queens_3_7x7.txt">Queens</a></strong><br>Place one queen in each row, column, and region; queens may not touch.<br><img src="docs/images/queens_3_7x7-solution.png" width="150" alt="Solved Queens puzzle"></td>
 <td><strong><a href="examples/sudoku_9_4x4_kropki_consecutive_thermometers.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_9_4x4_kropki_consecutive_thermometers.png" width="150" alt="Kropki Sudoku puzzle"></td>
 <td><strong><a href="examples/starbattle_2_8x8.txt">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_2_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
 </tr>

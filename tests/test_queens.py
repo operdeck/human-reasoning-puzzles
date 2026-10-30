@@ -3,16 +3,17 @@ import pytest
 from csp import bruteforce, cli, queens, report
 from csp.bruteforce import queens as brute
 from csp.core import Kind, Solver
+from csp.puzzle_lab import rate
 from csp.queens import DOG_MARK, PUPPY_MARK, QUEEN_MARK, Cell, compile_puzzle, render
 from tests.examples import example
 
-EXAMPLE = example("queens_4_4x4.txt")
+EXAMPLE = example("queens_1_4x4.txt")
 
 EXPECTED = {
-    "a": Cell(0, 1),
-    "b": Cell(1, 3),
-    "c": Cell(2, 0),
-    "d": Cell(3, 2),
+    "a": Cell(0, 2),
+    "b": Cell(1, 0),
+    "c": Cell(2, 3),
+    "d": Cell(3, 1),
 }
 
 
@@ -71,25 +72,27 @@ def test_zones_may_differ_in_size_but_must_be_connected():
         queens.parse(split)
 
 
-def test_the_first_deduction_places_a_one_cell_zone():
-    text = (example("dogdoku_1_5x5.txt")).read_text()
+def test_easy_queens_has_an_explicit_starter_instead_of_one_cell_zones():
+    text = (example("queens_2_5x5.txt")).read_text()
     puzzle = queens.parse(text)
-    lone = {region for region, cells in puzzle.cells_by_region.items() if len(cells) == 1}
-    assert lone
-    model, _ = compile_puzzle(text)
-    steps = []
-    Solver(model).solve(on_step=lambda rule, fired: steps.append((rule, fired)))
-    rule, fired = steps[0]
-    assert rule == "single"
-    assert {step.var for step in fired} & lone
+    assert len(puzzle.givens) == 1
+    assert min(map(len, puzzle.cells_by_region.values())) >= 2
+    assert rate(text).grade == "single"
 
 
-def test_queens_default_icon_is_a_queen_and_dogdoku_defaults_to_a_dog():
-    base = EXAMPLE.read_text()
-    assert queens.parse(base).icon == "queen"
-    dog = base.replace("Family: queens", "Family: dogdoku")
-    assert queens.parse(dog).icon == "dog"
-    assert cli.detect(dog) == "queens"
+def test_queens_default_icon_is_a_queen():
+    assert queens.parse(EXAMPLE.read_text()).icon == "queen"
+
+
+def test_only_the_canonical_queens_family_is_accepted():
+    from csp.puzzlefile import FAMILY_KINDS
+
+    assert {family for family, kind in FAMILY_KINDS.items() if kind == "queens"} == {"queens"}
+    text = EXAMPLE.read_text().replace("Family: queens", "Family: retired-theme")
+    with pytest.raises(ValueError, match="Family must be 'queens'"):
+        queens.parse(text)
+    with pytest.raises(ValueError, match="unknown puzzle family"):
+        cli.detect(text)
 
 
 @pytest.mark.parametrize(
@@ -109,10 +112,20 @@ def test_unknown_icon_is_rejected():
         queens.parse(text)
 
 
-def test_dogdoku_examples_are_unique_and_get_harder():
-    ladder = ["single", "subsumption", "cover2"]
+def test_queens_gallery_has_six_unique_boards_with_measured_difficulty():
+    from tests.examples import played_examples
+
+    names = (
+        "queens_1_4x4",
+        "queens_2_5x5",
+        "queens_3_7x7",
+        "queens_4_8x8",
+        "queens_5_9x9",
+        "queens_6_4x4",
+    )
+    assert {p.stem for p in played_examples() if p.name.startswith("queens_")} == set(names)
     grades = []
-    for name in ("dogdoku_1_5x5", "dogdoku_2_7x7", "dogdoku_3_9x9"):
+    for name in names:
         text = (example(f"{name}.txt")).read_text()
         puzzle = queens.parse(text)
         assert len(brute.solutions(text)) == 1
@@ -121,6 +134,7 @@ def test_dogdoku_examples_are_unique_and_get_harder():
         fired: list[str] = []
         result = Solver(model).solve(on_step=lambda rule, steps, log=fired: log.append(rule))
         assert result.solved
-        assert "what_if" not in fired and "chains" not in fired  # eliminations only
+        assert puzzle.icon == "queen"
+        assert "what_if" not in fired
         grades.append(report.grade(fired))
-    assert grades == ladder
+    assert grades == ["single", "single", "subsumption", "subsumption", "cover2", "chains"]

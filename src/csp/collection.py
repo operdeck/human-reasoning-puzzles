@@ -19,7 +19,6 @@ FAMILY_LABELS = {
     "calcudoku": "Calcudoku",
     "futoshiki": "Futoshiki",
     "queens": "Queens",
-    "dogdoku": "DogDoku",
     "suguru": "Suguru",
     "starbattle": "Star Battle",
     "binairo": "Binairo",

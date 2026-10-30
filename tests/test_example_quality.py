@@ -16,11 +16,22 @@ from tests.examples import played_examples
 QUEENS_FILES = [path for path in played_examples() if detect(path.read_text()) == "queens"]
 
 
+@pytest.mark.parametrize("relative", ("README.md", "docs/examples.md"))
+def test_gallery_links_and_images_exist(relative):
+    source = Path(__file__).resolve().parents[1] / relative
+    targets = re.findall(r'\[[^\]]*\]\(([^)]+)\)|(?:href|src)="([^"]+)"', source.read_text())
+    for markdown, html in targets:
+        target = (markdown or html).split("#", 1)[0]
+        if target and "://" not in target:
+            assert (source.parent / target).exists(), f"{relative}: {target}"
+
+
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
 def test_queens_examples_use_the_piece_of_their_family(path):
     text = path.read_text()
-    allowed = {"dog", "puppy"} if family_of(text) == "dogdoku" else {"queen"}
-    assert queens.parse(text).icon in allowed
+    puzzle = queens.parse(text)
+    assert puzzle.icon == "queen"
+    assert all(len(cells) >= 2 for cells in puzzle.cells_by_region.values())
     assert path.name.split("_")[0] == family_of(text)
 
 
