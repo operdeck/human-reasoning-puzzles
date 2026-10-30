@@ -162,6 +162,36 @@ def test_gallery_fleets_are_nontrivial_and_need_the_ship_rules(path):
     assert len(brute.solutions(plain)) == 2
 
 
+@pytest.mark.parametrize(
+    ("name", "grade"),
+    [
+        ("battleships_2_8x8_fleet.txt", "count"),
+        ("battleships_3_8x8_fleet.txt", "subsumption"),
+        ("battleships_5_8x8_fleet.txt", "chains"),
+    ],
+)
+def test_clue_variety_examples_show_every_explained_symbol_without_lowering_difficulty(name, grade):
+    from csp.puzzle_lab import rate
+    from tests.examples import example
+
+    text = example(name).read_text()
+    puzzle = parse(text)
+    tokens = [token for row in puzzle.segments for token in row]
+    assert {"0", "1", "O", "M"} <= set(tokens)
+    assert set(tokens) & {"N", "S", "E", "W"}
+    assert sum(token != "." for token in tokens) < puzzle.size**2 / 4
+    assert any(
+        token == "0" and puzzle.row_counts[r] and puzzle.column_counts[c]
+        for r, row in enumerate(puzzle.segments)
+        for c, token in enumerate(row)
+    ), "Include water that is not already implied by an empty row or column"
+    rating = rate(text)
+    assert rating.solutions == "unique"
+    assert rating.tier in {"medium", "hard"}
+    assert rating.grade == grade
+    assert "what_if" not in rating.rule_firings
+
+
 def test_fleet_mutation_preserves_the_rules_and_never_permutes_lines():
     import random
 
