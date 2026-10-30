@@ -32,6 +32,11 @@ Use `puzzle-lab fresh`, `generate`, `rate`, `search`, and `audit` to create and 
 examples; see the [authoring workflow](.github/skills/non-murdoku-puzzle-authoring/SKILL.md).
 Murdoku retains its separate tools and skill.
 
+Calcudoku examples and Puzzle Lab generation avoid single-cell cages. Older
+files still work: a single-cell target is a clue whose digit you enter normally.
+Use optional `--grade` with `fresh` or `generate` when preserving a specific
+deduction technique, such as `--tier hard --grade cover3`.
+
 The [Battleships examples](docs/examples.md#battleships) now use complete fleets:
 straight ships, no touching (including diagonals), line totals, and shaped
 givens. The small 6x6 board is rated medium (`count`); the larger 8x8 board is
