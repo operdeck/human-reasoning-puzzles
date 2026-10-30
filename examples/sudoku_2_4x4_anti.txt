@@ -1,7 +1,0 @@
-# Small anti-knight Sudoku.
-Givens:
-1 . 3 4
-. . . .
-. . . .
-. . . .
-AntiKnight:
