@@ -205,6 +205,29 @@ def test_akari_lights_what_a_bulb_sees(exported):
     assert {frozenset(group["cells"]) for group in bundle["peers"]} == expected
 
 
+def test_sudoku_web_rules_describe_the_active_variants(exported):
+    for name in (
+        "sudoku_2_4x4_anti",
+        "sudoku_4_9x9_antiking",
+        "sudoku_9_4x4_kropki",
+        "sudoku_6_9x9_nrc",
+        "sudoku_12_6x6_jigsaw",
+    ):
+        text = example(name + ".txt").read_text()
+        assert _bundle(exported, name)["rules"] == story.family_rules(text, "sudoku")
+        assert len(_bundle(exported, name)["rules"]) > 1
+
+
+def test_dutch_sudoku_web_rules_are_localized():
+    from csp.web import _family
+
+    text = example("sudoku_9_4x4_kropki.txt").read_text() + "\nLanguage:\nnl\n"
+    data = _family(text, "sudoku", cli.load(text, "sudoku").model, {}, "")
+    assert data["language"] == "nl"
+    assert data["headings"]["rules_title"] == "Spelregels"
+    assert data["rules"] == story.family_rules(text, "sudoku")
+
+
 def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
     bundle = _bundle(exported, "wie-doet-het-met-wie-2")
     assert "peers" not in bundle

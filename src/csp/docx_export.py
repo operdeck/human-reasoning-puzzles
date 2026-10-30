@@ -15,11 +15,11 @@ from typing import Any
 from . import icons, picture
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
-    FAMILY_RULES,
     attribute_list,
     board_notes,
     clue_paragraphs,
     explain,
+    family_rules,
     object_list,
     phrase,
     role_list,
@@ -225,8 +225,9 @@ def _add_generic(
 
     _title(document, title, new_page, bookmark, entry.section)
     if not solved:
-        document.add_heading("Rules", level=2)
-        document.add_paragraph(FAMILY_RULES.get(entry.kind, ""), style="List Bullet")
+        document.add_heading(phrase(entry.text, "doc.rules_title"), level=2)
+        for rule in family_rules(entry.text, entry.kind):
+            document.add_paragraph(rule, style="List Bullet")
     image = entry.solution_image if solved else entry.puzzle_image
     stream = io.BytesIO(image.to_png(zoom=2))
     document.add_picture(stream, width=Cm(GENERIC_BOARD_WIDTH_CM))

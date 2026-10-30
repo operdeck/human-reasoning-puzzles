@@ -22,11 +22,11 @@ from .core import Kind, Model
 from .murdoku import Square
 from .puzzlefile import language_of, load_board, load_presentation, read_sections
 from .story import (
-    FAMILY_RULES,
     attribute_list,
     board_notes,
     clue_paragraphs,
     condition_list,
+    family_rules,
     object_list,
     phrase,
     role_list,
@@ -244,11 +244,11 @@ def _family(
     text: str, kind: str, model: Model, solution: Mapping[str, Any], picture: str
 ) -> dict[str, Any]:
     cells = grid_cells(picture)
-    display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
     out: dict[str, Any] = {
-        "language": "en",
+        "language": language_of(text),
         "size": [max(r for r, _ in cells), max(c for _, c in cells)] if cells else [0, 0],
-        "rules": [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])],
+        "rules": family_rules(text, kind),
+        "headings": {"rules_title": phrase(text, "doc.rules_title")},
         "clues": [],
         "conditions": [],
         "question": "",
