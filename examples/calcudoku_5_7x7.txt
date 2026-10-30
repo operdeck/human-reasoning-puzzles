@@ -1,35 +1,32 @@
 # Calcudoku - Hard 7x7: needs a triple or Swordfish style deduction (cover3).
-# Generated; uniqueness checked by an independent brute-force search.
+# Singleton-free variation, seed 13505; independently checked for uniqueness.
 
 Size: 7
 
 Grid:
-c q j j m m m
-c q j e e h o
-c a a a l h h
-r r r l l t i
-k k k f f f i
-d d g b s n p
-d g g b s n p
-
+cage0 cage1 cage2 cage2 cage3 cage3 cage3
+cage0 cage1 cage2 cage4 cage4 cage5 cage5
+cage0 cage6 cage6 cage6 cage7 cage5 cage5
+cage8 cage8 cage8 cage7 cage7 cage5 cage9
+cage10 cage10 cage10 cage11 cage11 cage11 cage9
+cage12 cage12 cage13 cage14 cage15 cage16 cage17
+cage12 cage13 cage13 cage14 cage15 cage16 cage17
 Cages:
-a: 10+
-b: 9+
-c: 21x
-d: 12+
-e: 2-
-f: 30x
-g: 36x
-h: 13+
-i: 21x
-j: 13+
-k: 13+
-l: 12x
-m: 14+
-n: 3-
-o: 1
-p: 10x
-q: 6+
-r: 72x
-s: 10+
-t: 5
+cage0: 21x
+cage1: 6+
+cage2: 13+
+cage3: 14+
+cage4: 2-
+cage5: 19+
+cage6: 10+
+cage7: 12x
+cage8: 72x
+cage9: 21x
+cage10: 13+
+cage11: 30x
+cage12: 12+
+cage13: 36x
+cage14: 9+
+cage15: 10+
+cage16: 3-
+cage17: 10x

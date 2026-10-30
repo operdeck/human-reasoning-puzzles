@@ -7,13 +7,19 @@ from pathlib import Path
 
 import pytest
 
-from csp import audit, queens
+from csp import audit, calcudoku, queens
 from csp.collection import arrange
 from csp.puzzle_lab import Rating, family_of, rate
 from csp.puzzlefile import detect
 from tests.examples import played_examples
 
 QUEENS_FILES = [path for path in played_examples() if detect(path.read_text()) == "queens"]
+CALCUDOKU_FILES = [path for path in played_examples() if detect(path.read_text()) == "calcudoku"]
+
+
+@pytest.mark.parametrize("path", CALCUDOKU_FILES, ids=lambda path: path.name)
+def test_calcudoku_examples_have_no_single_cell_cages(path):
+    assert all(len(cage.cells) >= 2 for cage in calcudoku.parse(path.read_text()).cages)
 
 
 @pytest.mark.parametrize("relative", ("README.md", "docs/examples.md"))

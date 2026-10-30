@@ -257,7 +257,6 @@ def _add_givens(
 
     if family not in {
         "sudoku",
-        "calcudoku",
         "futoshiki",
         "suguru",
         "tectonic",
@@ -309,43 +308,18 @@ def _add_givens(
     return _replace_or_append_section(text, grid_section, matrix)
 
 
-def _generate_calcudoku(source: str, solution: Mapping[str, Any], rng: random.Random) -> str | None:
+def _generate_calcudoku(source: str, solution: Mapping[str, Any], rng: random.Random) -> str:
     from csp.calcudoku import cell_name, parse
 
     puzzle = parse(source)
     size = puzzle.size
-    multi_cell_cages = [cage for cage in puzzle.cages if len(cage.cells) > 1]
-    if not multi_cell_cages:
-        return None
-    rng.shuffle(multi_cell_cages)
-    kept = []
-    kept_cells: set[tuple[int, int]] = set()
-    for cage in multi_cell_cages:
-        if len(kept_cells) >= max(4, min(8, size)):
-            break
-        kept.append(cage)
-        kept_cells.update(cage.cells)
-    cages = [(list(cage.cells), cage.label) for cage in kept] + [
-        ([cell], str(solution[cell_name(cell)]))
-        for cage in puzzle.cages
-        if cage not in kept
-        for cell in cage.cells
-    ]
-
-    ids = [f"cage{index}" for index in range(len(cages))]
-    grid = [["" for _ in range(size)] for _ in range(size)]
-    cage_lines = []
-    for cage_id, (cells, rule) in zip(ids, cages, strict=True):
-        cage_lines.append(f"{cage_id}: {rule}")
-        for row, col in cells:
-            grid[row][col] = cage_id
-    return (
-        f"Size: {size}\nGrid:\n"
-        + "\n".join(" ".join(row) for row in grid)
-        + "\nCages:\n"
-        + "\n".join(cage_lines)
-        + "\n"
-    )
+    owner = {cell: i for i, cage in enumerate(puzzle.cages) for cell in cage.cells}
+    grid = [[int(solution[cell_name((r, c))]) for c in range(size)] for r in range(size)]
+    clues = {i: cage.label for i, cage in enumerate(puzzle.cages) if rng.random() < 0.85}
+    candidate = fresh.calcudoku_from_solution(grid, owner, rng, clues=clues)
+    sections = read_sections(candidate)
+    candidate = _replace_or_append_section(source, "Grid", sections["Grid"])
+    return _replace_or_append_section(candidate, "Cages", sections["Cages"])
 
 
 def _generate_minesweeper(text: str, rng: random.Random, tier: str) -> str:
@@ -717,7 +691,7 @@ def _generate_command(args: argparse.Namespace) -> int:
         candidate: str | None
         if args.as_family and attempt == 0:
             candidate = original
-        elif family == "calcudoku" and args.tier == "easy":
+        elif family == "calcudoku":
             candidate = _generate_calcudoku(original, solutions[0], rng)
         elif family == "minesweeper":
             candidate = _generate_minesweeper(original, rng, args.tier)
@@ -727,6 +701,8 @@ def _generate_command(args: argparse.Namespace) -> int:
             candidate = _mutate(original, rng, fraction)
         else:
             candidate = _add_givens(original, family, solutions[0], rng, rng.uniform(0.15, 0.7))
+        if family == "calcudoku" and candidate == original:
+            continue
         if candidate is None or (candidate == original and not (args.as_family and attempt == 0)):
             candidate = _mutate(original, rng, fraction)
         if candidate is None or (candidate == original and not (args.as_family and attempt == 0)):
@@ -740,15 +716,16 @@ def _generate_command(args: argparse.Namespace) -> int:
             result = rate(candidate, f"{source} (candidate {attempt + 1})")
         except (ValueError, KeyError):
             continue
-        if result.tier != args.tier:
+        if result.tier != args.tier or (args.grade and result.grade != args.grade):
             continue
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(candidate)
         print(f"wrote {output}: {result.family} {result.tier} ({result.grade}), unique")
         return 0
+    grade = f" ({args.grade})" if args.grade else ""
     print(
-        f"no unique {args.tier} candidate found in {args.attempts} attempts "
+        f"no unique {args.tier}{grade} candidate found in {args.attempts} attempts "
         f"(seed {args.seed}); source was not changed",
         file=sys.stderr,
     )
@@ -798,15 +775,17 @@ def _fresh_command(args: argparse.Namespace) -> int:
         if candidate is None:
             continue
         result = rate(candidate, f"fresh {args.family} (candidate {attempt + 1})")
-        if result.tier != args.tier:
+        if result.tier != args.tier or (args.grade and result.grade != args.grade):
             continue
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(candidate)
         print(f"wrote {output}: {result.family} {result.tier} ({result.grade}), unique")
         return 0
+    grade = f" ({args.grade})" if args.grade else ""
     print(
-        f"no unique {args.tier} {args.family} found in {args.attempts} attempts (seed {args.seed})",
+        f"no unique {args.tier} {args.family}{grade} found in {args.attempts} attempts "
+        f"(seed {args.seed})",
         file=sys.stderr,
     )
     return 1
@@ -833,6 +812,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     generate_parser.add_argument("source")
     generate_parser.add_argument("--output", required=True)
     generate_parser.add_argument("--tier", choices=tuple(TIERS), required=True)
+    generate_parser.add_argument(
+        "--grade",
+        choices=tuple(grade for grades in TIERS.values() for grade in sorted(grades)),
+        help="require this measured deduction grade as well as the tier",
+    )
     generate_parser.add_argument("--as-family", choices=("queens", "binairo", "tango"))
     generate_parser.add_argument("--seed", type=int, default=0)
     generate_parser.add_argument("--attempts", type=int, default=100)
@@ -845,6 +829,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     fresh_parser.add_argument("--size", type=int, required=True)
     fresh_parser.add_argument("--output", required=True)
     fresh_parser.add_argument("--tier", choices=tuple(TIERS), required=True)
+    fresh_parser.add_argument(
+        "--grade",
+        choices=tuple(grade for grades in TIERS.values() for grade in sorted(grades)),
+        help="require this measured deduction grade as well as the tier",
+    )
     fresh_parser.add_argument(
         "--open-share",
         type=float,

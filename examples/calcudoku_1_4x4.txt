@@ -1,19 +1,17 @@
 # Calcudoku - Easy 4x4: cage arithmetic and singles are enough.
-# Generated; uniqueness checked by an independent brute-force search.
+# Singleton-free variation, seed 13501; independently checked for uniqueness.
 
 Size: 4
 
 Grid:
-e a a g
-e a f f
-c b b b
-c b d d
-
+cage0 cage1 cage1 cage2
+cage0 cage1 cage2 cage2
+cage3 cage4 cage4 cage4
+cage3 cage4 cage5 cage5
 Cages:
-a: 12x
-b: 9+
-c: 6+
-d: 5+
-e: 4+
-f: 2/
-g: 2
+cage0: 4+
+cage1: 12x
+cage2: 16x
+cage3: 2-
+cage4: 9+
+cage5: 4/
