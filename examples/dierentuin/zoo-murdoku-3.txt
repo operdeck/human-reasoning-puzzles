@@ -4,8 +4,8 @@
 # verblijf; elke aap deelt zijn verblijf altijd met iemand (Rules:).
 # Doel: vind de verzorger. Hij staat alleen met precies een dier en wordt gebeten.
 #
-# Oplossing: Capibara r4c2, Gibbon r3c3, Makaak r2c1, Ree r5c4, Tijger r1c5, Verzorger r6c6.
-# De verzorger deelt de bergen met Ree, dat hem bijt.
+# Oplossing: Capibara r4c2, Gibbon r3c3, Makaak r2c1, Alpensteenbok r5c4, Tijger r1c5, Verzorger r6c6.
+# De verzorger deelt de bergen met de alpensteenbok, die hem bijt.
 #
 Size: 6
 Language: nl
@@ -23,7 +23,7 @@ Tijger: de tijger
 Makaak: de makaak
 Gibbon: de gibbon
 Capibara: de capibara
-Ree: de ree
+Alpensteenbok: de alpensteenbok
 Verzorger: de verzorger
 
 Regions:
@@ -49,7 +49,7 @@ boomstam: standable r2c5 r3c5
 
 Attributes:
 aap: Makaak Gibbon
-dier: Tijger Makaak Gibbon Capibara Ree
+dier: Tijger Makaak Gibbon Capibara Alpensteenbok
 
 Roles:
 aap: 2
@@ -65,7 +65,7 @@ Tijger
 Makaak
 Gibbon
 Capibara
-Ree
+Alpensteenbok
 Verzorger
 
 Rules:
@@ -78,7 +78,7 @@ in_region Gibbon moeras
 next_to Tijger boomstam
 in_row Capibara 4
 above Makaak Gibbon
-within Capibara Ree 3
+within Capibara Alpensteenbok 3
 within Capibara Makaak 3
 left_of Capibara Gibbon
 
@@ -96,11 +96,11 @@ Tijger: altijd alleen in zijn verblijf ; icon=U+1F405
 Makaak: een aap, nooit alleen ; icon=U+1F412
 Gibbon: een aap, nooit alleen ; icon=U+1F9A7
 Capibara: ; icon=U+1F9AB
-Ree: ; icon=U+1F98C
+Alpensteenbok: ; icon=U+1F410
 Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
 
 Question:
 De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?
 
 Reveal:
-De verzorger deelt de bergen met de ree, die hem bijt.
+De verzorger deelt de bergen met de alpensteenbok, die hem bijt.
