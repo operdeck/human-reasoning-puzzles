@@ -1,6 +1,6 @@
 # Model and Puzzle File Formats
 
-This guide describes the solver's generic model, the rule ladder, and the file formats accepted by each puzzle family. For the visual and graded examples, see [Puzzle Examples](examples.md).
+This guide describes the solver's generic model, the rule ladder, and the file formats accepted by each puzzle family. Browse the [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/) or read the [collection and grading notes](puzzle-collection.md).
 
 ## Generic model
 

@@ -27,7 +27,8 @@ uv run puzzle-lab search examples --family tango --tier hard
 
 `--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` writes Murdoku narratives or Battleships deductions with named rules and reasons; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. `--export DIR` writes everything the [web player](#play-in-the-browser) needs: per puzzle a JSON bundle and the interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails). Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network. `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/**/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`). Without puzzle files, `--docx` takes every Murdoku in `examples/` (not the test puzzles) and writes `booklet.docx`. `--pdf [FILE]` works the same way but writes a PDF (default `booklet.pdf` without puzzle files), converting that Word booklet with LibreOffice or, on macOS, Microsoft Word or Pages.
 
-For the full [example index and grade notes](docs/examples.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
+Browse the full [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/).
+For [collection and grading notes](docs/puzzle-collection.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
 Use `puzzle-lab fresh`, `generate`, `rate`, `search`, and `audit` to create and validate non-Murdoku
 examples; see the [authoring workflow](.github/skills/non-murdoku-puzzle-authoring/SKILL.md).
 Murdoku retains its separate tools and skill.
@@ -37,7 +38,7 @@ files still work: a single-cell target is a clue whose digit you enter normally.
 Use optional `--grade` with `fresh` or `generate` when preserving a specific
 deduction technique, such as `--tier hard --grade cover3`.
 
-The [Battleships examples](docs/examples.md#battleships) now use complete fleets:
+The [Battleships examples](docs/model-and-puzzle-formats.md#battleships) now use complete fleets:
 straight ships, no touching (including diagonals), line totals, and shaped
 givens. The small 6x6 board is rated medium (`count`); the larger 8x8 board is
 hard (`chains`). Both need the fleet rules, not just row and column arithmetic.
@@ -65,7 +66,7 @@ murderer.
 </td></tr>
 </table>
 
-For links to every example file, see [Puzzle examples](docs/examples.md). For
+For every playable example, see the [puzzle index](https://operdeck.github.io/human-reasoning-puzzles/). For
 the complete syntax and supported rules, see [Model and puzzle formats](docs/model-and-puzzle-formats.md).
 
 <details>
@@ -79,7 +80,7 @@ at r2c3. Wouter and Ingrid share the sitting room, so **Ingrid did it**.
 
 ## A few examples
 
-The solver handles very different kinds of logic. Here are a few; [play the full collection](https://operdeck.github.io/human-reasoning-puzzles/) or browse the [example index and grade notes](docs/examples.md).
+The solver handles very different kinds of logic. Here are a few; [browse and play the full collection](https://operdeck.github.io/human-reasoning-puzzles/) or read the [collection and grading notes](docs/puzzle-collection.md).
 
 <table>
 <tr>
@@ -99,7 +100,9 @@ The solver handles very different kinds of logic. Here are a few; [play the full
 `web/` is a small TypeScript + Vite player for every example, published to [GitHub Pages](https://operdeck.github.io/human-reasoning-puzzles/)
 by `.github/workflows/pages.yml` on each push to `main` (repository Settings → Pages →
 Source: GitHub Actions). Python stays the single source of truth: the player knows no
-puzzle family, it only reads the bundles from `--export`. Locally (Node 22.12 or later):
+puzzle family, it only reads the bundles from `--export`. The index shows lazy-loaded,
+unsolved board previews in each category; select any card to open its player.
+Locally (Node 22.12 or later):
 
 ```sh
 uv sync --extra svg
