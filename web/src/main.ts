@@ -11,6 +11,7 @@ interface IndexEntry {
   familyLabel: string;
   size: [number, number];
   grade: string;
+  static: string;
   playable: boolean;
   unsupported?: string;
 }
@@ -71,22 +72,45 @@ async function showIndex(current: () => boolean): Promise<void> {
         el("h2", { textContent: label }),
         el(
           "ul",
-          {},
-          ...entries.map((entry) =>
-            el(
+          { className: "puzzle-grid" },
+          ...entries.map((entry) => {
+            const preview = el("img", {
+              className: "puzzle-thumbnail",
+              src: new URL(entry.static, base).href,
+              alt: "",
+              loading: "lazy",
+              decoding: "async",
+              width: 320,
+              height: 224,
+            });
+            preview.addEventListener("error", () => {
+              preview.replaceWith(el("span", {
+                className: "puzzle-thumbnail preview-unavailable",
+                textContent: "Preview unavailable",
+              }));
+            }, { once: true });
+            return el(
               "li",
               {},
-              el("span", { className: "meta", textContent: `${entry.number}. ` }),
-              el("a", { href: `#${encodeURIComponent(entry.id)}`, textContent: entry.title }),
-              el("span", {
-                className: "meta",
-                textContent: ` ${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
-              }),
-              ...(entry.playable
-                ? []
-                : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
-            ),
-          ),
+              el(
+                "a",
+                { className: "puzzle-card", href: `#${encodeURIComponent(entry.id)}` },
+                preview,
+                el(
+                  "div",
+                  { className: "puzzle-summary" },
+                  el("span", { className: "puzzle-title", textContent: `${entry.number}. ${entry.title}` }),
+                  el("span", {
+                    className: "meta",
+                    textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
+                  }),
+                  ...(entry.playable
+                    ? []
+                    : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );
