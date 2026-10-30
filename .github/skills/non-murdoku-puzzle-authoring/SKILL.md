@@ -105,6 +105,8 @@ rendering code, not copied puzzle introductions.
 Keep the web player family-agnostic: export localized explanations with semantic
 peer groups rather than reimplementing chess moves or other puzzle rules in UI
 code. Conflict feedback must use visible givens and placements, not the solution.
+Give automatic conflict feedback its own player toggle, enabled by default and
+saved with progress independently of auto-mark; players can choose less help.
 
 `puzzle-lab rate` reports the hardest solver rule used and a tier derived from
 that rule, with limited family-aware calibration for small relational and

@@ -102,6 +102,8 @@ Digit puzzles take pencil marks: the Notes tool (key N) writes small digits, and
 hides any that a placed peer rules out. Progress is kept in the browser.
 Conflicting placements or notes show the other cell and, when available, the
 exported rule name; mistakes remain editable rather than being silently refused.
+The Warnings toggle controls this feedback independently of Auto-mark. It is on
+by default, and its setting is saved with each puzzle's progress.
 
 ## Licence
 

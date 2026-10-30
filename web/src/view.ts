@@ -134,6 +134,7 @@ export class PuzzleView {
   private undoButton = el("button", { type: "button", textContent: "Undo" });
   private redoButton = el("button", { type: "button", textContent: "Redo" });
   private autoBox = el("input", { type: "checkbox" });
+  private warningsBox = el("input", { type: "checkbox" });
   private notesMode = false;
   private notesButton = el("button", { type: "button", className: "tool notes-toggle" });
   private clueBoxes: HTMLInputElement[] = [];
@@ -194,13 +195,23 @@ export class PuzzleView {
       ...(b.section ? [el("p", { className: "meta", textContent: b.section })] : []),
       el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
     );
+    const assists = el("div", { className: "assist-controls" });
     if (b.playable && b.autoMark && (b.autoMark.onPlace.length > 0 || (b.notes && b.peers?.length))) {
       this.autoBox.checked = this.state.auto;
       this.autoBox.addEventListener("change", () =>
         this.commit({ ...this.state, auto: this.autoBox.checked }),
       );
-      header.append(el("label", { className: "auto" }, this.autoBox, " Auto-mark"));
+      assists.append(el("label", { className: "auto" }, this.autoBox, " Auto-mark"));
     }
+    if (b.playable && b.peers?.length) {
+      this.warningsBox.checked = this.state.warnings;
+      this.warningsBox.addEventListener("change", () =>
+        this.commit({ ...this.state, warnings: this.warningsBox.checked }),
+      );
+      assists.append(el("label", { className: "auto" }, this.warningsBox,
+        b.language === "nl" ? " Waarschuwingen" : " Warnings"));
+    }
+    if (assists.childElementCount > 0) header.append(assists);
 
     const board = el("div", { className: "board", tabIndex: 0 });
     board.setAttribute("role", "application");
@@ -371,7 +382,7 @@ export class PuzzleView {
   }
 
   private clearBoard(): void {
-    this.commit({ ...emptyState(this.bundle), auto: this.state.auto });
+    this.commit({ ...emptyState(this.bundle), auto: this.state.auto, warnings: this.state.warnings });
     this.verdict.textContent = "";
     this.verdict.className = "verdict";
   }
@@ -559,6 +570,7 @@ export class PuzzleView {
     this.undoButton.disabled = !this.history.canUndo;
     this.redoButton.disabled = !this.history.canRedo;
     this.autoBox.checked = state.auto;
+    this.warningsBox.checked = state.warnings;
     this.clueBoxes.forEach((box, index) => {
       box.checked = state.usedClues.includes(index);
       box.closest("li")?.classList.toggle("used", box.checked);
