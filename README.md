@@ -71,7 +71,7 @@ The solver handles very different kinds of logic. Here are a few; [play the full
 <table>
 <tr>
 <td><strong><a href="examples/dogdoku_2_7x7.txt">DogDoku</a></strong><br>Place one dog in each row, column, and region; dogs may not touch.<br><img src="docs/images/dogdoku_2_7x7-solution.png" width="150" alt="Solved DogDoku puzzle"></td>
-<td><strong><a href="examples/sudoku_9_4x4_kropki.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_9_4x4_kropki.png" width="150" alt="Kropki Sudoku puzzle"></td>
+<td><strong><a href="examples/sudoku_9_4x4_kropki_consecutive_thermometers.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_9_4x4_kropki_consecutive_thermometers.png" width="150" alt="Kropki Sudoku puzzle"></td>
 <td><strong><a href="examples/starbattle_2_8x8.txt">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_2_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
 </tr>
 <tr>
@@ -100,6 +100,8 @@ cross off a square with right-click, long-press or the Cross tool, and undo with
 Auto-mark crosses the squares a placement rules out (in Akari it lights what a bulb sees).
 Digit puzzles take pencil marks: the Notes tool (key N) writes small digits, and auto-mark
 hides any that a placed peer rules out. Progress is kept in the browser.
+Conflicting placements or notes show the other cell and, when available, the
+exported rule name; mistakes remain editable rather than being silently refused.
 
 ## Licence
 

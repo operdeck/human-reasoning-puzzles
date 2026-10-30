@@ -6,6 +6,7 @@ import {
   emptyState,
   History,
   place,
+  placementConflict,
   restore,
   scopeCells,
   setCross,
@@ -176,6 +177,35 @@ function digits(): Bundle {
     ],
   };
 }
+
+describe("placement conflicts", () => {
+  it("uses visible givens and exported rule descriptions, not the solution", () => {
+    const b = digits();
+    b.peers = [{ cells: ["r1c1", "r2c3"], description: "anti-knight rule" }];
+    expect(placementConflict(b, emptyState(b), "r2c3", "1")).toEqual({
+      cell: "r1c1", description: "anti-knight rule",
+    });
+    expect(placementConflict(b, emptyState(b), "r1c2", "1")).toBeNull();
+    expect(placementConflict(b, emptyState(b), "r2c3", "2")).toBeNull();
+  });
+
+  it("includes player placements and disappears when they are removed", () => {
+    const b = { ...digits(), givens: {} };
+    const state = place(b, emptyState(b), "r1c1", "2");
+    expect(placementConflict(b, state, "r1c2", "2")?.cell).toBe("r1c1");
+    expect(placementConflict(b, place(b, state, "r1c1", "2"), "r1c2", "2")).toBeNull();
+  });
+
+  it("respects item-specific groups and excludes the cell itself", () => {
+    const b = digits();
+    let state = place(b, emptyState(b), "r1c1", "3");
+    expect(placementConflict(b, state, "r2c2", "1")).toBeNull();
+    b.givens = {};
+    state = place(b, emptyState(b), "r1c1", "3");
+    expect(placementConflict(b, state, "r2c2", "3")?.cell).toBe("r1c1");
+    expect(placementConflict(b, state, "r1c1", "3")).toBeNull();
+  });
+});
 
 describe("pencil marks", () => {
   it("toggle in palette order and only on free cells", () => {

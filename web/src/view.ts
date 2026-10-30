@@ -8,6 +8,7 @@ import {
   occupied,
   parseCell,
   place,
+  placementConflict,
   restore,
   setCross,
   struckNotes,
@@ -85,6 +86,13 @@ export function verdictText(verdict: Verdict, language: string, reveal?: string)
   }
   const m = verdict.missing;
   return nl ? `Nog geen fouten; nog ${m} te plaatsen.` : `No mistakes so far; ${m} still to place.`;
+}
+
+export function conflictText(item: string, cell: CellId, language: string, description?: string): string {
+  const reason = description ? ` (${description})` : "";
+  return language === "nl"
+    ? `${item} botst met dezelfde waarde op ${cell}${reason}.`
+    : `${item} conflicts with the same value at ${cell}${reason}.`;
 }
 
 const BALLOON_COLOURS = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#e84393"];
@@ -497,9 +505,17 @@ export class PuzzleView {
   }
 
   private apply(cell: CellId): void {
-    if (this.tool === CROSS) this.commit(setCross(this.bundle, this.state, cell));
-    else if (this.notesMode) this.commit(toggleNote(this.bundle, this.state, cell, this.tool));
-    else this.commit(place(this.bundle, this.state, cell, this.tool));
+    const next = this.tool === CROSS ? setCross(this.bundle, this.state, cell)
+      : this.notesMode ? toggleNote(this.bundle, this.state, cell, this.tool)
+      : place(this.bundle, this.state, cell, this.tool);
+    const conflict = next !== this.state && this.tool !== CROSS
+      && (this.notesMode ? next.notes[cell]?.includes(this.tool) : next.placed[cell] === this.tool)
+      ? placementConflict(this.bundle, next, cell, this.tool) : null;
+    this.commit(next);
+    if (conflict) {
+      this.verdict.className = "verdict wrong";
+      this.verdict.textContent = conflictText(this.tool, conflict.cell, this.bundle.language, conflict.description);
+    }
   }
 
   private key(event: KeyboardEvent): void {

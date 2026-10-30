@@ -965,9 +965,9 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
 @pytest.mark.parametrize(
     "name",
     [
-        "sudoku_9_4x4_kropki.txt",
-        "sudoku_2_4x4_anti.txt",
-        "sudoku_16_6x6_antiking.txt",
+        "sudoku_9_4x4_kropki_consecutive_thermometers.txt",
+        "sudoku_2_4x4_anti_knight.txt",
+        "sudoku_16_6x6_anti_king.txt",
         "suguru_1_4x4.txt",
         "starbattle_2_8x8.txt",
         "logicgrid_1_3x3.txt",

@@ -22,6 +22,7 @@ from .core import Kind, Model
 from .murdoku import Square
 from .puzzlefile import language_of, load_board, load_presentation, read_sections
 from .story import (
+    PEER_RULE_LABELS,
     attribute_list,
     board_notes,
     clue_paragraphs,
@@ -100,7 +101,11 @@ def _fixed(model: Model) -> dict[str, Any]:
 
 
 def peers(
-    model: Model, cells: set[str], by_value: Mapping[Any, str], only: str | None = None
+    model: Model,
+    cells: set[str],
+    by_value: Mapping[Any, str],
+    only: str | None = None,
+    language: str = "en",
 ) -> list[dict[str, Any]]:
     """Groups of cells that may hold an item at most once, from the model's constraints.
 
@@ -112,6 +117,7 @@ def peers(
     domains = {model.domain_of(var) for var in model.variables}
     every = set(by_value.values())
     groups: dict[tuple[str, ...], set[str]] = {}
+    labels: dict[tuple[str, ...], set[str]] = {}
     for constraint in model.constraints:
         if constraint.index in domains or constraint.reified_by is not None:
             continue
@@ -127,8 +133,12 @@ def peers(
         if None in items or len(items) != 1:
             continue
         groups.setdefault(names, set()).update(item for item in items if item is not None)
+        if label := PEER_RULE_LABELS[language].get(constraint.family or ""):
+            labels.setdefault(names, set()).add(label)
     return [
-        {"cells": list(names)} | ({} if items == every else {"items": sorted(items)})
+        {"cells": list(names)}
+        | ({} if items == every else {"items": sorted(items)})
+        | ({"description": ", ".join(sorted(labels[names]))} if names in labels else {})
         for names, items in sorted(groups.items())
     ]
 
@@ -299,7 +309,7 @@ def _family(
             scopes = NEIGHBOURS
         by_value = {item.value: item.id for item in items}
         if kind in DIGITS:
-            groups = peers(model, set(names), by_value)
+            groups = peers(model, set(names), by_value, language=language_of(text))
         elif kind == "akari":
             groups = peers(model, set(names), by_value, only=akari.SIGHT)
             scopes = [{"scope": "peers"}]

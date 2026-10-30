@@ -262,7 +262,10 @@ def test_clues_are_grouped_per_person():
 def test_sudoku_booklet_includes_all_active_variant_rules(language, tmp_path):
     from csp.story import family_rules
 
-    text = example("sudoku_9_4x4_kropki.txt").read_text() + f"\nLanguage:\n{language}\n"
+    text = (
+        example("sudoku_9_4x4_kropki_consecutive_thermometers.txt").read_text()
+        + f"\nLanguage:\n{language}\n"
+    )
     source = tmp_path / "variants.txt"
     source.write_text(text)
     out = tmp_path / "variants.docx"

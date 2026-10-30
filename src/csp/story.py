@@ -524,6 +524,25 @@ SUDOKU_RULES = {
     },
 }
 
+PEER_RULE_LABELS = {
+    "en": {
+        "no repeated digit on anti-knight peers": "anti-knight rule",
+        "no repeated digit on anti-king peers": "anti-king rule",
+        "each digit once per row": "row rule",
+        "each digit once per column": "column rule",
+        "each digit once per box": "box rule",
+        "each digit once per extra house": "extra-house rule",
+    },
+    "nl": {
+        "no repeated digit on anti-knight peers": "anti-paardregel",
+        "no repeated digit on anti-king peers": "anti-koningregel",
+        "each digit once per row": "rijregel",
+        "each digit once per column": "kolomregel",
+        "each digit once per box": "blokregel",
+        "each digit once per extra house": "regel voor extra gebieden",
+    },
+}
+
 
 def family_rules(text: str, kind: str) -> list[str]:
     """Player-facing rules from the same parsed variant semantics as the solver."""

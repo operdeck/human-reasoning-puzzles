@@ -1,0 +1,14 @@
+# Larger generated Sudoku with anti-knight peer rules.
+Title:
+Anti-knight Sudoku 9x9
+Givens:
+1 2 . . 5 . . . 9
+9 . . . . . . 5 .
+. 6 . . . . 2 . .
+. . 1 9 . . 6 . .
+. 3 . . 2 . 5 . .
+. . 6 . 7 4 . . .
+. 1 . . . 9 3 . .
+. . . . 6 5 9 4 1
+. . 9 1 3 . 8 2 .
+AntiKnight:

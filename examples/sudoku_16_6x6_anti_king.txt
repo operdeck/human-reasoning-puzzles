@@ -1,0 +1,18 @@
+# Small anti-king Sudoku with six rectangular 2x3 boxes.
+Title:
+Anti-king Sudoku 6x6: Rectangular boxes
+Givens:
+. . 3 . . .
+. . . . . 3
+. . . . 4 .
+. 5 . . . .
+2 . . . . .
+. . 6 . . .
+Boxes:
+a a a b b b
+a a a b b b
+c c c d d d
+c c c d d d
+e e e f f f
+e e e f f f
+AntiKing:
