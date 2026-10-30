@@ -58,6 +58,26 @@ def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
     assert all(paragraph in text for paragraph in clue_paragraphs(plain))
 
 
+@pytest.mark.parametrize(
+    ("name", "note"),
+    [
+        (
+            "murdoku_3_house",
+            "Character kinds and descriptions are story details, not clues.",
+        ),
+        (
+            "zoo-murdoku-1",
+            "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.",
+        ),
+    ],
+)
+def test_murdoku_booklet_includes_the_character_description_note(name, note, tmp_path):
+    out = tmp_path / f"{name}.docx"
+    assert main([str(example(f"{name}.txt")), "--docx", str(out)]) == 0
+    text = _text(out)
+    assert text.count(note) == 1
+
+
 def test_missing_figure_image_falls_back_to_text(tmp_path):
     base = (example("prrrdoku1.txt")).read_text()
     source = base.replace(

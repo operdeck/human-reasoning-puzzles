@@ -94,6 +94,12 @@ PHRASES: dict[str, dict[str, str]] = {
             "column. Squares with an object that blocks cannot be used; squares with a standable "
             "object can."
         ),
+        "doc.murdoku_note": (
+            "Character kinds and descriptions are story details, not clues. Do not infer where a "
+            "character can be or what they can do from their species, job, name, or description. "
+            "Only the puzzle's stated rules and numbered clues determine what is possible; a kind "
+            "or trait matters only when a rule or clue explicitly uses it."
+        ),
         "and": "and",
         "or": "or",
         "region": "in the {name}",
@@ -297,6 +303,14 @@ PHRASES: dict[str, dict[str, str]] = {
             "Zet elke figuur op een vrij vakje van het bord. Twee figuren staan nooit in dezelfde "
             "rij of kolom. Vakjes met een blokkerend voorwerp kun je niet gebruiken; vakjes met "
             "een begaanbaar voorwerp wel."
+        ),
+        "doc.murdoku_note": (
+            "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen. Leid niet "
+            "af waar een personage kan zijn of wat die kan doen op basis van diens diersoort, "
+            "beroep, "
+            "naam of beschrijving. Alleen de expliciete regels en genummerde aanwijzingen bepalen "
+            "wat mogelijk is; een soort of eigenschap telt alleen mee als een regel of aanwijzing "
+            "die uitdrukkelijk gebruikt."
         ),
         "and": "en",
         "or": "of",
