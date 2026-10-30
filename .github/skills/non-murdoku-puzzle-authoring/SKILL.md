@@ -25,13 +25,15 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 3. Generate a candidate with a fixed seed so it can be reproduced. For a new
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
    layout (Binairo, Tango, Queens, DogDoku, Suguru, Minesweeper, Akari, Sudoku,
-   Futoshiki, Calcudoku, Star Battle, Tents), so the example does not share a solution with the rest of the gallery:
+   Futoshiki, Calcudoku, Star Battle, Tents, Battleships), so the example does not share a solution with the rest of the gallery:
 
    ```bash
    uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
      --seed 26 --output /tmp/candidate.txt --comment "Tango 8x8: medium, ..."
    uv run puzzle-lab fresh akari --size 6 --tier medium \
      --seed 122 --output /tmp/akari.txt --comment "Akari 6x6: medium, ..."
+   uv run puzzle-lab fresh battleships --size 6 --tier medium \
+     --seed 136 --output /tmp/fleet.txt --comment "Original Battleships fleet"
    ```
 
    `--open-share` sets the share of empty Binairo/Tango cells; more open
@@ -45,6 +47,9 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    only when needed for uniqueness), and Tents places random tent/tree pairs;
    all three retry until the board has one solution. Large Suguru boards can
    take many minutes.
+   Battleships supports 4x4, 6x6, 8x8 and 10x10: it places a fresh non-touching
+   fleet, derives line totals and removes shaped givens while independent
+   connected-component search still finds exactly one solution.
    `puzzle-lab generate` only re-masks or mutates a seed and keeps its
    solution, so use it for variations, never to fill a gallery tier with
    copies of one board. Use `--as-family` only for compatible aliases. Do not
@@ -95,6 +100,17 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    brute-force-only solving.
 
 ## Difficulty and validation
+
+For Battleships examples, use a real `Fleet:` and explain its composition,
+straight ships, no-touching (including diagonals), line totals, and shaped
+givens in the shared web/booklet rules. Keep counts-only compatibility explicit;
+never present it as full Battleships. Reject full staircase totals, and verify
+that removing the fleet permits other answers, so the genre's rules really
+matter. Do not permute independent rows/columns when mutating a fleet board:
+that bends ships and changes their adjacency. Use the fleet-aware builder.
+Hidden ship-position variables are compiler auxiliaries, not playable cells.
+Validate ship shapes with independent component search, not the same placement
+enumeration used by the compiler.
 
 For Sudoku variants, name every active variant in the file name and `Title:`.
 Check both web and booklet rules against the parsed constraints, including extra

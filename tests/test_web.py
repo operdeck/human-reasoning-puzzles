@@ -129,13 +129,27 @@ def test_display_aliases_keep_their_labels_and_rules(exported):
     assert binairo["familyLabel"] == "Binairo"
 
 
-def test_kakurasu_and_counts_only_battleships_rules_are_precise(exported):
+def test_kakurasu_and_fleet_battleships_rules_are_precise(exported):
     kakurasu = _bundle(exported, "kakurasu_1_4x4")
     assert "column number to the row sum" in kakurasu["rules"][0]
     assert "row number to the column sum" in kakurasu["rules"][0]
 
-    battleships = _bundle(exported, "battleships_1_4x4_counts")
-    assert "does not model ship shapes" in battleships["rules"][0]
+    battleships = _bundle(exported, "battleships_1_6x6_fleet")
+    assert "3, 2, 2, 1, 1, 1" in battleships["rules"][0]
+    assert "straight" in battleships["rules"][1]
+    assert "not even diagonally" in battleships["rules"][2]
+    assert battleships["givens"] == {"r4c6": "ship"}
+    assert all(re.fullmatch(r"r\d+c\d+", cell) for cell in battleships["solution"])
+
+
+def test_dutch_battleships_web_rules():
+    from csp.web import _family
+
+    text = example("battleships_1_6x6_fleet.txt").read_text() + "\nLanguage:\nnl\n"
+    data = _family(text, "battleships", cli.load(text, "battleships").model, {}, "")
+    assert data["language"] == "nl"
+    assert data["rules"] == story.family_rules(text, "battleships")
+    assert "volledige vloot" in data["rules"][0]
 
 
 def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):

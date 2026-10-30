@@ -28,6 +28,20 @@ def _text(path: Path) -> str:
     return "\n".join(p.text for p in [*document.paragraphs, *cells])
 
 
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_battleships_booklet_has_localized_fleet_rules(language, tmp_path):
+    from csp.story import family_rules
+
+    text = example("battleships_1_6x6_fleet.txt").read_text() + f"\nLanguage:\n{language}\n"
+    source, output = tmp_path / "fleet.txt", tmp_path / "fleet.docx"
+    source.write_text(text)
+    assert main([str(source), "--docx", str(output)]) == 0
+    rendered = _text(output)
+    assert all(rule in rendered for rule in family_rules(text, "battleships"))
+    assert "How to solve it" in rendered
+    assert "ship" in rendered
+
+
 @pytest.mark.parametrize("name", PRRRDOKUS)
 def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
     source = example(f"{name}.txt")

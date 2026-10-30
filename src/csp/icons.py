@@ -403,6 +403,12 @@ SHAPES = {
     "wall": f'<rect width="100" height="100" {FILL}/>',
     "filled": f'<rect x="14" y="14" width="72" height="72" rx="4" {FILL}/>',
     "water": f'<path d="M14 50q9-12 18 0t18 0t18 0t18 0" {LINE} stroke-width="7"/>',
+    "ship_single": f'<circle cx="50" cy="50" r="36" {FILL}/>',
+    "ship_middle": f'<rect x="14" y="14" width="72" height="72" {FILL}/>',
+    "ship_north": f'<path d="M14 86V50a36 36 0 0 1 72 0v36z" {FILL}/>',
+    "ship_south": f'<path d="M14 14v36a36 36 0 0 0 72 0V14z" {FILL}/>',
+    "ship_west": f'<path d="M86 14H50a36 36 0 0 0 0 72h36z" {FILL}/>',
+    "ship_east": f'<path d="M14 14h36a36 36 0 0 1 0 72H14z" {FILL}/>',
     "disc_black": f'<circle cx="50" cy="50" r="34" {FILL}/>',
     "disc_white": '<circle cx="50" cy="50" r="31" fill="#fff" stroke="currentColor"'
     ' stroke-width="6"/>',
@@ -433,6 +439,17 @@ REGISTRY: dict[str, Icon] = {
         Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
         Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
         Icon("water", "\u00b7", "water", markup=SHAPES["water"]),
+        *(
+            Icon(name, fallback, label, markup=SHAPES[name])
+            for name, fallback, label in (
+                ("ship_single", "O", "single-cell ship"),
+                ("ship_middle", "M", "ship middle"),
+                ("ship_north", "N", "north ship end"),
+                ("ship_south", "S", "south ship end"),
+                ("ship_west", "W", "west ship end"),
+                ("ship_east", "E", "east ship end"),
+            )
+        ),
         Icon("disc_black", "\u25cf", "one", markup=SHAPES["disc_black"]),
         Icon("disc_white", "\u25cb", "zero", markup=SHAPES["disc_white"]),
         Icon("equal", "=", "equal", markup=SHAPES["equal"]),
