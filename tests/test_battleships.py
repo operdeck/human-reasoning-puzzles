@@ -5,6 +5,7 @@ import pytest
 from csp.battleships import compile_puzzle, parse
 from csp.bruteforce import battleships as brute
 from csp.core import Contradiction, Kind, Solver
+from tests.examples import played_examples
 
 PUZZLE = """Family: battleships
 Size: 4
@@ -110,3 +111,72 @@ def test_compiler_and_independent_search_agree_on_all_small_boards():
         except (ValueError, Contradiction):
             actual = False
         assert actual == expected, source
+
+
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_fleet_rules_describe_the_actual_model(language):
+    from csp.story import family_rules
+
+    rules = family_rules(FLEET + f"\nLanguage:\n{language}\n", "battleships")
+    assert "3, 2, 1" in rules[0]
+    assert "diagona" in rules[2]
+    assert "water" in rules[4]
+
+
+def test_explain_prints_named_deductions(capsys):
+    from csp.cli import main
+    from tests.examples import example
+
+    assert main([str(example("battleships_1_6x6_fleet.txt")), "--explain"]) == 0
+    output = capsys.readouterr().out
+    assert "count" in output
+    assert "ship" in output
+    assert "Solved" in output
+
+
+@pytest.mark.parametrize(
+    "path", [p for p in played_examples() if p.name.startswith("battleships_")]
+)
+def test_gallery_fleets_are_nontrivial_and_need_the_ship_rules(path):
+    from csp.puzzle_lab import rate
+
+    text = path.read_text()
+    puzzle = parse(text)
+    assert puzzle.fleet
+    staircase = list(range(1, puzzle.size + 1))
+    assert sorted(puzzle.row_counts) != staircase
+    assert sorted(puzzle.column_counts) != staircase
+    rating = rate(text)
+    assert rating.solutions == "unique"
+    assert rating.tier in {"medium", "hard"}
+    assert rating.initial_open > puzzle.size**2 * 0.75
+    # Counts alone do not determine the answer: the fleet really matters.
+    plain = (
+        text.split("Title:")[0]
+        + (
+            f"RowCounts:\n{' '.join(map(str, puzzle.row_counts))}\n"
+            f"ColumnCounts:\n{' '.join(map(str, puzzle.column_counts))}\nGivens:\n"
+        )
+        + "\n".join(" ".join("." if v < 0 else str(v) for v in row) for row in puzzle.givens)
+    )
+    assert len(brute.solutions(plain)) == 2
+
+
+def test_fleet_mutation_preserves_the_rules_and_never_permutes_lines():
+    import random
+
+    from csp.puzzle_lab import _regenerate_count_grid
+
+    changed = _regenerate_count_grid(FLEET, "battleships", {}, random.Random(5))
+    assert changed is not None
+    before, after = parse(FLEET), parse(changed)
+    assert after.fleet == before.fleet
+    assert after.row_counts == before.row_counts
+    assert after.column_counts == before.column_counts
+
+
+def test_legacy_partial_givens_count_only_known_occupied_cells():
+    source = PUZZLE + "Givens:\n1 . . .\n. . . .\n. . . .\n. . . .\n"
+    assert len(brute.solutions(source)) == 1
+    with pytest.raises(ValueError, match="exceed a row"):
+        parse(source.replace("4 3 2 1", "0 3 2 1"))

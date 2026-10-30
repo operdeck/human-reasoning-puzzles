@@ -830,6 +830,26 @@ def test_sudoku_picture_shows_givens_in_ink_and_solved_numbers_in_blue():
     assert not _has(blank, 0, 0, picture.SOLVED)
 
 
+def test_battleships_diagram_shows_fleet_and_keeps_interactive_solution_hidden():
+    from csp import battleships
+
+    text = example("battleships_1_6x6_fleet.txt").read_text()
+    puzzle = battleships.parse(text)
+    (solution,) = bruteforce.solutions(text, "battleships")
+    blank = picture.battleships_picture(puzzle, cell=CELL)
+    solved = picture.battleships_picture(puzzle, solution, cell=CELL)
+    interactive_canvas = drawing.battleships_picture(puzzle, solution, cell=CELL, interactive=True)
+    interactive = _raster(interactive_canvas)
+    assert blank.size == interactive.size == solved.size
+    assert interactive_canvas.to_svg().count('class="cell"') == 36
+    assert blank.getpixel((int(6.5 * CELL), int(4.5 * CELL))) == picture.INK
+    assert solved.getpixel((int(1.5 * CELL), int(2.5 * CELL))) == picture.SOLVED
+    assert interactive.getpixel((int(1.5 * CELL), int(2.5 * CELL))) == picture.WHITE
+    assert blank.getbbox() is not None
+    # The fleet is drawn below, not in playable cells.
+    assert blank.size[1] > (puzzle.size + 1) * CELL
+
+
 def test_sudoku_variant_picture_marks_kropki_and_thermometer_links():
     from csp import sudoku
 
@@ -977,7 +997,7 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
         "minesweeper_2_5x5.txt",
         "akari_1_6x6.txt",
         "kakurasu_1_4x4.txt",
-        "battleships_1_4x4_counts.txt",
+        "battleships_1_6x6_fleet.txt",
     ],
 )
 def test_family_png_cli_writes_nonblank_solution(name, tmp_path):

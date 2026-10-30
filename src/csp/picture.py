@@ -841,13 +841,50 @@ def battleships_picture(
     cell: int = 78,
     interactive: bool = False,
 ) -> Canvas:
-    """Draw the counts-only occupied-cell grid with its line totals."""
+    """Draw line totals, shaped ship givens and the fleet, when present."""
+    shapes = {
+        "O": "ship_single",
+        "N": "ship_north",
+        "S": "ship_south",
+        "W": "ship_west",
+        "E": "ship_east",
+        "M": "ship_middle",
+    }
     fixed: dict[Cell, tuple[Value, RGB]] = {
-        (row, col): (Mark("filled", 0.9) if puzzle.givens[row][col] else Mark("water"), INK)
+        (row, col): (
+            (
+                "?"
+                if puzzle.fleet and puzzle.segments[row][col] == "1"
+                else Mark(shapes.get(puzzle.segments[row][col], "filled"), 0.9)
+            )
+            if puzzle.givens[row][col]
+            else Mark("water"),
+            INK,
+        )
         for row in range(puzzle.size)
         for col in range(puzzle.size)
         if puzzle.givens[row][col] >= 0
     }
+    if solution is not None and not interactive and puzzle.fleet:
+        cells = {
+            (r, c)
+            for r in range(puzzle.size)
+            for c in range(puzzle.size)
+            if solution.get(f"r{r + 1}c{c + 1}")
+        }
+        for r, c in cells:
+            if (r, c) in fixed:
+                continue
+            neighbors = {(nr - r, nc - c) for nr, nc in cells if abs(nr - r) + abs(nc - c) == 1}
+            shape = "ship_single" if not neighbors else "ship_middle"
+            if len(neighbors) == 1:
+                shape = {
+                    (1, 0): "ship_north",
+                    (-1, 0): "ship_south",
+                    (0, 1): "ship_west",
+                    (0, -1): "ship_east",
+                }[next(iter(neighbors))]
+            fixed[(r, c)] = Mark(shape, 0.9), SOLVED
     return _line_count_picture(
         puzzle.size,
         puzzle.row_counts,
@@ -857,6 +894,7 @@ def battleships_picture(
         fixed=fixed,
         solved_mark=Mark("filled", 0.9),
         interactive=interactive,
+        fleet=puzzle.fleet,
     )
 
 
@@ -927,12 +965,13 @@ def _line_count_picture(
     fixed: Mapping[Cell, tuple[Value, RGB]] | None = None,
     solved_mark: Value = None,
     interactive: bool = False,
+    fleet: Sequence[int] = (),
 ) -> Canvas:
     margin = cell // 2
     left = margin + cell // 2
     top = margin + cell // 2
     side = n * cell
-    canvas = Canvas(left + side + cell // 4, top + side + cell // 4)
+    canvas = Canvas(left + side + cell // 4, top + side + cell // 4 + (cell if fleet else 0))
     _walls(canvas, n, left, cell, lambda first, second: False)
     size = max(10, cell // 4)
     for row, target in enumerate(row_counts):
@@ -953,6 +992,25 @@ def _line_count_picture(
             _value(canvas, solved_mark, SOLVED, x, y, cell, max(12, cell // 2))
     if interactive:
         _cells(canvas, n, left, top, cell)
+    if fleet:
+        mini = min(cell // 3, side // (sum(fleet) + len(fleet)))
+        x, y = left, top + side + cell // 4
+        for length in fleet:
+            for index in range(length):
+                icon = (
+                    "ship_single"
+                    if length == 1
+                    else (
+                        "ship_west"
+                        if index == 0
+                        else "ship_east"
+                        if index == length - 1
+                        else "ship_middle"
+                    )
+                )
+                icons.draw(canvas, icon, (x, y, x + mini, y + mini), tint=INK)
+                x += mini
+            x += mini
     return canvas
 
 
