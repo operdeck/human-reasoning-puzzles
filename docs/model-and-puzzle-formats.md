@@ -48,7 +48,7 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | Minesweeper-style | Cell | Boolean mine/safe; each numbered cell counts mines in its eight-neighbor set; optional total mine count. |
 | Light Up / Akari | Cell | Boolean bulb/empty; visibility counts, numbered-wall counts, and at-most-one bulb per line of sight. |
 | Kakurasu | Cell | Boolean filled/empty; weighted row and column sums encoded as generic relations over the line cells. |
-| Battleships, counts only | Cell | Boolean occupied/empty with row and column counts. Ship shapes, fleet composition, and connectivity are not represented. |
+| Battleships | Cell, hidden ship positions | Occupied-cell row/column counts, a fleet count per length, water-or-one-straight-ship coverage, and no touching between ships (including diagonals). |
 
 The new-family formats below currently use `COUNT`, `AT_MOST_ONE`, `EXACTLY_ONE`, and generic relations. Binairo/Tango row and column uniqueness uses bounded-arity auxiliary relations; performance on larger boards is part of the example and benchmark checks. Kakurasu's weighted equations currently use generic relations rather than a new weighted core constraint.
 
@@ -193,9 +193,30 @@ Sign cell pairs must be orthogonal neighbors. The unique-line encoding uses exis
 
 `RowSums:` and `ColumnSums:` each contain N weighted totals. A filled cell in column c contributes c to its row sum; a filled cell in row r contributes r to its column sum. Optional `Givens:` uses `.`, `0`, and `1`. The current compiler expresses weighted line equations as generic relations; it does not add weighted propagation to `core.py`.
 
-### Battleships, counts only
+### Battleships
 
-`RowCounts:` and `ColumnCounts:` each contain N occupied-cell counts; optional `Givens:` uses `.`, `0`, and `1`. This format intentionally models only row/column counts. It does not model ship shapes, fleet composition, adjacency rules, or connectivity, so it is not full Battleships.
+`RowCounts:` and `ColumnCounts:` each contain N occupied-cell counts. `Fleet:`
+lists one length per ship, including repeats (for example `3 2 2 1 1 1` on
+6x6). The fleet's total must match both line totals. Ships are straight,
+horizontal or vertical, and different ships may not touch, even diagonally.
+The compiler uses hidden Boolean ship positions, generic fleet counts,
+water-or-one-ship coverage, and at-most-one constraints for each ship's water
+border; no family-specific deduction is added to the engine.
+
+Optional `Givens:` is an NxN grid: `.` unknown, `0` water, `1` unspecified
+occupied segment, `O` a single-cell ship, `N`/`S`/`E`/`W` the end pointing
+towards water in that compass direction, and `M` an interior segment with
+ship cells on two opposite sides. An unspecified `1` is drawn as a question mark,
+so it cannot be confused with a middle segment. Shaped givens require a fleet. Puzzle and
+solution images show the fleet below the board and use rounded ship ends.
+English/Dutch rules for both web and DOCX/PDF are derived from the parsed fleet.
+`--explain` prints the named deductions and their reasons, followed by the
+solved board. Brute force checks connected components independently of the compiler.
+
+Files without `Fleet:` remain supported as explicitly counts-only puzzles,
+using only `.`, `0`, `1`; no ship shapes or no-touching rules are implied.
+The gallery uses full-fleet puzzles. Its tests reject full staircase totals,
+require a unique nontrivial solution, and check that fleet rules affect the answer.
 
 ## Murdoku
 
@@ -259,7 +280,9 @@ confirms a unique solution; `search` applies the same checks across files.
 candidate that misses the requested tier; it keeps the seed's solution.
 `fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
 DogDoku, Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
-and Tents, then removes givens while the solution stays unique.
+and Tents, then removes givens while the solution stays unique. Battleships
+builds a non-touching fleet on 4x4, 6x6, 8x8 or 10x10, derives its line totals,
+and removes shaped givens while the answer stays unique.
 Boards with under a quarter of their cells open rate `trivial`. `audit`
 reports examples that share a solution or a layout (up to rotation,
 reflection and renamed regions) and gallery sections that are not listed from

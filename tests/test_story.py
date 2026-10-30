@@ -45,7 +45,7 @@ ALLOWED = {
     "sudoku": {"core", "puzzlefile"},
     "calcudoku": {"core", "puzzlefile"},
     "futoshiki": {"core", "puzzlefile"},
-    "story": {"core", "proof", "murdoku", "puzzlefile", "sudoku"},
+    "story": {"core", "proof", "murdoku", "puzzlefile", "sudoku", "battleships"},
     "docx_export": {"icons", "murdoku", "picture", "puzzlefile", "story"},
     "regiongrid": {"puzzlefile"},
     "queens": {"core", "puzzlefile"},

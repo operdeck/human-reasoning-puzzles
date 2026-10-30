@@ -563,7 +563,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     instead.add_argument(
         "--explain",
         action="store_true",
-        help="Murdoku only: write out a short worked solution, as for a puzzle booklet",
+        help="write a Murdoku narrative or a Battleships solution with named deductions",
     )
     instead.add_argument(
         "--grade",
@@ -782,13 +782,13 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
     if args.brute_force:
         return brute_force(puzzle, text)
     if args.explain:
-        if kind != "murdoku":
-            print(
-                f"--explain only writes out Murdoku solutions so far, not {kind}", file=sys.stderr
-            )
+        if kind == "murdoku":
+            print(f"\n{story.explain(text)}")
+            return 0
+        if kind != "battleships":
+            print(f"--explain supports Murdoku and Battleships, not {kind}", file=sys.stderr)
             return 2
-        print(f"\n{story.explain(text)}")
-        return 0
+        args.verbose = True
 
     used: list[str] = []
 

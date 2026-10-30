@@ -78,8 +78,8 @@ CASES = (
     "akari_2_8x8.txt",
     "kakurasu_1_4x4.txt",
     "kakurasu_2_8x8.txt",
-    "battleships_1_4x4_counts.txt",
-    "battleships_2_8x8_counts.txt",
+    "battleships_1_6x6_fleet.txt",
+    "battleships_2_8x8_fleet.txt",
 )
 
 

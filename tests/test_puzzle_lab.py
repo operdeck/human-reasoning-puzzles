@@ -127,6 +127,7 @@ def test_generate_refuses_murdoku(tmp_path, capsys):
         ("calcudoku", 4, 0.0),
         ("starbattle", 6, 0.0),
         ("tents", 6, 0.0),
+        ("battleships", 4, 0.0),
     ],
 )
 def test_fresh_boards_have_their_own_unique_solution(family, size, open_share):

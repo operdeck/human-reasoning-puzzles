@@ -20,6 +20,12 @@ class Puzzle:
     fleet: tuple[int, ...] = ()
     segments: tuple[tuple[str, ...], ...] = ()
 
+    def __post_init__(self) -> None:
+        if not self.segments:
+            self.segments = tuple(
+                tuple("." if v < 0 else str(v) for v in row) for row in self.givens
+            )
+
 
 @dataclass(frozen=True)
 class Ship:
@@ -246,6 +252,8 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
             name = cell_name((row, col))
             chosen = model.chosen(name)
             mark = symbol("filled") if chosen is True else "." if chosen is False else "?"
+            if chosen is True and puzzle.segments[row][col] not in {".", "1"}:
+                mark = puzzle.segments[row][col]
             tint = "\033[38;5;21m" if name in changed else ""
             cells.append(f"{tint}{mark}\033[0m")
         out.append(" ".join(cells) + f"  {puzzle.row_counts[row]}")
@@ -253,6 +261,8 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
     if puzzle.fleet:
         out.append("Fleet (ship lengths): " + " ".join(map(str, puzzle.fleet)))
         out.append("Ships are straight and may not touch, even diagonally.")
+        if any(v in {"O", "N", "S", "E", "W", "M"} for row in puzzle.segments for v in row):
+            out.append("Given segments: O single; N/S/E/W end pointing to water; M middle.")
     else:
         out.append("Counts-only model: ship shape and connectivity are not represented.")
     return "\n".join(out)
