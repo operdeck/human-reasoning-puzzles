@@ -285,6 +285,11 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
     assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
     assert _bundle(exported, "food-murdoku-2")["section"] == "Murdoku \u00b7 Japanese food"
     assert "Queens" in sections and "Tango" in sections
+    queens = [entry for entry in puzzles if entry["family"] == "queens"]
+    assert len(queens) == 6
+    assert {entry["section"] for entry in queens} == {"Queens"}
+    for entry in queens:
+        assert [piece["id"] for piece in _bundle(exported, entry["id"])["palette"]] == ["queen"]
 
 
 def test_author_wordings_reach_the_web_player(exported):

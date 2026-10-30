@@ -14,17 +14,17 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 
 1. Read `docs/model-and-puzzle-formats.md` for the exact family syntax and
    `docs/examples.md` for the existing gallery. Preserve displayed aliases:
-   Queens and DogDoku are separate names, as are Binairo and Tango. The file
-   name, `Family:`, comment and pieces must agree: a `queens_*` file uses
-   `Family: queens` and the queen piece; dog or puppy pieces belong only in
-   `Family: dogdoku` files named `dogdoku_*`. `tests/test_example_quality.py`
-   enforces this.
+   Binairo and Tango retain separate names because Tango adds relation signs.
+   Cosmetic changes alone never create a family: Queens remains
+   `Family: queens` even with a custom piece. Published `queens_*` examples
+   use queens; the file name, family, comment and pieces must agree.
+   `tests/test_example_quality.py` enforces this.
 2. Use an existing original example as a seed, or create an original seed in
    the family format. Never transcribe published puzzles unless the user has
    permission and explicitly asks for transcription.
 3. Generate a candidate with a fixed seed so it can be reproduced. For a new
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
-   layout (Binairo, Tango, Queens, DogDoku, Suguru, Minesweeper, Akari, Sudoku,
+   layout (Binairo, Tango, Queens, Suguru, Minesweeper, Akari, Sudoku,
    Futoshiki, Calcudoku, Star Battle, Tents, Battleships), so the example does not share a solution with the rest of the gallery:
 
    ```bash
@@ -100,6 +100,15 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    brute-force-only solving.
 
 ## Difficulty and validation
+
+When consolidating cosmetic families, compare the actual rules, sizes, region
+layouts and measured deductions, not just names or icons. Keep distinct technique
+coverage rather than near-duplicate boards at the same size, renumber by measured
+difficulty, and regenerate pictures with the canonical piece. Update every
+collection, booklet, web, benchmark and documentation reference together.
+Preserve an icon option only as presentation; it must not change family identity
+or region colouring. Recheck comments against current grades instead of carrying
+old difficulty claims forward.
 
 For Battleships examples, use a real `Fleet:` and explain its composition,
 straight ships, no-touching (including diagonals), line totals, and shaped

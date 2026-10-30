@@ -126,7 +126,17 @@ d d d d
 
 There must be N regions on an N×N board; each is one connected area of any size from one cell up (a one-cell region fixes its queen at once). The solver places one queen in every region, row, and column, with at most one queen in every 2×2 window. Optional `Givens:` lines are `region rNcN`, for example `a r1c2`. A queen in any of the eight neighboring cells counts as touching. Unlike a chess queen, nothing reaches further than one step: only the eight neighbors are off limits.
 
-**DogDoku.** `Family: dogdoku` is the same puzzle with dogs. An optional `Icon:` section (`queen`, `dog` or `puppy`) picks the piece in the picture and the text board; `dogdoku` defaults to `dog` and `queens` to `queen`. The icon never changes the rules. Dog puzzles are drawn with a different colour for every zone, so zone names can be colour words. A one-cell zone fixes its dog at once; the examples `dogdoku_1_5x5.txt`, `dogdoku_2_7x7.txt` and `dogdoku_3_9x9.txt` are built backwards from a solving order and need only eliminations (`single`, `subsumption`, `cover2`), never `chains` or `what_if`.
+`Family: queens` is the sole family name for these rules. An optional `Icon:`
+section (`queen`, `dog` or `puppy`) can change the piece in pictures and text
+boards, but is cosmetic: it does not create another family, rule set or gallery
+section. All published Queens examples use queens. Each region has its own
+colour when the board fits the palette, regardless of the piece.
+
+The six gallery boards run from easy 4x4 and 5x5 (`single`), through medium
+7x7 and 8x8 (`subsumption`) and 9x9 (`cover2`), to a hard 4x4 (`chains`).
+A one-cell region fixes its queen immediately. The hard board needs chains,
+not the `what_if` step formerly stated in its comment. All are independently
+unique; the collection audit compares solutions together with their region maps.
 
 ### Tectonic / Suguru
 
@@ -279,7 +289,7 @@ confirms a unique solution; `search` applies the same checks across files.
 `generate` searches reproducible family-aware variants and refuses to write a
 candidate that misses the requested tier; it keeps the seed's solution.
 `fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
-DogDoku, Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
+Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
 and Tents, then removes givens while the solution stays unique. Battleships
 builds a non-touching fleet on 4x4, 6x6, 8x8 or 10x10, derives its line totals,
 and removes shaped givens while the answer stays unique.
