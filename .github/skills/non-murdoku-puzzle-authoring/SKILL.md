@@ -96,6 +96,13 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 
 ## Difficulty and validation
 
+For Sudoku variants, name every active variant in the file name and `Title:`.
+Check both web and booklet rules against the parsed constraints, including extra
+houses and combined variants. Never assume a player's familiarity with the
+symbols: explain the dot colors, consecutive bars, thermometer direction, and
+whether unmarked pairs carry restrictions. These explanations come from shared
+rendering code, not copied puzzle introductions.
+
 `puzzle-lab rate` reports the hardest solver rule used and a tier derived from
 that rule, with limited family-aware calibration for small relational and
 count-only puzzles. These are repository-specific estimates, not universal
