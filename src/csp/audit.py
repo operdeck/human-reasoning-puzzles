@@ -31,11 +31,6 @@ LAYOUT_SECTIONS = {
     "sudoku": ("Boxes",),
     "tents": ("Trees",),
 }
-# Series folders whose order the author fixed (for example a running story);
-# they are still checked for shared solutions and layouts.
-FIXED_ORDER = {
-    "wie-doet-het-met-wie": "story order chosen by the author",
-}
 # Families whose solution only means something on its region map: the same
 # placement on a different map is a different puzzle.
 REGION_SOLUTIONS = {"murdoku", "queens", "starbattle"}
@@ -214,8 +209,7 @@ def audit(items: Sequence[Profile]) -> Audit:
         target.extend(paths for paths in groups.values() if len(paths) > 1)
     sections: dict[str, list[Profile]] = defaultdict(list)
     for item in items:
-        if item.category not in FIXED_ORDER:
-            sections[item.section].append(item)
+        sections[item.section].append(item)
     for name, members in sections.items():
         levels = [member.difficulty for member in members]
         if levels != sorted(levels):

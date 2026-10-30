@@ -268,9 +268,10 @@ For a finished Murdoku under `examples/`, before reporting done:
   swapping a puzzle. Compare solved
   boards across the series too: avoid repeating the same placement pattern or
   a trivially rotated/reflected layout. `uv run puzzle-lab audit examples`
-  checks both for the whole collection. A series whose order the author fixed
-  for its story (listed in `FIXED_ORDER` in `src/csp/audit.py`) keeps that
-  order; only add a series there when the user asks for it.
+  checks both for the whole collection. Every series gets the same measured
+  difficulty-order check; do not hardcode category exemptions. Report a
+  story-order conflict rather than silently bypassing the audit or renumbering
+  an owner-authored story without approval.
 - **Items whose owner must be deduced lie on the board.** When the puzzle is
   "who wears the bathrobe?", draw the items as standable objects at fixed
   squares (more items than wearers) and state the totals as `Rules:` counts

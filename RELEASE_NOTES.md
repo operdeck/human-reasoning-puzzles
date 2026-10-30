@@ -31,6 +31,7 @@
 **New Feature(s)**
 * [#147 Better puzzle index](https://github.com/operdeck/human-reasoning-puzzles/issues/147): the web index now shows one representative unsolved thumbnail per puzzle group, including each Murdoku series. Table-like rows pair the thumbnail with compact, keyboard-accessible puzzle links in one or two columns, sizes, and deduction grades. Category sections, numbering, and player navigation are preserved.
     * Removed the separate documentation gallery. Collection overviews, grading tables, rule-focused examples, and benchmark instructions now live in `docs/puzzle-collection.md`; documentation and authoring skills point to the web index for visual browsing.
+    * Removed the hardcoded difficulty-order audit exemption for *Wie doet het met wie*. All series now receive the same ordering checks; display order, including Murdoku first and Demo leading, is unchanged.
 * `puzzle-lab fresh` builds brand-new Binairo, Tango, Queens and Suguru boards with their own solution, rated to a requested tier (`src/csp/fresh.py`).
 * Added the English Murder Hotel Murdoku series in `examples/murder-hotel/`, with Italian-named guests, themed hotel floors, and a separate murderer-role position reveal in the final puzzle. The 8×8 opener uses a simpler `relations` grade; the 9×9 and 10×10 puzzles grade `subsumption`.
     * Added custom staircase, reception counter, table, and elevator icons; the Murdoku authoring workflow now requires an independent image-based critique for new or substantially changed boards.
