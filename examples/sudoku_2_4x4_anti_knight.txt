@@ -1,0 +1,9 @@
+# Small anti-knight Sudoku.
+Title:
+Anti-knight Sudoku 4x4
+Givens:
+1 . 3 4
+. . . .
+. . . .
+. . . .
+AntiKnight:
