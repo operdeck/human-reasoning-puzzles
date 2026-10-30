@@ -1,0 +1,20 @@
+# Original fleet; fresh seed 1511, clue selection seed 101511. Hard (chains).
+Family: battleships
+Size: 8
+Title:
+Battleships 8x8: Fogbound convoy
+Fleet:
+4 3 2 2 1 1 1
+RowCounts:
+2 2 1 2 3 0 3 1
+ColumnCounts:
+2 2 3 1 0 4 1 1
+Givens:
+0 . . . . . . .
+0 . . . . . . .
+. . . . . M . .
+. . . . . . . .
+. . O . . 1 . .
+. . . . . . . .
+. W . E . . . .
+. . . . . . . .

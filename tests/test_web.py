@@ -191,6 +191,29 @@ def test_dutch_battleships_web_rules():
     assert "volledige vloot" in data["rules"][0]
 
 
+@pytest.mark.parametrize("number", [2, 3, 5])
+def test_varied_battleships_export_preserves_ship_and_water_clues(exported, number):
+    from csp import battleships
+
+    name = f"battleships_{number}_8x8_fleet"
+    puzzle = battleships.parse(example(f"{name}.txt").read_text())
+    bundle = _bundle(exported, name)
+    blocked = bundle["placement"]["blocked"]
+    assert "question mark" in " ".join(bundle["rules"])
+    for r, row in enumerate(puzzle.givens, 1):
+        for c, given in enumerate(row, 1):
+            cell = f"r{r}c{c}"
+            if given == 0:
+                assert cell in blocked
+                assert cell not in bundle["givens"]
+            elif given == 1:
+                assert bundle["givens"][cell] == "ship"
+            else:
+                assert cell not in blocked
+                assert cell not in bundle["givens"]
+    assert "?" in (exported / bundle["static"]).read_text()
+
+
 def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):
     broken = tmp_path / "broken.txt"
     broken.write_text("this is not a puzzle\n")

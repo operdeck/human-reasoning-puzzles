@@ -850,6 +850,27 @@ def test_battleships_diagram_shows_fleet_and_keeps_interactive_solution_hidden()
     assert blank.size[1] > (puzzle.size + 1) * CELL
 
 
+@pytest.mark.parametrize("number", [2, 3, 5])
+def test_battleships_varied_clues_are_drawn_on_the_unsolved_playable_board(number, monkeypatch):
+    from csp import battleships
+
+    puzzle = battleships.parse(example(f"battleships_{number}_8x8_fleet.txt").read_text())
+    values = []
+    original = drawing._value
+
+    def capture(canvas, value, colour, x, y, cell, size):
+        values.append(value.name if isinstance(value, drawing.Mark) else value)
+        original(canvas, value, colour, x, y, cell, size)
+
+    monkeypatch.setattr(drawing, "_value", capture)
+    canvas = drawing.battleships_picture(puzzle, cell=CELL, interactive=True)
+    assert {"water", "?", "ship_single", "ship_middle"} <= set(values)
+    assert set(values) & {"ship_north", "ship_south", "ship_east", "ship_west"}
+    assert values.count("water") == sum(row.count("0") for row in puzzle.segments)
+    assert values.count("?") == sum(row.count("1") for row in puzzle.segments)
+    assert canvas.to_svg().count('class="cell"') == 64
+
+
 def test_sudoku_variant_picture_marks_kropki_and_thermometer_links():
     from csp import sudoku
 
