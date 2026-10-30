@@ -8,6 +8,13 @@ collection, and grading notes; the index is the visual inventory.
 
 The checked-in example files are original, generated, or owner-authored. Published Sudoku, newspaper, and book puzzles are not transcribed here. Every tracked example is checked for a unique brute-force solution, engine agreement, and per-step soundness by the test suite.
 
+`puzzle-lab audit` applies difficulty-order checks to every series without
+category exemptions. *Wie doet het met wie* currently reports an ordering
+conflict: puzzle 1 needs `cover2`, while puzzles 2 and 3 need `subsumption`.
+Its existing story numbering is retained; the audit reports the conflict
+rather than hiding it. This does not change the shared web/booklet display
+order: Murdoku still comes first, with Demo leading its categories.
+
 ## Quick commands
 
 ```bash
