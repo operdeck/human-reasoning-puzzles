@@ -128,6 +128,25 @@ def test_calcudoku_cage_targets_are_editable_clues_not_hidden_givens(tmp_path):
     assert {"r1c1", "r4c1", "r4c4"} <= set(svg.ids((tmp_path / bundle["static"]).read_text()))
 
 
+@pytest.mark.parametrize(
+    "number,answer,reason",
+    [
+        (1, "Carmen, dressed as a witch", "only woman in the Egyptian hall"),
+        (2, "Diego, dressed as a vampire", "only guest in costume in the armoury"),
+        (3, "Gonzalo, the restorer", "only member of staff in the Goya room"),
+    ],
+)
+def test_halloween_questions_and_web_reveals_explicitly_identify_the_murderer(
+    exported, number, answer, reason
+):
+    bundle = _bundle(exported, f"halloween-museum-{number}")
+    assert bundle["question"].startswith("Who is the murderer")
+    assert bundle["reveal"].startswith(f"{answer}, is the murderer:")
+    assert reason in bundle["reveal"]
+    assert "struck with" not in bundle["reveal"]
+    assert answer not in bundle["question"]
+
+
 def test_display_aliases_keep_their_labels_and_rules(exported):
     queens = _bundle(exported, "queens_2_5x5")
     assert queens["family"] == "queens"
