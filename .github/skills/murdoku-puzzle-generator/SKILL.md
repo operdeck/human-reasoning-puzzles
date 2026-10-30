@@ -189,8 +189,10 @@ candidate**, deduced from board-wide rules, never told.
   in shared code (as with recomputed count cells in brute force).
 - One canonical file per puzzle: never leave a second copy elsewhere, and
   never commit generated `.png` or `.docx` files.
-- List new examples in `docs/examples.md` (Murdoku overview, with size and
-  grade).
+- List new examples in `docs/puzzle-collection.md` (Murdoku overview, with size
+  and grade). Re-export the web collection and check that its category, number,
+  unsolved thumbnail, and card link match the puzzle. The thumbnail reuses the
+  bundle's `static` SVG; do not add a separate manual gallery or a solution preview.
 - Keep a puzzle PR focused: engine, icon and wording changes the puzzle needs
   may come along (with tests); unrelated refactors and skill rewrites go in
   their own PR.
@@ -242,7 +244,7 @@ For a finished Murdoku under `examples/`, before reporting done:
 - An independent clue review used only player-facing material; each clue was
   restated as a constraint, alternate readings were checked, and solvability
   findings were verified against the source and rendered clue count.
-- `docs/examples.md` updated; `uv run pytest -q` and `ruff` pass.
+- `docs/puzzle-collection.md` updated; `uv run pytest -q` and `ruff` pass.
 - Report path, solution, grade and any open doubts.
 
 ## Theme, objects and pictures

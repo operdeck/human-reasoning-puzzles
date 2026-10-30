@@ -13,7 +13,9 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 ## Workflow
 
 1. Read `docs/model-and-puzzle-formats.md` for the exact family syntax and
-   `docs/examples.md` for the existing gallery. Preserve displayed aliases:
+   `docs/puzzle-collection.md` for grading notes and the
+   [web index](https://operdeck.github.io/human-reasoning-puzzles/) for the
+   existing visual collection. Preserve displayed aliases:
    Binairo and Tango retain separate names because Tango adds relation signs.
    Cosmetic changes alone never create a family: Queens remains
    `Family: queens` even with a custom piece. Published `queens_*` examples
@@ -78,10 +80,13 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    `<family>_<n>_<size>[_<variant>].txt`, where `n` is the board's place in its
    gallery section from easiest to hardest (for example `sudoku_9_4x4_kropki_consecutive_thermometers`).
    Leave tier words such as `easy` or `hard` out of the name: the number carries
-   the order and `docs/examples.md` shows the tier. When a new board lands in
+   the order and `docs/puzzle-collection.md` shows the tier. When a new board lands in
    the middle, renumber the later files (with their `docs/images` pictures) and
    update every reference. Give each a short comment, and update the tier table
-   in `docs/examples.md`.
+   in `docs/puzzle-collection.md`.
+   Re-export the web collection and check its unsolved thumbnail and card link.
+   The index uses the bundle's `static` SVG, never a solution image; it shares
+   the booklet's numbering and sections rather than maintaining a manual gallery.
    Then audit the whole collection:
 
    ```bash

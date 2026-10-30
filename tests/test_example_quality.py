@@ -22,14 +22,26 @@ def test_calcudoku_examples_have_no_single_cell_cages(path):
     assert all(len(cage.cells) >= 2 for cage in calcudoku.parse(path.read_text()).cages)
 
 
-@pytest.mark.parametrize("relative", ("README.md", "docs/examples.md"))
-def test_gallery_links_and_images_exist(relative):
+@pytest.mark.parametrize(
+    "relative", ("README.md", "docs/puzzle-collection.md", "docs/model-and-puzzle-formats.md")
+)
+def test_documentation_links_and_images_exist(relative):
     source = Path(__file__).resolve().parents[1] / relative
     targets = re.findall(r'\[[^\]]*\]\(([^)]+)\)|(?:href|src)="([^"]+)"', source.read_text())
     for markdown, html in targets:
         target = (markdown or html).split("#", 1)[0]
         if target and "://" not in target:
             assert (source.parent / target).exists(), f"{relative}: {target}"
+
+
+def test_documentation_and_skills_use_the_web_index_instead_of_the_retired_gallery():
+    root = Path(__file__).resolve().parents[1]
+    assert not (root / "docs" / "examples.md").exists()
+    sources = [root / "README.md", root / "AGENT.md"]
+    sources.extend((root / "docs").glob("*.md"))
+    sources.extend((root / ".github" / "skills").rglob("*.md"))
+    for source in sources:
+        assert "examples.md" not in source.read_text(), str(source.relative_to(root))
 
 
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
