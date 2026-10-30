@@ -54,7 +54,7 @@ CASES = (
     "queens_4_4x4.txt",
     "queens_2_8x8.txt",
     "sudoku_9_4x4_kropki_consecutive_thermometers.txt",
-    "sudoku_7_9x9_relations.txt",
+    "sudoku_7_9x9_kropki_consecutive_thermometers.txt",
     "sudoku_2_4x4_anti_knight.txt",
     "sudoku_3_9x9_anti_knight.txt",
     "sudoku_16_6x6_anti_king.txt",
