@@ -27,11 +27,11 @@ Neushoorn: de neushoorn
 Verzorger: de verzorger
 
 Regions:
-moeras: moeras #C8C29A
+moeras: moeras #AEC88A
 jungle: jungle #8FCB98
 savanne: savanne #E8CF96
 rivier: rivier #BFDDF2
-bergen: bergen #DCDEE2
+bergen: bergen #CCD9E5
 
 Grid:
 moeras bergen bergen bergen jungle jungle

@@ -371,10 +371,12 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     notes = board_notes(text)
     for note in notes:
         document.add_paragraph(note, style="List Bullet")
+    note = phrase(text, "doc.murdoku_note")
+    _runs(document.add_paragraph(style="List Bullet"), note)
     clues = clue_paragraphs(text, presentation.clue_text)
     _, aspect = _picture_stream(text, None, None)
     clue_lines = sum(-(-len(clue) // CLUE_LINE_CHARS) for clue in clues)
-    rules = [*(presentation.intro or [phrase(text, "doc.rules")]), *notes]
+    rules = [*(presentation.intro or [phrase(text, "doc.rules")]), *notes, note]
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)
     width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)
