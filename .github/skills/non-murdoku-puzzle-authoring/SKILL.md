@@ -163,6 +163,17 @@ Hidden ship-position variables are compiler auxiliaries, not playable cells.
 Validate ship shapes with independent component search, not the same placement
 enumeration used by the compiler.
 
+Do not let clue thinning erase the visual vocabulary promised by the rules.
+For symbol-rich Battleships examples, retain explicit water (`0`, drawn as
+waves), unspecified occupied cells (`1`, drawn as `?`), singles (`O`), ends
+(`N/S/E/W`), and middles (`M`). Choose water outside zero-total lines so it
+is not merely decorative. Add only solution-consistent clues to an original
+fresh board, then re-rate: added givens can reduce its grade. Keep at least
+three quarters of the playable grid unknown, preserve independent uniqueness,
+verify fleet rules still matter, and avoid `what_if` for ordinary hard boards.
+Inspect the unsolved web and booklet diagrams, not just solved pictures;
+test the actual exported water/ship givens and rendered symbols.
+
 For Sudoku variants, name every active variant in the file name and `Title:`.
 Check both web and booklet rules against the parsed constraints, including extra
 houses and combined variants. Never assume a player's familiarity with the

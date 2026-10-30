@@ -40,8 +40,11 @@ deduction technique, such as `--tier hard --grade cover3`.
 
 The [Battleships examples](docs/model-and-puzzle-formats.md#battleships) now use complete fleets:
 straight ships, no touching (including diagonals), line totals, and shaped
-givens. The small 6x6 board is rated medium (`count`); the larger 8x8 board is
-hard (`chains`). Both need the fleet rules, not just row and column arithmetic.
+givens. The collection has five boards: the 6x6 starter and two 8x8 boards are medium
+(`count` or `subsumption`), and two more 8x8 boards are hard (`chains`).
+*Buoys in the channel*, *Broken radio signals*, and *Fogbound convoy* each show
+water waves, unspecified `?` segments, single-cell circles, rounded ends, and
+square middles. All five need the fleet rules, not just row and column arithmetic.
 Generate another original board with
 `uv run puzzle-lab fresh battleships --size 6 --tier medium --seed 136 --output /tmp/fleet.txt`.
 
