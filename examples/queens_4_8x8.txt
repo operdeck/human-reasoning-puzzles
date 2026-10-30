@@ -1,4 +1,4 @@
-# Queens 8x8: medium, irregular regions and no givens.
+# Queens 8x8: medium, irregular regions and no givens (subsumption).
 Family: queens
 Size: 8
 Regions:

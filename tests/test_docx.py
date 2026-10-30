@@ -249,7 +249,7 @@ def test_booklet_footer_carries_copyright_notice(tmp_path):
     assert COPYRIGHT_NOTICE in Document(str(out)).sections[0].footer.paragraphs[0].text
 
 
-@pytest.mark.parametrize("name", ["sudoku_5_9x9", "queens_4_4x4", "tents_3_4x4", "calcudoku_1_4x4"])
+@pytest.mark.parametrize("name", ["sudoku_5_9x9", "queens_1_4x4", "tents_3_4x4", "calcudoku_1_4x4"])
 def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     out = tmp_path / "b.docx"
     assert main([str(example(f"{name}.txt")), "--docx", str(out)]) == 0

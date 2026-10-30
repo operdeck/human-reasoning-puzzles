@@ -19,8 +19,7 @@ QUEENS_FILES = [path for path in played_examples() if detect(path.read_text()) =
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
 def test_queens_examples_use_the_piece_of_their_family(path):
     text = path.read_text()
-    allowed = {"dog", "puppy"} if family_of(text) == "dogdoku" else {"queen"}
-    assert queens.parse(text).icon in allowed
+    assert queens.parse(text).icon == "queen"
     assert path.name.split("_")[0] == family_of(text)
 
 

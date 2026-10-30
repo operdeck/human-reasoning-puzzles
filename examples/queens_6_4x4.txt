@@ -1,5 +1,5 @@
-# DogDoku 4x4: hard, needs a what-if step.
-Family: dogdoku
+# Queens 4x4: hard, needs a chain deduction.
+Family: queens
 Size: 4
 Regions:
 a: amber

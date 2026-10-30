@@ -1,8 +1,7 @@
 """Queens-style placement: one queen per row, column and region, never touching.
 
-`Family: dogdoku` is the same puzzle with dogs instead of queens. An optional
-`Icon:` section (`queen`, `dog` or `puppy`) picks what is placed; it only
-changes drawing, never the rules.
+An optional `Icon:` section (`queen`, `dog` or `puppy`) changes only the
+piece's appearance, never the puzzle family or rules.
 """
 
 import re
@@ -18,7 +17,6 @@ RESET = "\033[0m"
 QUEEN_MARK = "♛"
 DOG_MARK = "🐕"
 PUPPY_MARK = "🐶"
-FAMILIES = ("queens", "dogdoku")
 ICONS = ("queen", "dog", "puppy")
 ICON_MARKS = {"queen": QUEEN_MARK, "dog": DOG_MARK, "puppy": PUPPY_MARK}
 
@@ -107,9 +105,9 @@ def parse(text: str) -> Puzzle:
     for required in ("Family", "Size", "Regions", "Grid"):
         if required not in sections:
             raise ValueError(f"puzzle file is missing a {required}: section")
-    if len(sections["Family"]) != 1 or sections["Family"][0].casefold() not in FAMILIES:
-        raise ValueError("Family must be 'queens' or 'dogdoku'")
-    icon = "dog" if sections["Family"][0].casefold() == "dogdoku" else "queen"
+    if len(sections["Family"]) != 1 or sections["Family"][0].casefold() != "queens":
+        raise ValueError("Family must be 'queens'")
+    icon = "queen"
     if "Icon" in sections:
         if len(sections["Icon"]) != 1 or sections["Icon"][0].casefold() not in ICONS:
             raise ValueError(f"Icon must be one of {', '.join(ICONS)}")

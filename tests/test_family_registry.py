@@ -7,7 +7,6 @@ from csp.puzzlefile import KINDS, detect
     "family, kind",
     [
         ("queens", "queens"),
-        ("dogdoku", "queens"),
         ("suguru", "suguru"),
         ("tectonic", "suguru"),
         ("logicgrid", "logicgrid"),
