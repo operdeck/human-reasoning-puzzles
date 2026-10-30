@@ -2,6 +2,9 @@
 # columns and nine boxes, the four grey 3x3 boxes hold 1-9 once too.
 # Without them it would have two solutions.
 
+Title:
+NRC Sudoku 9x9
+
 Givens:
 8 . . 7 . 6 . . .
 . 6 . . . 3 7 5 .

@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { verdictText } from "./view";
+import { conflictText, verdictText } from "./view";
+
+describe("conflictText", () => {
+  it("identifies the conflicting cell and the exported rule", () => {
+    expect(conflictText("1", "r1c1", "en", "anti-knight rule")).toBe(
+      "1 conflicts with the same value at r1c1 (anti-knight rule).",
+    );
+    expect(conflictText("1", "r1c1", "nl", "anti-paardregel")).toBe(
+      "1 botst met dezelfde waarde op r1c1 (anti-paardregel).",
+    );
+  });
+});
 
 describe("verdictText", () => {
   it("tells the puzzle's own story when solved", () => {

@@ -183,9 +183,23 @@ def test_digit_puzzles_get_pencil_marks_and_peer_groups(exported):
 
 def test_anti_knight_pairs_are_peers(exported):
     groups = {
-        frozenset(group["cells"]) for group in _bundle(exported, "sudoku_2_4x4_anti")["peers"]
+        frozenset(group["cells"])
+        for group in _bundle(exported, "sudoku_2_4x4_anti_knight")["peers"]
     }
     assert frozenset({"r1c1", "r2c3"}) in groups
+
+
+def test_sudoku_peer_rules_have_localized_descriptions():
+    from csp.web import peers
+
+    text = example("sudoku_2_4x4_anti_knight.txt").read_text()
+    model = cli.load(text, "sudoku").model
+    for language, label in (("en", "anti-knight rule"), ("nl", "anti-paardregel")):
+        groups = peers(
+            model, set(model.variables), {d: str(d) for d in range(1, 5)}, language=language
+        )
+        pair = next(group for group in groups if set(group["cells"]) == {"r1c1", "r2c3"})
+        assert pair["description"] == label
 
 
 def test_akari_lights_what_a_bulb_sees(exported):
@@ -203,6 +217,32 @@ def test_akari_lights_what_a_bulb_sees(exported):
         if len(segment) > 1
     }
     assert {frozenset(group["cells"]) for group in bundle["peers"]} == expected
+
+
+def test_sudoku_web_rules_describe_the_active_variants(exported):
+    for name in (
+        "sudoku_2_4x4_anti_knight",
+        "sudoku_4_9x9_anti_king",
+        "sudoku_9_4x4_kropki_consecutive_thermometers",
+        "sudoku_6_9x9_nrc",
+        "sudoku_12_6x6_jigsaw",
+    ):
+        text = example(name + ".txt").read_text()
+        assert _bundle(exported, name)["rules"] == story.family_rules(text, "sudoku")
+        assert len(_bundle(exported, name)["rules"]) > 1
+
+
+def test_dutch_sudoku_web_rules_are_localized():
+    from csp.web import _family
+
+    text = (
+        example("sudoku_9_4x4_kropki_consecutive_thermometers.txt").read_text()
+        + "\nLanguage:\nnl\n"
+    )
+    data = _family(text, "sudoku", cli.load(text, "sudoku").model, {}, "")
+    assert data["language"] == "nl"
+    assert data["headings"]["rules_title"] == "Spelregels"
+    assert data["rules"] == story.family_rules(text, "sudoku")
 
 
 def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):

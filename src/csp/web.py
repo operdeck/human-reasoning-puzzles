@@ -22,11 +22,12 @@ from .core import Kind, Model
 from .murdoku import Square
 from .puzzlefile import language_of, load_board, load_presentation, read_sections
 from .story import (
-    FAMILY_RULES,
+    PEER_RULE_LABELS,
     attribute_list,
     board_notes,
     clue_paragraphs,
     condition_list,
+    family_rules,
     object_list,
     phrase,
     role_list,
@@ -100,7 +101,11 @@ def _fixed(model: Model) -> dict[str, Any]:
 
 
 def peers(
-    model: Model, cells: set[str], by_value: Mapping[Any, str], only: str | None = None
+    model: Model,
+    cells: set[str],
+    by_value: Mapping[Any, str],
+    only: str | None = None,
+    language: str = "en",
 ) -> list[dict[str, Any]]:
     """Groups of cells that may hold an item at most once, from the model's constraints.
 
@@ -112,6 +117,7 @@ def peers(
     domains = {model.domain_of(var) for var in model.variables}
     every = set(by_value.values())
     groups: dict[tuple[str, ...], set[str]] = {}
+    labels: dict[tuple[str, ...], set[str]] = {}
     for constraint in model.constraints:
         if constraint.index in domains or constraint.reified_by is not None:
             continue
@@ -127,8 +133,12 @@ def peers(
         if None in items or len(items) != 1:
             continue
         groups.setdefault(names, set()).update(item for item in items if item is not None)
+        if label := PEER_RULE_LABELS[language].get(constraint.family or ""):
+            labels.setdefault(names, set()).add(label)
     return [
-        {"cells": list(names)} | ({} if items == every else {"items": sorted(items)})
+        {"cells": list(names)}
+        | ({} if items == every else {"items": sorted(items)})
+        | ({"description": ", ".join(sorted(labels[names]))} if names in labels else {})
         for names, items in sorted(groups.items())
     ]
 
@@ -244,11 +254,11 @@ def _family(
     text: str, kind: str, model: Model, solution: Mapping[str, Any], picture: str
 ) -> dict[str, Any]:
     cells = grid_cells(picture)
-    display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
     out: dict[str, Any] = {
-        "language": "en",
+        "language": language_of(text),
         "size": [max(r for r, _ in cells), max(c for _, c in cells)] if cells else [0, 0],
-        "rules": [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])],
+        "rules": family_rules(text, kind),
+        "headings": {"rules_title": phrase(text, "doc.rules_title")},
         "clues": [],
         "conditions": [],
         "question": "",
@@ -299,7 +309,7 @@ def _family(
             scopes = NEIGHBOURS
         by_value = {item.value: item.id for item in items}
         if kind in DIGITS:
-            groups = peers(model, set(names), by_value)
+            groups = peers(model, set(names), by_value, language=language_of(text))
         elif kind == "akari":
             groups = peers(model, set(names), by_value, only=akari.SIGHT)
             scopes = [{"scope": "peers"}]

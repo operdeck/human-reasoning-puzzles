@@ -1,4 +1,6 @@
-# Small anti-king Jigsaw Sudoku with six irregular regions.
+# Small anti-king Sudoku with six rectangular 2x3 boxes.
+Title:
+Anti-king Sudoku 6x6: Rectangular boxes
 Givens:
 . . 3 . . .
 . . . . . 3
