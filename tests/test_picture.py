@@ -937,9 +937,9 @@ def test_queens_picture_shows_regions_and_solution():
 
     assert image.size == (5 * CELL, 5 * CELL)
     assert _corner(image, 0, 0) == _corner(image, 1, 0)
-    assert _corner(image, 1, 1) != _corner(image, 1, 2)
-    assert _has(image, 0, 1, picture.SOLVED)
-    crown_x = CELL // 2 + CELL + CELL // 2
+    assert _corner(image, 1, 0) != _corner(image, 1, 1)
+    assert _has(image, 0, 2, picture.SOLVED)
+    crown_x = CELL // 2 + 2 * CELL + CELL // 2
     crown_y = CELL // 2 + CELL // 8
     assert image.getpixel((crown_x, crown_y)) == picture.SOLVED
 

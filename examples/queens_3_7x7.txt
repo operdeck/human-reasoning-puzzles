@@ -1,19 +1,19 @@
-# Queens 7x7: medium, needs a region that is confined to one line (subsumption).
+# Queens 7x7: medium, no givens or single-cell regions (seed 13807).
 Family: queens
 Size: 7
 Regions:
-a: coral
-b: amber
-c: green
-d: violet
-e: blue
-f: mint
-g: yellow
+a: amber
+b: blue
+c: coral
+d: green
+e: violet
+f: silver
+g: gold
 Grid:
-c b b b b a a
-d b b a a a a
-d b b a a a a
-d d d g g g g
-d f f g g f g
-d f f f f f f
-d f f f f e e
+a c b b b b d
+a c b b b d d
+c c c b b d d
+c c c c e d d
+c c e e e d d
+c c e e f f d
+c e e f f g g

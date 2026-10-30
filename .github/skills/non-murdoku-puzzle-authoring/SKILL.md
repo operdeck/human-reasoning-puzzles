@@ -38,8 +38,9 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 
    `--open-share` sets the share of empty Binairo/Tango cells; more open
    cells usually means harder. For Minesweeper, it sets the share of unknown
-   cells, including mines, on the fresh board. Queens and Suguru drop givens
-   while the solution stays unique. Akari builds a fresh wall layout and
+   cells, including mines, on the fresh board. Queens grows connected regions
+   of at least two cells and uses one explicit starter for easy boards.
+   Suguru drops givens while the solution stays unique. Akari builds a fresh wall layout and
    derives numbered-wall clues from a valid bulb placement. Sudoku and
    Futoshiki start from a random Latin square and use `--open-share` for the
    share of empty cells; Futoshiki also drops redundant signs. Calcudoku cuts a
@@ -100,6 +101,17 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    brute-force-only solving.
 
 ## Difficulty and validation
+
+Queens regions must contain at least two cells in published examples and
+freshly authored boards. Single-cell regions give away a placement, regardless
+of the puzzle's final grade. The fresh builder first gives each region a
+neighbour, then grows the rest, and rejects any remaining singleton. Easy
+Queens boards use one explicit starter queen instead. When expanding an
+existing singleton, recheck the donor region's connectivity and uniqueness:
+expansion adds alternative placements, so a visible given may be necessary.
+Re-rate the result, audit it against the rest of the gallery and regenerate
+both puzzle and solution pictures. Do not ban valid singleton syntax from
+the parser: this is an authoring-quality rule, not a change to Queens rules.
 
 When consolidating cosmetic families, compare the actual rules, sizes, region
 layouts and measured deductions, not just names or icons. Keep distinct technique
