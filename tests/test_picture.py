@@ -930,14 +930,14 @@ def test_futoshiki_picture_points_each_sign_at_the_smaller_cell():
 def test_queens_picture_shows_regions_and_solution():
     from csp import queens
 
-    text = (example("queens_4_4x4.txt")).read_text()
+    text = (example("queens_1_4x4.txt")).read_text()
     puzzle = queens.parse(text)
     (solution,) = bruteforce.solutions(text)
     image = picture.queens_picture(puzzle, solution, cell=CELL)
 
     assert image.size == (5 * CELL, 5 * CELL)
     assert _corner(image, 0, 0) == _corner(image, 1, 0)
-    assert _corner(image, 0, 2) != _corner(image, 0, 3)
+    assert _corner(image, 1, 1) != _corner(image, 1, 2)
     assert _has(image, 0, 1, picture.SOLVED)
     crown_x = CELL // 2 + CELL + CELL // 2
     crown_y = CELL // 2 + CELL // 8
@@ -1126,7 +1126,7 @@ def test_picture_ignores_role_booleans_in_the_assignment(tmp_path):
 def test_dog_and_puppy_pieces_are_drawn_instead_of_the_crown():
     from csp import queens
 
-    base = (example("queens_4_4x4.txt")).read_text()
+    base = (example("queens_1_4x4.txt")).read_text()
     pictures = {}
     for icon in ("queen", "dog", "puppy"):
         text = base.replace("Family: queens", f"Family: queens\nIcon: {icon}")
@@ -1144,10 +1144,12 @@ def test_dog_and_puppy_pieces_are_drawn_instead_of_the_crown():
     )
 
 
-def test_dog_puzzles_give_every_zone_its_own_colour():
+@pytest.mark.parametrize("icon", ("queen", "dog", "puppy"))
+def test_queens_puzzles_give_every_zone_its_own_colour_regardless_of_piece(icon):
     from csp import queens
 
-    text = (example("dogdoku_3_9x9.txt")).read_text()
+    text = (example("queens_5_9x9.txt")).read_text()
+    text = text.replace("Family: queens", f"Family: queens\nIcon: {icon}")
     puzzle = queens.parse(text)
     image = picture.queens_picture(puzzle, None, cell=CELL)
     margin = CELL // 2

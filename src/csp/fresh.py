@@ -20,7 +20,6 @@ FAMILIES = (
     "binairo",
     "tango",
     "queens",
-    "dogdoku",
     "suguru",
     "minesweeper",
     "akari",
@@ -221,16 +220,16 @@ def _grow(size: int, seeds: list[Cell], rng: random.Random) -> dict[Cell, int]:
 
 
 def fresh_queens(
-    size: int, rng: random.Random, family: str = "queens", attempts: int = 4000, comment: str = ""
+    size: int, rng: random.Random, attempts: int = 4000, comment: str = ""
 ) -> str | None:
-    """A new Queens/DogDoku board with no givens: regions grown around a hidden placement."""
+    """A new Queens board with no givens: regions grown around a hidden placement."""
     for _ in range(attempts):
         cols = list(range(size))
         rng.shuffle(cols)
         if any(abs(cols[i] - cols[i + 1]) < 2 for i in range(size - 1)):
             continue
         owner = _grow(size, [(row, cols[row]) for row in range(size)], rng)
-        text = _region_text(family, size, owner, [], comment)
+        text = _region_text("queens", size, owner, [], comment)
         if is_unique(text):
             return text
     return None
@@ -796,8 +795,8 @@ def fresh(
         return fresh_minesweeper(size, rng, open_share, comment)
     if family == "akari":
         return fresh_akari(size, rng, tier, comment)
-    if family in {"queens", "dogdoku"}:
-        return fresh_queens(size, rng, family, comment=comment)
+    if family == "queens":
+        return fresh_queens(size, rng, comment=comment)
     if family == "suguru":
         return fresh_suguru(size, rng, comment=comment)
     if family == "sudoku":

@@ -37,21 +37,21 @@ def test_murdoku_first_demo_leading_then_families_with_natural_order():
 def test_display_aliases_have_distinct_collection_sections():
     root = Path("/x/examples")
     paths = {
-        root / "queens_4_4x4.txt": "queens",
-        root / "dogdoku_1_5x5.txt": "queens",
+        root / "queens_1_4x4.txt": "queens",
+        root / "queens_2_5x5.txt": "queens",
         root / "binairo_3_4x4.txt": "binairo",
         root / "tango_2_4x4.txt": "binairo",
     }
     names = {
-        root / "queens_4_4x4.txt": "queens",
-        root / "dogdoku_1_5x5.txt": "dogdoku",
+        root / "queens_1_4x4.txt": "queens",
+        root / "queens_2_5x5.txt": "queens",
         root / "binairo_3_4x4.txt": "binairo",
         root / "tango_2_4x4.txt": "tango",
     }
     sections = {item.path.name: item.section for item in arrange(paths, names)}
     assert sections == {
-        "queens_4_4x4.txt": "Queens",
-        "dogdoku_1_5x5.txt": "DogDoku",
+        "queens_1_4x4.txt": "Queens",
+        "queens_2_5x5.txt": "Queens",
         "binairo_3_4x4.txt": "Binairo",
         "tango_2_4x4.txt": "Tango",
     }
