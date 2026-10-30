@@ -31,6 +31,11 @@ def test_every_example_is_exported_and_indexed(exported):
     for name in names:
         assert (exported / f"{name}.svg").is_file()
         assert _bundle(exported, name)["static"] == f"{name}.svg"
+    for entry in index["puzzles"]:
+        assert entry["static"] == _bundle(exported, entry["id"])["static"]
+        preview = exported / entry["static"]
+        assert preview.is_file()
+        assert "<svg" in preview.read_text()
     assert not list(exported.glob("*-solution.svg"))
 
 

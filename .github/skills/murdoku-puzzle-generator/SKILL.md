@@ -189,8 +189,12 @@ candidate**, deduced from board-wide rules, never told.
   in shared code (as with recomputed count cells in brute force).
 - One canonical file per puzzle: never leave a second copy elsewhere, and
   never commit generated `.png` or `.docx` files.
-- List new examples in `docs/examples.md` (Murdoku overview, with size and
-  grade).
+- List new examples in `docs/puzzle-collection.md` (Murdoku overview, with size
+  and grade). Re-export the web collection and check its category, number, and
+  puzzle link. The index shows one representative thumbnail per Murdoku
+  category/series, not an image per puzzle or one for all Murdoku. Each row
+  pairs that unsolved `static` SVG with compact links in one or two columns;
+  do not add a separate manual gallery or a solution preview.
 - Keep a puzzle PR focused: engine, icon and wording changes the puzzle needs
   may come along (with tests); unrelated refactors and skill rewrites go in
   their own PR.
@@ -242,7 +246,7 @@ For a finished Murdoku under `examples/`, before reporting done:
 - An independent clue review used only player-facing material; each clue was
   restated as a constraint, alternate readings were checked, and solvability
   findings were verified against the source and rendered clue count.
-- `docs/examples.md` updated; `uv run pytest -q` and `ruff` pass.
+- `docs/puzzle-collection.md` updated; `uv run pytest -q` and `ruff` pass.
 - Report path, solution, grade and any open doubts.
 
 ## Theme, objects and pictures
@@ -264,9 +268,10 @@ For a finished Murdoku under `examples/`, before reporting done:
   swapping a puzzle. Compare solved
   boards across the series too: avoid repeating the same placement pattern or
   a trivially rotated/reflected layout. `uv run puzzle-lab audit examples`
-  checks both for the whole collection. A series whose order the author fixed
-  for its story (listed in `FIXED_ORDER` in `src/csp/audit.py`) keeps that
-  order; only add a series there when the user asks for it.
+  checks both for the whole collection. Every series gets the same measured
+  difficulty-order check; do not hardcode category exemptions. Report a
+  story-order conflict rather than silently bypassing the audit or renumbering
+  an owner-authored story without approval.
 - **Items whose owner must be deduced lie on the board.** When the puzzle is
   "who wears the bathrobe?", draw the items as standable objects at fixed
   squares (more items than wearers) and state the totals as `Rules:` counts

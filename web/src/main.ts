@@ -11,6 +11,7 @@ interface IndexEntry {
   familyLabel: string;
   size: [number, number];
   grade: string;
+  static: string;
   playable: boolean;
   unsupported?: string;
 }
@@ -64,32 +65,53 @@ async function showIndex(current: () => boolean): Promise<void> {
     groups.set(entry.section, list);
   }
   const sections = [...groups]
-    .map(([label, entries]) =>
-      el(
+    .map(([label, entries]) => {
+      const representative = entries[0];
+      const preview = el("img", {
+        className: "family-thumbnail",
+        src: new URL(representative.static, base).href,
+        alt: `${label} puzzle preview`,
+        loading: "lazy",
+        decoding: "async",
+        width: 180,
+        height: 180,
+      });
+      preview.addEventListener("error", () => {
+        preview.replaceWith(el("span", {
+          className: "family-thumbnail preview-unavailable",
+          textContent: "Preview unavailable",
+        }));
+      }, { once: true });
+      return el(
         "section",
         { className: "family" },
-        el("h2", { textContent: label }),
+        el("div", { className: "family-preview" }, preview),
         el(
-          "ul",
-          {},
-          ...entries.map((entry) =>
-            el(
+          "div",
+          { className: "family-puzzles" },
+          el("h2", { textContent: label }),
+          el(
+            "ul",
+            { className: "puzzle-list" },
+            ...entries.map((entry) => el(
               "li",
               {},
-              el("span", { className: "meta", textContent: `${entry.number}. ` }),
-              el("a", { href: `#${encodeURIComponent(entry.id)}`, textContent: entry.title }),
+              el("a", {
+                href: `#${encodeURIComponent(entry.id)}`,
+                textContent: `${entry.number}. ${entry.title}`,
+              }),
               el("span", {
                 className: "meta",
-                textContent: ` ${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
+                textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
               }),
               ...(entry.playable
                 ? []
                 : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
             ),
-          ),
         ),
-      ),
-    );
+          )),
+      );
+    });
   app.replaceChildren(
     el(
       "header",
