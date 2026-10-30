@@ -60,9 +60,9 @@ async function showIndex(current: () => boolean): Promise<void> {
   // The index is already in reading order, as in the booklet.
   const groups = new Map<string, IndexEntry[]>();
   for (const entry of index.puzzles) {
-    const list = groups.get(entry.familyLabel) ?? [];
+    const list = groups.get(entry.section) ?? [];
     list.push(entry);
-    groups.set(entry.familyLabel, list);
+    groups.set(entry.section, list);
   }
   const sections = [...groups]
     .map(([label, entries]) => {
@@ -82,12 +82,6 @@ async function showIndex(current: () => boolean): Promise<void> {
           textContent: "Preview unavailable",
         }));
       }, { once: true });
-      const categories = new Map<string, IndexEntry[]>();
-      for (const entry of entries) {
-        const category = categories.get(entry.section) ?? [];
-        category.push(entry);
-        categories.set(entry.section, category);
-      }
       return el(
         "section",
         { className: "family" },
@@ -96,31 +90,26 @@ async function showIndex(current: () => boolean): Promise<void> {
           "div",
           { className: "family-puzzles" },
           el("h2", { textContent: label }),
-          ...[...categories].map(([category, puzzles]) => el(
-            "div",
-            { className: "puzzle-category" },
-            ...(category === label ? [] : [el("h3", { textContent: category })]),
-            el(
-              "ul",
-              { className: "puzzle-list" },
-              ...puzzles.map((entry) => el(
-                "li",
-                {},
-                el("a", {
-                  href: `#${encodeURIComponent(entry.id)}`,
-                  textContent: `${entry.number}. ${entry.title}`,
-                }),
-                el("span", {
-                  className: "meta",
-                  textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
-                }),
-                ...(entry.playable
-                  ? []
-                  : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
-              )),
+          el(
+            "ul",
+            { className: "puzzle-list" },
+            ...entries.map((entry) => el(
+              "li",
+              {},
+              el("a", {
+                href: `#${encodeURIComponent(entry.id)}`,
+                textContent: `${entry.number}. ${entry.title}`,
+              }),
+              el("span", {
+                className: "meta",
+                textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
+              }),
+              ...(entry.playable
+                ? []
+                : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
             ),
-          )),
         ),
+          )),
       );
     });
   app.replaceChildren(

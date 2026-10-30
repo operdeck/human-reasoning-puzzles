@@ -191,9 +191,10 @@ candidate**, deduced from board-wide rules, never told.
   never commit generated `.png` or `.docx` files.
 - List new examples in `docs/puzzle-collection.md` (Murdoku overview, with size
   and grade). Re-export the web collection and check its category, number, and
-  puzzle link. The index shows one representative thumbnail for all Murdoku
-  categories, not an image per puzzle. It reuses the bundle's unsolved `static`
-  SVG; do not add a separate manual gallery or a solution preview.
+  puzzle link. The index shows one representative thumbnail per Murdoku
+  category/series, not an image per puzzle or one for all Murdoku. Each row
+  pairs that unsolved `static` SVG with compact links in one or two columns;
+  do not add a separate manual gallery or a solution preview.
 - Keep a puzzle PR focused: engine, icon and wording changes the puzzle needs
   may come along (with tests); unrelated refactors and skill rewrites go in
   their own PR.
