@@ -74,15 +74,16 @@ def test_grade_breaks_ties_within_a_tier():
     assert "Binairo" in found.out_of_order
 
 
-def test_series_with_a_fixed_story_order_is_not_reordered():
-    category = next(iter(audit.FIXED_ORDER))
+def test_story_series_are_checked_for_difficulty_order_without_exemptions():
+    category = "wie-doet-het-met-wie"
     found = audit.audit(
         [
             _profile("a.txt", "hard", "what_if", category),
             _profile("b.txt", "easy", "single", category),
         ]
     )
-    assert found.clean
+    assert not found.clean
+    assert list(found.out_of_order) == ["Binairo"]
 
 
 def test_audit_command_reports_problems(tmp_path, capsys):

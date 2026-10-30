@@ -251,7 +251,7 @@ puzzle-specific behavior to `core.py`.
 For a new family, include small and materially larger original examples and
 check every example for uniqueness and per-step soundness. Add its example and
 solution visual to the root README's compact gallery, with file/grade details
-in `docs/examples.md` and its model/file syntax in
+in `docs/puzzle-collection.md` and its model/file syntax in
 `docs/model-and-puzzle-formats.md`. Update the relevant authoring skill. Use
 existing generic primitives; if they are insufficient, open a separate core
 design issue instead of adding puzzle-specific code to `core.py`.
@@ -263,6 +263,14 @@ a tier for a family, document the gap rather than label an unsolved or trivial
 puzzle. Follow `.github/skills/non-murdoku-puzzle-authoring/SKILL.md`.
 Murdoku has its own generator skill and tools; do not change them for
 non-Murdoku work.
+
+The web index is the full visual inventory. Show one representative unsolved
+`static` SVG per existing `section`, including each Murdoku series, not one
+image per puzzle or one for all Murdoku. Keep the table-like rows compact:
+thumbnail first, then puzzle links in one or two columns. Preserve
+`collection.arrange` sections and numbering, including separate Binairo and
+Tango groups. Keep static paths in index metadata; never use solution pictures
+for previews. Check narrow/desktop layouts and puzzle-link navigation.
 
 ## Current rule coverage, measured
 
