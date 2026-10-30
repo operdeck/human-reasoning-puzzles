@@ -266,7 +266,8 @@ def _family(
     if kind in UNSUPPORTED:
         return out | {"playable": False, "unsupported": UNSUPPORTED[kind]}
     names = [f"r{row}c{col}" for row, col in cells]
-    fixed = _fixed(model)
+    # Cage targets are clues for the player to enter, not prefilled digits.
+    fixed = {} if kind == "calcudoku" else _fixed(model)
     regions: dict[str, str] = {}
     scopes: list[dict[str, Any]] = []
     auto = True

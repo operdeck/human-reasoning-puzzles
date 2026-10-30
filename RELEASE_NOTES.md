@@ -11,6 +11,7 @@
 **Licensing**
 * The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
 **Bug Fix(es)**
+* [#135 Calcudoku cage entry](https://github.com/operdeck/human-reasoning-puzzles/issues/135): single-cell cage targets remain editable clues in the web player, not invisible locked givens. Players must enter every digit, including these clue cells, for the puzzle to count as solved. Legacy files remain supported.
 * Web UI: Clear resets the board immediately and remains undoable; area labels are larger on mobile.
 * `--png` on a Murdoku puzzle with roles (e.g. `murdoku_composition.txt`) no longer crashes with `AttributeError: 'bool' object has no attribute 'col'`.
 * Name-vs-appearance consistency
