@@ -65,36 +65,58 @@ afterEach(() => {
 
 async function openIndex(): Promise<void> {
   await import("./main");
-  await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-card")).toHaveLength(2));
+  await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(2));
 }
 
 describe("puzzle index", () => {
-  it("renders ordered, labelled cards with unsolved lazy previews under the Pages base path", async () => {
+  it("renders family previews and ordered puzzle links under the Pages base path", async () => {
     await openIndex();
     expect([...document.querySelectorAll(".family h2")].map((node) => node.textContent))
-      .toEqual(["Murdoku · Demo", "Logic grid"]);
-    const cards = [...document.querySelectorAll<HTMLAnchorElement>(".puzzle-card")];
-    expect(cards.map((card) => card.hash)).toEqual(["#first-case", "#logicgrid_1"]);
-    expect(cards[0].textContent).toContain("1. First case");
-    expect(cards[0].textContent).toContain("4×4 · relations");
-    const images = [...document.querySelectorAll<HTMLImageElement>(".puzzle-thumbnail")];
+      .toEqual(["Murdoku", "Logic grid"]);
+    expect(document.querySelector(".family h3")?.textContent).toBe("Murdoku · Demo");
+    const links = [...document.querySelectorAll<HTMLAnchorElement>(".puzzle-list a")];
+    expect(links.map((link) => link.hash)).toEqual(["#first-case", "#logicgrid_1"]);
+    expect(links[0].textContent).toBe("1. First case");
+    expect(links[0].parentElement?.textContent).toContain("4×4 · relations");
+    const images = [...document.querySelectorAll<HTMLImageElement>(".family-thumbnail")];
     expect(images.map((image) => new URL(image.src).pathname)).toEqual([
       "/human-reasoning-puzzles/puzzles/first-case.svg",
       "/human-reasoning-puzzles/puzzles/logicgrid_1.svg",
     ]);
-    expect(images.every((image) => image.loading === "lazy" && image.alt === "")).toBe(true);
-    expect(cards[1].querySelector(".badge")?.getAttribute("title")).toBe(puzzles[1].unsupported);
+    expect(images.every((image) => image.loading === "lazy" && image.alt.endsWith("puzzle preview"))).toBe(true);
+    expect(links[1].parentElement?.querySelector(".badge")?.getAttribute("title")).toBe(puzzles[1].unsupported);
     expect(document.querySelector("footer")?.textContent).toContain("All rights reserved.");
   });
 
-  it("keeps the card usable and reports a failed preview", async () => {
+  it("uses only one preview per displayed family while preserving categories and aliases", async () => {
+    const collection = [
+      puzzles[0],
+      { ...puzzles[0], id: "museum", section: "Murdoku · Museum", static: "museum.svg" },
+      { ...puzzles[1], id: "binairo", family: "binairo", familyLabel: "Binairo", section: "Binairo" },
+      { ...puzzles[1], id: "tango", family: "binairo", familyLabel: "Tango", section: "Tango" },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      license: "All rights reserved.",
+      puzzles: collection,
+    }))));
+    await import("./main");
+    await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(4));
+    expect(document.querySelectorAll("img")).toHaveLength(3);
+    expect([...document.querySelectorAll(".family h2")].map((node) => node.textContent))
+      .toEqual(["Murdoku", "Binairo", "Tango"]);
+    expect(document.querySelectorAll(".family")[0].querySelectorAll("img")).toHaveLength(1);
+    expect([...document.querySelectorAll(".family h3")].map((node) => node.textContent))
+      .toEqual(["Murdoku · Demo", "Murdoku · Museum"]);
+  });
+
+  it("keeps puzzle links usable and reports a failed family preview", async () => {
     await openIndex();
     document.querySelector("img")!.dispatchEvent(new Event("error"));
     expect(document.querySelector(".preview-unavailable")?.textContent).toBe("Preview unavailable");
-    expect(document.querySelector(".puzzle-card")?.getAttribute("href")).toBe("#first-case");
+    expect(document.querySelector(".puzzle-list a")?.getAttribute("href")).toBe("#first-case");
   });
 
-  it("opens a card's player and returns to the same index", async () => {
+  it("opens a puzzle's player and returns to the same index", async () => {
     await openIndex();
     window.location.hash = "#first-case";
     await vi.waitFor(() => expect(renderPuzzle).toHaveBeenCalledOnce());
@@ -102,7 +124,7 @@ describe("puzzle index", () => {
     expect(requested.some((url) => url.endsWith("/first-case.json"))).toBe(true);
     expect(requested.some((url) => url.endsWith("/first-case.svg"))).toBe(true);
     window.location.hash = "";
-    await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-card")).toHaveLength(2));
+    await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(2));
     expect(requested.filter((url) => url.endsWith("/index.json"))).toHaveLength(1);
   });
 });

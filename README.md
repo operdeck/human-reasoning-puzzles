@@ -100,8 +100,9 @@ The solver handles very different kinds of logic. Here are a few; [browse and pl
 `web/` is a small TypeScript + Vite player for every example, published to [GitHub Pages](https://operdeck.github.io/human-reasoning-puzzles/)
 by `.github/workflows/pages.yml` on each push to `main` (repository Settings → Pages →
 Source: GitHub Actions). Python stays the single source of truth: the player knows no
-puzzle family, it only reads the bundles from `--export`. The index shows lazy-loaded,
-unsolved board previews in each category; select any card to open its player.
+puzzle family, it only reads the bundles from `--export`. The index shows one
+representative unsolved board preview per family, with compact puzzle links
+and Murdoku categories underneath; select a puzzle title to open its player.
 Locally (Node 22.12 or later):
 
 ```sh

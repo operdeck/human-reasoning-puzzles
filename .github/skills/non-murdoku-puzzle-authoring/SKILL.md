@@ -84,9 +84,10 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    the middle, renumber the later files (with their `docs/images` pictures) and
    update every reference. Give each a short comment, and update the tier table
    in `docs/puzzle-collection.md`.
-   Re-export the web collection and check its unsolved thumbnail and card link.
-   The index uses the bundle's `static` SVG, never a solution image; it shares
-   the booklet's numbering and sections rather than maintaining a manual gallery.
+   Re-export the web collection and check its puzzle links and family preview.
+   The index shows one representative unsolved `static` SVG per display family,
+   not an image per puzzle. Keep Binairo and Tango separate via `familyLabel`.
+   It shares the booklet's numbering and sections, not a separate manual gallery.
    Then audit the whole collection:
 
    ```bash

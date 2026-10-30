@@ -264,11 +264,12 @@ puzzle. Follow `.github/skills/non-murdoku-puzzle-authoring/SKILL.md`.
 Murdoku has its own generator skill and tools; do not change them for
 non-Murdoku work.
 
-The web index is the full visual inventory. It reuses each exported bundle's
-unsolved `static` SVG as a lazy-loaded thumbnail; keep that path in the index
-metadata and never use solution pictures for previews. Preserve
-`collection.arrange` numbering and sections, and check both narrow and desktop
-layouts plus card-to-player navigation when changing the index.
+The web index is the full visual inventory. Show one representative unsolved
+`static` SVG per displayed family, not a thumbnail for every puzzle or Murdoku
+category. Group by `familyLabel` to keep Binairo and Tango distinct; retain
+category headings and `collection.arrange` numbering in the compact puzzle
+lists. Keep static paths in index metadata and never use solution pictures
+for previews. Check narrow/desktop layouts and puzzle-link navigation.
 
 ## Current rule coverage, measured
 
