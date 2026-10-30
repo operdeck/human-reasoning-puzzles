@@ -465,6 +465,13 @@ One or two lines, true for the verified solution (check against --explain).
   (e.g. the late-reveal companion); never point to text that is not printed.
 - A series (same folder) shares one title pattern; each puzzle gets its own
   subtitle and its own `Reveal:`.
+- Mystery questions and reveals must identify the requested role explicitly
+  ("Who is the murderer?", "Carmen is the murderer"), not rely on an action
+  such as "struck with" that can confuse attacker and victim. Explain the
+  answer using the encoded trait and crime-scene rules. Never infer a named
+  victim from room-sharing alone: name one only when the puzzle explicitly
+  establishes that identity. Review the whole series for the same ambiguity
+  and check the wording reaches both the web verdict and booklet solution.
 - Check `uv run csp FILE --docx /tmp/check.docx` (needs `uv sync --extra docx`):
   one page per puzzle and solution, correct Dutch de/het, legible board. Never
   commit `.docx` files. Format details: `docs/model-and-puzzle-formats.md`.

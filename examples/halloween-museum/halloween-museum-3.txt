@@ -149,7 +149,7 @@ Gonzalo: the restorer ; icon=U+1F474
 Hugo: dressed as a skeleton ; icon=U+1F480
 
 Question:
-Who swung the candlestick?
+Who is the murderer in the candlestick case?
 
 Reveal:
-Gonzalo, the restorer, was the only member of staff in the Goya room.
+Gonzalo, the restorer, is the murderer: he was the only member of staff in the Goya room, where the candlestick lies.
