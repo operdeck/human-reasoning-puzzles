@@ -4,8 +4,8 @@
 # verblijf; elke aap deelt zijn verblijf altijd met iemand (Rules:).
 # Doel: vind de verzorger. Hij staat alleen met precies een dier en wordt gebeten.
 #
-# Oplossing: Gibbon r3c3, Giraffe r4c2, Makaak r2c5, Leeuw r1c4, Verzorger r5c1.
-# De verzorger deelt de woestijn met Giraffe, dat hem bijt.
+# Oplossing: Berggorilla r3c3, Kameel r4c2, Makaak r2c5, Leeuw r1c4, Verzorger r5c1.
+# De verzorger deelt de woestijn met Kameel, dat hem bijt.
 #
 Size: 5
 Language: nl
@@ -21,14 +21,14 @@ role_has: {who} is een {role}
 role_not: {who} is geen {role}
 Leeuw: de leeuw
 Makaak: de makaak
-Gibbon: de gibbon
-Giraffe: de giraffe
+Berggorilla: de berggorilla
+Kameel: de kameel
 Verzorger: de verzorger
 
 Regions:
 savanne: savanne #E8CF96
-bergen: bergen #DCDEE2
-moeras: moeras #C8C29A
+bergen: bergen #CCD9E5
+moeras: moeras #AEC88A
 woestijn: woestijn #FAEDB8
 
 Grid:
@@ -45,8 +45,8 @@ waterval: blocking r4c3
 gras: standable r2c2 r3c2
 
 Attributes:
-aap: Makaak Gibbon
-dier: Leeuw Makaak Gibbon Giraffe
+aap: Makaak Berggorilla
+dier: Leeuw Makaak Berggorilla Kameel
 
 Roles:
 aap: 2
@@ -60,8 +60,8 @@ U+1F981
 People:
 Leeuw
 Makaak
-Gibbon
-Giraffe
+Berggorilla
+Kameel
 Verzorger
 
 Rules:
@@ -71,12 +71,12 @@ alone_with Verzorger attribute:dier
 
 Clues:
 in_region Makaak bergen
-above Gibbon Giraffe
-in_column Gibbon 3
+above Berggorilla Kameel
+in_column Berggorilla 3
 in_region Leeuw savanne
 not_next_to Makaak gras
-left_of Giraffe Gibbon
-within Gibbon Giraffe 2
+left_of Kameel Berggorilla
+within Berggorilla Kameel 2
 
 # Booklet text for --docx (optional).
 Title:
@@ -90,12 +90,12 @@ De verzorger wordt als laatste geplaatst en staat alleen met precies één dier.
 Figures:
 Leeuw: altijd alleen in zijn verblijf ; icon=U+1F981
 Makaak: een aap, nooit alleen ; icon=U+1F412
-Gibbon: een aap, nooit alleen ; icon=U+1F9A7
-Giraffe: ; icon=U+1F992
+Berggorilla: een aap, nooit alleen ; icon=U+1F98D
+Kameel: ; icon=U+1F42B
 Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
 
 Question:
 De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?
 
 Reveal:
-De verzorger deelt de woestijn met de giraffe, die hem bijt.
+De verzorger deelt de woestijn met de kameel, die hem bijt.
