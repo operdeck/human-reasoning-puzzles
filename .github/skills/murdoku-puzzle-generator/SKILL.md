@@ -428,6 +428,11 @@ so there is no person-to-person `next_to`.
 Presentation only; the solver ignores it. Add it last, in the puzzle's
 `Language:` (`en`/`nl`), after `Clues:`:
 
+The DOCX/PDF booklet and web player automatically show a general note that
+character kinds and descriptions are story details, not clues. Do not duplicate
+this note in each puzzle's `Intro:`; players should use only explicit rules and
+numbered clues to determine what is possible.
+
 ```
 Title:
 Japanese Food Murdoku 6x6: Five dishes, one wolverine
