@@ -1,15 +1,13 @@
-# Calcudoku 4x4: easy, cage arithmetic and singles are enough.
+# Calcudoku 4x4: easy, connected cages of at least two cells (seed 13502).
 Size: 4
 Grid:
-a b b b
-c c c d
-e e d d
-f e d g
+cage0 cage0 cage1 cage1
+cage0 cage2 cage2 cage3
+cage4 cage4 cage3 cage3
+cage4 cage3 cage3 cage3
 Cages:
-a: 4
-b: 6+
-c: 24x
-d: 12+
-e: 6x
-f: 1
-g: 2
+cage0: 5+
+cage1: 7+
+cage2: 5+
+cage3: 144x
+cage4: 8+

@@ -1,28 +1,26 @@
 # Calcudoku - Fiendish 6x6: needs case splits (what_if).
-# Generated; uniqueness checked by an independent brute-force search.
+# Singleton-free variation, seed 13506; independently checked for uniqueness.
 
 Size: 6
 
 Grid:
-a a b b l l
-a h h k k l
-e e n k d d
-g i i f f d
-g i m c c j
-g g m c j j
-
+cage0 cage0 cage1 cage1 cage2 cage2
+cage0 cage3 cage3 cage4 cage4 cage2
+cage5 cage5 cage3 cage4 cage6 cage6
+cage7 cage8 cage8 cage9 cage9 cage6
+cage7 cage8 cage10 cage11 cage11 cage12
+cage7 cage7 cage10 cage11 cage12 cage12
 Cages:
-a: 13+
-b: 1-
-c: 9+
-d: 20x
-e: 7+
-f: 9+
-g: 14+
-h: 1-
-i: 4x
-j: 12x
-k: 12+
-l: 9+
-m: 11+
-n: 3
+cage0: 13+
+cage1: 1-
+cage2: 9+
+cage3: 18x
+cage4: 12+
+cage5: 7+
+cage6: 20x
+cage7: 14+
+cage8: 4x
+cage9: 9+
+cage10: 11+
+cage11: 9+
+cage12: 12x
