@@ -235,7 +235,7 @@ def test_clues_are_grouped_per_person():
     paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
     makaak = next(p for p in paragraphs if p.startswith("De makaak"))
     assert makaak == "De makaak is in de bergen en zit niet op of naast het gras."
-    assert sum(p.startswith("De giraffe") for p in paragraphs) == 1
+    assert sum(p.startswith("De kameel") for p in paragraphs) == 1
 
 
 def test_exactly_one_same_region_reads_as_either_or():
