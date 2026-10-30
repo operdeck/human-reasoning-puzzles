@@ -273,6 +273,10 @@ For a finished Murdoku under `examples/`, before reporting done:
   (`count people on object:badjas = 2`). Standing on the square means wearing
   it. Use `Attributes:` only for traits the player is told up front; the
   legend then lists the holders with the trait's icon.
+- Avoid duplicate category lines in the legend: when a fixed role has the same
+  name and exactly the same members as an attribute, show the role line only.
+  Keep the attribute line when roles are hidden or the membership is not
+  provably identical.
 - **Selectors on both sides** of a relation clue say "somebody X ... somebody
   Y": `above object:badjas object:sloffen 1` is "one bathrobe wearer is
   exactly one row above the slippers wearer". When both selectors name cells
