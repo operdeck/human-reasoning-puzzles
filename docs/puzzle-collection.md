@@ -2,7 +2,7 @@
 
 Browse and play every published puzzle in the
 [web puzzle index](https://operdeck.github.io/human-reasoning-puzzles/).
-Its unsolved board thumbnails, category sections, sizes, and deduction grades
+Its representative family thumbnails, category sections, sizes, and deduction grades
 replace the former documentation gallery. This guide keeps the authoring,
 collection, and grading notes; the index is the visual inventory.
 

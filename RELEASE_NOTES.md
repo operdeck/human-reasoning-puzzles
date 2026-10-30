@@ -29,7 +29,7 @@
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
 
 **New Feature(s)**
-* [#147 Better puzzle index](https://github.com/operdeck/human-reasoning-puzzles/issues/147): the web index now presents every puzzle as a responsive, keyboard-accessible card with a lazy-loaded unsolved board preview, title, size, and deduction grade. Existing category sections, numbering, and player navigation are preserved.
+* [#147 Better puzzle index](https://github.com/operdeck/human-reasoning-puzzles/issues/147): the web index now shows one representative unsolved thumbnail per displayed family alongside compact, keyboard-accessible puzzle links, sizes, and deduction grades. Murdoku categories, numbering, and player navigation are preserved; Binairo and Tango keep separate previews.
     * Removed the separate documentation gallery. Collection overviews, grading tables, rule-focused examples, and benchmark instructions now live in `docs/puzzle-collection.md`; documentation and authoring skills point to the web index for visual browsing.
 * `puzzle-lab fresh` builds brand-new Binairo, Tango, Queens and Suguru boards with their own solution, rated to a requested tier (`src/csp/fresh.py`).
 * Added the English Murder Hotel Murdoku series in `examples/murder-hotel/`, with Italian-named guests, themed hotel floors, and a separate murderer-role position reveal in the final puzzle. The 8×8 opener uses a simpler `relations` grade; the 9×9 and 10×10 puzzles grade `subsumption`.
