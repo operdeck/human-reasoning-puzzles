@@ -22,6 +22,18 @@ PRRRDOKUS = ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"]
 PLACED = re.compile(r"\*\*(\w+) op r(\d+)k(\d+)\*\*")
 
 
+@pytest.mark.parametrize("number,murderer", [(1, "Carmen"), (2, "Diego"), (3, "Gonzalo")])
+def test_halloween_reveal_names_the_unique_solved_murderer(number, murderer):
+    text = example(f"halloween-museum-{number}.txt").read_text()
+    board, _ = load_board(text)
+    solutions = bruteforce.solutions(text, "murdoku", limit=2)
+    assert len(solutions) == 1
+    assert [
+        person for person in board.people if solutions[0][board.role_variable(person, "murderer")]
+    ] == [murderer]
+    assert text.split("Reveal:\n", 1)[1].startswith(f"{murderer},")
+
+
 def _moves(model: Model) -> list[Move]:
     moves: list[Move] = []
 
