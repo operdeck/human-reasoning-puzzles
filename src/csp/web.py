@@ -355,7 +355,7 @@ def _domain(model: Model, var: str) -> list[Any]:
 
 
 def index_entry(data: Mapping[str, Any]) -> dict[str, Any]:
-    """The landing page's line for one bundle."""
+    """The landing page's preview and metadata for one bundle."""
     keys = (
         "id",
         "number",
@@ -365,6 +365,7 @@ def index_entry(data: Mapping[str, Any]) -> dict[str, Any]:
         "familyLabel",
         "size",
         "grade",
+        "static",
         "playable",
     )
     entry = {key: data[key] for key in keys}
