@@ -67,7 +67,7 @@ changes do not create another family or gallery section.
 | Minesweeper-style | — | [`minesweeper_1_8x8.txt`](../examples/minesweeper_1_8x8.txt) (`subsumption`) | [`minesweeper_4_8x8.txt`](../examples/minesweeper_4_8x8.txt) (`cover3`) |
 | Light Up / Akari | — | [`akari_1_6x6.txt`](../examples/akari_1_6x6.txt) (`subsumption`) | [`akari_2_8x8.txt`](../examples/akari_2_8x8.txt) (`chains`) |
 | Kakurasu | [`kakurasu_1_4x4.txt`](../examples/kakurasu_1_4x4.txt) (`relations`) | [`kakurasu_2_8x8.txt`](../examples/kakurasu_2_8x8.txt) (`relations`) | — |
-| Battleships | — | [`battleships_1_6x6_fleet.txt`](../examples/battleships_1_6x6_fleet.txt) (`count`) | [`battleships_2_8x8_fleet.txt`](../examples/battleships_2_8x8_fleet.txt) (`chains`) |
+| Battleships | — | [`battleships_1_6x6_fleet.txt`](../examples/battleships_1_6x6_fleet.txt), [`battleships_2_8x8_fleet.txt`](../examples/battleships_2_8x8_fleet.txt) (`count`); [`battleships_3_8x8_fleet.txt`](../examples/battleships_3_8x8_fleet.txt) (`subsumption`) | [`battleships_4_8x8_fleet.txt`](../examples/battleships_4_8x8_fleet.txt), [`battleships_5_8x8_fleet.txt`](../examples/battleships_5_8x8_fleet.txt) (`chains`) |
 
 The most visible gaps are Tectonic/Suguru, counts-only Battleships, Kakurasu,
 and logic grids. In particular, the existing 8 × 8 Suguru file is
@@ -81,6 +81,18 @@ no givens. The starter queens are explicit clues, not single-cell regions
 that silently give away a placement.
 
 ## Rule-focused examples
+
+The five Battleships boards progress from medium (`count`, then `subsumption`)
+to hard (`chains`), without `what_if`. Three 8×8 boards demonstrate every
+symbol described by the player rules: *Buoys in the channel* (medium, seed
+1510), *Broken radio signals* (medium, seed 1513), and *Fogbound convoy* (hard,
+seed 1511). Each includes water waves, an unspecified `?` segment, a single-cell
+circle, rounded ends, and square middles. They retain only 7–8 givens on 64
+cells, have independently verified unique solutions, and still need fleet
+rules. Explicit water includes a cell outside zero-total rows and columns.
+Adding these boards renumbered the existing *Open-water search* from
+`battleships_2_8x8_fleet.txt` to `battleships_4_8x8_fleet.txt`; its board and
+grade are unchanged.
 
 The six Calcudoku examples contain no single-cell cages. All cages are
 connected and have at least two cells; each board has one independently
@@ -108,7 +120,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Minesweeper-style | `minesweeper_2_5x5.txt` | `minesweeper_3_8x8.txt` |
 | Light Up / Akari | `akari_1_6x6.txt` | `akari_2_8x8.txt` |
 | Kakurasu | `kakurasu_1_4x4.txt` | `kakurasu_2_8x8.txt` |
-| Battleships | `battleships_1_6x6_fleet.txt` | `battleships_2_8x8_fleet.txt` |
+| Battleships | `battleships_1_6x6_fleet.txt` | `battleships_2_8x8_fleet.txt`, `battleships_3_8x8_fleet.txt`, `battleships_4_8x8_fleet.txt`, `battleships_5_8x8_fleet.txt` |
 
 ## Existing families
 
