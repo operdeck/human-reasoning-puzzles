@@ -1290,7 +1290,17 @@ class _Legend:
         self.item_rows = (len(self.item_names) + 1) // 2
         self.mark_names = sorted(board.mark_names)
         self.role_names = sorted(board.role_names) if show_roles else []
-        self.attribute_names = sorted(board.attributes)
+        self.attribute_names = [
+            name
+            for name, holders in sorted(board.attributes.items())
+            if not any(
+                role.name == name
+                and role.name in self.role_names
+                and role.eligible_people == holders
+                and role.allowed_counts == {len(holders)}
+                for role in board.roles
+            )
+        ]
         self.tag_lines = [
             f"{tag.replace('_', ' ').capitalize()}: "
             + ", ".join(
