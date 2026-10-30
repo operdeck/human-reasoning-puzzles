@@ -119,7 +119,7 @@ Elena: dressed as a zombie ; icon=U+1F9DF
 Fernando: the tour guide ; icon=U+1F468
 
 Question:
-Who wielded the cursed dagger?
+Who is the murderer in the cursed dagger case?
 
 Reveal:
-Carmen, dressed as a witch, struck with the dagger in the Egyptian hall.
+Carmen, dressed as a witch, is the murderer: she was the only woman in the Egyptian hall, where the cursed dagger lies.

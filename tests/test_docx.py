@@ -18,6 +18,22 @@ from tests.examples import all_examples, example
 PRRRDOKUS = ["prrrdoku1", "prrrdoku2", "prrrdoku3"]
 
 
+@pytest.mark.parametrize("number", (1, 2, 3))
+def test_halloween_booklet_keeps_explicit_murderer_reveal_on_solution_page(number, tmp_path):
+    source = example(f"halloween-museum-{number}.txt")
+    text = source.read_text()
+    presentation = load_presentation(text)
+    output = tmp_path / "museum.docx"
+    assert main([str(source), "--docx", str(output)]) == 0
+    rendered = _text(output)
+    reveal = " ".join(presentation.reveal)
+    assert presentation.question.startswith("Who is the murderer")
+    assert presentation.question in rendered
+    assert "is the murderer:" in reveal
+    assert rendered.count(reveal) == 1
+    assert rendered.index(reveal) > rendered.index("\nSolution\n")
+
+
 def write_docx(text, out, base, solution=None):
     write_booklet([Entry(text, base / "x.txt", solution)], out)
 

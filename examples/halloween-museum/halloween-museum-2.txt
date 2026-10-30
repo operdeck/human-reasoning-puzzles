@@ -131,7 +131,7 @@ Fernando: the tour guide ; icon=U+1F468
 Gonzalo: the restorer ; icon=U+1F474
 
 Question:
-Who fired the crossbow?
+Who is the murderer in the crossbow case?
 
 Reveal:
-Diego, dressed as a vampire, was the only guest in costume in the armoury.
+Diego, dressed as a vampire, is the murderer: he was the only guest in costume in the armoury, where the crossbow lies.
