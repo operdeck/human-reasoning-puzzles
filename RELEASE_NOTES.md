@@ -11,6 +11,7 @@
 **Licensing**
 * The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
 **Bug Fix(es)**
+* [#134 Halloween mystery reveals](https://github.com/operdeck/human-reasoning-puzzles/issues/134): all three Halloween at the Museum questions and reveals explicitly identify the murderer and explain the matching trait and crime scene. The cursed dagger reveal no longer uses the ambiguous "struck with" wording. No victim identity is inferred, and boards, rules, clues and solutions are unchanged.
 * [#135 Calcudoku cage entry](https://github.com/operdeck/human-reasoning-puzzles/issues/135): single-cell cage targets remain editable clues in the web player, not invisible locked givens. Players must enter every digit, including these clue cells, for the puzzle to count as solved. Legacy files remain supported.
     * Fresh and seed-based Calcudoku generation no longer create single-cell cages. Stranded cells merge into adjacent cages, with targets recalculated from the solution. Seed variations change arithmetic clues rather than introducing singleton hints.
     * Reworked all affected examples and regenerated all six puzzle/solution diagram pairs. Every published cage has at least two connected cells; the existing `relations`, `cover2`, `cover3` and fiendish `what_if` coverage is retained.
