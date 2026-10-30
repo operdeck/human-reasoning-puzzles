@@ -6,7 +6,7 @@ The checked-in example files are original, generated, or owner-authored. Publish
 
 ```bash
 uv run csp examples/sudoku_1_4x4.txt
-uv run csp examples/queens_4_4x4.txt --show-model
+uv run csp examples/queens_6_4x4.txt --show-model
 uv run csp examples/demo/murdoku_1_first_case.txt --explain
 uv run csp examples/logicgrid_1_3x3.txt --brute-force
 uv run csp examples/akari_1_6x6.txt --png
@@ -34,8 +34,7 @@ These previews are generated from the example files. The root README keeps a com
 
 <table>
 <tr><th>Family</th><th>Rules</th><th>Small / larger file</th><th>Puzzle</th><th>Solution</th></tr>
-<tr id="queens"><td>Queens-style</td><td>One queen per row, column and colour region; queens may not touch, not even diagonally.</td><td><a href="../examples/queens_4_4x4.txt">4 × 4</a> / <a href="../examples/queens_2_8x8.txt">8 × 8</a></td><td><img src="images/queens_4_4x4.png" width="100" alt="Queens puzzle"></td><td><img src="images/queens_4_4x4-solution.png" width="100" alt="Queens solution"></td></tr>
-<tr id="dogdoku"><td>DogDoku</td><td>Queens rules with dogs: one dog per row, column and zone; dogs may not touch, even diagonally.</td><td><a href="../examples/dogdoku_1_5x5.txt">5 × 5</a> / <a href="../examples/dogdoku_2_7x7.txt">7 × 7</a> / <a href="../examples/dogdoku_3_9x9.txt">9 × 9</a></td><td><img src="images/dogdoku_2_7x7.png" width="100" alt="DogDoku puzzle"></td><td><img src="images/dogdoku_2_7x7-solution.png" width="100" alt="DogDoku solution"></td></tr>
+<tr id="queens"><td>Queens</td><td>One queen per row, column and colour region; queens may not touch, not even diagonally.</td><td><a href="../examples/queens_1_4x4.txt">4 × 4 easy</a> / <a href="../examples/queens_2_5x5.txt">5 × 5</a> / <a href="../examples/queens_3_7x7.txt">7 × 7</a> / <a href="../examples/queens_4_8x8.txt">8 × 8</a> / <a href="../examples/queens_5_9x9.txt">9 × 9</a> / <a href="../examples/queens_6_4x4.txt">4 × 4 hard</a></td><td><img src="images/queens_3_7x7.png" width="100" alt="Queens puzzle"></td><td><img src="images/queens_3_7x7-solution.png" width="100" alt="Queens solution"></td></tr>
 <tr id="sudoku-relations"><td>Sudoku relations</td><td>Sudoku, plus dots (white: differ by 1; black: one is double the other), consecutive-pair bars (difference 1), and thermometers that rise from the bulb. Missing dots impose no restriction.</td><td><a href="../examples/sudoku_9_4x4_kropki_consecutive_thermometers.txt">4 × 4</a> / <a href="../examples/sudoku_7_9x9_kropki_consecutive_thermometers.txt">9 × 9</a></td><td><img src="images/sudoku_9_4x4_kropki_consecutive_thermometers.png" width="100" alt="Kropki, consecutive-pair and thermometer Sudoku"></td><td><img src="images/sudoku_9_4x4_kropki_consecutive_thermometers-solution.png" width="100" alt="Solved Sudoku variant"></td></tr>
 <tr id="anti-knight"><td>Anti-knight Sudoku</td><td>Sudoku, where equal digits may also not be a knight's move apart.</td><td><a href="../examples/sudoku_2_4x4_anti_knight.txt">4 × 4</a> / <a href="../examples/sudoku_3_9x9_anti_knight.txt">9 × 9</a></td><td><img src="images/sudoku_2_4x4_anti_knight.png" width="100" alt="Anti-knight puzzle"></td><td><img src="images/sudoku_2_4x4_anti_knight-solution.png" width="100" alt="Anti-knight solution"></td></tr>
 <tr id="anti-king"><td>Anti-king Sudoku</td><td>Sudoku, where equal digits may also not touch, even diagonally.</td><td><a href="../examples/sudoku_16_6x6_anti_king.txt">6 × 6</a> / <a href="../examples/sudoku_4_9x9_anti_king.txt">9 × 9</a></td><td><img src="images/sudoku_16_6x6_anti_king.png" width="100" alt="Anti-king puzzle with rectangular boxes"></td><td><img src="images/sudoku_16_6x6_anti_king-solution.png" width="100" alt="Anti-king solution"></td></tr>
@@ -58,17 +57,16 @@ Every listed file is deductively solved by the repository solver and has a
 unique solution under independent search. The tier is an estimate for this
 solver, not a universal measure of human difficulty. `—` marks a coverage gap:
 the current generator/rule ladder has not produced a trustworthy example for
-that family and tier, so no candidate is promoted by hand. Queens/DogDoku and
-Binairo/Tango are listed separately because the gallery presents them as
-distinct puzzle types.
+that family and tier, so no candidate is promoted by hand. Binairo and Tango
+are listed separately because Tango adds relation signs. Cosmetic piece
+changes do not create another family or gallery section.
 
 | Puzzle type | Easy | Medium | Hard |
 |---|---|---|---|
 | Sudoku | [`sudoku_5_9x9.txt`](../examples/sudoku_5_9x9.txt) (`single`) | [`sudoku_13_9x9_naked_pair.txt`](../examples/sudoku_13_9x9_naked_pair.txt) (`cover2`) | [`sudoku_17_9x9_chains.txt`](../examples/sudoku_17_9x9_chains.txt) (`chains`) |
 | Calcudoku | [`calcudoku_1_4x4.txt`](../examples/calcudoku_1_4x4.txt) (`relations`) | [`calcudoku_3_6x6.txt`](../examples/calcudoku_3_6x6.txt) (`relations`) | [`calcudoku_5_7x7.txt`](../examples/calcudoku_5_7x7.txt) (`cover3`) |
 | Futoshiki | [`futoshiki_1_5x5.txt`](../examples/futoshiki_1_5x5.txt) (`single`) | [`futoshiki_2_5x5.txt`](../examples/futoshiki_2_5x5.txt) (`relations`) | [`futoshiki_3_5x5.txt`](../examples/futoshiki_3_5x5.txt) (`chains`) |
-| Queens | [`queens_1_4x4.txt`](../examples/queens_1_4x4.txt) (`single`) | [`queens_3_7x7.txt`](../examples/queens_3_7x7.txt) (`cover2`) | [`queens_4_4x4.txt`](../examples/queens_4_4x4.txt) (`what_if`) |
-| DogDoku | [`dogdoku_1_5x5.txt`](../examples/dogdoku_1_5x5.txt) (`single`) | [`dogdoku_2_7x7.txt`](../examples/dogdoku_2_7x7.txt) (`subsumption`) | [`dogdoku_4_4x4.txt`](../examples/dogdoku_4_4x4.txt) (`chains`) |
+| Queens | [`queens_1_4x4.txt`](../examples/queens_1_4x4.txt), [`queens_2_5x5.txt`](../examples/queens_2_5x5.txt) (`single`) | [`queens_3_7x7.txt`](../examples/queens_3_7x7.txt), [`queens_4_8x8.txt`](../examples/queens_4_8x8.txt) (`subsumption`); [`queens_5_9x9.txt`](../examples/queens_5_9x9.txt) (`cover2`) | [`queens_6_4x4.txt`](../examples/queens_6_4x4.txt) (`chains`) |
 | Tectonic / Suguru | [`suguru_1_4x4.txt`](../examples/suguru_1_4x4.txt) (`single`) | — | [`suguru_2_8x8.txt`](../examples/suguru_2_8x8.txt) (`chains`) |
 | Star Battle | [`starbattle_1_8x8.txt`](../examples/starbattle_1_8x8.txt) (`count`) | [`starbattle_2_8x8.txt`](../examples/starbattle_2_8x8.txt) (`cover2`) | [`starbattle_3_12x12.txt`](../examples/starbattle_3_12x12.txt) (`cover3`) |
 | Zebra logic grid | [`logicgrid_1_3x3.txt`](../examples/logicgrid_1_3x3.txt) (`relations`) | [`logicgrid_2_6x6.txt`](../examples/logicgrid_2_6x6.txt) (`relations`) | — |
@@ -88,12 +86,11 @@ example can be claimed.
 
 ## Rule-focused examples
 
-The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The 4 × 4 Queens example needs `what_if`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
+The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The Queens collection progresses from `single` through `subsumption` and `cover2` to `chains`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
 
 | Family | Small example | Larger example |
 |---|---|---|
-| Queens-style | `queens_4_4x4.txt` | `queens_2_8x8.txt` |
-| DogDoku (grades `single`, `subsumption`, `cover2`) | `dogdoku_1_5x5.txt` | `dogdoku_2_7x7.txt`, `dogdoku_3_9x9.txt` |
+| Queens (grades `single`, `subsumption`, `cover2`, `chains`) | `queens_1_4x4.txt`, `queens_2_5x5.txt`, `queens_6_4x4.txt` | `queens_3_7x7.txt`, `queens_4_8x8.txt`, `queens_5_9x9.txt` |
 | Sudoku relations | `sudoku_9_4x4_kropki_consecutive_thermometers.txt` | `sudoku_7_9x9_kropki_consecutive_thermometers.txt` |
 | Anti-knight Sudoku | `sudoku_2_4x4_anti_knight.txt` | `sudoku_3_9x9_anti_knight.txt` |
 | Anti-king Sudoku | `sudoku_16_6x6_anti_king.txt` | `sudoku_4_9x9_anti_king.txt` |
