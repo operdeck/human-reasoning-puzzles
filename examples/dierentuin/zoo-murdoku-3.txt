@@ -28,10 +28,10 @@ Verzorger: de verzorger
 
 Regions:
 bos: bos #B5D3A0
-bergen: bergen #DCDEE2
+bergen: bergen #CCD9E5
 jungle: jungle #8FCB98
 weide: weide #E2F2B8
-moeras: moeras #C8C29A
+moeras: moeras #AEC88A
 
 Grid:
 moeras moeras bos bos bos bos
