@@ -269,6 +269,10 @@ In the Murdoku picture, blocked squares are shaded clearly darker than their reg
   Single-cell cages remain valid input, but their targets are clues, not hidden
   prefilled digits: the web player lets the user enter their values normally.
   Every cell must be filled for Check to report a solved puzzle.
+  Published examples and Puzzle Lab generation use cages of at least two
+  cells. Fresh generation merges stranded single cells into touching cages
+  and derives new arithmetic targets from the solution. Seed variations do
+  the same and may change operations, never add one-cell hint cages.
 - **Futoshiki:** `Grid:` givens/dots plus `Signs:` lines such as `r1c4 < r2c4`; signs join orthogonally adjacent cells.
 - **Sudoku:** see the earlier section. Plain format is a grid; variants use sectioned `Givens:`, `Boxes:`, and `Extra:`.
 
@@ -296,6 +300,9 @@ puzzle only when the deductive solver completes it and independent search
 confirms a unique solution; `search` applies the same checks across files.
 `generate` searches reproducible family-aware variants and refuses to write a
 candidate that misses the requested tier; it keeps the seed's solution.
+Both `generate` and `fresh` accept optional `--grade` for exact technique
+coverage as well as a tier, for example `--tier hard --grade cover3`.
+If no candidate matches both requirements, they fail without writing a file.
 `fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
 Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
 and Tents, then removes givens while the solution stays unique. Battleships

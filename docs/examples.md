@@ -91,6 +91,15 @@ that silently give away a placement.
 
 ## Rule-focused examples
 
+The six Calcudoku examples contain no single-cell cages. All cages are
+connected and have at least two cells; each board has one independently
+verified solution. The sequence retains two easy 4 × 4s (`relations`),
+a medium 6 × 6 (`relations`), a medium 6 × 6 (`cover2`), a hard 7 × 7
+(`cover3`) and a fiendish 6 × 6 (`what_if`). The last fallback remains
+reserved for that explicitly fiendish example. Legacy files with one-cell
+cages remain playable: their target digits must be entered, not silently
+locked as invisible givens.
+
 The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The Queens collection progresses from `single` through `subsumption` and `cover2` to `chains`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
 
 | Family | Small example | Larger example |

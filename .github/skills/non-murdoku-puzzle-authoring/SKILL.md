@@ -64,6 +64,9 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    Only unique, deductively solved, nontrivial candidates qualify. Preserve the
    reported family, grade, tier, and uniqueness status; never promote an
    unrated or invalid candidate by hand.
+   When preserving technique coverage, pass optional `--grade` to `fresh`
+   or `generate` as well as `--tier`, for example `--tier hard --grade cover3`.
+   A tier alone cannot distinguish the different hard deduction rules.
 5. Search the gallery to find coverage gaps and verify a new file is indexed
    under the intended display family:
 
@@ -101,6 +104,24 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    brute-force-only solving.
 
 ## Difficulty and validation
+
+Calcudoku cages must contain at least two cells in published examples and
+fresh or seed-based authoring. Excluding size one from the requested cage
+sizes is insufficient: growth can still strand a single cell. Merge each
+singleton into a touching cage and rederive that cage's target and operation
+from the solution; keep unaffected clues valid. Never generate easier
+variants by splitting cages into one-cell hints. The shared builder handles
+both fresh layouts and seed variations, with deterministic seeds and
+connectivity/solution checks.
+
+Keep valid legacy singleton syntax readable. Compiler-fixed values are not
+necessarily authored givens: Calcudoku targets are arithmetic clues, and the
+web player should let the user enter their digits. Test that every playable
+cell is editable or visibly prefilled, and that Check requires editable clue
+cells before reporting solved. Keep this policy in the exporter, not as
+family-specific UI code. Rework affected examples without losing measured
+technique coverage, audit uniqueness/order, and refresh puzzle and solution
+images as well as web/booklet exports.
 
 Queens regions must contain at least two cells in published examples and
 freshly authored boards. Single-cell regions give away a placement, regardless
