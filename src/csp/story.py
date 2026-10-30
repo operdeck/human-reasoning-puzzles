@@ -608,8 +608,6 @@ FAMILY_RULES = {
     "inequality sign between neighbouring cells holds.",
     "queens": "Place one queen in every row, column and region; queens may not touch, "
     "not even diagonally.",
-    "dogdoku": "Place one dog in every row, column and region; dogs may not touch, "
-    "not even diagonally.",
     "suguru": "Fill every region of n cells with 1..n; equal digits may not touch, "
     "not even diagonally.",
     "starbattle": "Place stars so each row, column and region holds the same number; "

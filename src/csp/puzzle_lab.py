@@ -41,7 +41,7 @@ class Rating:
 
 
 def family_of(text: str) -> str:
-    """The display-level family, retaining aliases such as DogDoku and Tango."""
+    """The display-level family, retaining rule variants such as Tango."""
     section = read_sections(text).get("Family")
     return section[0].casefold() if section else detect(text)
 
@@ -218,7 +218,7 @@ def _add_givens(
         return _regenerate_tents(text, solution, rng)
     if family in {"battleships", "kakurasu"}:
         return _regenerate_count_grid(text, family, solution, rng)
-    if family == "queens" or family == "dogdoku":
+    if family == "queens":
         existing = read_sections(text).get("Givens", [])
         regions = {str(region): cell for region, cell in solution.items()}
         absent = [
@@ -677,7 +677,6 @@ def _generate_command(args: argparse.Namespace) -> int:
     if args.as_family:
         aliases = {
             "queens": "queens",
-            "dogdoku": "queens",
             "binairo": "binairo",
             "tango": "binairo",
         }
@@ -834,7 +833,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     generate_parser.add_argument("source")
     generate_parser.add_argument("--output", required=True)
     generate_parser.add_argument("--tier", choices=tuple(TIERS), required=True)
-    generate_parser.add_argument("--as-family", choices=("queens", "dogdoku", "binairo", "tango"))
+    generate_parser.add_argument("--as-family", choices=("queens", "binairo", "tango"))
     generate_parser.add_argument("--seed", type=int, default=0)
     generate_parser.add_argument("--attempts", type=int, default=100)
     generate_parser.set_defaults(run=_generate_command)

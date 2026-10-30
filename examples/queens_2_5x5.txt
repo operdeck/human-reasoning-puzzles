@@ -1,0 +1,17 @@
+# Queens 5x5: easy, one given queen; no single-cell regions (seed 13805).
+Family: queens
+Size: 5
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+e: violet
+Grid:
+d b a a a
+d b a a a
+d d a c c
+d d e c c
+e e e c c
+Givens:
+a r1c5

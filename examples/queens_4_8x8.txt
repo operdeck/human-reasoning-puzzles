@@ -1,0 +1,21 @@
+# Queens 8x8: medium, no givens or single-cell regions (seed 13808).
+Family: queens
+Size: 8
+Regions:
+a: amber
+b: blue
+c: coral
+d: green
+e: violet
+f: silver
+g: gold
+h: teal
+Grid:
+a a c c b b b b
+c c c c c c c b
+c c c c c c d d
+c c c c c c d d
+c c e e c f d d
+c c g f f f f d
+c c g g g f f f
+c h h g g g g f

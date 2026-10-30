@@ -1,7 +1,6 @@
-# DogDoku 9x9: harder, two zones share two lines.
-Family: dogdoku
+# Queens 9x9: medium, one given queen; no single-cell regions (cover2).
+Family: queens
 Size: 9
-Icon: dog
 Regions:
 a: coral
 b: amber
@@ -15,10 +14,12 @@ i: clay
 Grid:
 c c i i a a i e e
 c c i i i i i e e
-c c i i i i e e e
+c c f i i i e e e
 c c f i h h e e h
 c c c c h h h h h
 c c c d h h h h h
 g g g d b b h h h
 g d g d d d h h h
 d d d d d d h h h
+Givens:
+f r4c3

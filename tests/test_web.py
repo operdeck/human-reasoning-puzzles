@@ -115,10 +115,11 @@ def test_logic_grids_are_listed_but_not_playable(exported):
 
 
 def test_display_aliases_keep_their_labels_and_rules(exported):
-    dog = _bundle(exported, "dogdoku_1_5x5")
-    assert dog["family"] == "queens"
-    assert dog["familyLabel"] == "DogDoku"
-    assert "one dog" in dog["rules"][0]
+    queens = _bundle(exported, "queens_2_5x5")
+    assert queens["family"] == "queens"
+    assert queens["familyLabel"] == "Queens"
+    assert "one queen" in queens["rules"][0]
+    assert queens["palette"][0]["id"] == "queen"
 
     tango = _bundle(exported, "tango_2_4x4")
     assert tango["family"] == "binairo"
@@ -283,7 +284,12 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
     assert "Murdoku \u00b7 Japanese food" in sections
     assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
     assert _bundle(exported, "food-murdoku-2")["section"] == "Murdoku \u00b7 Japanese food"
-    assert "DogDoku" in sections and "Tango" in sections
+    assert "Queens" in sections and "Tango" in sections
+    queens = [entry for entry in puzzles if entry["family"] == "queens"]
+    assert len(queens) == 6
+    assert {entry["section"] for entry in queens} == {"Queens"}
+    for entry in queens:
+        assert [piece["id"] for piece in _bundle(exported, entry["id"])["palette"]] == ["queen"]
 
 
 def test_author_wordings_reach_the_web_player(exported):
