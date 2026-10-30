@@ -522,6 +522,9 @@ def _regenerate_tents(text: str, solution: Mapping[str, Any], rng: random.Random
 def _regenerate_count_grid(
     text: str, family: str, solution: Mapping[str, Any], rng: random.Random
 ) -> str | None:
+    if family == "battleships" and "Fleet" in read_sections(text):
+        # Permuting lines would bend ships or make separate ships touch.
+        return _mutate(text, rng)
     size = int(read_sections(text)["Size"][0])
     row_order = rng.sample(range(size), size)
     column_order = rng.sample(range(size), size)

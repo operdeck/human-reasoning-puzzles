@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
 
-from . import sudoku
+from . import battleships, sudoku
 from .core import Kind, Model, Solver, Step
 from .murdoku import (
     COUNTING,
@@ -545,6 +545,37 @@ PEER_RULE_LABELS = {
 
 def family_rules(text: str, kind: str) -> list[str]:
     """Player-facing rules from the same parsed variant semantics as the solver."""
+    if kind == "battleships":
+        fleet_puzzle = battleships.parse(text)
+        language = Wording.read(text).language
+        if not fleet_puzzle.fleet:
+            return [
+                "Markeer vakjes volgens de rij- en kolomtotalen; deze variant zonder vloot "
+                "legt geen scheepsvormen of aanraakregels op."
+                if language == "nl"
+                else FAMILY_RULES[kind]
+            ]
+        fleet = ", ".join(map(str, fleet_puzzle.fleet))
+        if language == "nl":
+            return [
+                f"Plaats de volledige vloot: scheepslengten {fleet}.",
+                "Elk schip is een rechte horizontale of verticale reeks vakjes.",
+                "Verschillende schepen mogen elkaar niet raken, ook niet diagonaal.",
+                "De getallen geven het aantal scheepsvakjes in elke rij en kolom.",
+                "Golven zijn water; gegeven scheepsdelen horen bij een schip. Een rondje is "
+                "een schip van één vakje, een afgeronde kant is een uiteinde, en een vierkant "
+                "tussenstuk heeft aan twee tegenoverliggende kanten een scheepsdeel. "
+                "Een vraagteken is een scheepsdeel waarvan de vorm niet gegeven is.",
+            ]
+        return [
+            f"Place the complete fleet: ship lengths {fleet}.",
+            "Each ship is a straight horizontal or vertical run of cells.",
+            "Different ships may not touch, not even diagonally.",
+            "The numbers give the occupied ship cells in each row and column.",
+            "Waves mark water; given ship segments belong to a ship. A circle is a single-cell "
+            "ship, a rounded side is an end, and a square middle segment has ship cells on "
+            "two opposite sides. A question mark is a ship segment of unspecified shape.",
+        ]
     if kind != "sudoku":
         display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
         return [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])]

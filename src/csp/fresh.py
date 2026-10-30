@@ -10,7 +10,7 @@ import random
 import re
 from collections.abc import Callable, Iterable
 
-from csp import bruteforce
+from csp import battleships, bruteforce
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -29,6 +29,7 @@ FAMILIES = (
     "calcudoku",
     "starbattle",
     "tents",
+    "battleships",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -714,6 +715,71 @@ def fresh_tents(
     return None
 
 
+def fresh_battleships(size: int, rng: random.Random, comment: str = "") -> str | None:
+    """Place a fresh non-touching fleet, then thin shaped givens by independent search."""
+    fleets = {
+        4: (2, 1, 1),
+        6: (3, 2, 2, 1, 1, 1),
+        8: (4, 3, 2, 2, 1, 1, 1),
+        10: (4, 3, 3, 2, 2, 2, 1, 1, 1, 1),
+    }
+    if size not in fleets:
+        raise ValueError("fresh Battleships supports sizes 4, 6, 8 and 10")
+    fleet = fleets[size]
+    template = battleships.Puzzle(
+        size,
+        [size] * size,
+        [size] * size,
+        [[-1] * size for _ in range(size)],
+        fleet,
+        tuple(tuple("." for _ in range(size)) for _ in range(size)),
+    )
+    positions = battleships.ships(template)
+    for _ in range(100):
+        chosen: list[battleships.Ship] = []
+        occupied: set[Cell] = set()
+        forbidden: set[Cell] = set()
+        for length in fleet:
+            options = [
+                ship
+                for ship in positions
+                if len(ship.cells) == length and not set(ship.cells) & forbidden
+            ]
+            if not options:
+                break
+            ship = rng.choice(options)
+            chosen.append(ship)
+            occupied.update(ship.cells)
+            forbidden.update(ship.cells)
+            forbidden.update(ship.halo)
+        if len(chosen) != len(fleet):
+            continue
+        shapes = {
+            cell: battleships.segment(ship.cells, cell) for ship in chosen for cell in ship.cells
+        }
+
+        def build(
+            givens: set[Cell],
+            occupied: set[Cell] = occupied,
+            shapes: dict[Cell, str] = shapes,
+        ) -> str:
+            lines = _header(comment, "Family: battleships", f"Size: {size}", "Fleet:")
+            lines += [" ".join(map(str, fleet)), "RowCounts:"]
+            lines += [" ".join(str(sum(r == row for r, _ in occupied)) for row in range(size))]
+            lines += ["ColumnCounts:"]
+            lines += [" ".join(str(sum(c == col for _, c in occupied)) for col in range(size))]
+            lines += ["Givens:"]
+            lines += [
+                " ".join(shapes.get((r, c), "0") if (r, c) in givens else "." for c in range(size))
+                for r in range(size)
+            ]
+            return "\n".join(lines) + "\n"
+
+        kept = thin(_cells(size), build, rng)
+        return build(kept)
+    return None
+
+
 def fresh(
     family: str,
     size: int,
@@ -745,4 +811,6 @@ def fresh(
         return fresh_starbattle(size, rng, stars, open_share or 1.0, comment=comment)
     if family == "tents":
         return fresh_tents(size, rng, comment=comment)
+    if family == "battleships":
+        return fresh_battleships(size, rng, comment=comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

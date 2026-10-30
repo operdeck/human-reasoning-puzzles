@@ -48,7 +48,7 @@ These previews are generated from the example files. The root README keeps a com
 <tr id="minesweeper"><td>Minesweeper-style</td><td>Mark the mines: each number counts the mines among its eight neighbours.</td><td><a href="../examples/minesweeper_2_5x5.txt">5 × 5</a> / <a href="../examples/minesweeper_3_8x8.txt">8 × 8</a></td><td><img src="images/minesweeper_2_5x5.png" width="100" alt="Minesweeper puzzle"></td><td><img src="images/minesweeper_2_5x5-solution.png" width="100" alt="Minesweeper solution"></td></tr>
 <tr id="akari"><td>Light Up / Akari</td><td>Light every white cell; bulbs may not see each other; numbers count adjacent bulbs.</td><td><a href="../examples/akari_1_6x6.txt">6 × 6</a> / <a href="../examples/akari_2_8x8.txt">8 × 8</a></td><td><img src="images/akari_1_6x6.png" width="100" alt="Akari puzzle"></td><td><img src="images/akari_1_6x6-solution.png" width="100" alt="Akari solution"></td></tr>
 <tr id="kakurasu"><td>Kakurasu</td><td>Shade cells so each line adds up to its target; a shaded cell counts its position.</td><td><a href="../examples/kakurasu_1_4x4.txt">4 × 4</a> / <a href="../examples/kakurasu_2_8x8.txt">8 × 8</a></td><td><img src="images/kakurasu_1_4x4.png" width="100" alt="Kakurasu puzzle"></td><td><img src="images/kakurasu_1_4x4-solution.png" width="100" alt="Kakurasu solution"></td></tr>
-<tr id="battleships"><td>Battleships, counts only</td><td>Mark ship cells to match the row and column counts (no fleet or shapes).</td><td><a href="../examples/battleships_1_4x4_counts.txt">4 × 4</a> / <a href="../examples/battleships_2_8x8_counts.txt">8 × 8</a></td><td><img src="images/battleships_1_4x4_counts.png" width="100" alt="Counts-only Battleships puzzle"></td><td><img src="images/battleships_1_4x4_counts-solution.png" width="100" alt="Counts-only Battleships solution"></td></tr>
+<tr id="battleships"><td>Battleships</td><td>Place the complete fleet of straight ships to match row and column totals. Different ships cannot touch, even diagonally.</td><td><a href="../examples/battleships_1_6x6_fleet.txt">6 × 6</a> / <a href="../examples/battleships_2_8x8_fleet.txt">8 × 8</a></td><td><img src="images/battleships_1_6x6_fleet.png" width="100" alt="Battleships fleet puzzle"></td><td><img src="images/battleships_1_6x6_fleet-solution.png" width="100" alt="Solved Battleships fleet"></td></tr>
 </table>
 
 ## Verified non-Murdoku difficulty examples
@@ -78,7 +78,7 @@ distinct puzzle types.
 | Minesweeper-style | — | [`minesweeper_1_8x8.txt`](../examples/minesweeper_1_8x8.txt) (`subsumption`) | [`minesweeper_4_8x8.txt`](../examples/minesweeper_4_8x8.txt) (`cover3`) |
 | Light Up / Akari | — | [`akari_1_6x6.txt`](../examples/akari_1_6x6.txt) (`subsumption`) | [`akari_2_8x8.txt`](../examples/akari_2_8x8.txt) (`chains`) |
 | Kakurasu | [`kakurasu_1_4x4.txt`](../examples/kakurasu_1_4x4.txt) (`relations`) | [`kakurasu_2_8x8.txt`](../examples/kakurasu_2_8x8.txt) (`relations`) | — |
-| Battleships, counts only | [`battleships_1_4x4_counts.txt`](../examples/battleships_1_4x4_counts.txt) (`count`) | [`battleships_2_8x8_counts.txt`](../examples/battleships_2_8x8_counts.txt) (`count`) | — |
+| Battleships | — | [`battleships_1_6x6_fleet.txt`](../examples/battleships_1_6x6_fleet.txt) (`count`) | [`battleships_2_8x8_fleet.txt`](../examples/battleships_2_8x8_fleet.txt) (`chains`) |
 
 The most visible gaps are Tectonic/Suguru, counts-only Battleships, Kakurasu,
 and logic grids. In particular, the existing 8 × 8 Suguru file is
@@ -106,7 +106,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Minesweeper-style | `minesweeper_2_5x5.txt` | `minesweeper_3_8x8.txt` |
 | Light Up / Akari | `akari_1_6x6.txt` | `akari_2_8x8.txt` |
 | Kakurasu | `kakurasu_1_4x4.txt` | `kakurasu_2_8x8.txt` |
-| Battleships, counts only | `battleships_1_4x4_counts.txt` | `battleships_2_8x8_counts.txt` |
+| Battleships | `battleships_1_6x6_fleet.txt` | `battleships_2_8x8_fleet.txt` |
 
 ## Existing families
 
