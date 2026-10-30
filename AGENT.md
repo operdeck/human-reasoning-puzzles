@@ -265,10 +265,11 @@ Murdoku has its own generator skill and tools; do not change them for
 non-Murdoku work.
 
 The web index is the full visual inventory. Show one representative unsolved
-`static` SVG per displayed family, not a thumbnail for every puzzle or Murdoku
-category. Group by `familyLabel` to keep Binairo and Tango distinct; retain
-category headings and `collection.arrange` numbering in the compact puzzle
-lists. Keep static paths in index metadata and never use solution pictures
+`static` SVG per existing `section`, including each Murdoku series, not one
+image per puzzle or one for all Murdoku. Keep the table-like rows compact:
+thumbnail first, then puzzle links in one or two columns. Preserve
+`collection.arrange` sections and numbering, including separate Binairo and
+Tango groups. Keep static paths in index metadata; never use solution pictures
 for previews. Check narrow/desktop layouts and puzzle-link navigation.
 
 ## Current rule coverage, measured
