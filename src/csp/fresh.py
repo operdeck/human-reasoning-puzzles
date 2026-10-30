@@ -515,6 +515,32 @@ def _cages(size: int, rng: random.Random, sizes: tuple[int, ...]) -> dict[Cell, 
             cell = rng.choice(options)
             owner[cell] = cage
             members.append(cell)
+    return _merge_single_cell_cages(owner, rng)
+
+
+def _merge_single_cell_cages(owner: dict[Cell, int], rng: random.Random) -> dict[Cell, int]:
+    """Merge each leftover singleton into a touching cage; connectivity is preserved."""
+    owner = owner.copy()
+    sizes = Counter(owner.values())
+    singles = [cell for cell, cage in owner.items() if sizes[cage] == 1]
+    rng.shuffle(singles)
+    for r, c in singles:
+        cage = owner[r, c]
+        if sizes[cage] != 1:
+            continue
+        neighbours = sorted(
+            {
+                owner[r + dr, c + dc]
+                for dr, dc in STEPS
+                if (r + dr, c + dc) in owner and owner[r + dr, c + dc] != cage
+            }
+        )
+        if not neighbours:
+            raise ValueError("Calcudoku needs at least two cells to avoid single-cell cages")
+        target = rng.choice(neighbours)
+        owner[r, c] = target
+        sizes[target] += 1
+        sizes[cage] -= 1
     return owner
 
 
@@ -533,24 +559,41 @@ def _cage_clue(values: list[int], rng: random.Random) -> str:
     return rng.choice([f"{sum(values)}+", f"{product}x"])
 
 
+def calcudoku_from_solution(
+    grid: list[list[int]],
+    owner: dict[Cell, int],
+    rng: random.Random,
+    comment: str = "",
+    clues: dict[int, str] | None = None,
+) -> str:
+    """Build non-singleton cages, retaining supplied clues only for unchanged cages."""
+    merged = _merge_single_cell_cages(owner, rng)
+    cages = sorted(set(merged.values()))
+    ids = {cage: f"cage{i}" for i, cage in enumerate(cages)}
+    size = len(grid)
+    lines = _header(comment, f"Size: {size}", "Grid:")
+    lines += [" ".join(ids[merged[r, c]] for c in range(size)) for r in range(size)]
+    lines.append("Cages:")
+    for cage in cages:
+        cells = sorted(cell for cell, group in merged.items() if group == cage)
+        original = {cell for cell, group in owner.items() if group == cage}
+        label = (clues or {}).get(cage) if set(cells) == original else None
+        if label is None:
+            label = _cage_clue([grid[r][c] for r, c in cells], rng)
+        lines.append(f"{ids[cage]}: {label}")
+    return "\n".join(lines) + "\n"
+
+
 def fresh_calcudoku(
     size: int, rng: random.Random, attempts: int = 200, comment: str = ""
 ) -> str | None:
     """A new Calcudoku: a random Latin square cut into cages with arithmetic clues."""
+    if size < 2:
+        raise ValueError("fresh Calcudoku boards need to be at least 2x2")
     for _ in range(attempts):
         grid = latin_square(size, rng)
-        owner = _cages(size, rng, (1, 2, 2, 2, 3, 3, 4))
-        count = len(set(owner.values()))
-        if count > 26:
-            continue
-        ids = [chr(97 + i) for i in range(count)]
-        lines = _header(comment, f"Size: {size}", "Grid:")
-        lines += [" ".join(ids[owner[(r, c)]] for c in range(size)) for r in range(size)]
-        lines.append("Cages:")
-        for cage in range(count):
-            values = [grid[r][c] for (r, c), i in owner.items() if i == cage]
-            lines.append(f"{ids[cage]}: {_cage_clue(values, rng)}")
-        text = "\n".join(lines) + "\n"
+        owner = _cages(size, rng, (2, 2, 2, 3, 3, 4))
+        text = calcudoku_from_solution(grid, owner, rng, comment)
         if is_unique(text):
             return text
     return None
