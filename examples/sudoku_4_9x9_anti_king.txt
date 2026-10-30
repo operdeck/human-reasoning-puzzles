@@ -1,4 +1,6 @@
 # Larger anti-king Sudoku; standard boxes already rule out king-adjacent repeats.
+Title:
+Anti-king Sudoku 9x9
 Givens:
 1 2 . . 5 . . . 9
 7 . . . . . . 4 .

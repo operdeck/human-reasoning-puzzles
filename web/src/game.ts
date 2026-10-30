@@ -20,6 +20,7 @@ export interface Scope {
 export interface PeerGroup {
   cells: CellId[];
   items?: string[];
+  description?: string;
 }
 
 export interface Named {
@@ -67,10 +68,14 @@ export interface State {
   notes: Record<CellId, string[]>;
   usedClues: number[];
   auto: boolean;
+  warnings: boolean;
 }
 
 export function emptyState(bundle: Bundle): State {
-  return { placed: {}, crosses: [], notes: {}, usedClues: [], auto: bundle.autoMark?.default ?? false };
+  return {
+    placed: {}, crosses: [], notes: {}, usedClues: [],
+    auto: bundle.autoMark?.default ?? false, warnings: true,
+  };
 }
 
 export function cellId(row: number, col: number): CellId {
@@ -115,6 +120,19 @@ export function peerCells(bundle: Bundle, cell: CellId, item: string): CellId[] 
     for (const other of group.cells) if (other !== cell) out.add(other);
   }
   return [...out];
+}
+
+/** Explain an equal-item conflict without consulting the hidden solution. */
+export function placementConflict(bundle: Bundle, state: State, cell: CellId, item: string):
+  { cell: CellId; description?: string } | null {
+  if (!state.warnings) return null;
+  const pieces = occupied(bundle, state);
+  for (const group of bundle.peers ?? []) {
+    if (!group.cells.includes(cell) || (group.items && !group.items.includes(item))) continue;
+    const other = group.cells.find((peer) => peer !== cell && pieces[peer] === item);
+    if (other) return { cell: other, description: group.description };
+  }
+  return null;
 }
 
 /** The cells of `scope` that contain `cell`, without `cell` itself; `item` is what `cell` holds. */
@@ -344,5 +362,6 @@ export function restore(bundle: Bundle, saved: unknown): State {
       .sort((a, b) => a - b);
   }
   if (typeof raw.auto === "boolean") state.auto = raw.auto;
+  if (typeof raw.warnings === "boolean") state.warnings = raw.warnings;
   return state;
 }

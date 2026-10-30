@@ -1,4 +1,6 @@
 # Small generated Sudoku composing all three binary-relation variants.
+Title:
+Sudoku 4x4: Kropki, consecutive pairs and thermometers
 Givens:
 . . . .
 . . . .

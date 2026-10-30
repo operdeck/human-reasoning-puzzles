@@ -8,6 +8,7 @@ import {
   occupied,
   parseCell,
   place,
+  placementConflict,
   restore,
   setCross,
   struckNotes,
@@ -87,6 +88,13 @@ export function verdictText(verdict: Verdict, language: string, reveal?: string)
   return nl ? `Nog geen fouten; nog ${m} te plaatsen.` : `No mistakes so far; ${m} still to place.`;
 }
 
+export function conflictText(item: string, cell: CellId, language: string, description?: string): string {
+  const reason = description ? ` (${description})` : "";
+  return language === "nl"
+    ? `${item} botst met dezelfde waarde op ${cell}${reason}.`
+    : `${item} conflicts with the same value at ${cell}${reason}.`;
+}
+
 const BALLOON_COLOURS = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#e84393"];
 
 /** Let a handful of balloons float up over the page; skipped when the user prefers less motion. */
@@ -126,6 +134,7 @@ export class PuzzleView {
   private undoButton = el("button", { type: "button", textContent: "Undo" });
   private redoButton = el("button", { type: "button", textContent: "Redo" });
   private autoBox = el("input", { type: "checkbox" });
+  private warningsBox = el("input", { type: "checkbox" });
   private notesMode = false;
   private notesButton = el("button", { type: "button", className: "tool notes-toggle" });
   private clueBoxes: HTMLInputElement[] = [];
@@ -186,13 +195,23 @@ export class PuzzleView {
       ...(b.section ? [el("p", { className: "meta", textContent: b.section })] : []),
       el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
     );
+    const assists = el("div", { className: "assist-controls" });
     if (b.playable && b.autoMark && (b.autoMark.onPlace.length > 0 || (b.notes && b.peers?.length))) {
       this.autoBox.checked = this.state.auto;
       this.autoBox.addEventListener("change", () =>
         this.commit({ ...this.state, auto: this.autoBox.checked }),
       );
-      header.append(el("label", { className: "auto" }, this.autoBox, " Auto-mark"));
+      assists.append(el("label", { className: "auto" }, this.autoBox, " Auto-mark"));
     }
+    if (b.playable && b.peers?.length) {
+      this.warningsBox.checked = this.state.warnings;
+      this.warningsBox.addEventListener("change", () =>
+        this.commit({ ...this.state, warnings: this.warningsBox.checked }),
+      );
+      assists.append(el("label", { className: "auto" }, this.warningsBox,
+        b.language === "nl" ? " Waarschuwingen" : " Warnings"));
+    }
+    if (assists.childElementCount > 0) header.append(assists);
 
     const board = el("div", { className: "board", tabIndex: 0 });
     board.setAttribute("role", "application");
@@ -363,7 +382,7 @@ export class PuzzleView {
   }
 
   private clearBoard(): void {
-    this.commit({ ...emptyState(this.bundle), auto: this.state.auto });
+    this.commit({ ...emptyState(this.bundle), auto: this.state.auto, warnings: this.state.warnings });
     this.verdict.textContent = "";
     this.verdict.className = "verdict";
   }
@@ -497,9 +516,17 @@ export class PuzzleView {
   }
 
   private apply(cell: CellId): void {
-    if (this.tool === CROSS) this.commit(setCross(this.bundle, this.state, cell));
-    else if (this.notesMode) this.commit(toggleNote(this.bundle, this.state, cell, this.tool));
-    else this.commit(place(this.bundle, this.state, cell, this.tool));
+    const next = this.tool === CROSS ? setCross(this.bundle, this.state, cell)
+      : this.notesMode ? toggleNote(this.bundle, this.state, cell, this.tool)
+      : place(this.bundle, this.state, cell, this.tool);
+    const conflict = next !== this.state && this.tool !== CROSS
+      && (this.notesMode ? next.notes[cell]?.includes(this.tool) : next.placed[cell] === this.tool)
+      ? placementConflict(this.bundle, next, cell, this.tool) : null;
+    this.commit(next);
+    if (conflict) {
+      this.verdict.className = "verdict wrong";
+      this.verdict.textContent = conflictText(this.tool, conflict.cell, this.bundle.language, conflict.description);
+    }
   }
 
   private key(event: KeyboardEvent): void {
@@ -543,6 +570,7 @@ export class PuzzleView {
     this.undoButton.disabled = !this.history.canUndo;
     this.redoButton.disabled = !this.history.canRedo;
     this.autoBox.checked = state.auto;
+    this.warningsBox.checked = state.warnings;
     this.clueBoxes.forEach((box, index) => {
       box.checked = state.usedClues.includes(index);
       box.closest("li")?.classList.toggle("used", box.checked);

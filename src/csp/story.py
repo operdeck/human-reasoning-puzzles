@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
 
+from . import sudoku
 from .core import Kind, Model, Solver, Step
 from .murdoku import (
     COUNTING,
@@ -474,7 +475,100 @@ PHRASES: dict[str, dict[str, str]] = {
     },
 }
 
-# The one-line rules of every family but Murdoku, for the booklet and the web site.
+SUDOKU_RULES = {
+    "en": {
+        "base": "Fill the grid so every row, column and box contains each digit once.",
+        "jigsaw": (
+            "The outlined regions replace the usual square boxes; each contains every digit once."
+        ),
+        "extra": "Each extra house marked on the grid also contains every digit once.",
+        "anti_knight": (
+            "Equal digits may not be a knight's move apart "
+            "(two cells in one direction and one perpendicular, as in chess)."
+        ),
+        "anti_king": "Equal digits may not touch, not even diagonally.",
+        "white": "Digits joined by a white Kropki dot differ by exactly one.",
+        "black": "For a black Kropki dot, one of the joined digits is exactly twice the other.",
+        "dots": "Missing dots impose no restriction; not every qualifying pair needs a dot.",
+        "consecutive": "Digits joined by a consecutive-pair bar differ by exactly one.",
+        "less": "Digits strictly increase along each thermometer, from the bulb towards the tip.",
+    },
+    "nl": {
+        "base": (
+            "Vul het rooster zo in dat elke rij, kolom en elk blok "
+            "elk cijfer precies één keer bevat."
+        ),
+        "jigsaw": (
+            "De omlijnde gebieden vervangen de gewone vierkante blokken; "
+            "elk gebied bevat elk cijfer precies één keer."
+        ),
+        "extra": (
+            "Elk extra gemarkeerd gebied op het rooster bevat ook elk cijfer precies één keer."
+        ),
+        "anti_knight": (
+            "Gelijke cijfers mogen niet op een paardensprong van elkaar staan "
+            "(twee vakjes in één richting en één loodrecht daarop, zoals bij schaken)."
+        ),
+        "anti_king": "Gelijke cijfers mogen elkaar niet raken, ook niet diagonaal.",
+        "white": "Cijfers verbonden door een witte Kropki-stip verschillen precies één.",
+        "black": (
+            "Bij een zwarte Kropki-stip is het ene verbonden cijfer precies tweemaal het andere."
+        ),
+        "dots": (
+            "Ontbrekende stippen leggen geen beperking op; "
+            "niet elk passend paar hoeft een stip te hebben."
+        ),
+        "consecutive": "Cijfers verbonden door een streepje verschillen precies één.",
+        "less": "De cijfers lopen op elke thermometer strikt op, van het bolletje naar de punt.",
+    },
+}
+
+PEER_RULE_LABELS = {
+    "en": {
+        "no repeated digit on anti-knight peers": "anti-knight rule",
+        "no repeated digit on anti-king peers": "anti-king rule",
+        "each digit once per row": "row rule",
+        "each digit once per column": "column rule",
+        "each digit once per box": "box rule",
+        "each digit once per extra house": "extra-house rule",
+    },
+    "nl": {
+        "no repeated digit on anti-knight peers": "anti-paardregel",
+        "no repeated digit on anti-king peers": "anti-koningregel",
+        "each digit once per row": "rijregel",
+        "each digit once per column": "kolomregel",
+        "each digit once per box": "blokregel",
+        "each digit once per extra house": "regel voor extra gebieden",
+    },
+}
+
+
+def family_rules(text: str, kind: str) -> list[str]:
+    """Player-facing rules from the same parsed variant semantics as the solver."""
+    if kind != "sudoku":
+        display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
+        return [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])]
+    puzzle = sudoku.parse(text)
+    words = SUDOKU_RULES[Wording.read(text).language]
+    rules = [words["base"]]
+    if puzzle.jigsaw:
+        rules.append(words["jigsaw"])
+    if puzzle.extra_houses():
+        rules.append(words["extra"])
+    if puzzle.anti_knight:
+        rules.append(words["anti_knight"])
+    if puzzle.anti_king:
+        rules.append(words["anti_king"])
+    kinds = {link.kind for link in puzzle.links}
+    for kind in ("white", "black", "consecutive", "less"):
+        if kind in kinds:
+            rules.append(words[kind])
+    if kinds & {"white", "black"}:
+        rules.append(words["dots"])
+    return rules
+
+
+# Base rules for the non-Murdoku families; Sudoku adds its active variants above.
 FAMILY_RULES = {
     "sudoku": "Fill the grid so every row, column and box contains each digit once.",
     "calcudoku": "Fill the grid so no digit repeats in a row or column, and each cage's "

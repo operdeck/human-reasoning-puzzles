@@ -1,6 +1,9 @@
 # Jigsaw Sudoku, 6x6: every row, column and irregular box holds 1-6 once.
 # Generated (random solution, givens removed while still unique); needs cover2.
 
+Title:
+Jigsaw Sudoku 6x6
+
 Givens:
 . . . . . .
 . . . . . .
