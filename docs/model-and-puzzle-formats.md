@@ -76,6 +76,13 @@ Extra:       # optional extra-house IDs per cell; '.' means none
 
 A jigsaw requires N boxes of N cells. Each extra house has N cells. `Extra:` expresses X-Sudoku diagonals, NRC boxes, and other overlapping houses.
 
+The booklet (`--docx`/`--pdf`) and web rules panel describe every active Sudoku
+variant from the parsed puzzle, in its `Language:` (`en` by default, or `nl`).
+This includes nonstandard boxes, extra houses, anti-knight/anti-king rules,
+Kropki dots, consecutive-pair bars, and thermometers. Missing Kropki dots impose
+no restriction: only drawn dots constrain pairs. Name all active variants in the
+example's file name and `Title:` so players can identify the rules before playing.
+
 Optional relation/peer sections are:
 
 ```text
