@@ -1,4 +1,6 @@
 # Larger generated Sudoku combining Kropki, consecutive, and thermometer rules.
+Title:
+Sudoku 9x9: Kropki, consecutive pairs and thermometers
 Givens:
 5 3 . . . . . . 2
 6 7 . . . . . 4 .

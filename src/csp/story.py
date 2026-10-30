@@ -475,7 +475,6 @@ PHRASES: dict[str, dict[str, str]] = {
     },
 }
 
-# The one-line rules of every family but Murdoku, for the booklet and the web site.
 SUDOKU_RULES = {
     "en": {
         "base": "Fill the grid so every row, column and box contains each digit once.",
@@ -569,6 +568,7 @@ def family_rules(text: str, kind: str) -> list[str]:
     return rules
 
 
+# Base rules for the non-Murdoku families; Sudoku adds its active variants above.
 FAMILY_RULES = {
     "sudoku": "Fill the grid so every row, column and box contains each digit once.",
     "calcudoku": "Fill the grid so no digit repeats in a row or column, and each cage's "
