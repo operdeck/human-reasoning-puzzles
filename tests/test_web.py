@@ -71,8 +71,25 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     assert bundle["question"]
     assert bundle["reveal"].startswith("Wouter doet het met Noor")
     assert bundle["rules"]
+    assert any(
+        rule.startswith("Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.")
+        for rule in bundle["rules"]
+    )
     names = [condition["name"] for condition in bundle["conditions"]]
     assert names == ["alleen met", "aantallen", "op", "links van", "naast"]
+
+
+def test_every_murdoku_web_bundle_includes_the_character_description_note(exported):
+    expected = {
+        "en": "Character kinds and descriptions are story details, not clues.",
+        "nl": "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.",
+    }
+    for path in exported.glob("*.json"):
+        bundle = json.loads(path.read_text())
+        if bundle.get("family") == "murdoku":
+            assert any(rule.startswith(expected[bundle["language"]]) for rule in bundle["rules"]), (
+                path.name
+            )
 
 
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):

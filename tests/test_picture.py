@@ -1203,6 +1203,25 @@ def test_role_legend_names_an_attribute_group_instead_of_every_suspect():
     assert legend._role_line("moordenaar") == "Moordenaar: Svetlana"
 
 
+def test_legend_omits_an_attribute_that_duplicates_a_fixed_role():
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "room"},
+        [],
+        ["Ada", "Ben"],
+        attributes={"aap": frozenset({"Ada", "Ben"})},
+        roles=[RoleSpec("aap", frozenset({2}), eligible_people=frozenset({"Ada", "Ben"}))],
+    )
+
+    legend = drawing._Legend(board, CELL, language="nl")
+
+    assert legend.role_names == ["aap"]
+    assert legend.attribute_names == []
+    assert legend._role_line("aap") == "Aap: Ada, Ben"
+    assert drawing._Legend(board, CELL, language="nl", show_roles=False).attribute_names == ["aap"]
+
+
 def test_a_seat_with_a_side_has_its_back_against_that_wall():
     def board(side):
         bench = BoardObject("trein_bank", "standable", (Square(0, 1), Square(1, 1)), side=side)

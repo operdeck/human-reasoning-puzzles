@@ -184,7 +184,11 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
             item["svg"] = picture
         palette.append(item)
     placed = {str(sq): person for person, sq in solution.items() if isinstance(sq, Square)}
-    rules = [*(presentation.intro or [phrase(text, "doc.rules")]), *board_notes(text)]
+    rules = [
+        *(presentation.intro or [phrase(text, "doc.rules")]),
+        *board_notes(text),
+        phrase(text, "doc.murdoku_note"),
+    ]
     return {
         "language": language_of(text),
         "size": [board.size, board.size],
