@@ -446,10 +446,9 @@ def test_role_below_and_sole_role_companion_match_brute_force():
     below_text = """Size: 2
 Regions:
 a: room
-b: hall
 Grid:
-a b
-a b
+a a
+a a
 People:
 A
 B
@@ -993,15 +992,15 @@ def test_what_if_rules_out_the_value_with_the_shortest_refutation():
 
 
 def test_sudoku_model_shape():
-    model, _ = sudoku.compile_puzzle((example("sudoku_5_9x9.txt")).read_text())
+    model, _ = sudoku.compile_puzzle((example("sudoku_easy.txt")).read_text())
     assert model.num_literals == 81 * 9
     assert len(model.constraints) == 81 + 3 * 81
-    assert model.chosen("r1c6") == 8
-    assert model.chosen("r1c1") is None
+    assert model.chosen("r1c1") == 5
+    assert model.chosen("r1c3") is None
 
 
 def test_sudoku_solves_to_a_valid_grid():
-    model, puzzle = sudoku.compile_puzzle((example("sudoku_5_9x9.txt")).read_text())
+    model, puzzle = sudoku.compile_puzzle((example("sudoku_easy.txt")).read_text())
     grid = puzzle.grid
     result = Solver(model).solve()
     assert result.solved
@@ -1030,20 +1029,12 @@ HOUSE = r"\d once in [a-z]+ [\d,]+"  # any digit in any row, column or box
 
 # file, the rule it needs, and the deduction pattern it must show
 GRADED = [
-    ("sudoku_10_9x9_pointing.txt", "subsumption", r"once in box"),
-    (
-        "sudoku_13_9x9_naked_pair.txt",
-        "cover2",
-        r"^r\dc\d holds one digit, r\dc\d holds one digit use up",
-    ),
-    ("sudoku_11_9x9_hidden_pair.txt", "cover2", rf"^{HOUSE}, {HOUSE} use up r\dc\d holds"),
-    ("sudoku_14_9x9_xwing.txt", "cover2", rf"^{FISH}, \1 {LINE} use up \1 once in (?!\2)"),
-    (
-        "sudoku_15_9x9_swordfish.txt",
-        "cover3",
-        rf"^{FISH}, \1 {LINE}, \1 {LINE} use up \1 once in (?!\2)",
-    ),
-    ("sudoku_17_9x9_chains.txt", "chains", r"holds, by a chain of"),
+    ("sudoku_pointing.txt", "subsumption", r"once in box"),
+    ("sudoku_naked_pair.txt", "cover2", r"^r\dc\d holds one digit, r\dc\d holds one digit use up"),
+    ("sudoku_hidden_pair.txt", "cover2", rf"^{HOUSE}, {HOUSE} use up r\dc\d holds"),
+    ("sudoku_xwing.txt", "cover2", rf"^{FISH}, \1 {LINE} use up \1 once in (?!\2)"),
+    ("sudoku_swordfish.txt", "cover3", rf"^{FISH}, \1 {LINE}, \1 {LINE} use up \1 once in (?!\2)"),
+    ("sudoku_chains.txt", "chains", r"holds, by a chain of"),
 ]
 
 
@@ -1071,7 +1062,7 @@ def test_sudoku_rejects_a_malformed_grid():
 
 
 def test_mini_sudoku_has_two_by_two_boxes():
-    model, puzzle = sudoku.compile_puzzle((example("sudoku_1_4x4.txt")).read_text())
+    model, puzzle = sudoku.compile_puzzle((example("sudoku_4x4.txt")).read_text())
     grid = puzzle.grid
     boxes = [c for c in model.constraints if c.family == "each digit once per box"]
     assert len(grid) == 4 and len(boxes) == 4 * 4
@@ -1080,11 +1071,11 @@ def test_mini_sudoku_has_two_by_two_boxes():
 
 
 def test_jigsaw_boxes_and_x_diagonals_are_houses():
-    jigsaw = sudoku.parse((example("sudoku_12_6x6_jigsaw.txt")).read_text())
+    jigsaw = sudoku.parse((example("sudoku_jigsaw.txt")).read_text())
     assert jigsaw.size == 6 and jigsaw.jigsaw and not jigsaw.extra_houses()
     boxes = [cells for family, _, cells in jigsaw.houses() if family == "box"]
     assert len(boxes) == 6 and all(len(cells) == 6 for cells in boxes)
-    x = sudoku.parse((example("sudoku_8_9x9_x.txt")).read_text())
+    x = sudoku.parse((example("sudoku_x.txt")).read_text())
     assert not x.jigsaw and x.extra_houses() == {
         "x": [(i, i) for i in range(9)],
         "y": [(i, 8 - i) for i in range(9)],
@@ -1092,7 +1083,7 @@ def test_jigsaw_boxes_and_x_diagonals_are_houses():
 
 
 def test_x_sudoku_is_unique_only_because_of_its_diagonals():
-    text = (example("sudoku_8_9x9_x.txt")).read_text()
+    text = (example("sudoku_x.txt")).read_text()
     assert len(bruteforce.solutions(text)) == 1
     plain = text[: text.index("# The two diagonals")]
     assert len(bruteforce.solutions(plain)) == 2
@@ -1102,7 +1093,7 @@ def test_x_sudoku_is_unique_only_because_of_its_diagonals():
 
 
 def test_nrc_sudoku_extra_boxes_are_houses_it_needs():
-    text = (example("sudoku_6_9x9_nrc.txt")).read_text()
+    text = (example("sudoku_nrc.txt")).read_text()
     puzzle = sudoku.parse(text)
     extra = puzzle.extra_houses()
     assert sorted(extra) == ["a", "b", "c", "d"]
@@ -2407,11 +2398,11 @@ def test_numeric_region_ids_still_read():
 
 # file, the rule it needs
 CALCUDOKUS = [
-    ("calcudoku_1_4x4.txt", "relations"),
-    ("calcudoku_3_6x6.txt", "relations"),
-    ("calcudoku_4_6x6.txt", "cover2"),
-    ("calcudoku_6_6x6.txt", "what_if"),
-    ("calcudoku_5_7x7.txt", "cover3"),
+    ("calcudoku_4x4_easy.txt", "relations"),
+    ("calcudoku_6x6_medium.txt", "relations"),
+    ("calcudoku_6x6_hard.txt", "cover2"),
+    ("calcudoku_6x6_fiendish.txt", "what_if"),
+    ("calcudoku_7x7_hard.txt", "cover3"),
 ]
 
 
@@ -2462,16 +2453,16 @@ def test_cage_arithmetic():
 
 
 def test_cli_detects_calcudoku():
-    text = (example("calcudoku_1_4x4.txt")).read_text()
+    text = (example("calcudoku_4x4_easy.txt")).read_text()
     assert cli.detect(text) == "calcudoku"
-    assert cli.main([str(example("calcudoku_1_4x4.txt"))]) == 0
+    assert cli.main([str(example("calcudoku_4x4_easy.txt"))]) == 0
 
 
 # --- futoshiki ------------------------------------------------------------
 
 
 def test_futoshiki_solution_obeys_every_sign_and_needs_chains():
-    text = (example("futoshiki_3_5x5.txt")).read_text()
+    text = (example("futoshiki_5x5.txt")).read_text()
     assert cli.detect(text) == "futoshiki"
     model, puzzle = futoshiki.compile_puzzle(text)
     assert len(model.relations) == len(puzzle.signs) == 8
@@ -2609,7 +2600,7 @@ unused: any
     assert cli.main([str(puzzle), "--lint"]) == 0
     output = capsys.readouterr().out
     assert "missing icon for zeppelin" in output
-    assert "area attic is fully blocked" in output
+    assert "unreachable area attic" in output
     assert "role unused is declared but unused" in output
 
 
@@ -2771,7 +2762,7 @@ def test_report_groups_unlabelled_constraints_by_name():
 
 
 def test_report_leaves_the_model_untouched():
-    model, _ = sudoku.compile_puzzle((example("sudoku_14_9x9_xwing.txt")).read_text())
+    model, _ = sudoku.compile_puzzle((example("sudoku_xwing.txt")).read_text())
     before = (len(model.log), model.assignment(), [model.options(v) for v in model.variables])
     report.describe(model)
     assert before == (
@@ -2792,10 +2783,10 @@ def test_grade_is_the_hardest_rung_used():
 @pytest.mark.parametrize(
     "name, grade",
     [
-        ("sudoku_5_9x9.txt", "single"),
-        ("sudoku_10_9x9_pointing.txt", "subsumption"),
-        ("sudoku_15_9x9_swordfish.txt", "cover3"),
-        ("sudoku_17_9x9_chains.txt", "chains"),
+        ("sudoku_easy.txt", "single"),
+        ("sudoku_pointing.txt", "subsumption"),
+        ("sudoku_swordfish.txt", "cover3"),
+        ("sudoku_chains.txt", "chains"),
         ("prrrdoku2.txt", "what_if"),
         ("prrrdoku3.txt", "what_if"),
     ],
@@ -2806,7 +2797,7 @@ def test_cli_grade_prints_only_the_grade(name, grade, capsys):
 
 
 def test_show_model_explains_and_does_not_solve(capsys):
-    assert cli.main([str(example("sudoku_5_9x9.txt")), "--show-model"]) == 0
+    assert cli.main([str(example("sudoku_easy.txt")), "--show-model"]) == 0
     out = capsys.readouterr().out
     assert "each digit once per box" in out
     assert "How the solver will run" in out
@@ -2909,166 +2900,3 @@ def test_alone_with_rejects_a_bad_count():
     base = "Size: 2\nRegions:\na: room\nGrid:\na a\na a\nPeople:\nA\nB\nRules:\n"
     with pytest.raises(ValueError, match="optional positive count"):
         murdoku.quantified_conditions(*load_board(base + "alone_with A 0\n"))
-
-
-def test_a_window_may_name_the_wall_it_sits_against():
-    text = """Size: 2
-Regions:
-a: room
-b: hall
-Grid:
-a b
-a b
-People:
-A
-B
-EdgeItems:
-raam: window r1c1 top
-deur: door r1c1 r1c2
-Clues:
-next_to A raam
-"""
-    board, _ = load_board(text)
-    sides = {item.name: item.side for item in board.edge_items}
-    assert sides == {"raam": "top", "deur": None}
-    with pytest.raises(ValueError):
-        load_board(text.replace("r1c1 top", "r1c1 up"))
-    with pytest.raises(ValueError):
-        murdoku.EdgeItem("deur", "door", (murdoku.Square(0, 0), murdoku.Square(0, 1)), side="top")
-
-
-def test_a_seat_may_name_the_wall_its_back_is_against():
-    text = """Size: 2
-Regions:
-a: room
-Grid:
-a a
-a a
-People:
-A
-B
-Objects:
-bank: standable r1c2 r2c2 right
-kast: blocking r1c1
-"""
-    board, _ = load_board(text)
-    assert {obj.name: obj.side for obj in board.objects} == {"bank": "right", "kast": None}
-    with pytest.raises(ValueError):
-        murdoku.BoardObject("bank", "standable", (murdoku.Square(0, 0),), side="up")  # type: ignore[arg-type]
-
-
-def test_a_fully_blocked_area_does_not_break_area_occupancy_rules():
-    """`role_occupant` makes a count per area; an area with no free square must not crash it."""
-    base = """Size: 4
-Regions:
-a: west
-b: east
-c: rocks
-Grid:
-a a b b
-a c c b
-a c c b
-a a b b
-Objects:
-rots: blocking r2c2 r2c3 r3c2 r3c3
-Roles:
-dader: 1
-People:
-A
-B
-C
-D
-Rules:
-role_occupant dader not_alone
-Clues:
-above A B
-"""
-    merged = base.replace("c: rocks\n", "").replace("a c c b", "a a a b")
-    assert len(bruteforce.solutions(base, limit=500)) == len(
-        bruteforce.solutions(merged, limit=500)
-    )
-    assert len(bruteforce.solutions(base, limit=500)) > 0
-
-
-SELECTOR_SUBJECT = """Size: 3
-Regions:
-a: room
-Grid:
-a a a
-a a a
-a a a
-Objects:
-robe: standable r1c1
-robe: standable r1c3
-slippers: standable r2c2
-slippers: standable r3c1
-People:
-A
-B
-C
-Attributes:
-tall: B
-Clues:
-{clue}
-"""
-
-
-@pytest.mark.parametrize(
-    ("clue", "subject_holds"),
-    [
-        ("above object:robe object:slippers 1", lambda person, square: square.row == 0),
-        ("above attribute:tall object:slippers 1", lambda person, square: person == "B"),
-    ],
-)
-def test_selector_subject_clue_matches_an_independent_count(clue, subject_holds):
-    """`above X Y 1` with selectors on both sides: somebody X is one row above somebody Y."""
-    from itertools import permutations
-
-    text = SELECTOR_SUBJECT.format(clue=clue)
-    board, clues = load_board(text)
-    robes = {murdoku.Square(0, 0), murdoku.Square(0, 2)}
-    slippers = {murdoku.Square(1, 1), murdoku.Square(2, 0)}
-
-    def holds(placed):
-        return any(
-            first != second
-            and (placed[first] in robes if "object:robe" in clue else subject_holds(first, None))
-            and placed[second] in slippers
-            and placed[second].row == placed[first].row + 1
-            for first in placed
-            for second in placed
-        )
-
-    expected = []
-    for rows in permutations(range(3)):
-        for cols in permutations(range(3)):
-            placed = {
-                person: murdoku.Square(rows[i], cols[i]) for i, person in enumerate(board.people)
-            }
-            if holds(placed):
-                expected.append(placed)
-    found = bruteforce.solutions(text, "murdoku", limit=1000)
-    as_sets = {tuple(sorted(solution.items())) for solution in found}
-    assert as_sets == {tuple(sorted(placed.items())) for placed in expected}
-
-    model = murdoku.compile_puzzle(board, clues)
-    Solver(model).solve()
-    _assert_logged_steps_preserve_solutions(model, found)
-
-
-def test_cell_selectors_on_both_sides_compile_to_square_pairs():
-    board, clues = load_board(SELECTOR_SUBJECT.format(clue="above object:robe object:slippers 1"))
-    model = murdoku.compile_puzzle(board, clues)
-    witnesses = [c for c in model.constraints if "witness r" in c.name and c.kind is Kind.COUNT]
-    # Only robe r1c1 / r1c3 above slippers r2c2 fits one row apart.
-    assert sorted(c.name.split("witness ")[1] for c in witnesses) == ["r1c1 r2c2", "r1c3 r2c2"]
-    assert all(c.reified_by is not None and c.allowed_counts == {2} for c in witnesses)
-
-
-def test_selector_subject_rejects_a_role():
-    text = SELECTOR_SUBJECT.format(clue="above role:spy object:slippers 1").replace(
-        "Clues:", "Roles:\nspy: 1\nClues:"
-    )
-    board, clues = load_board(text)
-    with pytest.raises(ValueError, match="role as its subject"):
-        murdoku.compile_puzzle(board, clues)

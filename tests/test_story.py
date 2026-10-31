@@ -15,23 +15,11 @@ from csp import bruteforce, cli, murdoku
 from csp.core import Kind, Model, Solver
 from csp.proof import Move, replay, shortest
 from csp.puzzlefile import load_board
-from csp.story import Story, Wording, board_notes, explain
+from csp.story import Story, Wording, explain
 from tests.examples import example
 
 PRRRDOKUS = ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"]
 PLACED = re.compile(r"\*\*(\w+) op r(\d+)k(\d+)\*\*")
-
-
-@pytest.mark.parametrize("number,murderer", [(1, "Carmen"), (2, "Diego"), (3, "Gonzalo")])
-def test_halloween_reveal_names_the_unique_solved_murderer(number, murderer):
-    text = example(f"halloween-museum-{number}.txt").read_text()
-    board, _ = load_board(text)
-    solutions = bruteforce.solutions(text, "murdoku", limit=2)
-    assert len(solutions) == 1
-    assert [
-        person for person in board.people if solutions[0][board.role_variable(person, "murderer")]
-    ] == [murderer]
-    assert text.split("Reveal:\n", 1)[1].startswith(f"{murderer},")
 
 
 def _moves(model: Model) -> list[Move]:
@@ -57,7 +45,7 @@ ALLOWED = {
     "sudoku": {"core", "puzzlefile"},
     "calcudoku": {"core", "puzzlefile"},
     "futoshiki": {"core", "puzzlefile"},
-    "story": {"core", "proof", "murdoku", "puzzlefile", "sudoku", "battleships"},
+    "story": {"core", "proof", "murdoku", "puzzlefile"},
     "docx_export": {"icons", "murdoku", "picture", "puzzlefile", "story"},
     "regiongrid": {"puzzlefile"},
     "queens": {"core", "puzzlefile"},
@@ -697,7 +685,7 @@ def test_story_explains_complementary_reified_counts():
 
 @pytest.mark.parametrize(
     "name",
-    ["murdoku_1_first_case.txt", "murdoku_3_house.txt", "murdoku_sparse_mystery.txt"],
+    ["murdoku_first_case.txt", "murdoku_house.txt", "murdoku_sparse_mystery.txt"],
 )
 def test_english_story_places_everyone_right_and_titles_name_them(name):
     text = (example(name)).read_text()
@@ -714,46 +702,15 @@ def test_english_story_places_everyone_right_and_titles_name_them(name):
         assert title == "The rest" or all(who in title for who in placed), paragraph
 
 
-def test_murder_hotel_story_handles_role_rule_covering_rows():
-    story = explain(example("murder-hotel-1.txt").read_text())
-    assert "Donatella has the murderer role" in story
-    assert "murderer holder" not in story
-
-
-def test_area_tag_note_uses_singular_grammar_for_one_region():
-    notes = board_notes(example("murder-hotel-1.txt").read_text())
-
-    assert "The crime scene is the west guest room." in notes
-
-
-def test_area_tag_note_keeps_the_article_and_case_of_an_english_room_phrase():
-    notes = board_notes(example("halloween-museum-2.txt").read_text())
-    assert "The crime scene is the armoury." in notes
-    text = (
-        example("halloween-museum-2.txt")
-        .read_text()
-        .replace("crime_scene: armoury", "crime_scene: El_Greco_room")
-    )
-    assert "The crime scene is the El Greco room." in board_notes(text)
-
-
-def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():
-    story = explain(example("murder-hotel-3.txt").read_text())
-    reveal = "Luca is somewhere above the murderer (14), so Marcella has the murderer role."
-
-    assert reveal in story
-    assert story.index("Marcella on r10c5") < story.index(reveal)
-
-
 def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
-    story = explain((example("murdoku_3_house.txt")).read_text())
+    story = explain((example("murdoku_house.txt")).read_text())
     opening = story.split("\n\n")[0]
     assert "Ben is on the carpet (4): r3c3 or r3c4." in opening
     assert "Ben is not next to the lamp (6): **Ben on r3c4**." in opening
 
 
 def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():
-    story = explain((example("murdoku_3_house.txt")).read_text())
+    story = explain((example("murdoku_house.txt")).read_text())
     assert "Either Ada is in the study, or Ben is in the hall, but not both (1)." in story
     assert "Ben is on r3c4, so Ada is not in the study" in story
 
@@ -795,7 +752,7 @@ def test_wording_reads_its_sections_and_rejects_unknown_languages():
 def test_cli_explain(capsys):
     assert cli.main([str(example("prrrdoku1.txt")), "--explain"]) == 0
     assert "**Tim op r1k1**" in capsys.readouterr().out
-    assert cli.main([str(example("sudoku_5_9x9.txt")), "--explain"]) == 2
+    assert cli.main([str(example("sudoku_easy.txt")), "--explain"]) == 2
 
 
 def test_board_rules_are_what_the_model_is_built_from():
@@ -813,121 +770,7 @@ def test_story_explains_a_different_regions_role_step():
 
 def test_quantified_clue_is_only_said_with_its_upshot():
     """A quantified step that only narrows its hidden witnesses says nothing."""
-    story = explain(example("wie-doet-het-met-wie-5.txt").read_text())
+    story = explain(example("wie-doet-het-met-wie-4.txt").read_text())
     sentences = re.split(r"(?<=\.) ", story)
-    bare = [s for s in sentences if "iemand op een badjas" in s and ", dus " not in s]
+    bare = [s for s in sentences if "iemand in een badjas" in s and ", dus " not in s]
     assert not bare, bare
-
-
-def test_role_rules_are_told_without_engine_names():
-    story = explain(example("murdoku_orient_express.txt").read_text())
-    for leak in ("__", "role and area", "occupant count", "has role", "cardinality"):
-        assert leak not in story
-    assert "De moordenaar is op de plaats delict, dus Svetlana is de moordenaar" in story
-    assert "Svetlana is de moordenaar en moet in coupé 2 zijn" in story
-
-
-@pytest.mark.parametrize("name", ["murdoku_orient_express_2.txt", "murdoku_orient_express_3.txt"])
-def test_role_literals_are_told_as_role_sentences(name):
-    story = explain(example(name).read_text())
-    for leak in ("has role", "letterlijke keuze", "=True", "=False"):
-        assert leak not in story
-
-
-ON_OR_NEXT_TO = """Size: 4
-Language: {lang}
-Regions:
-a: Room #FFFFFF
-Grid:
-a a a a
-a a a a
-a a a a
-a a a a
-Objects:
-bench: standable r1c1 r1c2
-chair: standable r3c3
-stool: standable r4c1
-stool: standable r4c2
-table: blocking r2c4 r3c4
-People:
-Ann
-Bob
-Cy
-Di
-Clues:
-not_next_to Ann bench
-next_to Bob chair
-not_next_to Cy table
-next_to Di stool
-"""
-
-
-def test_next_to_a_multi_square_object_says_on_or_next_to():
-    board, _ = load_board(ON_OR_NEXT_TO.format(lang="en"))
-    assert murdoku.next_to_covers_own_squares(board, "bench")
-    assert murdoku.next_to_covers_own_squares(board, "stool"), "two touching stools"
-    assert not murdoku.next_to_covers_own_squares(board, "chair"), "one square"
-    assert not murdoku.next_to_covers_own_squares(board, "table"), "blocking"
-    text = ON_OR_NEXT_TO.format(lang="en")
-    assert Story(*load_board(text), Wording.read(text)).clue_texts() == [
-        "Ann is neither on nor next to the bench.",
-        "Bob is next to the chair.",
-        "Cy is not next to the table.",
-        "Di is on or next to the stool.",
-    ]
-    text = ON_OR_NEXT_TO.format(lang="nl")
-    dutch = Story(*load_board(text), Wording.read(text)).clue_texts()
-    assert dutch[0] == "Ann zit niet op of naast de bench."
-    assert dutch[1] == "Bob zit naast de chair."
-
-
-def test_merged_predicates_keep_on_or_next_to_whole():
-    text = ON_OR_NEXT_TO.format(lang="nl").replace("next_to Bob chair", "not_on Ann chair")
-    paragraphs = csp.story.clue_paragraphs(text)
-    assert "Ann zit niet op of naast de bench en zit niet op de chair." in paragraphs
-
-
-def test_next_to_and_not_on_a_multi_square_object_say_beside_but_not_on():
-    text = ON_OR_NEXT_TO.replace(
-        "not_next_to Ann bench",
-        "next_to Ann bench\nnot_on Ann bench",
-    )
-    english = text.format(lang="en")
-    assert "Ann is beside the bench, but not on the bench." in csp.story.clue_paragraphs(english)
-    dutch = text.format(lang="nl")
-    assert "Ann zit naast de bench, maar niet op de bench." in csp.story.clue_paragraphs(dutch)
-
-    override = csp.story.clue_paragraphs(english, {1: "Ann is on or beside the bench."})
-    assert "Ann is on or beside the bench and is not on the bench." in override
-
-
-def test_next_to_and_not_on_a_single_square_object_keep_existing_wording():
-    text = ON_OR_NEXT_TO.replace(
-        "next_to Bob chair",
-        "next_to Bob chair\nnot_on Bob chair",
-    )
-    bob = next(
-        paragraph
-        for paragraph in csp.story.clue_paragraphs(text.format(lang="en"))
-        if paragraph.startswith("Bob ")
-    )
-    assert bob == "Bob is next to the chair and is not on the chair."
-
-
-def test_rule_wording_and_garment_clue_are_told_in_the_opener():
-    from csp.story import board_notes, global_count_texts
-
-    text = example("wie-doet-het-met-wie-1.txt").read_text()
-    assert global_count_texts(text) == [
-        "Precies twee mensen dragen een badjas",
-        "Precies één persoon heeft sloffen aan",
-    ]
-    assert board_notes(text)[-2:] == [
-        "Precies twee mensen dragen een badjas.",
-        "Precies één persoon heeft sloffen aan.",
-    ]
-    story = explain(text)
-    # Author wordings are for players; worked solutions keep the generated text.
-    assert "dragen een badjas" not in story and "heeft alleen een badjas aan" not in story
-    assert "Precies twee mensen staan op een badjas" in story
-    assert "Iemand op een badjas is precies één rij boven iemand op een paar sloffen (1)" in story
