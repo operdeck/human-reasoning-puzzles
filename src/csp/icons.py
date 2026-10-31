@@ -35,7 +35,6 @@ class Icon:
     emoji: str | None = None  # code point of a vendored Noto Emoji picture
     markup: str | None = None  # SVG drawing in `view` units
     view: Box = (0, 0, 100, 100)
-    bounds: Box | None = None  # the visible part of `markup`, used by `draw(crop=True)`
 
 
 def _star() -> str:
@@ -53,122 +52,7 @@ CROWN = (
     '<circle cx="10" cy="25" r="5.6"/><circle cx="50" cy="12.5" r="5.6"/>'
     '<circle cx="90" cy="25" r="5.6"/></g>'
 )
-# A double bed seen from above, with two pillows and a shared bedspread.
-DOUBLE_BED = (
-    '<rect x="4" y="4" width="92" height="92" rx="7" fill="#9b7254" stroke="#59402f"'
-    ' stroke-width="4"/>'
-    '<rect x="10" y="10" width="80" height="20" rx="4" fill="#f5f0e5" stroke="#76624f"'
-    ' stroke-width="2"/>'
-    '<path d="M50 11V29" stroke="#b3a38e" stroke-width="2"/>'
-    '<rect x="10" y="34" width="80" height="54" rx="5" fill="#b7c8d6" stroke="#64798b"'
-    ' stroke-width="3"/>'
-    '<path d="M50 36V86" stroke="#879aaa" stroke-width="2"/>'
-    '<path d="M14 54H86M14 70H86" stroke="#d7e0e7" stroke-width="2"/>'
-)
-# A white bathrobe and a pair of house slippers, drawn as simple icons.
-# A tortoiseshell cat to lie behind a board: the square y = 22..122 goes behind
-# the board; ears and eyes peek over its top edge and the front paws below it.
-TORTIE_CAT = (
-    '<g fill="#2a1f1a" stroke="#1c1512" stroke-width="1.5" stroke-linejoin="round">'
-    '<path d="M8 36L14 2Q15 0 17 2L38 14H62L83 2Q85 0 86 2L92 36Z"/>'
-    '<path d="M4 44Q4 16 22 11Q50 4 78 11Q96 16 96 44V122H4Z"/>'
-    "</g>"
-    '<path d="M16 17L17 6L31 14Z" fill="#c98466"/>'
-    '<path d="M84 17L83 6L69 14Z" fill="#a8664a"/>'
-    '<path d="M20 15l-1 -6M25 15l2 -5M80 15l1 -6M75 15l-2 -5"'
-    ' stroke="#e8c9a8" stroke-width="0.8" stroke-linecap="round"/>'
-    '<g fill="#b86f38">'
-    '<path d="M46 7Q50 5 55 7Q58 20 54 34H47Q43 20 46 7Z"/>'
-    '<path d="M4 58Q12 52 14 62Q10 74 4 76Z" opacity="0.85"/>'
-    '<path d="M96 84Q88 80 87 92Q90 104 96 106Z" opacity="0.85"/>'
-    '<path d="M4 102Q10 98 14 106L12 122H4Z" opacity="0.85"/>'
-    '<path d="M62 116Q74 110 86 116L86 122H60Z" opacity="0.85"/>'
-    "</g>"
-    '<path d="M27 18Q34 14 41 18" fill="none" stroke="#14100d" stroke-width="1.6"'
-    ' stroke-linecap="round"/>'
-    '<path d="M28 18.5Q34 16 40 18.5" fill="none" stroke="#7a8a3a" stroke-width="0.8"/>'
-    '<path d="M59 18Q66 12 73 18Q66 22 59 18Z" fill="#b5c84a" stroke="#14100d"'
-    ' stroke-width="1"/>'
-    '<ellipse cx="66" cy="18" rx="1.1" ry="2.6" fill="#14100d"/>'
-    '<circle cx="67.1" cy="16.6" r="0.7" fill="#ffffff"/>'
-    '<g stroke="#1c1512" stroke-width="1.5">'
-    '<ellipse cx="30" cy="121" rx="10" ry="5.5" fill="#2a1f1a"/>'
-    '<ellipse cx="70" cy="121" rx="10" ry="5.5" fill="#3a2a20"/>'
-    "</g>"
-    '<path d="M66 118Q70 116 75 119" fill="none" stroke="#b86f38" stroke-width="2"/>'
-    '<path d="M27 123v3M33 123v3M67 123v3M73 123v3" stroke="#14100d" stroke-width="1"/>'
-)
-# A lacquered ramen bowl: the board is the broth, chopsticks and steam rise above it.
-RAMEN_BOWL = (
-    '<g fill="none" stroke="#b9c2c8" stroke-width="2.5" stroke-linecap="round">'
-    '<path d="M22 21Q17 15 22 10T22 0"/><path d="M36 21Q31 15 36 10T36 1"/>'
-    '<path d="M50 21Q45 15 50 10T50 2"/>'
-    "</g>"
-    '<path d="M0 26H100V96Q100 122 50 122Q0 122 0 96Z" fill="#b8322a" stroke="#5c1712"'
-    ' stroke-width="1.5"/>'
-    '<path d="M0 104Q50 112 100 104M0 110Q50 118 100 110" fill="none" stroke="#f1d9a0"'
-    ' stroke-width="1.5"/>'
-    '<rect x="0" y="22" width="100" height="8" rx="4" fill="#2b1b17"/>'
-    '<rect x="3" y="24" width="94" height="5" rx="2.5" fill="#f2d49b"/>'
-    '<path d="M8 26.5h14M30 26q4 -2 8 0t8 0M66 26.5h10" stroke="#f7e7c4" stroke-width="1"/>'
-    '<circle cx="85" cy="26.5" r="2" fill="#fff" stroke="#e46a8a" stroke-width="0.8"/>'
-    '<g stroke-linecap="round"><path d="M58 29L97 1" stroke="#7a4a26" stroke-width="3"/>'
-    '<path d="M64 30L100 6" stroke="#9a6236" stroke-width="3"/></g>'
-)
-# An egg-shaped virtual-pet toy: the board is its screen, the shell and key ring
-# rise above it and three buttons sit below it.
-TAMAGOTCHI = (
-    '<circle cx="50" cy="4" r="3.5" fill="none" stroke="#9aa3ab" stroke-width="2"/>'
-    '<path d="M50 8C80 8 100 26 100 56V100Q100 122 50 122Q0 122 0 100V56C0 26 20 8 50 8Z"'
-    ' fill="#8e6cc9" stroke="#4b3378" stroke-width="1.5"/>'
-    '<g fill="#b9a1e6"><circle cx="30" cy="16" r="2.5"/><circle cx="44" cy="13" r="2"/>'
-    '<circle cx="62" cy="14" r="2.5"/><circle cx="74" cy="19" r="2"/>'
-    '<circle cx="4" cy="60" r="1.8"/><circle cx="96" cy="74" r="1.8"/>'
-    '<circle cx="4" cy="92" r="1.8"/><circle cx="96" cy="44" r="1.8"/></g>'
-    '<g fill="#f6c945" stroke="#7a5b12" stroke-width="1">'
-    '<circle cx="34" cy="118.5" r="2.6"/><circle cx="50" cy="119.3" r="2.6"/>'
-    '<circle cx="66" cy="118.5" r="2.6"/></g>'
-)
-BATHROBE = (
-    '<path d="M31 12L15 25L22 40L29 36V87H71V36L78 40L85 25L69 12L60 23H40Z"'
-    ' fill="#ffffff" stroke="#5a6670" stroke-width="4" stroke-linejoin="round"/>'
-    '<path d="M40 23L50 40L60 23M50 40V86M35 55H65" fill="none" stroke="#5a6670"'
-    ' stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
-    '<path d="M43 40L50 47L57 40" fill="#f2f2f2" stroke="#5a6670" stroke-width="2"/>'
-)
-SLIPPERS = (
-    '<g stroke="#594936" stroke-width="4" stroke-linejoin="round">'
-    '<path d="M18 18Q38 11 43 32L47 77Q48 88 38 90L21 88Q12 86 13 76Z" fill="#e6bb65"/>'
-    '<path d="M57 18Q77 11 82 32L86 77Q87 88 77 90L60 88Q51 86 52 76Z" fill="#e6bb65"/>'
-    "</g>"
-    '<path d="M20 53Q31 43 42 53M59 53Q70 43 81 53" fill="none" stroke="#fff4cf"'
-    ' stroke-width="5" stroke-linecap="round"/>'
-)
 TONGUE = "#e86a7e"
-STAIRCASE = (
-    '<path d="M12 84h19V66h19V48h19V30h19V12" fill="none" stroke="currentColor"'
-    ' stroke-width="11" stroke-linejoin="round"/>'
-    '<path d="M12 84h76" fill="none" stroke="currentColor" stroke-width="6"/>'
-)
-COUNTER = (
-    '<path d="M8 29h84v19H8z" fill="#8b5a37" stroke="#4c3524" stroke-width="4"/>'
-    '<path d="M15 48h70v38H15z" fill="#b98552" stroke="#4c3524" stroke-width="4"/>'
-    '<path d="M26 57h48v21H26z" fill="#e4c391" stroke="#785333" stroke-width="3"/>'
-)
-TABLE = (
-    '<rect x="13" y="15" width="74" height="70" rx="7" fill="#8b5a37" stroke="#4c3524"'
-    ' stroke-width="5"/>'
-    '<rect x="22" y="24" width="56" height="52" rx="3" fill="#e4c391" stroke="#785333"'
-    ' stroke-width="3"/>'
-    '<path d="M26 50h48M50 28v44" stroke="#a87949" stroke-width="2"/>'
-)
-ELEVATOR = (
-    '<rect x="12" y="7" width="76" height="86" rx="6" fill="#c6d0d5" stroke="#43545d"'
-    ' stroke-width="5"/>'
-    '<rect x="21" y="16" width="58" height="68" rx="3" fill="#f2f5f5" stroke="#65777f"'
-    ' stroke-width="3"/>'
-    '<path d="M50 17v66M44 50h2m8 0h2" stroke="#65777f" stroke-width="3"/>'
-)
 # A dog has pointed, upright ears; a puppy a rounder head, floppy ears and a tongue.
 DOG = (
     '<g fill="currentColor"><polygon points="42,34 30,8 19,40"/>'
@@ -247,78 +131,6 @@ WATERFALL = (
 )
 
 
-# A train bench seen from above: a faint red cushion split into seats, a backrest
-# along one long side and an armrest at each end.
-TRAIN_BENCH = (
-    '<g stroke="#a65a52" stroke-width="2.5" stroke-linejoin="round">'
-    '<rect x="4" y="30" width="92" height="54" rx="8" fill="#f2c4be"/>'
-    '<rect x="4" y="8" width="92" height="22" rx="6" fill="#dd9a92"/>'
-    '<rect x="4" y="8" width="10" height="76" rx="4" fill="#dd9a92"/>'
-    '<rect x="86" y="8" width="10" height="76" rx="4" fill="#dd9a92"/>'
-    '<path d="M38 34V80M62 34V80" fill="none" stroke="#c4786f" stroke-width="2"/>'
-    "</g>"
-)
-# A modern locomotive control panel, viewed from above, with a display and buttons.
-CONTROL_PANEL = (
-    '<rect x="7" y="12" width="86" height="76" rx="8" fill="#697783" stroke="#303b44"'
-    ' stroke-width="3"/>'
-    '<rect x="13" y="18" width="74" height="64" rx="5" fill="#d7dde2" stroke="#56636d"'
-    ' stroke-width="2"/>'
-    '<rect x="20" y="25" width="36" height="20" rx="2" fill="#263d4b"/>'
-    '<path d="M24 39L31 34L37 37L44 29L52 31" fill="none" stroke="#67c6b4" stroke-width="2"/>'
-    '<g stroke="#47545d" stroke-width="1"><circle cx="66" cy="30" r="4" fill="#d9574f"/>'
-    '<circle cx="77" cy="30" r="4" fill="#e3b94f"/><circle cx="66" cy="41" r="4"'
-    ' fill="#69a86d"/><circle cx="77" cy="41" r="4" fill="#6b9ac2"/></g>'
-    '<g stroke="#8a3434" stroke-width="1"><circle cx="26" cy="61" r="5" fill="#e35b51"/>'
-    '<circle cx="42" cy="61" r="5" fill="#e5b84c"/></g>'
-    '<g stroke="#45654b" stroke-width="1"><circle cx="58" cy="61" r="5" fill="#74ad77"/>'
-    '<circle cx="74" cy="61" r="5" fill="#78a4ca"/></g>'
-    '<g fill="none" stroke="#46535c" stroke-width="2"><circle cx="34" cy="75" r="4"/>'
-    '<circle cx="66" cy="75" r="4"/></g>'
-)
-# A small round wooden stool with no back.
-STOOL = (
-    '<ellipse cx="50" cy="86" rx="28" ry="6" fill="#000" opacity="0.16"/>'
-    '<g fill="#80552f" stroke="#57391f" stroke-width="3" stroke-linejoin="round">'
-    '<path d="M31 49L20 83L29 86L42 53Z"/><path d="M61 50L72 84L81 81L70 47Z"/>'
-    '<path d="M45 57L46 91L55 91L54 57Z"/></g>'
-    '<circle cx="50" cy="43" r="34" fill="#bd8954" stroke="#654426" stroke-width="4"/>'
-    '<circle cx="50" cy="43" r="26" fill="#d9ad78" stroke="#94653d" stroke-width="2"/>'
-    '<path d="M35 43H65M50 28V58" fill="none" stroke="#c79560" stroke-width="2"/>'
-)
-# A simple platform bench with visible slats and a low back, typical for railway stations.
-PLATFORM_BENCH = (
-    '<g fill="#cfaa75" stroke="#6f4a2d" stroke-width="2" stroke-linecap="round">'
-    '<path d="M12 34H88V40H12Z"/>'
-    '<path d="M10 52H90V60H10Z"/>'
-    '<path d="M10 70H90V78H10Z"/>'
-    '<path d="M14 18H86V30H14Z"/>'
-    '<path d="M18 78V92M82 78V92M35 78V92M65 78V92" fill="none"/>'
-    "</g>"
-    '<g fill="none" stroke="#7c5638" stroke-width="2">'
-    '<line x1="20" y1="18" x2="20" y2="78"/>'
-    '<line x1="80" y1="18" x2="80" y2="78"/>'
-    "</g>"
-)
-# One square of railway track seen from above, running left to right: it tiles into a line.
-RAILS = (
-    '<rect width="100" height="100" fill="#b9b2a5"/>'
-    '<g fill="#7a5a3c" stroke="#5b3f27" stroke-width="1.5">'
-    '<rect x="6" y="14" width="14" height="72" rx="2"/>'
-    '<rect x="43" y="14" width="14" height="72" rx="2"/>'
-    '<rect x="80" y="14" width="14" height="72" rx="2"/></g>'
-    '<g fill="#8d9399" stroke="#4d5359" stroke-width="1.5">'
-    '<rect x="-1" y="26" width="102" height="8"/>'
-    '<rect x="-1" y="66" width="102" height="8"/></g>'
-)
-# A wooden gangplank seen from above, bridging the gap from top to bottom.
-GANGPLANK = (
-    '<g stroke="#6f4a2d" stroke-width="2">'
-    '<rect x="22" y="0" width="56" height="100" fill="#d2a46a"/>'
-    '<path d="M40.7 0V100M59.3 0V100" fill="none"/>'
-    '<path d="M22 22H78M22 50H78M22 78H78" fill="none" stroke="#8a6040" stroke-width="3"/>'
-    '<path d="M18 0V100M82 0V100" fill="none" stroke="#5b3f27" stroke-width="4"/></g>'
-)
 # A wooden park bench on cast-iron legs, wider than it is tall.
 BENCH = (
     '<g stroke="#3d3d3d" stroke-width="4" stroke-linecap="round" fill="none">'
@@ -327,42 +139,6 @@ BENCH = (
     '<rect x="6" y="5" width="88" height="8" rx="2"/>'
     '<rect x="6" y="16" width="88" height="8" rx="2"/>'
     '<rect x="3" y="30" width="94" height="10" rx="2"/></g>'
-)
-# A museum gallery bench: an upholstered seat on short wooden legs, without a back or arms.
-MUSEUM_BENCH = (
-    '<g fill="#6b4a2f" stroke="#4a3220" stroke-width="1.5">'
-    '<rect x="10" y="24" width="7" height="20" rx="1.5"/>'
-    '<rect x="83" y="24" width="7" height="20" rx="1.5"/>'
-    '<rect x="5" y="20" width="90" height="7" rx="2"/></g>'
-    '<rect x="4" y="6" width="92" height="16" rx="6" fill="#8e2f3a" stroke="#5e1c24" '
-    'stroke-width="1.5"/>'
-    '<path d="M27 9V19M50 9V19M73 9V19" stroke="#6f2430" stroke-width="1.5"/>'
-    '<path d="M10 10H90" stroke="#b55a64" stroke-width="2" stroke-linecap="round"/>'
-)
-CORPSE = (
-    '<g fill="#d7d7d7" stroke="#2d2d2d" stroke-width="2.2" '
-    'stroke-linecap="round" stroke-linejoin="round">'
-    '<path d="M28 84L34 54C40 33 57 28 68 39L78 54L75 90H32Z"/>'
-    '<path d="M42 28L50 16L59 28L57 41H44Z" fill="#d6b88d"/>'
-    '<circle cx="58" cy="27" r="11" fill="#d7d7d7"/>'
-    '<path d="M40 47C48 57 57 60 66 58" fill="none" stroke="#232323" stroke-width="3"/>'
-    '<path d="M36 57L47 68M50 61L61 74" fill="none" stroke="#7b1d1d" stroke-width="4"/>'
-    '<path d="M62 52L70 56M65 60L74 64M51 77L58 85" fill="none" stroke="#7b1d1d" stroke-width="3"/>'
-    '<path d="M26 82L32 74L38 83" fill="none" stroke="#7b1d1d" stroke-width="3"/>'
-    "</g>"
-)
-INFO_BOARD = (
-    '<g fill="#d9c79a" stroke="#5a3e2a" stroke-width="2.5" '
-    'stroke-linecap="round" stroke-linejoin="round">'
-    '<rect x="18" y="18" width="64" height="58" rx="4"/>'
-    '<path d="M24 30H76M24 42H76M24 54H64" fill="none" stroke="#5a3e2a" stroke-width="2"/>'
-    '<path d="M30 22V12H70V22" fill="none"/>'
-    '<g fill="#c2a46d"><rect x="30" y="66" width="8" height="18"/>'
-    '<rect x="62" y="66" width="8" height="18"/></g>'
-    '<g fill="#4d4d4d"><rect x="40" y="24" width="20" height="12"/>'
-    '<rect x="36" y="42" width="28" height="8"/></g>'
-    '<g fill="none" stroke="#5a3e2a" stroke-width="2"><path d="M20 82H80"/></g>'
-    "</g>"
 )
 # A patterned rug and a stone well, drawn here because Noto Emoji has neither.
 CARPET = (
@@ -403,12 +179,6 @@ SHAPES = {
     "wall": f'<rect width="100" height="100" {FILL}/>',
     "filled": f'<rect x="14" y="14" width="72" height="72" rx="4" {FILL}/>',
     "water": f'<path d="M14 50q9-12 18 0t18 0t18 0t18 0" {LINE} stroke-width="7"/>',
-    "ship_single": f'<circle cx="50" cy="50" r="36" {FILL}/>',
-    "ship_middle": f'<rect x="14" y="14" width="72" height="72" {FILL}/>',
-    "ship_north": f'<path d="M14 86V50a36 36 0 0 1 72 0v36z" {FILL}/>',
-    "ship_south": f'<path d="M14 14v36a36 36 0 0 0 72 0V14z" {FILL}/>',
-    "ship_west": f'<path d="M86 14H50a36 36 0 0 0 0 72h36z" {FILL}/>',
-    "ship_east": f'<path d="M14 14h36a36 36 0 0 1 0 72H14z" {FILL}/>',
     "disc_black": f'<circle cx="50" cy="50" r="34" {FILL}/>',
     "disc_white": '<circle cx="50" cy="50" r="31" fill="#fff" stroke="currentColor"'
     ' stroke-width="6"/>',
@@ -439,17 +209,6 @@ REGISTRY: dict[str, Icon] = {
         Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
         Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
         Icon("water", "\u00b7", "water", markup=SHAPES["water"]),
-        *(
-            Icon(name, fallback, label, markup=SHAPES[name])
-            for name, fallback, label in (
-                ("ship_single", "O", "single-cell ship"),
-                ("ship_middle", "M", "ship middle"),
-                ("ship_north", "N", "north ship end"),
-                ("ship_south", "S", "south ship end"),
-                ("ship_west", "W", "west ship end"),
-                ("ship_east", "E", "east ship end"),
-            )
-        ),
         Icon("disc_black", "\u25cf", "one", markup=SHAPES["disc_black"]),
         Icon("disc_white", "\u25cb", "zero", markup=SHAPES["disc_white"]),
         Icon("equal", "=", "equal", markup=SHAPES["equal"]),
@@ -461,33 +220,15 @@ REGISTRY: dict[str, Icon] = {
         Icon("cross", "\u2717", "no", markup=SHAPES["cross"]),
         Icon("carpet", "\u25a6", "carpet", markup=CARPET, view=(0, 0, 121, 121)),
         Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
-        Icon("staircase", "\u21d7", "staircase", markup=STAIRCASE),
-        Icon("counter", "\u25a4", "reception counter", markup=COUNTER),
-        Icon("table", "\u25a4", "table", markup=TABLE),
-        Icon("elevator", "\u21f5", "elevator", markup=ELEVATOR),
         Icon("allium", "\u273f", "allium", markup=ALLIUM),
         Icon("bench", "\u2b0c", "park bench", markup=BENCH, view=(0, 0, 100, 56)),
-        Icon("museum_bench", "\u2b0c", "museum bench", markup=MUSEUM_BENCH, view=(0, 0, 100, 46)),
-        Icon("train_bench", "\u2b0c", "train bench", markup=TRAIN_BENCH, view=(0, 0, 100, 92)),
-        Icon("control_panel", "\u25a6", "control panel", markup=CONTROL_PANEL),
-        Icon("stool", "\u25cf", "stool", markup=STOOL),
-        Icon(
-            "platform_bench",
-            "\u2b0c",
-            "platform bench",
-            markup=PLATFORM_BENCH,
-            view=(0, 0, 100, 92),
-        ),
-        Icon("rails", "\u2550", "railway track", markup=RAILS, view=(0, 0, 100, 100)),
-        Icon("gangplank", "\u2551", "gangplank", markup=GANGPLANK, view=(0, 0, 100, 100)),
-        Icon("info_board", "\u2139", "information board", markup=INFO_BOARD, view=(0, 0, 100, 100)),
-        Icon("corpse", "\u2620", "corpse", markup=CORPSE, view=(0, 0, 100, 100)),
         Icon("tatami", "\u25a5", "tatami mat", markup=TATAMI),
         Icon("plate", "\u25cd", "Japanese plate", markup=PLATE),
         Icon("zaisu", "\u2441", "Japanese chair", markup=ZAISU),
         Icon("acacia", "\u2663", "acacia", markup=ACACIA),
         Icon("baobab", "\u2660", "baobab", markup=BAOBAB),
         Icon("waterfall", "\u2307", "waterfall", markup=WATERFALL),
+<<<<<<< Updated upstream
         Icon("double_bed", "\U0001f6cf", "double bed", markup=DOUBLE_BED),
         Icon("bathrobe", "\U0001f9ba", "bathrobe", markup=BATHROBE),
         Icon(
@@ -515,23 +256,21 @@ REGISTRY: dict[str, Icon] = {
             bounds=(0, 22, 100, 122),
         ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
+=======
+        Icon("underwear", "🩲", "underwear", markup=UNDERWEAR),
+>>>>>>> Stashed changes
     )
 }
 
 # Murdoku object names drawn with a registry icon rather than an emoji.
 OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
-                "train_bench": "train_bench", "trein_bank": "train_bench",
-                "museum_bench": "museum_bench", "museumbank": "museum_bench",
-                "bedieningspaneel": "control_panel", "control_panel": "control_panel",
-                "controlpanel": "control_panel",
-                "kruk": "stool", "stool": "stool",
-                "platform_bench": "platform_bench", "perron_bank": "platform_bench",
                 "tapijt": "carpet", "carpet": "carpet", "rug": "carpet",
                 "tatami": "tatami", "plate": "plate", "sara": "plate",
                 "zaisu": "zaisu", "japanese_chair": "zaisu",
                 "acacia": "acacia", "baobab": "baobab",
                 "waterval": "waterfall", "waterfall": "waterfall",
                 "waterput": "well", "well": "well",
+<<<<<<< Updated upstream
                 "tweepersoonsbed": "double_bed", "double_bed": "double_bed",
                 "badjas": "bathrobe", "bathrobe": "bathrobe",
                 "lapjeskat": "tortie_cat", "tortie_cat": "tortie_cat",
@@ -547,6 +286,11 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "elevator_car": "elevator", "wall": "wall",
                 "rails": "rails", "spoor": "rails", "track": "rails",
                 "loopplank": "gangplank", "gangplank": "gangplank"}  # fmt: skip
+=======
+                "sierui": "allium", "allium": "allium",
+                "onderbroek": "underwear", "underwear": "underwear",
+                "briefs": "underwear", "boxers": "underwear"}  # fmt: skip
+>>>>>>> Stashed changes
 
 # Dutch names as used in the puzzles, plus English synonyms.
 CATALOGUE: dict[str, str] = {
@@ -572,7 +316,6 @@ CATALOGUE: dict[str, str] = {
     "paard": "1f40e", "horse": "1f40e",
     "muis": "1f401", "mouse": "1f401",
     "vuurtje": "1f525", "kampvuur": "1f525", "campfire": "1f525", "fire": "1f525",
-    "vuurkist": "1f525", "firebox": "1f525",
     "tent": "26fa",
     "parasol": "26f1", "umbrella": "26f1",
     "fontein": "26f2", "fountain": "26f2",
@@ -599,7 +342,7 @@ CATALOGUE: dict[str, str] = {
     # indoors
     "bank": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bankstel": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",
-    "raam": "1fa9f", "window": "1fa9f",
+    "window": "1fa9f",
     "bed": "1f6cf", "tweepersoonsbed": "1f6cf", "double_bed": "1f6cf",
     "bad": "1f6c1", "bathtub": "1f6c1",
     "douche": "1f6bf", "shower": "1f6bf",
@@ -621,11 +364,8 @@ CATALOGUE: dict[str, str] = {
     "kookeiland": "1f373", "fornuis": "1f373", "stove": "1f373", "oven": "1f373",
     "kombuis": "1f372", "galley": "1f372",
     "koffer": "1f9f3", "suitcase": "1f9f3",
-    "bril": "1f453", "glasses": "1f453",
-    "zonnebril": "1f576", "sunglasses": "1f576",
     "kruik": "1f3fa", "amphora": "1f3fa", "vase": "1f3fa",
     "taart": "1f370", "cake": "1f370",
-    "koffiebar": "2615", "koffie": "2615", "coffee": "2615", "coffee_bar": "2615",
     "mand": "1f9fa", "basket": "1f9fa",
     "schooltas": "1f392", "backpack": "1f392", "schoolbag": "1f392",
     "arcade": "1f579", "joystick": "1f579",
@@ -633,29 +373,6 @@ CATALOGUE: dict[str, str] = {
     "knuffel": "1f9f8", "teddy": "1f9f8", "teddy_bear": "1f9f8",
     "bal": "26bd", "ball": "26bd", "voetbal": "26bd", "football": "26bd",
     "emmer": "1faa3", "bucket": "1faa3",
-    # museum and Halloween
-    "sarcofaag": "26b0", "sarcophagus": "26b0", "doodskist": "26b0", "coffin": "26b0",
-    "dinosaurus": "1f996", "dinosaur": "1f996", "t_rex": "1f996", "trex": "1f996",
-    "sauropod": "1f995", "brontosaurus": "1f995", "diplodocus": "1f995",
-    "harnas": "1f6e1", "armour": "1f6e1", "armor": "1f6e1", "schild": "1f6e1",
-    "shield": "1f6e1",
-    "zwaarden": "2694", "swords": "2694", "weapons": "2694",
-    "pompoen": "1f383", "pumpkin": "1f383", "jack_o_lantern": "1f383",
-    "spook": "1f47b", "ghost": "1f47b",
-    "vleermuis": "1f987", "bat": "1f987",
-    "spinnenweb": "1f578", "cobweb": "1f578", "spider_web": "1f578",
-    "spin": "1f577", "spider": "1f577",
-    "grafsteen": "1faa6", "headstone": "1faa6", "gravestone": "1faa6",
-    "glazen_bol": "1f52e", "kristallen_bol": "1f52e", "crystal_ball": "1f52e",
-    "kaars": "1f56f", "candle": "1f56f",
-    "dolk": "1f5e1", "dagger": "1f5e1", "kruisboog": "1f3f9", "crossbow": "1f3f9",
-    "kandelaar": "1f56f", "candlestick": "1f56f",
-    "juweel": "1f48e", "gem": "1f48e", "jewel": "1f48e", "diamond": "1f48e",
-    "scarabee": "1fab2", "scarab": "1fab2", "beetle": "1fab2",
-    "bot": "1f9b4", "bone": "1f9b4", "fossil": "1f9b4",
-    "schedel": "1f480", "skull": "1f480",
-    "souvenirs": "1f6cd", "souvenir": "1f6cd", "shopping_bags": "1f6cd",
-    "ezel": "1f3a8", "easel": "1f3a8", "palet": "1f3a8", "palette": "1f3a8",
 }  # fmt: skip
 
 
@@ -719,17 +436,8 @@ def draw(
     if icon.emoji is not None:
         return canvas.emoji(icon.emoji, box, crop=crop, stretch=stretch, rotate=rotate)
     assert icon.markup is not None
-    overflow = crop and icon.bounds is not None
-    view = icon.bounds if overflow and icon.bounds is not None else icon.view
     canvas.place(
-        f"icon-{icon.name}",
-        icon.markup,
-        view,
-        box,
-        stretch=stretch,
-        rotate=rotate,
-        tint=tint,
-        overflow=overflow,
+        f"icon-{icon.name}", icon.markup, icon.view, box, stretch=stretch, rotate=rotate, tint=tint
     )
     return True
 

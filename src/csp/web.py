@@ -20,14 +20,13 @@ from . import akari, icons, queens, starbattle
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
-from .puzzlefile import language_of, load_board, load_presentation, read_sections
+from .puzzlefile import language_of, load_board, load_presentation
 from .story import (
-    PEER_RULE_LABELS,
+    FAMILY_RULES,
     attribute_list,
     board_notes,
     clue_paragraphs,
     condition_list,
-    family_rules,
     object_list,
     phrase,
     role_list,
@@ -101,11 +100,7 @@ def _fixed(model: Model) -> dict[str, Any]:
 
 
 def peers(
-    model: Model,
-    cells: set[str],
-    by_value: Mapping[Any, str],
-    only: str | None = None,
-    language: str = "en",
+    model: Model, cells: set[str], by_value: Mapping[Any, str], only: str | None = None
 ) -> list[dict[str, Any]]:
     """Groups of cells that may hold an item at most once, from the model's constraints.
 
@@ -117,7 +112,6 @@ def peers(
     domains = {model.domain_of(var) for var in model.variables}
     every = set(by_value.values())
     groups: dict[tuple[str, ...], set[str]] = {}
-    labels: dict[tuple[str, ...], set[str]] = {}
     for constraint in model.constraints:
         if constraint.index in domains or constraint.reified_by is not None:
             continue
@@ -133,12 +127,8 @@ def peers(
         if None in items or len(items) != 1:
             continue
         groups.setdefault(names, set()).update(item for item in items if item is not None)
-        if label := PEER_RULE_LABELS[language].get(constraint.family or ""):
-            labels.setdefault(names, set()).add(label)
     return [
-        {"cells": list(names)}
-        | ({} if items == every else {"items": sorted(items)})
-        | ({"description": ", ".join(sorted(labels[names]))} if names in labels else {})
+        {"cells": list(names)} | ({} if items == every else {"items": sorted(items)})
         for names, items in sorted(groups.items())
     ]
 
@@ -159,14 +149,12 @@ def bundle(
 
     `number` and `section` place it in the collection (see `collection.arrange`).
     """
-    display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
-    family_label = FAMILY_LABELS.get(display_family, FAMILY_LABELS[kind])
     out: dict[str, Any] = {
         "schema": SCHEMA,
         "id": stem,
         "family": kind,
-        "familyLabel": family_label,
-        "section": section or family_label,
+        "familyLabel": FAMILY_LABELS[kind],
+        "section": section or FAMILY_LABELS[kind],
         "number": number,
         "title": _title(text, kind, stem),
         "grade": grade,
@@ -194,11 +182,15 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
             item["svg"] = picture
         palette.append(item)
     placed = {str(sq): person for person, sq in solution.items() if isinstance(sq, Square)}
+<<<<<<< Updated upstream
     rules = [
         *(presentation.intro or [phrase(text, "doc.rules")]),
         *board_notes(text),
         phrase(text, "doc.murdoku_note"),
     ]
+=======
+    rules = unique_in_order([*(presentation.intro or [phrase(text, "doc.rules")]), *board_notes(text)])
+>>>>>>> Stashed changes
     return {
         "language": language_of(text),
         "size": [board.size, board.size],
@@ -255,10 +247,9 @@ def _family(
 ) -> dict[str, Any]:
     cells = grid_cells(picture)
     out: dict[str, Any] = {
-        "language": language_of(text),
+        "language": "en",
         "size": [max(r for r, _ in cells), max(c for _, c in cells)] if cells else [0, 0],
-        "rules": family_rules(text, kind),
-        "headings": {"rules_title": phrase(text, "doc.rules_title")},
+        "rules": [FAMILY_RULES[kind]],
         "clues": [],
         "conditions": [],
         "question": "",
@@ -266,8 +257,7 @@ def _family(
     if kind in UNSUPPORTED:
         return out | {"playable": False, "unsupported": UNSUPPORTED[kind]}
     names = [f"r{row}c{col}" for row, col in cells]
-    # Cage targets are clues for the player to enter, not prefilled digits.
-    fixed = {} if kind == "calcudoku" else _fixed(model)
+    fixed = _fixed(model)
     regions: dict[str, str] = {}
     scopes: list[dict[str, Any]] = []
     auto = True
@@ -310,7 +300,7 @@ def _family(
             scopes = NEIGHBOURS
         by_value = {item.value: item.id for item in items}
         if kind in DIGITS:
-            groups = peers(model, set(names), by_value, language=language_of(text))
+            groups = peers(model, set(names), by_value)
         elif kind == "akari":
             groups = peers(model, set(names), by_value, only=akari.SIGHT)
             scopes = [{"scope": "peers"}]
@@ -355,7 +345,7 @@ def _domain(model: Model, var: str) -> list[Any]:
 
 
 def index_entry(data: Mapping[str, Any]) -> dict[str, Any]:
-    """The landing page's preview and metadata for one bundle."""
+    """The landing page's line for one bundle."""
     keys = (
         "id",
         "number",
@@ -365,7 +355,6 @@ def index_entry(data: Mapping[str, Any]) -> dict[str, Any]:
         "familyLabel",
         "size",
         "grade",
-        "static",
         "playable",
     )
     entry = {key: data[key] for key in keys}

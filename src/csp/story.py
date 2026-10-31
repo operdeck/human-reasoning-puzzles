@@ -24,8 +24,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
 
-from . import battleships, sudoku
-from .core import Kind, Model, Solver, Step
+from .core import Kind, Solver, Step
 from .murdoku import (
     COUNTING,
     FILTERS,
@@ -44,10 +43,8 @@ from .murdoku import (
     global_count_conditions,
     global_count_unit_prefix,
     line_indices,
-    next_to_covers_own_squares,
     quantified_conditions,
     role_conditions,
-    role_statuses,
 )
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, read_sections
@@ -73,15 +70,12 @@ PHRASES: dict[str, dict[str, str]] = {
             "with someone else."
         ),
         "doc.area_tag": "The {tag} are {areas}.",
-        "doc.area_tag_one": "The {tag} is {areas}.",
         "doc.attributes": "The attributes",
         "doc.attribute": "{people}",
         "doc.roles": "The roles",
         "doc.objects": "The objects",
         "doc.standable": "you can stand on it",
         "doc.blocking": "nobody can stand here",
-        "doc.standable_group": "Standable",
-        "doc.blocking_group": "Blocking",
         "doc.role": "held by {count}{extra}",
         "doc.count_one": "exactly one person",
         "doc.count_exact": "exactly {n} people",
@@ -95,18 +89,11 @@ PHRASES: dict[str, dict[str, str]] = {
             "column. Squares with an object that blocks cannot be used; squares with a standable "
             "object can."
         ),
-        "doc.murdoku_note": (
-            "Character kinds and descriptions are story details, not clues. Do not infer where a "
-            "character can be or what they can do from their species, job, name, or description. "
-            "Only the puzzle's stated rules and numbered clues determine what is possible; a kind "
-            "or trait matters only when a rule or clue explicitly uses it."
-        ),
         "and": "and",
         "or": "or",
         "region": "in the {name}",
         "the": "the {name}",
         "a": "a {name}",
-        "an": "an {name}",
         "row": "row {n}",
         "col": "column {n}",
         "rows": "rows {list}",
@@ -116,7 +103,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "on": "on {what}",
         "at": "at {what}",
         "next_to": "next to {what}",
-        "on_or_next_to": "on or next to {what}",
         "is": "{who} is {where}",
         "is_not": "{who} is not {where}",
         "count": "{who} has {n} squares left",
@@ -165,9 +151,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.only_in_tagged": "{a} is only {where}",
         "clue.next_to": "{a} is next to {things}",
         "clue.not_next_to": "{a} is not next to {things}",
-        "clue.on_or_next_to": "{a} is on or next to {things}",
-        "clue.not_on_or_next_to": "{a} is neither on nor next to {things}",
-        "clue.beside_but_not_on": "{a} is beside {things}, but not on {things}",
         "clue.knight_from": "{a} is a knight's move from {things}",
         "clue.on": "{a} is on {things}",
         "clue.not_on": "{a} is not on {things}",
@@ -236,17 +219,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_on": "if {who} has role {role}, {subject} must be on {things}",
         "role_not_on": "if {who} has role {role}, {subject} must not be on {things}",
         "role_next_to": "if {who} has role {role}, {subject} must be next to {things}",
-        "role_on_or_next_to": "if {who} has role {role}, {subject} must be on or next to {things}",
         "role_below": "{who} is below a {role} holder",
         "role_below_n": "{who} is {n} rows below a {role} holder",
         "sole_role_companion": "{possessive} sole region companion has role {role}",
-        "role_occupant.alone": "every {role} holder is alone in their area",
-        "role_occupant.not_alone": "no {role} holder is alone in their area",
-        "min_role_in_tagged_one": "at least one {role} holder is {area}",
-        "min_role_in_tagged_one_unique": "the {role} is {area}",
-        "role_area_in": "{who} has role {role} and must be {area}",
-        "role_only_one": "there is only one {role}",
-        "role_area_out": "{who} cannot both have role {role} and be {area}",
+        "role_occupant": (
+            "when a {role} holder is in an area, its occupant condition is {condition}"
+        ),
         "clue.above": "{a} is somewhere above {b}",
         "clue.above_n": "{a} is exactly {rows} above {b}",
         "clue.within": "{a} is at most {n} squares from {b}",
@@ -256,7 +234,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.furthest_all": "{a} is the furthest from {b} of all the figures",
         "target.attribute": "someone with the {name} attribute",
         "target.role": "a {name} holder",
-        "target.unique_role": "the {name}",
         "target.area": "someone {where}",
         "target.on": "someone on {what}",
         "target.at": "someone at {what}",
@@ -283,15 +260,12 @@ PHRASES: dict[str, dict[str, str]] = {
             "iemand anders."
         ),
         "doc.area_tag": "{Tag}: {areas}.",
-        "doc.area_tag_one": "{Tag}: {areas}.",
         "doc.attributes": "De kenmerken",
         "doc.attribute": "{people}",
         "doc.roles": "De rollen",
         "doc.objects": "De voorwerpen",
         "doc.standable": "hier kun je op staan",
         "doc.blocking": "hier kan niemand staan",
-        "doc.standable_group": "Begaanbaar",
-        "doc.blocking_group": "Blokkerend",
         "doc.role": "heeft {count}{extra}",
         "doc.count_one": "precies één persoon",
         "doc.count_exact": "precies {n} mensen",
@@ -305,20 +279,11 @@ PHRASES: dict[str, dict[str, str]] = {
             "rij of kolom. Vakjes met een blokkerend voorwerp kun je niet gebruiken; vakjes met "
             "een begaanbaar voorwerp wel."
         ),
-        "doc.murdoku_note": (
-            "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen. Leid niet "
-            "af waar een personage kan zijn of wat die kan doen op basis van diens diersoort, "
-            "beroep, "
-            "naam of beschrijving. Alleen de expliciete regels en genummerde aanwijzingen bepalen "
-            "wat mogelijk is; een soort of eigenschap telt alleen mee als een regel of aanwijzing "
-            "die uitdrukkelijk gebruikt."
-        ),
         "and": "en",
         "or": "of",
         "region": "in de {name}",
         "the": "de {name}",
         "a": "een {name}",
-        "an": "een {name}",
         "row": "rij {n}",
         "col": "kolom {n}",
         "rows": "de rijen {list}",
@@ -328,7 +293,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "on": "op {what}",
         "at": "bij {what}",
         "next_to": "naast {what}",
-        "on_or_next_to": "op of naast {what}",
         "is": "{who} zit {where}",
         "is_not": "{who} zit niet {where}",
         "count": "{who} kan nog op {n} vakjes",
@@ -377,9 +341,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.only_in_tagged": "{a} is alleen {where}",
         "clue.next_to": "{a} zit naast {things}",
         "clue.not_next_to": "{a} zit niet naast {things}",
-        "clue.on_or_next_to": "{a} zit op of naast {things}",
-        "clue.not_on_or_next_to": "{a} zit niet op of naast {things}",
-        "clue.beside_but_not_on": "{a} zit naast {things}, maar niet op {things}",
         "clue.knight_from": "{a} staat een paardensprong van {things}",
         "clue.on": "{a} zit op {things}",
         "clue.not_on": "{a} zit niet op {things}",
@@ -446,17 +407,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_on": "als {who} de rol {role} heeft, staat {subject} op {things}",
         "role_not_on": "als {who} de rol {role} heeft, staat {subject} niet op {things}",
         "role_next_to": "als {who} de rol {role} heeft, staat {subject} naast {things}",
-        "role_on_or_next_to": "als {who} de rol {role} heeft, staat {subject} op of naast {things}",
         "role_below": "{who} staat onder een {role}-drager",
         "role_below_n": "{who} staat {n} rijen onder een {role}-drager",
         "sole_role_companion": "{possessive} enige gebiedsgenoot heeft de rol {role}",
-        "role_occupant.alone": "elke {role}-drager is alleen in zijn gebied",
-        "role_occupant.not_alone": "geen enkele {role}-drager is alleen in zijn gebied",
-        "min_role_in_tagged_one": "minstens één {role}-drager is {area}",
-        "min_role_in_tagged_one_unique": "de {role} is {area}",
-        "role_area_in": "{who} heeft de rol {role} en moet {area} zijn",
-        "role_only_one": "er is maar één {role}",
-        "role_area_out": "{who} kan niet de rol {role} hebben en tegelijk {area} zijn",
+        "role_occupant": "als een {role}-drager in een gebied is, geldt daar: {condition}",
         "clue.above": "{a} is ergens boven {b}",
         "clue.above_n": "{a} is precies {rows} boven {b}",
         "clue.within": "{a} is hooguit {n} vakjes van {b}",
@@ -466,7 +420,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.furthest_all": "{a} is van alle figuren het verst van {b}",
         "target.attribute": "iemand met het kenmerk {name}",
         "target.role": "een {name}-drager",
-        "target.unique_role": "de {name}",
         "target.area": "iemand {where}",
         "target.on": "iemand op {what}",
         "target.at": "iemand bij {what}",
@@ -475,131 +428,7 @@ PHRASES: dict[str, dict[str, str]] = {
     },
 }
 
-SUDOKU_RULES = {
-    "en": {
-        "base": "Fill the grid so every row, column and box contains each digit once.",
-        "jigsaw": (
-            "The outlined regions replace the usual square boxes; each contains every digit once."
-        ),
-        "extra": "Each extra house marked on the grid also contains every digit once.",
-        "anti_knight": (
-            "Equal digits may not be a knight's move apart "
-            "(two cells in one direction and one perpendicular, as in chess)."
-        ),
-        "anti_king": "Equal digits may not touch, not even diagonally.",
-        "white": "Digits joined by a white Kropki dot differ by exactly one.",
-        "black": "For a black Kropki dot, one of the joined digits is exactly twice the other.",
-        "dots": "Missing dots impose no restriction; not every qualifying pair needs a dot.",
-        "consecutive": "Digits joined by a consecutive-pair bar differ by exactly one.",
-        "less": "Digits strictly increase along each thermometer, from the bulb towards the tip.",
-    },
-    "nl": {
-        "base": (
-            "Vul het rooster zo in dat elke rij, kolom en elk blok "
-            "elk cijfer precies één keer bevat."
-        ),
-        "jigsaw": (
-            "De omlijnde gebieden vervangen de gewone vierkante blokken; "
-            "elk gebied bevat elk cijfer precies één keer."
-        ),
-        "extra": (
-            "Elk extra gemarkeerd gebied op het rooster bevat ook elk cijfer precies één keer."
-        ),
-        "anti_knight": (
-            "Gelijke cijfers mogen niet op een paardensprong van elkaar staan "
-            "(twee vakjes in één richting en één loodrecht daarop, zoals bij schaken)."
-        ),
-        "anti_king": "Gelijke cijfers mogen elkaar niet raken, ook niet diagonaal.",
-        "white": "Cijfers verbonden door een witte Kropki-stip verschillen precies één.",
-        "black": (
-            "Bij een zwarte Kropki-stip is het ene verbonden cijfer precies tweemaal het andere."
-        ),
-        "dots": (
-            "Ontbrekende stippen leggen geen beperking op; "
-            "niet elk passend paar hoeft een stip te hebben."
-        ),
-        "consecutive": "Cijfers verbonden door een streepje verschillen precies één.",
-        "less": "De cijfers lopen op elke thermometer strikt op, van het bolletje naar de punt.",
-    },
-}
-
-PEER_RULE_LABELS = {
-    "en": {
-        "no repeated digit on anti-knight peers": "anti-knight rule",
-        "no repeated digit on anti-king peers": "anti-king rule",
-        "each digit once per row": "row rule",
-        "each digit once per column": "column rule",
-        "each digit once per box": "box rule",
-        "each digit once per extra house": "extra-house rule",
-    },
-    "nl": {
-        "no repeated digit on anti-knight peers": "anti-paardregel",
-        "no repeated digit on anti-king peers": "anti-koningregel",
-        "each digit once per row": "rijregel",
-        "each digit once per column": "kolomregel",
-        "each digit once per box": "blokregel",
-        "each digit once per extra house": "regel voor extra gebieden",
-    },
-}
-
-
-def family_rules(text: str, kind: str) -> list[str]:
-    """Player-facing rules from the same parsed variant semantics as the solver."""
-    if kind == "battleships":
-        fleet_puzzle = battleships.parse(text)
-        language = Wording.read(text).language
-        if not fleet_puzzle.fleet:
-            return [
-                "Markeer vakjes volgens de rij- en kolomtotalen; deze variant zonder vloot "
-                "legt geen scheepsvormen of aanraakregels op."
-                if language == "nl"
-                else FAMILY_RULES[kind]
-            ]
-        fleet = ", ".join(map(str, fleet_puzzle.fleet))
-        if language == "nl":
-            return [
-                f"Plaats de volledige vloot: scheepslengten {fleet}.",
-                "Elk schip is een rechte horizontale of verticale reeks vakjes.",
-                "Verschillende schepen mogen elkaar niet raken, ook niet diagonaal.",
-                "De getallen geven het aantal scheepsvakjes in elke rij en kolom.",
-                "Golven zijn water; gegeven scheepsdelen horen bij een schip. Een rondje is "
-                "een schip van één vakje, een afgeronde kant is een uiteinde, en een vierkant "
-                "tussenstuk heeft aan twee tegenoverliggende kanten een scheepsdeel. "
-                "Een vraagteken is een scheepsdeel waarvan de vorm niet gegeven is.",
-            ]
-        return [
-            f"Place the complete fleet: ship lengths {fleet}.",
-            "Each ship is a straight horizontal or vertical run of cells.",
-            "Different ships may not touch, not even diagonally.",
-            "The numbers give the occupied ship cells in each row and column.",
-            "Waves mark water; given ship segments belong to a ship. A circle is a single-cell "
-            "ship, a rounded side is an end, and a square middle segment has ship cells on "
-            "two opposite sides. A question mark is a ship segment of unspecified shape.",
-        ]
-    if kind != "sudoku":
-        display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
-        return [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])]
-    puzzle = sudoku.parse(text)
-    words = SUDOKU_RULES[Wording.read(text).language]
-    rules = [words["base"]]
-    if puzzle.jigsaw:
-        rules.append(words["jigsaw"])
-    if puzzle.extra_houses():
-        rules.append(words["extra"])
-    if puzzle.anti_knight:
-        rules.append(words["anti_knight"])
-    if puzzle.anti_king:
-        rules.append(words["anti_king"])
-    kinds = {link.kind for link in puzzle.links}
-    for kind in ("white", "black", "consecutive", "less"):
-        if kind in kinds:
-            rules.append(words[kind])
-    if kinds & {"white", "black"}:
-        rules.append(words["dots"])
-    return rules
-
-
-# Base rules for the non-Murdoku families; Sudoku adds its active variants above.
+# The one-line rules of every family but Murdoku, for the booklet and the web site.
 FAMILY_RULES = {
     "sudoku": "Fill the grid so every row, column and box contains each digit once.",
     "calcudoku": "Fill the grid so no digit repeats in a row or column, and each cage's "
@@ -614,17 +443,15 @@ FAMILY_RULES = {
     "stars may not touch, not even diagonally.",
     "binairo": "Fill the grid with two symbols: no three equal in a row or column, "
     "each row and column has equally many of each, and no two rows or columns are identical.",
-    "tango": "Follow the Binairo rules; = signs join equal neighbouring cells and x signs "
-    "join different neighbouring cells.",
     "tents": "Put a tent next to each tree (horizontally or vertically), one tent per tree; "
     "tents never touch each other, and the numbers give the tents per row and column.",
     "minesweeper": "Mark the mines: each number tells how many of its eight neighbours are mines.",
     "akari": "Place lights so every white cell is lit and no two lights see each other; "
     "a number tells how many lights touch that black cell.",
-    "kakurasu": "Shade cells so each row and column adds up to its target; a shaded cell "
-    "contributes its column number to the row sum and its row number to the column sum.",
-    "battleships": "Mark cells to match the ship-cell counts for each row and column; "
-    "this counts-only puzzle does not model ship shapes or non-touching rules.",
+    "kakurasu": "Shade cells so each row and column adds up to its target, where a "
+    "shaded cell counts its position number.",
+    "battleships": "Place the fleet without ships touching, even diagonally; the numbers "
+    "give the ship cells per row and column.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }
@@ -696,8 +523,7 @@ CONDITION_PHRASES = {
         "cond.next_to.name": "next to",
         "cond.next_to": "The figure's square shares a side with a square of the object, in the "
         "same area; diagonals do not count. A door, window or corner object counts across an "
-        "area border. On an object of several squares you are also next to it, so such clues "
-        "say 'on or next to'.",
+        "area border.",
         "cond.at.name": "at a door or window",
         "cond.at": "The figure stands on one of the squares on either side of the door or window.",
         "cond.on_mark.name": "on a marked square",
@@ -766,8 +592,7 @@ CONDITION_PHRASES = {
         "cond.next_to.name": "naast",
         "cond.next_to": "Het vakje van het figuur deelt een zijde met een vakje van het object, "
         "in hetzelfde gebied; schuin telt niet. Een deur, raam of hoekobject telt ook over een "
-        "gebiedsgrens heen. Wie op een object van meerdere vakjes staat, staat er ook naast; "
-        "zulke aanwijzingen zeggen daarom 'op of naast'.",
+        "gebiedsgrens heen.",
         "cond.at.name": "bij een deur of raam",
         "cond.at": "Het figuur staat op een van de vakjes aan weerszijden van de deur of het raam.",
         "cond.on_mark.name": "op een gemarkeerd vakje",
@@ -859,16 +684,10 @@ class Wording:
     phrases: dict[str, str] = field(default_factory=dict)
     numbered: bool = True
     people: dict[str, str] = field(default_factory=dict)
-    rules: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def read(cls, text: str) -> "Wording":
-        """The `Language:` and `Words:` sections of a puzzle file, and `Rules:` wordings.
-
-        A rule line may end in `| wording`, like a clue. That sentence is shown
-        to players (booklet and web rules, picture legend) but never used in
-        worked solutions, which keep the generated wording.
-        """
+        """The `Language:` and `Words:` sections of a puzzle file."""
         section = read_sections(text)
         language = section.get("Language", ["en"])[0]
         if language not in PHRASES:
@@ -883,13 +702,7 @@ class Wording:
                 phrases[name.strip()] = phrase.strip()
             else:
                 words[name.strip()] = phrase.strip()
-        rules = {
-            " ".join(rule.split()): wording.strip().rstrip(".")
-            for line in section.get("Rules", [])
-            for rule, _, wording in [line.partition("|")]
-            if wording.strip()
-        }
-        return cls(language, words, phrases, rules=rules)
+        return cls(language, words, phrases)
 
     def unnumbered(self) -> "Wording":
         """The same wording that never points at clue numbers."""
@@ -941,29 +754,17 @@ class Places:
         return self.say.words.get(name) or self.say("region", name=name.replace("_", " "))
 
     def thing(self, name: str) -> str:
-        if name in self.board.edge_item_names:
-            many = sum(item.name == name for item in self.board.edge_items) > 1
-        elif name in self.board.point_object_names:
-            many = sum(point.name == name for point in self.board.point_objects) > 1
-        elif name in self.board.mark_names:
+        if name in self.say.words:
+            return self.say.words[name]
+        if (
+            name in self.board.edge_item_names
+            or name in self.board.point_object_names
+            or name in self.board.mark_names
+        ):
             many = False
         else:
             many = len(_pieces(self.board.squares_of([name]))) > 1
-        if name in self.say.words:
-            said = self.say.words[name]
-            article, _, noun = said.partition(" ")
-            # "het perronbankje" names one of several benches as "een perronbankje";
-            # a phrase with an adjective keeps its wording, as Dutch inflection may change.
-            if many and article.lower() in DEFINITE and noun and " " not in noun:
-                return self._indefinite(noun)
-            return said
-        shown = name.replace("_", " ")
-        return self._indefinite(shown) if many else self.say("the", name=shown)
-
-    def _indefinite(self, noun: str) -> str:
-        """ "a bench", "an apple"; Dutch has only "een"."""
-        key = "an" if noun[:1].lower() in "aeiou" else "a"
-        return self.say(key, name=noun)
+        return self.say("a" if many else "the", name=name.replace("_", " "))
 
     def where_regions(self, names: Iterable[str]) -> str:
         return self.say.join([self.region(n) for n in names], "or")
@@ -1060,8 +861,7 @@ class Places:
                 if abs(sq.row - t.row) + abs(sq.col - t.col) == 1
                 and board.region_of(sq) == board.region_of(t)
             }
-            phrase = "on_or_next_to" if next_to_covers_own_squares(board, name) else "next_to"
-            areas.append((self.say(phrase, what=self.thing(name)), near.__contains__))
+            areas.append((self.say("next_to", what=self.thing(name)), near.__contains__))
         for name in sorted(board.edge_item_names):
             cells = board.edge_item_cells([name])
             areas.append((self.say("at", what=self.thing(name)), cells.__contains__))
@@ -1198,8 +998,7 @@ class Story:
                 ):
                     role_moves.add(id(move))
 
-        solved = self.model.clone()
-        Solver(solved).solve(on_step=collect)
+        Solver(self.model.clone()).solve(on_step=collect)
         firings: list[tuple[str, Sequence[Step]]] = []
         necessary = {id(move) for move in shortest(start, moves)} | role_moves
         replay(
@@ -1249,38 +1048,7 @@ class Story:
         sentences += self._refuted(refuted)
         if sentences:
             paragraphs.append(" ".join(self._merged(sentences)))
-        paragraphs.extend(self._final_role_reveals(solved, state))
         return "\n\n".join(f"- {p}" for p in paragraphs)
-
-    def _final_role_reveals(self, model: Model, state: _State) -> list[str]:
-        """Close the explanation with a role identity inferred from solved positions."""
-        statuses = role_statuses(self.board, model)
-        holders = [
-            (person, role.name)
-            for role in self.board.roles
-            for person in self.board.people
-            if statuses[person, role.name] is True
-            and state.role_told.get((person, role.name)) is not True
-        ]
-        reveals: list[str] = []
-        for person, role in holders:
-            condition = next(
-                (
-                    candidate
-                    for candidate in reversed(tuple(self.quantified_conditions.values()))
-                    if candidate.selector.kind == "role" and candidate.selector.name == role
-                ),
-                None,
-            )
-            name = self.say.words.get(role) or role.replace("_", " ")
-            outcome = self.say("role_has", who=person, role=name)
-            if condition is None:
-                reveals.append(f"{_cap(outcome)}.")
-            else:
-                clue = _cap(self._quantified_text(condition)) + self._quantified_ref(condition)
-                reveals.append(f"{clue}, {self.say('so')} {outcome}.")
-            state.role_told[person, role] = True
-        return reveals
 
     def _merged(self, sentences: Sequence[str]) -> list[str]:
         """Say a reason once when consecutive sentences draw several conclusions from it."""
@@ -1403,8 +1171,6 @@ class Story:
                 )
                 return f"{clue}, {self.say('so')} {self.say.join(role_sentences)}."
             changed = [p for p in self.board.people if state.options[p] != before[p]]
-            if not changed and (reason := self._role_step_reason(steps)):
-                return f"{_cap(reason)}, {self.say('so')} {self.say.join(role_sentences)}."
             if changed:
                 return (
                     f"{self.say.join(role_sentences)}, {self.say('so')} "
@@ -1429,10 +1195,8 @@ class Story:
             if constraint is not None and constraint.kind is Kind.COUNT:
                 changed = [p for p in self.board.people if state.options[p] != before[p]]
                 return self._count(steps[0], changed, before, state)
-            if steps[0].var in self.role_variables:
-                return ""
             if steps[0].var not in self.board.people:
-                return self._literal_text(steps[0], asserted=True)
+                return self.say("literal_true", literal=steps[0].literal)
             return self._placement(steps[0], state)
         changed = [p for p in self.board.people if state.options[p] != before[p]]
         if rule == "count":
@@ -1491,7 +1255,13 @@ class Story:
             clue = _cap(self._quantified_text(target_condition)) + self._quantified_ref(
                 target_condition
             )
-            outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
+            outcome = (
+                self._outcome(changed, before, state)
+                if changed
+                else self.say(
+                    "literal_true" if step.asserted else "literal_false", literal=step.literal
+                )
+            )
             return f"{clue}, {self.say('so')} {outcome}."
         constraint = next(c for c in self.model.constraints if c.name == step.sources[0])
         allowed = constraint.allowed_counts
@@ -1514,56 +1284,13 @@ class Story:
             if known is False:
                 allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
         counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
-        reason = self._role_area_reason(constraint, allowed) or self.say(
-            "count_reason", name=constraint.name, counts=counts
-        )
-        outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
+        reason = self.say("count_reason", name=constraint.name, counts=counts)
+        if changed:
+            outcome = self._outcome(changed, before, state)
+        else:
+            key = "literal_true" if step.asserted else "literal_false"
+            outcome = self.say(key, literal=step.literal)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
-
-    def _role_step_reason(self, steps: Sequence[Step]) -> str | None:
-        """Why a role became known: the role rule or role count behind its hidden constraint."""
-        by_name = {c.name: c for c in self.model.constraints}
-        for step in steps:
-            for source in step.sources:
-                if (rule := self._role_condition_for_source(source)) is not None:
-                    return self._role_condition_text(rule) + self._role_ref(rule)
-                constraint = by_name.get(source)
-                if constraint is None or step.var not in self.role_variables:
-                    continue
-                _, role = self.role_variables[step.var]
-                name = self.say.words.get(role) or role.replace("_", " ")
-                if constraint.family == "role cardinality" and constraint.allowed_counts == {1}:
-                    return self.say("role_only_one", role=name)
-                if constraint.family == "role area membership":
-                    rule = next(
-                        (
-                            r
-                            for r in self.role_conditions.values()
-                            if r.kind == "min_role_in_tagged" and r.args[0] == role
-                        ),
-                        None,
-                    )
-                    if rule is not None:
-                        return self._role_condition_text(rule) + self._role_ref(rule)
-        return None
-
-    def _role_area_reason(self, constraint: Any, allowed: frozenset[int]) -> str | None:
-        """'Ada has role guide and is therefore in the hall', for a hidden role-and-area count.
-
-        Such a count holds a role-membership literal followed by the squares of
-        one area; the person, role and area are read from those literals.
-        """
-        if constraint.family != "role area membership" or len(constraint.literals) < 2:
-            return None
-        first, square = constraint.literals[0], self.model.value_of(constraint.literals[1])
-        held = self.role_variables.get(self.model.var_of(first))
-        if held is None or not isinstance(square, Square):
-            return None
-        person, role = held
-        area = self.places.region(self.board.region_names[self.board.region_of(square)])
-        role_name = self.say.words.get(role) or role.replace("_", " ")
-        key = "role_area_in" if allowed == {2} else "role_area_out"
-        return self.say(key, who=person, role=role_name, area=area)
 
     def _global_count_for_sources(self, sources: Iterable[str]) -> GlobalCountCondition | None:
         for source in sources:
@@ -1733,7 +1460,9 @@ class Story:
         elif changed:
             outcome = self._outcome(changed, before, state)
         else:
-            outcome = self._literal_text(step)
+            outcome = self.say(
+                "literal_true" if step.asserted else "literal_false", literal=step.literal
+            )
         return f"{clue}, {self.say('so')} {outcome}."
 
     def _global_empty_unit_text(self, step: Step) -> str:
@@ -1806,27 +1535,11 @@ class Story:
         """Some people fill some rows (or columns), or some rows only fit some people."""
         if (condition := self._global_count_for_sources(step.sources)) is not None:
             return self._global_count_deduction(condition, step, changed, before, state)
-        quantified = next(
-            (
-                found
-                for source in step.sources
-                if (found := self._quantified_condition_for_source(source)) is not None
-            ),
-            None,
-        )
-        if quantified is not None and changed:
-            clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
-            return f"{clue}, {self.say('so')} {self._outcome(changed, before, state)}."
         inner = [self.about.get(name, ("constraint", name)) for name in step.sources]
         outer = [self.about.get(name, ("constraint", name)) for name in step.scope]
         kinds_in = {k for k, _ in inner}
         kinds_out = {k for k, _ in outer}
-        if (
-            len(kinds_in) == 1
-            and kinds_in <= {"person", "row", "col"}
-            and len(kinds_out) == 1
-            and kinds_out <= {"row", "col"}
-        ):
+        if len(kinds_in) == 1 and len(kinds_out) == 1 and kinds_out <= {"row", "col"}:
             ((kind_in,), (kind,)) = (kinds_in, kinds_out)
             where = self.say("in", what=self.places.lines(kind, [i for _, i in outer], "or"))
             many = "_many" if len(inner) > 1 else "_one"
@@ -2062,16 +1775,6 @@ class Story:
             return not eligible
         return eligible and spec.allowed_counts == {len(spec.eligible_people)}
 
-    def _literal_text(self, step: Step, asserted: bool | None = None) -> str:
-        """A fixed literal in words; role memberships read as "X is (not) the role"."""
-        holds = step.asserted if asserted is None else asserted
-        if step.var in self.role_variables:
-            person, role = self.role_variables[step.var]
-            present = step.value if holds else not step.value
-            name = self.say.words.get(role) or role.replace("_", " ")
-            return self.say("role_has" if present else "role_not", who=person, role=name)
-        return self.say("literal_true" if holds else "literal_false", literal=step.literal)
-
     def _role_step_text(self, step: Step, state: _State) -> str:
         person, role = self.role_variables[step.var]
         present = step.value if step.asserted else not step.value
@@ -2161,21 +1864,14 @@ class Story:
             return self.say(kind, who=args[0], role=role(args[1]), area=area)
         if kind == "min_role_in_tagged":
             area = self.places.regions(self.board.tagged_region_ids([args[1]]))
-            role_def = next((r for r in self.board.roles if r.name == args[0]), None)
-            if args[2] == "1" and role_def is not None and role_def.allowed_counts == {1}:
-                key = "min_role_in_tagged_one_unique"
-            else:
-                key = "min_role_in_tagged_one" if args[2] == "1" else "min_role_in_tagged"
             return self.say(
-                key,
+                "min_role_in_tagged",
                 n=self.say.number(int(args[2])),
                 role=role(args[0]),
                 area=area,
             )
         if kind in ("role_on", "role_not_on", "role_next_to"):
             what = self.say.join([self._role_target_name(name) for name in args[2:]], "or")
-            if kind == "role_next_to" and next_to_covers_own_squares(self.board, *args[2:]):
-                kind = "role_on_or_next_to"
             return self.say(
                 kind,
                 who=args[0],
@@ -2200,7 +1896,8 @@ class Story:
                 role=role(args[1]),
                 possessive=self._pronoun(args[0], "possessive"),
             )
-        return self.say(f"role_occupant.{args[1]}", role=role(args[0]))
+        condition = "alone" if args[1] == "alone" else "not alone"
+        return self.say("role_occupant", role=role(args[0]), condition=condition)
 
     def _role_target_name(self, name: str) -> str:
         if name in ("blocking", "standable"):
@@ -2270,8 +1967,6 @@ class Story:
             )
         elif kind in ("within", "at_least"):
             fields["n"] = self.say.number(int(args[2]))
-        if kind in ("next_to", "not_next_to") and next_to_covers_own_squares(self.board, *rest):
-            kind = kind.replace("next_to", "on_or_next_to")
         return self.say(f"clue.{kind}", **fields)
 
     def _target_text(self, selector: TargetSelector) -> str:
@@ -2282,9 +1977,6 @@ class Story:
             return self.say("target.attribute", name=name)
         if selector.kind == "role":
             name = self.say.words.get(selector.name, selector.name.replace("_", " "))
-            role = next((r for r in self.board.roles if r.name == selector.name), None)
-            if role is not None and role.allowed_counts == {1}:
-                return self.say("target.unique_role", name=name)
             return self.say("target.role", name=name)
         if selector.kind in ("area", "tag"):
             ids = (
@@ -2326,12 +2018,7 @@ class Story:
             if anyone:
                 return self.say("clue.alone_with_anyone", a=condition.subject)
             return self.say("clue.alone_with", a=condition.subject, target=target)
-        subject = (
-            condition.subject
-            if condition.subject_selector is None
-            else self._target_text(condition.subject_selector)
-        )
-        fields: dict[str, Any] = {"a": subject, "b": target}
+        fields: dict[str, Any] = {"a": condition.subject, "b": target}
         if condition.kind == "above" and condition.rest:
             rows = int(condition.rest[0])
             fields["rows"] = self.say("one_row") if rows == 1 else self.say("n_rows", n=rows)
@@ -2343,7 +2030,7 @@ class Story:
         if condition.kind in ("within", "at_least") and condition.rest:
             fields["n"] = self.say.number(int(condition.rest[0]))
         if condition.kind in ("same_region", "different_region", "apart", "adjacent_regions"):
-            return self.say(f"clue.{condition.kind}_target", a=subject, target=target)
+            return self.say(f"clue.{condition.kind}_target", a=condition.subject, target=target)
         return self.say(f"clue.{condition.kind}", **fields)
 
     def _quantified_condition_for_source(self, source: str) -> QuantifiedCondition | None:
@@ -2386,9 +2073,7 @@ def _pieces(squares: set[Square]) -> list[set[Square]]:
 
 
 ARTICLES = frozenset({"the", "a", "an", "de", "het", "een"})
-DEFINITE = frozenset({"the", "de", "het"})
-NEGATIONS = frozenset({"not", "niet", "neither"})
-CONNECTORS = frozenset({"or", "of", "nor"})
+NEGATIONS = frozenset({"not", "niet"})
 LINE_WORDS = frozenset({"row", "column", "rij", "kolom"})
 
 
@@ -2413,9 +2098,7 @@ def _merge_predicates(predicates: Sequence[str], say: Wording) -> str:
             shared.pop()
         tails = [" ".join(words[len(shared) :]) for words in members]
         lines_only = all(tail.split(" ", 1)[0] in LINE_WORDS for tail in tails)
-        split_phrase = any(tail.split(" ", 1)[0] in CONNECTORS for tail in tails)
-        too_short = len(shared) < (2 if lines_only else 3)
-        if len(members) == 1 or not all(tails) or split_phrase or too_short:
+        if len(members) == 1 or not all(tails) or len(shared) < (2 if lines_only else 3):
             segments.extend(" ".join(words) for words in members)
             continue
         joiner = "or" if shared[1] in NEGATIONS else "and"
@@ -2432,6 +2115,7 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
     """
     board, clues = load_board(text)
     story = Story(board, clues, Wording.read(text))
+<<<<<<< Updated upstream
     texts = story.clue_texts()
     combined: dict[int, str] = {}
     skipped: set[int] = set()
@@ -2459,15 +2143,16 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
             combined[first] = f"{_cap(text)}."
             skipped.update((number, other_number))
             break
+=======
+    texts = unique_in_order(story.clue_texts())
+>>>>>>> Stashed changes
     shown = {p: _cap(story.say.people.get(p, p)) for p in board.people}
     owners = sorted(board.people, key=lambda p: len(shown[p]), reverse=True)
     predicates: dict[str, list[str]] = {person: [] for person in board.people}
     extra: dict[str, list[str]] = {person: [] for person in board.people}
     loose: list[str] = []
     for number, generated in enumerate(texts, 1):
-        if number in skipped and number not in combined:
-            continue
-        sentence = (overrides or {}).get(number, combined.get(number, generated))
+        sentence = (overrides or {}).get(number, generated)
         owner = next((p for p in owners if sentence.startswith(f"{shown[p]} ")), None)
         if owner is None:
             loose.append(sentence)
@@ -2494,31 +2179,8 @@ def clue_texts(text: str) -> list[str]:
     return Story(board, clues, Wording.read(text)).clue_texts()
 
 
-def global_count_texts(text: str) -> list[str]:
-    """Each global count of a Murdoku puzzle file as one plain sentence, in file order."""
-    board, clues = load_board(text)
-    told = Story(board, clues, Wording.read(text))
-    return [
-        told.say.rules.get(condition.description) or _cap(told._global_count_text(condition))
-        for condition in global_count_conditions(board, clues)
-    ]
-
-
-def _tagged_area(say: Wording, rid: str, name: str) -> str:
-    """An area named in an area-tag note: "the Egyptian hall" from an English
-    `Words:` phrase, otherwise the region name with only its first letter raised."""
-    phrase = say.words.get(rid)
-    if phrase and say.language == "en":
-        kept = re.sub(r"^((in|at|on) )+", "", phrase)
-        if re.match(r"(the|a|an) ", kept):
-            return kept
-    text = re.sub(r"^((in|op|the|a|an|een|de|het) )+", "", phrase or name.replace("_", " "))
-    return text[:1].upper() + text[1:]
-
-
 def board_notes(text: str) -> list[str]:
-    """Plain sentences for what the board picture only abbreviates: area tags, marks, and
-    the author's `| wording` of board rules."""
+    """Plain sentences for what the board picture only abbreviates: marks, attributes, roles."""
     board, _ = load_board(text)
     say = Wording.read(text)
 
@@ -2527,22 +2189,18 @@ def board_notes(text: str) -> list[str]:
 
     notes = []
     for tag, members in board.area_tags.items():
-        region_ids = board.region_ids(members)
-        areas = [_tagged_area(say, r, board.region_names[r]) for r in sorted(region_ids)]
+        areas = [
+            board.region_names[r].replace("_", " ").capitalize()
+            for r in sorted(board.region_ids(members))
+        ]
         label = re.sub(r"^((in|op|the|a|an|een|de|het) )+", "", name(tag))
         tagged = say.join(areas)
         notes.append(
-            say(
-                "doc.area_tag_one" if len(region_ids) == 1 else "doc.area_tag",
-                tag=label,
-                Tag=label[:1].upper() + label[1:],
-                areas=tagged,
-            )
+            say("doc.area_tag", tag=label, Tag=label[:1].upper() + label[1:], areas=tagged)
         )
     for mark in board.marks:
         key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
         notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
-    notes.extend(f"{wording}." for wording in say.rules.values())
     return notes
 
 
