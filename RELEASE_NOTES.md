@@ -28,6 +28,8 @@
 * [#118 Overly prefilled examples](https://github.com/operdeck/human-reasoning-puzzles/issues/118): replaced the near-full Binairo, Tango, Queens and Suguru 8×8 examples with fresh boards; `binairo_8x8.txt` and `tango_8x8.txt` became `*_8x8_medium.txt`. Boards with under a quarter of their cells open now rate `trivial`, and a test rejects trivial gallery examples.
 * [#26 Handle empty domains in --show-model](https://github.com/operdeck/human-reasoning-puzzles/issues/26)
     * `src/csp/report.py`: `--show-model` no longer crashes with `IndexError` when contradictory clues empty a variable's domain; it reports an "Invalid model: contradiction" section listing the affected variables.
+* Murdoku picture: the sauna in `wie-doet-het-met-wie-5.txt` borrowed the park bench, which read as an outdoor bench lying on the sauna floor. It is now `saunabank` with its own bare wooden bench — pine slats, wooden legs, no back, arms or cushion — while `bankje` keeps drawing the garden bench elsewhere. Board, clues and solution are unchanged.
+    * `src/csp/icons.py`: added the `sauna_bench` drawing, mapped from `saunabank` and `sauna_bench`; `picture.SEAT_NAMES` keeps a two-square bench in proportion; `tests/test_picture.py` pins the object's name, footprint, wood colours and the hotel board.
 
 **New Feature(s)**
 * Added three original 8x8 Battleships puzzles with explicit water waves, unspecified `?` segments, single-cell circles, rounded ends, and square middles: *Buoys in the channel* (medium, `count`), *Broken radio signals* (medium, `subsumption`), and *Fogbound convoy* (hard, `chains`). Each has a unique solution, only 7–8 given cells, and needs fleet rules rather than counts alone.
