@@ -20,7 +20,7 @@ tweepersoonsbed: het tweepersoonsbed
 tapijt: het zachte tapijt
 bad: het bad
 toilet: het toilet
-bankje: het saunabankje
+saunabank: het saunabankje
 bosjes: in de bosjes
 badjas: een badjas
 sloffen: een paar sloffen
@@ -49,7 +49,7 @@ tweepersoonsbed: standable r1c1 r1c2 r2c1 r2c2
 tapijt: standable r3c2
 bad: blocking r1c5
 toilet: blocking r2c4
-bankje: standable r2c6 r2c7
+saunabank: standable r2c6 r2c7
 emmer: blocking r1c7
 bank: standable r4c5 r4c6
 koffer: blocking r4c7
@@ -89,7 +89,7 @@ next_to Hanneke tapijt
 next_to Mieke bank
 in_region Jeroen speelgoedwinkel
 in_region Karin fietsenstalling
-not_next_to Ruud bankje
+not_next_to Ruud saunabank
 not_next_to Sven koffer
 
 Title:
