@@ -598,3 +598,22 @@ def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_
     monkeypatch.setattr(docx_export, "_picture_stream", record)
     write_docx(example(name).read_text(), tmp_path / "b.docx", tmp_path)
     assert used[-1] is kept
+
+
+def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
+    import csp.docx_export as docx_export
+    import csp.picture as picture
+
+    seen = {}
+    original = picture.murdoku_picture
+
+    def capture(board, placed=None, **kwargs):
+        seen.update(kwargs)
+        return original(board, placed, **kwargs)
+
+    monkeypatch.setattr(picture, "murdoku_picture", capture)
+    docx_export._picture_stream(example("wie-doet-het-met-wie-1.txt").read_text(), None, None)
+    assert seen["global_counts"]
+    # The page states the counts itself, so the picture leaves those lines out and
+    # only keeps the key for the dashed ring.
+    assert seen["count_lines"] is False
