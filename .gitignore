@@ -28,3 +28,6 @@ venv/
 
 # Puzzle documents: kept local, never published
 proprietary puzzles/
+
+# Benchmark corpora: test input, fetched by benchmark/fetch.py, never committed
+benchmark/.cache/
