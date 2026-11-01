@@ -8,6 +8,7 @@ and that the engine never looks back at the benchmark.
 
 import csv
 import hashlib
+import signal
 from pathlib import Path
 from typing import NamedTuple
 
@@ -347,6 +348,26 @@ def test_measure_gives_up_at_its_time_limit():
     assert outcome.timed_out
     assert not outcome.solved
     assert outcome.grade == "timeout"
+
+
+def test_a_timed_out_run_does_not_arm_the_one_after_it():
+    """The limit belongs to one job: an expired alarm must not cut the next run."""
+    quick = bench.Job(
+        0,
+        "tiny.txt",
+        "easy",
+        None,
+        "sudoku",
+        corpus.grid(PUZZLE),
+        corpus.oracle(SOLVED),
+        "full",
+        1e-6,
+    )
+    assert bench.measure(quick).timed_out
+    outcome = bench.measure(quick._replace(timeout=60))
+    assert outcome.solved
+    assert not outcome.timed_out
+    assert signal.getsignal(signal.SIGALRM) is not bench._raise_timeout
 
 
 def test_measure_refuses_to_judge_a_puzzle_with_two_answers():
