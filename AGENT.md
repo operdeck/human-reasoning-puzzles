@@ -221,6 +221,9 @@ the chain rule or this workload.
 The text board and `--step` show true/open totals, additional demand, and
 feasible totals; active location scopes are highlighted without adding
 puzzle-specific behavior to `core.py`.
+Pictures mark the same scope with one subtle dashed ring per object
+(`picture._scope_outline`), never a solid box per square: a blue box around a
+badjas reads as a cell of its own rather than as what the clue counts.
 
 ## Adding a puzzle family
 
