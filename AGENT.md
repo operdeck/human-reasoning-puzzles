@@ -250,6 +250,25 @@ under its count lines, so the web board explains itself; the booklet board draws
 the rings too but leaves the count lines out (`count_lines=False`), because its
 rules page already states the counts.
 
+## External corpora
+
+Published Sudoku collections live outside git. `benchmark/corpus.py` reads them
+into rows of 81 characters, `benchmark/fetch.py` samples them into
+`benchmark/.cache/` (git-ignored), and nothing else touches the network:
+
+    uv run python -m benchmark.fetch --source all --count 500 --seed 42
+
+A source names its files and the columns its puzzles hide behind (`question`,
+`answer`, `rating`, `source` for sudoku-extreme), so a new collection is a
+`Source` plus, when it is neither plain text nor an 81-column CSV, one parser.
+Derive an answer only with the brute force and only when the source ships none;
+drop and count any row whose answer contradicts its own givens or that has no
+unique solution, because a bad oracle blames the engine for a broken file.
+Samples are reproducible: the file name and `manifest.json` carry the source
+file hashes, bucket, size and seed, and an existing sample is reused until
+`--force`. `test_benchmark.py` keeps all of this offline, and holds the import
+direction: the benchmark imports `csp`, never the other way round.
+
 ## Adding a puzzle family
 
 1. New module with `compile_puzzle(...) -> Model`.
