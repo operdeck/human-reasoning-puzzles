@@ -1,5 +1,6 @@
 """Tests for the SVG pictures, their PNG rasters and the icon registry. No network needed."""
 
+import re
 import socket
 from io import BytesIO
 
@@ -107,6 +108,9 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.object_icon("tweepersoonsbed").name == "double_bed"
     assert icons.object_icon("badjas").name == "bathrobe"
     assert icons.object_icon("sloffen").name == "slippers"
+    # A garden bench stays a garden bench; the sauna has its own bare wooden bench.
+    assert icons.object_icon("bankje").name == "bench"
+    assert icons.object_icon("saunabank").name == "sauna_bench"
     assert icons.object_icon("zeppelin") is None
 
 
@@ -302,6 +306,48 @@ def test_interactive_murdoku_has_cell_ids_and_the_blank_board():
     assert "r1c1" in svg.ids(canvas.to_svg())
     blank = drawing.murdoku_picture(board, legend=False)
     assert _raster(canvas).tobytes() == _raster(blank).tobytes()
+
+
+def test_a_sauna_bench_is_a_seat_drawn_in_bare_wood(monkeypatch):
+    """A sauna bench is wood: slats, legs, no back, arms or rug to lie on."""
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "sauna"},
+        [BoardObject("saunabank", "standable", (Square(0, 0), Square(0, 1)))],
+        ["A", "B"],
+    )
+    calls = []
+
+    def capture(canvas, name, area, cell, **kwargs):
+        calls.append((name, area, kwargs))
+
+    monkeypatch.setattr(drawing, "_icon", capture)
+    picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+
+    margin = CELL // 6
+    assert len(calls) == 1
+    name, area, options = calls[0]
+    assert name == "saunabank" and "saunabank" in drawing.SEAT_NAMES
+    assert area == (margin, margin, margin + 2 * CELL, margin + CELL)
+    # Seats keep their proportions across a two-square footprint.
+    assert options["fit_box"] is True and options["rotate"] == 0
+    assert icons.object_icon(name).markup == icons.SAUNA_BENCH
+    # Every colour in the drawing is warm wood, with nothing bright or upholstered.
+    woods = {int(colour, 16) for colour in re.findall(r"#([0-9a-f]{6})", icons.SAUNA_BENCH)}
+    assert len(woods) >= 4
+    for wood in woods:
+        red, green, blue = wood >> 16, (wood >> 8) & 0xFF, wood & 0xFF
+        assert red > green > blue, hex(wood)
+
+
+def test_the_hotel_sauna_bench_is_drawn_as_the_sauna_bench():
+    board, _ = load_board(example("wie-doet-het-met-wie-5.txt").read_text())
+
+    bench = next(obj for obj in board.objects if obj.name == "saunabank")
+    assert len(bench.squares) == 2
+    assert icons.object_icon(bench.name).markup == icons.SAUNA_BENCH
+    assert picture.unknown_object_icons(board) == []
 
 
 def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji):

@@ -403,7 +403,7 @@ BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
 SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"}) | frozenset(
     name
     for name, icon in icons.OBJECT_ICONS.items()
-    if icon in ("train_bench", "platform_bench", "museum_bench")
+    if icon in ("train_bench", "platform_bench", "museum_bench", "sauna_bench")
 )
 
 
