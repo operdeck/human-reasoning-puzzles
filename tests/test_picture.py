@@ -252,6 +252,14 @@ def test_registry_icons_take_a_tint():
     assert any(r > 150 and g < 60 and b < 60 and a == 255 for _, (r, g, b, a) in colours)
 
 
+def test_canvas_ellipse_dashes_only_when_asked():
+    canvas = svg.Canvas(40, 40)
+    canvas.ellipse((2, 2, 38, 38), outline=(45, 110, 155), width=2)
+    assert "stroke-dasharray" not in canvas.to_svg()
+    canvas.ellipse((2, 2, 38, 38), outline=(45, 110, 155), width=2, dash=(3, 4.5))
+    assert 'stroke-dasharray="3 4.5"' in canvas.to_svg()
+
+
 def test_text_is_drawn_as_paths_from_the_bundled_font():
     from csp import sudoku
 
@@ -622,7 +630,16 @@ count people on object:bed = 1
     margin = CELL // 6
     assert image.height > plain.height
     assert tiny.width > 0 and tiny.height > 0
-    assert image.getpixel((margin + 1, margin + 1)) == picture.COUNT_SCOPE
+    markup = drawing.murdoku_picture(
+        board, cell=CELL, coordinates=False, global_counts=[condition]
+    ).to_svg()
+    assert "stroke-dasharray" in markup
+    assert "<ellipse" in markup
+    # The old solid box is gone: the corner of the bed's square is not scope-blue.
+    assert image.getpixel((margin + 1, margin + 1)) != picture.COUNT_SCOPE
+    # The ring did change pixels inside the bed's square, compared with the plain board.
+    region = (margin, margin, margin + CELL, margin + CELL)
+    assert image.crop(region).tobytes() != plain.crop(region).tobytes()
 
     puzzle = tmp_path / "global-count.txt"
     target = tmp_path / "global-count.png"
@@ -639,6 +656,109 @@ count people on object:bed = 1
 
     assert seen and seen[0]
     assert target.exists()
+
+
+def test_scope_groups_ring_each_object_even_when_two_touch():
+    text = """Size: 3
+Regions:
+a: room
+b: yard
+Grid:
+a a b
+a a b
+a b b
+Objects:
+badjas: standable r1c1
+sloffen: standable r2c1
+People:
+Ada
+Clues:
+count people on object:badjas = 1
+"""
+    board, _ = load_board(text)
+    square = Square
+    # Two objects one above the other are two rings, not one tall ellipse.
+    assert picture._scope_groups(board, {square(0, 0), square(1, 0)}) == [
+        {square(0, 0)},
+        {square(1, 0)},
+    ]
+    # Empty squares of an area belong to no object, so they still group as a block.
+    assert picture._scope_groups(board, {square(0, 2), square(1, 2)}) == [
+        {square(0, 2), square(1, 2)}
+    ]
+
+
+def test_scope_rings_two_touching_objects_apart():
+    import re
+
+    from csp import murdoku
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+badjas: standable r1c1
+sloffen: standable r2c1
+People:
+Ada
+Clues:
+count people on object:badjas = 1
+count people on object:sloffen = 1
+"""
+    board, clues = load_board(text)
+    markup = drawing.murdoku_picture(
+        board,
+        cell=CELL,
+        coordinates=False,
+        legend=False,
+        global_counts=murdoku.global_count_conditions(board, clues),
+    ).to_svg()
+    rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
+    assert len(rings) == 2
+    # Each ring stays inside its own square, so neither can enclose the neighbour.
+    for line in rings:
+        radius = float(re.search(r' ry="([\d.]+)"', line).group(1))
+        assert radius < CELL / 2
+
+
+def test_scope_rings_wrap_a_rectangular_object_and_trace_an_l_shaped_one():
+    from csp import murdoku
+
+    text = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+Objects:
+bed: standable r1c1 r1c2
+tafel: standable r2c3 r3c2 r3c3
+People:
+Ada
+Clues:
+count people on object:bed = 1
+count people on object:tafel = 1
+"""
+    board, clues = load_board(text)
+    markup = drawing.murdoku_picture(
+        board,
+        cell=CELL,
+        coordinates=False,
+        legend=False,
+        global_counts=murdoku.global_count_conditions(board, clues),
+    ).to_svg()
+    # One oval around the bed's two squares, one circle per square of the L.
+    rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
+    assert len(rings) == 4
+    assert all("<ellipse" in line for line in rings)
+    # Without global counts there is no ring and no empty group either.
+    plain = drawing.murdoku_picture(board, cell=CELL, coordinates=False, legend=False).to_svg()
+    assert "stroke-dasharray" not in plain
+    assert f'opacity="{picture.SCOPE_OPACITY:.3f}"' not in plain
 
 
 def test_vertical_bed_icon_is_rotated(monkeypatch):
@@ -1364,6 +1484,47 @@ def test_count_legend_uses_the_given_plain_language_texts():
     ).to_svg()
     assert "Precies twee mensen dragen een badjas" in markup
     assert "object:badjas" not in markup
+
+
+def test_the_legend_explains_the_dashed_ring_that_marks_a_count():
+    from csp import murdoku
+
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    board, clues = load_board(text)
+    counts = murdoku.global_count_conditions(board, clues)
+    dutch = drawing.murdoku_picture(board, global_counts=counts, language="nl").to_svg()
+    assert "gestippelde ring: de voorwerpen waar een telling over gaat" in dutch
+    english = drawing.murdoku_picture(board, global_counts=counts, language="en").to_svg()
+    assert "dashed ring: the objects a count is about" in english
+    # No count, no ring, and so nothing to explain either.
+    plain = drawing.murdoku_picture(board, language="nl").to_svg()
+    assert "gestippelde ring" not in plain
+
+
+def test_a_count_with_nothing_to_ring_adds_no_note():
+    from csp import murdoku
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Attributes:
+bril: Ada
+People:
+Ada
+Ben
+Clues:
+count people with attribute:bril = 1
+"""
+    board, clues = load_board(text)
+    (condition,) = murdoku.global_count_conditions(board, clues)
+    legend = picture._Legend(board, CELL, global_counts=[condition])
+    # A count over an attribute has no square to point at: it is listed, not rung.
+    assert legend.ring_lines == []
+    assert legend.global_count_lines
+    assert legend.height > picture._Legend(board, CELL).height
 
 
 def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):

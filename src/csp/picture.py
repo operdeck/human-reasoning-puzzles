@@ -25,7 +25,7 @@ pastel fills, no two touching cages alike, and their target in the corner.
 
 import math
 import textwrap
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -110,6 +110,7 @@ def murdoku_picture(
     language: str = "en",
     area_tags: bool = True,
     count_texts: Sequence[str] | None = None,
+    count_lines: bool = True,
 ) -> Canvas:
     """The board, with `placed` people drawn on their squares if given.
 
@@ -119,7 +120,10 @@ def murdoku_picture(
     Without `show_roles` the legend leaves out the solver's role lines; without
     `area_tags` it leaves out the area tags (for documents that state them).
     `language` ("en" or "nl") sets the legend wording; `count_texts` gives
-    the plain-language global counts (from `story`), else their clue syntax.
+    the plain-language global counts (from `story`), else their clue syntax, and
+    the legend explains the dashed ring that marks what a count counts. Without
+    `count_lines` it leaves the counts themselves to the document around the
+    picture, which is what the booklet does.
     """
     margin = _murdoku_margin(board, cell, coordinates)
     # Solver assignments also hold role booleans; only squares are people.
@@ -138,6 +142,7 @@ def murdoku_picture(
             regions=not labels,
             area_tags=area_tags,
             count_texts=count_texts,
+            count_lines=count_lines,
         )
         if legend
         else None
@@ -231,8 +236,7 @@ def murdoku_picture(
         y = margin + (row2 - 1) * cell // 2
         radius = cell // 3
         _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
-    for square in count_scope:
-        canvas.rectangle(box(square), outline=COUNT_SCOPE, width=max(2, cell // 40))
+    _scope_outline(canvas, board, count_scope, box, cell)
     marks_by_cell: dict[Square, list[str]] = {}
     for mark in board.marks:
         for square in mark.cells:
@@ -266,6 +270,8 @@ def murdoku_picture(
 
 
 STANDABLE_OPACITY = 0.55
+# The count-scope ring points at what a clue counts; it is not a state of a square.
+SCOPE_OPACITY = 0.7
 
 
 def _region_labels(
@@ -1117,6 +1123,77 @@ def _darker(colour: RGB, factor: float = BLOCKED_SHADE) -> RGB:
     return round(r * factor), round(g * factor), round(b * factor)
 
 
+def _scope_groups(board: Board, squares: Iterable[Square]) -> list[set[Square]]:
+    """The scope squares grouped per object, in reading order.
+
+    Two objects that lie side by side are two rings, not one: the ring means
+    "this object", so it must not span neighbours. A count of empty squares in
+    an area refers to no object, and those squares group by orthogonal
+    neighbours instead.
+    """
+    scope = set(squares)
+    groups: list[set[Square]] = []
+    for obj in board.objects:
+        piece = set(obj.squares) & scope
+        if piece:
+            groups.append(piece)
+            scope -= piece
+    while scope:
+        group = {scope.pop()}
+        todo = list(group)
+        while todo:
+            square = todo.pop()
+            for near in (
+                Square(square.row - 1, square.col),
+                Square(square.row + 1, square.col),
+                Square(square.row, square.col - 1),
+                Square(square.row, square.col + 1),
+            ):
+                if near in scope:
+                    scope.remove(near)
+                    group.add(near)
+                    todo.append(near)
+        groups.append(group)
+    return sorted(groups, key=min)
+
+
+def _scope_outline(
+    canvas: Canvas, board: Board, squares: Iterable[Square], box: Callable[[Square], Box], cell: int
+) -> None:
+    """A subtle dashed ring around each object that a global count refers to.
+
+    One ellipse around the whole footprint when the object fills its bounding
+    rectangle, a circle per square otherwise, so no square outside the scope is
+    ever enclosed. Neighbouring objects get a ring each, kept inside their
+    cells, and a picture without global counts gets no ring and no empty group.
+    """
+    width = max(1, cell // 60)
+    inset = max(2, cell // 12)
+    dash = (max(2.0, cell / 20), max(3.0, cell / 14))
+
+    def ring(area: Box) -> None:
+        x0, y0, x1, y1 = area
+        canvas.ellipse(
+            (x0 + inset, y0 + inset, x1 - inset, y1 - inset),
+            outline=COUNT_SCOPE,
+            width=width,
+            dash=dash,
+        )
+
+    for group in _scope_groups(board, squares):
+        rows = [square.row for square in group]
+        cols = [square.col for square in group]
+        filled = (max(rows) - min(rows) + 1) * (max(cols) - min(cols) + 1) == len(group)
+        areas = [box(square) for square in sorted(group)]
+        if filled:
+            x0, y0, _, _ = box(Square(min(rows), min(cols)))
+            _, _, x1, y1 = box(Square(max(rows), max(cols)))
+            areas = [(x0, y0, x1, y1)]
+        with canvas.group(opacity=SCOPE_OPACITY):
+            for area in areas:
+                ring(area)
+
+
 def _hatch(canvas: Canvas, board: Board, box: Callable[[Square], Box], cell: int) -> None:
     """Thin diagonal lines over hatched regions, as on the printed boards.
 
@@ -1311,10 +1388,13 @@ def _coordinates(canvas: Canvas, n: int, margin: int, cell: int, gap: float | No
 LEGEND_WORDS = {
     "en": {"door": "Door", "window": "Window", "point": "Point", "cells": "cells",
            "alone": "alone in area", "not_alone": "shares area", "global": "Global",
+           "ring": "dashed ring: the objects a count is about",
            "maybe": "maybe", "apart": "at most one of these per area", "one": "a {name}"},
     "nl": {"door": "Deur", "window": "Raam", "point": "Punt", "cells": "vakjes",
            "alone": "alleen in het gebied", "not_alone": "deelt het gebied",
-           "global": "Telling", "maybe": "misschien",
+           "global": "Telling",
+           "ring": "gestippelde ring: de voorwerpen waar een telling over gaat",
+           "maybe": "misschien",
            "apart": "niet meer dan 1 hiervan per gebied", "one": "een {name}"},
 }  # fmt: skip
 
@@ -1334,6 +1414,7 @@ class _Legend:
         regions: bool = True,
         area_tags: bool = True,
         count_texts: Sequence[str] | None = None,
+        count_lines: bool = True,
     ) -> None:
         self.words = LEGEND_WORDS.get(language, LEGEND_WORDS["en"])
         self.board = board
@@ -1373,7 +1454,7 @@ class _Legend:
         max_chars = max(18, int(board.size * cell / (self.count_size * 0.55)))
         self.global_count_lines = [
             lines
-            for index, condition in enumerate(self.global_counts, 1)
+            for index, condition in enumerate(self.global_counts if count_lines else (), 1)
             for lines in [
                 textwrap.wrap(
                     f"{self.words['global']} {condition.number or index}: "
@@ -1382,6 +1463,12 @@ class _Legend:
                 )
             ]
         ]
+        # Rings are drawn exactly when a count has squares to point at, so that is
+        # when the key has to explain them.
+        ring = any(condition.scope_cells(board) for condition in self.global_counts)
+        self.ring_lines = (
+            textwrap.wrap(self.words["ring"], width=max(12, max_chars - 3)) if ring else []
+        )
         self.count_rows = sum(max(1, len(lines)) for lines in self.global_count_lines)
         self.height = (
             (
@@ -1393,7 +1480,7 @@ class _Legend:
                 + len(self.tag_lines)
             )
             * self.line
-            + self.count_rows * self.count_line
+            + (self.count_rows + len(self.ring_lines)) * self.count_line
             + cell // 6
         )
 
@@ -1493,6 +1580,29 @@ class _Legend:
                 middle = (x, top + self.count_line / 2)
                 canvas.text(middle, line, COUNT_SCOPE, self.count_size, anchor="lm")
                 top += self.count_line
+        if self.ring_lines:
+            self._ring_note(canvas, x, top)
+
+    def _ring_note(self, canvas: Canvas, x: int, top: int) -> None:
+        """The dashed-ring swatch with what it means, under the count lines."""
+        side = self.count_size
+        wide = side * 8 // 5
+        ring = (x, top + (self.count_line - side) / 2, x + wide, top + (self.count_line + side) / 2)
+        canvas.ellipse(
+            ring,
+            outline=COUNT_SCOPE,
+            width=max(1, side // 5),
+            dash=(max(2.0, wide / 4), max(2.0, wide / 7)),
+        )
+        left = x + wide + side // 2
+        for index, line in enumerate(self.ring_lines):
+            canvas.text(
+                (left, top + self.count_line * (index + 0.5)),
+                line,
+                COUNT_SCOPE,
+                self.count_size,
+                anchor="lm",
+            )
 
     def _role_line(self, name: str) -> str:
         """Who holds the role, who may, and whether holders are in different areas."""
