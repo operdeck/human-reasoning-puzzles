@@ -25,7 +25,7 @@ pastel fills, no two touching cages alike, and their target in the corner.
 
 import math
 import textwrap
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -231,8 +231,7 @@ def murdoku_picture(
         y = margin + (row2 - 1) * cell // 2
         radius = cell // 3
         _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
-    for square in count_scope:
-        canvas.rectangle(box(square), outline=COUNT_SCOPE, width=max(2, cell // 40))
+    _scope_outline(canvas, count_scope, box, cell)
     marks_by_cell: dict[Square, list[str]] = {}
     for mark in board.marks:
         for square in mark.cells:
@@ -266,6 +265,8 @@ def murdoku_picture(
 
 
 STANDABLE_OPACITY = 0.55
+# The count-scope ring points at what a clue counts; it is not a state of a square.
+SCOPE_OPACITY = 0.7
 
 
 def _region_labels(
@@ -1115,6 +1116,66 @@ BLOCKED_SHADE = 0.75
 def _darker(colour: RGB, factor: float = BLOCKED_SHADE) -> RGB:
     r, g, b = colour
     return round(r * factor), round(g * factor), round(b * factor)
+
+
+def _scope_groups(squares: Iterable[Square]) -> list[set[Square]]:
+    """Connected groups (orthogonal neighbours) of `squares`, in reading order."""
+    remaining = set(squares)
+    groups: list[set[Square]] = []
+    while remaining:
+        group = {remaining.pop()}
+        todo = list(group)
+        while todo:
+            square = todo.pop()
+            for near in (
+                Square(square.row - 1, square.col),
+                Square(square.row + 1, square.col),
+                Square(square.row, square.col - 1),
+                Square(square.row, square.col + 1),
+            ):
+                if near in remaining:
+                    remaining.remove(near)
+                    group.add(near)
+                    todo.append(near)
+        groups.append(group)
+    return sorted(groups, key=min)
+
+
+def _scope_outline(
+    canvas: Canvas, squares: Iterable[Square], box: Callable[[Square], Box], cell: int
+) -> None:
+    """A subtle dashed ring around each object that a global count refers to.
+
+    One ellipse around the whole footprint when a connected group fills its
+    bounding rectangle, a circle per square otherwise, so no square outside the
+    scope is ever enclosed. Squares stay inside their cells, and a picture
+    without global counts gets no ring and no empty group.
+    """
+    width = max(1, cell // 60)
+    inset = max(1, cell // 20)
+    dash = (max(2.0, cell / 20), max(3.0, cell / 14))
+
+    def ring(area: Box) -> None:
+        x0, y0, x1, y1 = area
+        canvas.ellipse(
+            (x0 + inset, y0 + inset, x1 - inset, y1 - inset),
+            outline=COUNT_SCOPE,
+            width=width,
+            dash=dash,
+        )
+
+    for group in _scope_groups(squares):
+        rows = [square.row for square in group]
+        cols = [square.col for square in group]
+        filled = (max(rows) - min(rows) + 1) * (max(cols) - min(cols) + 1) == len(group)
+        areas = [box(square) for square in sorted(group)]
+        if filled:
+            x0, y0, _, _ = box(Square(min(rows), min(cols)))
+            _, _, x1, y1 = box(Square(max(rows), max(cols)))
+            areas = [(x0, y0, x1, y1)]
+        with canvas.group(opacity=SCOPE_OPACITY):
+            for area in areas:
+                ring(area)
 
 
 def _hatch(canvas: Canvas, board: Board, box: Callable[[Square], Box], cell: int) -> None:
