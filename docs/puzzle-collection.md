@@ -133,6 +133,27 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 
 The graded Sudoku and Calcudoku examples are generated; newspaper puzzles are not copied. `prrrdoku1-3` are based on the owner's Dutch puzzle documents, with adjustments to preserve the intended solution and late reveal. Private screenshot transcriptions are excluded from this repository.
 
+## External corpora
+
+Published Sudoku collections arrive through `uv run python -m benchmark.fetch
+--source all` (or one source by name), which downloads into `benchmark/.cache/`
+and samples from there. Puzzle data is test input, never content: the cache is
+git-ignored, and only code is committed.
+
+| Source | Puzzles | Solutions | Own rating |
+|---|---|---|---|
+| `norvig` | 156 (easy50, top95, hardest) | derived with the brute force | no |
+| `sudoku-extreme` | 400 000+ (`sapientinc` on Hugging Face) | shipped | yes |
+
+`--count` sets rows per bucket and `--bucket none|group|rating` spreads a sample
+over the dataset's own grouping instead of taking whatever comes first. A row is
+dropped and counted when its answer contradicts its own givens, or when it has
+no answer and the brute force finds no unique one, so a broken row never reads
+as a solver failure. `manifest.json` records every URL, byte size, sha256 and
+UTC time, and every sample says which file hashes, bucket, size and seed built
+it; a sample already on disk is reused until `--force` (proving the hardest of
+Norvig's puzzles unique takes the brute force minutes, once).
+
 ## Cross-family benchmark
 
 `uv run python benchmark/families.py --runs 3 --seed 42` measures parser, CLI load/compile, deduction solve, and independent brute-force times for every listed small/larger family example. The seed shuffles execution order; the checked-in, unique example files are fixed. The benchmark stops if an example is no longer unique or the engine disagrees with brute force.

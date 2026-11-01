@@ -335,7 +335,7 @@ src/csp/
 	cli.py         family dispatch and shared solver options
 tests/           engine, family, soundness, layering, and picture tests
 examples/        small and larger unique examples for each family
-benchmark/       seeded Sudoku and cross-family benchmark programs
+benchmark/       seeded, external-corpus and cross-family benchmark programs
 ```
 
 The project verification commands are:
