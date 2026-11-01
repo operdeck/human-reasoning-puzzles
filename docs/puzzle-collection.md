@@ -162,6 +162,25 @@ UTC time, and every sample says which file hashes, bucket, size and seed built
 it; a sample already on disk is reused until `--force` (proving the hardest of
 Norvig's puzzles unique takes the brute force minutes, once).
 
+### Ranking alignment
+
+`sudoku-extreme` rates every puzzle with a backtracking count, median 17 over
+its 422 786 rows, 26% of them at rating <= 3. That is where the ladder stops: on
+a 500-puzzle sample from the whole source it solves 128 of the 131 puzzles rated
+0 to 3, 5 of the 126 rated 4 to 16, and none of the 243 rated 17 or over. Its
+grade so tracks the source's rating across the easy block and saturates above
+it, and counting every rated row mostly measures how much easy material a sample
+happens to hold: +0.69 on that draw, but +0.15 on one spread evenly over the
+rating scale (`--bucket rating --count 2`, 482 puzzles, 9 solved). The cap moves
+it as well, because `timeout` is the last grade in `grades_for`: that even sample
+reports +0.39 at `--timeout 5` and +0.15 at `--timeout 30`, since more puzzles
+land in the strongest grade. So `bench.py` correlates over the puzzles it solved
+and says how many it left out; on the 133 solved of that 500 that reads grade
++0.90, `iterations` +0.77, ms +0.84, where counting the rest in reads as
+`iterations` -0.55 because a puzzle that gives up early spends little.
+Validating the grade as a human-scale rater needs puzzles inside the ladder's
+own reach, which this corpus mostly is not.
+
 ## Cross-family benchmark
 
 `uv run python benchmark/families.py --runs 3 --seed 42` measures parser, CLI load/compile, deduction solve, and independent brute-force times for every listed small/larger family example. The seed shuffles execution order; the checked-in, unique example files are fixed. The benchmark stops if an example is no longer unique or the engine disagrees with brute force.
