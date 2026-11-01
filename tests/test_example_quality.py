@@ -44,6 +44,16 @@ def test_documentation_and_skills_use_the_web_index_instead_of_the_retired_galle
         assert "examples.md" not in source.read_text(), str(source.relative_to(root))
 
 
+def test_the_documented_example_count_matches_the_collection():
+    """The frontier sentences quote how many puzzles ship: keep that number true."""
+    root = Path(__file__).resolve().parents[1]
+    for relative in ("docs/puzzle-collection.md", "RELEASE_NOTES.md"):
+        source = root / relative
+        quoted = re.findall(r"Nine of the (\d+) published", source.read_text())
+        assert quoted, f"{relative} no longer quotes the frontier count"
+        assert {int(number) for number in quoted} == {len(played_examples())}
+
+
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
 def test_queens_examples_use_the_piece_of_their_family(path):
     text = path.read_text()
