@@ -167,16 +167,19 @@ class Canvas:
         fill: Colour | None = None,
         outline: Colour | None = None,
         width: float = 1,
+        dash: tuple[float, float] | None = None,
     ) -> None:
+        """`dash` is a (dash length, gap length) pair for a dashed outline."""
         x0, y0, x1, y1 = box
         x1, y1 = x1 + 1, y1 + 1
         cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
         if outline is not None and width > 0:
             h = width / 2
+            dashes = f' stroke-dasharray="{_n(dash[0])} {_n(dash[1])}"' if dash else ""
             self._add(
                 f'<ellipse cx="{_n(cx)}" cy="{_n(cy)}" rx="{_n(rx - h)}" ry="{_n(ry - h)}"'
                 f' fill="{colour(fill) if fill is not None else "none"}"'
-                f' stroke="{colour(outline)}" stroke-width="{_n(width)}"/>'
+                f' stroke="{colour(outline)}" stroke-width="{_n(width)}"{dashes}/>'
             )
         elif fill is not None:
             self._add(

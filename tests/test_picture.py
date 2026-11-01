@@ -248,6 +248,14 @@ def test_registry_icons_take_a_tint():
     assert any(r > 150 and g < 60 and b < 60 and a == 255 for _, (r, g, b, a) in colours)
 
 
+def test_canvas_ellipse_dashes_only_when_asked():
+    canvas = svg.Canvas(40, 40)
+    canvas.ellipse((2, 2, 38, 38), outline=(45, 110, 155), width=2)
+    assert "stroke-dasharray" not in canvas.to_svg()
+    canvas.ellipse((2, 2, 38, 38), outline=(45, 110, 155), width=2, dash=(3, 4.5))
+    assert 'stroke-dasharray="3 4.5"' in canvas.to_svg()
+
+
 def test_text_is_drawn_as_paths_from_the_bundled_font():
     from csp import sudoku
 
