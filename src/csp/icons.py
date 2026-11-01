@@ -300,6 +300,22 @@ PLATFORM_BENCH = (
     '<line x1="80" y1="18" x2="80" y2="78"/>'
     "</g>"
 )
+# A wooden sauna bench: pine slats running along the length, a thick front edge,
+# two plain wooden legs and a stretcher. No back, arms or cushion: a sauna bench
+# is bare wood, so nothing lies on it.
+SAUNA_BENCH = (
+    '<rect x="4" y="6" width="92" height="20" rx="4" fill="#dda868" stroke="#4e2f10"'
+    ' stroke-width="2.5"/>'
+    '<path d="M6 11.5H94M6 16.5H94M6 21.5H94" stroke="#8a5a26" stroke-width="2.2"/>'
+    '<rect x="4" y="26" width="92" height="8" rx="2" fill="#b8823f" stroke="#4e2f10"'
+    ' stroke-width="2.5"/>'
+    '<g fill="#7d4a1c" stroke="#4e2f10" stroke-width="2.5">'
+    '<rect x="14" y="34" width="14" height="14" rx="2"/>'
+    '<rect x="72" y="34" width="14" height="14" rx="2"/>'
+    "</g>"
+    '<rect x="26" y="40" width="48" height="5" rx="2" fill="#a9712f" stroke="#4e2f10"'
+    ' stroke-width="1.8"/>'
+)
 # One square of railway track seen from above, running left to right: it tiles into a line.
 RAILS = (
     '<rect width="100" height="100" fill="#b9b2a5"/>'
@@ -471,6 +487,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("train_bench", "\u2b0c", "train bench", markup=TRAIN_BENCH, view=(0, 0, 100, 92)),
         Icon("control_panel", "\u25a6", "control panel", markup=CONTROL_PANEL),
         Icon("stool", "\u25cf", "stool", markup=STOOL),
+        Icon("sauna_bench", "\u2b0c", "sauna bench", markup=SAUNA_BENCH, view=(0, 0, 100, 52)),
         Icon(
             "platform_bench",
             "\u2b0c",
@@ -526,6 +543,7 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "controlpanel": "control_panel",
                 "kruk": "stool", "stool": "stool",
                 "platform_bench": "platform_bench", "perron_bank": "platform_bench",
+                "saunabank": "sauna_bench", "sauna_bench": "sauna_bench",
                 "tapijt": "carpet", "carpet": "carpet", "rug": "carpet",
                 "tatami": "tatami", "plate": "plate", "sara": "plate",
                 "zaisu": "zaisu", "japanese_chair": "zaisu",
