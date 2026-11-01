@@ -462,6 +462,54 @@ def test_report_separates_bad_runs_from_hard_ones():
     assert "| 5 | top95.txt | top95 |  | `timeout` | 30000 |" in text
 
 
+def test_rank_correlation_only_reads_the_puzzles_the_ladder_solved():
+    """Folding the failures in turns the source's rating into the wall clock.
+
+    The three solved puzzles climb with the rating; the three it could not
+    finish have the *lowest* ratings and the *last* grades, so measuring all six
+    gives a strongly negative number while the grade itself is perfectly in step.
+    """
+    outcomes = [
+        _outcome(index=1, rating=1.0, grade="unsolved", solved=False, agrees=False, iterations=1),
+        _outcome(
+            index=2,
+            rating=2.0,
+            grade="timeout",
+            solved=False,
+            agrees=False,
+            timed_out=True,
+            ms=30_000.0,
+            iterations=0,
+        ),
+        _outcome(index=3, rating=3.0, grade="unsolved", solved=False, agrees=False, iterations=1),
+        _outcome(index=4, rating=5.0, grade="single", ms=5.0, iterations=5),
+        _outcome(index=5, rating=6.0, grade="subsumption", ms=6.0, iterations=6),
+        _outcome(index=6, rating=7.0, grade="chains", ms=7.0, iterations=7),
+    ]
+    text = bench.report(outcomes, title="rated", ladder="full", timeout=30)
+    assert "over the 3 of 6 rated puzzles it solved (2 unsolved, 1 timed out)" in text
+    assert "grade +1.00, iterations +1.00, ms +1.00" in text
+
+    grades = bench.grades_for("full")
+    naive = bench.spearman([(o.rating, grades.index(o.grade)) for o in outcomes])
+    assert naive is not None and naive < -0.5
+
+
+def test_rank_correlation_says_when_it_cannot_read_the_ranking():
+    text = bench.report(
+        [
+            _outcome(index=1, rating=1.0, grade="single"),
+            _outcome(index=2, rating=2.0, grade="unsolved", solved=False, agrees=False),
+            _outcome(index=3, rating=3.0, grade="unsolved", solved=False, agrees=False),
+        ],
+        title="rated",
+        ladder="full",
+        timeout=30,
+    )
+    assert "only 1 of 3 rated puzzles were solved" in text
+    assert "Rank correlation with the source's rating" not in text
+
+
 def test_report_says_so_when_nothing_went_wrong():
     text = bench.report([_outcome()], title="clean", ladder="full", timeout=30)
     assert "Empty: every puzzle was solved" in text

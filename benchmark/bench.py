@@ -19,7 +19,9 @@ the report answers:
 * **Does the grade mean anything?** The source's own difficulty (a rating
   column, or the set a puzzle came from) against the grade, by rank
   correlation and by bucket, plus how often `what_if` fires: a puzzle that only
-  falls to assumption is not "hard", it is beyond deduction.
+  falls to assumption is not "hard", it is beyond deduction. The rank
+  correlation covers the puzzles the ladder solved, and says how many it left
+  out, because an unfinished puzzle only says where the clock stopped.
 
 The report is Markdown on stdout; the same rows go to a CSV under
 `benchmark/.cache/`, which is git-ignored. No puzzle text is written anywhere.
@@ -409,21 +411,40 @@ def _tail(
     outcomes: Sequence[Outcome], failures: Sequence[Outcome], grades: Sequence[str]
 ) -> list[str]:
     """The last of the report: agreement with the source's ranking, how often
-    `what_if` carried a puzzle, and the index of what went wrong."""
+    `what_if` carried a puzzle, and the index of what went wrong.
+
+    The rank correlation is measured over the rated puzzles the ladder solved,
+    and the line says how many rated puzzles that leaves out. A puzzle it could
+    not finish is not evidence that the grade *ranks* the source's ratings: the
+    failure grades come last in `grades_for`, so a slower machine or a shorter
+    limit raises the correlation purely by timing out more puzzles, and the cost
+    columns of an unfinished puzzle are whatever it had not spent yet, which
+    puts their sign the wrong way round.
+    """
     lines: list[str] = []
     rated = [outcome for outcome in outcomes if outcome.rating is not None]
-    if len(rated) >= 3:
+    solved = [outcome for outcome in rated if outcome.solved]
+    if len(solved) >= 3:
         measures = (
-            ("grade", [(o.rating, grades.index(o.grade)) for o in rated]),
-            ("iterations", [(o.rating, o.iterations) for o in rated]),
-            ("ms", [(o.rating, o.ms) for o in rated]),
-            ("what_if", [(o.rating, o.what_if) for o in rated]),
+            ("grade", [(o.rating, grades.index(o.grade)) for o in solved]),
+            ("iterations", [(o.rating, o.iterations) for o in solved]),
+            ("ms", [(o.rating, o.ms) for o in solved]),
+            ("what_if", [(o.rating, o.what_if) for o in solved]),
         )
+        late = sum(1 for outcome in rated if outcome.timed_out)
         lines += [
             "",
-            f"Rank correlation with the source's rating ({len(rated)} puzzles): "
+            f"Rank correlation with the source's rating, over the {len(solved)} of "
+            f"{len(rated)} rated puzzles it solved "
+            f"({len(rated) - len(solved) - late} unsolved, {late} timed out): "
             + ", ".join(f"{name} {_number(spearman(pairs))}" for name, pairs in measures)
             + ".",
+        ]
+    elif rated:
+        lines += [
+            "",
+            f"Rank correlation: only {len(solved)} of {len(rated)} rated puzzles "
+            "were solved, too few to read the grade off the source's rating.",
         ]
 
     tiers = Counter(
