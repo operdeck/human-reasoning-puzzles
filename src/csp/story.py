@@ -50,7 +50,7 @@ from .murdoku import (
     role_statuses,
 )
 from .proof import Move, essential, replay, shortest
-from .puzzlefile import load_board, read_sections
+from .puzzlefile import load_board, load_presentation, read_sections
 
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
@@ -2544,6 +2544,27 @@ def board_notes(text: str) -> list[str]:
         notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
     notes.extend(f"{wording}." for wording in say.rules.values())
     return notes
+
+
+def murdoku_rules(text: str) -> list[str]:
+    """The rules a Murdoku player reads before starting, in the author's order.
+
+    The `Intro:` paragraphs (or the standard rules when a file has none), what
+    the board picture only abbreviates, and the note that a figure's story
+    detail is not a clue.
+
+    One constraint can be said twice: an author may write a rule's sentence in
+    the intro *and* as that rule's `| wording`, and both land here. Say such a
+    sentence once, where it appears first, so the rules list reads as one rule
+    rather than two conditions.
+    """
+    presentation = load_presentation(text)
+    said = [
+        *(presentation.intro or [phrase(text, "doc.rules")]),
+        *board_notes(text),
+        phrase(text, "doc.murdoku_note"),
+    ]
+    return list(dict.fromkeys(said))
 
 
 def role_list(text: str) -> list[tuple[str, str]]:

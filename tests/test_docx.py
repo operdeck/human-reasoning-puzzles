@@ -617,3 +617,20 @@ def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
     # The page states the counts itself, so the picture leaves those lines out and
     # only keeps the key for the dashed ring.
     assert seen["count_lines"] is False
+
+
+def test_the_booklet_prints_a_rule_the_intro_already_gave_once(tmp_path):
+    """Issue #152: the hotel's intro repeated Wouter's own rule as a second bullet."""
+    out = tmp_path / "hotel.docx"
+    assert main([str(example("wie-doet-het-met-wie-5.txt")), "--docx", str(out)]) == 0
+    bullets = [
+        paragraph.text
+        for paragraph in Document(str(out)).paragraphs
+        if paragraph.style.name == "List Bullet"
+    ]
+    wouter = (
+        "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
+        "met wie hij het doet: iemand in een badjas."
+    )
+    assert bullets.count(wouter) == 1
+    assert len(bullets) == len(dict.fromkeys(bullets))

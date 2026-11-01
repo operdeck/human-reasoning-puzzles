@@ -931,3 +931,38 @@ def test_rule_wording_and_garment_clue_are_told_in_the_opener():
     assert "dragen een badjas" not in story and "heeft alleen een badjas aan" not in story
     assert "Precies twee mensen staan op een badjas" in story
     assert "Iemand op een badjas is precies één rij boven iemand op een paar sloffen (1)" in story
+
+
+def test_a_rule_the_intro_already_says_is_listed_once():
+    """Issue #152: the hotel's intro repeated the wording of Wouter's own rule."""
+    from csp.story import murdoku_rules
+
+    wouter = (
+        "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
+        "met wie hij het doet: iemand in een badjas."
+    )
+    rules = murdoku_rules(example("wie-doet-het-met-wie-5.txt").read_text())
+
+    assert rules.count(wouter) == 1
+    # The intro says it first, so that copy stays; the remaining rules keep their order.
+    assert rules.index(wouter) == 2
+    assert rules[3:] == [
+        "Precies twee mensen dragen een badjas.",
+        "Precies één persoon heeft sloffen aan.",
+        "Precies één persoon heeft een bril op.",
+        rules[-1],
+    ]
+    assert len(rules) == len(dict.fromkeys(rules))
+
+
+def test_intro_sentences_keep_their_own_order_when_none_repeat_a_rule():
+    from csp.story import murdoku_rules
+
+    rules = murdoku_rules(example("wie-doet-het-met-wie-4.txt").read_text())
+
+    assert rules[0].startswith("Zes mensen logeren een weekend in een huis.")
+    assert rules[2] == (
+        "Wouter wordt als laatste geplaatst en is alleen in een kamer met degene "
+        "met wie hij het doet."
+    )
+    assert len(rules) == len(dict.fromkeys(rules))
