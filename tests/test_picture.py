@@ -584,7 +584,16 @@ count people on object:bed = 1
     margin = CELL // 6
     assert image.height > plain.height
     assert tiny.width > 0 and tiny.height > 0
-    assert image.getpixel((margin + 1, margin + 1)) == picture.COUNT_SCOPE
+    markup = drawing.murdoku_picture(
+        board, cell=CELL, coordinates=False, global_counts=[condition]
+    ).to_svg()
+    assert "stroke-dasharray" in markup
+    assert "<ellipse" in markup
+    # The old solid box is gone: the corner of the bed's square is not scope-blue.
+    assert image.getpixel((margin + 1, margin + 1)) != picture.COUNT_SCOPE
+    # The ring did change pixels inside the bed's square, compared with the plain board.
+    region = (margin, margin, margin + CELL, margin + CELL)
+    assert image.crop(region).tobytes() != plain.crop(region).tobytes()
 
     puzzle = tmp_path / "global-count.txt"
     target = tmp_path / "global-count.png"
@@ -601,6 +610,49 @@ count people on object:bed = 1
 
     assert seen and seen[0]
     assert target.exists()
+
+
+def test_scope_groups_join_orthogonal_neighbours_only():
+    square = Square
+    assert picture._scope_groups({square(1, 1), square(1, 2)}) == [{square(1, 1), square(1, 2)}]
+    assert picture._scope_groups({square(1, 1), square(2, 2)}) == [{square(1, 1)}, {square(2, 2)}]
+
+
+def test_scope_rings_wrap_a_rectangular_object_and_trace_an_l_shaped_one():
+    from csp import murdoku
+
+    text = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+Objects:
+bed: standable r1c1 r1c2
+tafel: standable r2c3 r3c2 r3c3
+People:
+Ada
+Clues:
+count people on object:bed = 1
+count people on object:tafel = 1
+"""
+    board, clues = load_board(text)
+    markup = drawing.murdoku_picture(
+        board,
+        cell=CELL,
+        coordinates=False,
+        legend=False,
+        global_counts=murdoku.global_count_conditions(board, clues),
+    ).to_svg()
+    # One oval around the bed's two squares, one circle per square of the L.
+    rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
+    assert len(rings) == 4
+    assert all("<ellipse" in line for line in rings)
+    # Without global counts there is no ring and no empty group either.
+    plain = drawing.murdoku_picture(board, cell=CELL, coordinates=False, legend=False).to_svg()
+    assert "stroke-dasharray" not in plain
+    assert f'opacity="{picture.SCOPE_OPACITY:.3f}"' not in plain
 
 
 def test_vertical_bed_icon_is_rotated(monkeypatch):
