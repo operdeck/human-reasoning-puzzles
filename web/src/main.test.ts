@@ -87,6 +87,23 @@ describe("puzzle index", () => {
     expect(document.querySelector("footer")?.textContent).toContain("All rights reserved.");
   });
 
+  it("flags a puzzle the deduction ladder cannot close on its own", async () => {
+    const collection = [
+      { ...puzzles[0], id: "frontier", grade: "what_if", static: "frontier.svg", deductive: false },
+      { ...puzzles[0], id: "deduced", static: "deduced.svg", deductive: true },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      license: "All rights reserved.",
+      puzzles: collection,
+    }))));
+    await import("./main");
+    await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(2));
+    const items = [...document.querySelectorAll(".puzzle-list li")];
+    expect(items[0].querySelector(".badge")?.textContent).toBe("beyond deduction");
+    expect(items[0].querySelector(".badge")?.getAttribute("title")).toContain("what_if");
+    expect(items[1].querySelector(".badge")).toBeNull();
+  });
+
   it("uses one preview per group, including each Murdoku series and Binairo/Tango", async () => {
     const collection = [
       puzzles[0],

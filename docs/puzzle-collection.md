@@ -103,6 +103,14 @@ reserved for that explicitly fiendish example. Legacy files with one-cell
 cages remain playable: their target digits must be entered, not silently
 locked as invisible givens.
 
+`what_if` is the ladder's fallback, so the examples that need it are exactly the
+ones no deduction path closes: this collection's beyond-deduction frontier.
+Nine of the 97 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+`tents_3_4x4`, `calcudoku_6_6x6`, `food-murdoku-3`, `menu-murdoku-3`,
+`prrrdoku2`, `prrrdoku3` and `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
+reports them as `deductive: false`, the web index and puzzle pages badge them,
+and a test pins the list, which only moves when the ladder does.
+
 The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The Queens collection progresses from `single` through `subsumption` and `cover2` to `chains`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
 
 | Family | Small example | Larger example |

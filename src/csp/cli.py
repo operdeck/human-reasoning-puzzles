@@ -495,6 +495,7 @@ def _export(files: list[Path], out: Path) -> int:
             if not result.solved:
                 raise ValueError("not solved by the rules")
             picture = make_image(kind, text, interactive=True).to_svg()
+            fired_rules = [rule for rule, _ in fired.items]
             data = web.bundle(
                 text,
                 kind,
@@ -502,7 +503,8 @@ def _export(files: list[Path], out: Path) -> int:
                 model,
                 result.assignment,
                 picture,
-                report.grade(rule for rule, _ in fired.items),
+                report.grade(fired_rules),
+                not report.beyond_deduction(fired_rules),
                 number=listed.number,
                 section=listed.section,
             )

@@ -2853,6 +2853,15 @@ def test_grade_is_the_hardest_rung_used():
     )
 
 
+def test_beyond_deduction_is_exactly_the_top_rung_of_the_ladder():
+    # `what_if` is the fallback, so it is the last rung of the ladder.
+    assert report.DEFAULT_RULES[-1].name == "what_if"
+    assert report.beyond_deduction(["single", "what_if"])
+    assert report.beyond_deduction(["what_if"])
+    assert not report.beyond_deduction(["single", "cover2", "relations"])
+    assert not report.beyond_deduction([])
+
+
 @pytest.mark.parametrize(
     "name, grade",
     [
