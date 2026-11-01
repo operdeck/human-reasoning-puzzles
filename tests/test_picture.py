@@ -1440,6 +1440,47 @@ def test_count_legend_uses_the_given_plain_language_texts():
     assert "object:badjas" not in markup
 
 
+def test_the_legend_explains_the_dashed_ring_that_marks_a_count():
+    from csp import murdoku
+
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    board, clues = load_board(text)
+    counts = murdoku.global_count_conditions(board, clues)
+    dutch = drawing.murdoku_picture(board, global_counts=counts, language="nl").to_svg()
+    assert "gestippelde ring: de voorwerpen waar een telling over gaat" in dutch
+    english = drawing.murdoku_picture(board, global_counts=counts, language="en").to_svg()
+    assert "dashed ring: the objects a count is about" in english
+    # No count, no ring, and so nothing to explain either.
+    plain = drawing.murdoku_picture(board, language="nl").to_svg()
+    assert "gestippelde ring" not in plain
+
+
+def test_a_count_with_nothing_to_ring_adds_no_note():
+    from csp import murdoku
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Attributes:
+bril: Ada
+People:
+Ada
+Ben
+Clues:
+count people with attribute:bril = 1
+"""
+    board, clues = load_board(text)
+    (condition,) = murdoku.global_count_conditions(board, clues)
+    legend = picture._Legend(board, CELL, global_counts=[condition])
+    # A count over an attribute has no square to point at: it is listed, not rung.
+    assert legend.ring_lines == []
+    assert legend.global_count_lines
+    assert legend.height > picture._Legend(board, CELL).height
+
+
 def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
     plain = _point_board()
     backdrop = _point_board()

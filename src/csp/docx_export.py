@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import icons, picture
+from . import icons, murdoku, picture
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
     attribute_list,
@@ -66,11 +66,19 @@ def _picture_stream(
 ) -> tuple[io.BytesIO, float]:
     """The board picture and its height/width ratio; `backdrop=False` leaves the
     backdrop out, for pages too full to give it room."""
-    board, _ = load_board(text)
+    board, clues = load_board(text)
     if not backdrop:
         board.backdrop = None
+    # The counts are rules the page states itself, but the dashed ring on the
+    # board still has to be explained where it is drawn.
     image = picture.murdoku_picture(
-        board, solution, show_roles=False, language=language_of(text), area_tags=False
+        board,
+        solution,
+        show_roles=False,
+        language=language_of(text),
+        area_tags=False,
+        global_counts=murdoku.global_count_conditions(board, clues),
+        count_lines=False,
     )
     return io.BytesIO(image.to_png()), image.height / image.width
 
