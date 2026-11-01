@@ -123,9 +123,10 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
 
 ## Working alongside the owner
 
-- **No heredocs.** `cat <<'EOF' > file` and its relatives fail often in this
-  setup. Write files with an editor tool or `printf`, and give `git commit` its
-  message with `-m`, a second `-m` for the body.
+- **Never use a heredoc — no exceptions, ever.** `cat <<'EOF' > file`, here-strings
+  (`<<<`), and every other here-doc form are banned in this setup, whatever the
+  shell, whatever the purpose. Write files with an editor tool or `printf`, and
+  give `git commit` its message with `-m`, a second `-m` for the body.
 - **Preview every visible change.** A picture, icon, legend, board or web
   player change needs a before/after the owner can look at: render it
   (`--png`, `--export` for the player, `--docx` for the booklet), compare the
