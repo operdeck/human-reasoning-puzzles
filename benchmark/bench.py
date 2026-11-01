@@ -187,10 +187,13 @@ def measure(job: Job) -> Outcome:
         answer = found[0]
 
     started = time.perf_counter()
-    signal.signal(signal.SIGALRM, _raise_timeout)
-    if job.timeout:
-        signal.setitimer(signal.ITIMER_REAL, job.timeout)
+    signal.setitimer(signal.ITIMER_REAL, 0)  # nothing left over from an earlier run
+    previous = signal.signal(signal.SIGALRM, _raise_timeout)
     try:
+        # Armed inside the guard on purpose: with a limit this short the alarm
+        # can fire before the body starts, and that is a timeout, not a crash.
+        if job.timeout:
+            signal.setitimer(signal.ITIMER_REAL, job.timeout)
         if job.kind == "sudoku":
             model, _ = compile_puzzle(job.text)
         else:
@@ -219,6 +222,7 @@ def measure(job: Job) -> Outcome:
         )
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
     ms = (time.perf_counter() - started) * 1000
     counts = Counter(fired)
     return Outcome(
