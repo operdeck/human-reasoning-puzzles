@@ -612,10 +612,70 @@ count people on object:bed = 1
     assert target.exists()
 
 
-def test_scope_groups_join_orthogonal_neighbours_only():
+def test_scope_groups_ring_each_object_even_when_two_touch():
+    text = """Size: 3
+Regions:
+a: room
+b: yard
+Grid:
+a a b
+a a b
+a b b
+Objects:
+badjas: standable r1c1
+sloffen: standable r2c1
+People:
+Ada
+Clues:
+count people on object:badjas = 1
+"""
+    board, _ = load_board(text)
     square = Square
-    assert picture._scope_groups({square(1, 1), square(1, 2)}) == [{square(1, 1), square(1, 2)}]
-    assert picture._scope_groups({square(1, 1), square(2, 2)}) == [{square(1, 1)}, {square(2, 2)}]
+    # Two objects one above the other are two rings, not one tall ellipse.
+    assert picture._scope_groups(board, {square(0, 0), square(1, 0)}) == [
+        {square(0, 0)},
+        {square(1, 0)},
+    ]
+    # Empty squares of an area belong to no object, so they still group as a block.
+    assert picture._scope_groups(board, {square(0, 2), square(1, 2)}) == [
+        {square(0, 2), square(1, 2)}
+    ]
+
+
+def test_scope_rings_two_touching_objects_apart():
+    import re
+
+    from csp import murdoku
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+badjas: standable r1c1
+sloffen: standable r2c1
+People:
+Ada
+Clues:
+count people on object:badjas = 1
+count people on object:sloffen = 1
+"""
+    board, clues = load_board(text)
+    markup = drawing.murdoku_picture(
+        board,
+        cell=CELL,
+        coordinates=False,
+        legend=False,
+        global_counts=murdoku.global_count_conditions(board, clues),
+    ).to_svg()
+    rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
+    assert len(rings) == 2
+    # Each ring stays inside its own square, so neither can enclose the neighbour.
+    for line in rings:
+        radius = float(re.search(r' ry="([\d.]+)"', line).group(1))
+        assert radius < CELL / 2
 
 
 def test_scope_rings_wrap_a_rectangular_object_and_trace_an_l_shaped_one():
