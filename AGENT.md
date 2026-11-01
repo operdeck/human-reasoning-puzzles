@@ -80,11 +80,20 @@ as that rule's summary, so keep it to one plain sentence.
 
 The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`).
 
-- **Branch, check, merge.** Work on a feature branch in small,
-  single-purpose commits. Before merging into `main` (fast-forward only), all
-  of these must pass: `uvx ruff check src tests benchmark`, `uvx ruff format --check
-  src tests benchmark`, `uv run mypy src`, `uv run pytest -q`. CI runs the same
-  on every push to `main` (`.github/workflows/tests.yml`).
+- **Branch, commit often, push early.** Work on a feature branch in small,
+  single-purpose commits, and push them to the pull request as soon as the
+  branch is worth reading instead of holding a long change on your disk until
+  it feels finished.
+- **CI runs the full suite; locally run what your change can break.** Run the
+  linters — `uvx ruff check src tests benchmark`, `uvx ruff format --check src
+  tests benchmark`, `uv run mypy src` — and the tests your change can reach,
+  such as `uv run pytest tests/test_picture.py -q`, not everything.
+  `.github/workflows/tests.yml` runs the full `uv run pytest -q` on 3.12 and
+  3.13, plus the web checks, on every pull request. Run the whole suite
+  yourself only to reproduce a red build.
+- **Do not sit on a push waiting for CI.** Say what is still running and give
+  the check URL, then carry on with the next step; the owner watches the build.
+- **Merge into `main` fast-forward only**, and only once CI is green.
 - **No `.docx` or `.pdf` is ever published.** The repo is public, so Word and
   PDF files are source material, not content: they stay out of commits. The
   `proprietary puzzles/` folder no longer exists and its documents are gone from
@@ -111,6 +120,17 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   `docs/images/*.png` with `--png` (rasterised from the SVG renderer) and re-run `--explain` whenever drawing or
   wording changes, and keep the README in step. In the README, "Prrrdoku"
   appears only as the example file names, not as a general term.
+
+## Working alongside the owner
+
+- **No heredocs.** `cat <<'EOF' > file` and its relatives fail often in this
+  setup. Write files with an editor tool or `printf`, and give `git commit` its
+  message with `-m`, a second `-m` for the body.
+- **Preview every visible change.** A picture, icon, legend, board or web
+  player change needs a before/after the owner can look at: render it
+  (`--png`, `--export` for the player, `--docx` for the booklet), compare the
+  sizes and states that matter, and name or attach the images in the pull
+  request. A green test run is not a visual review.
 
 ## Adding a rule
 
