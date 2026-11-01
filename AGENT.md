@@ -214,7 +214,8 @@ feasible totals; active location scopes are highlighted without adding
 puzzle-specific behavior to `core.py`.
 Pictures mark the same scope with one subtle dashed ring per object
 (`picture._scope_outline`), never a solid box per square: a blue box around a
-badjas reads as a cell of its own rather than as what the clue counts.
+badjas reads as a cell of its own rather than as what the clue counts. Two
+objects side by side keep two rings, so a ring never spans a neighbour.
 
 ## Adding a puzzle family
 

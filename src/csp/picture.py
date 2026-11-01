@@ -231,7 +231,7 @@ def murdoku_picture(
         y = margin + (row2 - 1) * cell // 2
         radius = cell // 3
         _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
-    _scope_outline(canvas, count_scope, box, cell)
+    _scope_outline(canvas, board, count_scope, box, cell)
     marks_by_cell: dict[Square, list[str]] = {}
     for mark in board.marks:
         for square in mark.cells:
@@ -1118,12 +1118,23 @@ def _darker(colour: RGB, factor: float = BLOCKED_SHADE) -> RGB:
     return round(r * factor), round(g * factor), round(b * factor)
 
 
-def _scope_groups(squares: Iterable[Square]) -> list[set[Square]]:
-    """Connected groups (orthogonal neighbours) of `squares`, in reading order."""
-    remaining = set(squares)
+def _scope_groups(board: Board, squares: Iterable[Square]) -> list[set[Square]]:
+    """The scope squares grouped per object, in reading order.
+
+    Two objects that lie side by side are two rings, not one: the ring means
+    "this object", so it must not span neighbours. A count of empty squares in
+    an area refers to no object, and those squares group by orthogonal
+    neighbours instead.
+    """
+    scope = set(squares)
     groups: list[set[Square]] = []
-    while remaining:
-        group = {remaining.pop()}
+    for obj in board.objects:
+        piece = set(obj.squares) & scope
+        if piece:
+            groups.append(piece)
+            scope -= piece
+    while scope:
+        group = {scope.pop()}
         todo = list(group)
         while todo:
             square = todo.pop()
@@ -1133,8 +1144,8 @@ def _scope_groups(squares: Iterable[Square]) -> list[set[Square]]:
                 Square(square.row, square.col - 1),
                 Square(square.row, square.col + 1),
             ):
-                if near in remaining:
-                    remaining.remove(near)
+                if near in scope:
+                    scope.remove(near)
                     group.add(near)
                     todo.append(near)
         groups.append(group)
@@ -1142,17 +1153,17 @@ def _scope_groups(squares: Iterable[Square]) -> list[set[Square]]:
 
 
 def _scope_outline(
-    canvas: Canvas, squares: Iterable[Square], box: Callable[[Square], Box], cell: int
+    canvas: Canvas, board: Board, squares: Iterable[Square], box: Callable[[Square], Box], cell: int
 ) -> None:
     """A subtle dashed ring around each object that a global count refers to.
 
-    One ellipse around the whole footprint when a connected group fills its
-    bounding rectangle, a circle per square otherwise, so no square outside the
-    scope is ever enclosed. Squares stay inside their cells, and a picture
-    without global counts gets no ring and no empty group.
+    One ellipse around the whole footprint when the object fills its bounding
+    rectangle, a circle per square otherwise, so no square outside the scope is
+    ever enclosed. Neighbouring objects get a ring each, kept inside their
+    cells, and a picture without global counts gets no ring and no empty group.
     """
     width = max(1, cell // 60)
-    inset = max(1, cell // 20)
+    inset = max(2, cell // 12)
     dash = (max(2.0, cell / 20), max(3.0, cell / 14))
 
     def ring(area: Box) -> None:
@@ -1164,7 +1175,7 @@ def _scope_outline(
             dash=dash,
         )
 
-    for group in _scope_groups(squares):
+    for group in _scope_groups(board, squares):
         rows = [square.row for square in group]
         cols = [square.col for square in group]
         filled = (max(rows) - min(rows) + 1) * (max(cols) - min(cols) + 1) == len(group)
