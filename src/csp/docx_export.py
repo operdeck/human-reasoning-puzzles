@@ -16,10 +16,10 @@ from . import icons, murdoku, picture
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
     attribute_list,
-    board_notes,
     clue_paragraphs,
     explain,
     family_rules,
+    murdoku_rules,
     object_list,
     phrase,
     role_list,
@@ -375,17 +375,12 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     presentation = load_presentation(text)
     _title(document, _puzzle_title(entry), new_page, bookmark, entry.section)
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
-    for line in presentation.intro or [phrase(text, "doc.rules")]:
+    rules = murdoku_rules(text)
+    for line in rules:
         _runs(document.add_paragraph(style="List Bullet"), line)
-    notes = board_notes(text)
-    for note in notes:
-        document.add_paragraph(note, style="List Bullet")
-    note = phrase(text, "doc.murdoku_note")
-    _runs(document.add_paragraph(style="List Bullet"), note)
     clues = clue_paragraphs(text, presentation.clue_text)
     _, aspect = _picture_stream(text, None, None)
     clue_lines = sum(-(-len(clue) // CLUE_LINE_CHARS) for clue in clues)
-    rules = [*(presentation.intro or [phrase(text, "doc.rules")]), *notes, note]
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)
     width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)

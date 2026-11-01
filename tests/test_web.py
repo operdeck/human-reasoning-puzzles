@@ -358,3 +358,23 @@ def test_author_wordings_reach_the_web_player(exported):
     assert "Precies twee mensen dragen een badjas." in bundle["rules"]
     assert "Precies één persoon heeft sloffen aan." in bundle["rules"]
     assert "Marloes heeft alleen een badjas aan." in bundle["clues"]
+
+
+def test_the_hotel_lists_wouters_rule_once(exported):
+    """Issue #152: the intro repeated the wording of the same board rule."""
+    rules = _bundle(exported, "wie-doet-het-met-wie-5")["rules"]
+    wouter = (
+        "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
+        "met wie hij het doet: iemand in een badjas."
+    )
+    assert rules.count(wouter) == 1
+    # The intro says it first, so the player reads it there.
+    assert rules.index(wouter) == 2
+
+
+def test_no_puzzle_lists_the_same_rule_twice(exported):
+    for path in sorted(exported.glob("*.json")):
+        if path.name == "index.json":
+            continue
+        rules = json.loads(path.read_text())["rules"]
+        assert len(rules) == len(dict.fromkeys(rules)), path.stem
