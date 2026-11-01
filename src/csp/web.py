@@ -24,10 +24,10 @@ from .puzzlefile import language_of, load_board, load_presentation, read_section
 from .story import (
     PEER_RULE_LABELS,
     attribute_list,
-    board_notes,
     clue_paragraphs,
     condition_list,
     family_rules,
+    murdoku_rules,
     object_list,
     phrase,
     role_list,
@@ -194,11 +194,7 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
             item["svg"] = picture
         palette.append(item)
     placed = {str(sq): person for person, sq in solution.items() if isinstance(sq, Square)}
-    rules = [
-        *(presentation.intro or [phrase(text, "doc.rules")]),
-        *board_notes(text),
-        phrase(text, "doc.murdoku_note"),
-    ]
+    rules = murdoku_rules(text)
     return {
         "language": language_of(text),
         "size": [board.size, board.size],
