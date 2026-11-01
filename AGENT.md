@@ -155,6 +155,14 @@ Candidates, roughly in order of value:
   tell it. Since chains, `what_if` fires only on `prrrdoku3.txt` and the
   fiendish Calcudoku. Next: weak links from relations over three or more
   variables, and keeping links between runs (chains are the slow rung).
+- ~~Three-value wings~~ — done as `rule_wing`, the XYZ-Wing: a three-option
+  pivot and two two-option helpers that together force their shared value into
+  one of three options, so anything linked "not both true" to all three loses
+  it. It rests only on those links, so it stays sound for any model, and it
+  reaches eliminations `rule_chains` cannot, whose alternating links assume a
+  two-option pivot. `follow_wing` replays it, `proof.HARDEST_FIRST` lists it,
+  and `story` tells it. No example needs it (see below); on the Norvig corpus
+  it takes over one `what_if`.
 - ~~Bounded what-if~~ — done as `rule_what_if`, using `Model.clone()`. It
   runs only `single`/`count`/`relations`/`subsumption` on the copy, never itself,
   so it stays one level deep. Within the first variable (fewest options)
@@ -360,6 +368,9 @@ Numbers from actual runs, not estimates:
 | `calcudoku_4_6x6.txt` | solved, 60 iterations | `single` 36, `relations` 20, `cover2` 3 |
 | `calcudoku_6_6x6.txt` | solved, 73 iterations | `single` 35, `relations` 30, `cover2` 4, `what_if` 3 |
 | `calcudoku_5_7x7.txt` | solved, 80 iterations | `single` 47, `relations` 26, `cover2` 4, `cover3` 2 |
+
+No example in `examples/` needs `rule_wing`; it is in the ladder for models
+that do, and the Norvig benchmark credits it (see `benchmark/`).
 
 The Calcudokus were generated the same way as the graded Sudokus (random
 Latin square, random cages, uniqueness checked by brute force) because

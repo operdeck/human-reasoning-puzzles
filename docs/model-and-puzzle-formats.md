@@ -27,6 +27,7 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | `subsumption` | Use the remaining capacity of an outer constraint when an inner constraint requires another true literal. |
 | `cover2`, `cover3` | Combine disjoint inner constraints whose guaranteed demand fills an outer constraint's remaining capacity. |
 | `chains` | Follow strong/weak links from counts and two-variable relations; a contradiction or paired weak links can eliminate a value. |
+| `wing` | A three-option pivot and two two-option helpers force their shared value into one of them, so any option linked "not both true" to all three is false (Sudoku's XYZ-Wing). |
 | `what_if` | On a model copy, assume a value and run only `single`, `count`, `relations`, and `subsumption`; a contradiction proves the assumption false. |
 
 `--grade` reports the hardest rule actually used, or `unsolved` if the deduction ladder stalls. It is a measure of this solver's deductions, not a universal human difficulty rating.
