@@ -6,14 +6,17 @@ reading (rows, solutions, ratings, buckets), the record of what was fetched,
 and that the engine never looks back at the benchmark.
 """
 
+import csv
 import hashlib
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 
 import csp.sudoku
-from benchmark import corpus, fetch
+from benchmark import bench, corpus, fetch
 from benchmark.run import BASE
+from csp.core import DEFAULT_RULES
 
 ROOT = Path(__file__).resolve().parent.parent
 SOLVED = "".join(str(BASE[r][c]) for r in range(9) for c in range(9))
@@ -257,3 +260,219 @@ def test_the_engine_does_not_look_back_at_the_benchmark():
     engine = sorted((ROOT / "src" / "csp").rglob("*.py"))
     assert engine
     assert [path.name for path in engine if "benchmark" in path.read_text()] == []
+
+
+# --- the runner: what it judges, and what it reports ------------------------
+
+
+class _Step(NamedTuple):
+    """The part of `csp.core.Step` the audit reads."""
+
+    var: str
+    value: int
+    asserted: bool
+    rule: str
+
+    @property
+    def literal(self) -> str:
+        return f"{self.var}={self.value}"
+
+
+def _outcome(**overrides: object) -> bench.Outcome:
+    fields: dict[str, object] = {
+        "index": 0,
+        "origin": "top95.txt",
+        "group": "top95",
+        "rating": None,
+        "grade": "single",
+        "solved": True,
+        "agrees": True,
+        "unsound": (),
+        "contradiction": None,
+        "timed_out": False,
+        "ms": 10.0,
+        "iterations": 3,
+        "steps": 40,
+        "what_if": 0,
+        "counts": {"single": 3},
+    }
+    return bench.Outcome(**(fields | overrides))
+
+
+def test_audit_only_judges_steps_the_answer_speaks_about():
+    answer = {"r1c1": 5, "r1c2": 3}
+    steps = [
+        _Step("r1c1", 5, True, "single"),
+        _Step("r1c2", 3, False, "cover2"),
+        _Step("r1c1", 4, False, "cover2"),
+        _Step("r1c1", 7, True, "given"),
+        _Step("r9c9", 1, True, "chains"),
+    ]
+    assert bench._audit(steps, answer) == ("cover2 x r1c2=3",)
+
+
+def test_measure_solves_a_puzzle_and_agrees_with_its_answer():
+    job = bench.Job(
+        0,
+        "tiny.txt",
+        "easy",
+        None,
+        "sudoku",
+        corpus.grid(PUZZLE),
+        corpus.oracle(SOLVED),
+        "full",
+        60,
+    )
+    outcome = bench.measure(job)
+    assert outcome.solved
+    assert outcome.agrees
+    assert outcome.unsound == ()
+    assert not outcome.suspect
+    assert outcome.grade != "timeout"
+
+
+def test_measure_gives_up_at_its_time_limit():
+    job = bench.Job(
+        0,
+        "tiny.txt",
+        "easy",
+        None,
+        "sudoku",
+        corpus.grid(PUZZLE),
+        corpus.oracle(SOLVED),
+        "full",
+        1e-6,
+    )
+    outcome = bench.measure(job)
+    assert outcome.timed_out
+    assert not outcome.solved
+    assert outcome.grade == "timeout"
+
+
+def test_measure_refuses_to_judge_a_puzzle_with_two_answers():
+    empty = bench.Job(
+        0, "empty.txt", "easy", None, "sudoku", corpus.grid("." * 81), None, "full", 60
+    )
+    outcome = bench.measure(empty)
+    assert outcome.grade == "ambiguous"
+    assert not outcome.solved
+    assert "solutions" in (outcome.contradiction or "")
+
+
+def test_ladders_keep_the_default_order_and_only_add_cover4():
+    names = [rule.name for rule in bench.LADDERS["full"]]
+    assert names == [rule.name for rule in DEFAULT_RULES]
+    assert [rule.name for rule in bench.LADDERS["cover4"]] == [
+        *names[: names.index("chains")],
+        "cover4",
+        *names[names.index("chains") :],
+    ]
+    assert "what_if" not in [rule.name for rule in bench.LADDERS["no-what-if"]]
+    assert "chains" not in [rule.name for rule in bench.LADDERS["no-chains"]]
+    assert "what_if" not in [rule.name for rule in bench.LADDERS["cover4-no-what-if"]]
+
+
+def test_percentile_ranks_and_spearman_read_an_ordering():
+    assert bench.percentile([1, 2, 3, 4, 5], 0.5) == 3
+    assert bench.percentile([4, 1, 3], 1.0) == 4
+    assert bench.percentile([], 0.5) == 0.0
+    assert bench.ranks([10, 10, 20]) == [1.5, 1.5, 3.0]
+    assert bench.spearman([(1, 1), (2, 2), (3, 3)]) == pytest.approx(1.0)
+    assert bench.spearman([(1, 3), (2, 2), (3, 1)]) == pytest.approx(-1.0)
+    assert bench.spearman([(1, 1), (2, 1), (3, 1)]) is None
+    assert bench.spearman([(1, 1), (2, 2)]) is None
+
+
+def test_bands_use_the_rating_when_there_is_one_and_the_group_otherwise():
+    rated = [_outcome(index=index, rating=float(index)) for index in range(1, 9)]
+    labels = [label for label, _ in bench.bands(rated)]
+    assert labels == ["rating 1 to 3", "rating 4 to 5", "rating 6", "rating 7 to 8"]
+    assert [members for _, members in bench.bands(rated)] == [
+        rated[0:3],
+        rated[3:5],
+        rated[5:6],
+        rated[6:8],
+    ]
+    unrated = [_outcome(group="top95"), _outcome(group="easy50"), _outcome(group="easy50")]
+    assert [label for label, _ in bench.bands(unrated)] == ["easy50", "top95"]
+
+
+def test_report_separates_bad_runs_from_hard_ones():
+    outcomes = [
+        _outcome(index=1, origin="easy50.txt", group="easy50", grade="single", ms=5.0),
+        _outcome(index=2, origin="top95.txt", grade="what_if", what_if=2, ms=800.0),
+        _outcome(
+            index=3,
+            origin="top95.txt",
+            grade="unsolved",
+            solved=False,
+            agrees=False,
+            contradiction="the rules ran out",
+            ms=900.0,
+        ),
+        _outcome(
+            index=4,
+            origin="hardest.txt",
+            group="hardest",
+            grade="what_if",
+            what_if=1,
+            unsound=("single = r1c1=5",),
+            ms=90.0,
+        ),
+        _outcome(
+            index=5,
+            origin="top95.txt",
+            grade="timeout",
+            solved=False,
+            agrees=False,
+            timed_out=True,
+            ms=30_000.0,
+        ),
+    ]
+    text = bench.report(outcomes, title="test run", ladder="full", timeout=30)
+    assert "Solved: **3 of 5** (60.0%)" in text
+    assert "Wrong solution: 0; unsound steps: 1" in text
+    assert "| `what_if` | 2 | 40% " in text
+    assert "what_if` fired on 2 of 5 puzzles (40%), 3 times in all" in text
+    assert "Empty: every puzzle" not in text
+    assert "unsound: single = r1c1=5" in text
+    assert "timed out" in text
+    assert "the rules ran out" in text
+    assert "| 5 | top95.txt | top95 |  | `timeout` | 30000 |" in text
+
+
+def test_report_says_so_when_nothing_went_wrong():
+    text = bench.report([_outcome()], title="clean", ladder="full", timeout=30)
+    assert "Empty: every puzzle was solved" in text
+    assert "Failure index" in text
+
+
+def test_csv_rows_are_flat_and_hold_no_puzzle_text(tmp_path):
+    path = tmp_path / "reports" / "run.csv"
+    bench.write_csv(path, [_outcome(counts={"single": 2, "chains": 1})])
+    with path.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert list(rows[0]) == list(bench.CSV_COLUMNS)
+    assert rows[0]["origin"] == "top95.txt"
+    assert rows[0]["rules"] == '{"chains": 1, "single": 2}'
+    assert len(rows[0]) == len(bench.CSV_COLUMNS)
+
+
+def test_example_jobs_leave_murdoku_to_its_own_tools():
+    jobs = bench.example_jobs("full", 30)
+    assert len(jobs) > 50
+    assert all(job.kind != "murdoku" for job in jobs)
+    assert all(job.answer is None for job in jobs)  # the brute force supplies it
+    assert [job.index for job in jobs] == list(range(len(jobs)))
+    assert {job.group for job in jobs} >= {"sudoku", "akari", "tango"}
+
+
+def test_corpus_jobs_name_the_file_and_carry_the_samples_answer(tmp_path):
+    path = tmp_path / "sample.csv"
+    corpus.store(path, [corpus.Row(0, "top95.txt", PUZZLE, SOLVED, None, None)])
+    jobs = bench.corpus_jobs(corpus.Sample(path, 1, 1, 0, False), "full", 5)
+    assert len(jobs) == 1
+    assert jobs[0].origin == "top95.txt"
+    assert jobs[0].group == "top95"  # no group column: the file name stands in
+    assert jobs[0].answer == corpus.oracle(SOLVED)
+    assert jobs[0].text == corpus.grid(PUZZLE)
