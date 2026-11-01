@@ -218,10 +218,13 @@ requires a solve without `what_if`. `--svg` or `--png` without a path writes
 an explicit path overrides the default. `--interactive` (with `--svg`) adds cell
 ids for an app and writes no solution picture. `--export DIR` writes a JSON
 bundle and interactive board per puzzle, plus `index.json`, for the web player in
-`web/` (see `src/csp/web.py`; it fails when any puzzle cannot be exported). The
-player in `web/` stays family-agnostic: palettes, scopes, rules and wording come
-from the bundle, so new family knowledge belongs in `web.py`, not in TypeScript.
-After changing `web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FILE]` (or a quoted glob) writes
+`web/` (see `src/csp/web.py`; it fails when any puzzle cannot be exported). Each
+bundle and index entry records `deductive`, whether the ladder closes the puzzle
+without its `what_if` fallback, so the player can flag the beyond-deduction
+frontier. The player in `web/`
+stays family-agnostic: palettes, scopes, rules and wording come from the bundle,
+so new family knowledge belongs in `web.py`, not in TypeScript. After changing
+`web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FILE]` (or a quoted glob) writes
 an editable Word booklet, puzzles first and then solutions, one page each, from
 `docx_export`; new Murdoku puzzles should carry the optional `Title:`, `Intro:`,
 `Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku

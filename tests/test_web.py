@@ -23,6 +23,21 @@ def _bundle(out: Path, name: str) -> dict:
     return json.loads((out / f"{name}.json").read_text())
 
 
+# The `examples/` puzzles this solver only closes with its `what_if` fallback, so
+# no deduction path exists: the beyond-deduction frontier. Keep in step with the ladder.
+BEYOND_DEDUCTION = {
+    "binairo_3_4x4",
+    "calcudoku_6_6x6",
+    "food-murdoku-3",
+    "menu-murdoku-3",
+    "prrrdoku2",
+    "prrrdoku3",
+    "tamagotchi-murdoku-12x12",
+    "tango_5_4x4",
+    "tents_3_4x4",
+}
+
+
 def test_every_example_is_exported_and_indexed(exported):
     index = json.loads((exported / "index.json").read_text())
     names = sorted(path.stem for path in played_examples())
@@ -37,6 +52,17 @@ def test_every_example_is_exported_and_indexed(exported):
         assert preview.is_file()
         assert "<svg" in preview.read_text()
     assert not list(exported.glob("*-solution.svg"))
+
+
+def test_bundles_record_which_puzzles_need_the_what_if_fallback(exported):
+    """`deductive` is False exactly for the frontier: the puzzles graded `what_if`."""
+    index = json.loads((exported / "index.json").read_text())
+    bundles = {entry["id"]: _bundle(exported, entry["id"]) for entry in index["puzzles"]}
+    assert set(bundles) == {path.stem for path in played_examples()}
+    for entry in index["puzzles"]:
+        bundle = bundles[entry["id"]]
+        assert entry["deductive"] == bundle["deductive"] == (bundle["grade"] != "what_if")
+    assert {name for name, bundle in bundles.items() if not bundle["deductive"]} == BEYOND_DEDUCTION
 
 
 def test_every_playable_cell_is_on_the_board(exported):
