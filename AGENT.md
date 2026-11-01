@@ -85,10 +85,19 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   of these must pass: `uvx ruff check src tests benchmark`, `uvx ruff format --check
   src tests benchmark`, `uv run mypy src`, `uv run pytest -q`. CI runs the same
   on every push to `main` (`.github/workflows/tests.yml`).
-- **`proprietary puzzles/` never leaves this machine.** It holds the private source
-  documents; it is gitignored and was removed from all history. Stage files
-  by explicit path, never `git add -A`. Before every push, this must print
-  `0`: `git rev-list --objects --all | grep -ciE '\.(docx|pdf)$|proprietary puzzles/'`.
+- **No `.docx` or `.pdf` is ever published.** The repo is public, so Word and
+  PDF files are source material, not content: they stay out of commits. The
+  `proprietary puzzles/` folder no longer exists and its documents are gone from
+  this machine, but `.gitignore` keeps the entry in case they return. Stage
+  files by explicit path, never `git add -A`.
+- **The pre-push check covers the push, not the clone.** Before every push, this
+  must print `0` for the commits you are about to publish:
+  `git rev-list --objects origin/main..HEAD | grep -ciE '\.(docx|pdf)$|proprietary puzzles/'`.
+  Do not widen it to `--all`: that also walks `refs/stash`, `refs/cline/*` and
+  old history, where the Orient Express `.docx`
+  (`examples/murder-in-the-orient-express/murdoku_orient_express.docx`) is still
+  reachable (added in `4696b62`, dropped in `7126130`), so `--all` can never
+  print `0` and the check gets ignored.
 - **Push as `operdeck`, without prompts:** `GIT_TERMINAL_PROMPT=0 git push
   origin main`. The repo's local git config gets the token from
   `gh auth token --user operdeck`; do not switch the global `gh` account, and
@@ -333,11 +342,11 @@ no weak links yet.
 
 ## Known gaps
 
-- The Prrrdoku documents are in `proprietary puzzles/`, one per puzzle. Their boards
-  are **images**: extract from `word/media/*.png` and read them; the tables
-  are colour legends, useful for matching colours to region names (read
-  `w:fill`). Always cross-check a transcription against the candidate lists
-  in the document's worked solution, and run `--brute-force` on it.
+- The source documents behind the Prrrdoku files are no longer on this machine
+  (they lived, one per puzzle, in the git-ignored `proprietary puzzles/`). Their
+  boards were **images** in `word/media/*.png`, with colour legends in the
+  tables. If a source ever turns up again, cross-check its transcription against
+  the candidate lists in its worked solution and run `--brute-force` on it.
 - Puzzle 3 as first published had no solution under same-region, orthogonal
   "next to" semantics: the koffer on r1c5 sat in Bankastraat. Its board,
   solution picture and worked solution were corrected (r1c5 now in

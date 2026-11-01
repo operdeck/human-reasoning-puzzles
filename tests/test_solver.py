@@ -1,8 +1,8 @@
 """Tests for the exact-cover engine and both puzzle compilers.
 
-The Murdoku cases check against the published solution and candidate lists in
-the documents in proprietary puzzles/, so a wrong board transcription fails here rather than quietly
-solving some other puzzle.
+The Murdoku cases check against the published solution and candidate lists that
+came from the source documents (no longer on this machine), so a wrong board
+transcription fails here rather than quietly solving some other puzzle.
 """
 
 import re
