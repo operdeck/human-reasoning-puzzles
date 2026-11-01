@@ -261,7 +261,7 @@ Puzzles of other families (sudoku, queens, tents, …) are included generically:
 
 Needs `uv sync --extra docx` (python-docx, plus fonttools and resvg for the pictures).
 
-In the Murdoku picture, blocked squares are shaded clearly darker than their region (standable objects keep the region colour), and area tags (for example `noble_areas`) are named in the legend.
+In the Murdoku picture, blocked squares are shaded clearly darker than their region (standable objects keep the region colour), and area tags (for example `noble_areas`) are named in the legend. Objects that a global `count` clue counts get one faded blue dashed ring each, and the legend explains that ring (`dashed ring: the objects a count is about`, Dutch `gestippelde ring: ...`).
 
 ## Other existing formats
 
