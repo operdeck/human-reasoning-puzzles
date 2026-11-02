@@ -22,6 +22,7 @@ function murdoku(): Bundle {
     family: "murdoku",
     title: "Murdoku 0",
     grade: "single",
+    deductive: true,
     static: "murdoku_intro.svg",
     license: "",
     language: "en",

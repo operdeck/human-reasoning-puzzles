@@ -37,6 +37,7 @@ from .core import (
     StepCallback,
     cover,
     follow_chain,
+    follow_wing,
     propagate_count,
     prune_relation,
     refute,
@@ -48,6 +49,7 @@ type Key = tuple[int, int]  # (0, i): main log step i; (1, j): step j of a trail
 HARDEST_FIRST = (
     "what_if",
     "chains",
+    "wing",
     "cover3",
     "cover2",
     "subsumption",
@@ -78,6 +80,8 @@ class Move:
     def apply(self, model: Model) -> bool:
         if self.target is not None:
             return refute(model, model.literal(*self.target))
+        if self.rule == "wing":
+            return follow_wing(model, [model.literal(*pair) for pair in self.chain])
         if self.chain:
             return follow_chain(model, [model.literal(*pair) for pair in self.chain])
         if self.rule == "count":

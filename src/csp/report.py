@@ -45,6 +45,17 @@ def grade(fired: Iterable[str], rules: Sequence[Rule] = DEFAULT_RULES) -> str:
     return max(used, key=order.index) if used else "none"
 
 
+def beyond_deduction(fired: Iterable[str], rules: Sequence[Rule] = DEFAULT_RULES) -> bool:
+    """Whether the solve needed the ladder's last-resort rule, `what_if`.
+
+    The fallback rule sits last, so any grade below it proves it never fired:
+    the same ladder without it would have finished the puzzle. A puzzle with no
+    such path lies on the boundary of what this solver can deduce, and only its
+    case analysis closes it.
+    """
+    return grade(fired, rules) == rules[-1].name
+
+
 def rules_used(fired: Iterable[str], rules: Sequence[Rule] = DEFAULT_RULES) -> str:
     """'rules used: single 51, cover2 2; grade: cover2', ladder order."""
     counts = Counter(fired)

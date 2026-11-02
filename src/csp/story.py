@@ -1442,6 +1442,8 @@ class Story:
             return self._relation(steps[0], before, changed, outcome)
         if rule == "chains":
             return self._chain(steps[0], changed, before, state)
+        if rule == "wing":
+            return self._wing(steps[0], changed, before, state)
         return self._cover(steps[0], changed, before, state)
 
     def _chain(
@@ -1475,6 +1477,19 @@ class Story:
         if len(step.chain) == 2:
             return _cap(self.say("chain_either", ends=ends, outcome=self.say.join(outcome)))
         return f"{', '.join(parts)}. {so}"
+
+    def _wing(
+        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
+    ) -> str:
+        """'One of A on a, B on b or C on c; either way D is not on d.'"""
+        square = self.places.square
+        z = step.chain[0][1]
+        parts = [
+            self.say("is", who=who, where=self.say("on", what=square(z))) for who, _ in step.chain
+        ]
+        ends = self.say.join(parts, "or")
+        outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
+        return _cap(self.say("chain_so", ends=ends, outcome=outcome))
 
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
