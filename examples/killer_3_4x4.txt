@@ -1,0 +1,11 @@
+# Killer Sudoku 4x4: medium; overlapping cage sums nest.
+Family: killer
+Givens:
+. . . .
+. . . .
+. . . .
+. . . .
+Killer:
+3: r1c4 r1c3
+6: r4c2 r4c3 r4c4
+5: r3c3 r2c3
