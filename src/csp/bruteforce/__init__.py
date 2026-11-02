@@ -30,6 +30,7 @@ from . import (
     minesweeper,
     mosaic,
     murdoku,
+    rectangles,
     starbattle,
     sudoku,
     suguru,
@@ -53,6 +54,7 @@ SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "towers": towers.solutions,
     "mosaic": mosaic.solutions,
     "dominosa": dominosa.solutions,
+    "rectangles": rectangles.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

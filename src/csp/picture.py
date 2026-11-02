@@ -48,6 +48,9 @@ from .minesweeper import cell_name as minesweeper_cell
 from .mosaic import Puzzle as Mosaic
 from .mosaic import cell_name as mosaic_cell
 from .murdoku import Board, GlobalCountCondition, Square
+from .rectangles import Puzzle as Rectangles
+from .rectangles import parse_cell as rectangle_cell
+from .rectangles import parse_rect as rectangle_of
 from .starbattle import Puzzle as StarBattle
 from .starbattle import cell_assignment as starbattle_cell_assignment
 from .starbattle import cell_name as starbattle_cell
@@ -56,7 +59,7 @@ from .sudoku import box_size
 from .sudoku import cell_name as sudoku_cell
 from .suguru import Puzzle as Suguru
 from .suguru import cell_name as suguru_cell
-from .svg import Canvas
+from .svg import Canvas, pastel
 from .tents import Puzzle as Tents
 from .towers import Puzzle as Towers
 from .towers import cell_name as towers_cell
@@ -904,6 +907,43 @@ def dominosa_picture(
                     anchor="mm",
                     halo=(246, 239, 217),
                 )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
+
+
+def rectangles_picture(
+    puzzle: Rectangles,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+) -> Canvas:
+    """The numbers; the solution tints each rectangle in its own colour with a darker outline."""
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell)
+    order = {(r, c): i for i, (r, c) in enumerate(puzzle.numbered)}
+    inset = max(2, cell // 16)
+    for owner, value in (solution or {}).items():
+        top, left, bottom, right = rectangle_of(value)
+        tint = pastel(order[rectangle_cell(owner)])
+        box = (
+            margin + left * cell + inset,
+            margin + top * cell + inset,
+            margin + (right + 1) * cell - inset - 1,
+            margin + (bottom + 1) * cell - inset - 1,
+        )
+        canvas.rounded_rectangle(box, cell // 7, fill=tint, outline=_darker(tint, 0.55), width=3)
+    with canvas.above():
+        for (r, c), _ in order.items():
+            canvas.text(
+                (margin + c * cell + cell / 2, margin + r * cell + cell * 0.56),
+                str(puzzle.clues[r][c]),
+                INK,
+                int(cell * 0.5),
+                anchor="mm",
+                halo=WHITE,
+            )
     if interactive:
         _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
     return canvas

@@ -16,7 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import akari, dominosa, icons, starbattle
+from . import akari, dominosa, icons, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
@@ -52,9 +52,10 @@ class Item:
     icon: str | None = None
     value: Any = True
     symbol: str = ""
+    drawing: str = ""  # a ready-made SVG, for items that are not registry icons
 
     def to_json(self) -> dict[str, Any]:
-        picture = icons.to_svg(self.icon) if self.icon else None
+        picture = self.drawing or (icons.to_svg(self.icon) if self.icon else None)
         out: dict[str, Any] = {"id": self.id, "label": self.label}
         out["symbol"] = self.symbol or (icons.symbol(self.icon) if self.icon else self.id)
         if picture:
@@ -86,7 +87,32 @@ ITEMS = {
 # solution into one palette value per cell for the player's board.
 CELL_SOLUTIONS: dict[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = {
     "dominosa": dominosa.cell_assignment,
+    "rectangles": rectangles.cell_assignment,
 }
+
+
+def _rectangle_items(text: str) -> list[Item]:
+    """One coloured tile per number; painting a cell with it says which rectangle it is in.
+
+    The tile is the colour the solved picture gives that rectangle, and its label tells
+    the number and where it sits, so the palette and the board agree on which is which.
+    """
+    puzzle = rectangles.parse(text)
+    items = []
+    for index, cell in enumerate(puzzle.numbered):
+        name = rectangles.cell_name(cell)
+        items.append(
+            Item(
+                name,
+                f"{puzzle.clues[cell[0]][cell[1]]} at {name}",
+                None,
+                name,
+                str(puzzle.clues[cell[0]][cell[1]]),
+                svg.swatch(svg.pastel(index)),
+            )
+        )
+    return items
+
 
 NEIGHBOURS = [{"scope": "neighbors8"}]
 LINES = [{"scope": "row"}, {"scope": "col"}]
@@ -311,7 +337,7 @@ def _family(
             {"scope": "region", **full},
         ]
     else:
-        items = ITEMS[kind]
+        items = ITEMS[kind] if kind in ITEMS else _rectangle_items(text)
         if kind == "tents":
             scopes = NEIGHBOURS
         if kind in CELL_SOLUTIONS:

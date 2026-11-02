@@ -639,6 +639,8 @@ FAMILY_RULES = {
     "block around it, itself included, are black.",
     "dominosa": "Cover the whole grid with dominoes so that every pair of numbers from the "
     "full set (0-0, 0-1, ... up to the highest number) is used exactly once.",
+    "rectangles": "Divide the grid into rectangles so that each contains exactly one number, "
+    "equal to the number of cells in that rectangle.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }

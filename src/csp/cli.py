@@ -30,6 +30,7 @@ from . import (
     mosaic,
     murdoku,
     picture,
+    rectangles,
     report,
     starbattle,
     story,
@@ -104,6 +105,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "rectangles":
+        model, rectangles_puzzle = rectangles.compile_puzzle(text)
+        return Puzzle(kind, model, partial(rectangles.render, rectangles_puzzle))
     if kind == "dominosa":
         model, dominosa_puzzle = dominosa.compile_puzzle(text)
         return Puzzle(kind, model, partial(dominosa.render, dominosa_puzzle))
@@ -219,6 +223,7 @@ def make_image(
         "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "rectangles": (rectangles.parse, picture.rectangles_picture),
         "dominosa": (dominosa.parse, picture.dominosa_picture),
         "mosaic": (mosaic.parse, picture.mosaic_picture),
         "towers": (towers.parse, picture.towers_picture),
