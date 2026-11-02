@@ -193,6 +193,12 @@ export class PuzzleView {
       { className: "puzzle-header" },
       puzzleNav,
       ...(b.section ? [el("p", { className: "meta", textContent: b.section })] : []),
+      ...(b.deductive === false
+        ? [el("p", {
+            className: "meta",
+            textContent: "beyond deduction: only this solver's what_if case analysis closes it",
+          })]
+        : []),
       el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
     );
     const assists = el("div", { className: "assist-controls" });

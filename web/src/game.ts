@@ -37,6 +37,7 @@ export interface Bundle {
   number?: number;
   title: string;
   grade: string;
+  deductive: boolean;
   static: string;
   license: string;
   language: string;
