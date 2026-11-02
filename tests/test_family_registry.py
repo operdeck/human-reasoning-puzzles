@@ -21,6 +21,7 @@ from csp.puzzlefile import KINDS, detect
         ("battleships", "battleships"),
         ("towers", "towers"),
         ("skyscrapers", "towers"),
+        ("mosaic", "mosaic"),
     ],
 )
 def test_family_detector_maps_canonical_names_and_aliases(family, kind):

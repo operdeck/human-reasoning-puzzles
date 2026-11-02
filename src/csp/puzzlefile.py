@@ -40,6 +40,7 @@ KINDS = (
     "kakurasu",
     "battleships",
     "towers",
+    "mosaic",
 )
 
 FAMILY_KINDS = {
@@ -58,6 +59,7 @@ FAMILY_KINDS = {
     "battleships": "battleships",
     "towers": "towers",
     "skyscrapers": "towers",
+    "mosaic": "mosaic",
 }
 
 
