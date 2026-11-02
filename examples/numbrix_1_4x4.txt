@@ -1,0 +1,7 @@
+# Numbrix 4x4: easy; consecutive numbers touch along a side.
+Family: numbrix
+Grid:
+. . 2 1
+. . 7 .
+14 . . .
+. 16 . .
