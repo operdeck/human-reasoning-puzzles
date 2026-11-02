@@ -241,9 +241,15 @@ family:
    names carry size, tier, grade and seed, then copy them into `examples/` as
    `<family>_<n>_<rows>x<cols>.txt` with a one-line comment that matches the
    grade you measured.
-2. A tier the sweeps never reach stays an em dash in `docs/puzzle-collection.md`
-   with the reason (here: no hard Rectangles, no medium Map). Do not hand-edit a
-   board, and do not relabel a neighbouring tier.
+2. If the sweeps never reach a tier, first ask whether the ladder can: a grade
+   needs a rule with something to combine (Map's pairwise `AT_MOST_ONE` rules
+   give `subsumption` and `cover2` nothing, so it has no medium rung). If it can,
+   add a difficulty search to `csp.climb` instead of picking seeds by hand: it
+   mutates a unique board (`climb.rectangles` moves numbers, merges and splits
+   pieces) and keeps only unique, ladder-solved boards until the grade lands in
+   the tier; `puzzle-lab fresh ... --tier hard` and `sweep --tier hard` call it.
+   If it cannot, the tier stays an em dash in `docs/puzzle-collection.md` with the
+   reason. Do not hand-edit a board, and do not relabel a neighbouring tier.
 3. A hard board that only `what_if` closes is allowed, but it joins the
    beyond-deduction frontier: add it to `BEYOND_DEDUCTION` in `tests/test_web.py`
    and update both numbers of the "N of the M published" sentences in

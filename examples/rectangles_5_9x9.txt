@@ -1,0 +1,12 @@
+# Rectangles 9x9: hard; three numbers' options together fill a cell group (found by the difficulty search).
+Family: rectangles
+Clues:
+4 . 6 . . 9 . . 5
+. . . . . . . . .
+. . . . . . . . .
+. 12 . . 3 . . 6 .
+. . . . . . . . .
+. . . . . . 6 . .
+. . . 12 . . . . 4
+. . . . . . . 4 .
+5 . . . . 5 . . .

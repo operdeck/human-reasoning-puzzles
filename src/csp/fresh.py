@@ -927,8 +927,35 @@ def fresh_dominosa(size: int, rng: random.Random, comment: str = "") -> str | No
     return None
 
 
+TIER_GRADES = {
+    "easy": frozenset({"single", "count"}),
+    "medium": frozenset({"relations", "subsumption", "cover2"}),
+    "hard": frozenset({"cover3", "chains", "what_if"}),
+}
+
+
+def _partition(size: int, biggest: int, rng: random.Random) -> list[list[Cell]]:
+    """Cut a `size` x `size` board into random rectangles, each at most `2 * biggest` cells."""
+    free = {(r, c) for r in range(size) for c in range(size)}
+    pieces: list[list[Cell]] = []
+    for r, c in _cells(size):
+        if (r, c) not in free:
+            continue
+        shapes = [
+            (h, w)
+            for h in range(1, min(biggest, size - r) + 1)
+            for w in range(1, min(biggest, size - c) + 1)
+            if h * w <= biggest * 2
+            and all((r + i, c + j) in free for i in range(h) for j in range(w))
+        ]
+        h, w = rng.choice(shapes)
+        pieces.append([(r + i, c + j) for i in range(h) for j in range(w)])
+        free.difference_update(pieces[-1])
+    return pieces
+
+
 def fresh_rectangles(
-    size: int, rng: random.Random, open_share: float, comment: str = ""
+    size: int, rng: random.Random, open_share: float, comment: str = "", tier: str = "easy"
 ) -> str | None:
     """A new Rectangles board: a random partition into rectangles, one number each.
 
@@ -940,23 +967,16 @@ def fresh_rectangles(
         raise ValueError(f"fresh Rectangles boards are 3 to {rectangles.BIGGEST} wide")
     biggest = max(3, round(2 + open_share * size))
     for _ in range(300):
-        free = {(r, c) for r in range(size) for c in range(size)}
-        pieces: list[list[Cell]] = []
-        for r, c in _cells(size):
-            if (r, c) not in free:
-                continue
-            shapes = [
-                (h, w)
-                for h in range(1, min(biggest, size - r) + 1)
-                for w in range(1, min(biggest, size - c) + 1)
-                if h * w <= biggest * 2
-                and all((r + i, c + j) in free for i in range(h) for j in range(w))
-            ]
-            h, w = rng.choice(shapes)
-            pieces.append([(r + i, c + j) for i in range(h) for j in range(w)])
-            free.difference_update(pieces[-1])
+        pieces = _partition(size, biggest, rng)
         numbers = [rng.choice(piece) for piece in pieces]
         if not is_unique(_rectangles_text(size, pieces, numbers, comment)):
+            continue
+        if tier == "hard":
+            from csp import climb  # imported late: climb builds on this module
+
+            found = climb.rectangles(size, pieces, numbers, rng, TIER_GRADES[tier], comment)
+            if found is not None:
+                return found
             continue
         # Harder boards leave more candidate rectangles per number: move numbers about inside
         # their pieces, keeping a move whenever the board stays unique and the total grows.
@@ -1179,7 +1199,8 @@ def fresh_map(size: int, rng: random.Random, open_share: float, comment: str = "
             if not is_unique(build(everything)):
                 continue
             floor = max(3, round((1 - open_share) * len(everything)))
-            return build(thin(everything, build, rng, keep_at_least=floor))
+            kept = thin(everything, build, rng, keep_at_least=floor)
+            return build(kept)
     return None
 
 
@@ -1260,7 +1281,7 @@ def fresh(
     if family == "dominosa":
         return fresh_dominosa(size, rng, comment)
     if family == "rectangles":
-        return fresh_rectangles(size, rng, open_share, comment)
+        return fresh_rectangles(size, rng, open_share, comment, tier)
     if family == "magnets":
         return fresh_magnets(size, rng, open_share, comment)
     if family == "undead":

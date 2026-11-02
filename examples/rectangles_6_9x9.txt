@@ -1,0 +1,12 @@
+# Rectangles 9x9: hard; needs a chain of strong and weak links (found by the difficulty search).
+Family: rectangles
+Clues:
+. . . . . 6 . . .
+. . . 6 . . . . 4
+. 8 . . . . 5 . .
+. . . . . 2 . . 2
+4 . . 4 . . 3 . .
+. . 2 . . 2 . 4 .
+. . . . 5 . . . .
+6 . 2 4 . . 3 . .
+. . . . . 3 . 2 4
