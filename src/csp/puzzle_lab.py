@@ -33,6 +33,7 @@ class Rating:
     solved: bool
     solutions: str
     grade: str
+    deductive: bool  # the ladder finishes the puzzle without what_if
     tier: str
     rule_firings: dict[str, int]
     placements: int
@@ -59,6 +60,7 @@ def rate(text: str, path: str = "<memory>") -> Rating:
     initial_open = sum(solving_model.chosen(var) is None for var in solving_model.variables)
     result = Solver(solving_model).solve(on_step=lambda rule, steps: fired.append(rule))
     grade = report.grade(fired) if result.solved else "unsolved"
+    deductive = result.solved and not report.beyond_deduction(fired)
     if result.solved:
         solutions = bruteforce.solutions(text, kind, limit=2)
         count = "unique" if len(solutions) == 1 else "multiple" if solutions else "none"
@@ -98,6 +100,7 @@ def rate(text: str, path: str = "<memory>") -> Rating:
         solved=result.solved,
         solutions=count,
         grade=grade,
+        deductive=deductive,
         tier=tier if result.solved and count == "unique" else "invalid",
         rule_firings=dict(Counter(fired)),
         placements=sum(step.asserted for step in solving_model.log[solve_start:]),
@@ -607,13 +610,14 @@ def _rate_command(args: argparse.Namespace) -> int:
         print(f"{path}: {error}", file=sys.stderr)
         return 2
     output = asdict(result)
+    beyond = "" if result.deductive or not result.solved else "; beyond deduction"
     print(
         json.dumps(output, sort_keys=True)
         if args.json
         else (
             f"{result.family}: {result.tier} ({result.grade}); "
             f"{result.solutions} solution; {result.placements} placements, "
-            f"{result.eliminations} eliminations"
+            f"{result.eliminations} eliminations{beyond}"
         )
     )
     return 0 if result.tier != "invalid" else 1
@@ -629,8 +633,11 @@ def _search_command(args: argparse.Namespace) -> int:
             result = rate(text, str(path))
         except (ValueError, KeyError):
             continue
-        if result.tier == args.tier:
-            accepted.append(result)
+        if result.tier != args.tier:
+            continue
+        if args.deductive and not result.deductive:
+            continue
+        accepted.append(result)
     accepted.sort(key=lambda item: (item.grade, item.placements, item.path))
     if args.json:
         print(json.dumps([asdict(item) for item in accepted], indent=2))
@@ -803,6 +810,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     search_parser.add_argument("paths", nargs="+")
     search_parser.add_argument("--family")
     search_parser.add_argument("--tier", choices=tuple(TIERS), required=True)
+    search_parser.add_argument(
+        "--deductive",
+        action="store_true",
+        help="only puzzles the ladder solves without its what_if fallback",
+    )
     search_parser.add_argument("--json", action="store_true")
     search_parser.set_defaults(run=_search_command)
 

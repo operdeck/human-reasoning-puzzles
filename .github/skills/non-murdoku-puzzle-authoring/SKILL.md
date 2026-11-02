@@ -189,7 +189,11 @@ saved with progress independently of auto-mark; players can choose less help.
 `puzzle-lab rate` reports the hardest solver rule used and a tier derived from
 that rule, with limited family-aware calibration for small relational and
 count-only puzzles. These are repository-specific estimates, not universal
-human difficulty ratings. Reserve `what_if`, the final fallback rule, for only
+human difficulty ratings. It also reports `deductive`: `false` means the ladder
+closes the puzzle only with `what_if`, so no deduction path exists. Read that
+field rather than parsing the grade, and use
+`puzzle-lab search --tier hard --deductive` to list the hard puzzles that need
+no fallback. Reserve `what_if`, the final fallback rule, for only
 the very hardest puzzles; ordinary hard examples should be solved by the other
 deduction rules. A tier is not enough by itself: inspect the actual deductions
 and puzzle presentation, confirm that the puzzle is not simply prefilled, and

@@ -103,6 +103,14 @@ reserved for that explicitly fiendish example. Legacy files with one-cell
 cages remain playable: their target digits must be entered, not silently
 locked as invisible givens.
 
+`what_if` is the ladder's fallback, so the examples that need it are exactly the
+ones no deduction path closes: this collection's beyond-deduction frontier.
+Nine of the 96 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+`tents_3_4x4`, `calcudoku_6_6x6`, `food-murdoku-3`, `menu-murdoku-3`,
+`prrrdoku2`, `prrrdoku3` and `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
+reports them as `deductive: false`, the web index and puzzle pages badge them,
+and a test pins the list, which only moves when the ladder does.
+
 The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The Queens collection progresses from `single` through `subsumption` and `cover2` to `chains`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
 
 | Family | Small example | Larger example |
@@ -132,6 +140,46 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Murdoku | Place each person on a free square, at most one per row and column, so all clues hold; the murderer is alone with the victim. | `murdoku_1_first_case`, `wie-doet-het-met-wie-1/2/3/4/5`, `murdoku_3_house`, `murdoku_sparse_mystery`, `murdoku_global_counts`, `murdoku_composition`, `food-murdoku-2/2/3`, `zoo-murdoku-1/2/3`, `tamagotchi-murdoku-6x6/9x9/12x12`, and owner-authored `prrrdoku1-3` |
 
 The graded Sudoku and Calcudoku examples are generated; newspaper puzzles are not copied. `prrrdoku1-3` are based on the owner's Dutch puzzle documents, with adjustments to preserve the intended solution and late reveal. Private screenshot transcriptions are excluded from this repository.
+
+## External corpora
+
+Published Sudoku collections arrive through `uv run python -m benchmark.fetch
+--source all` (or one source by name), which downloads into `benchmark/.cache/`
+and samples from there. Puzzle data is test input, never content: the cache is
+git-ignored, and only code is committed.
+
+| Source | Puzzles | Solutions | Own rating |
+|---|---|---|---|
+| `norvig` | 156 (easy50, top95, hardest) | derived with the brute force | no |
+| `sudoku-extreme` | 400 000+ (`sapientinc` on Hugging Face) | shipped | yes |
+
+`--count` sets rows per bucket and `--bucket none|group|rating` spreads a sample
+over the dataset's own grouping instead of taking whatever comes first. A row is
+dropped and counted when its answer contradicts its own givens, or when it has
+no answer and the brute force finds no unique one, so a broken row never reads
+as a solver failure. `manifest.json` records every URL, byte size, sha256 and
+UTC time, and every sample says which file hashes, bucket, size and seed built
+it; a sample already on disk is reused until `--force` (proving the hardest of
+Norvig's puzzles unique takes the brute force minutes, once).
+
+### Ranking alignment
+
+`sudoku-extreme` rates every puzzle with a backtracking count, median 17 over
+its 422 786 rows, 26% of them at rating <= 3. That is where the ladder stops: on
+a 500-puzzle sample from the whole source it solves 128 of the 131 puzzles rated
+0 to 3, 5 of the 126 rated 4 to 16, and none of the 243 rated 17 or over. Its
+grade so tracks the source's rating across the easy block and saturates above
+it, and counting every rated row mostly measures how much easy material a sample
+happens to hold: +0.69 on that draw, but +0.15 on one spread evenly over the
+rating scale (`--bucket rating --count 2`, 482 puzzles, 9 solved). The cap moves
+it as well, because `timeout` is the last grade in `grades_for`: that even sample
+reports +0.39 at `--timeout 5` and +0.15 at `--timeout 30`, since more puzzles
+land in the strongest grade. So `bench.py` correlates over the puzzles it solved
+and says how many it left out; on the 133 solved of that 500 that reads grade
++0.90, `iterations` +0.77, ms +0.84, where counting the rest in reads as
+`iterations` -0.55 because a puzzle that gives up early spends little.
+Validating the grade as a human-scale rater needs puzzles inside the ladder's
+own reach, which this corpus mostly is not.
 
 ## Cross-family benchmark
 

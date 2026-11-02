@@ -123,9 +123,10 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
 
 ## Working alongside the owner
 
-- **No heredocs.** `cat <<'EOF' > file` and its relatives fail often in this
-  setup. Write files with an editor tool or `printf`, and give `git commit` its
-  message with `-m`, a second `-m` for the body.
+- **Never use a heredoc — no exceptions, ever.** `cat <<'EOF' > file`, here-strings
+  (`<<<`), and every other here-doc form are banned in this setup, whatever the
+  shell, whatever the purpose. Write files with an editor tool or `printf`, and
+  give `git commit` its message with `-m`, a second `-m` for the body.
 - **Preview every visible change.** A picture, icon, legend, board or web
   player change needs a before/after the owner can look at: render it
   (`--png`, `--export` for the player, `--docx` for the booklet), compare the
@@ -154,6 +155,14 @@ Candidates, roughly in order of value:
   tell it. Since chains, `what_if` fires only on `prrrdoku3.txt` and the
   fiendish Calcudoku. Next: weak links from relations over three or more
   variables, and keeping links between runs (chains are the slow rung).
+- ~~Three-value wings~~ — done as `rule_wing`, the XYZ-Wing: a three-option
+  pivot and two two-option helpers that together force their shared value into
+  one of three options, so anything linked "not both true" to all three loses
+  it. It rests only on those links, so it stays sound for any model, and it
+  reaches eliminations `rule_chains` cannot, whose alternating links assume a
+  two-option pivot. `follow_wing` replays it, `proof.HARDEST_FIRST` lists it,
+  and `story` tells it. No example needs it (see below); on the Norvig corpus
+  it takes over one `what_if`.
 - ~~Bounded what-if~~ — done as `rule_what_if`, using `Model.clone()`. It
   runs only `single`/`count`/`relations`/`subsumption` on the copy, never itself,
   so it stays one level deep. Within the first variable (fewest options)
@@ -209,10 +218,13 @@ requires a solve without `what_if`. `--svg` or `--png` without a path writes
 an explicit path overrides the default. `--interactive` (with `--svg`) adds cell
 ids for an app and writes no solution picture. `--export DIR` writes a JSON
 bundle and interactive board per puzzle, plus `index.json`, for the web player in
-`web/` (see `src/csp/web.py`; it fails when any puzzle cannot be exported). The
-player in `web/` stays family-agnostic: palettes, scopes, rules and wording come
-from the bundle, so new family knowledge belongs in `web.py`, not in TypeScript.
-After changing `web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FILE]` (or a quoted glob) writes
+`web/` (see `src/csp/web.py`; it fails when any puzzle cannot be exported). Each
+bundle and index entry records `deductive`, whether the ladder closes the puzzle
+without its `what_if` fallback, so the player can flag the beyond-deduction
+frontier. The player in `web/`
+stays family-agnostic: palettes, scopes, rules and wording come from the bundle,
+so new family knowledge belongs in `web.py`, not in TypeScript. After changing
+`web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FILE]` (or a quoted glob) writes
 an editable Word booklet, puzzles first and then solutions, one page each, from
 `docx_export`; new Murdoku puzzles should carry the optional `Title:`, `Intro:`,
 `Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku
@@ -249,6 +261,25 @@ legend explains the ring in the puzzle's language (`LEGEND_WORDS[...]["ring"]`)
 under its count lines, so the web board explains itself; the booklet board draws
 the rings too but leaves the count lines out (`count_lines=False`), because its
 rules page already states the counts.
+
+## External corpora
+
+Published Sudoku collections live outside git. `benchmark/corpus.py` reads them
+into rows of 81 characters, `benchmark/fetch.py` samples them into
+`benchmark/.cache/` (git-ignored), and nothing else touches the network:
+
+    uv run python -m benchmark.fetch --source all --count 500 --seed 42
+
+A source names its files and the columns its puzzles hide behind (`question`,
+`answer`, `rating`, `source` for sudoku-extreme), so a new collection is a
+`Source` plus, when it is neither plain text nor an 81-column CSV, one parser.
+Derive an answer only with the brute force and only when the source ships none;
+drop and count any row whose answer contradicts its own givens or that has no
+unique solution, because a bad oracle blames the engine for a broken file.
+Samples are reproducible: the file name and `manifest.json` carry the source
+file hashes, bucket, size and seed, and an existing sample is reused until
+`--force`. `test_benchmark.py` keeps all of this offline, and holds the import
+direction: the benchmark imports `csp`, never the other way round.
 
 ## Adding a puzzle family
 
@@ -340,6 +371,9 @@ Numbers from actual runs, not estimates:
 | `calcudoku_4_6x6.txt` | solved, 60 iterations | `single` 36, `relations` 20, `cover2` 3 |
 | `calcudoku_6_6x6.txt` | solved, 73 iterations | `single` 35, `relations` 30, `cover2` 4, `what_if` 3 |
 | `calcudoku_5_7x7.txt` | solved, 80 iterations | `single` 47, `relations` 26, `cover2` 4, `cover3` 2 |
+
+No example in `examples/` needs `rule_wing`; it is in the ladder for models
+that do, and the Norvig benchmark credits it (see `benchmark/`).
 
 The Calcudokus were generated the same way as the graded Sudokus (random
 Latin square, random cages, uniqueness checked by brute force) because

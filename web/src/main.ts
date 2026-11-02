@@ -11,6 +11,7 @@ interface IndexEntry {
   familyLabel: string;
   size: [number, number];
   grade: string;
+  deductive: boolean;
   static: string;
   playable: boolean;
   unsupported?: string;
@@ -104,6 +105,13 @@ async function showIndex(current: () => boolean): Promise<void> {
                 className: "meta",
                 textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
               }),
+              ...(entry.deductive === false
+                ? [el("span", {
+                    className: "badge",
+                    textContent: "beyond deduction",
+                    title: "Only this solver's what_if case analysis closes this puzzle.",
+                  })]
+                : []),
               ...(entry.playable
                 ? []
                 : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),

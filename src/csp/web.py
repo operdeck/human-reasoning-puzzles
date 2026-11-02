@@ -33,7 +33,7 @@ from .story import (
     role_list,
 )
 
-SCHEMA = 1
+SCHEMA = 2  # 2 added `deductive`, how the ladder solves the puzzle
 LICENSE = (
     "\u00a9 Otto Perdeck. All rights reserved. You may play these puzzles on this site; "
     "any other use needs the author's written permission."
@@ -151,6 +151,7 @@ def bundle(
     solution: Mapping[str, Any],
     picture: str,
     grade: str,
+    deductive: bool,
     *,
     number: int = 0,
     section: str = "",
@@ -170,6 +171,7 @@ def bundle(
         "number": number,
         "title": _title(text, kind, stem),
         "grade": grade,
+        "deductive": deductive,
         "static": f"{stem}.svg",
         "license": LICENSE,
     }
@@ -361,6 +363,7 @@ def index_entry(data: Mapping[str, Any]) -> dict[str, Any]:
         "familyLabel",
         "size",
         "grade",
+        "deductive",
         "static",
         "playable",
     )

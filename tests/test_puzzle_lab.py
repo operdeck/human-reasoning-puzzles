@@ -79,6 +79,31 @@ def test_search_filters_by_display_family_and_tier(capsys):
     assert [item["tier"] for item in matches] == ["easy", "easy"]
 
 
+def test_rating_says_whether_deduction_alone_closes_the_puzzle():
+    """`deductive` separates puzzles the ladder finishes from the what_if frontier."""
+    assert rate(example("queens_6_4x4.txt").read_text()).deductive
+    fallback = rate(example("tango_5_4x4.txt").read_text())
+    assert fallback.grade == "what_if"
+    assert not fallback.deductive
+
+
+def test_rate_command_marks_a_puzzle_that_needs_the_fallback(capsys):
+    assert main(["rate", str(example("tango_5_4x4.txt"))]) == 0
+    assert "beyond deduction" in capsys.readouterr().out
+    assert main(["rate", str(example("queens_6_4x4.txt"))]) == 0
+    assert "beyond deduction" not in capsys.readouterr().out
+
+
+def test_search_can_require_a_strictly_deductive_solution(capsys):
+    paths = [str(example(name)) for name in ("tango_5_4x4.txt", "queens_6_4x4.txt")]
+    assert main(["search", *paths, "--tier", "hard", "--json"]) == 0
+    assert len(json.loads(capsys.readouterr().out)) == 2
+    assert main(["search", *paths, "--tier", "hard", "--deductive", "--json"]) == 0
+    matches = json.loads(capsys.readouterr().out)
+    assert [item["path"].split("/")[-1] for item in matches] == ["queens_6_4x4.txt"]
+    assert matches[0]["deductive"] is True
+
+
 def test_generate_is_repeatable_and_writes_only_a_valid_candidate(tmp_path):
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"

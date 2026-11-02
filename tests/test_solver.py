@@ -28,6 +28,7 @@ from csp.core import (
     rule_single,
     rule_subsumption,
     rule_what_if,
+    rule_wing,
 )
 from csp.proof import Move, replay
 from csp.puzzlefile import load_board, parse_square
@@ -229,6 +230,69 @@ def test_count_constraints_create_only_supported_chain_links():
     assert not parity.is_false(candidate)
     _assert_logged_steps_preserve_solutions(parity, parity_solutions)
     parity.check()
+
+
+def _xyz_wing(with_wings: bool = True) -> tuple[Model, list[int]]:
+    """A three-option pivot, its two helpers, and a shared peer of all three.
+
+    With `with_wings` the peer is linked "not both true" to each helper's z as
+    well as the pivot's; without it, only to the pivot's.
+    """
+    m = Model()
+    pivot = _variable(m, "pivot", (1, 2, 3))
+    first = _variable(m, "first", (1, 3))
+    second = _variable(m, "second", (2, 3))
+    target = _variable(m, "target", (3, 4))
+    m.constrain("pivot and first share 1", Kind.AT_MOST_ONE, [pivot[0], first[0]])
+    m.constrain("pivot and second share 2", Kind.AT_MOST_ONE, [pivot[1], second[0]])
+    zs = [pivot[2], first[1], second[1]] if with_wings else [pivot[2]]
+    for link in zs:
+        m.constrain("target shares 3", Kind.AT_MOST_ONE, [link, target[0]])
+    return m, target
+
+
+def test_wing_eliminates_a_value_a_three_option_pivot_excludes():
+    """The pivot is 1, 2 or 3; each choice puts 3 in the pivot or a helper, so
+    the peer that sees all three cannot be 3. Chains cannot see this: its
+    pivot has three options, not the two an alternating chain needs."""
+    m, target = _xyz_wing()
+    solutions = _brute_force_count_solutions(m)
+    assert len(solutions) > 1 and all(s["target"] != 3 for s in solutions)
+
+    assert rule_chains(m) is False
+    assert rule_wing(m) is True
+    assert m.is_false(target[0])
+    assert m.log[-1].rule == "wing"
+    _assert_logged_steps_preserve_solutions(m, solutions)
+    m.check()
+
+
+def test_wing_needs_the_not_both_true_links_to_both_helpers():
+    """With the peer linked to the pivot alone, 3 survives in some solution, so
+    the rule must stay quiet."""
+    m, target = _xyz_wing(with_wings=False)
+    solutions = _brute_force_count_solutions(m)
+    assert any(s["target"] == 3 for s in solutions)
+
+    assert rule_wing(m) is False
+    assert not m.is_false(target[0])
+    m.check()
+
+
+def test_wing_sits_between_chains_and_what_if():
+    names = [rule.name for rule in DEFAULT_RULES]
+    assert names.index("chains") < names.index("wing") < names.index("what_if")
+
+
+def test_wing_step_replays_through_its_move():
+    """`--explain` on a people-puzzle replays each move; a wing must survive it."""
+    m, target = _xyz_wing()
+    start = m.clone()
+    assert rule_wing(m) is True
+    step = next(s for s in m.log if s.rule == "wing")
+    move = Move.of(step.rule, [step])
+    assert move is not None and move.rule == "wing"
+    assert replay(start, [move]).is_false(target[0])
 
 
 def test_count_move_replays_its_propagation():
@@ -2787,6 +2851,15 @@ def test_grade_is_the_hardest_rung_used():
     assert report.rules_used(["single", "cover2", "single"]) == (
         "rules used: single 2, cover2 1; grade: cover2"
     )
+
+
+def test_beyond_deduction_is_exactly_the_top_rung_of_the_ladder():
+    # `what_if` is the fallback, so it is the last rung of the ladder.
+    assert report.DEFAULT_RULES[-1].name == "what_if"
+    assert report.beyond_deduction(["single", "what_if"])
+    assert report.beyond_deduction(["what_if"])
+    assert not report.beyond_deduction(["single", "cover2", "relations"])
+    assert not report.beyond_deduction([])
 
 
 @pytest.mark.parametrize(
