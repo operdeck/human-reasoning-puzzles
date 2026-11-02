@@ -17,31 +17,37 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    [web index](https://operdeck.github.io/human-reasoning-puzzles/) for the
    existing visual collection. Preserve displayed aliases:
    Binairo and Tango retain separate names because Tango adds relation signs.
-   Cosmetic changes alone never create a family: Queens remains
-   `Family: queens` even with a custom piece. Published `queens_*` examples
-   use queens; the file name, family, comment and pieces must agree.
+   Queens is the one-star presentation of canonical `Family: starbattle`.
+   New one-star files use `Stars: 1`; keep `queens_*` filenames and the
+   separate Queens display group, queen icon, and Queens rule wording.
+   `Family: queens` remains a compatibility alias. Presentation must match
+   the star count.
    `tests/test_example_quality.py` enforces this.
 2. Use an existing original example as a seed, or create an original seed in
    the family format. Never transcribe published puzzles unless the user has
    permission and explicitly asks for transcription.
 3. Generate a candidate with a fixed seed so it can be reproduced. For a new
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
-   layout (Binairo, Tango, Queens, Suguru, Minesweeper, Akari, Sudoku,
-   Futoshiki, Calcudoku, Star Battle, Tents, Battleships), so the example does not share a solution with the rest of the gallery:
+   layout (Binairo, Tango, Suguru, Minesweeper, Akari, Sudoku, Futoshiki,
+   Calcudoku, Star Battle, Tents, Battleships), so the example does not share
+   a solution with the rest of the gallery:
 
    ```bash
    uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
      --seed 26 --output /tmp/candidate.txt --comment "Tango 8x8: medium, ..."
    uv run puzzle-lab fresh akari --size 6 --tier medium \
      --seed 122 --output /tmp/akari.txt --comment "Akari 6x6: medium, ..."
+   uv run puzzle-lab fresh starbattle --size 7 --stars 1 --tier easy \
+     --seed 13804 --output /tmp/queens.txt --comment "Queens 7x7: easy, ..."
    uv run puzzle-lab fresh battleships --size 6 --tier medium \
      --seed 136 --output /tmp/fleet.txt --comment "Original Battleships fleet"
    ```
 
    `--open-share` sets the share of empty Binairo/Tango cells; more open
    cells usually means harder. For Minesweeper, it sets the share of unknown
-   cells, including mines, on the fresh board. Queens grows connected regions
-   of at least two cells and uses one explicit starter for easy boards.
+   cells, including mines, on the fresh board. Star Battle grows connected
+   regions around its solution; `--stars 1` makes a Queens board, with one
+   explicit starter on easy boards.
    Suguru drops givens while the solution stays unique. Akari builds a fresh wall layout and
    derives numbered-wall clues from a valid bulb placement. Sudoku and
    Futoshiki start from a random Latin square and use `--open-share` for the
@@ -130,27 +136,30 @@ family-specific UI code. Rework affected examples without losing measured
 technique coverage, audit uniqueness/order, and refresh puzzle and solution
 images as well as web/booklet exports.
 
-Queens regions must contain at least two cells in published examples and
-freshly authored boards. Single-cell regions give away a placement, regardless
-of the puzzle's final grade. The fresh builder first gives each region a
-neighbour, then grows the rest, and rejects any remaining singleton. Easy
-Queens boards use one explicit starter queen instead. When expanding an
+One-star Queens regions must contain at least two cells in published examples
+and freshly authored boards. Single-cell regions give away a placement,
+regardless of the puzzle's final grade. The shared Star Battle builder first
+gives each region a neighbour, then grows the rest, and rejects any remaining
+singleton. Easy one-star boards use one explicit starter queen instead. When expanding an
 existing singleton, recheck the donor region's connectivity and uniqueness:
 expansion adds alternative placements, so a visible given may be necessary.
 Re-rate the result, audit it against the rest of the gallery and regenerate
 both puzzle and solution pictures. Do not ban valid singleton syntax from
-the parser: this is an authoring-quality rule, not a change to Queens rules.
+the parser: this is an authoring-quality rule.
 When tests mutate a gallery seed, assert that the text actually changes;
 regenerated layouts can turn literal replacements into silent no-ops.
 
-When consolidating cosmetic families, compare the actual rules, sizes, region
-layouts and measured deductions, not just names or icons. Keep distinct technique
-coverage rather than near-duplicate boards at the same size, renumber by measured
-difficulty, and regenerate pictures with the canonical piece. Update every
-collection, booklet, web, benchmark and documentation reference together.
-Preserve an icon option only as presentation; it must not change family identity
-or region colouring. Recheck comments against current grades instead of carrying
-old difficulty claims forward.
+When consolidating overlapping puzzle families, compare actual rules, sizes,
+region layouts and measured deductions, not just names or icons. Share one
+parser, solver and fresh generator when the rules are identical, while keeping
+distinct display names, icons and collection sections when they help players.
+For Queens and Star Battle, `Stars: 1` is Queens; higher counts are Star Battle.
+Keep technique coverage rather than near-duplicate boards at the same size,
+renumber by measured difficulty, and regenerate pictures with the canonical
+piece. Update every collection, booklet, web, benchmark and documentation
+reference together. Presentation must not change family identity, solver
+semantics or region colouring. Recheck comments against current grades instead
+of carrying old difficulty claims forward.
 
 For Battleships examples, use a real `Fleet:` and explain its composition,
 straight ships, no-touching (including diagonals), line totals, and shaped

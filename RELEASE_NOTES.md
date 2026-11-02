@@ -90,6 +90,12 @@
     * `src/csp`: Added Murdoku lint and forward-only checks, optional default PNG paths, and 16x16 count/chain benchmark coverage.
     * Added a neutral combined-format example with brute-force uniqueness and per-step soundness coverage.
 
+## 0.5.0
+**New Feature(s)**
+* [#139 Merge Queens into Star Battle](https://github.com/operdeck/human-reasoning-puzzles/issues/139)
+    * `src/csp/starbattle.py` now owns the shared parser, solver model, brute-force search and fresh builder. `Family: queens` remains a compatibility alias; one-star puzzles retain the Queens display, icon, rule text, examples and measured grades, while two-or-more-star puzzles remain Star Battle.
+    * Puzzle Lab `fresh starbattle --stars 1` creates Queens; `--stars 2` or higher creates Star Battle. Updated collection, format, repository-agent and puzzle-authoring guidance.
+
 ## 0.4.0
 **New Feature(s)**
 * [#19 Murdoku: Global clues](https://github.com/operdeck/human-reasoning-puzzles/issues/19)

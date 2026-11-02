@@ -5,7 +5,7 @@
 [![Play the puzzles](https://img.shields.io/badge/%E2%96%B6%20Play%20the%20puzzles-online-2ea44f?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/)
 
 Explore a growing collection of playable and printable puzzles, from Sudoku,
-Star Battle, and Zebra grids to custom Murdoku mystery series. An explainable
+Queens and Star Battle to Zebra grids and custom Murdoku mystery series. An explainable
 constraint engine powers the solver; Puzzle Lab helps create and validate new
 puzzles from seeds and specifications, while dedicated Murdoku tools turn loose
 clues and board sketches into original mysteries.
@@ -23,6 +23,7 @@ uv run csp examples/akari_1_6x6.txt --svg akari.svg
 uv run csp examples/battleships_1_6x6_fleet.txt --explain
 uv run puzzle-lab rate examples/queens_1_4x4.txt
 uv run puzzle-lab search examples --family tango --tier hard
+uv run puzzle-lab fresh starbattle --size 7 --stars 1 --tier easy --output /tmp/queens.txt
 ```
 
 `--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` writes Murdoku narratives or Battleships deductions with named rules and reasons; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. `--export DIR` writes everything the [web player](#play-in-the-browser) needs: per puzzle a JSON bundle and the interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails). Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network. `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/**/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`). Without puzzle files, `--docx` takes every Murdoku in `examples/` (not the test puzzles) and writes `booklet.docx`. `--pdf [FILE]` works the same way but writes a PDF (default `booklet.pdf` without puzzle files), converting that Word booklet with LibreOffice or, on macOS, Microsoft Word or Pages.
@@ -87,7 +88,7 @@ The solver handles very different kinds of logic. Here are a few; [browse and pl
 
 <table>
 <tr>
-<td><strong><a href="examples/queens_3_7x7.txt">Queens</a></strong><br>Place one queen in each row, column, and region; queens may not touch.<br><img src="docs/images/queens_3_7x7-solution.png" width="150" alt="Solved Queens puzzle"></td>
+<td><strong><a href="examples/queens_3_7x7.txt">Queens</a></strong><br>Star Battle with one queen per row, column, and region; queens may not touch.<br><img src="docs/images/queens_3_7x7-solution.png" width="150" alt="Solved Queens puzzle"></td>
 <td><strong><a href="examples/sudoku_9_4x4_kropki_consecutive_thermometers.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_9_4x4_kropki_consecutive_thermometers.png" width="150" alt="Kropki Sudoku puzzle"></td>
 <td><strong><a href="examples/starbattle_2_8x8.txt">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_2_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
 </tr>

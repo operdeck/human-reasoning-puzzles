@@ -1,11 +1,12 @@
 """Star Battle by row-pattern backtracking, independent of the engine."""
 
 from itertools import combinations, pairwise
+from typing import Any
 
 from ..starbattle import cell_name, parse
 
 
-def solutions(text: str, limit: int = 2) -> list[dict[str, bool]]:
+def solutions(text: str, limit: int = 2) -> list[dict[str, Any]]:
     puzzle = parse(text)
     if limit <= 0:
         return []
@@ -19,16 +20,29 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, bool]]:
     col_counts = [0] * size
     region_counts = {region: 0 for region in puzzle.areas.names}
     grid = [[False] * size for _ in range(size)]
-    found: list[dict[str, bool]] = []
+    found: list[dict[str, Any]] = []
 
     def search(row: int, previous: tuple[int, ...]) -> None:
         if row == size:
             if all(count == stars for count in col_counts) and all(
                 count == stars for count in region_counts.values()
             ):
-                found.append(
-                    {cell_name((r, c)): grid[r][c] for r in range(size) for c in range(size)}
-                )
+                if stars == 1:
+                    found.append(
+                        {
+                            region: next(
+                                (r, c)
+                                for r in range(size)
+                                for c in range(size)
+                                if grid[r][c] and region_of[r][c] == region
+                            )
+                            for region in puzzle.areas.names
+                        }
+                    )
+                else:
+                    found.append(
+                        {cell_name((r, c)): grid[r][c] for r in range(size) for c in range(size)}
+                    )
             return
         for pattern in patterns:
             if any(

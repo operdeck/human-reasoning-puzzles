@@ -37,8 +37,8 @@ def test_murdoku_first_demo_leading_then_families_with_natural_order():
 def test_display_aliases_have_distinct_collection_sections():
     root = Path("/x/examples")
     paths = {
-        root / "queens_1_4x4.txt": "queens",
-        root / "queens_2_5x5.txt": "queens",
+        root / "queens_1_4x4.txt": "starbattle",
+        root / "queens_2_5x5.txt": "starbattle",
         root / "binairo_3_4x4.txt": "binairo",
         root / "tango_2_4x4.txt": "binairo",
     }

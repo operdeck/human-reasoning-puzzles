@@ -1,140 +1,47 @@
 import pytest
 
-from csp import bruteforce, cli, queens, report
-from csp.bruteforce import queens as brute
-from csp.core import Kind, Solver
-from csp.puzzle_lab import rate
-from csp.queens import DOG_MARK, PUPPY_MARK, QUEEN_MARK, Cell, compile_puzzle, render
+from csp import bruteforce, cli, starbattle
 from tests.examples import example
 
-EXAMPLE = example("queens_1_4x4.txt")
 
-EXPECTED = {
-    "a": Cell(0, 2),
-    "b": Cell(1, 0),
-    "c": Cell(2, 3),
-    "d": Cell(3, 1),
-}
-
-
-def test_queens_model_uses_only_generic_constraints():
-    model, puzzle = compile_puzzle(EXAMPLE.read_text())
-
-    assert puzzle.size == 4
-    assert model.variables == ["a", "b", "c", "d"]
-    assert not model.relations
-    assert sum(item.family == "one queen per region" for item in model.constraints) == 4
-    assert sum(item.family == "one queen per row" for item in model.constraints) == 4
-    assert sum(item.family == "one queen per column" for item in model.constraints) == 4
-    assert sum(item.family == "queens do not touch" for item in model.constraints) == 9
-    assert all(
-        item.kind is Kind.AT_MOST_ONE
-        for item in model.constraints
-        if item.family == "queens do not touch"
+def test_legacy_queens_family_is_a_one_star_starbattle_alias():
+    text = example("queens_1_4x4.txt").read_text()
+    legacy = (
+        text.replace("Family: starbattle", "Family: queens")
+        .replace("Stars: 1\n", "")
+        .replace(
+            "? ? ? ?\n* ? ? ?\n? ? ? ?\n? ? ? ?",
+            "b r2c1",
+        )
     )
 
-
-def test_queens_brute_force_and_engine_agree_on_unique_placement():
-    text = EXAMPLE.read_text()
-    (solution,) = brute.solutions(text)
-    model, puzzle = compile_puzzle(text)
-    result = Solver(model).solve()
-
-    assert solution == EXPECTED
-    assert result.solved
-    assert result.assignment == solution
-    assert QUEEN_MARK in render(puzzle, model, "Solved")
+    puzzle = starbattle.parse(legacy)
+    assert puzzle.stars == 1
+    assert puzzle.icon == "queen"
+    assert cli.detect(legacy) == "starbattle"
+    assert cli.load(legacy, "queens").kind == "starbattle"
+    assert len(bruteforce.solutions(legacy, "queens")) == 1
+    assert len(bruteforce.solutions(legacy)) == 1
 
 
-def test_queens_is_detected_and_loaded_through_the_cli():
-    text = EXAMPLE.read_text()
-    assert cli.detect(text) == "queens"
-    assert len(bruteforce.solutions(text)) == 1
-    assert cli.load(text, "queens").model.variables == ["a", "b", "c", "d"]
-
-
-def test_queens_cli_png_writes_a_picture(tmp_path):
-    import pytest
-
-    pytest.importorskip("PIL")
-    path = tmp_path / "queens.png"
-    assert cli.write_picture("queens", EXAMPLE.read_text(), path)
-    assert path.is_file()
-
-
-def test_zones_may_differ_in_size_but_must_be_connected():
-    sizes = "Family: queens\nSize: 3\nRegions:\na: x\nb: y\nc: z\nGrid:\na b b\nb b c\nb c c\n"
-    puzzle = queens.parse(sizes)
-    assert sorted(len(cells) for cells in puzzle.cells_by_region.values()) == [1, 3, 5]
-
-    split = sizes.replace("a b b\nb b c\nb c c", "a b a\nb b c\nc c c")
-    with pytest.raises(ValueError, match="connected"):
-        queens.parse(split)
-
-
-def test_easy_queens_has_an_explicit_starter_instead_of_one_cell_zones():
-    text = (example("queens_2_5x5.txt")).read_text()
-    puzzle = queens.parse(text)
-    assert len(puzzle.givens) == 1
-    assert min(map(len, puzzle.cells_by_region.values())) >= 2
-    assert rate(text).grade == "single"
-
-
-def test_queens_default_icon_is_a_queen():
-    assert queens.parse(EXAMPLE.read_text()).icon == "queen"
-
-
-def test_only_the_canonical_queens_family_is_accepted():
-    from csp.puzzlefile import FAMILY_KINDS
-
-    assert {family for family, kind in FAMILY_KINDS.items() if kind == "queens"} == {"queens"}
-    text = EXAMPLE.read_text().replace("Family: queens", "Family: retired-theme")
-    with pytest.raises(ValueError, match="Family must be 'queens'"):
-        queens.parse(text)
-    with pytest.raises(ValueError, match="unknown puzzle family"):
-        cli.detect(text)
-
-
-@pytest.mark.parametrize(
-    "icon, mark", [("queen", QUEEN_MARK), ("dog", DOG_MARK), ("puppy", PUPPY_MARK)]
-)
-def test_icon_section_picks_the_mark_in_the_text_board(icon, mark):
-    text = EXAMPLE.read_text().replace("Family: queens", f"Family: queens\nIcon: {icon}")
-    model, puzzle = compile_puzzle(text)
-    Solver(model).solve()
-    assert puzzle.icon == icon
-    assert mark in render(puzzle, model, "Solved")
-
-
-def test_unknown_icon_is_rejected():
-    text = EXAMPLE.read_text().replace("Family: queens", "Family: queens\nIcon: cat")
-    with pytest.raises(ValueError, match="Icon must be one of"):
-        queens.parse(text)
-
-
-def test_queens_gallery_has_six_unique_boards_with_measured_difficulty():
-    from tests.examples import played_examples
-
-    names = (
-        "queens_1_4x4",
-        "queens_2_5x5",
-        "queens_3_7x7",
-        "queens_4_8x8",
-        "queens_5_9x9",
-        "queens_6_4x4",
+def test_queens_alias_does_not_accept_a_multi_star_count():
+    text = (
+        example("queens_1_4x4.txt")
+        .read_text()
+        .replace("Family: starbattle", "Family: queens")
+        .replace("Stars: 1", "Stars: 2")
     )
-    assert {p.stem for p in played_examples() if p.name.startswith("queens_")} == set(names)
-    grades = []
-    for name in names:
-        text = (example(f"{name}.txt")).read_text()
-        puzzle = queens.parse(text)
-        assert len(brute.solutions(text)) == 1
-        assert len(set(puzzle.region_names.values())) == puzzle.size
-        model, _ = compile_puzzle(text)
-        fired: list[str] = []
-        result = Solver(model).solve(on_step=lambda rule, steps, log=fired: log.append(rule))
-        assert result.solved
-        assert puzzle.icon == "queen"
-        assert "what_if" not in fired
-        grades.append(report.grade(fired))
-    assert grades == ["single", "single", "subsumption", "subsumption", "cover2", "chains"]
+
+    with pytest.raises(ValueError, match="alias for Star Battle with Stars: 1"):
+        starbattle.parse(text)
+
+
+@pytest.mark.parametrize("icon", ("queen", "dog", "puppy"))
+def test_legacy_queens_alias_preserves_piece_icons(icon):
+    text = (
+        example("queens_1_4x4.txt")
+        .read_text()
+        .replace("Family: starbattle", f"Family: queens\nIcon: {icon}")
+    )
+
+    assert starbattle.parse(text).icon == icon

@@ -1155,21 +1155,19 @@ def test_futoshiki_picture_points_each_sign_at_the_smaller_cell():
     assert image.getpixel((edge - arm // 2, middle)) == picture.WHITE  # open towards r1c1
 
 
-def test_queens_picture_shows_regions_and_solution():
-    from csp import queens
+def test_one_star_starbattle_picture_shows_queen_and_regions():
+    from csp import starbattle
 
     text = (example("queens_1_4x4.txt")).read_text()
-    puzzle = queens.parse(text)
+    puzzle = starbattle.parse(text)
     (solution,) = bruteforce.solutions(text)
-    image = picture.queens_picture(puzzle, solution, cell=CELL)
+    image = picture.starbattle_picture(puzzle, solution, cell=CELL)
 
     assert image.size == (5 * CELL, 5 * CELL)
     assert _corner(image, 0, 0) == _corner(image, 1, 0)
     assert _corner(image, 1, 0) != _corner(image, 1, 1)
     assert _has(image, 0, 2, picture.SOLVED)
-    crown_x = CELL // 2 + 2 * CELL + CELL // 2
-    crown_y = CELL // 2 + CELL // 8
-    assert image.getpixel((crown_x, crown_y)) == picture.SOLVED
+    assert _has(image, 1, 0, picture.INK)
 
 
 def test_logicgrid_unsolved_picture_includes_clues():
@@ -1351,43 +1349,40 @@ def test_picture_ignores_role_booleans_in_the_assignment(tmp_path):
     assert out.exists()
 
 
-def test_dog_and_puppy_pieces_are_drawn_instead_of_the_crown():
-    from csp import queens
+def test_one_star_starbattle_keeps_its_queen_piece_and_region_colours():
+    from csp import starbattle
 
-    base = (example("queens_1_4x4.txt")).read_text()
+    text = (example("queens_5_9x9.txt")).read_text().replace("Family: starbattle", "Family: queens")
+    puzzle = starbattle.parse(text)
+    image = picture.starbattle_picture(puzzle, None, cell=CELL)
+    margin = CELL // 2
+    colours = {}
+    for r, line in enumerate(puzzle.areas.cells):
+        for c, region in enumerate(line):
+            colours.setdefault(
+                region, image.getpixel((margin + c * CELL + 5, margin + r * CELL + 5))
+            )
+    assert puzzle.icon == "queen"
+    assert len(set(colours.values())) == puzzle.size
+
+
+def test_legacy_queens_icons_keep_their_distinct_pictures():
+    from csp import starbattle
+
+    base = (example("queens_1_4x4.txt")).read_text().replace("Family: starbattle", "Family: queens")
     pictures = {}
     for icon in ("queen", "dog", "puppy"):
         text = base.replace("Family: queens", f"Family: queens\nIcon: {icon}")
         (solution,) = bruteforce.solutions(text)
-        pictures[icon] = picture.queens_picture(queens.parse(text), solution, cell=CELL)
+        pictures[icon] = picture.starbattle_picture(starbattle.parse(text), solution, cell=CELL)
 
-    assert pictures["dog"].size == pictures["queen"].size
     assert pictures["dog"].tobytes() != pictures["queen"].tobytes()
     assert pictures["dog"].tobytes() != pictures["puppy"].tobytes()
-    # the puppy's tongue is the only pink on the board
     assert any(
         pictures["puppy"].getpixel((x, y)) == picture.TONGUE
         for x in range(pictures["puppy"].width)
         for y in range(pictures["puppy"].height)
     )
-
-
-@pytest.mark.parametrize("icon", ("queen", "dog", "puppy"))
-def test_queens_puzzles_give_every_zone_its_own_colour_regardless_of_piece(icon):
-    from csp import queens
-
-    text = (example("queens_5_9x9.txt")).read_text()
-    text = text.replace("Family: queens", f"Family: queens\nIcon: {icon}")
-    puzzle = queens.parse(text)
-    image = picture.queens_picture(puzzle, None, cell=CELL)
-    margin = CELL // 2
-    colours = {}
-    for r, line in enumerate(puzzle.grid):
-        for c, region in enumerate(line):
-            colours.setdefault(
-                region, image.getpixel((margin + c * CELL + 5, margin + r * CELL + 5))
-            )
-    assert len(set(colours.values())) == puzzle.size
 
 
 def test_dutch_legend_lists_fixed_role_holders_as_a_category():

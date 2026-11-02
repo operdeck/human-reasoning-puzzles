@@ -1,6 +1,7 @@
 # Queens 4x4: hard, needs a chain deduction.
-Family: queens
+Family: starbattle
 Size: 4
+Stars: 1
 Regions:
 a: amber
 b: blue
