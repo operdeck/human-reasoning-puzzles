@@ -1,0 +1,8 @@
+# Hidato 5x5: medium; every step is a two-number relation.
+Family: hidato
+Grid:
+13 . . 9 .
+. 15 . . .
+X . 17 1 .
+. 24 . . 2
+. . 22 4 .

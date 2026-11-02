@@ -12,11 +12,11 @@ bundle, with `playable` false, so the site can show them read-only.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import akari, icons, starbattle
+from . import akari, dominosa, hidato, icons, mapcolour, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
@@ -39,7 +39,7 @@ LICENSE = (
     "any other use needs the author's written permission."
 )
 CELL = re.compile(r'<rect id="r(\d+)c(\d+)" class="cell"')
-DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru"})
+DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru", "towers", "kakuro"})
 UNSUPPORTED = {"logicgrid": "The logic grid needs its own matrix view; not playable yet."}
 
 
@@ -52,9 +52,10 @@ class Item:
     icon: str | None = None
     value: Any = True
     symbol: str = ""
+    drawing: str = ""  # a ready-made SVG, for items that are not registry icons
 
     def to_json(self) -> dict[str, Any]:
-        picture = icons.to_svg(self.icon) if self.icon else None
+        picture = self.drawing or (icons.to_svg(self.icon) if self.icon else None)
         out: dict[str, Any] = {"id": self.id, "label": self.label}
         out["symbol"] = self.symbol or (icons.symbol(self.icon) if self.icon else self.id)
         if picture:
@@ -70,11 +71,76 @@ ITEMS = {
     "akari": [Item("bulb", "Light", "bulb")],
     "kakurasu": [Item("filled", "Shaded", "filled")],
     "battleships": [Item("ship", "Ship", "filled")],
+    "mosaic": [Item("black", "Black", "filled")],
+    "pattern": [Item("filled", "Filled", "filled")],
+    "thermometers": [Item("mercury", "Mercury", "mercury")],
+    "map": [
+        Item(colour, colour.capitalize(), None, colour, "", svg.swatch(svg.MAP_COLOURS[colour]))
+        for colour in mapcolour.COLOURS
+    ],
+    "undead": [
+        Item("ghost", "Ghost", "ghost", "G"),
+        Item("vampire", "Vampire", "vampire", "V"),
+        Item("zombie", "Zombie", "zombie", "Z"),
+    ],
+    "magnets": [
+        Item("plus", "Plus", "magnet_plus", "+"),
+        Item("minus", "Minus", "magnet_minus", "-"),
+        Item("neutral", "Neutral", "magnet_neutral", "0"),
+    ],
+    # Each cell is one half of a domino; the name says where in the pair the cell sits.
+    "dominosa": [
+        Item(half, f"{half.capitalize()} half", f"domino_{half}", half)
+        for half in ("left", "right", "top", "bottom")
+    ],
     "binairo": [
         Item("1", "One", "disc_black", True),
         Item("0", "Zero", "disc_white", False),
     ],
 }
+
+# Families whose solver variables are not cells (domino types, rectangles): each turns its
+# solution into one palette value per cell for the player's board.
+CELL_SOLUTIONS: dict[str, Callable[[str, Mapping[str, Any]], dict[str, Any]]] = {
+    "dominosa": lambda text, values: dominosa.cell_assignment(values),
+    "rectangles": lambda text, values: rectangles.cell_assignment(values),
+    "map": lambda text, values: mapcolour.cell_assignment(mapcolour.parse(text), dict(values)),
+    "hidato": lambda text, values: hidato.cell_assignment(values),
+}
+
+
+def _number_items(text: str) -> list[Item]:
+    """The numbers 1..K of a Hidato or Numbrix board, each placed in one cell."""
+    return [Item(str(k), str(k), None, k) for k in range(1, hidato.parse(text).count + 1)]
+
+
+def _dynamic_items(kind: str, text: str) -> list[Item]:
+    """The palette of a family whose items depend on the puzzle itself."""
+    return _number_items(text) if kind == "hidato" else _rectangle_items(text)
+
+
+def _rectangle_items(text: str) -> list[Item]:
+    """One coloured tile per number; painting a cell with it says which rectangle it is in.
+
+    The tile is the colour the solved picture gives that rectangle, and its label tells
+    the number and where it sits, so the palette and the board agree on which is which.
+    """
+    puzzle = rectangles.parse(text)
+    items = []
+    for index, cell in enumerate(puzzle.numbered):
+        name = rectangles.cell_name(cell)
+        items.append(
+            Item(
+                name,
+                f"{puzzle.clues[cell[0]][cell[1]]} at {name}",
+                None,
+                name,
+                str(puzzle.clues[cell[0]][cell[1]]),
+                svg.swatch(svg.pastel(index)),
+            )
+        )
+    return items
+
 
 NEIGHBOURS = [{"scope": "neighbors8"}]
 LINES = [{"scope": "row"}, {"scope": "col"}]
@@ -299,9 +365,12 @@ def _family(
             {"scope": "region", **full},
         ]
     else:
-        items = ITEMS[kind]
+        items = ITEMS[kind] if kind in ITEMS else _dynamic_items(kind, text)
         if kind == "tents":
             scopes = NEIGHBOURS
+        if kind in CELL_SOLUTIONS:
+            solution = CELL_SOLUTIONS[kind](text, solution)
+            fixed = CELL_SOLUTIONS[kind](text, fixed)
     by_value = {item.value: item.id for item in items}
     if kind in DIGITS:
         groups = peers(model, set(names), by_value, language=language_of(text))
@@ -315,11 +384,16 @@ def _family(
         if cell in names and value in by_value
     }
     givens = {cell: by_value[v] for cell, v in fixed.items() if v in by_value}
-    variables = set(names) if kind == "starbattle" else set(model.variables)
+    variables = (
+        set(names) if kind == "starbattle" or kind in CELL_SOLUTIONS else set(model.variables)
+    )
     blocked = [
         cell
         for cell in names
-        if cell not in variables or (cell in fixed and fixed[cell] not in by_value)
+        if cell not in variables
+        or (cell in fixed and fixed[cell] not in by_value)
+        # a cell-level solution covers every playable cell, so any other cell is blocked
+        or (kind in CELL_SOLUTIONS and cell not in solution)
     ]
     out |= {
         "playable": True,

@@ -1,0 +1,9 @@
+# Numbrix 6x6: hard; a larger board that needs chains.
+Family: numbrix
+Grid:
+X 25 26 . 34 .
+. 24 X . 29 .
+. 21 . . . 31
+15 16 17 18 1 .
+. 11 10 . . 3
+. 12 . . 5 .

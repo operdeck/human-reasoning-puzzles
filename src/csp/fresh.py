@@ -8,10 +8,26 @@ solution and layout. Use these builders when an example needs its own board.
 import itertools
 import random
 import re
+import zlib
 from collections import Counter
 from collections.abc import Callable, Iterable
+from functools import partial
 
-from csp import battleships, bruteforce
+from csp import (
+    battleships,
+    bruteforce,
+    dominosa,
+    hidato,
+    kakuro,
+    magnets,
+    mapcolour,
+    mosaic,
+    pattern,
+    rectangles,
+    thermometers,
+    towers,
+    undead,
+)
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -25,11 +41,28 @@ FAMILIES = (
     "minesweeper",
     "akari",
     "sudoku",
+    "killer",
+    "arrow",
+    "evenodd",
+    "sandwich",
+    "skyscrapersudoku",
     "futoshiki",
     "calcudoku",
     "starbattle",
     "tents",
     "battleships",
+    "towers",
+    "mosaic",
+    "dominosa",
+    "rectangles",
+    "magnets",
+    "undead",
+    "pattern",
+    "map",
+    "thermometers",
+    "hidato",
+    "numbrix",
+    "kakuro",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -428,6 +461,158 @@ def fresh_sudoku(size: int, rng: random.Random, open_share: float, comment: str 
     return build(thin(_cells(size), build, rng, keep_at_least=_keep(size, open_share)))
 
 
+SUDOKU_VARIANTS = ("killer", "arrow", "evenodd", "sandwich", "skyscrapersudoku")
+
+
+def _variant_items(
+    family: str, grid: list[list[int]], rng: random.Random
+) -> list[tuple[str, str, object]]:
+    """The rules of one Sudoku variant read off a solved `grid`: (section, key, payload) items.
+
+    Items of one section are written together; `key` orders them and, for the clue lines,
+    is the index of the clue.
+    """
+    size = len(grid)
+    out: list[tuple[str, str, object]] = []
+    if family == "evenodd":
+        for r, c in _cells(size):
+            out.append(("Parity", f"{r},{c}", "eo"[grid[r][c] % 2]))
+    elif family == "sandwich":
+        for i in range(size):
+            for name, line in (
+                ("SandwichRows", grid[i]),
+                ("SandwichColumns", [grid[r][i] for r in range(size)]),
+            ):
+                a, b = sorted((line.index(1), line.index(size)))
+                out.append((name, f"{i}", sum(line[a + 1 : b])))
+    elif family == "skyscrapersudoku":
+        for i in range(size):
+            column = [grid[r][i] for r in range(size)]
+            lanes = {
+                "SkyscraperTop": column,
+                "SkyscraperBottom": column[::-1],
+                "SkyscraperLeft": grid[i],
+                "SkyscraperRight": grid[i][::-1],
+            }
+            for name, lane in lanes.items():
+                out.append((name, f"{i}", towers.visible(lane)))
+    elif family == "killer":
+        free = set(_cells(size))
+        order = _cells(size)
+        rng.shuffle(order)
+        for start in order:
+            if start not in free:
+                continue
+            cage = [start]
+            free.discard(start)
+            while len(cage) < rng.randint(2, 4):
+                near = [
+                    (r + dr, c + dc)
+                    for r, c in cage
+                    for dr, dc in STEPS
+                    if (r + dr, c + dc) in free
+                ]
+                if not near:
+                    break
+                step = rng.choice(near)
+                free.discard(step)
+                cage.append(step)
+            if len(cage) < 2:
+                free.add(start)
+                continue
+            cells = " ".join(_name(cell) for cell in cage)
+            out.append(("Killer", cells, f"{sum(grid[r][c] for r, c in cage)}: {cells}"))
+    else:  # arrow
+        used: set[Cell] = set()
+        for bulb in rng.sample(_cells(size), size * size):
+            if bulb in used or grid[bulb[0]][bulb[1]] < 3:
+                continue
+            for _ in range(30):
+                path = [bulb]
+                for _ in range(rng.randint(2, 3)):
+                    near = [
+                        (path[-1][0] + dr, path[-1][1] + dc)
+                        for dr in (-1, 0, 1)
+                        for dc in (-1, 0, 1)
+                        if (dr or dc)
+                        and 0 <= path[-1][0] + dr < size
+                        and 0 <= path[-1][1] + dc < size
+                        and (path[-1][0] + dr, path[-1][1] + dc) not in used | set(path)
+                    ]
+                    if not near:
+                        break
+                    path.append(rng.choice(near))
+                if (
+                    len(path) >= 3
+                    and sum(grid[r][c] for r, c in path[1:]) == grid[bulb[0]][bulb[1]]
+                ):
+                    used.update(path)
+                    out.append(("Arrows", _name(bulb), " ".join(_name(cell) for cell in path)))
+                    break
+            if len(out) >= size:
+                break
+    return out
+
+
+def fresh_sudoku_variant(
+    family: str, size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Killer, Arrow, Even/Odd, Sandwich or Skyscraper Sudoku (4x4 or 6x6; also 9x9 for
+    the first three, since sandwich and skyscraper lines are relations over a whole line).
+
+    A random Latin square is the answer; its rules and every digit are given, then dropped in
+    random order while the board stays unique, down to a floor set by `open_share`.
+    """
+    if size not in SUDOKU_BOXES or (size == 9 and family in {"sandwich", "skyscrapersudoku"}):
+        raise ValueError(
+            f"fresh {family} Sudoku boards are 4 or 6 wide (9 for killer/arrow/evenodd)"
+        )
+    # Salt the stream with the family, so one seed gives a different answer grid per variant
+    # (the same seed for Killer and Sandwich would otherwise draw the same Latin square).
+    rng = random.Random(rng.getrandbits(64) ^ zlib.crc32(family.encode()))
+    grid = latin_square(size, rng, SUDOKU_BOXES[size])
+    rules = _variant_items(family, grid, rng)
+    if not rules:
+        return None
+    rule_items = {("rule", i) for i in range(len(rules))}
+    given_items = {("given", r * size + c) for r, c in _cells(size)}
+
+    def build(kept: set[tuple[str, int]]) -> str:
+        givens = {divmod(i, size) for kind, i in kept if kind == "given"}
+        lines = _header(comment, f"Family: {family}", "Givens:", *_given_rows(grid, givens))
+        if size == 6:
+            box_rows, box_cols = SUDOKU_BOXES[size]
+            lines += ["Boxes:"]
+            lines += [
+                " ".join(f"{r // box_rows + 1},{c // box_cols + 1}" for c in range(size))
+                for r in range(size)
+            ]
+        chosen = [rules[i] for kind, i in sorted(kept) if kind == "rule"]
+        sections: dict[str, list[tuple[str, object]]] = {}
+        for section, key, payload in chosen:
+            sections.setdefault(section, []).append((key, payload))
+        for section, entries in sections.items():
+            lines.append(f"{section}:")
+            if section == "Parity":
+                marks = {tuple(map(int, key.split(","))): str(p) for key, p in entries}
+                lines += [
+                    " ".join(marks.get((r, c), ".") for c in range(size)) for r in range(size)
+                ]
+            elif section.startswith(("Sandwich", "Skyscraper")):
+                tokens = {int(key): str(p) for key, p in entries}
+                lines.append(" ".join(tokens.get(i, ".") for i in range(size)))
+            else:
+                lines += [str(p) for _, p in entries]
+        return "\n".join(lines) + "\n"
+
+    # Givens go first, with every rule present, so the variant's rules carry the puzzle; then
+    # rules the answer does not need are dropped, down to a floor set by `open_share`.
+    givens = thin(given_items, lambda kept: build(kept | rule_items), rng)
+    floor = max(2, round((1 - open_share) * len(rule_items)))
+    kept_rules = thin(rule_items, lambda kept: build(givens | kept), rng, keep_at_least=floor)
+    return build(givens | kept_rules)
+
+
 def fresh_futoshiki(
     size: int, rng: random.Random, open_share: float, sign_share: float = 0.3, comment: str = ""
 ) -> str:
@@ -802,6 +987,716 @@ def fresh_battleships(size: int, rng: random.Random, comment: str = "") -> str |
     return None
 
 
+def fresh_towers(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new Towers puzzle: a random Latin square with every edge clue stated.
+
+    Random givens are added only if the edges alone leave two answers, and are thinned
+    straight away, so the edge clues carry the puzzle. Then clues that uniqueness does not
+    need are dropped, down to `_clue_floor`.
+    """
+    if size not in towers.SIZES:
+        raise ValueError(f"fresh Towers boards are {towers.SIZES.start} to {towers.SIZES[-1]} wide")
+    grid = latin_square(size, rng)
+    columns = [[grid[r][c] for r in range(size)] for c in range(size)]
+    views = {
+        "Top": columns,
+        "Bottom": [column[::-1] for column in columns],
+        "Left": grid,
+        "Right": [row[::-1] for row in grid],
+    }
+    every = {(side, i) for side in views for i in range(size)}
+
+    def build(clues: set[tuple[str, int]], givens: set[Cell]) -> str:
+        lines = _header(comment, "Family: towers", f"Size: {size}")
+        for side, lanes in views.items():
+            shown = (
+                str(towers.visible(lane)) if (side, i) in clues else "."
+                for i, lane in enumerate(lanes)
+            )
+            lines += [f"{side}:", " ".join(shown)]
+        if givens:
+            lines += ["Givens:", *_given_rows(grid, givens)]
+        return "\n".join(lines) + "\n"
+
+    # Start from every clue and add random givens only if the edges alone leave two answers.
+    givens: set[Cell] = set()
+    spare = _cells(size)
+    rng.shuffle(spare)
+    while not is_unique(build(every, givens)):
+        givens.add(spare.pop())
+    givens = thin(givens, lambda kept: build(every, kept), rng)
+    kept = thin(
+        every, lambda clues: build(clues, givens), rng, keep_at_least=_clue_floor(size, open_share)
+    )
+    return build(kept, givens)
+
+
+def fresh_mosaic(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new Mosaic: a random colouring, every window count, then counts thinned.
+
+    A colouring whose full set of counts still leaves two answers is redrawn. At least
+    `1 - open_share` of the cells keep their number, so a larger `open_share` asks for
+    fewer clues and a harder puzzle.
+    """
+    if size not in mosaic.SIZES:
+        raise ValueError(f"fresh Mosaic boards are {mosaic.SIZES.start} to {mosaic.SIZES[-1]} wide")
+    template = mosaic.Puzzle([[None] * size for _ in range(size)])
+    for _ in range(50):
+        black = {cell for cell in _cells(size) if rng.random() < 0.5}
+        build = partial(_mosaic_text, template, black, size, comment)
+        everything = set(_cells(size))
+        if not is_unique(build(everything)):
+            continue
+        floor = round((1 - open_share) * size * size)
+        return build(thin(everything, build, rng, keep_at_least=floor))
+    return None
+
+
+def _mosaic_text(
+    template: mosaic.Puzzle, black: set[Cell], size: int, comment: str, clues: set[Cell]
+) -> str:
+    """A Mosaic file for the colouring `black`, stating the window count of each cell in `clues`."""
+    rows = [
+        " ".join(
+            str(sum(near in black for near in template.window((r, c)))) if (r, c) in clues else "."
+            for c in range(size)
+        )
+        for r in range(size)
+    ]
+    return "\n".join(_header(comment, "Family: mosaic", f"Size: {size}", "Clues:", *rows)) + "\n"
+
+
+def fresh_dominosa(size: int, rng: random.Random, comment: str = "") -> str | None:
+    """A new Dominosa with highest number `size`: a random tiling, a shuffled domino set.
+
+    The numbers are placed by laying every domino type once on a random tiling, each with a
+    random orientation; boards with a second answer are redrawn, a few hundred times.
+    """
+    if size not in dominosa.MAXIMUM:
+        raise ValueError(f"fresh Dominosa goes up to {dominosa.MAXIMUM[-1]} (the highest number)")
+    rows, cols = size + 1, size + 2
+    for _ in range(300):
+        pairs = _random_tiling(rows, cols, rng)
+        kinds = [(low, high) for low in range(size + 1) for high in range(low, size + 1)]
+        rng.shuffle(kinds)
+        numbers = [[0] * cols for _ in range(rows)]
+        for ((r0, c0), (r1, c1)), (low, high) in zip(pairs, kinds, strict=True):
+            if rng.random() < 0.5:
+                low, high = high, low
+            numbers[r0][c0], numbers[r1][c1] = low, high
+        lines = _header(comment, "Family: dominosa", "Numbers:")
+        lines += [" ".join(map(str, row)) for row in numbers]
+        text = "\n".join(lines) + "\n"
+        if is_unique(text):
+            return text
+    return None
+
+
+TIER_GRADES = {
+    "easy": frozenset({"single", "count"}),
+    "medium": frozenset({"relations", "subsumption", "cover2"}),
+    "hard": frozenset({"cover3", "chains", "what_if"}),
+}
+
+
+def _partition(size: int, biggest: int, rng: random.Random) -> list[list[Cell]]:
+    """Cut a `size` x `size` board into random rectangles, each at most `2 * biggest` cells."""
+    free = {(r, c) for r in range(size) for c in range(size)}
+    pieces: list[list[Cell]] = []
+    for r, c in _cells(size):
+        if (r, c) not in free:
+            continue
+        shapes = [
+            (h, w)
+            for h in range(1, min(biggest, size - r) + 1)
+            for w in range(1, min(biggest, size - c) + 1)
+            if h * w <= biggest * 2
+            and all((r + i, c + j) in free for i in range(h) for j in range(w))
+        ]
+        h, w = rng.choice(shapes)
+        pieces.append([(r + i, c + j) for i in range(h) for j in range(w)])
+        free.difference_update(pieces[-1])
+    return pieces
+
+
+def fresh_rectangles(
+    size: int, rng: random.Random, open_share: float, comment: str = "", tier: str = "easy"
+) -> str | None:
+    """A new Rectangles board: a random partition into rectangles, one number each.
+
+    The number sits in a random cell of its rectangle. `open_share` stretches the largest
+    rectangle (more open means bigger pieces, fewer numbers and a harder board); boards with a
+    second answer are redrawn, a few hundred times.
+    """
+    if size not in range(3, rectangles.BIGGEST + 1):
+        raise ValueError(f"fresh Rectangles boards are 3 to {rectangles.BIGGEST} wide")
+    biggest = max(3, round(2 + open_share * size))
+    for _ in range(300):
+        pieces = _partition(size, biggest, rng)
+        numbers = [rng.choice(piece) for piece in pieces]
+        if not is_unique(_rectangles_text(size, pieces, numbers, comment)):
+            continue
+        if tier == "hard":
+            from csp import climb  # imported late: climb builds on this module
+
+            found = climb.rectangles(size, pieces, numbers, rng, TIER_GRADES[tier], comment)
+            if found is not None:
+                return found
+            continue
+        # Harder boards leave more candidate rectangles per number: move numbers about inside
+        # their pieces, keeping a move whenever the board stays unique and the total grows.
+        best = _candidate_total(_rectangles_text(size, pieces, numbers, comment))
+        for _ in range(round(open_share * 200)):
+            index = rng.randrange(len(pieces))
+            before = numbers[index]
+            numbers[index] = rng.choice(pieces[index])
+            text = _rectangles_text(size, pieces, numbers, comment)
+            total = _candidate_total(text)
+            if total >= best and is_unique(text):
+                best = total
+            else:
+                numbers[index] = before
+        return _rectangles_text(size, pieces, numbers, comment)
+    return None
+
+
+def _rectangles_text(size: int, pieces: list[list[Cell]], numbers: list[Cell], comment: str) -> str:
+    """A Rectangles file whose pieces each carry their area at the cell in `numbers`."""
+    clues = [[0] * size for _ in range(size)]
+    for piece, (r, c) in zip(pieces, numbers, strict=True):
+        clues[r][c] = len(piece)
+    rows = [" ".join(str(v) if v else "." for v in row) for row in clues]
+    return "\n".join(_header(comment, "Family: rectangles", "Clues:", *rows)) + "\n"
+
+
+def _candidate_total(text: str) -> int:
+    """How many rectangles the numbers of a board could each still be: a cheap difficulty proxy."""
+    puzzle = rectangles.parse(text)
+    return sum(len(puzzle.candidates(cell)) for cell in puzzle.numbered)
+
+
+def _thermometer_paths(size: int, rng: random.Random) -> list[list[Cell]] | None:
+    """Cover a `size` x `size` board with random thermometer paths of 2 to 6 cells, or None."""
+    owner: dict[Cell, int] = {}
+    paths: list[list[Cell]] = []
+    for start in _cells(size):
+        if start in owner:
+            continue
+        path = [start]
+        owner[start] = len(paths)
+        target = rng.randint(2, 6)
+        while len(path) < target:
+            r, c = path[-1]
+            options = [
+                (r + dr, c + dc)
+                for dr, dc in STEPS
+                if 0 <= r + dr < size and 0 <= c + dc < size and (r + dr, c + dc) not in owner
+            ]
+            if not options:
+                break
+            nxt = rng.choice(options)
+            owner[nxt] = len(paths)
+            path.append(nxt)
+        if len(path) < 2:
+            return None
+        paths.append(path)
+    return paths
+
+
+def _kakuro_runs(white: set[Cell], strict: bool = True) -> list[list[Cell]] | None:
+    """Every run of 2 to 4 white cells, across then down, or None if any white cell is
+    alone in a direction or any run is longer than four cells."""
+    runs: list[list[Cell]] = []
+    for step in ((0, 1), (1, 0)):
+        for start in sorted(white):
+            if (start[0] - step[0], start[1] - step[1]) in white:
+                continue
+            run = [start]
+            while (run[-1][0] + step[0], run[-1][1] + step[1]) in white:
+                run.append((run[-1][0] + step[0], run[-1][1] + step[1]))
+            if strict and not 2 <= len(run) <= 4:
+                return None
+            runs.append(run)
+    return runs
+
+
+def _kakuro_layout(size: int, rng: random.Random) -> set[Cell]:
+    """White cells of a valid Kakuro layout: blacken random cells of the full interior while
+    that does not leave more runs outside 2 to 4 cells."""
+
+    def bad(white: set[Cell]) -> int:
+        runs = _kakuro_runs(white, strict=False) or []
+        return sum(not 2 <= len(run) <= 4 for run in runs)
+
+    white = {(r, c) for r in range(1, size) for c in range(1, size)}
+    for _ in range(80):
+        if not bad(white):
+            break
+        cell = rng.choice(sorted(white))
+        if bad(white - {cell}) <= bad(white):
+            white = white - {cell}
+    return white
+
+
+def _kakuro_text(size: int, white: set[Cell], digit: dict[Cell, int], comment: str) -> str | None:
+    """The Kakuro file for `white` cells holding `digit`, or None if the runs are not valid."""
+    runs = _kakuro_runs(white)
+    if runs is None:
+        return None
+    down: dict[Cell, int] = {}
+    across: dict[Cell, int] = {}
+    for run in runs:
+        total = sum(digit[cell] for cell in run)
+        if run[1][0] == run[0][0]:
+            across[run[0][0], run[0][1] - 1] = total
+        else:
+            down[run[0][0] - 1, run[0][1]] = total
+    rows = []
+    for r in range(size):
+        tokens = []
+        for c in range(size):
+            if (r, c) in white:
+                tokens.append(".")
+            elif (r, c) in down or (r, c) in across:
+                tokens.append(f"{down.get((r, c), '')}\\{across.get((r, c), '')}")
+            else:
+                tokens.append("X")
+        rows.append(" ".join(tokens))
+    return "\n".join(_header(comment, "Family: kakuro", "Grid:", *rows)) + "\n"
+
+
+def _distinct_digits(
+    cells: list[Cell], runs: list[list[Cell]], rng: random.Random
+) -> dict[Cell, int] | None:
+    """Digits 1-9 for `cells`, distinct within every run, by randomised backtracking."""
+    digit: dict[Cell, int] = {}
+
+    def fill(index: int) -> bool:
+        if index == len(cells):
+            return True
+        cell = cells[index]
+        options = list(range(1, 10))
+        rng.shuffle(options)
+        for d in options:
+            if all(d not in {digit.get(c) for c in run} for run in runs if cell in run):
+                digit[cell] = d
+                if fill(index + 1):
+                    return True
+                del digit[cell]
+        return False
+
+    return digit if fill(0) else None
+
+
+def fresh_kakuro(size: int, rng: random.Random, comment: str = "") -> str | None:
+    """A new Kakuro: a random layout of runs of 2 to 4 cells, random distinct digits in each.
+
+    Sums are read off the digits, so they are always consistent. While the board has a second
+    answer, a cell where the two answers differ is turned black (when the runs stay valid);
+    the digits of the remaining cells still solve it, and so the search converges.
+    """
+    if size not in range(4, kakuro.BIGGEST + 1):
+        raise ValueError(f"fresh Kakuro boards are 4 to {kakuro.BIGGEST} wide")
+    for _ in range(200):
+        white = _kakuro_layout(size, rng)
+        runs = _kakuro_runs(white)
+        if runs is None:
+            continue
+        digit = _distinct_digits(sorted(white), runs, rng)
+        if digit is None:
+            continue
+        for _ in range(30):
+            text = _kakuro_text(size, white, digit, comment)
+            if text is None:
+                break
+            answers = bruteforce.solutions(text, "kakuro", limit=2)
+            if len(answers) == 1:
+                return text
+            differing = [
+                cell for cell in sorted(white) if answers[0][_name(cell)] != answers[1][_name(cell)]
+            ]
+            rng.shuffle(differing)
+            for cell in differing:
+                if _kakuro_runs(white - {cell}) is not None:
+                    white = white - {cell}
+                    break
+            else:
+                break
+    return None
+
+
+def _hamiltonian_path(
+    cells: set[Cell], diagonal: bool, rng: random.Random, budget: int = 20000
+) -> list[Cell] | None:
+    """A random path through every cell of `cells`, each step to a touching cell, or None.
+
+    Backtracking that tries the neighbour with the fewest onward moves first (Warnsdorff's
+    rule, ties broken at random), within a step budget.
+    """
+    reach = [
+        (dr, dc)
+        for dr in (-1, 0, 1)
+        for dc in (-1, 0, 1)
+        if (dr or dc) and (diagonal or not (dr and dc))
+    ]
+    steps = 0
+
+    def onward(cell: Cell, used: set[Cell]) -> list[Cell]:
+        return [
+            (cell[0] + dr, cell[1] + dc)
+            for dr, dc in reach
+            if (cell[0] + dr, cell[1] + dc) in cells and (cell[0] + dr, cell[1] + dc) not in used
+        ]
+
+    def extend(path: list[Cell], used: set[Cell]) -> bool:
+        nonlocal steps
+        if len(path) == len(cells):
+            return True
+        steps += 1
+        if steps > budget:
+            return False
+        options = onward(path[-1], used)
+        rng.shuffle(options)
+        options.sort(key=lambda nxt: len(onward(nxt, used | {nxt})))
+        for nxt in options:
+            path.append(nxt)
+            used.add(nxt)
+            if extend(path, used):
+                return True
+            path.pop()
+            used.discard(nxt)
+        return False
+
+    start = rng.choice(sorted(cells))
+    path = [start]
+    return path if extend(path, {start}) else None
+
+
+def fresh_hidato(
+    family: str, size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Hidato or Numbrix board: a random path through the open cells, thinned givens.
+
+    A few random cells are blocked, a Hamiltonian path numbers the rest, and every number is
+    given; givens are dropped at random while the answer stays unique, keeping at least
+    `1 - open_share` of them (always 1 and K).
+    """
+    if size not in range(3, hidato.BIGGEST + 1):
+        raise ValueError(f"fresh {family} boards are 3 to {hidato.BIGGEST} wide")
+    diagonal = family == "hidato"
+    for _ in range(100):
+        blocked = {cell for cell in _cells(size) if rng.random() < 0.06}
+        cells = set(_cells(size)) - blocked
+        path = _hamiltonian_path(cells, diagonal, rng)
+        if path is None or len(path) < 6:
+            continue
+        number = {cell: i + 1 for i, cell in enumerate(path)}
+
+        def build(
+            kept: set[int],
+            number: dict[Cell, int] = number,
+            blocked: set[Cell] = blocked,
+        ) -> str:
+            rows = [
+                " ".join(
+                    "X" if (r, c) in blocked else str(number[r, c]) if number[r, c] in kept else "."
+                    for c in range(size)
+                )
+                for r in range(size)
+            ]
+            return "\n".join(_header(comment, f"Family: {family}", "Grid:", *rows)) + "\n"
+
+        ends = {1, len(path)}
+        floor = max(0, round((1 - open_share) * len(path)) - 2)
+
+        def with_ends(kept: set[int], ends: set[int] = ends) -> str:
+            return build(kept | ends)
+
+        kept = thin(set(range(1, len(path) + 1)) - ends, with_ends, rng, keep_at_least=floor)
+        return build(kept | ends)
+    return None
+
+
+def fresh_thermometers(
+    size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Thermometers board: random paths covering the board, random mercury levels.
+
+    Row and column counts are always stated. Random givens are added only if the counts leave
+    two answers, then thinned; a larger `open_share` also hides more of the first, so a harder
+    board keeps fewer cells known.
+    """
+    if size not in thermometers.SIZES:
+        raise ValueError(
+            f"fresh Thermometers boards are {thermometers.SIZES.start} to {thermometers.SIZES[-1]}"
+        )
+    for _ in range(200):
+        paths = _thermometer_paths(size, rng)
+        if paths is None:
+            continue
+        filled: dict[Cell, bool] = {}
+        for path in paths:
+            level = rng.randint(0, len(path))
+            for i, cell in enumerate(path):
+                filled[cell] = i < level
+        rows = [sum(filled[r, c] for c in range(size)) for r in range(size)]
+        columns = [sum(filled[r, c] for r in range(size)) for c in range(size)]
+
+        def build(
+            known: set[Cell],
+            paths: list[list[Cell]] = paths,
+            filled: dict[Cell, bool] = filled,
+            rows: list[int] = rows,
+            columns: list[int] = columns,
+        ) -> str:
+            lines = _header(comment, "Family: thermometers", f"Size: {size}", "Thermometers:")
+            lines += [" ".join(_name(cell) for cell in path) for path in paths]
+            lines += ["Rows:", " ".join(map(str, rows)), "Columns:", " ".join(map(str, columns))]
+            if known:
+                lines += ["Givens:"]
+                lines += [
+                    " ".join(
+                        str(int(filled[r, c])) if (r, c) in known else "." for c in range(size)
+                    )
+                    for r in range(size)
+                ]
+            return "\n".join(lines) + "\n"
+
+        spare = _cells(size)
+        rng.shuffle(spare)
+        known: set[Cell] = set()
+        while not is_unique(build(known)):
+            known.add(spare.pop())
+        return build(thin(known, build, rng))
+    return None
+
+
+def fresh_magnets(
+    size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Magnets board: a random domino tiling, a legal random polarity per domino.
+
+    All eight kinds of line count are stated first; random givens are added only if the counts
+    leave two answers, then redundant givens and counts are thinned, down to a floor that a
+    larger `open_share` lowers.
+    """
+    if size not in magnets.SIZES:
+        raise ValueError(f"fresh Magnets boards are {', '.join(map(str, magnets.SIZES))} wide")
+    for _ in range(100):
+        pairs = _random_tiling(size, size, rng)
+        pole: dict[Cell, str] = {}
+        for first, second in pairs:
+            options = [("+", "-"), ("-", "+"), ("0", "0")]
+            rng.shuffle(options)
+            # About one domino in four is tried as neutral first; otherwise real magnets lead.
+            neutral_first = rng.random() < 0.25
+            options.sort(key=lambda option: (option == ("0", "0")) != neutral_first)
+            for one, two in options:
+                if all(
+                    pole.get((r + dr, c + dc)) != mine or mine == "0"
+                    for (r, c), mine in ((first, one), (second, two))
+                    for dr, dc in STEPS
+                    if (r + dr, c + dc) not in (first, second)
+                ):
+                    pole[first], pole[second] = one, two
+                    break
+            else:
+                break
+        if len(pole) < size * size:
+            continue
+        # Two-letter ids, so the collection audit can compare layouts up to renaming.
+        names = {
+            cell: f"{chr(97 + i // 26)}{chr(97 + i % 26)}"
+            for i, pair in enumerate(pairs)
+            for cell in pair
+        }
+        counts = {
+            "PlusTop": [sum(pole[r, c] == "+" for r in range(size)) for c in range(size)],
+            "MinusBottom": [sum(pole[r, c] == "-" for r in range(size)) for c in range(size)],
+            "PlusLeft": [sum(pole[r, c] == "+" for c in range(size)) for r in range(size)],
+            "MinusRight": [sum(pole[r, c] == "-" for c in range(size)) for r in range(size)],
+        }
+        every = {(clue, i) for clue in counts for i in range(size)}
+
+        def build(
+            clues: set[tuple[str, int]],
+            givens: set[Cell],
+            pole: dict[Cell, str] = pole,
+            names: dict[Cell, str] = names,
+            counts: dict[str, list[int]] = counts,
+        ) -> str:
+            lines = _header(comment, "Family: magnets", f"Size: {size}", "Dominoes:")
+            lines += [" ".join(names[r, c] for c in range(size)) for r in range(size)]
+            for clue, values in counts.items():
+                shown = (str(v) if (clue, i) in clues else "." for i, v in enumerate(values))
+                lines += [f"{clue}:", " ".join(shown)]
+            if givens:
+                lines += ["Givens:"]
+                lines += [
+                    " ".join(pole[r, c] if (r, c) in givens else "." for c in range(size))
+                    for r in range(size)
+                ]
+            return "\n".join(lines) + "\n"
+
+        spare = _cells(size)
+        rng.shuffle(spare)
+        givens: set[Cell] = set()
+        while not is_unique(build(every, givens)):
+            givens.add(spare.pop())
+        givens = thin(givens, partial(build, every), rng)
+        floor = _clue_floor(size, open_share)
+        kept = thin(every, partial(build, givens=givens), rng, keep_at_least=floor)
+        return build(kept, givens)
+    return None
+
+
+def fresh_undead(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new Undead board: random mirrors and monsters, every sight count, then counts thinned.
+
+    A fifth to a third of the cells are mirrors. The monster totals are always stated; a larger
+    `open_share` lowers the floor of border clues kept, for a harder puzzle.
+    """
+    if size not in range(3, undead.BIGGEST + 1):
+        raise ValueError(f"fresh Undead boards are 3 to {undead.BIGGEST} wide")
+    for _ in range(200):
+        grid = [
+            [rng.choice("/\\") if rng.random() < 0.25 else "." for _ in range(size)]
+            for _ in range(size)
+        ]
+        empty = [(r, c) for r in range(size) for c in range(size) if grid[r][c] == "."]
+        if len(empty) < size * 2:
+            continue
+        monsters = {cell: rng.choice(undead.MONSTERS) for cell in empty}
+        totals = {m: sum(v == m for v in monsters.values()) for m in undead.MONSTERS}
+        shape = undead.Puzzle(grid, totals, {side: [-1] * size for side in undead.SIDES})
+        counts = {
+            (side, i): sum(undead.seen(monsters[cell], bent) for cell, bent in shape.trace(side, i))
+            for side in undead.SIDES
+            for i in range(size)
+        }
+        every = set(counts)
+
+        def build(
+            clues: set[tuple[str, int]],
+            grid: list[list[str]] = grid,
+            totals: dict[str, int] = totals,
+            counts: dict[tuple[str, int], int] = counts,
+        ) -> str:
+            lines = _header(comment, "Family: undead", "Grid:", *(" ".join(row) for row in grid))
+            lines += ["Counts:", " ".join(str(totals[m]) for m in undead.MONSTERS)]
+            for side in undead.SIDES:
+                shown = (str(counts[side, i]) if (side, i) in clues else "." for i in range(size))
+                lines += [f"{side}:", " ".join(shown)]
+            return "\n".join(lines) + "\n"
+
+        if not is_unique(build(every)):
+            continue
+        floor = _clue_floor(size, open_share)
+        return build(thin(every, build, rng, keep_at_least=floor))
+    return None
+
+
+def fresh_pattern(
+    size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Pattern (nonogram): a random picture and its run clues, kept if the answer is unique.
+
+    Each cell is filled with probability `1 - open_share`, so a higher `open_share` makes a
+    sparser picture; ambiguous pictures are redrawn, a few hundred times.
+    """
+    if size not in range(3, pattern.LONGEST + 1):
+        raise ValueError(f"fresh Pattern boards are 3 to {pattern.LONGEST} wide")
+    for _ in range(400):
+        cells = [[rng.random() >= open_share for _ in range(size)] for _ in range(size)]
+        rows = [pattern.runs(row) for row in cells]
+        columns = [pattern.runs([cells[r][c] for r in range(size)]) for c in range(size)]
+        lines = _header(comment, "Family: pattern", "Rows:")
+        lines += [" ".join(map(str, clue)) if clue else "0" for clue in rows]
+        lines += ["Columns:"]
+        lines += [" ".join(map(str, clue)) if clue else "0" for clue in columns]
+        text = "\n".join(lines) + "\n"
+        if is_unique(text):
+            return text
+    return None
+
+
+def fresh_map(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new four-colour Map: random connected regions on a `size` x `size` board, thinned givens.
+
+    The regions are carved like Star Battle's. A random proper four-colouring supplies the
+    givens, which are removed one at a time while the answer stays unique; `open_share` is
+    the share of regions to leave uncoloured, at most.
+    """
+    if size not in range(4, mapcolour.BIGGEST + 1):
+        raise ValueError(f"fresh Map boards are 4 to {mapcolour.BIGGEST} wide")
+    for _ in range(200):
+        owner = _carve(size, rng, largest=max(4, size))
+        ids = [f"{chr(97 + i % 26)}{i // 26 or ''}" for i in range(max(owner.values()) + 1)]
+        grid = [[ids[owner[r, c]] for c in range(size)] for r in range(size)]
+        shape = mapcolour.Puzzle(grid, {})
+        touching: dict[str, set[str]] = {region: set() for region in shape.regions}
+        for a, b in shape.borders:
+            touching[a].add(b)
+            touching[b].add(a)
+        colouring: dict[str, str] = {}
+        for region in rng.sample(shape.regions, len(shape.regions)):
+            free = [
+                c for c in mapcolour.COLOURS if all(colouring.get(n) != c for n in touching[region])
+            ]
+            if not free:
+                break
+            colouring[region] = rng.choice(free)
+        else:
+
+            def build(
+                kept: set[str], grid: list[list[str]] = grid, colouring: dict[str, str] = colouring
+            ) -> str:
+                lines = _header(comment, "Family: map", "Regions:")
+                lines += [" ".join(row) for row in grid]
+                lines += ["Givens:", *(f"{region} {colouring[region]}" for region in sorted(kept))]
+                return "\n".join(lines) + "\n"
+
+            everything = set(colouring)
+            if not is_unique(build(everything)):
+                continue
+            floor = max(3, round((1 - open_share) * len(everything)))
+            kept = thin(everything, build, rng, keep_at_least=floor)
+            return build(kept)
+    return None
+
+
+def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
+    """A random domino tiling of a `rows` x `cols` board, by randomised backtracking."""
+    taken: set[Cell] = set()
+    pairs: list[Pair] = []
+
+    def fill(index: int) -> bool:
+        while index < rows * cols and divmod(index, cols) in taken:
+            index += 1
+        if index == rows * cols:
+            return True
+        r, c = divmod(index, cols)
+        options = [((r, c), (r, c + 1)), ((r, c), (r + 1, c))]
+        rng.shuffle(options)
+        for first, second in options:
+            if second[0] < rows and second[1] < cols and second not in taken:
+                taken.update((first, second))
+                pairs.append((first, second))
+                if fill(index + 1):
+                    return True
+                pairs.pop()
+                taken.difference_update((first, second))
+        return False
+
+    fill(0)
+    return pairs
+
+
+def _clue_floor(size: int, open_share: float) -> int:
+    """Border clues to keep: at least `1 - open_share` of the 4 * size slots (more open: harder)."""
+    return max(2, round((1 - open_share) * 4 * size))
+
+
 def fresh(
     family: str,
     size: int,
@@ -840,4 +1735,28 @@ def fresh(
         return fresh_tents(size, rng, comment=comment)
     if family == "battleships":
         return fresh_battleships(size, rng, comment=comment)
+    if family == "towers":
+        return fresh_towers(size, rng, open_share, comment)
+    if family == "mosaic":
+        return fresh_mosaic(size, rng, open_share, comment)
+    if family == "dominosa":
+        return fresh_dominosa(size, rng, comment)
+    if family == "rectangles":
+        return fresh_rectangles(size, rng, open_share, comment, tier)
+    if family == "magnets":
+        return fresh_magnets(size, rng, open_share, comment)
+    if family == "undead":
+        return fresh_undead(size, rng, open_share, comment)
+    if family == "pattern":
+        return fresh_pattern(size, rng, open_share, comment)
+    if family == "map":
+        return fresh_map(size, rng, open_share, comment)
+    if family == "thermometers":
+        return fresh_thermometers(size, rng, open_share, comment)
+    if family in {"hidato", "numbrix"}:
+        return fresh_hidato(family, size, rng, open_share, comment)
+    if family == "kakuro":
+        return fresh_kakuro(size, rng, comment)
+    if family in SUDOKU_VARIANTS:
+        return fresh_sudoku_variant(family, size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

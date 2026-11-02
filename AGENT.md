@@ -318,6 +318,39 @@ direction: the benchmark imports `csp`, never the other way round.
 7. Test against an **independent** source of truth — a published solution,
    the brute force, or a property check (permutation, givens preserved).
    Self-consistency is not verification.
+8. Pitfalls every new family has met, each now covered by a shared tool:
+   - **Assign givens last.** `Model.assign` only propagates through the
+     constraints that exist when it runs, so givens set while the cells are
+     still being declared never reach the line counts or "not both" rules, and
+     the ladder then needs `what_if` for what `single` should do.
+   - **Do not name a module after a builtin** (`map`): call the module
+     `mapcolour` and keep `map` as the family name.
+   - **Section syntax.** `read_sections` takes `Key: value` on one line only
+     before the first block header; every clue line after that is a block
+     (`Top:` alone, numbers on the next line). Docstrings and docs show that form.
+     A line starting with `#` is a comment, so a grid token may never be `#`
+     (blocked cells are `X`); the reader would silently drop the row.
+   - **Variants of an existing family** (Killer, Arrow, ... Sudoku) get their own
+     `Family:` name in `puzzlefile.FAMILY_KINDS` and `collection.FAMILY_LABELS`, so
+     they form separate web and booklet sections without renumbering the base
+     family, and their rules are one shared object (`sudoku.Rule`) that compiler,
+     brute force and picture all read.
+   - **Salt builders that draw a shared object** (a Latin square) with the family
+     name, or one seed gives every variant the same answer grid, and the audit then
+     reports shared solutions. The 4 × 4 Sudoku has only 288 grids, so collisions
+     between small examples still happen: choose another candidate, never edit one.
+   - **Clue numbers on tiles a player can cover** (Mosaic, Dominosa,
+     Rectangles, Map) are drawn inside `with canvas.above():`, which puts them
+     over the player's moves in the web player; clicks pass through.
+   - **Solver variables that are not cells** (domino types, rectangles, map
+     regions) give the web player a cell-level solution through
+     `web.CELL_SOLUTIONS`, and the palette uses registry icons or
+     `svg.swatch`/`svg.pastel`/`svg.MAP_COLOURS`, so the picture, palette and
+     solution agree.
+   - **A family needs a `puzzle-lab fresh` builder** (a random solution, then
+     givens or clues thinned with `fresh.thin` while `is_unique` holds), and
+     `puzzle-lab sweep FAMILY --size N` shows which tiers and grades it reaches
+     before any example is chosen.
 
 For a new family, include small and materially larger original examples and
 check every example for uniqueness and per-step soundness. Add its example and

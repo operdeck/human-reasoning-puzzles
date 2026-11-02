@@ -1,0 +1,19 @@
+# Map 9x9: hard; needs a chain of strong and weak links.
+Family: map
+Regions:
+a a b b b c c d d
+a a b b b c c d d
+a a b b b c e d d
+f f f g g c e d d
+g g g g c c e e e
+h h g g g i e e e
+h h h h i i e j j
+h h h i i k k j j
+k k k k k k k k j
+Givens:
+a red
+d blue
+f green
+g red
+h blue
+j green

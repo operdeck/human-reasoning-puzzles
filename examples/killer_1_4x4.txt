@@ -1,0 +1,11 @@
+# Killer Sudoku 4x4: easy; cage sums with different digits.
+Family: killer
+Givens:
+. . . .
+. . . .
+. . . .
+. 2 . .
+Killer:
+3: r2c3 r2c2
+9: r4c3 r4c2 r3c2
+7: r4c4 r3c4 r3c3

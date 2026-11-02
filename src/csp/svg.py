@@ -10,6 +10,7 @@ and nothing is fetched at render time. `to_png` rasterises with resvg
 (`uv sync --extra png`); building the SVG itself needs only fontTools.
 """
 
+import colorsys
 import json
 import re
 from collections.abc import Iterator, Sequence
@@ -32,6 +33,34 @@ def colour(value: Colour) -> str:
     if isinstance(value, str):
         return value
     return "#{:02x}{:02x}{:02x}".format(*value)
+
+
+def pastel(index: int) -> tuple[int, int, int]:
+    """The `index`-th of an endless run of soft colours; neighbours in the run differ clearly.
+
+    Hues step by the golden ratio, so any number of regions get tints that are apart from
+    each other, and a picture and its palette can agree on which tint is which.
+    """
+    red, green, blue = colorsys.hsv_to_rgb((index * 0.6180339887) % 1, 0.38, 0.97)
+    return round(red * 255), round(green * 255), round(blue * 255)
+
+
+# The four map colours, chosen to stay apart for common colour blindness (see also the labels).
+MAP_COLOURS: dict[str, tuple[int, int, int]] = {
+    "red": (232, 112, 104),
+    "yellow": (246, 214, 96),
+    "green": (126, 198, 130),
+    "blue": (108, 156, 226),
+}
+
+
+def swatch(fill: Colour, size: int = 64) -> str:
+    """A standalone SVG tile of one colour with a darker rim, for palettes."""
+    canvas = Canvas(size, size, background="none")
+    canvas.rounded_rectangle(
+        (3, 3, size - 4, size - 4), size // 6, fill=fill, outline=(90, 90, 90), width=3
+    )
+    return canvas.to_svg()
 
 
 def _n(value: float) -> str:
@@ -113,6 +142,7 @@ class Canvas:
         self._defs: dict[str, str] = {}
         self._body: list[str] = []
         self._cells: list[str] = []
+        self._above: list[str] = []
         self._clips = 0
         self.rectangle((0, -headroom, width - 1, height - 1), fill=background)
 
@@ -122,6 +152,20 @@ class Canvas:
 
     def _add(self, element: str) -> None:
         self._body.append(element)
+
+    @contextmanager
+    def above(self) -> Iterator[None]:
+        """Draw what the block adds on top of everything, the player's moves included.
+
+        The web player puts placed items between the picture and the cell targets, so a
+        clue that must stay readable on a covered cell (a Mosaic number on a black tile)
+        is drawn here. Clicks pass through to the cells below.
+        """
+        body, self._body = self._body, self._above
+        try:
+            yield
+        finally:
+            self._body = body
 
     # --- shapes ---------------------------------------------------------
 
@@ -367,6 +411,11 @@ class Canvas:
     def to_svg(self) -> str:
         defs = "<defs>" + "".join(self._defs.values()) + "</defs>" if self._defs else ""
         cells = '<g class="cells">' + "".join(self._cells) + "</g>" if self._cells else ""
+        above = (
+            '<g class="above" pointer-events="none">' + "\n".join(self._above) + "</g>"
+            if self._above
+            else ""
+        )
         return (
             '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
             f' width="{self.width}" height="{self.height}"'
@@ -376,6 +425,7 @@ class Canvas:
             + "\n".join(self._body)
             + "\n"
             + cells
+            + above
             + "</svg>\n"
         )
 

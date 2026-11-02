@@ -1,0 +1,8 @@
+# Numbrix 5x5: medium; every step is a two-number relation.
+Family: numbrix
+Grid:
+. . 19 20 21
+16 15 . 13 22
+9 10 . 12 .
+8 . . 1 24
+7 6 3 2 X

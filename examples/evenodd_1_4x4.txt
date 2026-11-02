@@ -1,0 +1,12 @@
+# Even/Odd Sudoku 4x4: easy; the parity marks leave single candidates.
+Family: evenodd
+Givens:
+. . . 2
+. 3 . .
+. . . .
+1 . 4 .
+Parity:
+e o o .
+. . . .
+o e . o
+. e e .

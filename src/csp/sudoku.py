@@ -35,6 +35,7 @@ from math import isqrt
 
 from .core import Kind, Model, Step
 from .puzzlefile import read_sections
+from .towers import visible
 
 BLUE = "\033[94m"
 RESET = "\033[0m"
@@ -62,6 +63,70 @@ class Link:
         return first < second
 
 
+RULE_KINDS = ("parity", "arrow", "killer", "sandwich", "skyscraper")
+SUM_RULE_LIMIT = 6  # sandwich and skyscraper lines are relations over a whole line
+
+
+@dataclass(frozen=True)
+class Rule:
+    """A variant rule over a few cells, written once and read by the compiler, the brute force
+    and the pictures alike.
+
+    `kind` says what it means; `clue` is its number (parity 0 even or 1 odd, the sum of an
+    arrow, a killer cage or a sandwich, or how many skyscrapers are seen); `size` is the
+    grid's top digit. Cells are in the order the rule reads them: an arrow's bulb first, a
+    sandwich line left to right or top down, a skyscraper line from the clue's side.
+    """
+
+    kind: str
+    cells: tuple[Cell, ...]
+    clue: int = 0
+    size: int = 9
+
+    @property
+    def label(self) -> str:
+        where = " ".join(cell_name(*cell) for cell in self.cells)
+        return {
+            "parity": f"{where} is {'odd' if self.clue else 'even'}",
+            "arrow": f"arrow {where}: the bulb is the sum of the rest",
+            "killer": f"cage {where} sums to {self.clue}",
+            "sandwich": f"sandwich {where} sums to {self.clue}",
+            "skyscraper": f"{self.clue} skyscrapers seen along {where}",
+        }[self.kind]
+
+    def feasible(self, values: Sequence[int]) -> bool:
+        """False only if `values` (0 where unknown) already break the rule; True when complete
+        and satisfied. Partial answers prune a search without ever rejecting a solution."""
+        known = [v for v in values if v]
+        complete = len(known) == len(values)
+        if self.kind == "parity":
+            return not known or known[0] % 2 == self.clue
+        if self.kind == "arrow":
+            bulb, tail = values[0], [v for v in values[1:] if v]
+            missing = len(values) - 1 - len(tail)
+            if bulb:
+                return sum(tail) + missing <= bulb and (bool(missing) or sum(tail) == bulb)
+            return True
+        if self.kind == "killer":
+            missing = len(values) - len(known)
+            if len(set(known)) != len(known) or sum(known) + missing > self.clue:
+                return False
+            if sum(known) + missing * self.size < self.clue:
+                return False
+            return not complete or sum(known) == self.clue
+        if not complete:
+            return True
+        if self.kind == "sandwich":
+            if 1 not in values or self.size not in values:
+                return False
+            first, last = sorted((values.index(1), values.index(self.size)))
+            return sum(values[first + 1 : last]) == self.clue
+        return visible(values) == self.clue
+
+    def holds(self, *values: int) -> bool:
+        return self.feasible(values)
+
+
 @dataclass(frozen=True)
 class Puzzle:
     """The givens (0 for blank), a box id per cell, and any extra houses: per
@@ -73,6 +138,7 @@ class Puzzle:
     links: tuple[Link, ...] = ()
     anti_knight: bool = False
     anti_king: bool = False
+    rules: tuple[Rule, ...] = ()
 
     @property
     def size(self) -> int:
@@ -156,7 +222,14 @@ def standard_boxes(size: int) -> list[list[str]]:
 def parse(text: str) -> Puzzle:
     """Read a Sudoku grid and optional house, adjacency, and peer rules."""
     section = read_sections(text)
-    variant_sections = {"Kropki", "Consecutive", "Thermometers", "AntiKnight", "AntiKing"}
+    variant_sections = {
+        "Kropki",
+        "Consecutive",
+        "Thermometers",
+        "AntiKnight",
+        "AntiKing",
+        *RULE_SECTIONS,
+    }
     if "Givens" not in section:
         if section.keys() & variant_sections:
             raise ValueError("variant rules require a Givens: section")
@@ -170,10 +243,11 @@ def parse(text: str) -> Puzzle:
     links = _variant_links(section, size)
     anti_knight = _flag(section, "AntiKnight")
     anti_king = _flag(section, "AntiKing")
+    rules = _variant_rules(section, size)
     if "Boxes" not in section:
         if size not in (4, 9):
             raise ValueError(f"grid has {size} rows; without Boxes: it must be 4 or 9")
-        return Puzzle(grid, standard_boxes(size), extra, links, anti_knight, anti_king)
+        return Puzzle(grid, standard_boxes(size), extra, links, anti_knight, anti_king, rules)
     boxes = [line.split() for line in section["Boxes"]]
     if not 4 <= size <= 9:
         raise ValueError(f"a jigsaw grid is 4 to 9 cells wide, not {size}")
@@ -182,7 +256,7 @@ def parse(text: str) -> Puzzle:
     sizes = {box: sum(row.count(box) for row in boxes) for row in boxes for box in row}
     if len(sizes) != size or set(sizes.values()) != {size}:
         raise ValueError(f"Boxes needs {size} boxes of {size} cells, got {sorted(sizes.items())}")
-    return Puzzle(grid, boxes, extra, links, anti_knight, anti_king)
+    return Puzzle(grid, boxes, extra, links, anti_knight, anti_king, rules)
 
 
 def _flag(section: dict[str, list[str]], name: str) -> bool:
@@ -236,6 +310,88 @@ def _variant_links(section: dict[str, list[str]], size: int) -> tuple[Link, ...]
             raise ValueError(f"thermometer {line!r} has non-neighbouring cells")
         links.update(Link("less", first, second) for first, second in pairwise(cells))
     return tuple(sorted(links, key=lambda link: (link.kind, link.first, link.second)))
+
+
+RULE_SECTIONS = (
+    "Parity",
+    "Arrows",
+    "Killer",
+    "SandwichRows",
+    "SandwichColumns",
+    "SkyscraperTop",
+    "SkyscraperBottom",
+    "SkyscraperLeft",
+    "SkyscraperRight",
+)
+
+
+def _variant_rules(section: dict[str, list[str]], size: int) -> tuple[Rule, ...]:
+    """Read the sections of Even/Odd, Arrow, Killer, Sandwich and Skyscraper Sudoku."""
+    rules: list[Rule] = []
+    if "Parity" in section:
+        rows = [line.split() for line in section["Parity"]]
+        if len(rows) != size or any(len(row) != size for row in rows):
+            raise ValueError(f"Parity is not {size}x{size}")
+        for r, row in enumerate(rows):
+            for c, token in enumerate(row):
+                if token not in {".", "e", "o"}:
+                    raise ValueError(
+                        f"Parity cells are '.', 'e' (even) or 'o' (odd), not {token!r}"
+                    )
+                if token != ".":
+                    rules.append(Rule("parity", ((r, c),), int(token == "o"), size))
+    for line in section.get("Arrows", []):
+        cells = tuple(_cell(token, size) for token in line.split())
+        if not 3 <= len(cells) <= 4 or len(set(cells)) != len(cells):
+            raise ValueError(f"bad arrow {line!r}: a bulb and 2 or 3 distinct arrow cells")
+        if any(max(abs(a[0] - b[0]), abs(a[1] - b[1])) != 1 for a, b in pairwise(cells)):
+            raise ValueError(f"arrow {line!r} must be a path of touching cells")
+        rules.append(Rule("arrow", cells, 0, size))
+    taken: set[Cell] = set()
+    for line in section.get("Killer", []):
+        head, _, tail = line.partition(":")
+        cells = tuple(_cell(token, size) for token in tail.split())
+        if not head.strip().isdigit() or not 2 <= len(cells) <= 4 or len(set(cells)) != len(cells):
+            raise ValueError(f"bad cage {line!r}, expected 'sum: r1c1 r1c2' with 2 to 4 cells")
+        if taken & set(cells):
+            raise ValueError(f"cage {line!r} overlaps another cage")
+        taken.update(cells)
+        rules.append(Rule("killer", cells, int(head), size))
+    if size > SUM_RULE_LIMIT and any(
+        name in section for name in RULE_SECTIONS if name.startswith(("Sandwich", "Skyscraper"))
+    ):
+        raise ValueError(f"sandwich and skyscraper clues need a grid of {SUM_RULE_LIMIT} or less")
+    for name, lines_of in (("SandwichRows", "row"), ("SandwichColumns", "col")):
+        if name in section:
+            for i, clue in enumerate(_clue_line(section[name], size, name)):
+                if clue >= 0:
+                    path = (
+                        [(i, c) for c in range(size)]
+                        if lines_of == "row"
+                        else [(r, i) for r in range(size)]
+                    )
+                    rules.append(Rule("sandwich", tuple(path), clue, size))
+    for side in ("Top", "Bottom", "Left", "Right"):
+        name = f"Skyscraper{side}"
+        if name in section:
+            for i, clue in enumerate(_clue_line(section[name], size, name)):
+                if clue < 0:
+                    continue
+                if side in ("Top", "Bottom"):
+                    path = [(r, i) for r in range(size)]
+                else:
+                    path = [(i, c) for c in range(size)]
+                if side in ("Bottom", "Right"):
+                    path.reverse()
+                rules.append(Rule("skyscraper", tuple(path), clue, size))
+    return tuple(rules)
+
+
+def _clue_line(lines: Sequence[str], size: int, name: str) -> list[int]:
+    tokens = [t for line in lines for t in line.split()]
+    if len(tokens) != size or any(t != "." and not t.isdigit() for t in tokens):
+        raise ValueError(f"{name}: expected {size} numbers or '.'")
+    return [-1 if t == "." else int(t) for t in tokens]
 
 
 def _extra(lines: Sequence[str], size: int) -> list[list[str]]:
@@ -312,6 +468,9 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
             (cell_name(*link.first), cell_name(*link.second)),
             link.holds,
         )
+
+    for rule in puzzle.rules:
+        model.relate(rule.label, [cell_name(*cell) for cell in rule.cells], rule.holds)
 
     for row, col in cells:
         given = puzzle.grid[row][col]

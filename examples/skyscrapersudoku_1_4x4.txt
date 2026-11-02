@@ -1,0 +1,15 @@
+# Skyscraper Sudoku 4x4: easy; the visible-tower counts as line relations.
+Family: skyscrapersudoku
+Givens:
+. . . .
+. . . .
+. . . .
+. . . .
+SkyscraperBottom:
+3 . . 2
+SkyscraperLeft:
+1 3 . 3
+SkyscraperRight:
+. 1 3 .
+SkyscraperTop:
+. . 3 .

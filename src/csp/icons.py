@@ -47,6 +47,57 @@ def _star() -> str:
     return f'<polygon points="{" ".join(points)}" fill="currentColor"/>'
 
 
+def _domino_half(turn: int) -> str:
+    """The left half of an ivory domino (its partner on the right), turned `turn` degrees.
+
+    Two halves placed side by side join into one domino: the open edge has no outline.
+    """
+    return (
+        f'<g transform="rotate({turn} 50 50)">'
+        '<path d="M100 8H26A18 18 0 0 0 8 26V74A18 18 0 0 0 26 92H100Z" fill="#f6efd9"/>'
+        '<path d="M100 8H26A18 18 0 0 0 8 26V74A18 18 0 0 0 26 92H100" fill="none"'
+        ' stroke="#6b5a3a" stroke-width="5" stroke-linejoin="round"/>'
+        '<path d="M100 26V74" stroke="#6b5a3a" stroke-width="4" stroke-linecap="round"/></g>'
+    )
+
+
+def _magnet_pole(fill: str, rim: str, sign: str) -> str:
+    """A rounded tile in a pole colour with a white sign on it."""
+    return (
+        f'<rect x="8" y="8" width="84" height="84" rx="16" fill="{fill}" stroke="{rim}"'
+        f' stroke-width="5"/><g fill="#fff">{sign}</g>'
+    )
+
+
+MAGNET_PLUS = _magnet_pole(
+    "#d8453f", "#8e2420", '<rect x="43" y="22" width="14" height="56"/>'
+    '<rect x="22" y="43" width="56" height="14"/>'
+)  # fmt: skip
+MAGNET_MINUS = _magnet_pole("#3f6fd8", "#24428e", '<rect x="22" y="43" width="56" height="14"/>')
+# A bead of red thermometer mercury with a small highlight.
+MERCURY_DROP = (
+    '<circle cx="50" cy="50" r="34" fill="#d6363e" stroke="#8c1f25" stroke-width="5"/>'
+    '<circle cx="39" cy="38" r="9" fill="#f4a3a8"/>'
+)
+MAGNET_NEUTRAL = (
+    '<rect x="8" y="8" width="84" height="84" rx="16" fill="#d4d4d4" stroke="#8a8a8a"'
+    ' stroke-width="5"/><path d="M30 70L70 30" stroke="#8a8a8a" stroke-width="9"'
+    ' stroke-linecap="round"/>'
+)
+
+
+def _mirror(slash: bool) -> str:
+    """A pale glass tile with a silvered diagonal; `/` when `slash`, else `\\`."""
+    bar = "M18 82L82 18" if slash else "M18 18L82 82"
+    shine = "M26 88L88 26" if slash else "M12 26L74 88"
+    return (
+        '<rect x="6" y="6" width="88" height="88" rx="10" fill="#e8f2fa" stroke="#9db8cf"'
+        ' stroke-width="4"/>'
+        f'<path d="{bar}" stroke="#5f86ad" stroke-width="13" stroke-linecap="round"/>'
+        f'<path d="{shine}" stroke="#fff" stroke-width="3" stroke-opacity="0.9"/>'
+    )
+
+
 CROWN = (
     '<g fill="currentColor"><polygon points="20,75 10,25 33.3,50 50,12.5 66.7,50 90,25 80,75"/>'
     '<rect x="20" y="75" width="60" height="6"/><rect x="25" y="83.3" width="50" height="7.7"/>'
@@ -437,6 +488,9 @@ SHAPES = {
     "dot_black": f'<circle cx="50" cy="50" r="47" {FILL}/>',
     "check": f'<polyline points="18,52 40,74 82,28" {LINE} stroke-width="12"/>',
     "cross": f'<path d="M24 24L76 76M76 24L24 76" {LINE} stroke-width="12"/>',
+    # A castle tower with battlements and a doorway; used for Towers edge clues.
+    "tower": f'<path {FILL} fill-rule="evenodd" d="M22 94V22h12v14h10V22h12v14h10V22h12v72z'
+    'M44 94V74a6 6 0 0 1 12 0v20z"/>',
 }
 
 # name, Unicode fallback, label, and either a vendored emoji or the drawing.
@@ -454,6 +508,20 @@ REGISTRY: dict[str, Icon] = {
         Icon("bulb", "\u25cf", "bulb", emoji="1f4a1"),
         Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
         Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
+        Icon("tower", "\u2656", "tower", markup=SHAPES["tower"]),
+        Icon("ghost", "\U0001f47b", "ghost", emoji="1f47b"),
+        Icon("vampire", "\U0001f9db", "vampire", emoji="1f9db"),
+        Icon("zombie", "\U0001f9df", "zombie", emoji="1f9df"),
+        Icon("mirror_slash", "/", "mirror /", markup=_mirror(True)),
+        Icon("mirror_backslash", "\\", "mirror \\", markup=_mirror(False)),
+        Icon("magnet_plus", "+", "plus pole", markup=MAGNET_PLUS),
+        Icon("magnet_minus", "-", "minus pole", markup=MAGNET_MINUS),
+        Icon("magnet_neutral", "o", "neutral", markup=MAGNET_NEUTRAL),
+        Icon("mercury", "●", "mercury", markup=MERCURY_DROP),
+        Icon("domino_left", "\u258c", "left half of a domino", markup=_domino_half(0)),
+        Icon("domino_top", "\u2580", "top half of a domino", markup=_domino_half(90)),
+        Icon("domino_right", "\u2590", "right half of a domino", markup=_domino_half(180)),
+        Icon("domino_bottom", "\u2584", "bottom half of a domino", markup=_domino_half(270)),
         Icon("water", "\u00b7", "water", markup=SHAPES["water"]),
         *(
             Icon(name, fallback, label, markup=SHAPES[name])

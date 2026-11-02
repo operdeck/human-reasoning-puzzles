@@ -21,19 +21,30 @@ from . import (
     bruteforce,
     calcudoku,
     collection,
+    dominosa,
     futoshiki,
+    hidato,
     icons,
     kakurasu,
+    kakuro,
     logicgrid,
+    magnets,
+    mapcolour,
     minesweeper,
+    mosaic,
     murdoku,
+    pattern,
     picture,
+    rectangles,
     report,
     starbattle,
     story,
     sudoku,
     suguru,
     tents,
+    thermometers,
+    towers,
+    undead,
     web,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
@@ -101,6 +112,39 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "thermometers":
+        model, thermometers_puzzle = thermometers.compile_puzzle(text)
+        return Puzzle(kind, model, partial(thermometers.render, thermometers_puzzle))
+    if kind == "hidato":
+        model, hidato_puzzle = hidato.compile_puzzle(text)
+        return Puzzle(kind, model, partial(hidato.render, hidato_puzzle))
+    if kind == "kakuro":
+        model, kakuro_puzzle = kakuro.compile_puzzle(text)
+        return Puzzle(kind, model, partial(kakuro.render, kakuro_puzzle))
+    if kind == "map":
+        model, map_puzzle = mapcolour.compile_puzzle(text)
+        return Puzzle(kind, model, partial(mapcolour.render, map_puzzle))
+    if kind == "pattern":
+        model, pattern_puzzle = pattern.compile_puzzle(text)
+        return Puzzle(kind, model, partial(pattern.render, pattern_puzzle))
+    if kind == "undead":
+        model, undead_puzzle = undead.compile_puzzle(text)
+        return Puzzle(kind, model, partial(undead.render, undead_puzzle))
+    if kind == "magnets":
+        model, magnets_puzzle = magnets.compile_puzzle(text)
+        return Puzzle(kind, model, partial(magnets.render, magnets_puzzle))
+    if kind == "rectangles":
+        model, rectangles_puzzle = rectangles.compile_puzzle(text)
+        return Puzzle(kind, model, partial(rectangles.render, rectangles_puzzle))
+    if kind == "dominosa":
+        model, dominosa_puzzle = dominosa.compile_puzzle(text)
+        return Puzzle(kind, model, partial(dominosa.render, dominosa_puzzle))
+    if kind == "mosaic":
+        model, mosaic_puzzle = mosaic.compile_puzzle(text)
+        return Puzzle(kind, model, partial(mosaic.render, mosaic_puzzle))
+    if kind == "towers":
+        model, towers_puzzle = towers.compile_puzzle(text)
+        return Puzzle(kind, model, partial(towers.render, towers_puzzle))
     if kind == "battleships":
         model, battleships_puzzle = battleships.compile_puzzle(text)
         return Puzzle(kind, model, partial(battleships.render, battleships_puzzle))
@@ -207,6 +251,17 @@ def make_image(
         "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "map": (mapcolour.parse, picture.map_picture),
+        "kakuro": (kakuro.parse, picture.kakuro_picture),
+        "hidato": (hidato.parse, picture.hidato_picture),
+        "thermometers": (thermometers.parse, picture.thermometers_picture),
+        "pattern": (pattern.parse, picture.pattern_picture),
+        "undead": (undead.parse, picture.undead_picture),
+        "magnets": (magnets.parse, picture.magnets_picture),
+        "rectangles": (rectangles.parse, picture.rectangles_picture),
+        "dominosa": (dominosa.parse, picture.dominosa_picture),
+        "mosaic": (mosaic.parse, picture.mosaic_picture),
+        "towers": (towers.parse, picture.towers_picture),
         "battleships": (battleships.parse, picture.battleships_picture),
         "logicgrid": (logicgrid.parse, picture.logicgrid_picture),
         "sudoku": (sudoku.parse, picture.sudoku_picture),
@@ -676,16 +731,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _expand_patterns(patterns: Sequence[str]) -> list[Path] | None:
-    """Existing paths as given; anything else is a glob pattern. None if one matches nothing."""
+    """Existing paths as given; anything else is a glob spec. None if one matches nothing."""
     found: list[Path] = []
-    for pattern in patterns:
-        if Path(pattern).exists():
-            matches = [pattern]
-        else:
-            matches = sorted(glob.glob(pattern, recursive=True))
+    for spec in patterns:
+        matches = [spec] if Path(spec).exists() else sorted(glob.glob(spec, recursive=True))
         files = [Path(match) for match in matches if Path(match).is_file()]
         if not files:
-            print(f"no such file: {pattern}", file=sys.stderr)
+            print(f"no such file: {spec}", file=sys.stderr)
             return None
         found.extend(files)
     return found

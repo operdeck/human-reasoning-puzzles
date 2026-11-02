@@ -1,0 +1,10 @@
+# Kakuro 7x7: medium; a larger grid of the same run relations.
+Family: kakuro
+Grid:
+X X X X X 17\ 9\
+X 3\ 15\ X \10 . .
+\4 . . 17\ \16 . .
+\18 . . . 4\ X X
+X \12 . . . 7\ 9\
+X X \17 . . . .
+X X X X \4 . .

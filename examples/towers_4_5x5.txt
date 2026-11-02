@@ -1,0 +1,17 @@
+# Towers 5x5: hard; needs a chain of strong and weak links.
+Family: towers
+Size: 5
+Top:
+2 4 3 1 2
+Bottom:
+3 . 3 . 2
+Left:
+. 1 . 2 2
+Right:
+2 . 2 1 .
+Givens:
+. . . . .
+. . . . .
+. . . . 2
+. . . . .
+. . . . .
