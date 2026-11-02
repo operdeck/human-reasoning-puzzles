@@ -4,7 +4,7 @@ Shares only `sudoku.Puzzle.houses()`, the definition of what a Sudoku
 requires, with the engine's compiler.
 """
 
-from ..sudoku import Cell, Link, cell_name, parse
+from ..sudoku import Cell, Link, Rule, cell_name, parse
 
 type Grid = list[list[int]]
 type Peers = dict[Cell, list[Cell]]
@@ -22,9 +22,20 @@ def solutions(text: str, limit: int = 2) -> list[dict[str, int]]:
         peers.setdefault(second, []).append(first)
     if not _givens_consistent(grid, peers, puzzle.links):
         return []
+    rules: dict[Cell, list[Rule]] = {}
+    for rule in puzzle.rules:
+        for cell in rule.cells:
+            rules.setdefault(cell, []).append(rule)
+    if not all(_rule_ok(grid, rule) for rule in puzzle.rules):
+        return []
     found: list[dict[str, int]] = []
-    _search(grid, peers, puzzle.links, found, limit)
+    _search(grid, peers, puzzle.links, rules, found, limit)
     return found
+
+
+def _rule_ok(grid: Grid, rule: Rule) -> bool:
+    """Whether the variant rule can still hold given the digits placed in its cells."""
+    return rule.feasible([grid[r][c] for r, c in rule.cells])
 
 
 def _candidates(grid: Grid, peers: Peers, r: int, c: int) -> list[int]:
@@ -55,7 +66,12 @@ def _links_consistent(grid: Grid, links: tuple[Link, ...]) -> bool:
 
 
 def _search(
-    grid: Grid, peers: Peers, links: tuple[Link, ...], found: list[dict[str, int]], limit: int
+    grid: Grid,
+    peers: Peers,
+    links: tuple[Link, ...],
+    rules: dict[Cell, list[Rule]],
+    found: list[dict[str, int]],
+    limit: int,
 ) -> None:
     size = len(grid)
     best: tuple[int, int, list[int]] | None = None
@@ -71,8 +87,10 @@ def _search(
     r, c, options = best
     for d in options:
         grid[r][c] = d
-        if _links_consistent(grid, links):
-            _search(grid, peers, links, found, limit)
+        if _links_consistent(grid, links) and all(
+            _rule_ok(grid, rule) for rule in rules.get((r, c), [])
+        ):
+            _search(grid, peers, links, rules, found, limit)
         grid[r][c] = 0
         if len(found) >= limit:
             return

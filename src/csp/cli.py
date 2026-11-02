@@ -23,8 +23,10 @@ from . import (
     collection,
     dominosa,
     futoshiki,
+    hidato,
     icons,
     kakurasu,
+    kakuro,
     logicgrid,
     magnets,
     mapcolour,
@@ -113,6 +115,12 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "thermometers":
         model, thermometers_puzzle = thermometers.compile_puzzle(text)
         return Puzzle(kind, model, partial(thermometers.render, thermometers_puzzle))
+    if kind == "hidato":
+        model, hidato_puzzle = hidato.compile_puzzle(text)
+        return Puzzle(kind, model, partial(hidato.render, hidato_puzzle))
+    if kind == "kakuro":
+        model, kakuro_puzzle = kakuro.compile_puzzle(text)
+        return Puzzle(kind, model, partial(kakuro.render, kakuro_puzzle))
     if kind == "map":
         model, map_puzzle = mapcolour.compile_puzzle(text)
         return Puzzle(kind, model, partial(mapcolour.render, map_puzzle))
@@ -244,6 +252,8 @@ def make_image(
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
         "map": (mapcolour.parse, picture.map_picture),
+        "kakuro": (kakuro.parse, picture.kakuro_picture),
+        "hidato": (hidato.parse, picture.hidato_picture),
         "thermometers": (thermometers.parse, picture.thermometers_picture),
         "pattern": (pattern.parse, picture.pattern_picture),
         "undead": (undead.parse, picture.undead_picture),

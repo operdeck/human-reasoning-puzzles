@@ -22,6 +22,28 @@ TIERS = {
     "medium": frozenset({"relations", "subsumption", "cover2"}),
     "hard": frozenset({"cover3", "chains", "what_if"}),
 }
+# Families whose clues are all relations, so they grade `relations` whatever their size; a board
+# with at most 16 variables rates easy and a larger one medium.
+SMALL_RELATION_FAMILIES = frozenset(
+    {
+        "calcudoku",
+        "kakurasu",
+        "tango",
+        "towers",
+        "pattern",
+        "magnets",
+        "undead",
+        "thermometers",
+        "kakuro",
+        "hidato",
+        "numbrix",
+        "killer",
+        "arrow",
+        "evenodd",
+        "sandwich",
+        "skyscrapersudoku",
+    }
+)
 # A board with fewer open cells than this share is a prefilled exercise, not a puzzle.
 PREFILLED_OPEN_SHARE = 0.25
 
@@ -70,20 +92,7 @@ def rate(text: str, path: str = "<memory>") -> Rating:
     board_size = int(variable_count**0.5)
     open_share = initial_open / max(1, variable_count)
     if grade == "relations" and (
-        (
-            family
-            in {
-                "calcudoku",
-                "kakurasu",
-                "tango",
-                "towers",
-                "pattern",
-                "magnets",
-                "undead",
-                "thermometers",
-            }
-            and variable_count <= 16
-        )
+        (family in SMALL_RELATION_FAMILIES and variable_count <= 16)
         or (family == "logicgrid" and variable_count <= 9)
     ):
         tier = "easy"
