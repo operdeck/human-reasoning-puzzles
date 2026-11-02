@@ -1,0 +1,7 @@
+# Hidato 4x4: easy; consecutive numbers touch, corners included.
+Family: hidato
+Grid:
+15 12 . 1
+14 . . .
+8 . 5 3
+. . . X
