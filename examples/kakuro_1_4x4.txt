@@ -1,0 +1,7 @@
+# Kakuro 4x4: easy; short runs of distinct digits.
+Family: kakuro
+Grid:
+X 12\ 10\ 24\
+\21 . . .
+\11 . . .
+X \14 . .
