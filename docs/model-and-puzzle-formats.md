@@ -40,9 +40,8 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | Calcudoku | Cell | Sudoku rows/columns plus one arithmetic relation per cage. |
 | Futoshiki | Cell | Latin-square rows/columns plus one order relation per sign. |
 | Murdoku | Person | One square per person; at most one person per square, row, and column; clue predicates are relations/counts. |
-| Queens-style | Region | One cell per region; exactly one queen per row/column; at most one per 2×2 window. |
 | Tectonic / Suguru | Cell | Domain 1 through the size of its region; each value exactly once per region; equal values at most once in every eight-neighbor pair. |
-| Star Battle | Cell | Boolean star/empty; exact star counts per row, column, and region; at most one star in each 2×2 window. |
+| Queens / Star Battle | Region for one star; cell for multiple stars | One star: one cell per region, row, and column, with at most one queen per 2×2 window. Multiple stars: Boolean star/empty cells, exact counts per row, column, and region, and at most one star per 2×2 window. One star uses the Queens name and queen piece. |
 | Zebra logic grid | Item | Each item chooses one position; each category has exactly one item per position; pair clues are relations. |
 | Binairo / Tango | Cell | Boolean cell; half of each value per row/column; no three equal in a window; all rows and columns differ. Tango adds equal/different relations. |
 | Tents and Trees | Cell | Boolean tent/empty; row/column counts; exactly one orthogonal tent neighbor per tree; tents do not touch, including diagonally. |
@@ -104,11 +103,12 @@ AntiKing:
 
 ## Region-grid formats
 
-Queens, Suguru/Tectonic, and Star Battle share the basic region-grid shape:
+Queens and Star Battle share one region-grid family and format; Suguru/Tectonic uses the same basic region-grid shape:
 
 ```text
-Family: queens
+Family: starbattle
 Size: 4
+Stars: 1
 Regions:
 a: amber
 b: blue
@@ -123,34 +123,24 @@ d d d d
 
 `Grid:` contains one declared region ID per cell. The family validates its own region count and size requirements. Examples in `examples/` are the executable specifications.
 
-### Queens-style
+### Queens and Star Battle
 
-There must be N regions on an N×N board; each is one connected area of any size from one cell up (a one-cell region fixes its queen at once). The solver places one queen in every region, row, and column, with at most one queen in every 2×2 window. Optional `Givens:` lines are `region rNcN`, for example `a r1c2`. A queen in any of the eight neighboring cells counts as touching. Unlike a chess queen, nothing reaches further than one step: only the eight neighbors are off limits.
+`Family: starbattle` is the canonical family and requires `Stars:` to state how many pieces go in each row, column, and region. With `Stars: 1`, the puzzle is presented as **Queens**, with a queen icon and the rule text "Place one queen in every row, column and region; queens may not touch, not even diagonally." With `Stars: 2` or more it is presented as **Star Battle**, with a star icon. Pieces may not touch, including diagonally; unlike a chess queen, nothing reaches further than one step.
 
-`Family: queens` is the sole family name for these rules. An optional `Icon:`
-section (`queen`, `dog` or `puppy`) can change the piece in pictures and text
-boards, but is cosmetic: it does not create another family, rule set or gallery
-section. All published Queens examples use queens. Each region has its own
-colour when the board fits the palette, regardless of the piece.
+`Family: queens` remains a compatibility alias for `Family: starbattle` with one star. Old Queens givens written as `region rNcN` are accepted; new files use the `Stars:` count and matrix `Givens:` (`?` unknown, `.` empty, `*` a piece). There must be N connected regions on an N×N board, each large enough to hold its star count. Region colours are shared by both displays.
 
-The six gallery boards run from easy 4x4 and 5x5 (`single`), through medium
-7x7 and 8x8 (`subsumption`) and 9x9 (`cover2`), to a hard 4x4 (`chains`).
-Published and freshly generated Queens boards have at least two cells per
-region: a one-cell region gives away its queen. The easy boards and the 9x9
-use one explicit given queen each; the 7x7, 8x8 and hard 4x4 have no givens.
-`puzzle-lab fresh queens --tier easy` uses one visible starter rather than
-a singleton region, and still checks the requested tier and uniqueness.
+Published and freshly generated one-star Queens boards have at least two
+cells per region: a one-cell region gives away its queen. The easy boards and
+the 9x9 use one explicit given queen each; the 7x7, 8x8 and hard 4x4 have no
+givens. `puzzle-lab fresh starbattle --stars 1 --tier easy` makes one-star
+Queens; the compatibility command `fresh queens` uses the same generator.
 The hard board needs chains, not the `what_if` step formerly stated in its
-comment. All are independently unique; the collection audit compares
+comment. All examples are independently unique; the collection audit compares
 solutions together with their region maps.
 
 ### Tectonic / Suguru
 
 `Family:` is `suguru` or the alias `tectonic`. Add an optional N×N `Givens:` section of `.` or values. A cell's domain is 1 through the size of its region; each value appears once in that region, and equal values may not occupy cells that touch by side or corner.
-
-### Star Battle
-
-`Family: starbattle` requires one integer in `Stars:`. That many stars must appear in every row, column, and region; stars may not touch, including diagonally. Optional `Givens:` uses `?` for unknown, `.` for known empty, and `*` for a star. There must be N regions on an N×N board; each is one connected area with at least as many cells as `Stars:`, and sizes may differ. A board needs at least 8×8 for two stars and 12×12 for three, because stars may not touch.
 
 ## Zebra-style logic grids
 
@@ -258,7 +248,7 @@ Every Murdoku booklet puzzle page and web player rules panel also includes a gen
 
 Pass a glob (quoted) such as `"examples/**/*.txt"` to put every matching puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own numbered page, after a clickable table of contents. The order comes from `collection.arrange`: Murdoku first, grouped by category — the folder below the matched files' common folder, so `examples/japanese-food/` is "Japanese food" and `demo` leads — then the other families; within a group files sort naturally (`6x6` before `12x12`). The web player's index uses the same numbers and sections.
 
-Puzzles of other families (sudoku, queens, tents, …) are included generically: title (`Title:` or the file name), the family rules (including every active Sudoku variant), the board, and on a separate solution page the solved board with the solver's placement steps. A mixed glob such as `"examples/**/*.txt"` therefore works.
+Puzzles of other families (sudoku, starbattle, tents, …) are included generically: title (`Title:` or the file name), the family rules (including every active Sudoku variant), the board, and on a separate solution page the solved board with the solver's placement steps. A mixed glob such as `"examples/**/*.txt"` therefore works.
 
 Needs `uv sync --extra docx` (python-docx, plus fonttools and resvg for the pictures).
 
@@ -307,11 +297,14 @@ coverage as well as a tier, for example `--tier hard --grade cover3`.
 If no candidate matches both requirements, they fail without writing a file.
 `search` reports every rated puzzle's `deductive` field — whether the ladder
 closes it without `what_if` — and `--deductive` keeps only the ones it does.
-`fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
-Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
-and Tents, then removes givens while the solution stays unique. Battleships
+`fresh` builds a brand-new board and solution for Binairo, Tango, Suguru,
+Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle (including the
+one-star Queens presentation), and Tents, then removes givens while the
+solution stays unique. Battleships
 builds a non-touching fleet on 4x4, 6x6, 8x8 or 10x10, derives its line totals,
 and removes shaped givens while the answer stays unique.
+Use `--stars 1` for the Queens presentation, or `--stars 2` (the default on
+boards of size 8 and larger) for a multi-star Star Battle.
 Boards with under a quarter of their cells open rate `trivial`. `audit`
 reports examples that share a solution or a layout (up to rotation,
 reflection and renamed regions) and gallery sections that are not listed from
