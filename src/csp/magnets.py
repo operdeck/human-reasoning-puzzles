@@ -10,10 +10,14 @@ polarity.
     Dominoes:
     a a b c
     ...
-    PlusTop: 1 . 2 1
-    PlusLeft: 1 2 . 1
-    MinusBottom: ...
-    MinusRight: ...
+    PlusTop:
+    1 . 2 1
+    PlusLeft:
+    1 2 . 1
+    MinusBottom:
+    ...
+    MinusRight:
+    ...
     Givens:          # optional, '+', '-', '0' or '.'
 
 `.` in a clue line means no clue. Boards are square.
