@@ -1,0 +1,18 @@
+# Undead 5x5: hard; closed only by trying a monster and refuting it (no deduction path).
+Family: undead
+Grid:
+\ . . . .
+. / . . .
+\ . . / .
+. . . . .
+. / . \ \
+Counts:
+5 6 7
+Top:
+1 2 . 3 3
+Bottom:
+2 . 4 1 .
+Left:
+4 1 2 . 6
+Right:
+. 4 . 2 2
