@@ -188,7 +188,7 @@ def fetch(source: Source, *, force: bool = False) -> list[Path]:
     for name, url in source.files:
         path = cache_dir(source.name) / name
         known = entries.get(relative(path))
-        if force or known is None or path.stat().st_size != known.get("bytes"):
+        if force or known is None or not path.exists() or path.stat().st_size != known.get("bytes"):
             known = _download(url, path)
             entries[relative(path)] = known
         paths.append(path)

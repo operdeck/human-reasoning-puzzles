@@ -9,6 +9,7 @@ and that the engine never looks back at the benchmark.
 import csv
 import hashlib
 import signal
+import time
 from pathlib import Path
 from typing import NamedTuple
 
@@ -233,6 +234,18 @@ def test_fetch_caches_once_and_remembers_where_it_came_from(tmp_path, monkeypatc
     assert corpus.read_manifest()["local/puzzles.txt"]["bytes"] == len(SOLVED) + 1
 
 
+def test_fetch_redownloads_a_cached_file_that_was_deleted(tmp_path, monkeypatch):
+    monkeypatch.setattr(corpus, "CACHE", tmp_path / "cache")
+    original = tmp_path / "puzzles.txt"
+    original.write_text(PUZZLE + "\n")
+    source = corpus.Source("local", "grid-lines", (("puzzles.txt", original.as_uri()),))
+    cached = corpus.fetch(source)[0]
+
+    cached.unlink()
+    assert corpus.fetch(source) == [cached]
+    assert cached.read_text() == PUZZLE + "\n"
+
+
 def test_sample_names_say_where_a_sample_came_from():
     grouped = corpus.sample_name(corpus.SUDOKU_EXTREME, 500, 42, "group")
     assert grouped == "sample-sudoku-extreme-group-500-42.csv"
@@ -347,6 +360,29 @@ def test_measure_gives_up_at_its_time_limit():
     outcome = bench.measure(job)
     assert outcome.timed_out
     assert not outcome.solved
+    assert outcome.grade == "timeout"
+
+
+def test_measure_time_limit_covers_generating_an_answer(monkeypatch):
+    job = bench.Job(
+        0,
+        "tiny.txt",
+        "easy",
+        None,
+        "sudoku",
+        corpus.grid(PUZZLE),
+        None,
+        "full",
+        0.01,
+    )
+
+    def slow_oracle(*args, **kwargs):
+        time.sleep(0.1)
+        return []
+
+    monkeypatch.setattr(bench.bruteforce, "solutions", slow_oracle)
+    outcome = bench.measure(job)
+    assert outcome.timed_out
     assert outcome.grade == "timeout"
 
 
@@ -514,6 +550,19 @@ def test_report_says_so_when_nothing_went_wrong():
     text = bench.report([_outcome()], title="clean", ladder="full", timeout=30)
     assert "Empty: every puzzle was solved" in text
     assert "Failure index" in text
+
+
+def test_report_handles_a_run_where_every_puzzle_timed_out():
+    timed_out = _outcome(
+        grade="timeout",
+        solved=False,
+        agrees=False,
+        timed_out=True,
+        ms=30_000.0,
+    )
+    text = bench.report([timed_out], title="all timed out", ladder="full", timeout=30)
+    assert "Time where it finished: median n/a ms, p90 n/a ms, max n/a ms" in text
+    assert "timed out: 1" in text
 
 
 def test_csv_rows_are_flat_and_hold_no_puzzle_text(tmp_path):
