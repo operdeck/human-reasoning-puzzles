@@ -869,30 +869,36 @@ def fresh_towers(size: int, rng: random.Random, open_share: float, comment: str 
 def fresh_mosaic(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
     """A new Mosaic: a random colouring, every window count, then counts thinned.
 
-    The first `1 - open_share` of the numbered cells stay however unique the board is, so a
-    larger `open_share` asks for fewer clues and a harder puzzle.
+    A colouring whose full set of counts still leaves two answers is redrawn. At least
+    `1 - open_share` of the cells keep their number, so a larger `open_share` asks for
+    fewer clues and a harder puzzle.
     """
     if size not in mosaic.SIZES:
         raise ValueError(f"fresh Mosaic boards are {mosaic.SIZES.start} to {mosaic.SIZES[-1]} wide")
-    black = {cell for cell in _cells(size) if rng.random() < 0.5}
     template = mosaic.Puzzle([[None] * size for _ in range(size)])
+    for _ in range(50):
+        black = {cell for cell in _cells(size) if rng.random() < 0.5}
+        build = partial(_mosaic_text, template, black, size, comment)
+        everything = set(_cells(size))
+        if not is_unique(build(everything)):
+            continue
+        floor = round((1 - open_share) * size * size)
+        return build(thin(everything, build, rng, keep_at_least=floor))
+    return None
 
-    def build(clues: set[Cell]) -> str:
-        rows = [
-            " ".join(
-                str(sum(near in black for near in template.window((r, c))))
-                if (r, c) in clues
-                else "."
-                for c in range(size)
-            )
-            for r in range(size)
-        ]
-        return (
-            "\n".join(_header(comment, "Family: mosaic", f"Size: {size}", "Clues:", *rows)) + "\n"
+
+def _mosaic_text(
+    template: mosaic.Puzzle, black: set[Cell], size: int, comment: str, clues: set[Cell]
+) -> str:
+    """A Mosaic file for the colouring `black`, stating the window count of each cell in `clues`."""
+    rows = [
+        " ".join(
+            str(sum(near in black for near in template.window((r, c)))) if (r, c) in clues else "."
+            for c in range(size)
         )
-
-    kept = thin(_cells(size), build, rng, keep_at_least=round((1 - open_share) * size * size * 0.5))
-    return build(kept) if is_unique(build(kept)) else None
+        for r in range(size)
+    ]
+    return "\n".join(_header(comment, "Family: mosaic", f"Size: {size}", "Clues:", *rows)) + "\n"
 
 
 def fresh_dominosa(size: int, rng: random.Random, comment: str = "") -> str | None:
@@ -991,7 +997,12 @@ def fresh_magnets(
                 break
         if len(pole) < size * size:
             continue
-        names = {cell: f"d{i}" for i, pair in enumerate(pairs) for cell in pair}
+        # Two-letter ids, so the collection audit can compare layouts up to renaming.
+        names = {
+            cell: f"{chr(97 + i // 26)}{chr(97 + i % 26)}"
+            for i, pair in enumerate(pairs)
+            for cell in pair
+        }
         counts = {
             "PlusTop": [sum(pole[r, c] == "+" for r in range(size)) for c in range(size)],
             "MinusBottom": [sum(pole[r, c] == "-" for r in range(size)) for c in range(size)],
@@ -1026,7 +1037,7 @@ def fresh_magnets(
         while not is_unique(build(every, givens)):
             givens.add(spare.pop())
         givens = thin(givens, partial(build, every), rng)
-        floor = max(2, round((1 - open_share) * 2 * size))
+        floor = _clue_floor(size, open_share)
         kept = thin(every, partial(build, givens=givens), rng, keep_at_least=floor)
         return build(kept, givens)
     return None
@@ -1073,7 +1084,7 @@ def fresh_undead(size: int, rng: random.Random, open_share: float, comment: str 
 
         if not is_unique(build(every)):
             continue
-        floor = max(2, round((1 - open_share) * 2 * size))
+        floor = _clue_floor(size, open_share)
         return build(thin(every, build, rng, keep_at_least=floor))
     return None
 
@@ -1174,8 +1185,8 @@ def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
 
 
 def _clue_floor(size: int, open_share: float) -> int:
-    """Edge clues to keep at least: more open cells ask for fewer, so a harder puzzle."""
-    return max(2, round((1 - open_share) * 2 * size))
+    """Border clues to keep at least: `1 - open_share` of the 4 * size slots; more open is harder."""
+    return max(2, round((1 - open_share) * 4 * size))
 
 
 def fresh(

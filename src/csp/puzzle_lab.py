@@ -70,7 +70,10 @@ def rate(text: str, path: str = "<memory>") -> Rating:
     board_size = int(variable_count**0.5)
     open_share = initial_open / max(1, variable_count)
     if grade == "relations" and (
-        (family in {"calcudoku", "kakurasu", "tango", "towers"} and variable_count <= 16)
+        (
+            family in {"calcudoku", "kakurasu", "tango", "towers", "pattern", "magnets", "undead"}
+            and variable_count <= 16
+        )
         or (family == "logicgrid" and variable_count <= 9)
     ):
         tier = "easy"
@@ -793,6 +796,33 @@ def _fresh_command(args: argparse.Namespace) -> int:
     return 1
 
 
+def _sweep_command(args: argparse.Namespace) -> int:
+    """Rate a run of fresh candidates, one seed each, and count them by tier and grade."""
+    counts: Counter[str] = Counter()
+    for seed in range(args.seed, args.seed + args.count):
+        try:
+            candidate = fresh.fresh(
+                args.family, args.size, random.Random(seed), args.open_share, tier="easy"
+            )
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        if candidate is None:
+            counts["none"] += 1
+            continue
+        result = rate(candidate, f"sweep {args.family} seed {seed}")
+        label = f"{result.tier}/{result.grade}" + ("" if result.deductive else " (what_if)")
+        counts[label] += 1
+        print(f"seed {seed}: {label}", flush=True)
+        if args.save:
+            folder = Path(args.save)
+            folder.mkdir(parents=True, exist_ok=True)
+            name = f"{args.family}_{args.size}_{result.tier}_{result.grade}_{seed}.txt"
+            (folder / name).write_text(candidate)
+    print(", ".join(f"{label}: {number}" for label, number in sorted(counts.items())))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -852,6 +882,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     fresh_parser.add_argument("--attempts", type=int, default=10)
     fresh_parser.add_argument("--stars", type=int, help="stars per row, column, and region")
     fresh_parser.set_defaults(run=_fresh_command)
+
+    sweep_parser = commands.add_parser(
+        "sweep",
+        help="rate a run of fresh boards (one seed each) and count the tiers and grades they reach",
+    )
+    sweep_parser.add_argument("family", choices=fresh.FAMILIES)
+    sweep_parser.add_argument("--size", type=int, required=True)
+    sweep_parser.add_argument("--open-share", type=float, default=0.5)
+    sweep_parser.add_argument("--seed", type=int, default=0, help="first seed; one board per seed")
+    sweep_parser.add_argument("--count", type=int, default=20, help="how many seeds to try")
+    sweep_parser.add_argument(
+        "--save", help="write every board to this folder, named by size, tier, grade and seed"
+    )
+    sweep_parser.set_defaults(run=_sweep_command)
 
     audit_parser = commands.add_parser(
         "audit",
