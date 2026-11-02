@@ -1,6 +1,7 @@
 # Queens 8x8: medium, no givens or single-cell regions (seed 13808).
-Family: queens
+Family: starbattle
 Size: 8
+Stars: 1
 Regions:
 a: amber
 b: blue

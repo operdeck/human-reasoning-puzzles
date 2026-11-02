@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
 
-from . import battleships, sudoku
+from . import battleships, starbattle, sudoku
 from .core import Kind, Model, Solver, Step
 from .murdoku import (
     COUNTING,
@@ -545,6 +545,17 @@ PEER_RULE_LABELS = {
 
 def family_rules(text: str, kind: str) -> list[str]:
     """Player-facing rules from the same parsed variant semantics as the solver."""
+    if kind == "starbattle":
+        star_battle = starbattle.parse(text)
+        if star_battle.stars == 1:
+            return [
+                "Place one queen in every row, column and region; queens may not touch, "
+                "not even diagonally."
+            ]
+        return [
+            "Place stars so each row, column and region holds the same number; "
+            "stars may not touch, not even diagonally."
+        ]
     if kind == "battleships":
         fleet_puzzle = battleships.parse(text)
         language = Wording.read(text).language
@@ -579,18 +590,18 @@ def family_rules(text: str, kind: str) -> list[str]:
     if kind != "sudoku":
         display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
         return [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])]
-    puzzle = sudoku.parse(text)
+    sudoku_puzzle = sudoku.parse(text)
     words = SUDOKU_RULES[Wording.read(text).language]
     rules = [words["base"]]
-    if puzzle.jigsaw:
+    if sudoku_puzzle.jigsaw:
         rules.append(words["jigsaw"])
-    if puzzle.extra_houses():
+    if sudoku_puzzle.extra_houses():
         rules.append(words["extra"])
-    if puzzle.anti_knight:
+    if sudoku_puzzle.anti_knight:
         rules.append(words["anti_knight"])
-    if puzzle.anti_king:
+    if sudoku_puzzle.anti_king:
         rules.append(words["anti_king"])
-    kinds = {link.kind for link in puzzle.links}
+    kinds = {link.kind for link in sudoku_puzzle.links}
     for kind in ("white", "black", "consecutive", "less"):
         if kind in kinds:
             rules.append(words[kind])
@@ -606,12 +617,8 @@ FAMILY_RULES = {
     "digits combine to its target with its operation.",
     "futoshiki": "Fill the grid so no digit repeats in a row or column and every "
     "inequality sign between neighbouring cells holds.",
-    "queens": "Place one queen in every row, column and region; queens may not touch, "
-    "not even diagonally.",
     "suguru": "Fill every region of n cells with 1..n; equal digits may not touch, "
     "not even diagonally.",
-    "starbattle": "Place stars so each row, column and region holds the same number; "
-    "stars may not touch, not even diagonally.",
     "binairo": "Fill the grid with two symbols: no three equal in a row or column, "
     "each row and column has equally many of each, and no two rows or columns are identical.",
     "tango": "Follow the Binairo rules; = signs join equal neighbouring cells and x signs "

@@ -28,7 +28,6 @@ from . import (
     minesweeper,
     murdoku,
     picture,
-    queens,
     report,
     starbattle,
     story,
@@ -38,7 +37,14 @@ from . import (
     web,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
-from .puzzlefile import KINDS, detect, language_of, load_board, load_presentation, read_sections
+from .puzzlefile import (
+    KINDS,
+    detect,
+    display_family,
+    language_of,
+    load_board,
+    load_presentation,
+)
 
 _PNG_DEFAULT = object()
 _DOCX_DEFAULT = object()
@@ -60,6 +66,8 @@ class Puzzle:
 
 def load(text: str, kind: str) -> Puzzle:
     """Compile puzzle text of the given kind. Raises ValueError if malformed."""
+    if kind == "queens":
+        kind = "starbattle"
     if kind == "sudoku":
         model, layout = sudoku.compile_puzzle(text)
         return Puzzle(kind, model, partial(sudoku.render, layout))
@@ -69,9 +77,6 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "futoshiki":
         model, signs = futoshiki.compile_puzzle(text)
         return Puzzle(kind, model, partial(futoshiki.render, signs))
-    if kind == "queens":
-        model, queens_puzzle = queens.compile_puzzle(text)
-        return Puzzle(kind, model, partial(queens.render, queens_puzzle))
     if kind == "suguru":
         model, suguru_puzzle = suguru.compile_puzzle(text)
         return Puzzle(kind, model, partial(suguru.render, suguru_puzzle))
@@ -191,8 +196,10 @@ def make_image(
     """
     from . import picture
 
+    if kind == "queens":
+        kind = "starbattle"
+
     families: dict[str, tuple[Callable[[str], Any], Callable[..., Any]]] = {
-        "queens": (queens.parse, picture.queens_picture),
         "suguru": (suguru.parse, picture.suguru_picture),
         "starbattle": (starbattle.parse, picture.starbattle_picture),
         "binairo": (binairo.parse, picture.binairo_picture),
@@ -412,10 +419,7 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True) -> int:
     try:
         listing = collection.arrange(
             {file: detect(text) for file, text in texts.items()},
-            {
-                file: (read_sections(text).get("Family") or [detect(text)])[0].casefold()
-                for file, text in texts.items()
-            },
+            {file: display_family(text, detect(text)) for file, text in texts.items()},
         )
     except ValueError as exc:
         print(f"could not read a puzzle: {exc}", file=sys.stderr)
@@ -482,10 +486,7 @@ def _export(files: list[Path], out: Path) -> int:
         except ValueError as exc:
             print(f"could not export {file.name}: {exc}", file=sys.stderr)
             failed.append(file.name)
-    family_names = {
-        file: (read_sections(texts[file]).get("Family") or [kind])[0].casefold()
-        for file, kind in kinds.items()
-    }
+    family_names = {file: display_family(texts[file], kind) for file, kind in kinds.items()}
     for listed in collection.arrange(kinds, family_names):
         file, kind, text = listed.path, listed.kind, texts[listed.path]
         try:

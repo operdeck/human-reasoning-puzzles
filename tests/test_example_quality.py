@@ -7,13 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from csp import audit, calcudoku, queens
+from csp import audit, calcudoku, starbattle
 from csp.collection import arrange
 from csp.puzzle_lab import Rating, family_of, rate
 from csp.puzzlefile import detect
 from tests.examples import played_examples
 
-QUEENS_FILES = [path for path in played_examples() if detect(path.read_text()) == "queens"]
+QUEENS_FILES = [
+    path
+    for path in played_examples()
+    if detect(path.read_text()) == "starbattle" and family_of(path.read_text()) == "queens"
+]
 CALCUDOKU_FILES = [path for path in played_examples() if detect(path.read_text()) == "calcudoku"]
 
 
@@ -65,9 +69,9 @@ def test_the_documented_example_count_matches_the_collection():
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
 def test_queens_examples_use_the_piece_of_their_family(path):
     text = path.read_text()
-    puzzle = queens.parse(text)
+    puzzle = starbattle.parse(text)
     assert puzzle.icon == "queen"
-    assert all(len(cells) >= 2 for cells in puzzle.cells_by_region.values())
+    assert all(len(cells) >= 2 for cells in puzzle.areas.cells_by_region.values())
     assert path.name.split("_")[0] == family_of(text)
 
 

@@ -30,7 +30,6 @@ KINDS = (
     "murdoku",
     "calcudoku",
     "futoshiki",
-    "queens",
     "suguru",
     "logicgrid",
     "starbattle",
@@ -43,7 +42,7 @@ KINDS = (
 )
 
 FAMILY_KINDS = {
-    "queens": "queens",
+    "queens": "starbattle",
     "suguru": "suguru",
     "tectonic": "suguru",
     "logicgrid": "logicgrid",
@@ -74,6 +73,21 @@ def detect(text: str) -> str:
     if "Signs" in section:
         return "futoshiki"
     return "murdoku" if "Regions" in section else "sudoku"
+
+
+def display_family(text: str, kind: str | None = None) -> str:
+    """Display aliases separately where a canonical family has distinct variants."""
+    section = read_sections(text)
+    if "Family" not in section:
+        return kind or detect(text)
+    family = section["Family"][0].casefold()
+    if family == "queens":
+        return "queens"
+    if family == "starbattle":
+        stars = section.get("Stars", [])
+        if len(stars) == 1 and stars[0].isdigit() and int(stars[0]) == 1:
+            return "queens"
+    return family
 
 
 def language_of(text: str) -> str:

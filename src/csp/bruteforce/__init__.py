@@ -28,7 +28,6 @@ from . import (
     logicgrid,
     minesweeper,
     murdoku,
-    queens,
     starbattle,
     sudoku,
     suguru,
@@ -38,7 +37,7 @@ from . import (
 SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "sudoku": sudoku.solutions,
     "murdoku": murdoku.solutions,
-    "queens": queens.solutions,
+    "queens": starbattle.solutions,
     "suguru": suguru.solutions,
     "logicgrid": logicgrid.solutions,
     "starbattle": starbattle.solutions,

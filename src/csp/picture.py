@@ -44,9 +44,8 @@ from .logicgrid import Puzzle as LogicGrid
 from .minesweeper import Puzzle as Minesweeper
 from .minesweeper import cell_name as minesweeper_cell
 from .murdoku import Board, GlobalCountCondition, Square
-from .queens import Cell as QueensCell
-from .queens import Puzzle as Queens
 from .starbattle import Puzzle as StarBattle
+from .starbattle import cell_assignment as starbattle_cell_assignment
 from .starbattle import cell_name as starbattle_cell
 from .sudoku import Puzzle as Sudoku
 from .sudoku import box_size
@@ -579,47 +578,6 @@ def futoshiki_picture(
     )
 
 
-def queens_picture(
-    puzzle: Queens,
-    solution: Mapping[str, QueensCell] | None = None,
-    *,
-    cell: int = 100,
-    interactive: bool = False,
-) -> Canvas:
-    """Draw region colours and the placed queens (or dogs) in blue.
-
-    `puzzle.icon` picks the piece from the registry: a crown, a dog or a puppy.
-    """
-    n = puzzle.size
-    margin = cell // 2
-    side = n * cell
-    canvas = Canvas(side + 2 * margin, side + 2 * margin)
-    region_at = {(r, c): puzzle.grid[r][c] for r in range(n) for c in range(n)}
-    fills = _group_fills(region_at)
-    if n <= len(PALETTE):
-        # A region keeps its own colour regardless of the cosmetic piece.
-        fills = {region: _rgb(PALETTE[i]) for i, region in enumerate(puzzle.region_ids)}
-    for (row, col), region in region_at.items():
-        x, y = margin + col * cell, margin + row * cell
-        canvas.rectangle((x, y, x + cell, y + cell), fill=fills[region])
-    _walls(canvas, n, margin, cell, lambda a, b: region_at[a] == region_at[b], thin_colour=THIN)
-
-    def piece(queen: QueensCell, colour: RGB) -> None:
-        x, y = margin + queen.col * cell, margin + queen.row * cell
-        icons.draw(canvas, puzzle.icon, (x, y, x + cell, y + cell), tint=colour, stretch=True)
-
-    given_cells = set(puzzle.givens.values())
-    for queen in given_cells:
-        piece(queen, INK)
-    for queen in ({} if interactive else solution or {}).values():
-        if queen not in given_cells:
-            piece(queen, SOLVED)
-    _coordinates(canvas, n, margin, cell)
-    if interactive:
-        _cells(canvas, n, margin, margin, cell)
-    return canvas
-
-
 def suguru_picture(
     puzzle: Suguru,
     solution: Mapping[str, int] | None = None,
@@ -652,7 +610,7 @@ def suguru_picture(
 
 def starbattle_picture(
     puzzle: StarBattle,
-    solution: Mapping[str, bool] | None = None,
+    solution: Mapping[str, Any] | None = None,
     *,
     cell: int = 100,
     interactive: bool = False,
@@ -662,14 +620,18 @@ def starbattle_picture(
         (r, c): puzzle.areas.cells[r][c] for r in range(puzzle.size) for c in range(puzzle.size)
     }
     fills = _group_fills(region_at)
-    solution = None if interactive else solution
-    star = Mark("star", 0.62)
+    if puzzle.stars == 1 and puzzle.size <= len(PALETTE):
+        fills = {region: _rgb(PALETTE[index]) for index, region in enumerate(puzzle.areas.names)}
+    solution = (
+        None if interactive or solution is None else starbattle_cell_assignment(puzzle, solution)
+    )
+    piece = Mark(puzzle.icon, 0.62)
 
     def mark(row: int, col: int) -> tuple[Value, RGB]:
         if puzzle.givens[row][col] == 1:
-            return star, INK
+            return piece, INK
         if solution is not None and solution.get(starbattle_cell((row, col))):
-            return star, SOLVED
+            return piece, SOLVED
         return None, INK
 
     return _number_grid(
