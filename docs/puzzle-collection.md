@@ -70,7 +70,7 @@ changes do not create another family or gallery section.
 | Towers | [`towers_1_4x4.txt`](../examples/towers_1_4x4.txt) (`relations`) | [`towers_2_5x5.txt`](../examples/towers_2_5x5.txt), [`towers_3_6x6.txt`](../examples/towers_3_6x6.txt) (`relations`) | [`towers_4_5x5.txt`](../examples/towers_4_5x5.txt) (`chains`) |
 | Mosaic | [`mosaic_1_5x5.txt`](../examples/mosaic_1_5x5.txt) (`count`) | [`mosaic_2_5x5.txt`](../examples/mosaic_2_5x5.txt) (`subsumption`), [`mosaic_3_6x6.txt`](../examples/mosaic_3_6x6.txt) (`cover2`) | [`mosaic_4_8x8.txt`](../examples/mosaic_4_8x8.txt) (`cover3`) |
 | Dominosa | [`dominosa_1_5x6.txt`](../examples/dominosa_1_5x6.txt) (`single`) | [`dominosa_2_6x7.txt`](../examples/dominosa_2_6x7.txt) (`subsumption`), [`dominosa_3_7x8.txt`](../examples/dominosa_3_7x8.txt) (`cover2`) | [`dominosa_4_6x7.txt`](../examples/dominosa_4_6x7.txt) (`cover3`), [`dominosa_5_7x8.txt`](../examples/dominosa_5_7x8.txt) (`chains`) |
-| Rectangles | [`rectangles_1_5x5.txt`](../examples/rectangles_1_5x5.txt), [`rectangles_2_9x9.txt`](../examples/rectangles_2_9x9.txt) (`single`) | [`rectangles_3_9x9.txt`](../examples/rectangles_3_9x9.txt), [`rectangles_4_14x14.txt`](../examples/rectangles_4_14x14.txt) (`subsumption`) | — |
+| Rectangles | [`rectangles_1_5x5.txt`](../examples/rectangles_1_5x5.txt), [`rectangles_2_9x9.txt`](../examples/rectangles_2_9x9.txt) (`single`) | [`rectangles_3_9x9.txt`](../examples/rectangles_3_9x9.txt), [`rectangles_4_14x14.txt`](../examples/rectangles_4_14x14.txt) (`subsumption`) | [`rectangles_5_9x9.txt`](../examples/rectangles_5_9x9.txt) (`cover3`), [`rectangles_6_9x9.txt`](../examples/rectangles_6_9x9.txt) (`chains`) |
 | Magnets | [`magnets_1_4x4.txt`](../examples/magnets_1_4x4.txt) (`relations`) | [`magnets_2_6x6.txt`](../examples/magnets_2_6x6.txt) (`relations`), [`magnets_3_6x6.txt`](../examples/magnets_3_6x6.txt) (`cover2`) | [`magnets_4_6x6.txt`](../examples/magnets_4_6x6.txt) (`cover3`) |
 | Undead | [`undead_1_4x4.txt`](../examples/undead_1_4x4.txt) (`relations`) | [`undead_2_5x5.txt`](../examples/undead_2_5x5.txt) (`relations`) | [`undead_3_5x5.txt`](../examples/undead_3_5x5.txt) (`what_if`) |
 | Pattern (nonogram) | [`pattern_1_4x4.txt`](../examples/pattern_1_4x4.txt) (`relations`) | [`pattern_2_8x8.txt`](../examples/pattern_2_8x8.txt), [`pattern_3_12x12.txt`](../examples/pattern_3_12x12.txt) (`relations`) | [`pattern_4_10x10.txt`](../examples/pattern_4_10x10.txt) (`what_if`) |
@@ -98,10 +98,15 @@ that never fires on a family's boards is not claimed. Measured with
   one of a hundred 5 × 5 boards; the rest of the hard boards close only with `what_if`.
 - **Undead and Pattern** have no board between `relations` and `what_if` in the sweeps, so
   their hard boards (`undead_3_5x5`, `pattern_4_10x10`) are beyond deduction and flagged.
-- **Rectangles** has no hard board: random partitions of 5 × 5 to 16 × 16 grids reach only
-  `single` and `subsumption`, even when the builder moves numbers about to leave more
-  candidate rectangles. **Map** has no medium board: its boards need `single` or jump to
-  `chains`. These two cells are marked `—` and are not filled by hand.
+- **Rectangles**: random partitions reach only `single` and `subsumption`, so its hard
+  boards come from `puzzle-lab fresh rectangles --tier hard` (module `csp.climb`), which
+  starts from a unique board and moves numbers, merges and splits pieces, keeping only
+  unique, ladder-solved boards whose hardest rule does not fall, until the grade is hard.
+  Two of six seeds on 9 × 9 reached `cover3` and `chains`; the rest needed `what_if`.
+- **Map** has no medium board, and cannot have one on this engine: its rules are pairwise
+  `AT_MOST_ONE` constraints, so `subsumption` and `cover2` find nothing to combine and the
+  ladder goes from `single` straight to `chains`. A walk over several hundred unique boards
+  visited only `single`. The cell is `—` and stays so until a core rule changes that.
 - Relation-only boards of 16 or fewer variables rate easy, as for Kakurasu and Tango, so
   the 4 × 4 boards of Towers, Magnets, Undead and Pattern are easy even though their grade
   is `relations`.
@@ -136,7 +141,7 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-11 of the 128 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+11 of the 130 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
 `tents_3_4x4`, `calcudoku_6_6x6`, `undead_3_5x5`, `pattern_4_10x10`,
 `food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
 `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
@@ -179,7 +184,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Towers | Each height once per row and column; an edge clue counts the visible towers. | 4×4 to 6×6, `relations` and `chains` |
 | Mosaic | Colour cells black or white; a number counts the black cells in its 3×3 window. | 5×5 to 8×8, `count` to `cover3` |
 | Dominosa | Cover the grid with dominoes, every pair of numbers used once. | 5×6 to 7×8, `single` to `chains` |
-| Rectangles | Divide the grid into rectangles, each with one number equal to its area. | 5×5 to 14×14, `single` and `subsumption` |
+| Rectangles | Divide the grid into rectangles, each with one number equal to its area. | 5×5 to 14×14, `single` to `chains` |
 | Magnets | Each domino is a magnet or neutral; line counts per pole; touching poles differ. | 4×4 and 6×6, `relations` to `cover3` |
 | Undead | Monsters in every empty cell, counted along sight lines that bend at mirrors. | 4×4 and 5×5, `relations` and `what_if` |
 | Pattern | Fill cells to match the run lengths of each row and column. | 4×4 to 12×12, `relations` and `what_if` |

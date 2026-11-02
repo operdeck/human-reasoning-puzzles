@@ -802,7 +802,7 @@ def _sweep_command(args: argparse.Namespace) -> int:
     for seed in range(args.seed, args.seed + args.count):
         try:
             candidate = fresh.fresh(
-                args.family, args.size, random.Random(seed), args.open_share, tier="easy"
+                args.family, args.size, random.Random(seed), args.open_share, tier=args.tier
             )
         except ValueError as error:
             print(str(error), file=sys.stderr)
@@ -892,6 +892,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     sweep_parser.add_argument("--open-share", type=float, default=0.5)
     sweep_parser.add_argument("--seed", type=int, default=0, help="first seed; one board per seed")
     sweep_parser.add_argument("--count", type=int, default=20, help="how many seeds to try")
+    sweep_parser.add_argument(
+        "--tier",
+        choices=tuple(TIERS),
+        default="easy",
+        help="ask the builder for this tier (Rectangles hard runs a difficulty search)",
+    )
     sweep_parser.add_argument(
         "--save", help="write every board to this folder, named by size, tier, grade and seed"
     )
