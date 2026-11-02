@@ -102,7 +102,8 @@ class Step:
     cover). `placing` is the var=value whose placement ruled this one out.
     `trail` holds what_if's steps from the assumption to the contradiction.
     `chain` holds a chain's literals as (var, value), start first: false,
-    true, false, ... alternately, ending on one that must then be true.
+    true, false, ... alternately, ending on one that must then be true; a
+    wing's is its pivot then its two helpers, all carrying the excluded value.
     """
 
     var: str
@@ -955,6 +956,150 @@ class _Links:
         return path[::-1]
 
 
+def rule_wing(model: Model) -> bool:
+    """Rule out a value that a three-option pivot and its two helpers exclude.
+
+    A `pivot` variable has exactly the live options x, y and z; two further
+    variables `first` and `second` have exactly the options {x, z} and
+    {y, z}. The pivot cannot take x where `first` does, and cannot take y
+    where `second` does - each a "not both true" link from a shared
+    constraint or relation. Then at least one of pivot=z, first=z and
+    second=z holds: if the pivot is not z it is x, which keeps `first` off x
+    and so forces first=z, or it is y, which likewise forces second=z. So
+    any variable that cannot take z alongside all three - one linked "not
+    both true" to each of pivot=z, first=z and second=z - cannot take z
+    either.
+
+    Sound for any model, resting only on "not both true" links. It reaches a
+    deduction `rule_chains` cannot, because the pivot has three options
+    rather than the two an alternating chain assumes; in Sudoku it is the
+    XYZ-Wing and the helpers are its wings.
+    """
+    links = _Links(model)
+    by_values: dict[frozenset[Any], list[str]] = {}
+    for var in model.variables:
+        if model.chosen(var) is not None:
+            continue
+        values = frozenset(model.value_of(lit) for lit in model.options(var))
+        if len(values) in (2, 3):
+            by_values.setdefault(values, []).append(var)
+
+    triples = sorted(
+        (values for values in by_values if len(values) == 3),
+        key=lambda values: sorted(map(repr, values)),
+    )
+    for pivot_values in triples:
+        for pivot in by_values[pivot_values]:
+            for z in sorted(pivot_values, key=repr):
+                x, y = sorted(pivot_values - {z}, key=repr)
+                abandons_x = links.weak.get(model.literal(pivot, x), ())
+                abandons_y = links.weak.get(model.literal(pivot, y), ())
+                for first in by_values.get(frozenset((x, z)), ()):
+                    if model.literal(first, x) not in abandons_x:
+                        continue
+                    for second in by_values.get(frozenset((y, z)), ()):
+                        if model.literal(second, y) not in abandons_y:
+                            continue
+                        found = _wing_exclusions(model, links, pivot, z, first, second)
+                        if not found:
+                            continue
+                        chain = ((pivot, z), (first, z), (second, z))
+                        for lit, sources in found:
+                            reason = _wing_reason(model, pivot, first, second, z, lit)
+                            model.eliminate(lit, "wing", reason, sources=sources, chain=chain)
+                        return True
+    return False
+
+
+def follow_wing(model: Model, chain: Sequence[LiteralId], links: "_Links | None" = None) -> bool:
+    """Rule out what the XYZ-Wing a logged step recorded excludes.
+
+    `chain` is pivot=z, first=z and second=z, all carrying the same value; the
+    deduction is repeated only while both helper links hold and every option
+    is still open. Whether anything was ruled out.
+    """
+    links = links or _Links(model)
+    if len(chain) != 3:
+        return False
+    pivot_z, first_z, second_z = chain
+    z = model.value_of(pivot_z)
+    if model.value_of(first_z) != z or model.value_of(second_z) != z:
+        return False
+    pivot, first, second = model.var_of(pivot_z), model.var_of(first_z), model.var_of(second_z)
+    found = _wing_exclusions(model, links, pivot, z, first, second)
+    if not found:
+        return False
+    pairs = tuple((model.var_of(lit), model.value_of(lit)) for lit in chain)
+    for lit, sources in found:
+        reason = _wing_reason(model, pivot, first, second, z, lit)
+        model.eliminate(lit, "wing", reason, sources=sources, chain=pairs)
+    return True
+
+
+def _wing_reason(
+    model: Model, pivot: str, first: str, second: str, z: Any, victim: LiteralId
+) -> str:
+    """The engine's sentence for one option a wing excludes."""
+    three = ", ".join(model.describe(model.literal(var, z)) for var in (pivot, first, second))
+    return f"one of {three} holds, and each excludes {model.describe(victim)}"
+
+
+def _wing_exclusions(
+    model: Model, links: "_Links", pivot: str, z: Any, first: str, second: str
+) -> list[tuple[LiteralId, tuple[str, ...]]]:
+    """The options this pivot and its two helpers exclude, with their sources.
+
+    Empty unless the pivot holds exactly z plus the helpers' other values and
+    both helper links still hold; otherwise one (option, why) pair per option.
+    """
+    x, y = _sole_other(model, first, z), _sole_other(model, second, z)
+    if x is None or y is None:
+        return []
+    if frozenset(model.value_of(lit) for lit in model.options(pivot)) != frozenset((z, x, y)):
+        return []
+    if model.literal(first, x) not in links.weak.get(model.literal(pivot, x), ()):
+        return []
+    if model.literal(second, y) not in links.weak.get(model.literal(pivot, y), ()):
+        return []
+    pivot_z, first_z, second_z = (model.literal(var, z) for var in (pivot, first, second))
+    if any(model.is_false(lit) for lit in (pivot_z, first_z, second_z)):
+        return []
+    shared = (
+        links.weak.get(pivot_z, set())
+        & links.weak.get(first_z, set())
+        & links.weak.get(second_z, set())
+    )
+    found: list[tuple[LiteralId, tuple[str, ...]]] = []
+    for lit in sorted(shared, key=repr):
+        if (
+            model.value_of(lit) != z
+            or lit in (pivot_z, first_z, second_z)
+            or model.is_false(lit)
+            or model.is_true(lit)
+        ):
+            continue
+        sources = tuple(
+            dict.fromkeys(
+                links.why[frozenset(pair)]
+                for pair in (
+                    (model.literal(pivot, x), model.literal(first, x)),
+                    (model.literal(pivot, y), model.literal(second, y)),
+                    (lit, pivot_z),
+                    (lit, first_z),
+                    (lit, second_z),
+                )
+            )
+        )
+        found.append((lit, sources))
+    return found
+
+
+def _sole_other(model: Model, var: str, value: Any) -> Any | None:
+    """The one other live option of a two-option variable, else None."""
+    others = [model.value_of(lit) for lit in model.options(var) if model.value_of(lit) != value]
+    return others[0] if len(others) == 1 else None
+
+
 def rule_what_if(model: Model) -> bool:
     """Assume a literal on a copy; if the cheap rules then contradict, it is false.
 
@@ -1018,6 +1163,7 @@ DEFAULT_RULES: tuple[Rule, ...] = (
     Rule("cover2", rule_cover(2)),
     Rule("cover3", rule_cover(3)),
     Rule("chains", rule_chains),
+    Rule("wing", rule_wing),
     Rule("what_if", rule_what_if),
 )
 

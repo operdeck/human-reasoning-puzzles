@@ -27,9 +27,10 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | `subsumption` | Use the remaining capacity of an outer constraint when an inner constraint requires another true literal. |
 | `cover2`, `cover3` | Combine disjoint inner constraints whose guaranteed demand fills an outer constraint's remaining capacity. |
 | `chains` | Follow strong/weak links from counts and two-variable relations; a contradiction or paired weak links can eliminate a value. |
+| `wing` | A three-option pivot and two two-option helpers force their shared value into one of them, so any option linked "not both true" to all three is false (Sudoku's XYZ-Wing). |
 | `what_if` | On a model copy, assume a value and run only `single`, `count`, `relations`, and `subsumption`; a contradiction proves the assumption false. |
 
-`--grade` reports the hardest rule actually used, or `unsolved` if the deduction ladder stalls. It is a measure of this solver's deductions, not a universal human difficulty rating.
+`--grade` reports the hardest rule actually used, or `unsolved` if the deduction ladder stalls. It is a measure of this solver's deductions, not a universal human difficulty rating. Because `what_if` is the ladder's last rung, a grade below it also proves that rung never fired: the same ladder without it finishes the puzzle. `report.beyond_deduction` and the `deductive` field that `puzzle-lab` and the web export carry are that distinction, `false` exactly for puzzles no deduction path closes — the collection's beyond-deduction frontier.
 
 ## Family mappings
 
@@ -288,6 +289,7 @@ uv run csp examples/<family-example>.txt --svg board.svg
 uv run csp examples/<family-example>.txt --png board.png
 uv run puzzle-lab rate examples/<family-example>.txt --json
 uv run puzzle-lab search examples --family tango --tier hard
+uv run puzzle-lab search examples --tier hard --deductive
 uv run puzzle-lab audit examples
 uv run puzzle-lab generate examples/tents_1_8x8.txt --tier medium \
   --seed 42 --attempts 100 --output /tmp/tents-medium.txt
@@ -303,6 +305,8 @@ candidate that misses the requested tier; it keeps the seed's solution.
 Both `generate` and `fresh` accept optional `--grade` for exact technique
 coverage as well as a tier, for example `--tier hard --grade cover3`.
 If no candidate matches both requirements, they fail without writing a file.
+`search` reports every rated puzzle's `deductive` field — whether the ladder
+closes it without `what_if` — and `--deductive` keeps only the ones it does.
 `fresh` builds a brand-new board and solution for Binairo, Tango, Queens,
 Suguru, Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle
 and Tents, then removes givens while the solution stays unique. Battleships
@@ -335,7 +339,7 @@ src/csp/
 	cli.py         family dispatch and shared solver options
 tests/           engine, family, soundness, layering, and picture tests
 examples/        small and larger unique examples for each family
-benchmark/       seeded Sudoku and cross-family benchmark programs
+benchmark/       seeded, external-corpus and cross-family benchmark programs
 ```
 
 The project verification commands are:
@@ -361,7 +365,7 @@ Players can disable this feedback with the Warnings toggle beside Auto-mark.
 Warnings default to on, including for previously saved games; each puzzle saves
 the choice independently of auto-mark, and clearing the board preserves it.
 
-`--export DIR` writes, per puzzle, `<stem>.svg` (the interactive board) and `<stem>.json`, plus `DIR/index.json` (`schema`, `license`, and one entry per puzzle with `id`, `number`, `section`, `title`, `family`, `familyLabel`, `size`, `grade`, `playable`, in reading order). `number` and `section` (bundles carry them too) come from `collection.arrange`, as in the booklet. A bundle holds `size` `[rows, cols]`; `palette` (items with `id`, `label`, `symbol`, optional `svg` and `description`); `placement` (`perItem` or `perCell`, and `blocked` cells); `autoMark` (`default`, `mark` — `cross` or, for Akari, `light` — and `onPlace` scopes: `row`, `col`, `region`, `neighbors4`, `neighbors8`, `king`, `knight`, `peers`, each optionally `whenFull: n`); `regions` when a scope needs them; `peers`, the groups of cells that hold a palette item at most once (each `cells`, plus `items` when it binds only some items), read by `web.peers()` from the model's at-most-one and exactly-one constraints, so the player needs no family rules for them; `notes: true` when the player offers pencil marks (digit families); `givens` and `solution` (cell id to palette id); and the reading text: `rules`, `clues`, `conditions` (`name`, `text`), `question`, `reveal` (the booklet's `Reveal:` text, which the player shows after "Solved!" or "Opgelost!"), `headings`, `attributes`, `roles`, `language`, `license`. Families the player cannot yet play have `playable: false` and an `unsupported` reason. Murdoku `conditions` list only the clue kinds a puzzle uses, worded from `story.CONDITION_PHRASES`.
+`--export DIR` writes, per puzzle, `<stem>.svg` (the interactive board) and `<stem>.json`, plus `DIR/index.json` (`schema`, `license`, and one entry per puzzle with `id`, `number`, `section`, `title`, `family`, `familyLabel`, `size`, `grade`, `deductive`, `playable`, in reading order). `number` and `section` (bundles carry them too) come from `collection.arrange`, as in the booklet. A bundle holds `size` `[rows, cols]`; `palette` (items with `id`, `label`, `symbol`, optional `svg` and `description`); `placement` (`perItem` or `perCell`, and `blocked` cells); `autoMark` (`default`, `mark` — `cross` or, for Akari, `light` — and `onPlace` scopes: `row`, `col`, `region`, `neighbors4`, `neighbors8`, `king`, `knight`, `peers`, each optionally `whenFull: n`); `regions` when a scope needs them; `peers`, the groups of cells that hold a palette item at most once (each `cells`, plus `items` when it binds only some items), read by `web.peers()` from the model's at-most-one and exactly-one constraints, so the player needs no family rules for them; `notes: true` when the player offers pencil marks (digit families); `givens` and `solution` (cell id to palette id); and the reading text: `rules`, `clues`, `conditions` (`name`, `text`), `question`, `reveal` (the booklet's `Reveal:` text, which the player shows after "Solved!" or "Opgelost!"), `headings`, `attributes`, `roles`, `language`, `license`. `deductive` is `false` exactly for the puzzles no deduction path closes — the ones graded `what_if` — so an app can flag the beyond-deduction frontier. Families the player cannot yet play have `playable: false` and an `unsupported` reason. Murdoku `conditions` list only the clue kinds a puzzle uses, worded from `story.CONDITION_PHRASES`.
 
 Pieces come from the icon registry in `icons.py`: each `Icon` has a name, a Unicode `symbol` used by the text boards (★ star, ▲ tent, ♣ tree, ✱ mine, ● bulb, ■ wall/shaded, ●/○ Binairo) and either an original vector shape or a vendored Noto Emoji. Murdoku objects and figure `icon=` names are looked up in `icons.CATALOGUE` (Dutch names plus English synonyms, or `U+<code>`); unknown or unvendored icons fall back to a text label and `--lint` warns. All artwork is vendored under `src/csp/assets/` at pinned commits with its licences (`NOTICE.md`); rendering never uses the network. To add a picture, add the name to `CATALOGUE` and run `uv run python scripts/vendor_emoji.py U+<code>`; `scripts/subset_font.py` rebuilds the font subset.
 
