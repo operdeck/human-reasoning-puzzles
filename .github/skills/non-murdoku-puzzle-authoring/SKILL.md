@@ -271,6 +271,18 @@ family:
    README. Preview the web player (`web/`, `npm run dev` with exported bundles
    in `web/public/puzzles`, which is not committed) and look at the palette, a
    placed tile and the clue labels before calling the UI done.
+7. Families that are a variant of an existing one (the Sudoku variants) are
+   `Family:` aliases of the base kind with their own label, so the collection
+   gets a section per variant and nothing is renumbered. Add a family to
+   `puzzle_lab.SMALL_RELATION_FAMILIES` when all its clues are relations, so a
+   board of at most 16 variables rates easy rather than medium. Pick examples
+   with different seeds per family; with very small boards the audit still finds
+   shared solutions (only 288 4 × 4 Sudoku grids), and the fix is another
+   candidate from the same `sweep --save` folder.
+8. When a family cannot reach a tier on this engine (Kakuro has no hard board,
+   Map no medium one, Sandwich and Skyscraper Sudoku stop at 6 × 6), say so in
+   `docs/puzzle-collection.md` with the reason and link the issue that would
+   change it (`#46`, `#50`, `#178`), instead of shipping a board of another tier.
 
 ## Feeding lessons back
 

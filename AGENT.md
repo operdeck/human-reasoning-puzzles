@@ -328,6 +328,17 @@ direction: the benchmark imports `csp`, never the other way round.
    - **Section syntax.** `read_sections` takes `Key: value` on one line only
      before the first block header; every clue line after that is a block
      (`Top:` alone, numbers on the next line). Docstrings and docs show that form.
+     A line starting with `#` is a comment, so a grid token may never be `#`
+     (blocked cells are `X`); the reader would silently drop the row.
+   - **Variants of an existing family** (Killer, Arrow, ... Sudoku) get their own
+     `Family:` name in `puzzlefile.FAMILY_KINDS` and `collection.FAMILY_LABELS`, so
+     they form separate web and booklet sections without renumbering the base
+     family, and their rules are one shared object (`sudoku.Rule`) that compiler,
+     brute force and picture all read.
+   - **Salt builders that draw a shared object** (a Latin square) with the family
+     name, or one seed gives every variant the same answer grid, and the audit then
+     reports shared solutions. The 4 × 4 Sudoku has only 288 grids, so collisions
+     between small examples still happen: choose another candidate, never edit one.
    - **Clue numbers on tiles a player can cover** (Mosaic, Dominosa,
      Rectangles, Map) are drawn inside `with canvas.above():`, which puts them
      over the player's moves in the web player; clicks pass through.
