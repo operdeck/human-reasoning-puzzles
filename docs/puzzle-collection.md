@@ -104,9 +104,10 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-Nine of the 96 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
-`tents_3_4x4`, `calcudoku_6_6x6`, `food-murdoku-3`, `menu-murdoku-3`,
-`prrrdoku2`, `prrrdoku3` and `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
+11 of the 128 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+`tents_3_4x4`, `calcudoku_6_6x6`, `undead_3_5x5`, `pattern_4_10x10`,
+`food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
+`tamagotchi-murdoku-12x12`. `puzzle-lab rate`
 reports them as `deductive: false`, the web index and puzzle pages badge them,
 and a test pins the list, which only moves when the ladder does.
 
