@@ -1185,7 +1185,7 @@ def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
 
 
 def _clue_floor(size: int, open_share: float) -> int:
-    """Border clues to keep at least: `1 - open_share` of the 4 * size slots; more open is harder."""
+    """Border clues to keep: at least `1 - open_share` of the 4 * size slots (more open: harder)."""
     return max(2, round((1 - open_share) * 4 * size))
 
 
