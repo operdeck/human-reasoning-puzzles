@@ -37,6 +37,8 @@ from .binairo import Puzzle as Binairo
 from .binairo import cell_name as binairo_cell
 from .calcudoku import Puzzle as Calcudoku
 from .calcudoku import cell_name as calcudoku_cell
+from .dominosa import Puzzle as Dominosa
+from .dominosa import cell_assignment as dominosa_halves
 from .futoshiki import Puzzle as Futoshiki
 from .futoshiki import cell_name as futoshiki_cell
 from .kakurasu import Puzzle as Kakurasu
@@ -846,6 +848,65 @@ def mosaic_picture(
         overlay=overlay,
         interactive=interactive,
     )
+
+
+def _rect_canvas(rows: int, cols: int, cell: int, margin: int | None = None) -> tuple[Canvas, int]:
+    """A white canvas with a thin-lined `rows` x `cols` grid inside a thick border.
+
+    Returns the canvas and its margin; cell (r, c) starts at (margin + c * cell, margin + r * cell).
+    """
+    margin = cell // 2 if margin is None else margin
+    canvas = Canvas(cols * cell + 2 * margin, rows * cell + 2 * margin)
+    thin, thick = max(2, cell // 40), max(5, cell // 22) | 1
+    for r in range(1, rows):
+        y = margin + r * cell
+        canvas.line((margin, y, margin + cols * cell, y), fill=THIN, width=thin)
+    for c in range(1, cols):
+        x = margin + c * cell
+        canvas.line((x, margin, x, margin + rows * cell), fill=THIN, width=thin)
+    canvas.rectangle(
+        (margin, margin, margin + cols * cell, margin + rows * cell), outline=INK, width=thick
+    )
+    return canvas, margin
+
+
+def _rect_cells(canvas: Canvas, rows: int, cols: int, margin: int, cell: int) -> None:
+    for r in range(rows):
+        for c in range(cols):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.cell(cell_id(r, c), (x, y, x + cell, y + cell))
+
+
+def dominosa_picture(
+    puzzle: Dominosa,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 70,
+    interactive: bool = False,
+) -> Canvas:
+    """The numbers; the solution lays an ivory domino over each pair, joined across the edge."""
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell)
+    halves = dominosa_halves(solution) if solution else {}
+    for name, half in halves.items():
+        r, c = int(name[1 : name.index("c")]) - 1, int(name[name.index("c") + 1 :]) - 1
+        x, y = margin + c * cell, margin + r * cell
+        icons.draw(canvas, f"domino_{half}", (x, y, x + cell, y + cell))
+    with canvas.above():
+        for r in range(puzzle.rows):
+            for c in range(puzzle.cols):
+                x, y = margin + c * cell, margin + r * cell
+                canvas.text(
+                    (x + cell / 2, y + cell * 0.56),
+                    str(puzzle.numbers[r][c]),
+                    INK,
+                    int(cell * 0.5),
+                    anchor="mm",
+                    halo=(246, 239, 217),
+                )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
 
 
 def towers_picture(

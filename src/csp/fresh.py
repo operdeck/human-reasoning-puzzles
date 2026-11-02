@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable
 
-from csp import battleships, bruteforce, mosaic, towers
+from csp import battleships, bruteforce, dominosa, mosaic, towers
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -32,6 +32,7 @@ FAMILIES = (
     "battleships",
     "towers",
     "mosaic",
+    "dominosa",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -877,6 +878,59 @@ def fresh_mosaic(size: int, rng: random.Random, open_share: float, comment: str 
     return build(kept) if is_unique(build(kept)) else None
 
 
+def fresh_dominosa(size: int, rng: random.Random, comment: str = "") -> str | None:
+    """A new Dominosa with highest number `size`: a random tiling, a shuffled domino set.
+
+    The numbers are placed by laying every domino type once on a random tiling, each with a
+    random orientation; boards with a second answer are redrawn, a few hundred times.
+    """
+    if size not in dominosa.MAXIMUM:
+        raise ValueError(f"fresh Dominosa goes up to {dominosa.MAXIMUM[-1]} (the highest number)")
+    rows, cols = size + 1, size + 2
+    for _ in range(300):
+        pairs = _random_tiling(rows, cols, rng)
+        kinds = [(low, high) for low in range(size + 1) for high in range(low, size + 1)]
+        rng.shuffle(kinds)
+        numbers = [[0] * cols for _ in range(rows)]
+        for ((r0, c0), (r1, c1)), (low, high) in zip(pairs, kinds, strict=True):
+            if rng.random() < 0.5:
+                low, high = high, low
+            numbers[r0][c0], numbers[r1][c1] = low, high
+        lines = _header(comment, "Family: dominosa", "Numbers:")
+        lines += [" ".join(map(str, row)) for row in numbers]
+        text = "\n".join(lines) + "\n"
+        if is_unique(text):
+            return text
+    return None
+
+
+def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
+    """A random domino tiling of a `rows` x `cols` board, by randomised backtracking."""
+    taken: set[Cell] = set()
+    pairs: list[Pair] = []
+
+    def fill(index: int) -> bool:
+        while index < rows * cols and divmod(index, cols) in taken:
+            index += 1
+        if index == rows * cols:
+            return True
+        r, c = divmod(index, cols)
+        options = [((r, c), (r, c + 1)), ((r, c), (r + 1, c))]
+        rng.shuffle(options)
+        for first, second in options:
+            if second[0] < rows and second[1] < cols and second not in taken:
+                taken.update((first, second))
+                pairs.append((first, second))
+                if fill(index + 1):
+                    return True
+                pairs.pop()
+                taken.difference_update((first, second))
+        return False
+
+    fill(0)
+    return pairs
+
+
 def _clue_floor(size: int, open_share: float) -> int:
     """Edge clues to keep at least: more open cells ask for fewer, so a harder puzzle."""
     return max(2, round((1 - open_share) * 2 * size))
@@ -924,4 +978,6 @@ def fresh(
         return fresh_towers(size, rng, open_share, comment)
     if family == "mosaic":
         return fresh_mosaic(size, rng, open_share, comment)
+    if family == "dominosa":
+        return fresh_dominosa(size, rng, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

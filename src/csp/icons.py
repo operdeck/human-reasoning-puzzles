@@ -47,6 +47,20 @@ def _star() -> str:
     return f'<polygon points="{" ".join(points)}" fill="currentColor"/>'
 
 
+def _domino_half(turn: int) -> str:
+    """The left half of an ivory domino (its partner on the right), turned `turn` degrees.
+
+    Two halves placed side by side join into one domino: the open edge has no outline.
+    """
+    return (
+        f'<g transform="rotate({turn} 50 50)">'
+        '<path d="M100 8H26A18 18 0 0 0 8 26V74A18 18 0 0 0 26 92H100Z" fill="#f6efd9"/>'
+        '<path d="M100 8H26A18 18 0 0 0 8 26V74A18 18 0 0 0 26 92H100" fill="none"'
+        ' stroke="#6b5a3a" stroke-width="5" stroke-linejoin="round"/>'
+        '<path d="M100 26V74" stroke="#6b5a3a" stroke-width="4" stroke-linecap="round"/></g>'
+    )
+
+
 CROWN = (
     '<g fill="currentColor"><polygon points="20,75 10,25 33.3,50 50,12.5 66.7,50 90,25 80,75"/>'
     '<rect x="20" y="75" width="60" height="6"/><rect x="25" y="83.3" width="50" height="7.7"/>'
@@ -458,6 +472,10 @@ REGISTRY: dict[str, Icon] = {
         Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
         Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
         Icon("tower", "\u2656", "tower", markup=SHAPES["tower"]),
+        Icon("domino_left", "\u258c", "left half of a domino", markup=_domino_half(0)),
+        Icon("domino_top", "\u2580", "top half of a domino", markup=_domino_half(90)),
+        Icon("domino_right", "\u2590", "right half of a domino", markup=_domino_half(180)),
+        Icon("domino_bottom", "\u2584", "bottom half of a domino", markup=_domino_half(270)),
         Icon("water", "\u00b7", "water", markup=SHAPES["water"]),
         *(
             Icon(name, fallback, label, markup=SHAPES[name])

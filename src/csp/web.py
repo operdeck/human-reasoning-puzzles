@@ -12,11 +12,11 @@ bundle, with `playable` false, so the site can show them read-only.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import akari, icons, starbattle
+from . import akari, dominosa, icons, starbattle
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
@@ -71,10 +71,21 @@ ITEMS = {
     "kakurasu": [Item("filled", "Shaded", "filled")],
     "battleships": [Item("ship", "Ship", "filled")],
     "mosaic": [Item("black", "Black", "filled")],
+    # Each cell is one half of a domino; the name says where in the pair the cell sits.
+    "dominosa": [
+        Item(half, f"{half.capitalize()} half", f"domino_{half}", half)
+        for half in ("left", "right", "top", "bottom")
+    ],
     "binairo": [
         Item("1", "One", "disc_black", True),
         Item("0", "Zero", "disc_white", False),
     ],
+}
+
+# Families whose solver variables are not cells (domino types, rectangles): each turns its
+# solution into one palette value per cell for the player's board.
+CELL_SOLUTIONS: dict[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = {
+    "dominosa": dominosa.cell_assignment,
 }
 
 NEIGHBOURS = [{"scope": "neighbors8"}]
@@ -303,6 +314,8 @@ def _family(
         items = ITEMS[kind]
         if kind == "tents":
             scopes = NEIGHBOURS
+        if kind in CELL_SOLUTIONS:
+            solution = CELL_SOLUTIONS[kind](solution)
     by_value = {item.value: item.id for item in items}
     if kind in DIGITS:
         groups = peers(model, set(names), by_value, language=language_of(text))
@@ -316,7 +329,9 @@ def _family(
         if cell in names and value in by_value
     }
     givens = {cell: by_value[v] for cell, v in fixed.items() if v in by_value}
-    variables = set(names) if kind == "starbattle" else set(model.variables)
+    variables = (
+        set(names) if kind == "starbattle" or kind in CELL_SOLUTIONS else set(model.variables)
+    )
     blocked = [
         cell
         for cell in names
