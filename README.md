@@ -115,7 +115,12 @@ The newest families come from Simon Tatham's puzzle collection and compile to th
 <tr>
 <td><strong><a href="examples/pattern_2_8x8.txt">Pattern</a></strong><br>A nonogram: fill cells to match the run lengths of each row and column.<br><img src="docs/images/pattern_2_8x8-solution.png" width="150" alt="Solved Pattern puzzle"></td>
 <td><strong><a href="examples/map_3_9x9.txt">Map</a></strong><br>Four-colour the regions so no two neighbours share a colour.<br><img src="docs/images/map_3_9x9-solution.png" width="150" alt="Solved Map puzzle"></td>
-<td></td>
+<td><strong><a href="examples/thermometers_2_5x5.txt">Thermometers</a></strong><br>Fill each thermometer from its bulb so every row and column holds its count.<br><img src="docs/images/thermometers_2_5x5-solution.png" width="150" alt="Solved Thermometers puzzle"></td>
+</tr>
+<tr>
+<td><strong><a href="examples/kakuro_2_5x5.txt">Kakuro</a></strong><br>Digits 1 to 9 in runs that add up to their clue without repeating.<br><img src="docs/images/kakuro_2_5x5-solution.png" width="150" alt="Solved Kakuro puzzle"></td>
+<td><strong><a href="examples/hidato_2_5x5.txt">Hidato</a></strong><br>Write 1, 2, 3, … so every number touches the next; Numbrix allows only sides.<br><img src="docs/images/hidato_2_5x5-solution.png" width="150" alt="Solved Hidato puzzle"></td>
+<td><strong><a href="examples/killer_2_6x6.txt">Killer Sudoku</a></strong><br>Sudoku with caged sums; Arrow, Even/Odd, Sandwich and Skyscraper variants too.<br><img src="docs/images/killer_2_6x6-solution.png" width="150" alt="Solved Killer Sudoku puzzle"></td>
 </tr>
 </table>
 
