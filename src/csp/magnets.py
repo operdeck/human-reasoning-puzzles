@@ -163,8 +163,6 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
                 defines=name,
                 family="each cell is plus, minus or neutral",
             )
-            if puzzle.givens[r][c] != ".":
-                model.assign(model.literal(name, puzzle.givens[r][c]), "given", "given")
     for name, (first, second) in puzzle.dominoes.items():
         model.relate(
             f"domino {name} is a magnet or neutral",
@@ -188,6 +186,13 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
                 [model.literal(cell_name(first), pole), model.literal(cell_name(second), pole)],
                 family="touching magnets repel",
             )
+    # Givens last: `assign` only propagates through the constraints that already exist.
+    for r in range(puzzle.size):
+        for c in range(puzzle.size):
+            if puzzle.givens[r][c] != ".":
+                model.assign(
+                    model.literal(cell_name((r, c)), puzzle.givens[r][c]), "given", "given"
+                )
     return model, puzzle
 
 
