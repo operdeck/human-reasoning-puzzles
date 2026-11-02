@@ -43,6 +43,7 @@ KINDS = (
     "mosaic",
     "dominosa",
     "rectangles",
+    "magnets",
 )
 
 FAMILY_KINDS = {
@@ -65,6 +66,7 @@ FAMILY_KINDS = {
     "dominosa": "dominosa",
     "rectangles": "rectangles",
     "shikaku": "rectangles",
+    "magnets": "magnets",
 }
 
 

@@ -72,6 +72,11 @@ ITEMS = {
     "kakurasu": [Item("filled", "Shaded", "filled")],
     "battleships": [Item("ship", "Ship", "filled")],
     "mosaic": [Item("black", "Black", "filled")],
+    "magnets": [
+        Item("plus", "Plus", "magnet_plus", "+"),
+        Item("minus", "Minus", "magnet_minus", "-"),
+        Item("neutral", "Neutral", "magnet_neutral", "0"),
+    ],
     # Each cell is one half of a domino; the name says where in the pair the cell sits.
     "dominosa": [
         Item(half, f"{half.capitalize()} half", f"domino_{half}", half)

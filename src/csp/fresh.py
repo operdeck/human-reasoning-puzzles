@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable
 
-from csp import battleships, bruteforce, dominosa, mosaic, rectangles, towers
+from csp import battleships, bruteforce, dominosa, magnets, mosaic, rectangles, towers
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -34,6 +34,7 @@ FAMILIES = (
     "mosaic",
     "dominosa",
     "rectangles",
+    "magnets",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -942,6 +943,82 @@ def fresh_rectangles(
     return None
 
 
+def fresh_magnets(
+    size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Magnets board: a random domino tiling, a legal random polarity per domino.
+
+    All eight kinds of line count are stated first; random givens are added only if the counts
+    leave two answers, then redundant givens and counts are thinned, down to a floor that a
+    larger `open_share` lowers.
+    """
+    if size not in magnets.SIZES:
+        raise ValueError(f"fresh Magnets boards are {', '.join(map(str, magnets.SIZES))} wide")
+    for _ in range(100):
+        pairs = _random_tiling(size, size, rng)
+        pole: dict[Cell, str] = {}
+        for first, second in pairs:
+            options = [("+", "-"), ("-", "+"), ("0", "0")]
+            rng.shuffle(options)
+            # About one domino in four is tried as neutral first; otherwise real magnets lead.
+            neutral_first = rng.random() < 0.25
+            options.sort(key=lambda option: (option == ("0", "0")) != neutral_first)
+            for one, two in options:
+                if all(
+                    pole.get((r + dr, c + dc)) != mine or mine == "0"
+                    for (r, c), mine in ((first, one), (second, two))
+                    for dr, dc in STEPS
+                    if (r + dr, c + dc) not in (first, second)
+                ):
+                    pole[first], pole[second] = one, two
+                    break
+            else:
+                break
+        if len(pole) < size * size:
+            continue
+        names = {cell: f"d{i}" for i, pair in enumerate(pairs) for cell in pair}
+        counts = {
+            "PlusTop": [sum(pole[r, c] == "+" for r in range(size)) for c in range(size)],
+            "MinusBottom": [sum(pole[r, c] == "-" for r in range(size)) for c in range(size)],
+            "PlusLeft": [sum(pole[r, c] == "+" for c in range(size)) for r in range(size)],
+            "MinusRight": [sum(pole[r, c] == "-" for c in range(size)) for r in range(size)],
+        }
+        every = {(clue, i) for clue in counts for i in range(size)}
+
+        def build(
+            clues: set[tuple[str, int]],
+            givens: set[Cell],
+            pole: dict[Cell, str] = pole,
+            names: dict[Cell, str] = names,
+            counts: dict[str, list[int]] = counts,
+        ) -> str:
+            lines = _header(comment, "Family: magnets", f"Size: {size}", "Dominoes:")
+            lines += [" ".join(names[r, c] for c in range(size)) for r in range(size)]
+            for clue, values in counts.items():
+                shown = (str(v) if (clue, i) in clues else "." for i, v in enumerate(values))
+                lines += [f"{clue}:", " ".join(shown)]
+            if givens:
+                lines += ["Givens:"]
+                lines += [
+                    " ".join(pole[r, c] if (r, c) in givens else "." for c in range(size))
+                    for r in range(size)
+                ]
+            return "\n".join(lines) + "\n"
+
+        spare = _cells(size)
+        rng.shuffle(spare)
+        givens: set[Cell] = set()
+        while not is_unique(build(every, givens)):
+            givens.add(spare.pop())
+        givens = thin(givens, lambda kept, every=every: build(every, kept), rng)
+        floor = max(2, round((1 - open_share) * 2 * size))
+        kept = thin(
+            every, lambda clues, givens=givens: build(clues, givens), rng, keep_at_least=floor
+        )
+        return build(kept, givens)
+    return None
+
+
 def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
     """A random domino tiling of a `rows` x `cols` board, by randomised backtracking."""
     taken: set[Cell] = set()
@@ -1020,4 +1097,6 @@ def fresh(
         return fresh_dominosa(size, rng, comment)
     if family == "rectangles":
         return fresh_rectangles(size, rng, open_share, comment)
+    if family == "magnets":
+        return fresh_magnets(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

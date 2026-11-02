@@ -61,6 +61,25 @@ def _domino_half(turn: int) -> str:
     )
 
 
+def _magnet_pole(fill: str, rim: str, sign: str) -> str:
+    """A rounded tile in a pole colour with a white sign on it."""
+    return (
+        f'<rect x="8" y="8" width="84" height="84" rx="16" fill="{fill}" stroke="{rim}"'
+        f' stroke-width="5"/><g fill="#fff">{sign}</g>'
+    )
+
+
+MAGNET_PLUS = _magnet_pole(
+    "#d8453f", "#8e2420", '<rect x="43" y="22" width="14" height="56"/>'
+    '<rect x="22" y="43" width="56" height="14"/>'
+)  # fmt: skip
+MAGNET_MINUS = _magnet_pole("#3f6fd8", "#24428e", '<rect x="22" y="43" width="56" height="14"/>')
+MAGNET_NEUTRAL = (
+    '<rect x="8" y="8" width="84" height="84" rx="16" fill="#d4d4d4" stroke="#8a8a8a"'
+    ' stroke-width="5"/><path d="M30 70L70 30" stroke="#8a8a8a" stroke-width="9"'
+    ' stroke-linecap="round"/>'
+)
+
 CROWN = (
     '<g fill="currentColor"><polygon points="20,75 10,25 33.3,50 50,12.5 66.7,50 90,25 80,75"/>'
     '<rect x="20" y="75" width="60" height="6"/><rect x="25" y="83.3" width="50" height="7.7"/>'
@@ -472,6 +491,9 @@ REGISTRY: dict[str, Icon] = {
         Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
         Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
         Icon("tower", "\u2656", "tower", markup=SHAPES["tower"]),
+        Icon("magnet_plus", "+", "plus pole", markup=MAGNET_PLUS),
+        Icon("magnet_minus", "-", "minus pole", markup=MAGNET_MINUS),
+        Icon("magnet_neutral", "o", "neutral", markup=MAGNET_NEUTRAL),
         Icon("domino_left", "\u258c", "left half of a domino", markup=_domino_half(0)),
         Icon("domino_top", "\u2580", "top half of a domino", markup=_domino_half(90)),
         Icon("domino_right", "\u2590", "right half of a domino", markup=_domino_half(180)),
