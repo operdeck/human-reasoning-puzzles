@@ -1,12 +1,8 @@
-`COUNT` constraints list allowed totals of true literals. Their optional
-`reified_by` literal is true exactly when the total is allowed. Keep count
-propagation sound for gaps and parity as well as interval bounds; a count
-constraint creates a strong link only when both-false support is impossible.
 # Notes for agents working on this repo
 
-Read `README.md` first for the model and how the puzzles map onto it.
-This file covers intent, invariants, and the things that are easy to get
-wrong.
+This is the canonical repository guide for Copilot, Cline, Claude, and other
+coding agents. Read it first, then read `README.md` for the model and how the
+puzzles map onto it. Use a task-specific skill only when one applies.
 
 ## Intent
 
@@ -20,6 +16,11 @@ Explainability is a goal, not a side effect: every deduction lands in
 `--verbose` and `--step` print.
 
 ## Invariants — do not break these
+
+`COUNT` constraints list allowed totals of true literals. Their optional
+`reified_by` literal is true exactly when the total is allowed. Keep count
+propagation sound for gaps and parity as well as interval bounds; a count
+constraint creates a strong link only when both-false support is impossible.
 
 **`AT_MOST_ONE` must never force a value.** It forbids a second truth; it does
 not require a first. `EXACTLY_ONE` forces its final option; `COUNT` forces a

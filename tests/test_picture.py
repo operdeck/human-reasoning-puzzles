@@ -724,6 +724,47 @@ count people on object:sloffen = 1
         assert radius < CELL / 2
 
 
+def test_scope_rings_are_drawn_under_object_icons(monkeypatch):
+    from csp import murdoku
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Objects:
+bed: standable r1c1
+People:
+Ada
+Clues:
+count people on object:bed = 1
+"""
+    board, clues = load_board(text)
+    events = []
+    scope_outline = drawing._scope_outline
+    icon = drawing._icon
+
+    def record_scope(*args, **kwargs):
+        events.append("scope")
+        return scope_outline(*args, **kwargs)
+
+    def record_icon(*args, **kwargs):
+        events.append("icon")
+        return icon(*args, **kwargs)
+
+    monkeypatch.setattr(drawing, "_scope_outline", record_scope)
+    monkeypatch.setattr(drawing, "_icon", record_icon)
+    drawing.murdoku_picture(
+        board,
+        cell=CELL,
+        coordinates=False,
+        global_counts=murdoku.global_count_conditions(board, clues),
+    )
+
+    assert events.index("scope") < events.index("icon")
+
+
 def test_scope_rings_wrap_a_rectangular_object_and_trace_an_l_shaped_one():
     from csp import murdoku
 

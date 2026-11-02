@@ -176,6 +176,7 @@ def murdoku_picture(
         lambda a, b: board.regions[a[0]][a[1]] == board.regions[b[0]][b[1]],
     )
     _draw_edge_item_doors(canvas, board, margin, cell)
+    _scope_outline(canvas, board, count_scope, box, cell)
 
     occupied = set(placed.values())
     for obj in board.objects:
@@ -236,7 +237,6 @@ def murdoku_picture(
         y = margin + (row2 - 1) * cell // 2
         radius = cell // 3
         _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
-    _scope_outline(canvas, board, count_scope, box, cell)
     marks_by_cell: dict[Square, list[str]] = {}
     for mark in board.marks:
         for square in mark.cells:
