@@ -1,0 +1,11 @@
+# Towers 4x4: easy; edge clues alone fix the heights.
+Family: towers
+Size: 4
+Top:
+. 1 2 2
+Bottom:
+. 4 2 1
+Left:
+2 . 2 .
+Right:
+2 3 . 1
