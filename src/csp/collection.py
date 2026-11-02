@@ -35,6 +35,7 @@ FAMILY_LABELS = {
     "magnets": "Magnets",
     "undead": "Undead",
     "pattern": "Pattern",
+    "map": "Map",
     "logicgrid": "Logic grid",
 }
 FIRST_CATEGORY = "demo"

@@ -16,7 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import akari, dominosa, icons, rectangles, starbattle, svg
+from . import akari, dominosa, icons, mapcolour, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
@@ -73,6 +73,10 @@ ITEMS = {
     "battleships": [Item("ship", "Ship", "filled")],
     "mosaic": [Item("black", "Black", "filled")],
     "pattern": [Item("filled", "Filled", "filled")],
+    "map": [
+        Item(colour, colour.capitalize(), None, colour, "", svg.swatch(svg.MAP_COLOURS[colour]))
+        for colour in mapcolour.COLOURS
+    ],
     "undead": [
         Item("ghost", "Ghost", "ghost", "G"),
         Item("vampire", "Vampire", "vampire", "V"),
@@ -96,9 +100,10 @@ ITEMS = {
 
 # Families whose solver variables are not cells (domino types, rectangles): each turns its
 # solution into one palette value per cell for the player's board.
-CELL_SOLUTIONS: dict[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = {
-    "dominosa": dominosa.cell_assignment,
-    "rectangles": rectangles.cell_assignment,
+CELL_SOLUTIONS: dict[str, Callable[[str, Mapping[str, Any]], dict[str, Any]]] = {
+    "dominosa": lambda text, values: dominosa.cell_assignment(values),
+    "rectangles": lambda text, values: rectangles.cell_assignment(values),
+    "map": lambda text, values: mapcolour.cell_assignment(mapcolour.parse(text), dict(values)),
 }
 
 
@@ -352,7 +357,8 @@ def _family(
         if kind == "tents":
             scopes = NEIGHBOURS
         if kind in CELL_SOLUTIONS:
-            solution = CELL_SOLUTIONS[kind](solution)
+            solution = CELL_SOLUTIONS[kind](text, solution)
+            fixed = CELL_SOLUTIONS[kind](text, fixed)
     by_value = {item.value: item.id for item in items}
     if kind in DIGITS:
         groups = peers(model, set(names), by_value, language=language_of(text))

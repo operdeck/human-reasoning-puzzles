@@ -46,6 +46,7 @@ from .logicgrid import Puzzle as LogicGrid
 from .magnets import Puzzle as Magnets
 from .magnets import cell_name as magnets_cell
 from .magnets import polarity as magnets_polarity
+from .mapcolour import Puzzle as MapColour
 from .minesweeper import Puzzle as Minesweeper
 from .minesweeper import cell_name as minesweeper_cell
 from .mosaic import Puzzle as Mosaic
@@ -64,7 +65,7 @@ from .sudoku import box_size
 from .sudoku import cell_name as sudoku_cell
 from .suguru import Puzzle as Suguru
 from .suguru import cell_name as suguru_cell
-from .svg import Canvas, pastel
+from .svg import MAP_COLOURS, Canvas, pastel
 from .tents import Puzzle as Tents
 from .towers import Puzzle as Towers
 from .towers import cell_name as towers_cell
@@ -1044,6 +1045,52 @@ def undead_picture(
 
 
 MONSTER_ICONS = {"G": "ghost", "V": "vampire", "Z": "zombie"}
+
+
+def map_picture(
+    puzzle: MapColour,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 60,
+    interactive: bool = False,
+) -> Canvas:
+    """A map: regions outlined, pre-coloured regions filled, the solution colouring the rest.
+
+    A small dot marks the first cell of each pre-coloured region, so givens are told from
+    the solver's colours. Region ids are written small in the corner of each region.
+    """
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell, cell // 3)
+    for region in puzzle.regions:
+        colour = puzzle.givens.get(region) or (solution or {}).get(region)
+        for r, c in puzzle.cells_of(region):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.rectangle(
+                (x, y, x + cell - 1, y + cell - 1),
+                fill=MAP_COLOURS[colour] if colour else (246, 244, 238),
+            )
+    thick = max(4, cell // 12) | 1
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            x, y = margin + c * cell, margin + r * cell
+            if c + 1 < puzzle.cols and puzzle.grid[r][c] != puzzle.grid[r][c + 1]:
+                canvas.line((x + cell, y, x + cell, y + cell), fill=INK, width=thick)
+            if r + 1 < puzzle.rows and puzzle.grid[r][c] != puzzle.grid[r + 1][c]:
+                canvas.line((x, y + cell, x + cell, y + cell), fill=INK, width=thick)
+    for region in puzzle.regions:
+        first = min(puzzle.cells_of(region))
+        x, y = margin + first[1] * cell, margin + first[0] * cell
+        canvas.text((x + cell * 0.12, y + cell * 0.1), region, INK, int(cell * 0.3), anchor="la")
+        if region in puzzle.givens:
+            icons.draw(
+                canvas,
+                "dot_black",
+                (x + cell * 0.62, y + cell * 0.1, x + cell * 0.9, y + cell * 0.38),
+                tint=INK,
+            )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
 
 
 def pattern_picture(

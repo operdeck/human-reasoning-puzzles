@@ -76,6 +76,7 @@ ALLOWED = {
     "magnets": {"core", "puzzlefile"},
     "undead": {"core", "puzzlefile"},
     "pattern": {"core", "puzzlefile"},
+    "mapcolour": {"core", "puzzlefile"},
     "collection": set(),
     "web": {
         "akari",
@@ -83,6 +84,7 @@ ALLOWED = {
         "core",
         "dominosa",
         "icons",
+        "mapcolour",
         "murdoku",
         "puzzlefile",
         "rectangles",
@@ -111,6 +113,7 @@ ALLOWED = {
         "magnets",
         "undead",
         "pattern",
+        "mapcolour",
         "icons",
         "svg",
     },
