@@ -25,7 +25,6 @@ LAYOUT_SECTIONS = {
     "akari": ("Grid",),
     "calcudoku": ("Grid",),
     "murdoku": ("Grid",),
-    "queens": ("Grid",),
     "starbattle": ("Grid",),
     "suguru": ("Grid",),
     "sudoku": ("Boxes",),
@@ -33,7 +32,7 @@ LAYOUT_SECTIONS = {
 }
 # Families whose solution only means something on its region map: the same
 # placement on a different map is a different puzzle.
-REGION_SOLUTIONS = {"murdoku", "queens", "starbattle"}
+REGION_SOLUTIONS = {"murdoku", "starbattle"}
 CELL = re.compile(r"r(\d+)c(\d+)")
 
 Grid = tuple[tuple[str, ...], ...]
@@ -127,6 +126,13 @@ def solution_key(text: str, kind: str) -> object:
     for key, value in found[0].items():
         if hasattr(value, "row") and hasattr(value, "col"):
             cells[(value.row, value.col)] = "x"
+        elif (
+            kind == "starbattle"
+            and isinstance(value, tuple)
+            and len(value) == 2
+            and all(isinstance(index, int) for index in value)
+        ):
+            cells[value] = "x"
         elif (match := CELL.fullmatch(str(value))) and not CELL.fullmatch(str(key)):
             cells[(int(match.group(1)) - 1, int(match.group(2)) - 1)] = "x"
         elif match := CELL.fullmatch(str(key)):

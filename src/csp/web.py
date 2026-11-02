@@ -16,11 +16,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import akari, icons, queens, starbattle
+from . import akari, icons, starbattle
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
-from .puzzlefile import language_of, load_board, load_presentation, read_sections
+from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
     PEER_RULE_LABELS,
     attribute_list,
@@ -160,8 +160,8 @@ def bundle(
 
     `number` and `section` place it in the collection (see `collection.arrange`).
     """
-    display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
-    family_label = FAMILY_LABELS.get(display_family, FAMILY_LABELS[kind])
+    display_name = display_family(text, kind)
+    family_label = FAMILY_LABELS.get(display_name, FAMILY_LABELS[kind])
     out: dict[str, Any] = {
         "schema": SCHEMA,
         "id": stem,
@@ -271,60 +271,56 @@ def _family(
     auto = True
     mark = "cross"
     groups: list[dict[str, Any]] = []
-    if kind == "queens":
-        puzzle = queens.parse(text)
-        items = [Item(puzzle.icon, puzzle.icon.capitalize(), puzzle.icon)]
+    if kind in DIGITS:
+        values = sorted({model.value_of(lit) for var in names for lit in _domain(model, var)})
+        items = [Item(str(v), str(v), None, v) for v in values]
+        auto = False
+    elif kind == "starbattle":
+        puzzle_sb = starbattle.parse(text)
+        if puzzle_sb.stars == 1:
+            fixed = {
+                starbattle.cell_name((row, col)): True
+                for row, line in enumerate(puzzle_sb.givens)
+                for col, value in enumerate(line)
+                if value == 1
+            }
+            solution = starbattle.cell_assignment(puzzle_sb, solution)
+        items = [Item(puzzle_sb.icon, puzzle_sb.icon.capitalize(), puzzle_sb.icon)]
         regions = {
             f"r{r + 1}c{c + 1}": region
-            for r, line in enumerate(puzzle.grid)
+            for r, line in enumerate(puzzle_sb.areas.cells)
             for c, region in enumerate(line)
         }
-        placed = {str(cell): puzzle.icon for cell in solution.values()}
-        givens = {str(cell): puzzle.icon for cell in fixed.values()}
-        blocked: list[str] = []
-        scopes = [*LINES, {"scope": "region"}, *NEIGHBOURS]
-    else:
-        if kind in DIGITS:
-            values = sorted({model.value_of(lit) for var in names for lit in _domain(model, var)})
-            items = [Item(str(v), str(v), None, v) for v in values]
-            auto = False
-        else:
-            items = ITEMS[kind]
-        if kind == "starbattle":
-            puzzle_sb = starbattle.parse(text)
-            regions = {
-                f"r{r + 1}c{c + 1}": region
-                for r, line in enumerate(puzzle_sb.areas.cells)
-                for c, region in enumerate(line)
-            }
-            full = {"whenFull": puzzle_sb.stars}
-            scopes = [
-                *NEIGHBOURS,
-                {"scope": "row", **full},
-                {"scope": "col", **full},
-                {"scope": "region", **full},
-            ]
-        elif kind == "tents":
-            scopes = NEIGHBOURS
-        by_value = {item.value: item.id for item in items}
-        if kind in DIGITS:
-            groups = peers(model, set(names), by_value, language=language_of(text))
-        elif kind == "akari":
-            groups = peers(model, set(names), by_value, only=akari.SIGHT)
-            scopes = [{"scope": "peers"}]
-            mark = "light"
-        placed = {
-            cell: by_value[value]
-            for cell, value in solution.items()
-            if cell in names and value in by_value
-        }
-        givens = {cell: by_value[v] for cell, v in fixed.items() if v in by_value}
-        variables = set(model.variables)
-        blocked = [
-            cell
-            for cell in names
-            if cell not in variables or (cell in fixed and fixed[cell] not in by_value)
+        full = {"whenFull": puzzle_sb.stars}
+        scopes = [
+            *NEIGHBOURS,
+            {"scope": "row", **full},
+            {"scope": "col", **full},
+            {"scope": "region", **full},
         ]
+    else:
+        items = ITEMS[kind]
+        if kind == "tents":
+            scopes = NEIGHBOURS
+    by_value = {item.value: item.id for item in items}
+    if kind in DIGITS:
+        groups = peers(model, set(names), by_value, language=language_of(text))
+    elif kind == "akari":
+        groups = peers(model, set(names), by_value, only=akari.SIGHT)
+        scopes = [{"scope": "peers"}]
+        mark = "light"
+    placed = {
+        cell: by_value[value]
+        for cell, value in solution.items()
+        if cell in names and value in by_value
+    }
+    givens = {cell: by_value[v] for cell, v in fixed.items() if v in by_value}
+    variables = set(names) if kind == "starbattle" else set(model.variables)
+    blocked = [
+        cell
+        for cell in names
+        if cell not in variables or (cell in fixed and fixed[cell] not in by_value)
+    ]
     out |= {
         "playable": True,
         "palette": [item.to_json() for item in items],
