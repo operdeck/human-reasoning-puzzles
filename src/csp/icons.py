@@ -74,6 +74,11 @@ MAGNET_PLUS = _magnet_pole(
     '<rect x="22" y="43" width="56" height="14"/>'
 )  # fmt: skip
 MAGNET_MINUS = _magnet_pole("#3f6fd8", "#24428e", '<rect x="22" y="43" width="56" height="14"/>')
+# A bead of red thermometer mercury with a small highlight.
+MERCURY_DROP = (
+    '<circle cx="50" cy="50" r="34" fill="#d6363e" stroke="#8c1f25" stroke-width="5"/>'
+    '<circle cx="39" cy="38" r="9" fill="#f4a3a8"/>'
+)
 MAGNET_NEUTRAL = (
     '<rect x="8" y="8" width="84" height="84" rx="16" fill="#d4d4d4" stroke="#8a8a8a"'
     ' stroke-width="5"/><path d="M30 70L70 30" stroke="#8a8a8a" stroke-width="9"'
@@ -512,6 +517,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("magnet_plus", "+", "plus pole", markup=MAGNET_PLUS),
         Icon("magnet_minus", "-", "minus pole", markup=MAGNET_MINUS),
         Icon("magnet_neutral", "o", "neutral", markup=MAGNET_NEUTRAL),
+        Icon("mercury", "●", "mercury", markup=MERCURY_DROP),
         Icon("domino_left", "\u258c", "left half of a domino", markup=_domino_half(0)),
         Icon("domino_top", "\u2580", "top half of a domino", markup=_domino_half(90)),
         Icon("domino_right", "\u2590", "right half of a domino", markup=_domino_half(180)),

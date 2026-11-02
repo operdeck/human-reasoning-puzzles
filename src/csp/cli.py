@@ -40,6 +40,7 @@ from . import (
     sudoku,
     suguru,
     tents,
+    thermometers,
     towers,
     undead,
     web,
@@ -109,6 +110,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "thermometers":
+        model, thermometers_puzzle = thermometers.compile_puzzle(text)
+        return Puzzle(kind, model, partial(thermometers.render, thermometers_puzzle))
     if kind == "map":
         model, map_puzzle = mapcolour.compile_puzzle(text)
         return Puzzle(kind, model, partial(mapcolour.render, map_puzzle))
@@ -240,6 +244,7 @@ def make_image(
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
         "map": (mapcolour.parse, picture.map_picture),
+        "thermometers": (thermometers.parse, picture.thermometers_picture),
         "pattern": (pattern.parse, picture.pattern_picture),
         "undead": (undead.parse, picture.undead_picture),
         "magnets": (magnets.parse, picture.magnets_picture),

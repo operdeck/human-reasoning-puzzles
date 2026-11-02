@@ -73,6 +73,7 @@ ITEMS = {
     "battleships": [Item("ship", "Ship", "filled")],
     "mosaic": [Item("black", "Black", "filled")],
     "pattern": [Item("filled", "Filled", "filled")],
+    "thermometers": [Item("mercury", "Mercury", "mercury")],
     "map": [
         Item(colour, colour.capitalize(), None, colour, "", svg.swatch(svg.MAP_COLOURS[colour]))
         for colour in mapcolour.COLOURS

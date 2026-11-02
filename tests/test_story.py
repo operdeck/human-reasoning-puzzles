@@ -77,6 +77,7 @@ ALLOWED = {
     "undead": {"core", "puzzlefile"},
     "pattern": {"core", "puzzlefile"},
     "mapcolour": {"core", "puzzlefile"},
+    "thermometers": {"core", "puzzlefile"},
     "collection": set(),
     "web": {
         "akari",
@@ -114,6 +115,7 @@ ALLOWED = {
         "undead",
         "pattern",
         "mapcolour",
+        "thermometers",
         "icons",
         "svg",
     },

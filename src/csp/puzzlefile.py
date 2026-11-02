@@ -47,6 +47,7 @@ KINDS = (
     "undead",
     "pattern",
     "map",
+    "thermometers",
 )
 
 FAMILY_KINDS = {
@@ -75,6 +76,7 @@ FAMILY_KINDS = {
     "nonogram": "pattern",
     "map": "map",
     "fourcolour": "map",
+    "thermometers": "thermometers",
     "picross": "pattern",
 }
 

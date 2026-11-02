@@ -71,7 +71,17 @@ def rate(text: str, path: str = "<memory>") -> Rating:
     open_share = initial_open / max(1, variable_count)
     if grade == "relations" and (
         (
-            family in {"calcudoku", "kakurasu", "tango", "towers", "pattern", "magnets", "undead"}
+            family
+            in {
+                "calcudoku",
+                "kakurasu",
+                "tango",
+                "towers",
+                "pattern",
+                "magnets",
+                "undead",
+                "thermometers",
+            }
             and variable_count <= 16
         )
         or (family == "logicgrid" and variable_count <= 9)
