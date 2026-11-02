@@ -75,6 +75,15 @@ changes do not create another family or gallery section.
 | Undead | [`undead_1_4x4.txt`](../examples/undead_1_4x4.txt) (`relations`) | [`undead_2_5x5.txt`](../examples/undead_2_5x5.txt) (`relations`) | [`undead_3_5x5.txt`](../examples/undead_3_5x5.txt) (`what_if`) |
 | Pattern (nonogram) | [`pattern_1_4x4.txt`](../examples/pattern_1_4x4.txt) (`relations`) | [`pattern_2_8x8.txt`](../examples/pattern_2_8x8.txt), [`pattern_3_12x12.txt`](../examples/pattern_3_12x12.txt) (`relations`) | [`pattern_4_10x10.txt`](../examples/pattern_4_10x10.txt) (`what_if`) |
 | Map (four colouring) | [`map_1_6x6.txt`](../examples/map_1_6x6.txt), [`map_2_9x9.txt`](../examples/map_2_9x9.txt) (`single`) | — | [`map_3_9x9.txt`](../examples/map_3_9x9.txt), [`map_4_12x12.txt`](../examples/map_4_12x12.txt) (`chains`) |
+| Thermometers | [`thermometers_1_4x4.txt`](../examples/thermometers_1_4x4.txt) (`count`) | [`thermometers_2_5x5.txt`](../examples/thermometers_2_5x5.txt), [`thermometers_3_8x8.txt`](../examples/thermometers_3_8x8.txt) (`relations`) | [`thermometers_4_6x6.txt`](../examples/thermometers_4_6x6.txt), [`thermometers_5_8x8.txt`](../examples/thermometers_5_8x8.txt) (`chains`) |
+| Kakuro | [`kakuro_1_4x4.txt`](../examples/kakuro_1_4x4.txt), [`kakuro_2_5x5.txt`](../examples/kakuro_2_5x5.txt) (`relations`) | [`kakuro_3_7x7.txt`](../examples/kakuro_3_7x7.txt) (`relations`) | — |
+| Hidato | [`hidato_1_4x4.txt`](../examples/hidato_1_4x4.txt) (`relations`) | [`hidato_2_5x5.txt`](../examples/hidato_2_5x5.txt) (`relations`), [`hidato_3_6x6.txt`](../examples/hidato_3_6x6.txt) (`cover2`) | [`hidato_4_5x5.txt`](../examples/hidato_4_5x5.txt), [`hidato_5_7x7.txt`](../examples/hidato_5_7x7.txt) (`chains`) |
+| Numbrix | [`numbrix_1_4x4.txt`](../examples/numbrix_1_4x4.txt) (`relations`) | [`numbrix_2_5x5.txt`](../examples/numbrix_2_5x5.txt), [`numbrix_3_6x6.txt`](../examples/numbrix_3_6x6.txt) (`relations`) | [`numbrix_4_5x5.txt`](../examples/numbrix_4_5x5.txt), [`numbrix_5_6x6.txt`](../examples/numbrix_5_6x6.txt) (`chains`) |
+| Killer Sudoku | [`killer_1_4x4.txt`](../examples/killer_1_4x4.txt) (`relations`) | [`killer_2_6x6.txt`](../examples/killer_2_6x6.txt) (`relations`), [`killer_3_4x4.txt`](../examples/killer_3_4x4.txt) (`subsumption`), [`killer_4_6x6.txt`](../examples/killer_4_6x6.txt) (`cover2`) | [`killer_5_6x6.txt`](../examples/killer_5_6x6.txt) (`what_if`) |
+| Arrow Sudoku | [`arrow_1_4x4.txt`](../examples/arrow_1_4x4.txt) (`relations`) | [`arrow_2_6x6.txt`](../examples/arrow_2_6x6.txt) (`relations`) | [`arrow_3_4x4.txt`](../examples/arrow_3_4x4.txt) (`chains`), [`arrow_4_6x6.txt`](../examples/arrow_4_6x6.txt) (`what_if`) |
+| Even/Odd Sudoku | [`evenodd_1_4x4.txt`](../examples/evenodd_1_4x4.txt) (`single`), [`evenodd_2_4x4.txt`](../examples/evenodd_2_4x4.txt) (`relations`) | [`evenodd_3_6x6.txt`](../examples/evenodd_3_6x6.txt) (`relations`), [`evenodd_4_6x6.txt`](../examples/evenodd_4_6x6.txt) (`cover2`) | [`evenodd_5_9x9.txt`](../examples/evenodd_5_9x9.txt) (`cover3`) |
+| Sandwich Sudoku | [`sandwich_1_4x4.txt`](../examples/sandwich_1_4x4.txt) (`single`), [`sandwich_2_4x4.txt`](../examples/sandwich_2_4x4.txt) (`relations`) | [`sandwich_3_6x6.txt`](../examples/sandwich_3_6x6.txt) (`relations`) | [`sandwich_4_4x4.txt`](../examples/sandwich_4_4x4.txt) (`chains`) |
+| Skyscraper Sudoku | [`skyscrapersudoku_1_4x4.txt`](../examples/skyscrapersudoku_1_4x4.txt) (`relations`) | [`skyscrapersudoku_2_6x6.txt`](../examples/skyscrapersudoku_2_6x6.txt) (`relations`) | [`skyscrapersudoku_3_6x6.txt`](../examples/skyscrapersudoku_3_6x6.txt) (`what_if`) |
 
 The most visible gaps are Tectonic/Suguru, counts-only Battleships, Kakurasu,
 and logic grids. In particular, the existing 8 × 8 Suguru file is
@@ -111,6 +120,29 @@ that never fires on a family's boards is not claimed. Measured with
   the 4 × 4 boards of Towers, Magnets, Undead and Pattern are easy even though their grade
   is `relations`.
 
+### Added for issue #80
+
+Thermometers, Kakuro, Hidato, Numbrix and the Killer, Arrow, Even/Odd, Sandwich and
+Skyscraper Sudoku variants are the families of #80 that need no change to `core.py`:
+
+- **Thermometers** reaches `count`, `relations` and `chains` (mercury relations are small),
+  and most hard boards on 5 × 5 and larger need `what_if`; the shipped hard boards use `chains`.
+- **Kakuro** only reaches `relations` in the sweeps: its distinct-sum runs are propagated well
+  by the relation rule on its own, so it has easy and medium boards and no hard one. Runs are
+  capped at five cells (four in the gallery) because each run enumerates every digit
+  combination; 8 × 8 and 9 × 9 boards that are also unique did not come out of the builder.
+- **Hidato and Numbrix** are modelled with one variable per number, so a board of K cells has
+  K variables over K cells; they reach `relations`, `cover2` and `chains`. Their 4 × 4 boards
+  are the easy ones; Numbrix has no `cover2` board.
+- **Sudoku variants** share `sudoku.Rule`. Even/Odd reaches `single` to `cover3` (also on
+  9 × 9), Killer `relations` to `cover2`, Arrow and Sandwich `relations` and `chains`,
+  Skyscraper Sudoku `relations`. Their hard boards that only close with `what_if` (`killer_5_6x6`,
+  `arrow_4_6x6`, `skyscrapersudoku_3_6x6`) are beyond deduction and flagged. Sandwich and
+  Skyscraper lines are relations over a whole row or column, so they stop at 6 × 6; the
+  9 × 9 versions need a core rule for sums and visibility over a long line (#46, #50).
+  The 4 × 4 boards of these variants are drawn from only 288 grids, so the audit's
+  shared-solution check chooses between candidate boards.
+
 Every one-star Queens region has at least two cells. The easy 4 × 4 and 5 × 5 and the
 medium 9 × 9 have one visible given queen each; the other three boards have
 no givens. The starter queens are explicit clues, not single-cell regions
@@ -141,8 +173,8 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-11 of the 130 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
-`tents_3_4x4`, `calcudoku_6_6x6`, `undead_3_5x5`, `pattern_4_10x10`,
+14 of the 169 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+`tents_3_4x4`, `calcudoku_6_6x6`, `undead_3_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
 `food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
 `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
 reports them as `deductive: false`, the web index and puzzle pages badge them,

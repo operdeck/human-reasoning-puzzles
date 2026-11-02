@@ -49,7 +49,6 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | Light Up / Akari | Cell | Boolean bulb/empty; visibility counts, numbered-wall counts, and at-most-one bulb per line of sight. |
 | Kakurasu | Cell | Boolean filled/empty; weighted row and column sums encoded as generic relations over the line cells. |
 | Battleships | Cell, hidden ship positions | Occupied-cell row/column counts, a fleet count per length, water-or-one-straight-ship coverage, and no touching between ships (including diagonals). |
-
 | Towers | Cell | Latin-square rows/columns plus one relation per edge clue over its line in view order (`visible(heights) == clue`). |
 | Mosaic | Cell | Boolean black/white; one `COUNT` per numbered cell over its 3×3 window, the cell itself included. |
 | Dominosa | Domino type | One variable per domino, whose values are the edges with matching numbers; exactly one edge per type and exactly one covering literal per cell. |
@@ -58,6 +57,10 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | Undead | Empty cell | Three values (ghost, vampire, zombie); a `COUNT` per monster kind and one relation per border clue over the cells of its mirrored sight line. |
 | Pattern | Cell | Boolean filled/empty; one relation per row and column comparing its runs to the clue. |
 | Map | Region | Four colours per region; `AT_MOST_ONE` per border and colour. |
+| Thermometers | Cell | Boolean filled/empty; a filled-prefix relation per thermometer and a `COUNT` per row and column. |
+| Kakuro | White cell | Digits 1 to 9; one relation per run: distinct digits that add up to the clue. |
+| Hidato / Numbrix | Number | One variable per number, whose values are the open cells; exactly one cell per number and one number per cell; consecutive numbers are a two-variable adjacency relation (corners count for Hidato only). |
+| Killer, Arrow, Even/Odd, Sandwich and Skyscraper Sudoku | Cell | Sudoku exact cover plus one relation per variant rule over its cells (`sudoku.Rule`): a cage's distinct sum, an arrow's sum, a digit's parity, the digits between the 1 and the top digit, or how many digits are seen from an edge. |
 
 The new-family formats below currently use `COUNT`, `AT_MOST_ONE`, `EXACTLY_ONE`, and generic relations. Binairo/Tango row and column uniqueness uses bounded-arity auxiliary relations; performance on larger boards is part of the example and benchmark checks. Kakurasu's weighted equations currently use generic relations rather than a new weighted core constraint.
 
@@ -277,6 +280,32 @@ Right:
 ### Map (four colouring)
 
 `Regions:` is a rectangular grid of region ids (2 to 12 on a side); each id forms one connected area, and regions touch where cells share a side (corners do not count). `Givens:` lines have the form `<region> <colour>` with the colours `red`, `yellow`, `green` and `blue`. Colours are labelled, so a unique answer needs enough givens to fix the colour symmetry. The module is `mapcolour`, so it never shadows the builtin `map`.
+
+### Thermometers
+
+`Size:` is 3 to 10. `Thermometers:` has one line per thermometer, a path of touching cells with its bulb first (`r1c1 r2c1 r3c1`); together they cover every cell exactly once. `Rows:` and `Columns:` give how many cells of each line are filled. Mercury rises from the bulb without gaps, so a thermometer's filled cells are a prefix of its path. Optional `Givens:` uses `.`, `0` and `1`. Not to be confused with the thermometers of Sudoku (see below), which only order digits.
+
+### Kakuro
+
+`Grid:` is a rectangle of tokens: `.` is a white cell, `X` a black cell without clues, and `down\across` a clue cell with either number left out (`16\`, `\7`, `4\6`). A clue covers the run of white cells below it (down) or to its right (across), up to the next non-white cell. Runs are 2 to 5 cells, every white cell must lie in a run, and a run holds distinct digits that add up to its sum. Runs are relations over their cells, so long runs are slow; the gallery stays at four cells or fewer per run.
+
+### Hidato and Numbrix
+
+`Family:` is `hidato` (neighbours touch along a side or at a corner) or `numbrix` (along a side only). `Grid:` is a rectangle of `.` (open), `X` (blocked, because a leading `#` would read as a comment) and given numbers. The open cells are numbered 1 to K so that every number touches the next; the compiler's variables are the numbers, and the web player offers the numbers 1 to K as its palette.
+
+### Killer, Arrow, Even/Odd, Sandwich and Skyscraper Sudoku
+
+These are Sudoku files (`Givens:`, optionally `Boxes:` for a 6×6 jigsaw) with one more family name and the variant's sections; they have their own sections in the web index and booklet but share the Sudoku parser, compiler and brute force. Each section becomes `sudoku.Rule`s, written once and read by compiler, brute force and pictures.
+
+| `Family:` | Sections | Rule |
+|---|---|---|
+| `killer` | `Killer:` lines `13: r1c1 r1c2 r2c1` | A cage of 2 to 4 cells holds different digits adding up to the number. |
+| `arrow` | `Arrows:` lines `r1c1 r1c2 r2c3` | The first cell (the circle) equals the sum of the 2 or 3 cells that follow, a path of touching cells. |
+| `evenodd` | `Parity:` grid of `e`, `o`, `.` | The digit in a marked cell is even or odd. |
+| `sandwich` | `SandwichRows:`, `SandwichColumns:` | The digits between the 1 and the highest digit of the line add up to the clue. |
+| `skyscrapersudoku` | `SkyscraperTop:`, `SkyscraperBottom:`, `SkyscraperLeft:`, `SkyscraperRight:` | The clue counts the digits seen from that edge, a taller digit hiding every shorter one behind it. |
+
+`.` means no clue in the clue lines. Sandwich and Skyscraper lines are relations over a whole row or column, which is only practical up to 6×6, so larger grids with those sections are rejected. The others also work on 9×9.
 
 ## Murdoku
 
