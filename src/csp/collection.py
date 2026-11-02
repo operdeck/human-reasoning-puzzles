@@ -29,6 +29,7 @@ FAMILY_LABELS = {
     "kakurasu": "Kakurasu",
     "battleships": "Battleships",
     "towers": "Towers",
+    "mosaic": "Mosaic",
     "logicgrid": "Logic grid",
 }
 FIRST_CATEGORY = "demo"

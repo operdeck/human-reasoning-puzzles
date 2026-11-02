@@ -635,6 +635,8 @@ FAMILY_RULES = {
     "towers": "Fill the grid so every row and column holds each height once; an edge clue "
     "says how many towers are visible from there, because a tower hides every shorter one "
     "behind it.",
+    "mosaic": "Colour every cell black or white; a number says how many cells in the 3x3 "
+    "block around it, itself included, are black.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }

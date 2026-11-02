@@ -27,6 +27,7 @@ from . import (
     kakurasu,
     logicgrid,
     minesweeper,
+    mosaic,
     murdoku,
     starbattle,
     sudoku,
@@ -49,6 +50,7 @@ SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "kakurasu": kakurasu.solutions,
     "battleships": battleships.solutions,
     "towers": towers.solutions,
+    "mosaic": mosaic.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

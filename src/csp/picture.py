@@ -43,6 +43,8 @@ from .kakurasu import Puzzle as Kakurasu
 from .logicgrid import Puzzle as LogicGrid
 from .minesweeper import Puzzle as Minesweeper
 from .minesweeper import cell_name as minesweeper_cell
+from .mosaic import Puzzle as Mosaic
+from .mosaic import cell_name as mosaic_cell
 from .murdoku import Board, GlobalCountCondition, Square
 from .starbattle import Puzzle as StarBattle
 from .starbattle import cell_assignment as starbattle_cell_assignment
@@ -800,6 +802,48 @@ def kakurasu_picture(
         cell=cell,
         fixed=fixed,
         solved_mark=Mark("filled", 0.9),
+        interactive=interactive,
+    )
+
+
+def mosaic_picture(
+    puzzle: Mosaic,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+) -> Canvas:
+    """Numbered cells on a white grid; the solution blackens its cells.
+
+    Numbers are drawn on the canvas's top layer with a white halo, so they stay readable
+    on the black tiles a player (or the solution) puts under them.
+    """
+    solution = None if interactive else solution
+    tile = (38, 42, 56)
+
+    def shade(r: int, c: int) -> RGB:
+        return tile if (solution or {}).get(mosaic_cell((r, c))) else WHITE
+
+    def overlay(canvas: Canvas) -> None:
+        margin = cell // 2
+        with canvas.above():
+            for r, c in puzzle.numbered:
+                canvas.text(
+                    (margin + c * cell + cell / 2, margin + r * cell + cell * 0.56),
+                    str(puzzle.clues[r][c]),
+                    INK if shade(r, c) == WHITE else WHITE,
+                    int(cell * 0.5),
+                    anchor="mm",
+                    halo=WHITE if shade(r, c) == WHITE or interactive else tile,
+                )
+
+    return _number_grid(
+        puzzle.size,
+        cell,
+        shade,
+        lambda r, c: (None, INK),
+        lambda a, b: True,
+        overlay=overlay,
         interactive=interactive,
     )
 

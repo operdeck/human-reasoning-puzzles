@@ -26,6 +26,7 @@ from . import (
     kakurasu,
     logicgrid,
     minesweeper,
+    mosaic,
     murdoku,
     picture,
     report,
@@ -102,6 +103,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "mosaic":
+        model, mosaic_puzzle = mosaic.compile_puzzle(text)
+        return Puzzle(kind, model, partial(mosaic.render, mosaic_puzzle))
     if kind == "towers":
         model, towers_puzzle = towers.compile_puzzle(text)
         return Puzzle(kind, model, partial(towers.render, towers_puzzle))
@@ -211,6 +215,7 @@ def make_image(
         "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "mosaic": (mosaic.parse, picture.mosaic_picture),
         "towers": (towers.parse, picture.towers_picture),
         "battleships": (battleships.parse, picture.battleships_picture),
         "logicgrid": (logicgrid.parse, picture.logicgrid_picture),

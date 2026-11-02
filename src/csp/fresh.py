@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable
 
-from csp import battleships, bruteforce, towers
+from csp import battleships, bruteforce, mosaic, towers
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -31,6 +31,7 @@ FAMILIES = (
     "tents",
     "battleships",
     "towers",
+    "mosaic",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -804,10 +805,11 @@ def fresh_battleships(size: int, rng: random.Random, comment: str = "") -> str |
 
 
 def fresh_towers(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
-    """A new Towers puzzle: a random Latin square, every edge clue, then givens and clues thinned.
+    """A new Towers puzzle: a random Latin square with every edge clue stated.
 
-    Givens go first (down to `open_share` empty at least), so the edge clues carry the
-    puzzle; whatever clue is no longer needed for uniqueness is dropped afterwards.
+    Random givens are added only if the edges alone leave two answers, and are thinned
+    straight away, so the edge clues carry the puzzle. Then clues that uniqueness does not
+    need are dropped, down to `_clue_floor`.
     """
     if size not in towers.SIZES:
         raise ValueError(f"fresh Towers boards are {towers.SIZES.start} to {towers.SIZES[-1]} wide")
@@ -844,6 +846,35 @@ def fresh_towers(size: int, rng: random.Random, open_share: float, comment: str 
         every, lambda clues: build(clues, givens), rng, keep_at_least=_clue_floor(size, open_share)
     )
     return build(kept, givens)
+
+
+def fresh_mosaic(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new Mosaic: a random colouring, every window count, then counts thinned.
+
+    The first `1 - open_share` of the numbered cells stay however unique the board is, so a
+    larger `open_share` asks for fewer clues and a harder puzzle.
+    """
+    if size not in mosaic.SIZES:
+        raise ValueError(f"fresh Mosaic boards are {mosaic.SIZES.start} to {mosaic.SIZES[-1]} wide")
+    black = {cell for cell in _cells(size) if rng.random() < 0.5}
+    template = mosaic.Puzzle([[None] * size for _ in range(size)])
+
+    def build(clues: set[Cell]) -> str:
+        rows = [
+            " ".join(
+                str(sum(near in black for near in template.window((r, c))))
+                if (r, c) in clues
+                else "."
+                for c in range(size)
+            )
+            for r in range(size)
+        ]
+        return (
+            "\n".join(_header(comment, "Family: mosaic", f"Size: {size}", "Clues:", *rows)) + "\n"
+        )
+
+    kept = thin(_cells(size), build, rng, keep_at_least=round((1 - open_share) * size * size * 0.5))
+    return build(kept) if is_unique(build(kept)) else None
 
 
 def _clue_floor(size: int, open_share: float) -> int:
@@ -891,4 +922,6 @@ def fresh(
         return fresh_battleships(size, rng, comment=comment)
     if family == "towers":
         return fresh_towers(size, rng, open_share, comment)
+    if family == "mosaic":
+        return fresh_mosaic(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

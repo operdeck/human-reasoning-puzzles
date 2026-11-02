@@ -70,6 +70,7 @@ ITEMS = {
     "akari": [Item("bulb", "Light", "bulb")],
     "kakurasu": [Item("filled", "Shaded", "filled")],
     "battleships": [Item("ship", "Ship", "filled")],
+    "mosaic": [Item("black", "Black", "filled")],
     "binairo": [
         Item("1", "One", "disc_black", True),
         Item("0", "Zero", "disc_white", False),

@@ -113,6 +113,7 @@ class Canvas:
         self._defs: dict[str, str] = {}
         self._body: list[str] = []
         self._cells: list[str] = []
+        self._above: list[str] = []
         self._clips = 0
         self.rectangle((0, -headroom, width - 1, height - 1), fill=background)
 
@@ -122,6 +123,20 @@ class Canvas:
 
     def _add(self, element: str) -> None:
         self._body.append(element)
+
+    @contextmanager
+    def above(self) -> Iterator[None]:
+        """Draw what the block adds on top of everything, the player's moves included.
+
+        The web player puts placed items between the picture and the cell targets, so a
+        clue that must stay readable on a covered cell (a Mosaic number on a black tile)
+        is drawn here. Clicks pass through to the cells below.
+        """
+        body, self._body = self._body, self._above
+        try:
+            yield
+        finally:
+            self._body = body
 
     # --- shapes ---------------------------------------------------------
 
@@ -367,6 +382,11 @@ class Canvas:
     def to_svg(self) -> str:
         defs = "<defs>" + "".join(self._defs.values()) + "</defs>" if self._defs else ""
         cells = '<g class="cells">' + "".join(self._cells) + "</g>" if self._cells else ""
+        above = (
+            '<g class="above" pointer-events="none">' + "\n".join(self._above) + "</g>"
+            if self._above
+            else ""
+        )
         return (
             '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
             f' width="{self.width}" height="{self.height}"'
@@ -376,6 +396,7 @@ class Canvas:
             + "\n".join(self._body)
             + "\n"
             + cells
+            + above
             + "</svg>\n"
         )
 
