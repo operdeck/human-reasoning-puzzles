@@ -45,6 +45,15 @@ def pastel(index: int) -> tuple[int, int, int]:
     return round(red * 255), round(green * 255), round(blue * 255)
 
 
+# The four map colours, chosen to stay apart for common colour blindness (see also the labels).
+MAP_COLOURS: dict[str, tuple[int, int, int]] = {
+    "red": (232, 112, 104),
+    "yellow": (246, 214, 96),
+    "green": (126, 198, 130),
+    "blue": (108, 156, 226),
+}
+
+
 def swatch(fill: Colour, size: int = 64) -> str:
     """A standalone SVG tile of one colour with a darker rim, for palettes."""
     canvas = Canvas(size, size, background="none")

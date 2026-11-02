@@ -30,6 +30,8 @@ from csp.puzzlefile import KINDS, detect
         ("pattern", "pattern"),
         ("nonogram", "pattern"),
         ("picross", "pattern"),
+        ("map", "map"),
+        ("fourcolour", "map"),
     ],
 )
 def test_family_detector_maps_canonical_names_and_aliases(family, kind):

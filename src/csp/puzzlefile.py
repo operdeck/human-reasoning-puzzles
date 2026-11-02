@@ -46,6 +46,7 @@ KINDS = (
     "magnets",
     "undead",
     "pattern",
+    "map",
 )
 
 FAMILY_KINDS = {
@@ -72,6 +73,8 @@ FAMILY_KINDS = {
     "undead": "undead",
     "pattern": "pattern",
     "nonogram": "pattern",
+    "map": "map",
+    "fourcolour": "map",
     "picross": "pattern",
 }
 

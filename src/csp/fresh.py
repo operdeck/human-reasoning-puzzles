@@ -17,6 +17,7 @@ from csp import (
     bruteforce,
     dominosa,
     magnets,
+    mapcolour,
     mosaic,
     pattern,
     rectangles,
@@ -48,6 +49,7 @@ FAMILIES = (
     "magnets",
     "undead",
     "pattern",
+    "map",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -1100,6 +1102,50 @@ def fresh_pattern(
     return None
 
 
+def fresh_map(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new four-colour Map: random connected regions on a `size` x `size` board, thinned givens.
+
+    The regions are carved like Star Battle's. A random proper four-colouring supplies the
+    givens, which are removed one at a time while the answer stays unique; `open_share` is
+    the share of regions to leave uncoloured, at most.
+    """
+    if size not in range(4, mapcolour.BIGGEST + 1):
+        raise ValueError(f"fresh Map boards are 4 to {mapcolour.BIGGEST} wide")
+    for _ in range(200):
+        owner = _carve(size, rng, largest=max(4, size))
+        ids = [f"{chr(97 + i % 26)}{i // 26 or ''}" for i in range(max(owner.values()) + 1)]
+        grid = [[ids[owner[r, c]] for c in range(size)] for r in range(size)]
+        shape = mapcolour.Puzzle(grid, {})
+        touching: dict[str, set[str]] = {region: set() for region in shape.regions}
+        for a, b in shape.borders:
+            touching[a].add(b)
+            touching[b].add(a)
+        colouring: dict[str, str] = {}
+        for region in rng.sample(shape.regions, len(shape.regions)):
+            free = [
+                c for c in mapcolour.COLOURS if all(colouring.get(n) != c for n in touching[region])
+            ]
+            if not free:
+                break
+            colouring[region] = rng.choice(free)
+        else:
+
+            def build(
+                kept: set[str], grid: list[list[str]] = grid, colouring: dict[str, str] = colouring
+            ) -> str:
+                lines = _header(comment, "Family: map", "Regions:")
+                lines += [" ".join(row) for row in grid]
+                lines += ["Givens:", *(f"{region} {colouring[region]}" for region in sorted(kept))]
+                return "\n".join(lines) + "\n"
+
+            everything = set(colouring)
+            if not is_unique(build(everything)):
+                continue
+            floor = max(3, round((1 - open_share) * len(everything)))
+            return build(thin(everything, build, rng, keep_at_least=floor))
+    return None
+
+
 def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
     """A random domino tiling of a `rows` x `cols` board, by randomised backtracking."""
     taken: set[Cell] = set()
@@ -1184,4 +1230,6 @@ def fresh(
         return fresh_undead(size, rng, open_share, comment)
     if family == "pattern":
         return fresh_pattern(size, rng, open_share, comment)
+    if family == "map":
+        return fresh_map(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

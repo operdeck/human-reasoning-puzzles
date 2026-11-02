@@ -649,6 +649,8 @@ FAMILY_RULES = {
     "zombies are always seen, vampires only directly, ghosts only in a mirror.",
     "pattern": "Fill cells so that each row and column contains the runs of filled cells "
     "listed for it, in order, with at least one empty cell between runs.",
+    "map": "Colour every region red, yellow, green or blue so that no two regions that share "
+    "a border have the same colour; the dotted regions are coloured to start with.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }

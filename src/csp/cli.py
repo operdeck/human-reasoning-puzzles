@@ -27,6 +27,7 @@ from . import (
     kakurasu,
     logicgrid,
     magnets,
+    mapcolour,
     minesweeper,
     mosaic,
     murdoku,
@@ -108,6 +109,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "map":
+        model, map_puzzle = mapcolour.compile_puzzle(text)
+        return Puzzle(kind, model, partial(mapcolour.render, map_puzzle))
     if kind == "pattern":
         model, pattern_puzzle = pattern.compile_puzzle(text)
         return Puzzle(kind, model, partial(pattern.render, pattern_puzzle))
@@ -235,6 +239,7 @@ def make_image(
         "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "map": (mapcolour.parse, picture.map_picture),
         "pattern": (pattern.parse, picture.pattern_picture),
         "undead": (undead.parse, picture.undead_picture),
         "magnets": (magnets.parse, picture.magnets_picture),
