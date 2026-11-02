@@ -23,6 +23,7 @@ from . import (
     battleships,
     binairo,
     calcudoku,
+    dominosa,
     futoshiki,
     kakurasu,
     logicgrid,
@@ -51,6 +52,7 @@ SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "battleships": battleships.solutions,
     "towers": towers.solutions,
     "mosaic": mosaic.solutions,
+    "dominosa": dominosa.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

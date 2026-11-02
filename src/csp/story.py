@@ -637,6 +637,8 @@ FAMILY_RULES = {
     "behind it.",
     "mosaic": "Colour every cell black or white; a number says how many cells in the 3x3 "
     "block around it, itself included, are black.",
+    "dominosa": "Cover the whole grid with dominoes so that every pair of numbers from the "
+    "full set (0-0, 0-1, ... up to the highest number) is used exactly once.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }
