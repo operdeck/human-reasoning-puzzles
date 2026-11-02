@@ -1,0 +1,16 @@
+# Map 6x6: easy; given colours rule out the rest region by region.
+Family: map
+Regions:
+a a b b c c
+a b b b b c
+d d e e e c
+d e e f e g
+d h h f g g
+h h h f g g
+Givens:
+a red
+d green
+e yellow
+f green
+g red
+h red

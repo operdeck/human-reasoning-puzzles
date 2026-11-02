@@ -1,0 +1,22 @@
+# Map 12x12: hard; a larger map that needs chains.
+Family: map
+Regions:
+a a a b b b c c c c c d
+a a e e e b b c c c d d
+a e e e e f f c c g d d
+h h e i e f f f c g d d
+h h h i i f f f g g j d
+h h h h k l l f f g j d
+h h m k k l l l l n j o
+p m m m q l l l n n j o
+p m m m q l r n n n j o
+p p p m q q r r r n n o
+p p p m q q r r s s n o
+p p p m q s s s s s o o
+Givens:
+a red
+d red
+f yellow
+m yellow
+n yellow
+p green

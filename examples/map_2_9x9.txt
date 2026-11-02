@@ -1,0 +1,18 @@
+# Map 9x9: easy; a larger map where singles still suffice.
+Family: map
+Regions:
+a a a a b b b c c
+a a d d e b b b c
+a a d f e e e c c
+a f f f e e e c g
+h f f f i e e g g
+h h f i i i g g g
+j j j i i i i g g
+j j j i k k k k g
+j j j k k k k k g
+Givens:
+b green
+d red
+f yellow
+g red
+k blue
