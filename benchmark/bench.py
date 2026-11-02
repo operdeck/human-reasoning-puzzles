@@ -165,29 +165,6 @@ def measure(job: Job) -> Outcome:
     The limit is the worker's own alarm, so a puzzle that would not finish
     costs its limit and nothing more and the rest of the batch runs on.
     """
-    answer = job.answer
-    if answer is None:
-        found = bruteforce.solutions(job.text, job.kind, limit=2)
-        if len(found) != 1:
-            return Outcome(
-                job.index,
-                job.origin,
-                job.group,
-                job.rating,
-                "ambiguous",
-                False,
-                False,
-                (),
-                f"{len(found)} solutions, so there is no one answer to judge",
-                False,
-                0.0,
-                0,
-                0,
-                0,
-                {},
-            )
-        answer = found[0]
-
     started = time.perf_counter()
     signal.setitimer(signal.ITIMER_REAL, 0)  # nothing left over from an earlier run
     previous = signal.signal(signal.SIGALRM, _raise_timeout)
@@ -196,6 +173,28 @@ def measure(job: Job) -> Outcome:
         # can fire before the body starts, and that is a timeout, not a crash.
         if job.timeout:
             signal.setitimer(signal.ITIMER_REAL, job.timeout)
+        answer = job.answer
+        if answer is None:
+            found = bruteforce.solutions(job.text, job.kind, limit=2)
+            if len(found) != 1:
+                return Outcome(
+                    job.index,
+                    job.origin,
+                    job.group,
+                    job.rating,
+                    "ambiguous",
+                    False,
+                    False,
+                    (),
+                    f"{len(found)} solutions, so there is no one answer to judge",
+                    False,
+                    0.0,
+                    0,
+                    0,
+                    0,
+                    {},
+                )
+            answer = found[0]
         if job.kind == "sudoku":
             model, _ = compile_puzzle(job.text)
         else:
@@ -357,6 +356,12 @@ def report(outcomes: Sequence[Outcome], *, title: str, ladder: str, timeout: flo
     stuck = [outcome for outcome in outcomes if not outcome.solved and not outcome.timed_out]
     late = [outcome for outcome in outcomes if outcome.timed_out]
     assumption = sum(1 for outcome in outcomes if outcome.what_if)
+    finished_time = (
+        f"median {statistics.median(finished):.1f} ms, "
+        f"p90 {percentile(finished, 0.9):.1f} ms, max {max(finished):.1f} ms"
+        if finished
+        else "median n/a ms, p90 n/a ms, max n/a ms"
+    )
 
     lines = [
         f"### {title}",
@@ -366,8 +371,7 @@ def report(outcomes: Sequence[Outcome], *, title: str, ladder: str, timeout: flo
         f"- Solved: **{len(solved)} of {total}** ({100 * len(solved) / total:.1f}%)",
         f"- Unsolved: {len(stuck)}; timed out: {len(late)}",
         f"- Wrong solution: {len(wrong)}; unsound steps: {len(unsound)}",
-        f"- Time where it finished: median {statistics.median(finished):.1f} ms, "
-        f"p90 {percentile(finished, 0.9):.1f} ms, max {max(finished, default=0.0):.1f} ms",
+        f"- Time where it finished: {finished_time}",
         f"- `what_if` fired on {assumption} of {total} puzzles "
         f"({100 * assumption / total:.0f}%), {sum(o.what_if for o in outcomes)} times in all",
         "",
