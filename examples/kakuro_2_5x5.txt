@@ -1,0 +1,8 @@
+# Kakuro 5x5: easy; runs of two to four cells.
+Family: kakuro
+Grid:
+X 17\ 8\ 24\ X
+\12 . . . 10\
+\26 . . . .
+X X \16 . .
+X X \5 . .
