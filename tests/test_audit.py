@@ -45,7 +45,7 @@ def test_relabelled_regions_share_a_layout():
     aliases = {"a": "w", "b": "x", "c": "y", "d": "z"}
     relabelled = re.sub(r"\b[a-d]\b", lambda match: aliases[match[0]], text)
     assert relabelled != text
-    assert audit.layout_key(text, "queens") == audit.layout_key(relabelled, "queens")
+    assert audit.layout_key(text, "starbattle") == audit.layout_key(relabelled, "starbattle")
 
 
 def test_same_placement_on_another_region_map_is_a_different_solution():
@@ -53,7 +53,7 @@ def test_same_placement_on_another_region_map_is_a_different_solution():
     other = text.replace("b a a a\nb a a a", "b b a a\nb a a a")
     assert other != text
     assert bruteforce.solutions(text) == bruteforce.solutions(other)
-    assert audit.solution_key(text, "queens") != audit.solution_key(other, "queens")
+    assert audit.solution_key(text, "starbattle") != audit.solution_key(other, "starbattle")
 
 
 def _profile(name: str, tier: str, grade: str, category: str | None = None) -> audit.Profile:

@@ -1,6 +1,7 @@
 # Queens 7x7: medium, no givens or single-cell regions (seed 13807).
-Family: queens
+Family: starbattle
 Size: 7
+Stars: 1
 Regions:
 a: amber
 b: blue

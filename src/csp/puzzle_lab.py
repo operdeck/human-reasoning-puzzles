@@ -15,7 +15,7 @@ from typing import Any, cast
 
 from csp import bruteforce, cli, fresh, report
 from csp.core import Solver
-from csp.puzzlefile import detect, read_sections
+from csp.puzzlefile import detect, display_family, read_sections
 
 TIERS = {
     "easy": frozenset({"single", "count"}),
@@ -43,8 +43,7 @@ class Rating:
 
 def family_of(text: str) -> str:
     """The display-level family, retaining rule variants such as Tango."""
-    section = read_sections(text).get("Family")
-    return section[0].casefold() if section else detect(text)
+    return display_family(text, detect(text))
 
 
 def rate(text: str, path: str = "<memory>") -> Rating:
@@ -221,21 +220,6 @@ def _add_givens(
         return _regenerate_tents(text, solution, rng)
     if family in {"battleships", "kakurasu"}:
         return _regenerate_count_grid(text, family, solution, rng)
-    if family == "queens":
-        existing = read_sections(text).get("Givens", [])
-        regions = {str(region): cell for region, cell in solution.items()}
-        absent = [
-            f"{region} {cell}"
-            for region, cell in regions.items()
-            if f"{region} {cell}" not in existing
-        ]
-        chosen = [line for line in absent if rng.random() < fraction]
-        if not chosen and absent:
-            chosen = [rng.choice(absent)]
-        if not chosen:
-            return None
-        return _append_section(text, "Givens", chosen)
-
     if family == "logicgrid":
         categories = read_sections(text).get("Categories", [])
         groups = [line.split(":", 1)[1].split() for line in categories if ":" in line]
@@ -265,6 +249,7 @@ def _add_givens(
         "tectonic",
         "binairo",
         "tango",
+        "queens",
         "starbattle",
     }:
         return None
@@ -292,7 +277,7 @@ def _add_givens(
                 row_index += 1
         return "\n".join(rows) + "\n"
 
-    if family == "starbattle":
+    if family in {"queens", "starbattle"}:
         matrix = [
             " ".join(
                 ("*" if cells[f"r{r}c{c}"] else ".") if f"r{r}c{c}" in selected else "?"
@@ -776,9 +761,19 @@ def _audit_command(args: argparse.Namespace) -> int:
 def _fresh_command(args: argparse.Namespace) -> int:
     rng = random.Random(args.seed)
     for attempt in range(args.attempts):
-        candidate = fresh.fresh(
-            args.family, args.size, rng, args.open_share, args.comment, args.tier
-        )
+        try:
+            candidate = fresh.fresh(
+                args.family,
+                args.size,
+                rng,
+                args.open_share,
+                args.comment,
+                args.tier,
+                stars=args.stars,
+            )
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 2
         if candidate is None:
             continue
         result = rate(candidate, f"fresh {args.family} (candidate {attempt + 1})")
@@ -855,6 +850,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     fresh_parser.add_argument("--comment", default="")
     fresh_parser.add_argument("--seed", type=int, default=0)
     fresh_parser.add_argument("--attempts", type=int, default=10)
+    fresh_parser.add_argument("--stars", type=int, help="stars per row, column, and region")
     fresh_parser.set_defaults(run=_fresh_command)
 
     audit_parser = commands.add_parser(

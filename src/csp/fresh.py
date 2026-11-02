@@ -205,51 +205,6 @@ def _region_text(
     return "\n".join(lines + extra) + "\n"
 
 
-def _grow(size: int, seeds: list[Cell], rng: random.Random) -> dict[Cell, int]:
-    """Give each seed a neighbour before growing the connected regions further."""
-    owner = {cell: i for i, cell in enumerate(seeds)}
-    sizes = Counter(owner.values())
-    while len(owner) < size * size:
-        options = [
-            ((r + dr, c + dc), i)
-            for (r, c), i in owner.items()
-            for dr, dc in STEPS
-            if 0 <= r + dr < size and 0 <= c + dc < size and (r + dr, c + dc) not in owner
-        ]
-        small = [option for option in options if sizes[option[1]] < 2]
-        cell, region = rng.choice(small or options)
-        owner[cell] = region
-        sizes[region] += 1
-    return owner
-
-
-def fresh_queens(
-    size: int,
-    rng: random.Random,
-    attempts: int = 4000,
-    comment: str = "",
-    *,
-    tier: str = "medium",
-) -> str | None:
-    """Grow non-singleton regions; easy boards get one explicit starter queen."""
-    for _ in range(attempts):
-        cols = list(range(size))
-        rng.shuffle(cols)
-        if any(abs(cols[i] - cols[i + 1]) < 2 for i in range(size - 1)):
-            continue
-        owner = _grow(size, [(row, cols[row]) for row in range(size)], rng)
-        if min(Counter(owner.values()).values()) < 2:
-            continue
-        extra: list[str] = []
-        if tier == "easy":
-            row = rng.randrange(size)
-            extra = ["Givens:", f"{chr(97 + row)} {_name((row, cols[row]))}"]
-        text = _region_text("queens", size, owner, extra, comment)
-        if is_unique(text):
-            return text
-    return None
-
-
 def _carve(size: int, rng: random.Random, largest: int = 5) -> dict[Cell, int]:
     """Cut the board into connected regions of 3..`largest` cells, merging leftovers."""
     owner: dict[Cell, int] = {}
@@ -698,9 +653,10 @@ def fresh_starbattle(
     open_share: float = 1.0,
     attempts: int = 200,
     comment: str = "",
+    *,
+    tier: str = "medium",
 ) -> str | None:
-    """A new Star Battle: a random star placement, regions grown around it, then givens
-    only where the regions alone allow more than one solution."""
+    """A new Queens or Star Battle board with a fresh placement and connected regions."""
     for _ in range(attempts):
         placement = star_placement(size, stars, rng)
         owner = _star_regions(size, placement, stars, rng) if placement else None
@@ -709,8 +665,6 @@ def fresh_starbattle(
         blank = _region_text("starbattle", size, owner, [], comment).replace(
             "Regions:", f"Stars: {stars}\nRegions:", 1
         )
-        if open_share >= 1 and is_unique(blank):
-            return blank
         solution = placement
 
         def build(givens: set[Cell], blank: str = blank, solution: set[Cell] = solution) -> str:
@@ -723,6 +677,17 @@ def fresh_starbattle(
             ]
             return blank + "Givens:\n" + "\n".join(rows) + "\n"
 
+        if stars == 1:
+            if tier == "easy":
+                given = {rng.choice(sorted(solution))}
+                candidate = build(given)
+                if is_unique(candidate):
+                    return candidate
+            elif is_unique(blank):
+                return blank
+            continue
+        if open_share >= 1 and is_unique(blank):
+            return blank
         keep = _keep(size, open_share) if open_share < 1 else 0
         return build(thin(_cells(size), build, rng, keep_at_least=keep))
     return None
@@ -844,17 +809,18 @@ def fresh(
     open_share: float = 0.5,
     comment: str = "",
     tier: str = "easy",
+    *,
+    stars: int | None = None,
 ) -> str | None:
-    """A new puzzle of `family`; `open_share` applies to Binairo, Tango, Minesweeper,
-    Sudoku and Futoshiki, and sets the least share of Star Battle cells left unknown."""
+    """A new puzzle of `family`; `stars` selects the Star Battle count."""
+    if stars is not None and family not in {"queens", "starbattle"}:
+        raise ValueError("--stars only applies to Queens and Star Battle")
     if family in {"binairo", "tango"}:
         return fresh_binairo(size, rng, open_share, family, comment=comment)
     if family == "minesweeper":
         return fresh_minesweeper(size, rng, open_share, comment)
     if family == "akari":
         return fresh_akari(size, rng, tier, comment)
-    if family == "queens":
-        return fresh_queens(size, rng, comment=comment, tier=tier)
     if family == "suguru":
         return fresh_suguru(size, rng, comment=comment)
     if family == "sudoku":
@@ -863,9 +829,13 @@ def fresh(
         return fresh_futoshiki(size, rng, open_share, comment=comment)
     if family == "calcudoku":
         return fresh_calcudoku(size, rng, comment=comment)
-    if family == "starbattle":
-        stars = 2 if size >= 8 else 1
-        return fresh_starbattle(size, rng, stars, open_share or 1.0, comment=comment)
+    if family in {"queens", "starbattle"}:
+        if family == "queens" and stars not in (None, 1):
+            raise ValueError("Queens is Star Battle with Stars: 1")
+        count = 1 if family == "queens" else stars if stars is not None else (2 if size >= 8 else 1)
+        if count < 1 or count > size:
+            raise ValueError(f"stars must be between 1 and {size}")
+        return fresh_starbattle(size, rng, count, open_share or 1.0, comment=comment, tier=tier)
     if family == "tents":
         return fresh_tents(size, rng, comment=comment)
     if family == "battleships":

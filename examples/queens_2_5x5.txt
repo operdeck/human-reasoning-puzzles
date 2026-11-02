@@ -1,6 +1,7 @@
 # Queens 5x5: easy, one given queen; no single-cell regions (seed 13805).
-Family: queens
+Family: starbattle
 Size: 5
+Stars: 1
 Regions:
 a: amber
 b: blue
@@ -14,4 +15,8 @@ d d a c c
 d d e c c
 e e e c c
 Givens:
-a r1c5
+? ? ? ? *
+? ? ? ? ?
+? ? ? ? ?
+? ? ? ? ?
+? ? ? ? ?

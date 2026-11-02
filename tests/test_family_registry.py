@@ -6,7 +6,7 @@ from csp.puzzlefile import KINDS, detect
 @pytest.mark.parametrize(
     "family, kind",
     [
-        ("queens", "queens"),
+        ("queens", "starbattle"),
         ("suguru", "suguru"),
         ("tectonic", "suguru"),
         ("logicgrid", "logicgrid"),

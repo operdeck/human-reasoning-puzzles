@@ -180,10 +180,11 @@ def test_halloween_questions_and_web_reveals_explicitly_identify_the_murderer(
 
 def test_display_aliases_keep_their_labels_and_rules(exported):
     queens = _bundle(exported, "queens_2_5x5")
-    assert queens["family"] == "queens"
+    assert queens["family"] == "starbattle"
     assert queens["familyLabel"] == "Queens"
     assert "one queen" in queens["rules"][0]
     assert queens["palette"][0]["id"] == "queen"
+    assert queens["palette"][0]["svg"]
 
     tango = _bundle(exported, "tango_2_4x4")
     assert tango["family"] == "binairo"
@@ -372,7 +373,11 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
     assert sections.index("Murdoku \u00b7 Wie doet het met wie") < sections.index("Akari")
     assert _bundle(exported, "food-murdoku-2")["section"] == "Murdoku \u00b7 Japanese food"
     assert "Queens" in sections and "Tango" in sections
-    queens = [entry for entry in puzzles if entry["family"] == "queens"]
+    queens = [
+        entry
+        for entry in puzzles
+        if entry["family"] == "starbattle" and entry["familyLabel"] == "Queens"
+    ]
     assert len(queens) == 6
     assert {entry["section"] for entry in queens} == {"Queens"}
     for entry in queens:

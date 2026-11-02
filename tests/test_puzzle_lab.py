@@ -167,7 +167,7 @@ def test_fresh_boards_have_their_own_unique_solution(family, size, open_share):
     text = fresh.fresh(family, size, random.Random(3), open_share)
     assert text is not None
     result = rate(text)
-    assert result.family == family
+    assert result.family == ("queens" if family == "starbattle" and size < 8 else family)
     assert result.solutions == "unique"
     assert result.tier != "trivial"
 
@@ -186,13 +186,15 @@ def test_fresh_command_writes_a_rated_board(tmp_path, capsys):
 def test_fresh_queens_have_no_single_cell_regions(size, tier, seed):
     import random
 
-    from csp import fresh, queens
+    from csp import fresh, starbattle
 
     text = fresh.fresh("queens", size, random.Random(seed), tier=tier)
     assert text is not None
-    puzzle = queens.parse(text)
-    assert min(map(len, puzzle.cells_by_region.values())) >= 2
-    assert len(puzzle.givens) == (1 if tier == "easy" else 0)
+    puzzle = starbattle.parse(text)
+    assert puzzle.stars == 1
+    assert "Family: starbattle" in text
+    assert min(map(len, puzzle.areas.cells_by_region.values())) >= 2
+    assert sum(value == 1 for row in puzzle.givens for value in row) == (1 if tier == "easy" else 0)
     assert fresh.is_unique(text)
     assert text == fresh.fresh("queens", size, random.Random(seed), tier=tier)
 
