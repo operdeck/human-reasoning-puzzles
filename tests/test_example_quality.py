@@ -44,6 +44,14 @@ def test_documentation_and_skills_use_the_web_index_instead_of_the_retired_galle
         assert "examples.md" not in source.read_text(), str(source.relative_to(root))
 
 
+def test_agent_entrypoints_share_one_repository_guide():
+    root = Path(__file__).resolve().parents[1]
+    pointer = "Read and follow `AGENT.md`."
+    for relative in (".clinerules", ".github/copilot-instructions.md"):
+        assert (root / relative).read_text().strip() == pointer
+    assert (root / "CLAUDE.md").read_text().strip() == "@AGENT.md"
+
+
 def test_the_documented_example_count_matches_the_collection():
     """The frontier sentences quote how many puzzles ship: keep that number true."""
     root = Path(__file__).resolve().parents[1]
