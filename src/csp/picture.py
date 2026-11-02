@@ -1173,11 +1173,7 @@ def hidato_picture(
                 x, y = margin + c * cell, margin + r * cell
                 _value(canvas, number, INK if given > 0 else SOLVED, x, y, cell, int(cell * 0.42))
     if interactive:
-        for r in range(puzzle.rows):
-            for c in range(puzzle.cols):
-                if puzzle.grid[r][c] >= 0:
-                    x, y = margin + c * cell, margin + r * cell
-                    canvas.cell(cell_id(r, c), (x, y, x + cell, y + cell))
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)  # blocked cells too
     return canvas
 
 
@@ -1216,9 +1212,7 @@ def kakuro_picture(
                     (x + cell * 0.07, y + cell * 0.92), str(down), WHITE, small, anchor="ld"
                 )
     if interactive:
-        for r, c in puzzle.whites:
-            x, y = margin + c * cell, margin + r * cell
-            canvas.cell(cell_id(r, c), (x, y, x + cell, y + cell))
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)  # clue cells are blocked
     return canvas
 
 
