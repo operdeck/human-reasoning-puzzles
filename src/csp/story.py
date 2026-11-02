@@ -632,6 +632,9 @@ FAMILY_RULES = {
     "contributes its column number to the row sum and its row number to the column sum.",
     "battleships": "Mark cells to match the ship-cell counts for each row and column; "
     "this counts-only puzzle does not model ship shapes or non-touching rules.",
+    "towers": "Fill the grid so every row and column holds each height once; an edge clue "
+    "says how many towers are visible from there, because a tower hides every shorter one "
+    "behind it.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }

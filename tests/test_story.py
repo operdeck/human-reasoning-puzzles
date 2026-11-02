@@ -69,6 +69,7 @@ ALLOWED = {
     "akari": {"core", "puzzlefile", "icons"},
     "kakurasu": {"core", "puzzlefile", "icons"},
     "battleships": {"core", "puzzlefile", "icons"},
+    "towers": {"core", "puzzlefile"},
     "collection": set(),
     "web": {
         "akari",
@@ -94,6 +95,7 @@ ALLOWED = {
         "akari",
         "kakurasu",
         "battleships",
+        "towers",
         "icons",
         "svg",
     },

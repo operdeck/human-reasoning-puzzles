@@ -34,6 +34,7 @@ from . import (
     sudoku,
     suguru,
     tents,
+    towers,
     web,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
@@ -101,6 +102,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "towers":
+        model, towers_puzzle = towers.compile_puzzle(text)
+        return Puzzle(kind, model, partial(towers.render, towers_puzzle))
     if kind == "battleships":
         model, battleships_puzzle = battleships.compile_puzzle(text)
         return Puzzle(kind, model, partial(battleships.render, battleships_puzzle))
@@ -207,6 +211,7 @@ def make_image(
         "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "towers": (towers.parse, picture.towers_picture),
         "battleships": (battleships.parse, picture.battleships_picture),
         "logicgrid": (logicgrid.parse, picture.logicgrid_picture),
         "sudoku": (sudoku.parse, picture.sudoku_picture),

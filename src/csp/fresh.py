@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable
 
-from csp import battleships, bruteforce
+from csp import battleships, bruteforce, towers
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -30,6 +30,7 @@ FAMILIES = (
     "starbattle",
     "tents",
     "battleships",
+    "towers",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -802,6 +803,54 @@ def fresh_battleships(size: int, rng: random.Random, comment: str = "") -> str |
     return None
 
 
+def fresh_towers(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new Towers puzzle: a random Latin square, every edge clue, then givens and clues thinned.
+
+    Givens go first (down to `open_share` empty at least), so the edge clues carry the
+    puzzle; whatever clue is no longer needed for uniqueness is dropped afterwards.
+    """
+    if size not in towers.SIZES:
+        raise ValueError(f"fresh Towers boards are {towers.SIZES.start} to {towers.SIZES[-1]} wide")
+    grid = latin_square(size, rng)
+    columns = [[grid[r][c] for r in range(size)] for c in range(size)]
+    views = {
+        "Top": columns,
+        "Bottom": [column[::-1] for column in columns],
+        "Left": grid,
+        "Right": [row[::-1] for row in grid],
+    }
+    every = {(side, i) for side in views for i in range(size)}
+
+    def build(clues: set[tuple[str, int]], givens: set[Cell]) -> str:
+        lines = _header(comment, "Family: towers", f"Size: {size}")
+        for side, lanes in views.items():
+            shown = (
+                str(towers.visible(lane)) if (side, i) in clues else "."
+                for i, lane in enumerate(lanes)
+            )
+            lines += [f"{side}:", " ".join(shown)]
+        if givens:
+            lines += ["Givens:", *_given_rows(grid, givens)]
+        return "\n".join(lines) + "\n"
+
+    # Start from every clue and add random givens only if the edges alone leave two answers.
+    givens: set[Cell] = set()
+    spare = _cells(size)
+    rng.shuffle(spare)
+    while not is_unique(build(every, givens)):
+        givens.add(spare.pop())
+    givens = thin(givens, lambda kept: build(every, kept), rng)
+    kept = thin(
+        every, lambda clues: build(clues, givens), rng, keep_at_least=_clue_floor(size, open_share)
+    )
+    return build(kept, givens)
+
+
+def _clue_floor(size: int, open_share: float) -> int:
+    """Edge clues to keep at least: more open cells ask for fewer, so a harder puzzle."""
+    return max(2, round((1 - open_share) * 2 * size))
+
+
 def fresh(
     family: str,
     size: int,
@@ -840,4 +889,6 @@ def fresh(
         return fresh_tents(size, rng, comment=comment)
     if family == "battleships":
         return fresh_battleships(size, rng, comment=comment)
+    if family == "towers":
+        return fresh_towers(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")
