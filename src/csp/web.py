@@ -16,7 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import akari, dominosa, icons, mapcolour, rectangles, starbattle, svg
+from . import akari, dominosa, hidato, icons, mapcolour, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
@@ -39,7 +39,7 @@ LICENSE = (
     "any other use needs the author's written permission."
 )
 CELL = re.compile(r'<rect id="r(\d+)c(\d+)" class="cell"')
-DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru", "towers"})
+DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru", "towers", "kakuro"})
 UNSUPPORTED = {"logicgrid": "The logic grid needs its own matrix view; not playable yet."}
 
 
@@ -105,7 +105,18 @@ CELL_SOLUTIONS: dict[str, Callable[[str, Mapping[str, Any]], dict[str, Any]]] = 
     "dominosa": lambda text, values: dominosa.cell_assignment(values),
     "rectangles": lambda text, values: rectangles.cell_assignment(values),
     "map": lambda text, values: mapcolour.cell_assignment(mapcolour.parse(text), dict(values)),
+    "hidato": lambda text, values: hidato.cell_assignment(values),
 }
+
+
+def _number_items(text: str) -> list[Item]:
+    """The numbers 1..K of a Hidato or Numbrix board, each placed in one cell."""
+    return [Item(str(k), str(k), None, k) for k in range(1, hidato.parse(text).count + 1)]
+
+
+def _dynamic_items(kind: str, text: str) -> list[Item]:
+    """The palette of a family whose items depend on the puzzle itself."""
+    return _number_items(text) if kind == "hidato" else _rectangle_items(text)
 
 
 def _rectangle_items(text: str) -> list[Item]:
@@ -354,7 +365,7 @@ def _family(
             {"scope": "region", **full},
         ]
     else:
-        items = ITEMS[kind] if kind in ITEMS else _rectangle_items(text)
+        items = ITEMS[kind] if kind in ITEMS else _dynamic_items(kind, text)
         if kind == "tents":
             scopes = NEIGHBOURS
         if kind in CELL_SOLUTIONS:

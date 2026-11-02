@@ -8,6 +8,7 @@ solution and layout. Use these builders when an example needs its own board.
 import itertools
 import random
 import re
+import zlib
 from collections import Counter
 from collections.abc import Callable, Iterable
 from functools import partial
@@ -16,6 +17,8 @@ from csp import (
     battleships,
     bruteforce,
     dominosa,
+    hidato,
+    kakuro,
     magnets,
     mapcolour,
     mosaic,
@@ -38,6 +41,11 @@ FAMILIES = (
     "minesweeper",
     "akari",
     "sudoku",
+    "killer",
+    "arrow",
+    "evenodd",
+    "sandwich",
+    "skyscrapersudoku",
     "futoshiki",
     "calcudoku",
     "starbattle",
@@ -52,6 +60,9 @@ FAMILIES = (
     "pattern",
     "map",
     "thermometers",
+    "hidato",
+    "numbrix",
+    "kakuro",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -448,6 +459,158 @@ def fresh_sudoku(size: int, rng: random.Random, open_share: float, comment: str 
         return "\n".join(_header(comment, "Givens:", *_given_rows(grid, givens))) + "\n"
 
     return build(thin(_cells(size), build, rng, keep_at_least=_keep(size, open_share)))
+
+
+SUDOKU_VARIANTS = ("killer", "arrow", "evenodd", "sandwich", "skyscrapersudoku")
+
+
+def _variant_items(
+    family: str, grid: list[list[int]], rng: random.Random
+) -> list[tuple[str, str, object]]:
+    """The rules of one Sudoku variant read off a solved `grid`: (section, key, payload) items.
+
+    Items of one section are written together; `key` orders them and, for the clue lines,
+    is the index of the clue.
+    """
+    size = len(grid)
+    out: list[tuple[str, str, object]] = []
+    if family == "evenodd":
+        for r, c in _cells(size):
+            out.append(("Parity", f"{r},{c}", "eo"[grid[r][c] % 2]))
+    elif family == "sandwich":
+        for i in range(size):
+            for name, line in (
+                ("SandwichRows", grid[i]),
+                ("SandwichColumns", [grid[r][i] for r in range(size)]),
+            ):
+                a, b = sorted((line.index(1), line.index(size)))
+                out.append((name, f"{i}", sum(line[a + 1 : b])))
+    elif family == "skyscrapersudoku":
+        for i in range(size):
+            column = [grid[r][i] for r in range(size)]
+            lanes = {
+                "SkyscraperTop": column,
+                "SkyscraperBottom": column[::-1],
+                "SkyscraperLeft": grid[i],
+                "SkyscraperRight": grid[i][::-1],
+            }
+            for name, lane in lanes.items():
+                out.append((name, f"{i}", towers.visible(lane)))
+    elif family == "killer":
+        free = set(_cells(size))
+        order = _cells(size)
+        rng.shuffle(order)
+        for start in order:
+            if start not in free:
+                continue
+            cage = [start]
+            free.discard(start)
+            while len(cage) < rng.randint(2, 4):
+                near = [
+                    (r + dr, c + dc)
+                    for r, c in cage
+                    for dr, dc in STEPS
+                    if (r + dr, c + dc) in free
+                ]
+                if not near:
+                    break
+                step = rng.choice(near)
+                free.discard(step)
+                cage.append(step)
+            if len(cage) < 2:
+                free.add(start)
+                continue
+            cells = " ".join(_name(cell) for cell in cage)
+            out.append(("Killer", cells, f"{sum(grid[r][c] for r, c in cage)}: {cells}"))
+    else:  # arrow
+        used: set[Cell] = set()
+        for bulb in rng.sample(_cells(size), size * size):
+            if bulb in used or grid[bulb[0]][bulb[1]] < 3:
+                continue
+            for _ in range(30):
+                path = [bulb]
+                for _ in range(rng.randint(2, 3)):
+                    near = [
+                        (path[-1][0] + dr, path[-1][1] + dc)
+                        for dr in (-1, 0, 1)
+                        for dc in (-1, 0, 1)
+                        if (dr or dc)
+                        and 0 <= path[-1][0] + dr < size
+                        and 0 <= path[-1][1] + dc < size
+                        and (path[-1][0] + dr, path[-1][1] + dc) not in used | set(path)
+                    ]
+                    if not near:
+                        break
+                    path.append(rng.choice(near))
+                if (
+                    len(path) >= 3
+                    and sum(grid[r][c] for r, c in path[1:]) == grid[bulb[0]][bulb[1]]
+                ):
+                    used.update(path)
+                    out.append(("Arrows", _name(bulb), " ".join(_name(cell) for cell in path)))
+                    break
+            if len(out) >= size:
+                break
+    return out
+
+
+def fresh_sudoku_variant(
+    family: str, size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Killer, Arrow, Even/Odd, Sandwich or Skyscraper Sudoku (4x4 or 6x6; also 9x9 for
+    the first three, since sandwich and skyscraper lines are relations over a whole line).
+
+    A random Latin square is the answer; its rules and every digit are given, then dropped in
+    random order while the board stays unique, down to a floor set by `open_share`.
+    """
+    if size not in SUDOKU_BOXES or (size == 9 and family in {"sandwich", "skyscrapersudoku"}):
+        raise ValueError(
+            f"fresh {family} Sudoku boards are 4 or 6 wide (9 for killer/arrow/evenodd)"
+        )
+    # Salt the stream with the family, so one seed gives a different answer grid per variant
+    # (the same seed for Killer and Sandwich would otherwise draw the same Latin square).
+    rng = random.Random(rng.getrandbits(64) ^ zlib.crc32(family.encode()))
+    grid = latin_square(size, rng, SUDOKU_BOXES[size])
+    rules = _variant_items(family, grid, rng)
+    if not rules:
+        return None
+    rule_items = {("rule", i) for i in range(len(rules))}
+    given_items = {("given", r * size + c) for r, c in _cells(size)}
+
+    def build(kept: set[tuple[str, int]]) -> str:
+        givens = {divmod(i, size) for kind, i in kept if kind == "given"}
+        lines = _header(comment, f"Family: {family}", "Givens:", *_given_rows(grid, givens))
+        if size == 6:
+            box_rows, box_cols = SUDOKU_BOXES[size]
+            lines += ["Boxes:"]
+            lines += [
+                " ".join(f"{r // box_rows + 1},{c // box_cols + 1}" for c in range(size))
+                for r in range(size)
+            ]
+        chosen = [rules[i] for kind, i in sorted(kept) if kind == "rule"]
+        sections: dict[str, list[tuple[str, object]]] = {}
+        for section, key, payload in chosen:
+            sections.setdefault(section, []).append((key, payload))
+        for section, entries in sections.items():
+            lines.append(f"{section}:")
+            if section == "Parity":
+                marks = {tuple(map(int, key.split(","))): str(p) for key, p in entries}
+                lines += [
+                    " ".join(marks.get((r, c), ".") for c in range(size)) for r in range(size)
+                ]
+            elif section.startswith(("Sandwich", "Skyscraper")):
+                tokens = {int(key): str(p) for key, p in entries}
+                lines.append(" ".join(tokens.get(i, ".") for i in range(size)))
+            else:
+                lines += [str(p) for _, p in entries]
+        return "\n".join(lines) + "\n"
+
+    # Givens go first, with every rule present, so the variant's rules carry the puzzle; then
+    # rules the answer does not need are dropped, down to a floor set by `open_share`.
+    givens = thin(given_items, lambda kept: build(kept | rule_items), rng)
+    floor = max(2, round((1 - open_share) * len(rule_items)))
+    kept_rules = thin(rule_items, lambda kept: build(givens | kept), rng, keep_at_least=floor)
+    return build(givens | kept_rules)
 
 
 def fresh_futoshiki(
@@ -1040,6 +1203,220 @@ def _thermometer_paths(size: int, rng: random.Random) -> list[list[Cell]] | None
     return paths
 
 
+def _kakuro_runs(white: set[Cell], strict: bool = True) -> list[list[Cell]] | None:
+    """Every run of 2 to 4 white cells, across then down, or None if any white cell is
+    alone in a direction or any run is longer than four cells."""
+    runs: list[list[Cell]] = []
+    for step in ((0, 1), (1, 0)):
+        for start in sorted(white):
+            if (start[0] - step[0], start[1] - step[1]) in white:
+                continue
+            run = [start]
+            while (run[-1][0] + step[0], run[-1][1] + step[1]) in white:
+                run.append((run[-1][0] + step[0], run[-1][1] + step[1]))
+            if strict and not 2 <= len(run) <= 4:
+                return None
+            runs.append(run)
+    return runs
+
+
+def _kakuro_layout(size: int, rng: random.Random) -> set[Cell]:
+    """White cells of a valid Kakuro layout: blacken random cells of the full interior while
+    that does not leave more runs outside 2 to 4 cells."""
+
+    def bad(white: set[Cell]) -> int:
+        runs = _kakuro_runs(white, strict=False) or []
+        return sum(not 2 <= len(run) <= 4 for run in runs)
+
+    white = {(r, c) for r in range(1, size) for c in range(1, size)}
+    for _ in range(80):
+        if not bad(white):
+            break
+        cell = rng.choice(sorted(white))
+        if bad(white - {cell}) <= bad(white):
+            white = white - {cell}
+    return white
+
+
+def _kakuro_text(size: int, white: set[Cell], digit: dict[Cell, int], comment: str) -> str | None:
+    """The Kakuro file for `white` cells holding `digit`, or None if the runs are not valid."""
+    runs = _kakuro_runs(white)
+    if runs is None:
+        return None
+    down: dict[Cell, int] = {}
+    across: dict[Cell, int] = {}
+    for run in runs:
+        total = sum(digit[cell] for cell in run)
+        if run[1][0] == run[0][0]:
+            across[run[0][0], run[0][1] - 1] = total
+        else:
+            down[run[0][0] - 1, run[0][1]] = total
+    rows = []
+    for r in range(size):
+        tokens = []
+        for c in range(size):
+            if (r, c) in white:
+                tokens.append(".")
+            elif (r, c) in down or (r, c) in across:
+                tokens.append(f"{down.get((r, c), '')}\\{across.get((r, c), '')}")
+            else:
+                tokens.append("X")
+        rows.append(" ".join(tokens))
+    return "\n".join(_header(comment, "Family: kakuro", "Grid:", *rows)) + "\n"
+
+
+def _distinct_digits(
+    cells: list[Cell], runs: list[list[Cell]], rng: random.Random
+) -> dict[Cell, int] | None:
+    """Digits 1-9 for `cells`, distinct within every run, by randomised backtracking."""
+    digit: dict[Cell, int] = {}
+
+    def fill(index: int) -> bool:
+        if index == len(cells):
+            return True
+        cell = cells[index]
+        options = list(range(1, 10))
+        rng.shuffle(options)
+        for d in options:
+            if all(d not in {digit.get(c) for c in run} for run in runs if cell in run):
+                digit[cell] = d
+                if fill(index + 1):
+                    return True
+                del digit[cell]
+        return False
+
+    return digit if fill(0) else None
+
+
+def fresh_kakuro(size: int, rng: random.Random, comment: str = "") -> str | None:
+    """A new Kakuro: a random layout of runs of 2 to 4 cells, random distinct digits in each.
+
+    Sums are read off the digits, so they are always consistent. While the board has a second
+    answer, a cell where the two answers differ is turned black (when the runs stay valid);
+    the digits of the remaining cells still solve it, and so the search converges.
+    """
+    if size not in range(4, kakuro.BIGGEST + 1):
+        raise ValueError(f"fresh Kakuro boards are 4 to {kakuro.BIGGEST} wide")
+    for _ in range(200):
+        white = _kakuro_layout(size, rng)
+        runs = _kakuro_runs(white)
+        if runs is None:
+            continue
+        digit = _distinct_digits(sorted(white), runs, rng)
+        if digit is None:
+            continue
+        for _ in range(30):
+            text = _kakuro_text(size, white, digit, comment)
+            if text is None:
+                break
+            answers = bruteforce.solutions(text, "kakuro", limit=2)
+            if len(answers) == 1:
+                return text
+            differing = [
+                cell for cell in sorted(white) if answers[0][_name(cell)] != answers[1][_name(cell)]
+            ]
+            rng.shuffle(differing)
+            for cell in differing:
+                if _kakuro_runs(white - {cell}) is not None:
+                    white = white - {cell}
+                    break
+            else:
+                break
+    return None
+
+
+def _hamiltonian_path(
+    cells: set[Cell], diagonal: bool, rng: random.Random, budget: int = 20000
+) -> list[Cell] | None:
+    """A random path through every cell of `cells`, each step to a touching cell, or None.
+
+    Backtracking that tries the neighbour with the fewest onward moves first (Warnsdorff's
+    rule, ties broken at random), within a step budget.
+    """
+    reach = [
+        (dr, dc)
+        for dr in (-1, 0, 1)
+        for dc in (-1, 0, 1)
+        if (dr or dc) and (diagonal or not (dr and dc))
+    ]
+    steps = 0
+
+    def onward(cell: Cell, used: set[Cell]) -> list[Cell]:
+        return [
+            (cell[0] + dr, cell[1] + dc)
+            for dr, dc in reach
+            if (cell[0] + dr, cell[1] + dc) in cells and (cell[0] + dr, cell[1] + dc) not in used
+        ]
+
+    def extend(path: list[Cell], used: set[Cell]) -> bool:
+        nonlocal steps
+        if len(path) == len(cells):
+            return True
+        steps += 1
+        if steps > budget:
+            return False
+        options = onward(path[-1], used)
+        rng.shuffle(options)
+        options.sort(key=lambda nxt: len(onward(nxt, used | {nxt})))
+        for nxt in options:
+            path.append(nxt)
+            used.add(nxt)
+            if extend(path, used):
+                return True
+            path.pop()
+            used.discard(nxt)
+        return False
+
+    start = rng.choice(sorted(cells))
+    path = [start]
+    return path if extend(path, {start}) else None
+
+
+def fresh_hidato(
+    family: str, size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Hidato or Numbrix board: a random path through the open cells, thinned givens.
+
+    A few random cells are blocked, a Hamiltonian path numbers the rest, and every number is
+    given; givens are dropped at random while the answer stays unique, keeping at least
+    `1 - open_share` of them (always 1 and K).
+    """
+    if size not in range(3, hidato.BIGGEST + 1):
+        raise ValueError(f"fresh {family} boards are 3 to {hidato.BIGGEST} wide")
+    diagonal = family == "hidato"
+    for _ in range(100):
+        blocked = {cell for cell in _cells(size) if rng.random() < 0.06}
+        cells = set(_cells(size)) - blocked
+        path = _hamiltonian_path(cells, diagonal, rng)
+        if path is None or len(path) < 6:
+            continue
+        number = {cell: i + 1 for i, cell in enumerate(path)}
+
+        def build(
+            kept: set[int],
+            number: dict[Cell, int] = number,
+            blocked: set[Cell] = blocked,
+        ) -> str:
+            rows = [
+                " ".join(
+                    "X" if (r, c) in blocked else str(number[r, c]) if number[r, c] in kept else "."
+                    for c in range(size)
+                )
+                for r in range(size)
+            ]
+            return "\n".join(_header(comment, f"Family: {family}", "Grid:", *rows)) + "\n"
+
+        ends = {1, len(path)}
+        floor = max(0, round((1 - open_share) * len(path)) - 2)
+
+        def with_ends(kept: set[int], ends: set[int] = ends) -> str:
+            return build(kept | ends)
+
+        kept = thin(set(range(1, len(path) + 1)) - ends, with_ends, rng, keep_at_least=floor)
+        return build(kept | ends)
+    return None
+
+
 def fresh_thermometers(
     size: int, rng: random.Random, open_share: float, comment: str = ""
 ) -> str | None:
@@ -1376,4 +1753,10 @@ def fresh(
         return fresh_map(size, rng, open_share, comment)
     if family == "thermometers":
         return fresh_thermometers(size, rng, open_share, comment)
+    if family in {"hidato", "numbrix"}:
+        return fresh_hidato(family, size, rng, open_share, comment)
+    if family == "kakuro":
+        return fresh_kakuro(size, rng, comment)
+    if family in SUDOKU_VARIANTS:
+        return fresh_sudoku_variant(family, size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

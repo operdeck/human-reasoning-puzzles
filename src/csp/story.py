@@ -492,6 +492,20 @@ SUDOKU_RULES = {
         "dots": "Missing dots impose no restriction; not every qualifying pair needs a dot.",
         "consecutive": "Digits joined by a consecutive-pair bar differ by exactly one.",
         "less": "Digits strictly increase along each thermometer, from the bulb towards the tip.",
+        "parity": "A digit on a grey circle is odd; a digit on a grey square is even.",
+        "arrow": "The digit in each circle equals the sum of the digits along its arrow.",
+        "killer": (
+            "Each dashed cage holds different digits that add up to the small number in its corner."
+        ),
+        "sandwich": (
+            "A number outside the grid is the sum of the digits between the 1 and the "
+            "highest digit in that row or column."
+        ),
+        "skyscraper": (
+            "A number outside the grid is how many digits can be seen from there along "
+            "that row or column, taking digits as tower heights, where a taller tower "
+            "hides every shorter one behind it."
+        ),
     },
     "nl": {
         "base": (
@@ -520,6 +534,23 @@ SUDOKU_RULES = {
         ),
         "consecutive": "Cijfers verbonden door een streepje verschillen precies één.",
         "less": "De cijfers lopen op elke thermometer strikt op, van het bolletje naar de punt.",
+        "parity": (
+            "Een cijfer op een grijze cirkel is oneven; een cijfer op een grijs vierkant is even."
+        ),
+        "arrow": "Het cijfer in elke cirkel is de som van de cijfers langs de bijbehorende pijl.",
+        "killer": (
+            "Elke gestippelde kooi bevat verschillende cijfers die samen het kleine getal "
+            "in de hoek vormen."
+        ),
+        "sandwich": (
+            "Een getal buiten het rooster is de som van de cijfers tussen de 1 en het "
+            "hoogste cijfer in die rij of kolom."
+        ),
+        "skyscraper": (
+            "Een getal buiten het rooster zegt hoeveel cijfers je vanaf daar ziet langs die "
+            "rij of kolom, als je cijfers als torenhoogtes leest: een hogere toren verbergt "
+            "elke lagere erachter."
+        ),
     },
 }
 
@@ -607,6 +638,8 @@ def family_rules(text: str, kind: str) -> list[str]:
             rules.append(words[kind])
     if kinds & {"white", "black"}:
         rules.append(words["dots"])
+    present = {rule.kind for rule in sudoku_puzzle.rules}
+    rules.extend(words[kind] for kind in sudoku.RULE_KINDS if kind in present)
     return rules
 
 
@@ -651,6 +684,13 @@ FAMILY_RULES = {
     "listed for it, in order, with at least one empty cell between runs.",
     "thermometers": "Fill each thermometer from its bulb without gaps, so that every row and "
     "column holds the number of filled cells shown.",
+    "hidato": "Write 1 up to the number of open cells so that every number touches "
+    "the next one, along a side or at a corner; numbers given are fixed.",
+    "numbrix": "Write 1 up to the number of open cells so that every number touches "
+    "the next one along a side (corners do not count); numbers given are fixed.",
+    "kakuro": "Fill the white cells with the digits 1 to 9. The number of a clue cell "
+    "is the sum of the run of white cells below it (down) or to its right "
+    "(across), and a run never repeats a digit.",
     "map": "Colour every region red, yellow, green or blue so that no two regions that share "
     "a border have the same colour; the dotted regions are coloured to start with.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "

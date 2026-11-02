@@ -47,6 +47,8 @@ KINDS = (
     "undead",
     "pattern",
     "map",
+    "kakuro",
+    "hidato",
     "thermometers",
 )
 
@@ -76,6 +78,14 @@ FAMILY_KINDS = {
     "nonogram": "pattern",
     "map": "map",
     "fourcolour": "map",
+    "kakuro": "kakuro",
+    "killer": "sudoku",
+    "arrow": "sudoku",
+    "evenodd": "sudoku",
+    "sandwich": "sudoku",
+    "skyscrapersudoku": "sudoku",
+    "hidato": "hidato",
+    "numbrix": "hidato",
     "thermometers": "thermometers",
     "picross": "pattern",
 }
