@@ -29,8 +29,17 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 3. Generate a candidate with a fixed seed so it can be reproduced. For a new
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
    layout (Binairo, Tango, Suguru, Minesweeper, Akari, Sudoku, Futoshiki,
-   Calcudoku, Star Battle, Tents, Battleships), so the example does not share
-   a solution with the rest of the gallery:
+   Calcudoku, Star Battle, Tents, Battleships, Towers, Mosaic, Dominosa,
+   Rectangles, Magnets, Undead, Pattern, Map), so the example does not share
+   a solution with the rest of the gallery. Before choosing seeds, ask
+   `puzzle-lab sweep` what a builder reaches: it rates one fresh board per seed
+   and counts the tiers and grades, and `--save DIR` keeps each board named by
+   size, tier, grade and seed, so the pick is made from measured boards:
+
+   ```bash
+   uv run puzzle-lab sweep towers --size 5 --open-share 0.3 --seed 1100 --count 15 \
+     --save /tmp/towers
+   ```
 
    ```bash
    uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
@@ -59,6 +68,16 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    Battleships supports 4x4, 6x6, 8x8 and 10x10: it places a fresh non-touching
    fleet, derives line totals and removes shaped givens while independent
    connected-component search still finds exactly one solution.
+   The newer builders share one pattern: pick a random solution (a Latin square,
+   a domino tiling, a colouring), state every clue, then drop clues or givens in
+   random order while `fresh.is_unique` holds (`fresh.thin`). `--open-share`
+   then sets the floor of clues kept (Towers, Magnets and Undead keep
+   `1 - open_share` of the border clues, Mosaic of the cells, Map of the
+   regions), and a harder board comes from a lower floor. Dominosa and Pattern have
+   no clues to drop: they redraw random boards until one is unique. Rectangles
+   moves each number about inside its piece to leave more candidate rectangles.
+   Towers stays at 6x6 or smaller, Pattern at 15 cells a line and Magnets at an
+   even side, because relation-checked lines cost time exponential in length.
    `puzzle-lab generate` only re-masks or mutates a seed and keeps its
    solution, so use it for variations, never to fill a gallery tier with
    copies of one board. Use `--as-family` only for compatible aliases. Do not
@@ -210,6 +229,42 @@ report any limitation of the solver's grading ladder. A board with under a
 quarter of its cells open (`PREFILLED_OPEN_SHARE`) rates `trivial`, whatever
 rule its last cells need. `tests/test_example_quality.py` rejects trivial or
 non-unique gallery examples. Known exceptions there must link to an open issue.
+
+## Towers, Mosaic, Dominosa, Rectangles, Magnets, Undead, Pattern and Map
+
+These eight families share one authoring loop, and its lessons apply to any new
+family:
+
+1. Run `puzzle-lab sweep FAMILY --size N --open-share X --seed S --count K --save DIR`
+   for a few sizes and floors. The summary line is the honest answer to "which
+   tiers can this builder reach?"; pick examples from the saved files, whose
+   names carry size, tier, grade and seed, then copy them into `examples/` as
+   `<family>_<n>_<rows>x<cols>.txt` with a one-line comment that matches the
+   grade you measured.
+2. A tier the sweeps never reach stays an em dash in `docs/puzzle-collection.md`
+   with the reason (here: no hard Rectangles, no medium Map). Do not hand-edit a
+   board, and do not relabel a neighbouring tier.
+3. A hard board that only `what_if` closes is allowed, but it joins the
+   beyond-deduction frontier: add it to `BEYOND_DEDUCTION` in `tests/test_web.py`
+   and update both numbers of the "N of the M published" sentences in
+   `docs/puzzle-collection.md` and `RELEASE_NOTES.md`
+   (`test_the_documented_example_count_matches_the_collection` checks them).
+4. Relation-only families (Towers, Magnets, Undead, Pattern, like Kakurasu and
+   Tango) rate `relations` whatever their size, so `puzzle-lab` calls a board
+   with 16 or fewer variables easy and the bigger ones medium. Their hard tier
+   needs `chains`, `cover3` or `what_if`, which only a few of the sweeps reach.
+5. Compile pitfalls: assign givens after every constraint exists (see
+   `AGENT.md`), keep an auxiliary relation's variables distinct (a Undead sight
+   line may cross a cell twice, so its relation lists each cell once and keeps
+   the visits separately), and cap relation arity (Towers lines of 7 and Pattern
+   lines of 15 are the practical limits).
+6. Visual pitfalls: draw the number a player must read on a tile they can
+   cover inside `canvas.above()`; give each family cell-level palette items
+   (`web.ITEMS`, or `CELL_SOLUTIONS` plus `svg.swatch` when the solver's
+   variables are not cells); and use `--png` on one board per family for the
+   README. Preview the web player (`web/`, `npm run dev` with exported bundles
+   in `web/public/puzzles`, which is not committed) and look at the palette, a
+   placed tile and the clue labels before calling the UI done.
 
 ## Feeding lessons back
 
