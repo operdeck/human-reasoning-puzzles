@@ -67,12 +67,44 @@ changes do not create another family or gallery section.
 | Light Up / Akari | — | [`akari_1_6x6.txt`](../examples/akari_1_6x6.txt) (`subsumption`) | [`akari_2_8x8.txt`](../examples/akari_2_8x8.txt) (`chains`) |
 | Kakurasu | [`kakurasu_1_4x4.txt`](../examples/kakurasu_1_4x4.txt) (`relations`) | [`kakurasu_2_8x8.txt`](../examples/kakurasu_2_8x8.txt) (`relations`) | — |
 | Battleships | — | [`battleships_1_6x6_fleet.txt`](../examples/battleships_1_6x6_fleet.txt), [`battleships_2_8x8_fleet.txt`](../examples/battleships_2_8x8_fleet.txt) (`count`); [`battleships_3_8x8_fleet.txt`](../examples/battleships_3_8x8_fleet.txt) (`subsumption`) | [`battleships_4_8x8_fleet.txt`](../examples/battleships_4_8x8_fleet.txt), [`battleships_5_8x8_fleet.txt`](../examples/battleships_5_8x8_fleet.txt) (`chains`) |
+| Towers | [`towers_1_4x4.txt`](../examples/towers_1_4x4.txt) (`relations`) | [`towers_2_5x5.txt`](../examples/towers_2_5x5.txt), [`towers_3_6x6.txt`](../examples/towers_3_6x6.txt) (`relations`) | [`towers_4_5x5.txt`](../examples/towers_4_5x5.txt) (`chains`) |
+| Mosaic | [`mosaic_1_5x5.txt`](../examples/mosaic_1_5x5.txt) (`count`) | [`mosaic_2_5x5.txt`](../examples/mosaic_2_5x5.txt) (`subsumption`), [`mosaic_3_6x6.txt`](../examples/mosaic_3_6x6.txt) (`cover2`) | [`mosaic_4_8x8.txt`](../examples/mosaic_4_8x8.txt) (`cover3`) |
+| Dominosa | [`dominosa_1_5x6.txt`](../examples/dominosa_1_5x6.txt) (`single`) | [`dominosa_2_6x7.txt`](../examples/dominosa_2_6x7.txt) (`subsumption`), [`dominosa_3_7x8.txt`](../examples/dominosa_3_7x8.txt) (`cover2`) | [`dominosa_4_6x7.txt`](../examples/dominosa_4_6x7.txt) (`cover3`), [`dominosa_5_7x8.txt`](../examples/dominosa_5_7x8.txt) (`chains`) |
+| Rectangles | [`rectangles_1_5x5.txt`](../examples/rectangles_1_5x5.txt), [`rectangles_2_9x9.txt`](../examples/rectangles_2_9x9.txt) (`single`) | [`rectangles_3_9x9.txt`](../examples/rectangles_3_9x9.txt), [`rectangles_4_14x14.txt`](../examples/rectangles_4_14x14.txt) (`subsumption`) | — |
+| Magnets | [`magnets_1_4x4.txt`](../examples/magnets_1_4x4.txt) (`relations`) | [`magnets_2_6x6.txt`](../examples/magnets_2_6x6.txt) (`relations`), [`magnets_3_6x6.txt`](../examples/magnets_3_6x6.txt) (`cover2`) | [`magnets_4_6x6.txt`](../examples/magnets_4_6x6.txt) (`cover3`) |
+| Undead | [`undead_1_4x4.txt`](../examples/undead_1_4x4.txt) (`relations`) | [`undead_2_5x5.txt`](../examples/undead_2_5x5.txt) (`relations`) | [`undead_3_5x5.txt`](../examples/undead_3_5x5.txt) (`what_if`) |
+| Pattern (nonogram) | [`pattern_1_4x4.txt`](../examples/pattern_1_4x4.txt) (`relations`) | [`pattern_2_8x8.txt`](../examples/pattern_2_8x8.txt), [`pattern_3_12x12.txt`](../examples/pattern_3_12x12.txt) (`relations`) | [`pattern_4_10x10.txt`](../examples/pattern_4_10x10.txt) (`what_if`) |
+| Map (four colouring) | [`map_1_6x6.txt`](../examples/map_1_6x6.txt), [`map_2_9x9.txt`](../examples/map_2_9x9.txt) (`single`) | — | [`map_3_9x9.txt`](../examples/map_3_9x9.txt), [`map_4_12x12.txt`](../examples/map_4_12x12.txt) (`chains`) |
 
 The most visible gaps are Tectonic/Suguru, counts-only Battleships, Kakurasu,
 and logic grids. In particular, the existing 8 × 8 Suguru file is
 trivial, and is intentionally excluded. These gaps require stronger
 family-specific deduction or generation support before a harder human-like
 example can be claimed.
+
+## The newer families: what the ladder reaches
+
+Towers, Mosaic, Dominosa, Rectangles, Magnets, Undead, Pattern and Map were added
+without changing `core.py`. Each file shows the rungs its boards exercise; a rule
+that never fires on a family's boards is not claimed. Measured with
+`puzzle-lab sweep` over several hundred fresh boards per family:
+
+- **Mosaic and Dominosa** reach the whole ladder, from `single` or `count` up to
+  `cover3` and `chains`, and so do their hard boards, without `what_if`.
+- **Magnets** reaches `cover3` on 6 × 6 boards; larger boards tend to be unique but beyond
+  the ladder, so none ship.
+- **Towers** is relation-checked: each clue is propagated on its own line, so 4 × 4 boards
+  are easy and 5 × 5 and 6 × 6 boards are `relations`. A `chains` board turns up in about
+  one of a hundred 5 × 5 boards; the rest of the hard boards close only with `what_if`.
+- **Undead and Pattern** have no board between `relations` and `what_if` in the sweeps, so
+  their hard boards (`undead_3_5x5`, `pattern_4_10x10`) are beyond deduction and flagged.
+- **Rectangles** has no hard board: random partitions of 5 × 5 to 16 × 16 grids reach only
+  `single` and `subsumption`, even when the builder moves numbers about to leave more
+  candidate rectangles. **Map** has no medium board: its boards need `single` or jump to
+  `chains`. These two cells are marked `—` and are not filled by hand.
+- Relation-only boards of 16 or fewer variables rate easy, as for Kakurasu and Tango, so
+  the 4 × 4 boards of Towers, Magnets, Undead and Pattern are easy even though their grade
+  is `relations`.
 
 Every one-star Queens region has at least two cells. The easy 4 × 4 and 5 × 5 and the
 medium 9 × 9 have one visible given queen each; the other three boards have
@@ -128,6 +160,14 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Light Up / Akari | `akari_1_6x6.txt` | `akari_2_8x8.txt` |
 | Kakurasu | `kakurasu_1_4x4.txt` | `kakurasu_2_8x8.txt` |
 | Battleships | `battleships_1_6x6_fleet.txt` | `battleships_2_8x8_fleet.txt`, `battleships_3_8x8_fleet.txt`, `battleships_4_8x8_fleet.txt`, `battleships_5_8x8_fleet.txt` |
+| Towers | `towers_1_4x4.txt` | `towers_3_6x6.txt` |
+| Mosaic | `mosaic_1_5x5.txt` | `mosaic_4_8x8.txt` |
+| Dominosa | `dominosa_1_5x6.txt` | `dominosa_5_7x8.txt` |
+| Rectangles | `rectangles_1_5x5.txt` | `rectangles_4_14x14.txt` |
+| Magnets | `magnets_1_4x4.txt` | `magnets_4_6x6.txt` |
+| Undead | `undead_1_4x4.txt` | `undead_3_5x5.txt` |
+| Pattern (nonogram) | `pattern_1_4x4.txt` | `pattern_3_12x12.txt` |
+| Map (four colouring) | `map_1_6x6.txt` | `map_4_12x12.txt` |
 
 ## Existing families
 
@@ -136,6 +176,14 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Sudoku | Every row, column and box holds each digit once (jigsaw, NRC and X variants change the boxes). | `sudoku_1_4x4`, easy, pointing, naked/hidden pairs, X-Wing, Swordfish, chains, Jigsaw, NRC, X-Sudoku |
 | Calcudoku | No repeats in a row or column; each cage's digits combine to its target with its operation. | 4×4 easy, 6×6 medium/hard/fiendish, and 7×7 hard |
 | Futoshiki | No repeats in a row or column; every inequality sign between neighbouring cells holds. | 5×5 with no givens and eight inequality signs |
+| Towers | Each height once per row and column; an edge clue counts the visible towers. | 4×4 to 6×6, `relations` and `chains` |
+| Mosaic | Colour cells black or white; a number counts the black cells in its 3×3 window. | 5×5 to 8×8, `count` to `cover3` |
+| Dominosa | Cover the grid with dominoes, every pair of numbers used once. | 5×6 to 7×8, `single` to `chains` |
+| Rectangles | Divide the grid into rectangles, each with one number equal to its area. | 5×5 to 14×14, `single` and `subsumption` |
+| Magnets | Each domino is a magnet or neutral; line counts per pole; touching poles differ. | 4×4 and 6×6, `relations` to `cover3` |
+| Undead | Monsters in every empty cell, counted along sight lines that bend at mirrors. | 4×4 and 5×5, `relations` and `what_if` |
+| Pattern | Fill cells to match the run lengths of each row and column. | 4×4 to 12×12, `relations` and `what_if` |
+| Map | Four-colour the regions so neighbours differ. | 6×6 to 12×12, `single` and `chains` |
 | Murdoku | Place each person on a free square, at most one per row and column, so all clues hold; the murderer is alone with the victim. | `murdoku_1_first_case`, `wie-doet-het-met-wie-1/2/3/4/5`, `murdoku_3_house`, `murdoku_sparse_mystery`, `murdoku_global_counts`, `murdoku_composition`, `food-murdoku-2/2/3`, `zoo-murdoku-1/2/3`, `tamagotchi-murdoku-6x6/9x9/12x12`, and owner-authored `prrrdoku1-3` |
 
 The graded Sudoku and Calcudoku examples are generated; newspaper puzzles are not copied. `prrrdoku1-3` are based on the owner's Dutch puzzle documents, with adjustments to preserve the intended solution and late reveal. Private screenshot transcriptions are excluded from this repository.
