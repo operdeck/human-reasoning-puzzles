@@ -73,6 +73,7 @@ ALLOWED = {
     "mosaic": {"core", "puzzlefile"},
     "dominosa": {"core", "puzzlefile"},
     "rectangles": {"core", "puzzlefile"},
+    "magnets": {"core", "puzzlefile"},
     "collection": set(),
     "web": {
         "akari",
@@ -105,6 +106,7 @@ ALLOWED = {
         "mosaic",
         "dominosa",
         "rectangles",
+        "magnets",
         "icons",
         "svg",
     },

@@ -26,6 +26,7 @@ from . import (
     icons,
     kakurasu,
     logicgrid,
+    magnets,
     minesweeper,
     mosaic,
     murdoku,
@@ -105,6 +106,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "magnets":
+        model, magnets_puzzle = magnets.compile_puzzle(text)
+        return Puzzle(kind, model, partial(magnets.render, magnets_puzzle))
     if kind == "rectangles":
         model, rectangles_puzzle = rectangles.compile_puzzle(text)
         return Puzzle(kind, model, partial(rectangles.render, rectangles_puzzle))
@@ -223,6 +227,7 @@ def make_image(
         "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "magnets": (magnets.parse, picture.magnets_picture),
         "rectangles": (rectangles.parse, picture.rectangles_picture),
         "dominosa": (dominosa.parse, picture.dominosa_picture),
         "mosaic": (mosaic.parse, picture.mosaic_picture),

@@ -27,6 +27,7 @@ from . import (
     futoshiki,
     kakurasu,
     logicgrid,
+    magnets,
     minesweeper,
     mosaic,
     murdoku,
@@ -55,6 +56,7 @@ SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "mosaic": mosaic.solutions,
     "dominosa": dominosa.solutions,
     "rectangles": rectangles.solutions,
+    "magnets": magnets.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

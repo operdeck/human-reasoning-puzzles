@@ -641,6 +641,9 @@ FAMILY_RULES = {
     "full set (0-0, 0-1, ... up to the highest number) is used exactly once.",
     "rectangles": "Divide the grid into rectangles so that each contains exactly one number, "
     "equal to the number of cells in that rectangle.",
+    "magnets": "Each domino is either a magnet, with one plus and one minus end, or neutral. "
+    "The numbers count the plus (top, left) and minus (bottom, right) ends in each row and "
+    "column, and touching cells of different dominoes never carry the same pole.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }

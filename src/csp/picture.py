@@ -43,6 +43,9 @@ from .futoshiki import Puzzle as Futoshiki
 from .futoshiki import cell_name as futoshiki_cell
 from .kakurasu import Puzzle as Kakurasu
 from .logicgrid import Puzzle as LogicGrid
+from .magnets import Puzzle as Magnets
+from .magnets import cell_name as magnets_cell
+from .magnets import polarity as magnets_polarity
 from .minesweeper import Puzzle as Minesweeper
 from .minesweeper import cell_name as minesweeper_cell
 from .mosaic import Puzzle as Mosaic
@@ -909,6 +912,63 @@ def dominosa_picture(
                 )
     if interactive:
         _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
+
+
+POLE_ICONS = {"+": "magnet_plus", "-": "magnet_minus", "0": "magnet_neutral"}
+
+
+def magnets_picture(
+    puzzle: Magnets,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 76,
+    interactive: bool = False,
+) -> Canvas:
+    """Dominoes outlined on the board, the plus counts above and left, minus counts below and right.
+
+    Each count sits under a small plus or minus tile; given poles and the solution use the
+    same tiles.
+    """
+    n = puzzle.size
+    solution = None if interactive else solution
+    margin = int(cell * 0.9)
+    side = n * cell
+    canvas = Canvas(side + 2 * margin, side + 2 * margin)
+    for r in range(n):
+        for c in range(n):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.rectangle((x, y, x + cell, y + cell), fill=(247, 244, 236))
+    _walls(canvas, n, margin, cell, lambda a, b: puzzle.ids[a[0]][a[1]] == puzzle.ids[b[0]][b[1]])
+    for r in range(n):
+        for c in range(n):
+            given = puzzle.givens[r][c]
+            pole = given if given != "." else (solution or {}).get(magnets_cell((r, c)))
+            if pole:
+                x, y = margin + c * cell, margin + r * cell
+                inset = cell * 0.14
+                icons.draw(
+                    canvas,
+                    POLE_ICONS[pole],
+                    (x + inset, y + inset, x + cell - inset, y + cell - inset),
+                )
+    badge = cell * 0.3
+    for clue, index, count in puzzle.clue_lines:
+        sign = magnets_polarity(clue)
+        if clue in ("PlusTop", "MinusBottom"):
+            cx = margin + index * cell + cell / 2
+            cy = margin / 2 if clue == "PlusTop" else margin + side + margin / 2
+        else:
+            cy = margin + index * cell + cell / 2
+            cx = margin / 2 if clue == "PlusLeft" else margin + side + margin / 2
+        icons.draw(
+            canvas,
+            POLE_ICONS[sign],
+            (cx - badge / 2, cy - cell * 0.38, cx + badge / 2, cy - cell * 0.38 + badge),
+        )
+        canvas.text((cx, cy + cell * 0.16), str(count), INK, int(cell * 0.38), anchor="mm")
+    if interactive:
+        _cells(canvas, n, margin, margin, cell)
     return canvas
 
 
