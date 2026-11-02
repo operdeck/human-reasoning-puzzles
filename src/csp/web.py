@@ -39,7 +39,7 @@ LICENSE = (
     "any other use needs the author's written permission."
 )
 CELL = re.compile(r'<rect id="r(\d+)c(\d+)" class="cell"')
-DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru"})
+DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru", "towers"})
 UNSUPPORTED = {"logicgrid": "The logic grid needs its own matrix view; not playable yet."}
 
 

@@ -39,6 +39,7 @@ KINDS = (
     "akari",
     "kakurasu",
     "battleships",
+    "towers",
 )
 
 FAMILY_KINDS = {
@@ -55,6 +56,8 @@ FAMILY_KINDS = {
     "lightup": "akari",
     "kakurasu": "kakurasu",
     "battleships": "battleships",
+    "towers": "towers",
+    "skyscrapers": "towers",
 }
 
 

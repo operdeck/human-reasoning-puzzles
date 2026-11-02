@@ -32,6 +32,7 @@ from . import (
     sudoku,
     suguru,
     tents,
+    towers,
 )
 
 SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
@@ -47,6 +48,7 @@ SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "akari": akari.solutions,
     "kakurasu": kakurasu.solutions,
     "battleships": battleships.solutions,
+    "towers": towers.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

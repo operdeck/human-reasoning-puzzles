@@ -70,7 +70,7 @@ def rate(text: str, path: str = "<memory>") -> Rating:
     board_size = int(variable_count**0.5)
     open_share = initial_open / max(1, variable_count)
     if grade == "relations" and (
-        (family in {"calcudoku", "kakurasu", "tango"} and variable_count <= 16)
+        (family in {"calcudoku", "kakurasu", "tango", "towers"} and variable_count <= 16)
         or (family == "logicgrid" and variable_count <= 9)
     ):
         tier = "easy"

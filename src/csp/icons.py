@@ -437,6 +437,9 @@ SHAPES = {
     "dot_black": f'<circle cx="50" cy="50" r="47" {FILL}/>',
     "check": f'<polyline points="18,52 40,74 82,28" {LINE} stroke-width="12"/>',
     "cross": f'<path d="M24 24L76 76M76 24L24 76" {LINE} stroke-width="12"/>',
+    # A castle tower with battlements and a doorway; used for Towers edge clues.
+    "tower": f'<path {FILL} fill-rule="evenodd" d="M22 94V22h12v14h10V22h12v14h10V22h12v72z'
+    'M44 94V74a6 6 0 0 1 12 0v20z"/>',
 }
 
 # name, Unicode fallback, label, and either a vendored emoji or the drawing.
@@ -454,6 +457,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("bulb", "\u25cf", "bulb", emoji="1f4a1"),
         Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
         Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
+        Icon("tower", "\u2656", "tower", markup=SHAPES["tower"]),
         Icon("water", "\u00b7", "water", markup=SHAPES["water"]),
         *(
             Icon(name, fallback, label, markup=SHAPES[name])

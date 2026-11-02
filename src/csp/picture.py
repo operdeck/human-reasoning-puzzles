@@ -54,6 +54,8 @@ from .suguru import Puzzle as Suguru
 from .suguru import cell_name as suguru_cell
 from .svg import Canvas
 from .tents import Puzzle as Tents
+from .towers import Puzzle as Towers
+from .towers import cell_name as towers_cell
 
 INK = (26, 26, 26)
 WHITE = (255, 255, 255)
@@ -800,6 +802,53 @@ def kakurasu_picture(
         solved_mark=Mark("filled", 0.9),
         interactive=interactive,
     )
+
+
+def towers_picture(
+    puzzle: Towers,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 84,
+    interactive: bool = False,
+) -> Canvas:
+    """The grid with its givens, and each edge clue as a castle tower over its count.
+
+    The clue counts the towers visible from that edge; solved heights are blue.
+    """
+    n = puzzle.size
+    solution = None if interactive else solution
+    margin = int(cell * 0.9)
+    side = n * cell
+    canvas = Canvas(side + 2 * margin, side + 2 * margin)
+    for r in range(n):
+        for c in range(n):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.rectangle((x, y, x + cell, y + cell), fill=(250, 247, 240))
+    _walls(canvas, n, margin, cell, lambda a, b: True, thin_colour=THIN)
+    for r in range(n):
+        for c in range(n):
+            given = puzzle.grid[r][c]
+            value = given or (solution or {}).get(towers_cell((r, c)))
+            x, y = margin + c * cell, margin + r * cell
+            _value(canvas, value, INK if given else SOLVED, x, y, cell, int(cell * 0.5))
+    badge = cell * 0.32
+    for clue in puzzle.lines:
+        if clue.side in ("Top", "Bottom"):
+            cx = margin + clue.index * cell + cell / 2
+            cy = margin / 2 if clue.side == "Top" else margin + side + margin / 2
+        else:
+            cy = margin + clue.index * cell + cell / 2
+            cx = margin / 2 if clue.side == "Left" else margin + side + margin / 2
+        icons.draw(
+            canvas,
+            "tower",
+            (cx - badge / 2, cy - cell * 0.38, cx + badge / 2, cy - cell * 0.38 + badge),
+            tint=(110, 90, 70),
+        )
+        canvas.text((cx, cy + cell * 0.16), str(clue.count), INK, int(cell * 0.38), anchor="mm")
+    if interactive:
+        _cells(canvas, n, margin, margin, cell)
+    return canvas
 
 
 def battleships_picture(
