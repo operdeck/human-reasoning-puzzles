@@ -21,6 +21,7 @@ from csp import (
     mosaic,
     pattern,
     rectangles,
+    thermometers,
     towers,
     undead,
 )
@@ -50,6 +51,7 @@ FAMILIES = (
     "undead",
     "pattern",
     "map",
+    "thermometers",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -1010,6 +1012,88 @@ def _candidate_total(text: str) -> int:
     return sum(len(puzzle.candidates(cell)) for cell in puzzle.numbered)
 
 
+def _thermometer_paths(size: int, rng: random.Random) -> list[list[Cell]] | None:
+    """Cover a `size` x `size` board with random thermometer paths of 2 to 6 cells, or None."""
+    owner: dict[Cell, int] = {}
+    paths: list[list[Cell]] = []
+    for start in _cells(size):
+        if start in owner:
+            continue
+        path = [start]
+        owner[start] = len(paths)
+        target = rng.randint(2, 6)
+        while len(path) < target:
+            r, c = path[-1]
+            options = [
+                (r + dr, c + dc)
+                for dr, dc in STEPS
+                if 0 <= r + dr < size and 0 <= c + dc < size and (r + dr, c + dc) not in owner
+            ]
+            if not options:
+                break
+            nxt = rng.choice(options)
+            owner[nxt] = len(paths)
+            path.append(nxt)
+        if len(path) < 2:
+            return None
+        paths.append(path)
+    return paths
+
+
+def fresh_thermometers(
+    size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Thermometers board: random paths covering the board, random mercury levels.
+
+    Row and column counts are always stated. Random givens are added only if the counts leave
+    two answers, then thinned; a larger `open_share` also hides more of the first, so a harder
+    board keeps fewer cells known.
+    """
+    if size not in thermometers.SIZES:
+        raise ValueError(
+            f"fresh Thermometers boards are {thermometers.SIZES.start} to {thermometers.SIZES[-1]}"
+        )
+    for _ in range(200):
+        paths = _thermometer_paths(size, rng)
+        if paths is None:
+            continue
+        filled: dict[Cell, bool] = {}
+        for path in paths:
+            level = rng.randint(0, len(path))
+            for i, cell in enumerate(path):
+                filled[cell] = i < level
+        rows = [sum(filled[r, c] for c in range(size)) for r in range(size)]
+        columns = [sum(filled[r, c] for r in range(size)) for c in range(size)]
+
+        def build(
+            known: set[Cell],
+            paths: list[list[Cell]] = paths,
+            filled: dict[Cell, bool] = filled,
+            rows: list[int] = rows,
+            columns: list[int] = columns,
+        ) -> str:
+            lines = _header(comment, "Family: thermometers", f"Size: {size}", "Thermometers:")
+            lines += [" ".join(_name(cell) for cell in path) for path in paths]
+            lines += ["Rows:", " ".join(map(str, rows)), "Columns:", " ".join(map(str, columns))]
+            if known:
+                lines += ["Givens:"]
+                lines += [
+                    " ".join(
+                        str(int(filled[r, c])) if (r, c) in known else "." for c in range(size)
+                    )
+                    for r in range(size)
+                ]
+            return "\n".join(lines) + "\n"
+
+        spare = _cells(size)
+        rng.shuffle(spare)
+        known: set[Cell] = set()
+        while not is_unique(build(known)):
+            known.add(spare.pop())
+        return build(thin(known, build, rng))
+    return None
+
+
 def fresh_magnets(
     size: int, rng: random.Random, open_share: float, comment: str = ""
 ) -> str | None:
@@ -1290,4 +1374,6 @@ def fresh(
         return fresh_pattern(size, rng, open_share, comment)
     if family == "map":
         return fresh_map(size, rng, open_share, comment)
+    if family == "thermometers":
+        return fresh_thermometers(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

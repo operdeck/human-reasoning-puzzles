@@ -38,6 +38,7 @@ from . import (
     sudoku,
     suguru,
     tents,
+    thermometers,
     towers,
     undead,
 )
@@ -63,6 +64,7 @@ SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "undead": undead.solutions,
     "pattern": pattern.solutions,
     "map": mapcolour.solutions,
+    "thermometers": thermometers.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }

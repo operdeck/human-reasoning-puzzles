@@ -36,6 +36,7 @@ FAMILY_LABELS = {
     "undead": "Undead",
     "pattern": "Pattern",
     "map": "Map",
+    "thermometers": "Thermometers",
     "logicgrid": "Logic grid",
 }
 FIRST_CATEGORY = "demo"

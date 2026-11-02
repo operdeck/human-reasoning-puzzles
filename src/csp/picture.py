@@ -67,6 +67,8 @@ from .suguru import Puzzle as Suguru
 from .suguru import cell_name as suguru_cell
 from .svg import MAP_COLOURS, Canvas, pastel
 from .tents import Puzzle as Tents
+from .thermometers import Puzzle as Thermometers
+from .thermometers import cell_name as thermometers_cell
 from .towers import Puzzle as Towers
 from .towers import cell_name as towers_cell
 from .undead import Puzzle as Undead
@@ -1045,6 +1047,69 @@ def undead_picture(
 
 
 MONSTER_ICONS = {"G": "ghost", "V": "vampire", "Z": "zombie"}
+
+
+MERCURY = (214, 54, 62)
+GLASS = (206, 214, 224)
+
+
+def thermometers_picture(
+    puzzle: Thermometers,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 70,
+    interactive: bool = False,
+) -> Canvas:
+    """Glass thermometers on a grid, with the filled counts above and to the left.
+
+    Each tube runs through its cell centres from a round bulb; the solution (and any given
+    filled cell) shows red mercury from the bulb up to the last filled cell.
+    """
+    n = puzzle.size
+    solution = None if interactive else solution
+    margin = int(cell * 0.7)
+    canvas = Canvas(margin + n * cell + cell // 4, margin + n * cell + cell // 4)
+    left = top = margin
+    thin, thick = max(2, cell // 40), max(5, cell // 22) | 1
+    for i in range(n + 1):
+        canvas.line((left, top + i * cell, left + n * cell, top + i * cell), fill=THIN, width=thin)
+        canvas.line((left + i * cell, top, left + i * cell, top + n * cell), fill=THIN, width=thin)
+    canvas.rectangle((left, top, left + n * cell, top + n * cell), outline=INK, width=thick)
+
+    def middle(rc: Cell) -> tuple[float, float]:
+        return left + rc[1] * cell + cell / 2, top + rc[0] * cell + cell / 2
+
+    def disc(rc: Cell, radius: float, colour: RGB) -> None:
+        x, y = middle(rc)
+        canvas.ellipse((x - radius, y - radius, x + radius, y + radius), fill=colour)
+
+    for path in puzzle.paths:
+        points = [middle(rc) for rc in path]
+        canvas.line(points, GLASS, cell * 0.36, joint="curve")
+        disc(path[-1], cell * 0.18, GLASS)
+        disc(path[0], cell * 0.34, GLASS)
+        level = 0
+        for rc in path:
+            given = puzzle.givens[rc[0]][rc[1]]
+            on = bool(given) if given >= 0 else bool((solution or {}).get(thermometers_cell(rc)))
+            if not on:
+                break
+            level += 1
+        if level:
+            filled = points[:level] if level > 1 else [points[0], points[0]]
+            canvas.line(filled, MERCURY, cell * 0.2, joint="curve")
+            disc(path[level - 1], cell * 0.1, MERCURY)
+            disc(path[0], cell * 0.24, MERCURY)
+        else:
+            disc(path[0], cell * 0.24, (236, 240, 245))
+    size = int(cell * 0.4)
+    for i, count in enumerate(puzzle.rows):
+        canvas.text((margin * 0.5, top + i * cell + cell / 2), str(count), INK, size, anchor="mm")
+    for i, count in enumerate(puzzle.columns):
+        canvas.text((left + i * cell + cell / 2, margin * 0.5), str(count), INK, size, anchor="mm")
+    if interactive:
+        _cells(canvas, n, left, top, cell)
+    return canvas
 
 
 def map_picture(
