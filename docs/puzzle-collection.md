@@ -67,12 +67,81 @@ changes do not create another family or gallery section.
 | Light Up / Akari | — | [`akari_1_6x6.txt`](../examples/akari_1_6x6.txt) (`subsumption`) | [`akari_2_8x8.txt`](../examples/akari_2_8x8.txt) (`chains`) |
 | Kakurasu | [`kakurasu_1_4x4.txt`](../examples/kakurasu_1_4x4.txt) (`relations`) | [`kakurasu_2_8x8.txt`](../examples/kakurasu_2_8x8.txt) (`relations`) | — |
 | Battleships | — | [`battleships_1_6x6_fleet.txt`](../examples/battleships_1_6x6_fleet.txt), [`battleships_2_8x8_fleet.txt`](../examples/battleships_2_8x8_fleet.txt) (`count`); [`battleships_3_8x8_fleet.txt`](../examples/battleships_3_8x8_fleet.txt) (`subsumption`) | [`battleships_4_8x8_fleet.txt`](../examples/battleships_4_8x8_fleet.txt), [`battleships_5_8x8_fleet.txt`](../examples/battleships_5_8x8_fleet.txt) (`chains`) |
+| Towers | [`towers_1_4x4.txt`](../examples/towers_1_4x4.txt) (`relations`) | [`towers_2_5x5.txt`](../examples/towers_2_5x5.txt), [`towers_3_6x6.txt`](../examples/towers_3_6x6.txt) (`relations`) | [`towers_4_5x5.txt`](../examples/towers_4_5x5.txt) (`chains`) |
+| Mosaic | [`mosaic_1_5x5.txt`](../examples/mosaic_1_5x5.txt) (`count`) | [`mosaic_2_5x5.txt`](../examples/mosaic_2_5x5.txt) (`subsumption`), [`mosaic_3_6x6.txt`](../examples/mosaic_3_6x6.txt) (`cover2`) | [`mosaic_4_8x8.txt`](../examples/mosaic_4_8x8.txt) (`cover3`) |
+| Dominosa | [`dominosa_1_5x6.txt`](../examples/dominosa_1_5x6.txt) (`single`) | [`dominosa_2_6x7.txt`](../examples/dominosa_2_6x7.txt) (`subsumption`), [`dominosa_3_7x8.txt`](../examples/dominosa_3_7x8.txt) (`cover2`) | [`dominosa_4_6x7.txt`](../examples/dominosa_4_6x7.txt) (`cover3`), [`dominosa_5_7x8.txt`](../examples/dominosa_5_7x8.txt) (`chains`) |
+| Rectangles | [`rectangles_1_5x5.txt`](../examples/rectangles_1_5x5.txt), [`rectangles_2_9x9.txt`](../examples/rectangles_2_9x9.txt) (`single`) | [`rectangles_3_9x9.txt`](../examples/rectangles_3_9x9.txt), [`rectangles_4_14x14.txt`](../examples/rectangles_4_14x14.txt) (`subsumption`) | [`rectangles_5_9x9.txt`](../examples/rectangles_5_9x9.txt) (`cover3`), [`rectangles_6_9x9.txt`](../examples/rectangles_6_9x9.txt) (`chains`) |
+| Magnets | [`magnets_1_4x4.txt`](../examples/magnets_1_4x4.txt) (`relations`) | [`magnets_2_6x6.txt`](../examples/magnets_2_6x6.txt) (`relations`), [`magnets_3_6x6.txt`](../examples/magnets_3_6x6.txt) (`cover2`) | [`magnets_4_6x6.txt`](../examples/magnets_4_6x6.txt) (`cover3`) |
+| Undead | [`undead_1_4x4.txt`](../examples/undead_1_4x4.txt) (`relations`) | [`undead_2_5x5.txt`](../examples/undead_2_5x5.txt) (`relations`) | [`undead_3_5x5.txt`](../examples/undead_3_5x5.txt) (`what_if`) |
+| Pattern (nonogram) | [`pattern_1_4x4.txt`](../examples/pattern_1_4x4.txt) (`relations`) | [`pattern_2_8x8.txt`](../examples/pattern_2_8x8.txt), [`pattern_3_12x12.txt`](../examples/pattern_3_12x12.txt) (`relations`) | [`pattern_4_10x10.txt`](../examples/pattern_4_10x10.txt) (`what_if`) |
+| Map (four colouring) | [`map_1_6x6.txt`](../examples/map_1_6x6.txt), [`map_2_9x9.txt`](../examples/map_2_9x9.txt) (`single`) | — | [`map_3_9x9.txt`](../examples/map_3_9x9.txt), [`map_4_12x12.txt`](../examples/map_4_12x12.txt) (`chains`) |
+| Thermometers | [`thermometers_1_4x4.txt`](../examples/thermometers_1_4x4.txt) (`count`) | [`thermometers_2_5x5.txt`](../examples/thermometers_2_5x5.txt), [`thermometers_3_8x8.txt`](../examples/thermometers_3_8x8.txt) (`relations`) | [`thermometers_4_6x6.txt`](../examples/thermometers_4_6x6.txt), [`thermometers_5_8x8.txt`](../examples/thermometers_5_8x8.txt) (`chains`) |
+| Kakuro | [`kakuro_1_4x4.txt`](../examples/kakuro_1_4x4.txt), [`kakuro_2_5x5.txt`](../examples/kakuro_2_5x5.txt) (`relations`) | [`kakuro_3_7x7.txt`](../examples/kakuro_3_7x7.txt) (`relations`) | — |
+| Hidato | [`hidato_1_4x4.txt`](../examples/hidato_1_4x4.txt) (`relations`) | [`hidato_2_5x5.txt`](../examples/hidato_2_5x5.txt) (`relations`), [`hidato_3_6x6.txt`](../examples/hidato_3_6x6.txt) (`cover2`) | [`hidato_4_5x5.txt`](../examples/hidato_4_5x5.txt), [`hidato_5_7x7.txt`](../examples/hidato_5_7x7.txt) (`chains`) |
+| Numbrix | [`numbrix_1_4x4.txt`](../examples/numbrix_1_4x4.txt) (`relations`) | [`numbrix_2_5x5.txt`](../examples/numbrix_2_5x5.txt), [`numbrix_3_6x6.txt`](../examples/numbrix_3_6x6.txt) (`relations`) | [`numbrix_4_5x5.txt`](../examples/numbrix_4_5x5.txt), [`numbrix_5_6x6.txt`](../examples/numbrix_5_6x6.txt) (`chains`) |
+| Killer Sudoku | [`killer_1_4x4.txt`](../examples/killer_1_4x4.txt) (`relations`) | [`killer_2_6x6.txt`](../examples/killer_2_6x6.txt) (`relations`), [`killer_3_4x4.txt`](../examples/killer_3_4x4.txt) (`subsumption`), [`killer_4_6x6.txt`](../examples/killer_4_6x6.txt) (`cover2`) | [`killer_5_6x6.txt`](../examples/killer_5_6x6.txt) (`what_if`) |
+| Arrow Sudoku | [`arrow_1_4x4.txt`](../examples/arrow_1_4x4.txt) (`relations`) | [`arrow_2_6x6.txt`](../examples/arrow_2_6x6.txt) (`relations`) | [`arrow_3_4x4.txt`](../examples/arrow_3_4x4.txt) (`chains`), [`arrow_4_6x6.txt`](../examples/arrow_4_6x6.txt) (`what_if`) |
+| Even/Odd Sudoku | [`evenodd_1_4x4.txt`](../examples/evenodd_1_4x4.txt) (`single`), [`evenodd_2_4x4.txt`](../examples/evenodd_2_4x4.txt) (`relations`) | [`evenodd_3_6x6.txt`](../examples/evenodd_3_6x6.txt) (`relations`), [`evenodd_4_6x6.txt`](../examples/evenodd_4_6x6.txt) (`cover2`) | [`evenodd_5_9x9.txt`](../examples/evenodd_5_9x9.txt) (`cover3`) |
+| Sandwich Sudoku | [`sandwich_1_4x4.txt`](../examples/sandwich_1_4x4.txt) (`single`), [`sandwich_2_4x4.txt`](../examples/sandwich_2_4x4.txt) (`relations`) | [`sandwich_3_6x6.txt`](../examples/sandwich_3_6x6.txt) (`relations`) | [`sandwich_4_4x4.txt`](../examples/sandwich_4_4x4.txt) (`chains`) |
+| Skyscraper Sudoku | [`skyscrapersudoku_1_4x4.txt`](../examples/skyscrapersudoku_1_4x4.txt) (`relations`) | [`skyscrapersudoku_2_6x6.txt`](../examples/skyscrapersudoku_2_6x6.txt) (`relations`) | [`skyscrapersudoku_3_6x6.txt`](../examples/skyscrapersudoku_3_6x6.txt) (`what_if`) |
 
 The most visible gaps are Tectonic/Suguru, counts-only Battleships, Kakurasu,
 and logic grids. In particular, the existing 8 × 8 Suguru file is
 trivial, and is intentionally excluded. These gaps require stronger
 family-specific deduction or generation support before a harder human-like
 example can be claimed.
+
+## The newer families: what the ladder reaches
+
+Towers, Mosaic, Dominosa, Rectangles, Magnets, Undead, Pattern and Map were added
+without changing `core.py`. Each file shows the rungs its boards exercise; a rule
+that never fires on a family's boards is not claimed. Measured with
+`puzzle-lab sweep` over several hundred fresh boards per family:
+
+- **Mosaic and Dominosa** reach the whole ladder, from `single` or `count` up to
+  `cover3` and `chains`, and so do their hard boards, without `what_if`.
+- **Magnets** reaches `cover3` on 6 × 6 boards; larger boards tend to be unique but beyond
+  the ladder, so none ship.
+- **Towers** is relation-checked: each clue is propagated on its own line, so 4 × 4 boards
+  are easy and 5 × 5 and 6 × 6 boards are `relations`. A `chains` board turns up in about
+  one of a hundred 5 × 5 boards; the rest of the hard boards close only with `what_if`.
+- **Undead and Pattern** have no board between `relations` and `what_if` in the sweeps, so
+  their hard boards (`undead_3_5x5`, `pattern_4_10x10`) are beyond deduction and flagged.
+- **Rectangles**: random partitions reach only `single` and `subsumption`, so its hard
+  boards come from `puzzle-lab fresh rectangles --tier hard` (module `csp.climb`), which
+  starts from a unique board and moves numbers, merges and splits pieces, keeping only
+  unique, ladder-solved boards whose hardest rule does not fall, until the grade is hard.
+  Two of six seeds on 9 × 9 reached `cover3` and `chains`; the rest needed `what_if`.
+- **Map** has no medium board, and cannot have one on this engine: its rules are pairwise
+  `AT_MOST_ONE` constraints, so `subsumption` and `cover2` find nothing to combine and the
+  ladder goes from `single` straight to `chains`. A walk over several hundred unique boards
+  visited only `single`. The cell is `—` and stays so until a core rule changes that.
+- Relation-only boards of 16 or fewer variables rate easy, as for Kakurasu and Tango, so
+  the 4 × 4 boards of Towers, Magnets, Undead and Pattern are easy even though their grade
+  is `relations`.
+
+### Added for issue #80
+
+Thermometers, Kakuro, Hidato, Numbrix and the Killer, Arrow, Even/Odd, Sandwich and
+Skyscraper Sudoku variants are the families of #80 that need no change to `core.py`:
+
+- **Thermometers** reaches `count`, `relations` and `chains` (mercury relations are small),
+  and most hard boards on 5 × 5 and larger need `what_if`; the shipped hard boards use `chains`.
+- **Kakuro** only reaches `relations` in the sweeps: its distinct-sum runs are propagated well
+  by the relation rule on its own, so it has easy and medium boards and no hard one. Runs are
+  capped at five cells (four in the gallery) because each run enumerates every digit
+  combination; 8 × 8 and 9 × 9 boards that are also unique did not come out of the builder.
+- **Hidato and Numbrix** are modelled with one variable per number, so a board of K cells has
+  K variables over K cells; they reach `relations`, `cover2` and `chains`. Their 4 × 4 boards
+  are the easy ones; Numbrix has no `cover2` board.
+- **Sudoku variants** share `sudoku.Rule`. Even/Odd reaches `single` to `cover3` (also on
+  9 × 9), Killer `relations` to `cover2`, Arrow and Sandwich `relations` and `chains`,
+  Skyscraper Sudoku `relations`. Their hard boards that only close with `what_if` (`killer_5_6x6`,
+  `arrow_4_6x6`, `skyscrapersudoku_3_6x6`) are beyond deduction and flagged. Sandwich and
+  Skyscraper lines are relations over a whole row or column, so they stop at 6 × 6; the
+  9 × 9 versions need a core rule for sums and visibility over a long line (#46, #50).
+  The 4 × 4 boards of these variants are drawn from only 288 grids, so the audit's
+  shared-solution check chooses between candidate boards.
 
 Every one-star Queens region has at least two cells. The easy 4 × 4 and 5 × 5 and the
 medium 9 × 9 have one visible given queen each; the other three boards have
@@ -104,9 +173,10 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-Nine of the 96 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
-`tents_3_4x4`, `calcudoku_6_6x6`, `food-murdoku-3`, `menu-murdoku-3`,
-`prrrdoku2`, `prrrdoku3` and `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
+14 of the 169 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+`tents_3_4x4`, `calcudoku_6_6x6`, `undead_3_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
+`food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
+`tamagotchi-murdoku-12x12`. `puzzle-lab rate`
 reports them as `deductive: false`, the web index and puzzle pages badge them,
 and a test pins the list, which only moves when the ladder does.
 
@@ -127,6 +197,14 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Light Up / Akari | `akari_1_6x6.txt` | `akari_2_8x8.txt` |
 | Kakurasu | `kakurasu_1_4x4.txt` | `kakurasu_2_8x8.txt` |
 | Battleships | `battleships_1_6x6_fleet.txt` | `battleships_2_8x8_fleet.txt`, `battleships_3_8x8_fleet.txt`, `battleships_4_8x8_fleet.txt`, `battleships_5_8x8_fleet.txt` |
+| Towers | `towers_1_4x4.txt` | `towers_3_6x6.txt` |
+| Mosaic | `mosaic_1_5x5.txt` | `mosaic_4_8x8.txt` |
+| Dominosa | `dominosa_1_5x6.txt` | `dominosa_5_7x8.txt` |
+| Rectangles | `rectangles_1_5x5.txt` | `rectangles_4_14x14.txt` |
+| Magnets | `magnets_1_4x4.txt` | `magnets_4_6x6.txt` |
+| Undead | `undead_1_4x4.txt` | `undead_3_5x5.txt` |
+| Pattern (nonogram) | `pattern_1_4x4.txt` | `pattern_3_12x12.txt` |
+| Map (four colouring) | `map_1_6x6.txt` | `map_4_12x12.txt` |
 
 ## Existing families
 
@@ -135,6 +213,14 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Sudoku | Every row, column and box holds each digit once (jigsaw, NRC and X variants change the boxes). | `sudoku_1_4x4`, easy, pointing, naked/hidden pairs, X-Wing, Swordfish, chains, Jigsaw, NRC, X-Sudoku |
 | Calcudoku | No repeats in a row or column; each cage's digits combine to its target with its operation. | 4×4 easy, 6×6 medium/hard/fiendish, and 7×7 hard |
 | Futoshiki | No repeats in a row or column; every inequality sign between neighbouring cells holds. | 5×5 with no givens and eight inequality signs |
+| Towers | Each height once per row and column; an edge clue counts the visible towers. | 4×4 to 6×6, `relations` and `chains` |
+| Mosaic | Colour cells black or white; a number counts the black cells in its 3×3 window. | 5×5 to 8×8, `count` to `cover3` |
+| Dominosa | Cover the grid with dominoes, every pair of numbers used once. | 5×6 to 7×8, `single` to `chains` |
+| Rectangles | Divide the grid into rectangles, each with one number equal to its area. | 5×5 to 14×14, `single` to `chains` |
+| Magnets | Each domino is a magnet or neutral; line counts per pole; touching poles differ. | 4×4 and 6×6, `relations` to `cover3` |
+| Undead | Monsters in every empty cell, counted along sight lines that bend at mirrors. | 4×4 and 5×5, `relations` and `what_if` |
+| Pattern | Fill cells to match the run lengths of each row and column. | 4×4 to 12×12, `relations` and `what_if` |
+| Map | Four-colour the regions so neighbours differ. | 6×6 to 12×12, `single` and `chains` |
 | Murdoku | Place each person on a free square, at most one per row and column, so all clues hold; the murderer is alone with the victim. | `murdoku_1_first_case`, `wie-doet-het-met-wie-1/2/3/4/5`, `murdoku_3_house`, `murdoku_sparse_mystery`, `murdoku_global_counts`, `murdoku_composition`, `food-murdoku-2/2/3`, `zoo-murdoku-1/2/3`, `tamagotchi-murdoku-6x6/9x9/12x12`, and owner-authored `prrrdoku1-3` |
 
 The graded Sudoku and Calcudoku examples are generated; newspaper puzzles are not copied. `prrrdoku1-3` are based on the owner's Dutch puzzle documents, with adjustments to preserve the intended solution and late reveal. Private screenshot transcriptions are excluded from this repository.

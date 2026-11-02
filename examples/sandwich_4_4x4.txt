@@ -1,0 +1,11 @@
+# Sandwich Sudoku 4x4: hard; needs a chain of strong and weak links.
+Family: sandwich
+Givens:
+. . . .
+. . . .
+. 4 . .
+. . . .
+SandwichColumns:
+2 0 . 3
+SandwichRows:
+. 0 . .

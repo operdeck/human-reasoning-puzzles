@@ -1,0 +1,16 @@
+# Magnets 4x4: easy; domino relations and line counts.
+Family: magnets
+Size: 4
+Dominoes:
+aa aa ab ab
+ac ad ad ae
+ac af af ae
+ag ag ah ah
+PlusTop:
+2 0 . 1
+MinusBottom:
+1 . 0 2
+PlusLeft:
+. . 0 .
+MinusRight:
+1 0 2 1

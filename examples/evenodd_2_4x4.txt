@@ -1,0 +1,12 @@
+# Even/Odd Sudoku 4x4: easy; parity marks as one-cell relations.
+Family: evenodd
+Givens:
+. 3 . .
+. . 4 .
+. . . .
+. . . .
+Parity:
+e . o .
+o . e .
+. . . .
+e o o e

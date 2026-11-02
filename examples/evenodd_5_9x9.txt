@@ -1,0 +1,22 @@
+# Even/Odd Sudoku 9x9: hard; three houses together fill a fourth.
+Family: evenodd
+Givens:
+. . . . . . . . .
+. . . . . . 2 1 9
+. . . 1 9 . . . .
+. . 9 8 . . . . .
+. . . . . 5 . . .
+. . 3 . . . . 8 4
+. . . 7 8 . . . .
+. . . . . . . . .
+. . 6 . . . . . .
+Parity:
+e o . . . e e o .
+. . e e o . e . .
+o o . . o e . . o
+. . . . e e o . .
+e e . e . . . o e
+e . . . o o o . e
+o . . . . e . . o
+e . o o . . o e .
+. e e . . o e o .

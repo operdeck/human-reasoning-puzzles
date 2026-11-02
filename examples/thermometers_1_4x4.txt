@@ -1,0 +1,12 @@
+# Thermometers 4x4: easy; the line counts and thermometer shapes settle it.
+Family: thermometers
+Size: 4
+Thermometers:
+r1c1 r1c2 r2c2 r3c2
+r1c3 r1c4 r2c4 r3c4 r4c4 r4c3
+r2c1 r3c1 r4c1 r4c2
+r2c3 r3c3
+Rows:
+4 3 1 1
+Columns:
+1 2 2 4

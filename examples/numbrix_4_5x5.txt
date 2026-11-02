@@ -1,0 +1,8 @@
+# Numbrix 5x5: hard; needs a chain of strong and weak links.
+Family: numbrix
+Grid:
+17 . 15 . 3
+. . . 1 4
+. 20 13 . 5
+. 25 12 . .
+23 . 11 . .

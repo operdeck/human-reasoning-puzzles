@@ -1,0 +1,8 @@
+# Rectangles 5x5: easy; hidden singles.
+Family: rectangles
+Clues:
+. . 6 . 4
+. . . . .
+. . . . .
+. 6 . 6 .
+. 3 . . .

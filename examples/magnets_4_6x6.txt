@@ -1,0 +1,25 @@
+# Magnets 6x6: hard; three counts together fill a fourth.
+Family: magnets
+Size: 6
+Dominoes:
+aa aa ab ab ac ac
+ad ae af ag ah ai
+ad ae af ag ah ai
+aj ak al al am an
+aj ak ao ao am an
+ap ap aq aq ar ar
+PlusTop:
+1 2 2 1 2 3
+MinusBottom:
+2 1 . 2 . .
+PlusLeft:
+2 . . 2 2 2
+MinusRight:
+2 . 1 2 . 2
+Givens:
+0 . . . . .
+. . . . . .
+. . . . . .
+. . . . . .
+. . . + . .
+. . . . . .

@@ -1,0 +1,8 @@
+# Hidato 5x5: hard; needs a chain of strong and weak links.
+Family: hidato
+Grid:
+17 19 . . 24
+16 . X 21 22
+8 . . 13 .
+. . 10 . 1
+. . . . .

@@ -99,6 +99,31 @@ The solver handles very different kinds of logic. Here are a few; [browse and pl
 </tr>
 </table>
 
+The newest families come from Simon Tatham's puzzle collection and compile to the same few constraint types, with no change to the engine:
+
+<table>
+<tr>
+<td><strong><a href="examples/towers_2_5x5.txt">Towers</a></strong><br>Each height once per row and column; an edge clue counts the towers you can see.<br><img src="docs/images/towers_2_5x5-solution.png" width="150" alt="Solved Towers puzzle"></td>
+<td><strong><a href="examples/mosaic_2_5x5.txt">Mosaic</a></strong><br>Black or white, so every number counts the black cells around it.<br><img src="docs/images/mosaic_2_5x5-solution.png" width="150" alt="Solved Mosaic puzzle"></td>
+<td><strong><a href="examples/dominosa_2_6x7.txt">Dominosa</a></strong><br>Cover the grid with dominoes, each pair of numbers used once.<br><img src="docs/images/dominosa_2_6x7-solution.png" width="150" alt="Solved Dominosa puzzle"></td>
+</tr>
+<tr>
+<td><strong><a href="examples/rectangles_3_9x9.txt">Rectangles</a></strong><br>Cut the grid into rectangles, each holding one number equal to its area.<br><img src="docs/images/rectangles_3_9x9-solution.png" width="150" alt="Solved Rectangles puzzle"></td>
+<td><strong><a href="examples/magnets_3_6x6.txt">Magnets</a></strong><br>Place plus and minus poles so touching magnets repel and the counts match.<br><img src="docs/images/magnets_3_6x6-solution.png" width="150" alt="Solved Magnets puzzle"></td>
+<td><strong><a href="examples/undead_2_5x5.txt">Undead</a></strong><br>Ghosts, vampires and zombies seen along sight lines that bend at mirrors.<br><img src="docs/images/undead_2_5x5-solution.png" width="150" alt="Solved Undead puzzle"></td>
+</tr>
+<tr>
+<td><strong><a href="examples/pattern_2_8x8.txt">Pattern</a></strong><br>A nonogram: fill cells to match the run lengths of each row and column.<br><img src="docs/images/pattern_2_8x8-solution.png" width="150" alt="Solved Pattern puzzle"></td>
+<td><strong><a href="examples/map_3_9x9.txt">Map</a></strong><br>Four-colour the regions so no two neighbours share a colour.<br><img src="docs/images/map_3_9x9-solution.png" width="150" alt="Solved Map puzzle"></td>
+<td><strong><a href="examples/thermometers_2_5x5.txt">Thermometers</a></strong><br>Fill each thermometer from its bulb so every row and column holds its count.<br><img src="docs/images/thermometers_2_5x5-solution.png" width="150" alt="Solved Thermometers puzzle"></td>
+</tr>
+<tr>
+<td><strong><a href="examples/kakuro_2_5x5.txt">Kakuro</a></strong><br>Digits 1 to 9 in runs that add up to their clue without repeating.<br><img src="docs/images/kakuro_2_5x5-solution.png" width="150" alt="Solved Kakuro puzzle"></td>
+<td><strong><a href="examples/hidato_2_5x5.txt">Hidato</a></strong><br>Write 1, 2, 3, … so every number touches the next; Numbrix allows only sides.<br><img src="docs/images/hidato_2_5x5-solution.png" width="150" alt="Solved Hidato puzzle"></td>
+<td><strong><a href="examples/killer_2_6x6.txt">Killer Sudoku</a></strong><br>Sudoku with caged sums; Arrow, Even/Odd, Sandwich and Skyscraper variants too.<br><img src="docs/images/killer_2_6x6-solution.png" width="150" alt="Solved Killer Sudoku puzzle"></td>
+</tr>
+</table>
+
 ## Play in the browser
 
 `web/` is a small TypeScript + Vite player for every example, published to [GitHub Pages](https://operdeck.github.io/human-reasoning-puzzles/)

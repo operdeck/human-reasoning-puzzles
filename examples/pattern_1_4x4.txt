@@ -1,0 +1,12 @@
+# Pattern 4x4: easy; each line is a small run relation.
+Family: pattern
+Rows:
+2
+3
+1 1
+1 1
+Columns:
+4
+2
+3
+0

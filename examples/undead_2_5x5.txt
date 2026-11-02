@@ -1,0 +1,18 @@
+# Undead 5x5: medium; mirrors bend the lines, so ghosts and vampires are seen differently.
+Family: undead
+Grid:
+. . . / .
+. . \ / .
+. . . . .
+. \ \ . .
+. / . . .
+Counts:
+8 3 8
+Top:
+4 2 . . 2
+Bottom:
+. 2 4 3 .
+Left:
+2 . 1 2 2
+Right:
+1 4 . 5 1

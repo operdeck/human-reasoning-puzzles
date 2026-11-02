@@ -1,0 +1,18 @@
+# Magnets 6x6: medium; two counts together fill a third.
+Family: magnets
+Size: 6
+Dominoes:
+aa aa ab ac ac ad
+ae af ab ag ag ad
+ae af ah ai ai aj
+ak ak ah al al aj
+am an an ao ap ap
+am aq aq ao ar ar
+PlusTop:
+2 0 2 2 2 .
+MinusBottom:
+2 0 . . 2 1
+PlusLeft:
+. . 2 1 0 .
+MinusRight:
+. 1 2 2 2 1

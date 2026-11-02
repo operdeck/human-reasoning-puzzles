@@ -1,0 +1,18 @@
+# Towers 6x6: medium; a larger board of the same relation reasoning.
+Family: towers
+Size: 6
+Top:
+. 2 4 4 1 3
+Bottom:
+1 3 3 2 3 3
+Left:
+2 2 3 2 3 1
+Right:
+2 2 . 3 2 4
+Givens:
+. . . . . 3
+. . . . . .
+. . . . . .
+4 . . . . .
+. . . . 1 .
+. . . . . .

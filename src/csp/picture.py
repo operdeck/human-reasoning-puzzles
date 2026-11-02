@@ -37,13 +37,31 @@ from .binairo import Puzzle as Binairo
 from .binairo import cell_name as binairo_cell
 from .calcudoku import Puzzle as Calcudoku
 from .calcudoku import cell_name as calcudoku_cell
+from .dominosa import Puzzle as Dominosa
+from .dominosa import cell_assignment as dominosa_halves
 from .futoshiki import Puzzle as Futoshiki
 from .futoshiki import cell_name as futoshiki_cell
+from .hidato import Puzzle as Hidato
+from .hidato import cell_assignment as hidato_numbers
+from .hidato import parse_cell as hidato_cell
 from .kakurasu import Puzzle as Kakurasu
+from .kakuro import Puzzle as Kakuro
+from .kakuro import cell_name as kakuro_cell
 from .logicgrid import Puzzle as LogicGrid
+from .magnets import Puzzle as Magnets
+from .magnets import cell_name as magnets_cell
+from .magnets import polarity as magnets_polarity
+from .mapcolour import Puzzle as MapColour
 from .minesweeper import Puzzle as Minesweeper
 from .minesweeper import cell_name as minesweeper_cell
+from .mosaic import Puzzle as Mosaic
+from .mosaic import cell_name as mosaic_cell
 from .murdoku import Board, GlobalCountCondition, Square
+from .pattern import Puzzle as Pattern
+from .pattern import cell_name as pattern_cell
+from .rectangles import Puzzle as Rectangles
+from .rectangles import parse_cell as rectangle_cell
+from .rectangles import parse_rect as rectangle_of
 from .starbattle import Puzzle as StarBattle
 from .starbattle import cell_assignment as starbattle_cell_assignment
 from .starbattle import cell_name as starbattle_cell
@@ -52,8 +70,14 @@ from .sudoku import box_size
 from .sudoku import cell_name as sudoku_cell
 from .suguru import Puzzle as Suguru
 from .suguru import cell_name as suguru_cell
-from .svg import Canvas
+from .svg import MAP_COLOURS, Canvas, pastel
 from .tents import Puzzle as Tents
+from .thermometers import Puzzle as Thermometers
+from .thermometers import cell_name as thermometers_cell
+from .towers import Puzzle as Towers
+from .towers import cell_name as towers_cell
+from .undead import Puzzle as Undead
+from .undead import cell_name as undead_cell
 
 INK = (26, 26, 26)
 WHITE = (255, 255, 255)
@@ -475,8 +499,92 @@ def sudoku_picture(
         number,
         lambda a, b: boxes[a[0]][a[1]] == boxes[b[0]][b[1]],
         overlay=overlay,
+        underlay=(lambda canvas: _rules_underlay(canvas, puzzle, cell)) if puzzle.rules else None,
+        coordinates=not any(rule.kind == "skyscraper" for rule in puzzle.rules),
         interactive=interactive,
     )
+
+
+def _rules_underlay(canvas: Canvas, puzzle: Sudoku, cell: int) -> None:
+    """Draw Even/Odd shapes, arrows, killer cages and the clues of sandwiches and skyscrapers."""
+    margin, n = cell // 2, puzzle.size
+
+    def middle(rc: Cell) -> tuple[float, float]:
+        return margin + rc[1] * cell + cell / 2, margin + rc[0] * cell + cell / 2
+
+    grey, ink = (206, 210, 222), (92, 76, 62)
+    for rule in puzzle.rules:
+        if rule.kind == "parity":
+            x, y = middle(rule.cells[0])
+            half = cell * 0.34
+            box = (x - half, y - half, x + half, y + half)
+            if rule.clue:
+                canvas.ellipse(box, fill=grey)
+            else:
+                canvas.rounded_rectangle(box, cell * 0.06, fill=grey)
+        elif rule.kind == "arrow":
+            points = [middle(rc) for rc in rule.cells]
+            bx, by = points[0]
+            canvas.ellipse(
+                (bx - cell * 0.4, by - cell * 0.4, bx + cell * 0.4, by + cell * 0.4),
+                outline=(130, 134, 150),
+                width=max(2, cell // 30),
+            )
+            canvas.line(points, (130, 134, 150), max(2, cell // 22), joint="curve")
+            (px, py), (qx, qy) = points[-2], points[-1]
+            length = max(1.0, math.hypot(qx - px, qy - py))
+            ux, uy = (qx - px) / length, (qy - py) / length
+            tip = (qx + ux * cell * 0.12, qy + uy * cell * 0.12)
+            base = cell * 0.13
+            canvas.polygon(
+                [
+                    tip,
+                    (qx - ux * base - uy * base, qy - uy * base + ux * base),
+                    (qx - ux * base + uy * base, qy - uy * base - ux * base),
+                ],
+                fill=(130, 134, 150),
+            )
+        elif rule.kind == "killer":
+            inside = set(rule.cells)
+            inset = cell * 0.08
+            colour = (86, 92, 150)
+            for r, c in rule.cells:
+                x0, y0 = margin + c * cell, margin + r * cell
+                for dr, dc, seg in (
+                    (-1, 0, (x0 + inset, y0 + inset, x0 + cell - inset, y0 + inset)),
+                    (1, 0, (x0 + inset, y0 + cell - inset, x0 + cell - inset, y0 + cell - inset)),
+                    (0, -1, (x0 + inset, y0 + inset, x0 + inset, y0 + cell - inset)),
+                    (0, 1, (x0 + cell - inset, y0 + inset, x0 + cell - inset, y0 + cell - inset)),
+                ):
+                    if (r + dr, c + dc) not in inside:
+                        canvas.line(seg, colour, max(2, cell // 40))
+            r, c = min(rule.cells)
+            canvas.text(
+                (margin + c * cell + inset * 1.6, margin + r * cell + inset * 1.4),
+                str(rule.clue),
+                colour,
+                int(cell * 0.24),
+                anchor="la",
+                halo=WHITE,
+            )
+    size = int(cell * 0.3)
+    for rule in puzzle.rules:
+        if rule.kind == "sandwich":
+            (r0, c0), (r1, c1) = rule.cells[0], rule.cells[-1]
+            if r0 == r1:
+                x, y = margin + n * cell + margin / 2, middle((r0, 0))[1]
+            else:
+                x, y = middle((0, c0))[0], margin + n * cell + margin / 2
+            canvas.text((x, y), str(rule.clue), ink, size, anchor="mm")
+        elif rule.kind == "skyscraper":
+            (r0, c0), (r1, c1) = rule.cells[0], rule.cells[-1]
+            if c0 == c1:
+                x = middle((0, c0))[0]
+                y = margin / 2 if r0 < r1 else margin + n * cell + margin / 2
+            else:
+                y = middle((r0, 0))[1]
+                x = margin / 2 if c0 < c1 else margin + n * cell + margin / 2
+            canvas.text((x, y), str(rule.clue), ink, size, anchor="mm")
 
 
 def _thermometers(canvas: Canvas, puzzle: Sudoku, cell: int) -> None:
@@ -802,6 +910,589 @@ def kakurasu_picture(
     )
 
 
+def mosaic_picture(
+    puzzle: Mosaic,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+) -> Canvas:
+    """Numbered cells on a white grid; the solution blackens its cells.
+
+    Numbers are drawn on the canvas's top layer with a white halo, so they stay readable
+    on the black tiles a player (or the solution) puts under them.
+    """
+    solution = None if interactive else solution
+    tile = (38, 42, 56)
+
+    def shade(r: int, c: int) -> RGB:
+        return tile if (solution or {}).get(mosaic_cell((r, c))) else WHITE
+
+    def overlay(canvas: Canvas) -> None:
+        margin = cell // 2
+        with canvas.above():
+            for r, c in puzzle.numbered:
+                canvas.text(
+                    (margin + c * cell + cell / 2, margin + r * cell + cell * 0.56),
+                    str(puzzle.clues[r][c]),
+                    INK if shade(r, c) == WHITE else WHITE,
+                    int(cell * 0.5),
+                    anchor="mm",
+                    halo=WHITE if shade(r, c) == WHITE or interactive else tile,
+                )
+
+    return _number_grid(
+        puzzle.size,
+        cell,
+        shade,
+        lambda r, c: (None, INK),
+        lambda a, b: True,
+        overlay=overlay,
+        interactive=interactive,
+    )
+
+
+def _rect_canvas(
+    rows: int, cols: int, cell: int, margin: int | None = None, below: int = 0
+) -> tuple[Canvas, int]:
+    """A white canvas with a thin-lined `rows` x `cols` grid inside a thick border.
+
+    Returns the canvas and its margin; cell (r, c) starts at (margin + c * cell, margin + r * cell).
+    `below` adds room under the board, for a legend.
+    """
+    margin = cell // 2 if margin is None else margin
+    canvas = Canvas(cols * cell + 2 * margin, rows * cell + 2 * margin + below)
+    thin, thick = max(2, cell // 40), max(5, cell // 22) | 1
+    for r in range(1, rows):
+        y = margin + r * cell
+        canvas.line((margin, y, margin + cols * cell, y), fill=THIN, width=thin)
+    for c in range(1, cols):
+        x = margin + c * cell
+        canvas.line((x, margin, x, margin + rows * cell), fill=THIN, width=thin)
+    canvas.rectangle(
+        (margin, margin, margin + cols * cell, margin + rows * cell), outline=INK, width=thick
+    )
+    return canvas, margin
+
+
+def _rect_cells(canvas: Canvas, rows: int, cols: int, margin: int, cell: int) -> None:
+    for r in range(rows):
+        for c in range(cols):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.cell(cell_id(r, c), (x, y, x + cell, y + cell))
+
+
+def dominosa_picture(
+    puzzle: Dominosa,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 70,
+    interactive: bool = False,
+) -> Canvas:
+    """The numbers; the solution lays an ivory domino over each pair, joined across the edge."""
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell)
+    halves = dominosa_halves(solution) if solution else {}
+    for name, half in halves.items():
+        r, c = int(name[1 : name.index("c")]) - 1, int(name[name.index("c") + 1 :]) - 1
+        x, y = margin + c * cell, margin + r * cell
+        icons.draw(canvas, f"domino_{half}", (x, y, x + cell, y + cell))
+    with canvas.above():
+        for r in range(puzzle.rows):
+            for c in range(puzzle.cols):
+                x, y = margin + c * cell, margin + r * cell
+                canvas.text(
+                    (x + cell / 2, y + cell * 0.56),
+                    str(puzzle.numbers[r][c]),
+                    INK,
+                    int(cell * 0.5),
+                    anchor="mm",
+                    halo=(246, 239, 217),
+                )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
+
+
+POLE_ICONS = {"+": "magnet_plus", "-": "magnet_minus", "0": "magnet_neutral"}
+
+
+def magnets_picture(
+    puzzle: Magnets,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 76,
+    interactive: bool = False,
+) -> Canvas:
+    """Dominoes outlined on the board, the plus counts above and left, minus counts below and right.
+
+    Each count sits under a small plus or minus tile; given poles and the solution use the
+    same tiles.
+    """
+    n = puzzle.size
+    solution = None if interactive else solution
+    margin = int(cell * 0.9)
+    side = n * cell
+    canvas = Canvas(side + 2 * margin, side + 2 * margin)
+    for r in range(n):
+        for c in range(n):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.rectangle((x, y, x + cell, y + cell), fill=(247, 244, 236))
+    _walls(canvas, n, margin, cell, lambda a, b: puzzle.ids[a[0]][a[1]] == puzzle.ids[b[0]][b[1]])
+    for r in range(n):
+        for c in range(n):
+            given = puzzle.givens[r][c]
+            pole = given if given != "." else (solution or {}).get(magnets_cell((r, c)))
+            if pole:
+                x, y = margin + c * cell, margin + r * cell
+                inset = cell * 0.14
+                icons.draw(
+                    canvas,
+                    POLE_ICONS[pole],
+                    (x + inset, y + inset, x + cell - inset, y + cell - inset),
+                )
+    badge = cell * 0.3
+    for clue, index, count in puzzle.clue_lines:
+        sign = magnets_polarity(clue)
+        if clue in ("PlusTop", "MinusBottom"):
+            cx = margin + index * cell + cell / 2
+            cy = margin / 2 if clue == "PlusTop" else margin + side + margin / 2
+        else:
+            cy = margin + index * cell + cell / 2
+            cx = margin / 2 if clue == "PlusLeft" else margin + side + margin / 2
+        icons.draw(
+            canvas,
+            POLE_ICONS[sign],
+            (cx - badge / 2, cy - cell * 0.38, cx + badge / 2, cy - cell * 0.38 + badge),
+        )
+        canvas.text((cx, cy + cell * 0.16), str(count), INK, int(cell * 0.38), anchor="mm")
+    if interactive:
+        _cells(canvas, n, margin, margin, cell)
+    return canvas
+
+
+def undead_picture(
+    puzzle: Undead,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 78,
+    interactive: bool = False,
+) -> Canvas:
+    """Mirrors on the grid, the border sight counts, and the three monster totals below.
+
+    Solved cells show their monster; the totals sit under the board beside each monster's
+    icon, so the player knows who is who.
+    """
+    solution = None if interactive else solution
+    margin = int(cell * 0.7)
+    strip = int(cell * 0.9)
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell, margin, below=strip)
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            x, y = margin + c * cell, margin + r * cell
+            mirror = puzzle.grid[r][c]
+            if mirror != ".":
+                icon = "mirror_slash" if mirror == "/" else "mirror_backslash"
+                icons.draw(canvas, icon, (x + 2, y + 2, x + cell - 2, y + cell - 2))
+            elif monster := (solution or {}).get(undead_cell((r, c))):
+                inset = cell * 0.1
+                icons.draw(
+                    canvas,
+                    MONSTER_ICONS[monster],
+                    (x + inset, y + inset, x + cell - inset, y + cell - inset),
+                )
+    size = int(cell * 0.34)
+    for side, values in puzzle.clues.items():
+        for index, count in enumerate(values):
+            if count < 0:
+                continue
+            if side in ("Top", "Bottom"):
+                cx = margin + index * cell + cell / 2
+                cy = margin / 2 if side == "Top" else margin + puzzle.rows * cell + margin / 2
+            else:
+                cy = margin + index * cell + cell / 2
+                cx = margin / 2 if side == "Left" else margin + puzzle.cols * cell + margin / 2
+            canvas.text((cx, cy), str(count), INK, size, anchor="mm")
+    width = puzzle.cols * cell
+    top = margin * 2 + puzzle.rows * cell + strip * 0.05
+    slot = width / 3
+    for i, monster in enumerate(MONSTER_ICONS):
+        middle = margin + i * slot + slot / 2
+        icons.draw(
+            canvas,
+            MONSTER_ICONS[monster],
+            (middle - cell * 0.55, top, middle - cell * 0.05, top + cell * 0.5),
+        )
+        canvas.text(
+            (middle + cell * 0.1, top + cell * 0.27),
+            f"x {puzzle.totals[monster]}",
+            INK,
+            int(cell * 0.38),
+            anchor="lm",
+        )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
+
+
+MONSTER_ICONS = {"G": "ghost", "V": "vampire", "Z": "zombie"}
+
+
+def hidato_picture(
+    puzzle: Hidato,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+) -> Canvas:
+    """The numbered grid; the solution adds its numbers in blue and a pale line along the path.
+
+    Blocked cells are dark. The line joins each number to the next, so diagonal steps of a
+    Hidato show as slants.
+    """
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell)
+    where = {hidato_cell(name): n for name, n in hidato_numbers(solution or {}).items()}
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            if puzzle.grid[r][c] < 0:
+                x, y = margin + c * cell, margin + r * cell
+                canvas.rectangle((x, y, x + cell - 1, y + cell - 1), fill=(58, 62, 74))
+
+    def middle(rc: Cell) -> tuple[float, float]:
+        return margin + rc[1] * cell + cell / 2, margin + rc[0] * cell + cell / 2
+
+    path = sorted((n, rc) for rc, n in where.items())
+    if len(path) > 1:
+        canvas.line([middle(rc) for _, rc in path], (196, 214, 244), cell * 0.16, joint="curve")
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            given = puzzle.grid[r][c]
+            number = given if given > 0 else where.get((r, c))
+            if number:
+                x, y = margin + c * cell, margin + r * cell
+                _value(canvas, number, INK if given > 0 else SOLVED, x, y, cell, int(cell * 0.42))
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)  # blocked cells too
+    return canvas
+
+
+def kakuro_picture(
+    puzzle: Kakuro,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+) -> Canvas:
+    """Dark clue cells split by a diagonal (down sum bottom-left, across sum top-right) and
+    white cells for the digits; solved digits are blue."""
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell)
+    dark, rim = (52, 58, 72), (200, 204, 214)
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            kind = puzzle.grid[r][c]
+            x, y = margin + c * cell, margin + r * cell
+            if kind == ".":
+                digit = (solution or {}).get(kakuro_cell((r, c)))
+                _value(canvas, digit, SOLVED, x, y, cell, int(cell * 0.5))
+                continue
+            canvas.rectangle((x, y, x + cell - 1, y + cell - 1), fill=dark)
+            if kind != "C":
+                continue
+            down, across = puzzle.clues[r, c]
+            canvas.line((x, y, x + cell, y + cell), fill=rim, width=max(2, cell // 30))
+            small = int(cell * 0.3)
+            if across:
+                canvas.text(
+                    (x + cell * 0.93, y + cell * 0.08), str(across), WHITE, small, anchor="ra"
+                )
+            if down:
+                canvas.text(
+                    (x + cell * 0.07, y + cell * 0.92), str(down), WHITE, small, anchor="ld"
+                )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)  # clue cells are blocked
+    return canvas
+
+
+MERCURY = (214, 54, 62)
+GLASS = (206, 214, 224)
+
+
+def thermometers_picture(
+    puzzle: Thermometers,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 70,
+    interactive: bool = False,
+) -> Canvas:
+    """Glass thermometers on a grid, with the filled counts above and to the left.
+
+    Each tube runs through its cell centres from a round bulb; the solution (and any given
+    filled cell) shows red mercury from the bulb up to the last filled cell.
+    """
+    n = puzzle.size
+    solution = None if interactive else solution
+    margin = int(cell * 0.7)
+    canvas = Canvas(margin + n * cell + cell // 4, margin + n * cell + cell // 4)
+    left = top = margin
+    thin, thick = max(2, cell // 40), max(5, cell // 22) | 1
+    for i in range(n + 1):
+        canvas.line((left, top + i * cell, left + n * cell, top + i * cell), fill=THIN, width=thin)
+        canvas.line((left + i * cell, top, left + i * cell, top + n * cell), fill=THIN, width=thin)
+    canvas.rectangle((left, top, left + n * cell, top + n * cell), outline=INK, width=thick)
+
+    def middle(rc: Cell) -> tuple[float, float]:
+        return left + rc[1] * cell + cell / 2, top + rc[0] * cell + cell / 2
+
+    def disc(rc: Cell, radius: float, colour: RGB) -> None:
+        x, y = middle(rc)
+        canvas.ellipse((x - radius, y - radius, x + radius, y + radius), fill=colour)
+
+    for path in puzzle.paths:
+        points = [middle(rc) for rc in path]
+        canvas.line(points, GLASS, cell * 0.36, joint="curve")
+        disc(path[-1], cell * 0.18, GLASS)
+        disc(path[0], cell * 0.34, GLASS)
+        level = 0
+        for rc in path:
+            given = puzzle.givens[rc[0]][rc[1]]
+            on = bool(given) if given >= 0 else bool((solution or {}).get(thermometers_cell(rc)))
+            if not on:
+                break
+            level += 1
+        if level:
+            filled = points[:level] if level > 1 else [points[0], points[0]]
+            canvas.line(filled, MERCURY, cell * 0.2, joint="curve")
+            disc(path[level - 1], cell * 0.1, MERCURY)
+            disc(path[0], cell * 0.24, MERCURY)
+        else:
+            disc(path[0], cell * 0.24, (236, 240, 245))
+    size = int(cell * 0.4)
+    for i, count in enumerate(puzzle.rows):
+        canvas.text((margin * 0.5, top + i * cell + cell / 2), str(count), INK, size, anchor="mm")
+    for i, count in enumerate(puzzle.columns):
+        canvas.text((left + i * cell + cell / 2, margin * 0.5), str(count), INK, size, anchor="mm")
+    if interactive:
+        _cells(canvas, n, left, top, cell)
+    return canvas
+
+
+def map_picture(
+    puzzle: MapColour,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 60,
+    interactive: bool = False,
+) -> Canvas:
+    """A map: regions outlined, pre-coloured regions filled, the solution colouring the rest.
+
+    A small dot marks the first cell of each pre-coloured region, so givens are told from
+    the solver's colours. Region ids are written small in the corner of each region.
+    """
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell, cell // 3)
+    for region in puzzle.regions:
+        colour = puzzle.givens.get(region) or (solution or {}).get(region)
+        for r, c in puzzle.cells_of(region):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.rectangle(
+                (x, y, x + cell - 1, y + cell - 1),
+                fill=MAP_COLOURS[colour] if colour else (246, 244, 238),
+            )
+    thick = max(4, cell // 12) | 1
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            x, y = margin + c * cell, margin + r * cell
+            if c + 1 < puzzle.cols and puzzle.grid[r][c] != puzzle.grid[r][c + 1]:
+                canvas.line((x + cell, y, x + cell, y + cell), fill=INK, width=thick)
+            if r + 1 < puzzle.rows and puzzle.grid[r][c] != puzzle.grid[r + 1][c]:
+                canvas.line((x, y + cell, x + cell, y + cell), fill=INK, width=thick)
+    for region in puzzle.regions:
+        first = min(puzzle.cells_of(region))
+        x, y = margin + first[1] * cell, margin + first[0] * cell
+        canvas.text((x + cell * 0.12, y + cell * 0.1), region, INK, int(cell * 0.3), anchor="la")
+        if region in puzzle.givens:
+            icons.draw(
+                canvas,
+                "dot_black",
+                (x + cell * 0.62, y + cell * 0.1, x + cell * 0.9, y + cell * 0.38),
+                tint=INK,
+            )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
+
+
+def pattern_picture(
+    puzzle: Pattern,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 44,
+    interactive: bool = False,
+) -> Canvas:
+    """The grid, with each row's runs to its left and each column's above it.
+
+    Every fifth line is heavier, as in a printed nonogram; filled cells are blue squares in
+    the solution.
+    """
+    solution = None if interactive else solution
+    step = int(cell * 0.5)  # room for one run number
+    left = max(len(clue) for clue in puzzle.row_clues) * step + cell // 3
+    top = max(len(clue) for clue in puzzle.column_clues) * step + cell // 3
+    pad = cell // 4
+    canvas = Canvas(left + puzzle.cols * cell + pad, top + puzzle.rows * cell + pad)
+    thin, thick = max(1, cell // 30), max(3, cell // 14) | 1
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            x, y = left + c * cell, top + r * cell
+            if (r + c) % 2 == 0:
+                canvas.rectangle((x, y, x + cell - 1, y + cell - 1), fill=(244, 246, 250))
+    for (r, c), filled in _filled(solution, puzzle).items():
+        if filled:
+            x, y = left + c * cell, top + r * cell
+            inset = max(2, cell // 12)
+            canvas.rounded_rectangle(
+                (x + inset, y + inset, x + cell - inset - 1, y + cell - inset - 1),
+                cell // 8,
+                fill=SOLVED,
+            )
+    for r in range(puzzle.rows + 1):
+        y = top + r * cell
+        heavy = r % 5 == 0 or r == puzzle.rows
+        canvas.line(
+            (left, y, left + puzzle.cols * cell, y),
+            fill=INK if heavy else THIN,
+            width=thick if heavy else thin,
+        )
+    for c in range(puzzle.cols + 1):
+        x = left + c * cell
+        heavy = c % 5 == 0 or c == puzzle.cols
+        canvas.line(
+            (x, top, x, top + puzzle.rows * cell),
+            fill=INK if heavy else THIN,
+            width=thick if heavy else thin,
+        )
+    size = int(cell * 0.42)
+    for r, clue in enumerate(puzzle.row_clues):
+        for i, value in enumerate(reversed(clue or (0,))):
+            canvas.text(
+                (left - cell // 5 - i * step, top + r * cell + cell / 2),
+                str(value),
+                INK,
+                size,
+                anchor="rm",
+            )
+    for c, clue in enumerate(puzzle.column_clues):
+        for i, value in enumerate(reversed(clue or (0,))):
+            canvas.text(
+                (left + c * cell + cell / 2, top - cell // 5 - i * step),
+                str(value),
+                INK,
+                size,
+                anchor="ms",
+            )
+    if interactive:
+        for r in range(puzzle.rows):
+            for c in range(puzzle.cols):
+                x, y = left + c * cell, top + r * cell
+                canvas.cell(cell_id(r, c), (x, y, x + cell, y + cell))
+    return canvas
+
+
+def _filled(solution: Mapping[str, bool] | None, puzzle: Pattern) -> dict[Cell, bool]:
+    return {
+        (r, c): bool((solution or {}).get(pattern_cell((r, c))))
+        for r in range(puzzle.rows)
+        for c in range(puzzle.cols)
+    }
+
+
+def rectangles_picture(
+    puzzle: Rectangles,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+) -> Canvas:
+    """The numbers; the solution tints each rectangle in its own colour with a darker outline."""
+    solution = None if interactive else solution
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell)
+    order = {(r, c): i for i, (r, c) in enumerate(puzzle.numbered)}
+    inset = max(2, cell // 16)
+    for owner, value in (solution or {}).items():
+        top, left, bottom, right = rectangle_of(value)
+        tint = pastel(order[rectangle_cell(owner)])
+        box = (
+            margin + left * cell + inset,
+            margin + top * cell + inset,
+            margin + (right + 1) * cell - inset - 1,
+            margin + (bottom + 1) * cell - inset - 1,
+        )
+        canvas.rounded_rectangle(box, cell // 7, fill=tint, outline=_darker(tint, 0.55), width=3)
+    with canvas.above():
+        for (r, c), _ in order.items():
+            canvas.text(
+                (margin + c * cell + cell / 2, margin + r * cell + cell * 0.56),
+                str(puzzle.clues[r][c]),
+                INK,
+                int(cell * 0.5),
+                anchor="mm",
+                halo=WHITE,
+            )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
+
+
+def towers_picture(
+    puzzle: Towers,
+    solution: Mapping[str, int] | None = None,
+    *,
+    cell: int = 84,
+    interactive: bool = False,
+) -> Canvas:
+    """The grid with its givens, and each edge clue as a castle tower over its count.
+
+    The clue counts the towers visible from that edge; solved heights are blue.
+    """
+    n = puzzle.size
+    solution = None if interactive else solution
+    margin = int(cell * 0.9)
+    side = n * cell
+    canvas = Canvas(side + 2 * margin, side + 2 * margin)
+    for r in range(n):
+        for c in range(n):
+            x, y = margin + c * cell, margin + r * cell
+            canvas.rectangle((x, y, x + cell, y + cell), fill=(250, 247, 240))
+    _walls(canvas, n, margin, cell, lambda a, b: True, thin_colour=THIN)
+    for r in range(n):
+        for c in range(n):
+            given = puzzle.grid[r][c]
+            value = given or (solution or {}).get(towers_cell((r, c)))
+            x, y = margin + c * cell, margin + r * cell
+            _value(canvas, value, INK if given else SOLVED, x, y, cell, int(cell * 0.5))
+    badge = cell * 0.32
+    for clue in puzzle.lines:
+        if clue.side in ("Top", "Bottom"):
+            cx = margin + clue.index * cell + cell / 2
+            cy = margin / 2 if clue.side == "Top" else margin + side + margin / 2
+        else:
+            cy = margin + clue.index * cell + cell / 2
+            cx = margin / 2 if clue.side == "Left" else margin + side + margin / 2
+        icons.draw(
+            canvas,
+            "tower",
+            (cx - badge / 2, cy - cell * 0.38, cx + badge / 2, cy - cell * 0.38 + badge),
+            tint=(110, 90, 70),
+        )
+        canvas.text((cx, cy + cell * 0.16), str(clue.count), INK, int(cell * 0.38), anchor="mm")
+    if interactive:
+        _cells(canvas, n, margin, margin, cell)
+    return canvas
+
+
 def battleships_picture(
     puzzle: Battleships,
     solution: Mapping[str, bool] | None = None,
@@ -1003,11 +1694,15 @@ def _number_grid(
     together: Callable[[Cell, Cell], bool],
     *,
     overlay: Callable[[Canvas], None] | None = None,
+    underlay: Callable[[Canvas], None] | None = None,
+    coordinates: bool = True,
     interactive: bool = False,
 ) -> Canvas:
     """A square grid of numbers or icons: shaded cells, walls between groups, coordinates.
 
-    `overlay` draws family extras (signs, dots, cage targets) over the grid.
+    `underlay` draws shapes behind the numbers (parity shapes, cages, arrows) and `overlay`
+    extras over them (signs, dots, cage targets). `coordinates` turns the row and column
+    numbers off where the margin holds clues instead.
     """
     margin = cell // 2
     side = n * cell
@@ -1017,6 +1712,8 @@ def _number_grid(
             x, y = margin + c * cell, margin + r * cell
             canvas.rectangle((x, y, x + cell, y + cell), fill=shade(r, c))
     _walls(canvas, n, margin, cell, together, thin_colour=THIN)
+    if underlay:
+        underlay(canvas)
     for r in range(n):
         for c in range(n):
             value, colour = number(r, c)
@@ -1024,7 +1721,8 @@ def _number_grid(
             _value(canvas, value, colour, x, y, cell, int(cell * 0.5))
     if overlay:
         overlay(canvas)
-    _coordinates(canvas, n, margin, cell)
+    if coordinates:
+        _coordinates(canvas, n, margin, cell)
     if interactive:
         _cells(canvas, n, margin, margin, cell)
     return canvas

@@ -27,8 +27,11 @@ LAYOUT_SECTIONS = {
     "murdoku": ("Grid",),
     "starbattle": ("Grid",),
     "suguru": ("Grid",),
-    "sudoku": ("Boxes",),
+    "sudoku": ("Boxes", "Killer", "Arrows", "Parity"),
     "tents": ("Trees",),
+    "magnets": ("Dominoes",),
+    "map": ("Regions",),
+    "undead": ("Grid",),
 }
 # Families whose solution only means something on its region map: the same
 # placement on a different map is a different puzzle.
@@ -148,6 +151,22 @@ def solution_key(text: str, kind: str) -> object:
     return (kind, _canonical(cells))
 
 
+BOX_SHAPES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
+
+
+def _standard_boxes(rows: list[list[str]]) -> bool:
+    """Whether a Sudoku `Boxes:` grid is the usual rectangular boxes (2x2, 2x3 or 3x3)."""
+    if len(rows) not in BOX_SHAPES:
+        return False
+    high, wide = BOX_SHAPES[len(rows)]
+    names = {(r // high, c // wide): rows[r][c] for r in range(len(rows)) for c in range(len(rows))}
+    return all(
+        rows[r][c] == names[r // high, c // wide]
+        for r in range(len(rows))
+        for c in range(len(rows))
+    ) and len(set(names.values())) == len(names)
+
+
 def layout_key(text: str, kind: str) -> object:
     """A fingerprint of the board's fixed structure (regions, cages, walls), or None."""
     sections = read_sections(text)
@@ -157,6 +176,8 @@ def layout_key(text: str, kind: str) -> object:
         if not lines:
             continue
         rows = [line.split() if " " in line.strip() else list(line.strip()) for line in lines]
+        if kind == "sudoku" and name == "Boxes" and _standard_boxes(rows):
+            continue  # the usual rectangular boxes say nothing about one board
         if all(len(row) == len(rows) for row in rows):
             cells = {(r, c): v for r, row in enumerate(rows) for c, v in enumerate(row)}
             parts.append((name, _canonical(cells, relabel=True)))

@@ -1,0 +1,11 @@
+# Arrow Sudoku 4x4: easy; each circle is the sum of its arrow.
+Family: arrow
+Givens:
+. . . .
+. 2 . .
+. . . .
+. . . .
+Arrows:
+r4c1 r3c1 r4c2
+r3c3 r4c3 r3c4
+r1c3 r2c3 r2c4
