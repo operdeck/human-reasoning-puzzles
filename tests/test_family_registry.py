@@ -23,6 +23,8 @@ from csp.puzzlefile import KINDS, detect
         ("skyscrapers", "towers"),
         ("mosaic", "mosaic"),
         ("dominosa", "dominosa"),
+        ("rectangles", "rectangles"),
+        ("shikaku", "rectangles"),
     ],
 )
 def test_family_detector_maps_canonical_names_and_aliases(family, kind):

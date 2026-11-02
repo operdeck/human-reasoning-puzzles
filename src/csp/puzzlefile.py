@@ -42,6 +42,7 @@ KINDS = (
     "towers",
     "mosaic",
     "dominosa",
+    "rectangles",
 )
 
 FAMILY_KINDS = {
@@ -62,6 +63,8 @@ FAMILY_KINDS = {
     "skyscrapers": "towers",
     "mosaic": "mosaic",
     "dominosa": "dominosa",
+    "rectangles": "rectangles",
+    "shikaku": "rectangles",
 }
 
 

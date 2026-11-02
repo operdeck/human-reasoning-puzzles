@@ -72,6 +72,7 @@ ALLOWED = {
     "towers": {"core", "puzzlefile"},
     "mosaic": {"core", "puzzlefile"},
     "dominosa": {"core", "puzzlefile"},
+    "rectangles": {"core", "puzzlefile"},
     "collection": set(),
     "web": {
         "akari",
@@ -81,8 +82,10 @@ ALLOWED = {
         "icons",
         "murdoku",
         "puzzlefile",
+        "rectangles",
         "starbattle",
         "story",
+        "svg",
     },
     "picture": {
         "murdoku",
@@ -101,6 +104,7 @@ ALLOWED = {
         "towers",
         "mosaic",
         "dominosa",
+        "rectangles",
         "icons",
         "svg",
     },

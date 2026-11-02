@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable
 
-from csp import battleships, bruteforce, dominosa, mosaic, towers
+from csp import battleships, bruteforce, dominosa, mosaic, rectangles, towers
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -33,6 +33,7 @@ FAMILIES = (
     "towers",
     "mosaic",
     "dominosa",
+    "rectangles",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -904,6 +905,43 @@ def fresh_dominosa(size: int, rng: random.Random, comment: str = "") -> str | No
     return None
 
 
+def fresh_rectangles(
+    size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Rectangles board: a random partition into rectangles, one number each.
+
+    The number sits in a random cell of its rectangle. `open_share` stretches the largest
+    rectangle (more open means bigger pieces, fewer numbers and a harder board); boards with a
+    second answer are redrawn, a few hundred times.
+    """
+    if size not in range(3, rectangles.BIGGEST + 1):
+        raise ValueError(f"fresh Rectangles boards are 3 to {rectangles.BIGGEST} wide")
+    biggest = max(3, round(2 + open_share * size))
+    for _ in range(300):
+        free = {(r, c) for r in range(size) for c in range(size)}
+        clues = [[0] * size for _ in range(size)]
+        for r, c in _cells(size):
+            if (r, c) not in free:
+                continue
+            shapes = [
+                (h, w)
+                for h in range(1, min(biggest, size - r) + 1)
+                for w in range(1, min(biggest, size - c) + 1)
+                if h * w <= biggest * 2
+                and all((r + i, c + j) in free for i in range(h) for j in range(w))
+            ]
+            h, w = rng.choice(shapes)
+            covered = [(r + i, c + j) for i in range(h) for j in range(w)]
+            free.difference_update(covered)
+            at = rng.choice(covered)
+            clues[at[0]][at[1]] = h * w
+        rows = [" ".join(str(v) if v else "." for v in row) for row in clues]
+        text = "\n".join(_header(comment, "Family: rectangles", "Clues:", *rows)) + "\n"
+        if is_unique(text):
+            return text
+    return None
+
+
 def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
     """A random domino tiling of a `rows` x `cols` board, by randomised backtracking."""
     taken: set[Cell] = set()
@@ -980,4 +1018,6 @@ def fresh(
         return fresh_mosaic(size, rng, open_share, comment)
     if family == "dominosa":
         return fresh_dominosa(size, rng, comment)
+    if family == "rectangles":
+        return fresh_rectangles(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")
