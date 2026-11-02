@@ -29,6 +29,9 @@ LAYOUT_SECTIONS = {
     "suguru": ("Grid",),
     "sudoku": ("Boxes",),
     "tents": ("Trees",),
+    "magnets": ("Dominoes",),
+    "map": ("Regions",),
+    "undead": ("Grid",),
 }
 # Families whose solution only means something on its region map: the same
 # placement on a different map is a different puzzle.

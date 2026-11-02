@@ -157,6 +157,14 @@ def test_generate_refuses_murdoku(tmp_path, capsys):
         ("starbattle", 6, 0.0),
         ("tents", 6, 0.0),
         ("battleships", 4, 0.0),
+        ("towers", 4, 0.5),
+        ("mosaic", 5, 0.5),
+        ("dominosa", 3, 0.5),
+        ("rectangles", 6, 0.5),
+        ("magnets", 4, 0.5),
+        ("undead", 4, 0.5),
+        ("pattern", 5, 0.4),
+        ("map", 6, 0.6),
     ],
 )
 def test_fresh_boards_have_their_own_unique_solution(family, size, open_share):
@@ -170,6 +178,17 @@ def test_fresh_boards_have_their_own_unique_solution(family, size, open_share):
     assert result.family == ("queens" if family == "starbattle" and size < 8 else family)
     assert result.solutions == "unique"
     assert result.tier != "trivial"
+
+
+def test_sweep_command_counts_grades_and_saves_each_board(tmp_path, capsys):
+    args = ["sweep", "dominosa", "--size", "3", "--seed", "1", "--count", "3"]
+    assert main([*args, "--save", str(tmp_path)]) == 0
+
+    out = capsys.readouterr().out
+    saved = sorted(path.name for path in tmp_path.glob("*.txt"))
+    assert out.count("seed ") == len(saved) == 3
+    assert all(name.startswith("dominosa_3_") for name in saved)
+    assert "easy/" in out.splitlines()[-1]
 
 
 def test_fresh_command_writes_a_rated_board(tmp_path, capsys):
