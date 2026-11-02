@@ -57,13 +57,17 @@ def test_agent_entrypoints_share_one_repository_guide():
 
 
 def test_the_documented_example_count_matches_the_collection():
-    """The frontier sentences quote how many puzzles ship: keep that number true."""
+    """The frontier sentences quote how many of how many puzzles need `what_if`: keep both true."""
+    from tests.test_web import BEYOND_DEDUCTION
+
     root = Path(__file__).resolve().parents[1]
     for relative in ("docs/puzzle-collection.md", "RELEASE_NOTES.md"):
         source = root / relative
-        quoted = re.findall(r"Nine of the (\d+) published", source.read_text())
+        quoted = re.findall(r"(\d+) of the (\d+) published", source.read_text())
         assert quoted, f"{relative} no longer quotes the frontier count"
-        assert {int(number) for number in quoted} == {len(played_examples())}
+        assert {(int(some), int(total)) for some, total in quoted} == {
+            (len(BEYOND_DEDUCTION), len(played_examples()))
+        }
 
 
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
