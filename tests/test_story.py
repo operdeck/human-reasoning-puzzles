@@ -75,6 +75,7 @@ ALLOWED = {
     "rectangles": {"core", "puzzlefile"},
     "magnets": {"core", "puzzlefile"},
     "undead": {"core", "puzzlefile"},
+    "pattern": {"core", "puzzlefile"},
     "collection": set(),
     "web": {
         "akari",
@@ -109,6 +110,7 @@ ALLOWED = {
         "rectangles",
         "magnets",
         "undead",
+        "pattern",
         "icons",
         "svg",
     },
