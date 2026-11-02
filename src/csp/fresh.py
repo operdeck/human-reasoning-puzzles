@@ -10,6 +10,7 @@ import random
 import re
 from collections import Counter
 from collections.abc import Callable, Iterable
+from functools import partial
 
 from csp import battleships, bruteforce, dominosa, magnets, mosaic, rectangles, towers
 from csp.puzzlefile import detect
@@ -1010,11 +1011,9 @@ def fresh_magnets(
         givens: set[Cell] = set()
         while not is_unique(build(every, givens)):
             givens.add(spare.pop())
-        givens = thin(givens, lambda kept, every=every: build(every, kept), rng)
+        givens = thin(givens, partial(build, every), rng)
         floor = max(2, round((1 - open_share) * 2 * size))
-        kept = thin(
-            every, lambda clues, givens=givens: build(clues, givens), rng, keep_at_least=floor
-        )
+        kept = thin(every, partial(build, givens=givens), rng, keep_at_least=floor)
         return build(kept, givens)
     return None
 
