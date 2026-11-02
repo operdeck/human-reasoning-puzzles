@@ -1,0 +1,9 @@
+# Mosaic 5x5: easy; window counts alone.
+Family: mosaic
+Size: 5
+Clues:
+4 . 3 3 2
+. 7 5 . 4
+4 4 3 4 4
+2 2 . . 4
+. 0 1 2 .
