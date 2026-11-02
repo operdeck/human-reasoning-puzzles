@@ -941,7 +941,7 @@ def fresh_rectangles(
     biggest = max(3, round(2 + open_share * size))
     for _ in range(300):
         free = {(r, c) for r in range(size) for c in range(size)}
-        clues = [[0] * size for _ in range(size)]
+        pieces: list[list[Cell]] = []
         for r, c in _cells(size):
             if (r, c) not in free:
                 continue
@@ -953,15 +953,41 @@ def fresh_rectangles(
                 and all((r + i, c + j) in free for i in range(h) for j in range(w))
             ]
             h, w = rng.choice(shapes)
-            covered = [(r + i, c + j) for i in range(h) for j in range(w)]
-            free.difference_update(covered)
-            at = rng.choice(covered)
-            clues[at[0]][at[1]] = h * w
-        rows = [" ".join(str(v) if v else "." for v in row) for row in clues]
-        text = "\n".join(_header(comment, "Family: rectangles", "Clues:", *rows)) + "\n"
-        if is_unique(text):
-            return text
+            pieces.append([(r + i, c + j) for i in range(h) for j in range(w)])
+            free.difference_update(pieces[-1])
+        numbers = [rng.choice(piece) for piece in pieces]
+        if not is_unique(_rectangles_text(size, pieces, numbers, comment)):
+            continue
+        # Harder boards leave more candidate rectangles per number: move numbers about inside
+        # their pieces, keeping a move whenever the board stays unique and the total grows.
+        best = _candidate_total(_rectangles_text(size, pieces, numbers, comment))
+        for _ in range(round(open_share * 200)):
+            index = rng.randrange(len(pieces))
+            before = numbers[index]
+            numbers[index] = rng.choice(pieces[index])
+            text = _rectangles_text(size, pieces, numbers, comment)
+            total = _candidate_total(text)
+            if total >= best and is_unique(text):
+                best = total
+            else:
+                numbers[index] = before
+        return _rectangles_text(size, pieces, numbers, comment)
     return None
+
+
+def _rectangles_text(size: int, pieces: list[list[Cell]], numbers: list[Cell], comment: str) -> str:
+    """A Rectangles file whose pieces each carry their area at the cell in `numbers`."""
+    clues = [[0] * size for _ in range(size)]
+    for piece, (r, c) in zip(pieces, numbers, strict=True):
+        clues[r][c] = len(piece)
+    rows = [" ".join(str(v) if v else "." for v in row) for row in clues]
+    return "\n".join(_header(comment, "Family: rectangles", "Clues:", *rows)) + "\n"
+
+
+def _candidate_total(text: str) -> int:
+    """How many rectangles the numbers of a board could each still be: a cheap difficulty proxy."""
+    puzzle = rectangles.parse(text)
+    return sum(len(puzzle.candidates(cell)) for cell in puzzle.numbered)
 
 
 def fresh_magnets(
