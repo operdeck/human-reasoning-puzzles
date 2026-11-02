@@ -12,7 +12,16 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from functools import partial
 
-from csp import battleships, bruteforce, dominosa, magnets, mosaic, rectangles, towers
+from csp import (
+    battleships,
+    bruteforce,
+    dominosa,
+    magnets,
+    mosaic,
+    rectangles,
+    towers,
+    undead,
+)
 from csp.puzzlefile import detect
 
 type Cell = tuple[int, int]
@@ -36,6 +45,7 @@ FAMILIES = (
     "dominosa",
     "rectangles",
     "magnets",
+    "undead",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -1018,6 +1028,52 @@ def fresh_magnets(
     return None
 
 
+def fresh_undead(size: int, rng: random.Random, open_share: float, comment: str = "") -> str | None:
+    """A new Undead board: random mirrors and monsters, every sight count, then counts thinned.
+
+    A fifth to a third of the cells are mirrors. The monster totals are always stated; a larger
+    `open_share` lowers the floor of border clues kept, for a harder puzzle.
+    """
+    if size not in range(3, undead.BIGGEST + 1):
+        raise ValueError(f"fresh Undead boards are 3 to {undead.BIGGEST} wide")
+    for _ in range(200):
+        grid = [
+            [rng.choice("/\\") if rng.random() < 0.25 else "." for _ in range(size)]
+            for _ in range(size)
+        ]
+        empty = [(r, c) for r in range(size) for c in range(size) if grid[r][c] == "."]
+        if len(empty) < size * 2:
+            continue
+        monsters = {cell: rng.choice(undead.MONSTERS) for cell in empty}
+        totals = {m: sum(v == m for v in monsters.values()) for m in undead.MONSTERS}
+        shape = undead.Puzzle(grid, totals, {side: [-1] * size for side in undead.SIDES})
+        counts = {
+            (side, i): sum(undead.seen(monsters[cell], bent) for cell, bent in shape.trace(side, i))
+            for side in undead.SIDES
+            for i in range(size)
+        }
+        every = set(counts)
+
+        def build(
+            clues: set[tuple[str, int]],
+            grid: list[list[str]] = grid,
+            totals: dict[str, int] = totals,
+            counts: dict[tuple[str, int], int] = counts,
+        ) -> str:
+            lines = _header(comment, "Family: undead", "Grid:", *(" ".join(row) for row in grid))
+            lines += ["Counts:", " ".join(str(totals[m]) for m in undead.MONSTERS)]
+            for side in undead.SIDES:
+                shown = (str(counts[side, i]) if (side, i) in clues else "." for i in range(size))
+                lines += [f"{side}:", " ".join(shown)]
+            return "\n".join(lines) + "\n"
+
+        if not is_unique(build(every)):
+            continue
+        floor = max(2, round((1 - open_share) * 2 * size))
+        return build(thin(every, build, rng, keep_at_least=floor))
+    return None
+
+
 def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
     """A random domino tiling of a `rows` x `cols` board, by randomised backtracking."""
     taken: set[Cell] = set()
@@ -1098,4 +1154,6 @@ def fresh(
         return fresh_rectangles(size, rng, open_share, comment)
     if family == "magnets":
         return fresh_magnets(size, rng, open_share, comment)
+    if family == "undead":
+        return fresh_undead(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

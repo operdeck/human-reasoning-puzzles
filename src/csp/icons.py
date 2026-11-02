@@ -80,6 +80,19 @@ MAGNET_NEUTRAL = (
     ' stroke-linecap="round"/>'
 )
 
+
+def _mirror(slash: bool) -> str:
+    """A pale glass tile with a silvered diagonal; `/` when `slash`, else `\\`."""
+    bar = "M18 82L82 18" if slash else "M18 18L82 82"
+    shine = "M26 88L88 26" if slash else "M12 26L74 88"
+    return (
+        '<rect x="6" y="6" width="88" height="88" rx="10" fill="#e8f2fa" stroke="#9db8cf"'
+        ' stroke-width="4"/>'
+        f'<path d="{bar}" stroke="#5f86ad" stroke-width="13" stroke-linecap="round"/>'
+        f'<path d="{shine}" stroke="#fff" stroke-width="3" stroke-opacity="0.9"/>'
+    )
+
+
 CROWN = (
     '<g fill="currentColor"><polygon points="20,75 10,25 33.3,50 50,12.5 66.7,50 90,25 80,75"/>'
     '<rect x="20" y="75" width="60" height="6"/><rect x="25" y="83.3" width="50" height="7.7"/>'
@@ -491,6 +504,11 @@ REGISTRY: dict[str, Icon] = {
         Icon("wall", "\u25a0", "wall", markup=SHAPES["wall"]),
         Icon("filled", "\u25a0", "filled", markup=SHAPES["filled"]),
         Icon("tower", "\u2656", "tower", markup=SHAPES["tower"]),
+        Icon("ghost", "\U0001f47b", "ghost", emoji="1f47b"),
+        Icon("vampire", "\U0001f9db", "vampire", emoji="1f9db"),
+        Icon("zombie", "\U0001f9df", "zombie", emoji="1f9df"),
+        Icon("mirror_slash", "/", "mirror /", markup=_mirror(True)),
+        Icon("mirror_backslash", "\\", "mirror \\", markup=_mirror(False)),
         Icon("magnet_plus", "+", "plus pole", markup=MAGNET_PLUS),
         Icon("magnet_minus", "-", "minus pole", markup=MAGNET_MINUS),
         Icon("magnet_neutral", "o", "neutral", markup=MAGNET_NEUTRAL),

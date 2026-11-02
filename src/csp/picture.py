@@ -66,6 +66,8 @@ from .svg import Canvas, pastel
 from .tents import Puzzle as Tents
 from .towers import Puzzle as Towers
 from .towers import cell_name as towers_cell
+from .undead import Puzzle as Undead
+from .undead import cell_name as undead_cell
 
 INK = (26, 26, 26)
 WHITE = (255, 255, 255)
@@ -856,13 +858,16 @@ def mosaic_picture(
     )
 
 
-def _rect_canvas(rows: int, cols: int, cell: int, margin: int | None = None) -> tuple[Canvas, int]:
+def _rect_canvas(
+    rows: int, cols: int, cell: int, margin: int | None = None, below: int = 0
+) -> tuple[Canvas, int]:
     """A white canvas with a thin-lined `rows` x `cols` grid inside a thick border.
 
     Returns the canvas and its margin; cell (r, c) starts at (margin + c * cell, margin + r * cell).
+    `below` adds room under the board, for a legend.
     """
     margin = cell // 2 if margin is None else margin
-    canvas = Canvas(cols * cell + 2 * margin, rows * cell + 2 * margin)
+    canvas = Canvas(cols * cell + 2 * margin, rows * cell + 2 * margin + below)
     thin, thick = max(2, cell // 40), max(5, cell // 22) | 1
     for r in range(1, rows):
         y = margin + r * cell
@@ -970,6 +975,73 @@ def magnets_picture(
     if interactive:
         _cells(canvas, n, margin, margin, cell)
     return canvas
+
+
+def undead_picture(
+    puzzle: Undead,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 78,
+    interactive: bool = False,
+) -> Canvas:
+    """Mirrors on the grid, the border sight counts, and the three monster totals below.
+
+    Solved cells show their monster; the totals sit under the board beside each monster's
+    icon, so the player knows who is who.
+    """
+    solution = None if interactive else solution
+    margin = int(cell * 0.7)
+    strip = int(cell * 0.9)
+    canvas, margin = _rect_canvas(puzzle.rows, puzzle.cols, cell, margin, below=strip)
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            x, y = margin + c * cell, margin + r * cell
+            mirror = puzzle.grid[r][c]
+            if mirror != ".":
+                icon = "mirror_slash" if mirror == "/" else "mirror_backslash"
+                icons.draw(canvas, icon, (x + 2, y + 2, x + cell - 2, y + cell - 2))
+            elif monster := (solution or {}).get(undead_cell((r, c))):
+                inset = cell * 0.1
+                icons.draw(
+                    canvas,
+                    MONSTER_ICONS[monster],
+                    (x + inset, y + inset, x + cell - inset, y + cell - inset),
+                )
+    size = int(cell * 0.34)
+    for side, values in puzzle.clues.items():
+        for index, count in enumerate(values):
+            if count < 0:
+                continue
+            if side in ("Top", "Bottom"):
+                cx = margin + index * cell + cell / 2
+                cy = margin / 2 if side == "Top" else margin + puzzle.rows * cell + margin / 2
+            else:
+                cy = margin + index * cell + cell / 2
+                cx = margin / 2 if side == "Left" else margin + puzzle.cols * cell + margin / 2
+            canvas.text((cx, cy), str(count), INK, size, anchor="mm")
+    width = puzzle.cols * cell
+    top = margin * 2 + puzzle.rows * cell + strip * 0.05
+    slot = width / 3
+    for i, monster in enumerate(MONSTER_ICONS):
+        middle = margin + i * slot + slot / 2
+        icons.draw(
+            canvas,
+            MONSTER_ICONS[monster],
+            (middle - cell * 0.55, top, middle - cell * 0.05, top + cell * 0.5),
+        )
+        canvas.text(
+            (middle + cell * 0.1, top + cell * 0.27),
+            f"x {puzzle.totals[monster]}",
+            INK,
+            int(cell * 0.38),
+            anchor="lm",
+        )
+    if interactive:
+        _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
+    return canvas
+
+
+MONSTER_ICONS = {"G": "ghost", "V": "vampire", "Z": "zombie"}
 
 
 def rectangles_picture(

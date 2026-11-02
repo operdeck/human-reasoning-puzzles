@@ -644,6 +644,9 @@ FAMILY_RULES = {
     "magnets": "Each domino is either a magnet, with one plus and one minus end, or neutral. "
     "The numbers count the plus (top, left) and minus (bottom, right) ends in each row and "
     "column, and touching cells of different dominoes never carry the same pole.",
+    "undead": "Put a ghost, vampire or zombie in every empty cell so the totals are met. The "
+    "border numbers count the monsters seen along that line, which bends at every mirror: "
+    "zombies are always seen, vampires only directly, ghosts only in a mirror.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }

@@ -6,10 +6,14 @@ a tower hides every shorter tower behind it.
 
     Family: towers
     Size: 4
-    Top: 2 . 1 3
-    Bottom: . 2 . .
-    Left: . 3 . 1
-    Right: 2 . . .
+    Top:
+    2 . 1 3
+    Bottom:
+    . 2 . .
+    Left:
+    . 3 . 1
+    Right:
+    2 . . .
     Givens:
     . . . .
     . 4 . .

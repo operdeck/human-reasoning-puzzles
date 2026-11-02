@@ -74,6 +74,7 @@ ALLOWED = {
     "dominosa": {"core", "puzzlefile"},
     "rectangles": {"core", "puzzlefile"},
     "magnets": {"core", "puzzlefile"},
+    "undead": {"core", "puzzlefile"},
     "collection": set(),
     "web": {
         "akari",
@@ -107,6 +108,7 @@ ALLOWED = {
         "dominosa",
         "rectangles",
         "magnets",
+        "undead",
         "icons",
         "svg",
     },

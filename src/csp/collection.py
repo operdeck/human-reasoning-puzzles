@@ -33,6 +33,7 @@ FAMILY_LABELS = {
     "dominosa": "Dominosa",
     "rectangles": "Rectangles",
     "magnets": "Magnets",
+    "undead": "Undead",
     "logicgrid": "Logic grid",
 }
 FIRST_CATEGORY = "demo"

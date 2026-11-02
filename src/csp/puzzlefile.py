@@ -44,6 +44,7 @@ KINDS = (
     "dominosa",
     "rectangles",
     "magnets",
+    "undead",
 )
 
 FAMILY_KINDS = {
@@ -67,6 +68,7 @@ FAMILY_KINDS = {
     "rectangles": "rectangles",
     "shikaku": "rectangles",
     "magnets": "magnets",
+    "undead": "undead",
 }
 
 
