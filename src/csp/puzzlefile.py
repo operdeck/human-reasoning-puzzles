@@ -45,6 +45,7 @@ KINDS = (
     "rectangles",
     "magnets",
     "undead",
+    "pattern",
 )
 
 FAMILY_KINDS = {
@@ -69,6 +70,9 @@ FAMILY_KINDS = {
     "shikaku": "rectangles",
     "magnets": "magnets",
     "undead": "undead",
+    "pattern": "pattern",
+    "nonogram": "pattern",
+    "picross": "pattern",
 }
 
 

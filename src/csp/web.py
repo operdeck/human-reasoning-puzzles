@@ -72,6 +72,7 @@ ITEMS = {
     "kakurasu": [Item("filled", "Shaded", "filled")],
     "battleships": [Item("ship", "Ship", "filled")],
     "mosaic": [Item("black", "Black", "filled")],
+    "pattern": [Item("filled", "Filled", "filled")],
     "undead": [
         Item("ghost", "Ghost", "ghost", "G"),
         Item("vampire", "Vampire", "vampire", "V"),

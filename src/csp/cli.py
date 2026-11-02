@@ -30,6 +30,7 @@ from . import (
     minesweeper,
     mosaic,
     murdoku,
+    pattern,
     picture,
     rectangles,
     report,
@@ -107,6 +108,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "kakurasu":
         model, kakurasu_puzzle = kakurasu.compile_puzzle(text)
         return Puzzle(kind, model, partial(kakurasu.render, kakurasu_puzzle))
+    if kind == "pattern":
+        model, pattern_puzzle = pattern.compile_puzzle(text)
+        return Puzzle(kind, model, partial(pattern.render, pattern_puzzle))
     if kind == "undead":
         model, undead_puzzle = undead.compile_puzzle(text)
         return Puzzle(kind, model, partial(undead.render, undead_puzzle))
@@ -231,6 +235,7 @@ def make_image(
         "minesweeper": (minesweeper.parse, picture.minesweeper_picture),
         "akari": (akari.parse, picture.akari_picture),
         "kakurasu": (kakurasu.parse, picture.kakurasu_picture),
+        "pattern": (pattern.parse, picture.pattern_picture),
         "undead": (undead.parse, picture.undead_picture),
         "magnets": (magnets.parse, picture.magnets_picture),
         "rectangles": (rectangles.parse, picture.rectangles_picture),
@@ -706,16 +711,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _expand_patterns(patterns: Sequence[str]) -> list[Path] | None:
-    """Existing paths as given; anything else is a glob pattern. None if one matches nothing."""
+    """Existing paths as given; anything else is a glob spec. None if one matches nothing."""
     found: list[Path] = []
-    for pattern in patterns:
-        if Path(pattern).exists():
-            matches = [pattern]
-        else:
-            matches = sorted(glob.glob(pattern, recursive=True))
+    for spec in patterns:
+        matches = [spec] if Path(spec).exists() else sorted(glob.glob(spec, recursive=True))
         files = [Path(match) for match in matches if Path(match).is_file()]
         if not files:
-            print(f"no such file: {pattern}", file=sys.stderr)
+            print(f"no such file: {spec}", file=sys.stderr)
             return None
         found.extend(files)
     return found

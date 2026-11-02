@@ -18,6 +18,7 @@ from csp import (
     dominosa,
     magnets,
     mosaic,
+    pattern,
     rectangles,
     towers,
     undead,
@@ -46,6 +47,7 @@ FAMILIES = (
     "rectangles",
     "magnets",
     "undead",
+    "pattern",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -1074,6 +1076,30 @@ def fresh_undead(size: int, rng: random.Random, open_share: float, comment: str 
     return None
 
 
+def fresh_pattern(
+    size: int, rng: random.Random, open_share: float, comment: str = ""
+) -> str | None:
+    """A new Pattern (nonogram): a random picture and its run clues, kept if the answer is unique.
+
+    Each cell is filled with probability `1 - open_share`, so a higher `open_share` makes a
+    sparser picture; ambiguous pictures are redrawn, a few hundred times.
+    """
+    if size not in range(3, pattern.LONGEST + 1):
+        raise ValueError(f"fresh Pattern boards are 3 to {pattern.LONGEST} wide")
+    for _ in range(400):
+        cells = [[rng.random() >= open_share for _ in range(size)] for _ in range(size)]
+        rows = [pattern.runs(row) for row in cells]
+        columns = [pattern.runs([cells[r][c] for r in range(size)]) for c in range(size)]
+        lines = _header(comment, "Family: pattern", "Rows:")
+        lines += [" ".join(map(str, clue)) if clue else "0" for clue in rows]
+        lines += ["Columns:"]
+        lines += [" ".join(map(str, clue)) if clue else "0" for clue in columns]
+        text = "\n".join(lines) + "\n"
+        if is_unique(text):
+            return text
+    return None
+
+
 def _random_tiling(rows: int, cols: int, rng: random.Random) -> list[Pair]:
     """A random domino tiling of a `rows` x `cols` board, by randomised backtracking."""
     taken: set[Cell] = set()
@@ -1156,4 +1182,6 @@ def fresh(
         return fresh_magnets(size, rng, open_share, comment)
     if family == "undead":
         return fresh_undead(size, rng, open_share, comment)
+    if family == "pattern":
+        return fresh_pattern(size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

@@ -51,6 +51,8 @@ from .minesweeper import cell_name as minesweeper_cell
 from .mosaic import Puzzle as Mosaic
 from .mosaic import cell_name as mosaic_cell
 from .murdoku import Board, GlobalCountCondition, Square
+from .pattern import Puzzle as Pattern
+from .pattern import cell_name as pattern_cell
 from .rectangles import Puzzle as Rectangles
 from .rectangles import parse_cell as rectangle_cell
 from .rectangles import parse_rect as rectangle_of
@@ -1042,6 +1044,90 @@ def undead_picture(
 
 
 MONSTER_ICONS = {"G": "ghost", "V": "vampire", "Z": "zombie"}
+
+
+def pattern_picture(
+    puzzle: Pattern,
+    solution: Mapping[str, bool] | None = None,
+    *,
+    cell: int = 44,
+    interactive: bool = False,
+) -> Canvas:
+    """The grid, with each row's runs to its left and each column's above it.
+
+    Every fifth line is heavier, as in a printed nonogram; filled cells are blue squares in
+    the solution.
+    """
+    solution = None if interactive else solution
+    step = int(cell * 0.5)  # room for one run number
+    left = max(len(clue) for clue in puzzle.row_clues) * step + cell // 3
+    top = max(len(clue) for clue in puzzle.column_clues) * step + cell // 3
+    pad = cell // 4
+    canvas = Canvas(left + puzzle.cols * cell + pad, top + puzzle.rows * cell + pad)
+    thin, thick = max(1, cell // 30), max(3, cell // 14) | 1
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            x, y = left + c * cell, top + r * cell
+            if (r + c) % 2 == 0:
+                canvas.rectangle((x, y, x + cell - 1, y + cell - 1), fill=(244, 246, 250))
+    for (r, c), filled in _filled(solution, puzzle).items():
+        if filled:
+            x, y = left + c * cell, top + r * cell
+            inset = max(2, cell // 12)
+            canvas.rounded_rectangle(
+                (x + inset, y + inset, x + cell - inset - 1, y + cell - inset - 1),
+                cell // 8,
+                fill=SOLVED,
+            )
+    for r in range(puzzle.rows + 1):
+        y = top + r * cell
+        heavy = r % 5 == 0 or r == puzzle.rows
+        canvas.line(
+            (left, y, left + puzzle.cols * cell, y),
+            fill=INK if heavy else THIN,
+            width=thick if heavy else thin,
+        )
+    for c in range(puzzle.cols + 1):
+        x = left + c * cell
+        heavy = c % 5 == 0 or c == puzzle.cols
+        canvas.line(
+            (x, top, x, top + puzzle.rows * cell),
+            fill=INK if heavy else THIN,
+            width=thick if heavy else thin,
+        )
+    size = int(cell * 0.42)
+    for r, clue in enumerate(puzzle.row_clues):
+        for i, value in enumerate(reversed(clue or (0,))):
+            canvas.text(
+                (left - cell // 5 - i * step, top + r * cell + cell / 2),
+                str(value),
+                INK,
+                size,
+                anchor="rm",
+            )
+    for c, clue in enumerate(puzzle.column_clues):
+        for i, value in enumerate(reversed(clue or (0,))):
+            canvas.text(
+                (left + c * cell + cell / 2, top - cell // 5 - i * step),
+                str(value),
+                INK,
+                size,
+                anchor="ms",
+            )
+    if interactive:
+        for r in range(puzzle.rows):
+            for c in range(puzzle.cols):
+                x, y = left + c * cell, top + r * cell
+                canvas.cell(cell_id(r, c), (x, y, x + cell, y + cell))
+    return canvas
+
+
+def _filled(solution: Mapping[str, bool] | None, puzzle: Pattern) -> dict[Cell, bool]:
+    return {
+        (r, c): bool((solution or {}).get(pattern_cell((r, c))))
+        for r in range(puzzle.rows)
+        for c in range(puzzle.cols)
+    }
 
 
 def rectangles_picture(

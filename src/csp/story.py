@@ -647,6 +647,8 @@ FAMILY_RULES = {
     "undead": "Put a ghost, vampire or zombie in every empty cell so the totals are met. The "
     "border numbers count the monsters seen along that line, which bends at every mirror: "
     "zombies are always seen, vampires only directly, ghosts only in a mirror.",
+    "pattern": "Fill cells so that each row and column contains the runs of filled cells "
+    "listed for it, in order, with at least one empty cell between runs.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
 }
