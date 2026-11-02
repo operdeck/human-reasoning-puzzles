@@ -1,0 +1,11 @@
+# Arrow Sudoku 4x4: hard; needs a chain of strong and weak links.
+Family: arrow
+Givens:
+. . . .
+. . . .
+. . . .
+. . . .
+Arrows:
+r3c2 r3c1 r4c1
+r1c3 r1c4 r2c3
+r3c3 r2c2 r2c1
