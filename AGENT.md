@@ -289,9 +289,11 @@ direction: the benchmark imports `csp`, never the other way round.
   Ask what the puzzle's constraints quantify over. Murdoku's "at most one
   figure per row and column" is about people, so people are the variables;
   copying Sudoku's cell-centric shape produced an unsatisfiable model.
-  Queens-style uses regions as variables choosing one cell each, with
-  exactly-one row/column constraints and at-most-one constraints per 2x2
-  window for the no-touching rule.
+  Queens and Star Battle share a parser and builder. With `Stars: 1`, region
+  variables choose one cell each, with exactly-one row/column constraints and
+  at-most-one constraints per 2x2 window; with `Stars: 2+`, cell Booleans and
+  count constraints represent multiple stars. One-star boards keep the Queens
+  display name, queen piece and rule wording.
 3. Express every rule as `EXACTLY_ONE` / `AT_MOST_ONE` sets, plus relations
    (over two or more variables) for clues that link people.
 4. A `render(..., title, steps) -> str` function. `steps` are the deductions

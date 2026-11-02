@@ -57,9 +57,8 @@ changes do not create another family or gallery section.
 | Sudoku | [`sudoku_5_9x9.txt`](../examples/sudoku_5_9x9.txt) (`single`) | [`sudoku_13_9x9_naked_pair.txt`](../examples/sudoku_13_9x9_naked_pair.txt) (`cover2`) | [`sudoku_17_9x9_chains.txt`](../examples/sudoku_17_9x9_chains.txt) (`chains`) |
 | Calcudoku | [`calcudoku_1_4x4.txt`](../examples/calcudoku_1_4x4.txt) (`relations`) | [`calcudoku_3_6x6.txt`](../examples/calcudoku_3_6x6.txt) (`relations`) | [`calcudoku_5_7x7.txt`](../examples/calcudoku_5_7x7.txt) (`cover3`) |
 | Futoshiki | [`futoshiki_1_5x5.txt`](../examples/futoshiki_1_5x5.txt) (`single`) | [`futoshiki_2_5x5.txt`](../examples/futoshiki_2_5x5.txt) (`relations`) | [`futoshiki_3_5x5.txt`](../examples/futoshiki_3_5x5.txt) (`chains`) |
-| Queens | [`queens_1_4x4.txt`](../examples/queens_1_4x4.txt), [`queens_2_5x5.txt`](../examples/queens_2_5x5.txt) (`single`) | [`queens_3_7x7.txt`](../examples/queens_3_7x7.txt), [`queens_4_8x8.txt`](../examples/queens_4_8x8.txt) (`subsumption`); [`queens_5_9x9.txt`](../examples/queens_5_9x9.txt) (`cover2`) | [`queens_6_4x4.txt`](../examples/queens_6_4x4.txt) (`chains`) |
 | Tectonic / Suguru | [`suguru_1_4x4.txt`](../examples/suguru_1_4x4.txt) (`single`) | — | [`suguru_2_8x8.txt`](../examples/suguru_2_8x8.txt) (`chains`) |
-| Star Battle | [`starbattle_1_8x8.txt`](../examples/starbattle_1_8x8.txt) (`count`) | [`starbattle_2_8x8.txt`](../examples/starbattle_2_8x8.txt) (`cover2`) | [`starbattle_3_12x12.txt`](../examples/starbattle_3_12x12.txt) (`cover3`) |
+| Queens / Star Battle | Queens: [`queens_1_4x4.txt`](../examples/queens_1_4x4.txt), [`queens_2_5x5.txt`](../examples/queens_2_5x5.txt) (`single`); Star Battle: [`starbattle_1_8x8.txt`](../examples/starbattle_1_8x8.txt) (`count`) | Queens: [`queens_3_7x7.txt`](../examples/queens_3_7x7.txt), [`queens_4_8x8.txt`](../examples/queens_4_8x8.txt) (`subsumption`), [`queens_5_9x9.txt`](../examples/queens_5_9x9.txt) (`cover2`); Star Battle: [`starbattle_2_8x8.txt`](../examples/starbattle_2_8x8.txt) (`cover2`) | Queens: [`queens_6_4x4.txt`](../examples/queens_6_4x4.txt) (`chains`); Star Battle: [`starbattle_3_12x12.txt`](../examples/starbattle_3_12x12.txt) (`cover3`) |
 | Zebra logic grid | [`logicgrid_1_3x3.txt`](../examples/logicgrid_1_3x3.txt) (`relations`) | [`logicgrid_2_6x6.txt`](../examples/logicgrid_2_6x6.txt) (`relations`) | — |
 | Binairo / Takuzu | [`binairo_1_8x8.txt`](../examples/binairo_1_8x8.txt) (`relations`) | [`binairo_2_8x8.txt`](../examples/binairo_2_8x8.txt) (`subsumption`) | [`binairo_3_4x4.txt`](../examples/binairo_3_4x4.txt) (`what_if`) |
 | Tango | [`tango_1_8x8.txt`](../examples/tango_1_8x8.txt) (`relations`) | [`tango_4_8x8.txt`](../examples/tango_4_8x8.txt) (`relations`) | [`tango_5_4x4.txt`](../examples/tango_5_4x4.txt) (`what_if`) |
@@ -75,7 +74,7 @@ trivial, and is intentionally excluded. These gaps require stronger
 family-specific deduction or generation support before a harder human-like
 example can be claimed.
 
-Every Queens region has at least two cells. The easy 4 × 4 and 5 × 5 and the
+Every one-star Queens region has at least two cells. The easy 4 × 4 and 5 × 5 and the
 medium 9 × 9 have one visible given queen each; the other three boards have
 no givens. The starter queens are explicit clues, not single-cell regions
 that silently give away a placement.
@@ -111,16 +110,15 @@ Nine of the 96 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
 reports them as `deductive: false`, the web index and puzzle pages badge them,
 and a test pins the list, which only moves when the ladder does.
 
-The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The Queens collection progresses from `single` through `subsumption` and `cover2` to `chains`; the Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
+The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The one-star Queens display progresses from `single` through `subsumption` and `cover2` to `chains`; the multi-star Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
 
 | Family | Small example | Larger example |
 |---|---|---|
-| Queens (grades `single`, `subsumption`, `cover2`, `chains`) | `queens_1_4x4.txt`, `queens_2_5x5.txt`, `queens_6_4x4.txt` | `queens_3_7x7.txt`, `queens_4_8x8.txt`, `queens_5_9x9.txt` |
 | Sudoku relations | `sudoku_9_4x4_kropki_consecutive_thermometers.txt` | `sudoku_7_9x9_kropki_consecutive_thermometers.txt` |
 | Anti-knight Sudoku | `sudoku_2_4x4_anti_knight.txt` | `sudoku_3_9x9_anti_knight.txt` |
 | Anti-king Sudoku | `sudoku_16_6x6_anti_king.txt` | `sudoku_4_9x9_anti_king.txt` |
 | Tectonic / Suguru | `suguru_1_4x4.txt` | `suguru_2_8x8.txt` |
-| Star Battle (2 and 3 stars) | `starbattle_2_8x8.txt` | `starbattle_4_10x10.txt`, `starbattle_3_12x12.txt` |
+| Queens / Star Battle | Queens (`Stars: 1`): `queens_1_4x4.txt`, `queens_2_5x5.txt`, `queens_6_4x4.txt`; Star Battle: `starbattle_2_8x8.txt` | Queens: `queens_3_7x7.txt`, `queens_4_8x8.txt`, `queens_5_9x9.txt`; Star Battle: `starbattle_4_10x10.txt`, `starbattle_3_12x12.txt` |
 | Zebra-style logic grids | `logicgrid_1_3x3.txt` | `logicgrid_2_6x6.txt` |
 | Binairo / Takuzu | `binairo_3_4x4.txt` | `binairo_2_8x8.txt` |
 | Tango | `tango_2_4x4.txt` | `tango_4_8x8.txt` |
