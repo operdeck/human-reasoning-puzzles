@@ -26,8 +26,11 @@ def _bundle(out: Path, name: str) -> dict:
 # The `examples/` puzzles this solver only closes with its `what_if` fallback, so
 # no deduction path exists: the beyond-deduction frontier. Keep in step with the ladder.
 BEYOND_DEDUCTION = {
+    "arrow_4_6x6",
     "binairo_3_4x4",
     "calcudoku_6_6x6",
+    "killer_5_6x6",
+    "skyscrapersudoku_3_6x6",
     "food-murdoku-3",
     "menu-murdoku-3",
     "prrrdoku2",

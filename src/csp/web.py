@@ -390,7 +390,10 @@ def _family(
     blocked = [
         cell
         for cell in names
-        if cell not in variables or (cell in fixed and fixed[cell] not in by_value)
+        if cell not in variables
+        or (cell in fixed and fixed[cell] not in by_value)
+        # a cell-level solution covers every playable cell, so any other cell is blocked
+        or (kind in CELL_SOLUTIONS and cell not in solution)
     ]
     out |= {
         "playable": True,
