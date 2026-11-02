@@ -1,0 +1,9 @@
+# Hidato 6x6: medium; two numbers' options together fill a group of cells.
+Family: hidato
+Grid:
+. . . 1 . .
+21 22 . . 5 4
+. . 24 16 14 .
+27 28 X . 13 7
+. 33 . . 10 8
+. 31 34 . X .

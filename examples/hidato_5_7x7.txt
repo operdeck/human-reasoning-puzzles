@@ -1,0 +1,10 @@
+# Hidato 7x7: hard; a larger path that needs chains.
+Family: hidato
+Grid:
+. . . . . . .
+. 20 . X . . .
+. 21 37 . . . 28
+. 14 . 40 . . .
+. 12 X . 42 . 33
+10 9 . . 1 46 .
+. . 5 3 . . 47
