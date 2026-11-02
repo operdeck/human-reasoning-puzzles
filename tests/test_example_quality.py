@@ -44,6 +44,14 @@ def test_documentation_and_skills_use_the_web_index_instead_of_the_retired_galle
         assert "examples.md" not in source.read_text(), str(source.relative_to(root))
 
 
+def test_agent_entrypoints_share_one_repository_guide():
+    root = Path(__file__).resolve().parents[1]
+    pointer = "Read and follow `AGENT.md`."
+    for relative in (".clinerules", ".github/copilot-instructions.md"):
+        assert (root / relative).read_text().strip() == pointer
+    assert (root / "CLAUDE.md").read_text().strip() == "@AGENT.md"
+
+
 @pytest.mark.parametrize("path", QUEENS_FILES, ids=lambda path: path.name)
 def test_queens_examples_use_the_piece_of_their_family(path):
     text = path.read_text()
