@@ -1,0 +1,11 @@
+# Sandwich Sudoku 4x4: easy; the sandwich sums leave single candidates.
+Family: sandwich
+Givens:
+. . . 3
+. . . .
+. 3 4 .
+. 1 . .
+SandwichRows:
+0 0 . .
+SandwichColumns:
+5 . 0 .
