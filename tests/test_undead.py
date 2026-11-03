@@ -7,6 +7,8 @@ from csp.bruteforce import undead as brute
 from csp.core import Solver
 from csp.undead import compile_puzzle, parse, seen
 
+pytestmark = pytest.mark.solutions
+
 # A mirror turns a line of sight: "/" sends one entering downwards to the left.
 MIRRORED = """Family: undead
 Grid:

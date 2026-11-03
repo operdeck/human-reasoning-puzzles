@@ -4,6 +4,8 @@ from csp.bruteforce import towers as brute
 from csp.core import Solver
 from csp.towers import compile_puzzle, parse, visible
 
+pytestmark = pytest.mark.solutions
+
 # Every edge clue of the grid 4213 / 3421 / 2134 / 1342, which is then the only answer.
 PUZZLE = """Family: towers
 Size: 4

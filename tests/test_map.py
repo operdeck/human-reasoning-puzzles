@@ -7,6 +7,8 @@ from csp.bruteforce import mapcolour as brute
 from csp.core import Solver
 from csp.mapcolour import compile_puzzle, parse
 
+pytestmark = pytest.mark.solutions
+
 # Four regions that all touch each other need all four colours.
 CORNERS = """Family: map
 Regions:

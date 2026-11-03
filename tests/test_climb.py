@@ -1,7 +1,11 @@
 import random
 
+import pytest
+
 from csp import climb, fresh
 from csp.bruteforce import rectangles as brute
+
+pytestmark = pytest.mark.solutions
 
 
 def test_rectangles_hard_search_reaches_a_hard_grade_on_a_unique_board():

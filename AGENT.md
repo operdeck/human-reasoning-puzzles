@@ -86,8 +86,8 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   branch is worth reading instead of holding a long change on your disk until
   it feels finished.
 - **Keep normal local test runs under two minutes; CI runs every suite.** The
-  default `uv run pytest -q` skips the exhaustive `solutions` and `booklet`
-  suites. Run the full published-puzzle solution/uniqueness checks with
+  default `uv run pytest -q` skips the `solutions` and `booklet` suites. Run
+  puzzle-family solver tests and the published-puzzle solution/uniqueness checks with
   `uv run pytest -q --override-ini=addopts= -m solutions`, or the full booklet
   generation with `uv run pytest -q --override-ini=addopts= -m booklet`.
   `.github/workflows/tests.yml` overrides the local default and runs every

@@ -7,6 +7,8 @@ from csp.bruteforce import thermometers as brute
 from csp.core import Solver
 from csp.thermometers import compile_puzzle, is_mercury, parse
 
+pytestmark = pytest.mark.solutions
+
 
 def _fresh_board(size: int = 4) -> str:
     for seed in range(60):

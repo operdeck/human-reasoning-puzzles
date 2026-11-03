@@ -62,6 +62,6 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-m 'not solutions and not booklet'"
 markers = [
-    "solutions: exhaustive uniqueness and solver checks for every puzzle file",
+    "solutions: puzzle-family solver tests and exhaustive published-puzzle checks",
     "booklet: generate and check the complete booklet from all published puzzles",
 ]
