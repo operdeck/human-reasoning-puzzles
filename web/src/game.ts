@@ -49,6 +49,7 @@ export interface Bundle {
   autoMark?: { default: boolean; mark: "cross" | "light"; onPlace: Scope[] };
   peers?: PeerGroup[];
   notes?: boolean;
+  totals?: Record<string, number>;
   givens?: Record<CellId, string>;
   solution?: Record<CellId, string>;
   regions?: Record<CellId, string>;
@@ -252,14 +253,17 @@ export function clearCell(bundle: Bundle, state: State, cell: CellId): State {
   return { ...state, placed, notes, crosses: state.crosses.filter((other) => other !== cell) };
 }
 
-/** Set or remove a manual cross; `on` undefined toggles it. Pieces are left alone. */
+/** Set or remove a manual cross; `on` undefined toggles it and replaces any piece. */
 export function setCross(bundle: Bundle, state: State, cell: CellId, on?: boolean): State {
-  if (locked(bundle, cell) || cell in state.placed) return state;
+  if (locked(bundle, cell)) return state;
   const has = state.crosses.includes(cell);
   const want = on ?? !has;
-  if (want === has) return state;
-  const crosses = want ? [...state.crosses, cell] : state.crosses.filter((other) => other !== cell);
-  return { ...state, crosses };
+  if (want === has && (!want || !(cell in state.placed))) return state;
+  const placed = { ...state.placed };
+  if (want) delete placed[cell];
+  const crosses = [...state.crosses.filter((other) => other !== cell)];
+  if (want) crosses.push(cell);
+  return { ...state, placed, crosses };
 }
 
 export function toggleClue(state: State, index: number): State {
