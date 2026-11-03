@@ -7,6 +7,8 @@ from csp.bruteforce import kakuro as brute
 from csp.core import Solver
 from csp.kakuro import compile_puzzle, parse, run_holds
 
+pytestmark = pytest.mark.solutions
+
 # Columns sum to 3 (1+2) and 4 (1+3), rows to 3 and 4: only 2 1 / 1 3 fits.
 SMALL = """Family: kakuro
 Grid:

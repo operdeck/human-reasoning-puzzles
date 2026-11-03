@@ -7,6 +7,8 @@ from csp.bruteforce import dominosa as brute
 from csp.core import Solver
 from csp.dominosa import cell_assignment, compile_puzzle, parse
 
+pytestmark = pytest.mark.solutions
+
 
 def _unique_board(top: int = 2) -> str:
     for seed in range(200):
