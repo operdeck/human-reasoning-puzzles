@@ -498,13 +498,14 @@ SUDOKU_RULES = {
             "Each dashed cage holds different digits that add up to the small number in its corner."
         ),
         "sandwich": (
-            "A number outside the grid is the sum of the digits between the 1 and the "
-            "highest digit in that row or column."
+            "A number outside the grid belongs to the row or column beside it. Add the digits "
+            "between the 1 and the {top} in that line, in whichever order they appear; do not "
+            "count the 1 or the {top}. A clue of 0 means the 1 and the {top} are adjacent."
         ),
         "skyscraper": (
-            "A number outside the grid is how many digits can be seen from there along "
-            "that row or column, taking digits as tower heights, where a taller tower "
-            "hides every shorter one behind it."
+            "A number outside the grid says how many digits are visible from that side of its "
+            "row or column. Read digits as tower heights: a taller digit hides every shorter "
+            "one behind it (for example, 2 4 1 3 shows two towers from the left: 2 and 4)."
         ),
     },
     "nl": {
@@ -543,13 +544,15 @@ SUDOKU_RULES = {
             "in de hoek vormen."
         ),
         "sandwich": (
-            "Een getal buiten het rooster is de som van de cijfers tussen de 1 en het "
-            "hoogste cijfer in die rij of kolom."
+            "Een getal buiten het rooster hoort bij de rij of kolom waar het naast staat. Tel "
+            "de cijfers op die in die lijn tussen de 1 en de {top} staan, in welke volgorde ze "
+            "ook voorkomen; de 1 en de {top} zelf tellen niet mee. Bij een getal 0 staan de 1 "
+            "en de {top} direct naast elkaar."
         ),
         "skyscraper": (
-            "Een getal buiten het rooster zegt hoeveel cijfers je vanaf daar ziet langs die "
-            "rij of kolom, als je cijfers als torenhoogtes leest: een hogere toren verbergt "
-            "elke lagere erachter."
+            "Een getal buiten het rooster geeft aan hoeveel cijfers je vanaf die kant van de "
+            "rij of kolom ziet. Lees de cijfers als torenhoogtes: een hoger cijfer verbergt elk "
+            "lager cijfer erachter (bijvoorbeeld zie je in 2 4 1 3 van links twee torens: 2 en 4)."
         ),
     },
 }
@@ -652,7 +655,12 @@ def family_rules(text: str, kind: str) -> list[str]:
     if kinds & {"white", "black"}:
         rules.append(words["dots"])
     present = {rule.kind for rule in sudoku_puzzle.rules}
-    rules.extend(words[kind] for kind in sudoku.RULE_KINDS if kind in present)
+    for kind in sudoku.RULE_KINDS:
+        if kind in present:
+            rule = words[kind]
+            if kind in {"sandwich", "skyscraper"}:
+                rule = rule.format(top=sudoku_puzzle.size)
+            rules.append(rule)
     return rules
 
 
