@@ -7,6 +7,8 @@ from csp.bruteforce import sudoku as brute
 from csp.core import Solver
 from csp.sudoku import Rule, compile_puzzle, parse
 
+pytestmark = pytest.mark.solutions
+
 VARIANTS = ["killer", "arrow", "evenodd", "sandwich", "skyscrapersudoku"]
 
 

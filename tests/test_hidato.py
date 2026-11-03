@@ -7,6 +7,8 @@ from csp.bruteforce import hidato as brute
 from csp.core import Solver
 from csp.hidato import cell_assignment, compile_puzzle, parse, touching
 
+pytestmark = pytest.mark.solutions
+
 # A 2x3 board: 1 2 3 / 6 5 4 is its only orthogonal path with 3 above the 4.
 SNAKE = """Family: numbrix
 Grid:

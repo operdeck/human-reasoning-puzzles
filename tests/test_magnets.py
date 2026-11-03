@@ -7,6 +7,8 @@ from csp.bruteforce import magnets as brute
 from csp.core import Solver
 from csp.magnets import compile_puzzle, parse
 
+pytestmark = pytest.mark.solutions
+
 
 def _fresh_board(size: int = 4) -> str:
     for seed in range(100):

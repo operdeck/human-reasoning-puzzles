@@ -7,6 +7,8 @@ from csp.bruteforce import mosaic as brute
 from csp.core import Solver
 from csp.mosaic import compile_puzzle, parse
 
+pytestmark = pytest.mark.solutions
+
 # A cross: the centre and its four neighbours are black.
 CROSS = """Family: mosaic
 Size: 3

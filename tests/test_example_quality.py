@@ -13,6 +13,8 @@ from csp.puzzle_lab import Rating, family_of, rate
 from csp.puzzlefile import detect
 from tests.examples import played_examples
 
+pytestmark = pytest.mark.solutions
+
 QUEENS_FILES = [
     path
     for path in played_examples()
