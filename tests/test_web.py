@@ -61,6 +61,21 @@ def test_every_example_is_exported_and_indexed(exported):
     assert not list(exported.glob("*-solution.svg"))
 
 
+def test_rectangles_bundles_make_each_numbered_cell_a_given(exported):
+    from csp import rectangles
+
+    files = sorted(EXAMPLES.rglob("rectangles_*.txt"))
+    assert files
+    for source in files:
+        puzzle = rectangles.parse(source.read_text())
+        expected = {
+            rectangles.cell_name(cell): rectangles.cell_name(cell) for cell in puzzle.numbered
+        }
+        bundle = _bundle(exported, source.stem)
+        assert bundle["givens"] == expected
+        assert all(bundle["solution"][cell] == owner for cell, owner in expected.items())
+
+
 def test_bundles_record_which_puzzles_need_the_what_if_fallback(exported):
     """`deductive` is False exactly for the frontier: the puzzles graded `what_if`."""
     index = json.loads((exported / "index.json").read_text())
