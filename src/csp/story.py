@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
 
-from . import battleships, starbattle, sudoku
+from . import battleships, minesweeper, starbattle, sudoku
 from .core import Kind, Model, Solver, Step
 from .murdoku import (
     COUNTING,
@@ -617,6 +617,19 @@ def family_rules(text: str, kind: str) -> list[str]:
             "Waves mark water; given ship segments belong to a ship. A circle is a single-cell "
             "ship, a rounded side is an end, and a square middle segment has ship cells on "
             "two opposite sides. A question mark is a ship segment of unspecified shape.",
+        ]
+    if kind == "minesweeper":
+        total_mines = minesweeper.parse(text).total_mines
+        if total_mines is None:
+            return [FAMILY_RULES[kind]]
+        if Wording.read(text).language == "nl":
+            return [
+                f"Markeer de mijnen: elk getal geeft aan hoeveel van de acht buurvakjes "
+                f"een mijn zijn. Er liggen in totaal {total_mines} mijnen."
+            ]
+        return [
+            f"Mark the mines: each number tells how many of its eight neighbours are mines. "
+            f"There are {total_mines} mines in total."
         ]
     if kind != "sudoku":
         display_family = (read_sections(text).get("Family") or [kind])[0].casefold()

@@ -155,6 +155,12 @@ family-specific UI code. Rework affected examples without losing measured
 technique coverage, audit uniqueness/order, and refresh puzzle and solution
 images as well as web/booklet exports.
 
+When a puzzle has a global total that local clues cannot determine (for example,
+a total mine count), disclose it in the shared player-facing rules and every
+relevant output, including web bundles and booklets. Test both languages and
+the behavior when the optional total is absent; do not make a correct placement
+look unexplained because a required global constraint is hidden.
+
 One-star Queens regions must contain at least two cells in published examples
 and freshly authored boards. Single-cell regions give away a placement,
 regardless of the puzzle's final grade. The shared Star Battle builder first
