@@ -60,3 +60,8 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+addopts = "-m 'not solutions and not booklet'"
+markers = [
+    "solutions: exhaustive uniqueness and solver checks for every puzzle file",
+    "booklet: generate and check the complete booklet from all published puzzles",
+]

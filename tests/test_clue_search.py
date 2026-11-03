@@ -8,6 +8,8 @@ from csp import bruteforce, clue_search
 from csp.puzzlefile import load_board
 from tests.examples import example
 
+pytestmark = pytest.mark.solutions
+
 SOLUTION_1 = "Alba=r1c5 Bernardo=r2c1 Carmen=r3c3 Diego=r4c6 Fernando=r5c2 Elena=r6c4"
 
 ORIENT = example("murdoku_orient_express.txt").read_text()

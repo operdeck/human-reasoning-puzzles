@@ -18,6 +18,8 @@ from csp.puzzlefile import load_board
 from csp.story import Story, Wording, board_notes, explain
 from tests.examples import example
 
+pytestmark = pytest.mark.solutions
+
 PRRRDOKUS = ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"]
 PLACED = re.compile(r"\*\*(\w+) op r(\d+)k(\d+)\*\*")
 

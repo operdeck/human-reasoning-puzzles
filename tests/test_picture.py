@@ -16,6 +16,8 @@ from csp.murdoku import Board, BoardObject, EdgeItem, PointObject, RoleSpec, Squ
 from csp.puzzlefile import load_board, load_presentation  # noqa: E402
 from tests.examples import all_examples, example  # noqa: E402
 
+pytestmark = pytest.mark.booklet
+
 CELL = 100
 
 

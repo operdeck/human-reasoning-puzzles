@@ -13,7 +13,9 @@ from csp.cli import main
 from csp.docx_export import Entry, write_booklet
 from csp.puzzlefile import load_presentation
 from csp.story import clue_paragraphs, clue_texts, object_list
-from tests.examples import all_examples, example
+from tests.examples import all_examples, example, played_examples
+
+pytestmark = pytest.mark.booklet
 
 PRRRDOKUS = ["prrrdoku1", "prrrdoku2", "prrrdoku3"]
 
@@ -181,6 +183,17 @@ def test_glob_makes_one_multi_puzzle_booklet(tmp_path):
     assert text.count("Aanwijzingen") == 2 and "Oplossing" in text
     assert text.rindex("Prrrdoku 1") > text.index("Oplossing")
     assert not (tmp_path / "all-solution.docx").exists()
+
+
+def test_full_booklet_generates_for_every_published_puzzle(tmp_path, capsys):
+    out = tmp_path / "all-puzzles.docx"
+    files = played_examples()
+
+    assert main([*(str(path) for path in files), "--docx", str(out)]) == 0
+    assert out.is_file()
+    assert f"({len(files)} puzzles, then their solutions)" in capsys.readouterr().out
+    text = _text(out)
+    assert "Oplossing" in text or "Solution" in text
 
 
 def test_inline_wording_does_not_change_the_puzzle():
