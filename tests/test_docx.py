@@ -317,6 +317,18 @@ def test_sudoku_booklet_includes_all_active_variant_rules(language, tmp_path):
     assert all(rule in rendered for rule in family_rules(text, "sudoku"))
 
 
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_sudoku_booklet_includes_sandwich_rule_with_grid_size(language, tmp_path):
+    from csp.story import family_rules
+
+    text = example("sandwich_1_4x4.txt").read_text() + f"\nLanguage:\n{language}\n"
+    source = tmp_path / "sandwich.txt"
+    source.write_text(text)
+    out = tmp_path / "sandwich.docx"
+    assert main([str(source), "--docx", str(out)]) == 0
+    assert all(rule in _text(out) for rule in family_rules(text, "sudoku"))
+
+
 def test_exactly_one_same_region_reads_as_either_or():
     paragraphs = clue_paragraphs(_read("murdoku_sparse_mystery"))
     assert any("same region as either Mara or Ria" in p for p in paragraphs)
