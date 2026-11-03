@@ -5,6 +5,8 @@ import {
   clearCell,
   emptyState,
   History,
+  locked,
+  occupied,
   place,
   placementConflict,
   restore,
@@ -55,6 +57,22 @@ function stars(): Bundle {
       onPlace: [{ scope: "neighbors8" }, { scope: "row", whenFull: 2 }],
     },
     solution: {},
+  };
+}
+
+function rectangles(): Bundle {
+  return {
+    ...murdoku(),
+    family: "rectangles",
+    size: [2, 2],
+    palette: [
+      { id: "r1c1", label: "2 at r1c1", symbol: "2" },
+      { id: "r2c2", label: "2 at r2c2", symbol: "2" },
+    ],
+    placement: { perCell: 1, blocked: [] },
+    autoMark: { default: false, mark: "cross", onPlace: [] },
+    givens: { r1c1: "r1c1", r2c2: "r2c2" },
+    solution: { r1c1: "r1c1", r1c2: "r1c1", r2c1: "r2c2", r2c2: "r2c2" },
   };
 }
 
@@ -160,6 +178,30 @@ describe("check", () => {
     expect(check(b, state)).toEqual({ status: "wrong", wrong: 1 });
     state = place(b, state, "r3c4", "Ingrid");
     expect(check(b, state)).toEqual({ status: "solved" });
+  });
+});
+
+describe("rectangles givens", () => {
+  it("locks numbered cells, excludes them from check, and keeps them through clear and undo", () => {
+    const b = rectangles();
+    const history = new History(emptyState(b));
+
+    expect(locked(b, "r1c1")).toBe(true);
+    expect(place(b, history.current, "r1c1", "r2c2")).toBe(history.current);
+    expect(setCross(b, history.current, "r1c1")).toBe(history.current);
+    expect(clearCell(b, history.current, "r1c1")).toBe(history.current);
+    expect(check(b, history.current)).toEqual({ status: "incomplete", missing: 2 });
+    expect(occupied(b, history.current)).toEqual(b.givens);
+
+    history.push(place(b, history.current, "r1c2", "r1c1"));
+    expect(check(b, history.current)).toEqual({ status: "incomplete", missing: 1 });
+    expect(history.undo()).toBe(true);
+    expect(occupied(b, history.current)).toEqual(b.givens);
+
+    history.push(place(b, history.current, "r1c2", "r1c1"));
+    history.push(place(b, history.current, "r2c1", "r2c2"));
+    expect(check(b, history.current)).toEqual({ status: "solved" });
+    expect(occupied(b, emptyState(b))).toEqual(b.givens);
   });
 });
 

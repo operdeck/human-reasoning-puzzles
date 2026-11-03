@@ -375,6 +375,13 @@ def _family(
         if kind in CELL_SOLUTIONS:
             solution = CELL_SOLUTIONS[kind](text, solution)
             fixed = CELL_SOLUTIONS[kind](text, fixed)
+            if kind == "rectangles":
+                puzzle = rectangles.parse(text)
+                own_cells = {
+                    rectangles.cell_name(cell): rectangles.cell_name(cell)
+                    for cell in puzzle.numbered
+                }
+                fixed = own_cells | fixed
     by_value = {item.value: item.id for item in items}
     if kind in DIGITS:
         groups = peers(model, set(names), by_value, language=language_of(text))
