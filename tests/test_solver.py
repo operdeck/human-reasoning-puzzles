@@ -34,6 +34,8 @@ from csp.proof import Move, replay
 from csp.puzzlefile import load_board, parse_square
 from tests.examples import all_examples, example
 
+pytestmark = pytest.mark.solutions
+
 # --- engine ---------------------------------------------------------------
 
 

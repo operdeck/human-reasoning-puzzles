@@ -5,6 +5,8 @@ import pytest
 from csp.puzzle_lab import family_of, main, rate
 from tests.examples import example
 
+pytestmark = pytest.mark.solutions
+
 
 def test_rating_preserves_display_names_and_rejects_murdoku():
     queens = example("queens_2_5x5.txt").read_text()

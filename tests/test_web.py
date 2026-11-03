@@ -11,6 +11,8 @@ pytest.importorskip("fontTools")
 from csp import cli, murdoku, story, svg
 from tests.examples import EXAMPLES, example, played_examples
 
+pytestmark = pytest.mark.solutions
+
 
 @pytest.fixture(scope="module")
 def exported(tmp_path_factory):

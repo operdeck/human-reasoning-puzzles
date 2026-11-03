@@ -85,13 +85,19 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   single-purpose commits, and push them to the pull request as soon as the
   branch is worth reading instead of holding a long change on your disk until
   it feels finished.
-- **CI runs the full suite; locally run what your change can break.** Run the
-  linters — `uvx ruff check src tests benchmark`, `uvx ruff format --check src
-  tests benchmark`, `uv run mypy src` — and the tests your change can reach,
-  such as `uv run pytest tests/test_picture.py -q`, not everything.
-  `.github/workflows/tests.yml` runs the full `uv run pytest -q` on 3.12 and
-  3.13, plus the web checks, on every pull request. Run the whole suite
-  yourself only to reproduce a red build.
+- **Keep normal local test runs under two minutes; CI runs every suite.** The
+  default `uv run pytest -q` skips the exhaustive `solutions` and `booklet`
+  suites. Run the full published-puzzle solution/uniqueness checks with
+  `uv run pytest -q --override-ini=addopts= -m solutions`, or the full booklet
+  generation with `uv run pytest -q --override-ini=addopts= -m booklet`.
+  `.github/workflows/tests.yml` overrides the local default and runs every
+  Python test on 3.12 and 3.13, plus all web checks, on every pull request.
+  Run an exhaustive suite locally when an enhancement could affect puzzle
+  solving, solution soundness, booklet generation, or booklet presentation;
+  for changes isolated from those areas, run the default suite and the tests
+  that cover the changed code. Also run the linters — `uvx ruff check src
+  tests benchmark`, `uvx ruff format --check src tests benchmark`, and
+  `uv run mypy src` — for code changes.
 - **Do not sit on a push waiting for CI.** Say what is still running and give
   the check URL, then carry on with the next step; the owner watches the build.
 - **Merge into `main` fast-forward only**, and only once CI is green.
