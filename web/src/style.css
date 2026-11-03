@@ -327,6 +327,16 @@ footer {
   font-weight: 600;
 }
 
+.mine-counter {
+  min-height: 1.4em;
+  margin: 0.35rem 0;
+  font-weight: 600;
+}
+
+.mine-counter.wrong {
+  color: var(--bad);
+}
+
 .verdict.solved {
   color: var(--good);
 }

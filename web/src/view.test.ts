@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conflictText, verdictText } from "./view";
+import { conflictText, mineCounter, verdictText } from "./view";
 
 describe("conflictText", () => {
   it("identifies the conflicting cell and the exported rule", () => {
@@ -24,5 +24,42 @@ describe("verdictText", () => {
     expect(verdictText({ status: "wrong", wrong: 1 }, "nl")).toBe("Nog niet goed: 1 stuk staat op de verkeerde plek.");
     expect(verdictText({ status: "wrong", wrong: 2 }, "en")).toBe("Not right: 2 pieces are in the wrong place.");
     expect(verdictText({ status: "incomplete", missing: 3 }, "nl")).toBe("Nog geen fouten; nog 3 te plaatsen.");
+  });
+
+  it("names the missing mine in English and Dutch", () => {
+    const mine = { singular: "mine", plural: "mines" };
+    const mijn = { singular: "mijn", plural: "mijnen" };
+    expect(verdictText({ status: "incomplete", missing: 1 }, "en", undefined, mine)).toBe(
+      "No mistakes so far; 1 mine still to place.",
+    );
+    expect(verdictText({ status: "incomplete", missing: 1 }, "nl", undefined, mijn)).toBe(
+      "Nog geen fouten; nog 1 mijn te plaatsen.",
+    );
+    expect(verdictText({ status: "incomplete", missing: 2 }, "nl", undefined, mijn)).toBe(
+      "Nog geen fouten; nog 2 mijnen te plaatsen.",
+    );
+  });
+});
+
+describe("mineCounter", () => {
+  it("counts placed mines, ignores crosses, and flags an over-total count", () => {
+    const bundle = { language: "en", totals: { mine: 2 } };
+    expect(mineCounter(bundle, { placed: { r1c1: "mine" } })).toEqual({
+      text: "Mines: 1 / 2",
+      overLimit: false,
+    });
+    expect(mineCounter(bundle, { placed: { r1c1: "mine", r1c2: "mine" } })).toEqual({
+      text: "Mines: 2 / 2",
+      overLimit: false,
+    });
+    expect(mineCounter(bundle, { placed: { r1c1: "mine", r1c2: "mine", r1c3: "mine" } })).toEqual({
+      text: "Mines: 3 / 2",
+      overLimit: true,
+    });
+    expect(mineCounter({ language: "nl", totals: { mine: 1 } }, { placed: {} })).toEqual({
+      text: "Mijnen: 0 / 1",
+      overLimit: false,
+    });
+    expect(mineCounter({ language: "en" }, { placed: {} })).toBeNull();
   });
 });
