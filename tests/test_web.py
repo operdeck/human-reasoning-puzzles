@@ -363,6 +363,10 @@ def test_sudoku_web_rules_describe_the_active_variants(exported):
         "sudoku_9_4x4_kropki_consecutive_thermometers",
         "sudoku_6_9x9_nrc",
         "sudoku_12_6x6_jigsaw",
+        "sandwich_1_4x4",
+        "sandwich_3_6x6",
+        "skyscrapersudoku_1_4x4",
+        "skyscrapersudoku_3_6x6",
     ):
         text = example(name + ".txt").read_text()
         assert _bundle(exported, name)["rules"] == story.family_rules(text, "sudoku")
