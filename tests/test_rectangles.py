@@ -7,6 +7,8 @@ from csp.bruteforce import rectangles as brute
 from csp.core import Solver
 from csp.rectangles import cell_assignment, compile_puzzle, parse
 
+pytestmark = pytest.mark.solutions
+
 # 2 x 3: a 4-cell block of one number and a 2-cell strip.
 PUZZLE = """Family: rectangles
 Clues:

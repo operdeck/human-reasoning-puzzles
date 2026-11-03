@@ -7,6 +7,8 @@ from csp.bruteforce import pattern as brute
 from csp.core import Solver
 from csp.pattern import compile_puzzle, parse, runs
 
+pytestmark = pytest.mark.solutions
+
 # A plus sign on a 3x3 board.
 PLUS = """Family: pattern
 Rows:
