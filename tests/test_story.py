@@ -15,7 +15,7 @@ from csp import bruteforce, cli, murdoku
 from csp.core import Kind, Model, Solver
 from csp.proof import Move, replay, shortest
 from csp.puzzlefile import load_board
-from csp.story import Story, Wording, board_notes, explain
+from csp.story import Story, Wording, board_notes, explain, family_rules
 from tests.examples import example
 
 PRRRDOKUS = ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"]
@@ -57,7 +57,16 @@ ALLOWED = {
     "sudoku": {"core", "puzzlefile", "towers"},
     "calcudoku": {"core", "puzzlefile"},
     "futoshiki": {"core", "puzzlefile"},
-    "story": {"core", "proof", "murdoku", "puzzlefile", "sudoku", "battleships", "starbattle"},
+    "story": {
+        "core",
+        "proof",
+        "murdoku",
+        "puzzlefile",
+        "sudoku",
+        "battleships",
+        "minesweeper",
+        "starbattle",
+    },
     "docx_export": {"icons", "murdoku", "picture", "puzzlefile", "story"},
     "regiongrid": {"puzzlefile"},
     "suguru": {"core", "puzzlefile", "regiongrid"},
@@ -90,6 +99,7 @@ ALLOWED = {
         "icons",
         "mapcolour",
         "murdoku",
+        "minesweeper",
         "puzzlefile",
         "rectangles",
         "starbattle",
@@ -125,6 +135,41 @@ ALLOWED = {
         "svg",
     },
 }
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        (
+            "en",
+            "Mark the mines: each number tells how many of its eight neighbours are mines. "
+            "There are 9 mines in total.",
+        ),
+        (
+            "nl",
+            "Markeer de mijnen: elk getal geeft aan hoeveel van de acht buurvakjes een mijn "
+            "zijn. Er liggen in totaal 9 mijnen.",
+        ),
+    ],
+)
+def test_minesweeper_rules_include_the_total_in_both_languages(language, expected):
+    text = example("minesweeper_3_8x8.txt").read_text()
+    if language == "nl":
+        text += "\nLanguage:\nnl\n"
+    assert family_rules(text, "minesweeper") == [expected]
+
+
+@pytest.mark.parametrize(
+    "language",
+    ["en", "nl"],
+)
+def test_minesweeper_rules_without_total_keep_the_existing_wording(language):
+    text = example("minesweeper_3_8x8.txt").read_text().split("\nTotalMines:", 1)[0] + "\n"
+    if language == "nl":
+        text += "Language:\nnl\n"
+    assert family_rules(text, "minesweeper") == [
+        "Mark the mines: each number tells how many of its eight neighbours are mines."
+    ]
 
 
 @pytest.mark.parametrize("module", sorted(ALLOWED))

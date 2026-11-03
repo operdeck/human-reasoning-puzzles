@@ -16,7 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import akari, dominosa, hidato, icons, mapcolour, rectangles, starbattle, svg
+from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
@@ -329,6 +329,10 @@ def _family(
     }
     if kind in UNSUPPORTED:
         return out | {"playable": False, "unsupported": UNSUPPORTED[kind]}
+    if kind == "minesweeper":
+        total_mines = minesweeper.parse(text).total_mines
+        if total_mines is not None:
+            out["totals"] = {"mine": total_mines}
     names = [f"r{row}c{col}" for row, col in cells]
     # Cage targets are clues for the player to enter, not prefilled digits.
     fixed = {} if kind == "calcudoku" else _fixed(model)

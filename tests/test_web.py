@@ -223,6 +223,18 @@ def test_dutch_battleships_web_rules():
     assert "volledige vloot" in data["rules"][0]
 
 
+def test_minesweeper_bundle_exports_total_and_omits_it_when_unspecified(exported):
+    from csp.web import _family
+
+    bundle = _bundle(exported, "minesweeper_3_8x8")
+    assert bundle["totals"] == {"mine": 9}
+
+    text = example("minesweeper_3_8x8.txt").read_text().split("\nTotalMines:", 1)[0] + "\n"
+    model = cli.load(text, "minesweeper").model
+    data = _family(text, "minesweeper", model, {}, '<rect id="r1c1" class="cell"')
+    assert "totals" not in data
+
+
 @pytest.mark.parametrize("number", [2, 3, 5])
 def test_varied_battleships_export_preserves_ship_and_water_clues(exported, number):
     from csp import battleships

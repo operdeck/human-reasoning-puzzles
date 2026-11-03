@@ -73,7 +73,12 @@ interface Box {
 }
 
 /** One puzzle: the board from the export, an overlay for the player's moves, and the panel. */
-export function verdictText(verdict: Verdict, language: string, reveal?: string): string {
+export function verdictText(
+  verdict: Verdict,
+  language: string,
+  reveal?: string,
+  missingItem?: { singular: string; plural: string },
+): string {
   const nl = language === "nl";
   if (verdict.status === "solved") {
     const story = reveal?.trim() || (nl ? "Alles staat op de goede plek." : "Everything is in the right place.");
@@ -85,7 +90,26 @@ export function verdictText(verdict: Verdict, language: string, reveal?: string)
     return `Not right: ${n} piece${n === 1 ? " is" : "s are"} in the wrong place.`;
   }
   const m = verdict.missing;
+  if (missingItem) {
+    const item = m === 1 ? missingItem.singular : missingItem.plural;
+    return nl
+      ? `Nog geen fouten; nog ${m} ${item} te plaatsen.`
+      : `No mistakes so far; ${m} ${item} still to place.`;
+  }
   return nl ? `Nog geen fouten; nog ${m} te plaatsen.` : `No mistakes so far; ${m} still to place.`;
+}
+
+export function mineCounter(
+  bundle: Pick<Bundle, "language" | "totals">,
+  state: Pick<State, "placed">,
+): { text: string; overLimit: boolean } | null {
+  const total = bundle.totals?.mine;
+  if (total === undefined) return null;
+  const placed = Object.values(state.placed).filter((item) => item === "mine").length;
+  return {
+    text: `${bundle.language === "nl" ? "Mijnen" : "Mines"}: ${placed} / ${total}`,
+    overLimit: placed > total,
+  };
 }
 
 export function conflictText(item: string, cell: CellId, language: string, description?: string): string {
@@ -130,6 +154,7 @@ export class PuzzleView {
   private overlay!: SVGGElement;
   private icons = new Map<string, SVGSVGElement>();
   private paletteButtons = new Map<string, HTMLButtonElement>();
+  private mineCount = el("p", { className: "mine-counter" });
   private verdict = el("p", { className: "verdict" });
   private undoButton = el("button", { type: "button", textContent: "Undo" });
   private redoButton = el("button", { type: "button", textContent: "Redo" });
@@ -147,6 +172,7 @@ export class PuzzleView {
     this.history = new History(load(bundle));
     this.tool = bundle.palette?.[0]?.id ?? CROSS;
     this.verdict.setAttribute("aria-live", "polite");
+    this.mineCount.setAttribute("aria-live", "polite");
   }
 
   private get state(): State {
@@ -225,7 +251,7 @@ export class PuzzleView {
     board.innerHTML = this.boardSvg;
     const play = el("section", { className: "play" }, board);
     if (b.playable) {
-      play.append(this.paletteBar(), this.controls(), this.verdict);
+      play.append(this.paletteBar(), this.mineCount, this.controls(), this.verdict);
     } else {
       play.append(el("p", { className: "note", textContent: b.unsupported ?? "Not playable yet." }));
     }
@@ -396,7 +422,15 @@ export class PuzzleView {
   private showVerdict(): void {
     const verdict = check(this.bundle, this.state);
     this.verdict.className = `verdict ${verdict.status}`;
-    this.verdict.textContent = verdictText(verdict, this.bundle.language, this.bundle.reveal);
+    const missingItem = this.bundle.totals?.mine === undefined
+      ? undefined
+      : {
+          singular: this.bundle.language === "nl" ? "mijn" : "mine",
+          plural: this.bundle.language === "nl" ? "mijnen" : "mines",
+        };
+    this.verdict.textContent = verdictText(
+      verdict, this.bundle.language, this.bundle.reveal, missingItem,
+    );
     if (verdict.status === "solved") celebrate();
   }
 
@@ -573,6 +607,10 @@ export class PuzzleView {
 
   private redraw(): void {
     const state = this.state;
+    const mineCount = mineCounter(this.bundle, state);
+    this.mineCount.hidden = mineCount === null;
+    this.mineCount.textContent = mineCount?.text ?? "";
+    this.mineCount.className = `mine-counter${mineCount?.overLimit ? " wrong" : ""}`;
     this.undoButton.disabled = !this.history.canUndo;
     this.redoButton.disabled = !this.history.canRedo;
     this.autoBox.checked = state.auto;

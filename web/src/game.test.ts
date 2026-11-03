@@ -119,6 +119,14 @@ describe("placing", () => {
     state = place(b, state, "r1c1", "Joost");
     expect(state.crosses).toEqual(["r1c4"]);
   });
+
+  it("replaces a placed piece with a manual cross", () => {
+    const b = murdoku();
+    const state = place(b, emptyState(b), "r1c1", "Joost");
+    const crossed = setCross(b, state, "r1c1");
+    expect(crossed.placed).toEqual({});
+    expect(crossed.crosses).toEqual(["r1c1"]);
+  });
 });
 
 describe("check", () => {
