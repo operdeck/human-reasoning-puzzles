@@ -1,1 +1,4 @@
 Read and follow `AGENT.md`.
+
+Never use shell heredocs (`<<EOF`, `cat <<'PY'`, `git commit -F - <<...`, `--body-file /dev/stdin <<...`); they mangle input in this shell. Write scripts and commit/PR/issue text to a file with an editor, then pass it with `git commit -F <file>`, `gh pr create --body-file <file>`, or `gh issue comment N --comment "$(cat <file>)"`.
+

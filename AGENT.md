@@ -118,6 +118,13 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   origin main`. The repo's local git config gets the token from
   `gh auth token --user operdeck`; do not switch the global `gh` account, and
   do not rely on the global credential helpers (they hang on a hidden prompt).
+- **Never use shell heredocs.** `<<EOF`, `cat <<'PY'`, `git commit -F - <<...`
+  and `--body-file /dev/stdin <<...` mangle input in this shell (echoed
+  `heredoc>` prompts, truncated or interleaved capture), so do not use them.
+  Write scripts, commit messages and PR/issue text to a real file with an editor,
+  then pass the file: `git commit -F <file>`, `gh pr create --body-file <file>`,
+  `gh issue comment N --comment "$(cat <file>)"`. For a one-line commit message,
+  `git commit -m "..."`.
 - **Never force-push** or rewrite history that is on `origin`.
 - **Published puzzles are not copied.** `prrrdoku1-3.txt` are the owner's
   own puzzles. Anything taken from a book or newspaper gets new names or is
