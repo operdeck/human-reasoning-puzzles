@@ -1,0 +1,22 @@
+# NRC Sudoku 9x9: easy; singles fill it.
+Givens:
+. . . . . 2 . . .
+. . 8 5 . . 1 . 9
+. . . . . . . 6 .
+. . 3 9 . . . . .
+. . . . . . . . .
+. . . . . 3 . . .
+. 2 4 . . 5 . . .
+. 8 . 7 . . . . .
+. . . 1 . . . . 7
+
+Extra:
+. . . . . . . . .
+. a a a . b b b .
+. a a a . b b b .
+. a a a . b b b .
+. . . . . . . . .
+. c c c . d d d .
+. c c c . d d d .
+. c c c . d d d .
+. . . . . . . . .

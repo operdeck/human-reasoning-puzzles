@@ -103,7 +103,7 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 
 6. Place approved original examples under `examples/` as
    `<family>_<n>_<size>[_<variant>].txt`, where `n` is the board's place in its
-   gallery section from easiest to hardest (for example `sudoku_9_4x4_kropki_consecutive_thermometers`).
+   gallery section from easiest to hardest (for example `sudoku_16_4x4_kropki_consecutive_thermometers`).
    Leave tier words such as `easy` or `hard` out of the name: the number carries
    the order and `docs/puzzle-collection.md` shows the tier. When a new board lands in
    the middle, renumber the later files (with their `docs/images` pictures) and

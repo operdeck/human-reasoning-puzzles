@@ -89,7 +89,7 @@ The solver handles very different kinds of logic. Here are a few; [browse and pl
 <table>
 <tr>
 <td><strong><a href="examples/queens_3_7x7.txt">Queens</a></strong><br>Star Battle with one queen per row, column, and region; queens may not touch.<br><img src="docs/images/queens_3_7x7-solution.png" width="150" alt="Solved Queens puzzle"></td>
-<td><strong><a href="examples/sudoku_9_4x4_kropki_consecutive_thermometers.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_9_4x4_kropki_consecutive_thermometers.png" width="150" alt="Kropki Sudoku puzzle"></td>
+<td><strong><a href="examples/sudoku_16_4x4_kropki_consecutive_thermometers.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_16_4x4_kropki_consecutive_thermometers.png" width="150" alt="Kropki Sudoku puzzle"></td>
 <td><strong><a href="examples/starbattle_2_8x8.txt">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_2_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
 </tr>
 <tr>

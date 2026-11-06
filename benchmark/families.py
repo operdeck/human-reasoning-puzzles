@@ -53,11 +53,11 @@ PARSERS: dict[str, Callable[[str], object]] = {
 CASES = (
     "queens_6_4x4.txt",
     "queens_4_8x8.txt",
-    "sudoku_9_4x4_kropki_consecutive_thermometers.txt",
+    "sudoku_16_4x4_kropki_consecutive_thermometers.txt",
     "sudoku_7_9x9_kropki_consecutive_thermometers.txt",
     "sudoku_2_4x4_anti_knight.txt",
     "sudoku_3_9x9_anti_knight.txt",
-    "sudoku_16_6x6_anti_king.txt",
+    "sudoku_32_6x6_anti_king.txt",
     "sudoku_4_9x9_anti_king.txt",
     "suguru_1_4x4.txt",
     "suguru_2_8x8.txt",
