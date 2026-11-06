@@ -25,8 +25,12 @@ reasoning in the conversation or by throwaway scripts; see
 2. Read the actual image at full resolution (zoom or crop; not OCR alone; never
    fetch another version). Record size, regions, object footprints with their
    **printed** kinds, people, board-wide rules and clues in printed order.
-3. Map each clue without changing its meaning. If one is not expressible, say
-   so and ask; a partial file must be labelled incomplete. Never approximate.
+3. Map each clue without changing its meaning. Before deciding one is not
+   expressible, check [Is a clue expressible?](#is-a-clue-expressible-quick-lookup)
+   and the [Supported clues](#supported-clues) table below — most "or", count,
+   special-square and victim forms are already there. If one really is not
+   expressible, say so and ask; a partial file must be labelled incomplete.
+   Never approximate.
 4. Ask about unclear cells, names or words. Solver results may hint at a misread
    but must not silently pick between readings. Do not alter clues to force
    uniqueness or a grade; report what `--brute-force`/`--grade` say.
@@ -387,6 +391,30 @@ claiming a review was completed.
   a bridge) where its person must stand. Doors must lie on an area border. An
   area made only of blocking squares is allowed (lint warns) but nobody can be
   there.
+
+## Is a clue expressible? (quick lookup)
+
+Check this — and the [Supported clues](#supported-clues) table just below — before
+concluding a construct is missing or reading `murdoku.py` to reverse-engineer it.
+The forms people most often assume are missing:
+
+- **"X or Y"** — one clue may list several targets and means "any of them":
+  `in_region P barn yard`, `next_to P mark:a mark:b`, `at P door1 door2`. For
+  *exactly one* of two alternatives, use `exactly 1 <clue> ; <clue>`.
+- **Special squares that impose a rule on whoever stands on them** — add a `Marks:`
+  cell set with a trailing `; alone` or `; not_alone` ("whoever stands here must /
+  must not be alone"). Clues then use `on_mark` / `not_on_mark` / `next_to` the mark,
+  and `count people on mark:<name> = n` for "exactly n people on the special squares".
+- **Counts anywhere** — `count people on|in|with <selector> <cmp>` over objects,
+  areas, lines, marks, roles or attributes; `count empty areas …` and
+  `count empty cells in rows:… / columns:… / area:…` for empty lines and areas.
+- **Victim and occupant rules** — `alone P`, `alone_with P [selector] [n]`,
+  `role_occupant <role> alone|not_alone`, and the role-relative forms
+  (`role_in_tagged`, `role_next_to`, `role_below`, `min_role_in_tagged`, …).
+- **Distances** — `left_of`/`above A B [n]` (anywhere, or exactly `n` lines) and
+  `within`/`at_least A B n` (Manhattan). Not yet expressible: a **single-axis
+  inequality** such as "more than 2 columns apart" — rewrite it with an exact
+  `left_of`/`above` or with `at_least`; if none fits, that is a genuine gap to track.
 
 ## Supported clues
 
