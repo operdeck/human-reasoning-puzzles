@@ -56,10 +56,10 @@ def test_mostly_prefilled_board_is_trivial():
         ("minesweeper_3_8x8.txt", "minesweeper", "medium"),
         ("akari_1_6x6.txt", "akari", "medium"),
         ("queens_3_7x7.txt", "queens", "medium"),
-        ("tango_5_4x4.txt", "tango", "hard"),
-        ("tango_3_4x4.txt", "tango", "medium"),
+        ("tango_4_4x4.txt", "tango", "hard"),
+        ("tango_2_4x4.txt", "tango", "medium"),
         ("tango_1_8x8.txt", "tango", "easy"),
-        ("tango_4_8x8.txt", "tango", "medium"),
+        ("tango_3_8x8.txt", "tango", "medium"),
         ("queens_4_8x8.txt", "queens", "medium"),
     ],
 )
@@ -84,20 +84,20 @@ def test_search_filters_by_display_family_and_tier(capsys):
 def test_rating_says_whether_deduction_alone_closes_the_puzzle():
     """`deductive` separates puzzles the ladder finishes from the what_if frontier."""
     assert rate(example("queens_6_4x4.txt").read_text()).deductive
-    fallback = rate(example("tango_5_4x4.txt").read_text())
+    fallback = rate(example("tango_4_4x4.txt").read_text())
     assert fallback.grade == "what_if"
     assert not fallback.deductive
 
 
 def test_rate_command_marks_a_puzzle_that_needs_the_fallback(capsys):
-    assert main(["rate", str(example("tango_5_4x4.txt"))]) == 0
+    assert main(["rate", str(example("tango_4_4x4.txt"))]) == 0
     assert "beyond deduction" in capsys.readouterr().out
     assert main(["rate", str(example("queens_6_4x4.txt"))]) == 0
     assert "beyond deduction" not in capsys.readouterr().out
 
 
 def test_search_can_require_a_strictly_deductive_solution(capsys):
-    paths = [str(example(name)) for name in ("tango_5_4x4.txt", "queens_6_4x4.txt")]
+    paths = [str(example(name)) for name in ("tango_4_4x4.txt", "queens_6_4x4.txt")]
     assert main(["search", *paths, "--tier", "hard", "--json"]) == 0
     assert len(json.loads(capsys.readouterr().out)) == 2
     assert main(["search", *paths, "--tier", "hard", "--deductive", "--json"]) == 0

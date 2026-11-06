@@ -69,7 +69,7 @@ CASES = (
     "binairo_3_4x4.txt",
     "binairo_2_8x8.txt",
     "tango_2_4x4.txt",
-    "tango_4_8x8.txt",
+    "tango_3_8x8.txt",
     "tents_3_4x4.txt",
     "tents_1_8x8.txt",
     "minesweeper_2_5x5.txt",

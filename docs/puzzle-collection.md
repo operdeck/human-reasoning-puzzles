@@ -49,8 +49,10 @@ unique solution under independent search. The tier is an estimate for this
 solver, not a universal measure of human difficulty. `—` marks a coverage gap:
 the current generator/rule ladder has not produced a trustworthy example for
 that family and tier, so no candidate is promoted by hand. Binairo and Tango
-are listed separately because Tango adds relation signs. Cosmetic piece
-changes do not create another family or gallery section.
+are listed separately because Tango adds relation signs (and, unlike the printed
+game, this engine's Tango also forbids identical rows and columns — its rule text
+says so, because removing the rule would make most Tango examples ambiguous).
+Cosmetic piece changes do not create another family or gallery section.
 
 | Puzzle type | Easy | Medium | Hard |
 |---|---|---|---|
@@ -61,7 +63,7 @@ changes do not create another family or gallery section.
 | Queens / Star Battle | Queens: [`queens_1_4x4.txt`](../examples/queens_1_4x4.txt), [`queens_2_5x5.txt`](../examples/queens_2_5x5.txt) (`single`); Star Battle: [`starbattle_1_8x8.txt`](../examples/starbattle_1_8x8.txt) (`count`) | Queens: [`queens_3_7x7.txt`](../examples/queens_3_7x7.txt), [`queens_4_8x8.txt`](../examples/queens_4_8x8.txt) (`subsumption`), [`queens_5_9x9.txt`](../examples/queens_5_9x9.txt) (`cover2`); Star Battle: [`starbattle_2_8x8.txt`](../examples/starbattle_2_8x8.txt) (`cover2`) | Queens: [`queens_6_4x4.txt`](../examples/queens_6_4x4.txt) (`chains`); Star Battle: [`starbattle_3_12x12.txt`](../examples/starbattle_3_12x12.txt) (`cover3`) |
 | Zebra logic grid | [`logicgrid_1_3x3.txt`](../examples/logicgrid_1_3x3.txt) (`relations`) | [`logicgrid_2_6x6.txt`](../examples/logicgrid_2_6x6.txt) (`relations`) | — |
 | Binairo / Takuzu | [`binairo_1_8x8.txt`](../examples/binairo_1_8x8.txt) (`relations`) | [`binairo_2_8x8.txt`](../examples/binairo_2_8x8.txt) (`subsumption`) | [`binairo_3_4x4.txt`](../examples/binairo_3_4x4.txt) (`what_if`) |
-| Tango | [`tango_1_8x8.txt`](../examples/tango_1_8x8.txt) (`relations`) | [`tango_4_8x8.txt`](../examples/tango_4_8x8.txt) (`relations`) | [`tango_5_4x4.txt`](../examples/tango_5_4x4.txt) (`what_if`) |
+| Tango | [`tango_1_8x8.txt`](../examples/tango_1_8x8.txt) (`relations`) | [`tango_3_8x8.txt`](../examples/tango_3_8x8.txt) (`relations`) | [`tango_4_4x4.txt`](../examples/tango_4_4x4.txt) (`what_if`) |
 | Tents and Trees | [`tents_1_8x8.txt`](../examples/tents_1_8x8.txt) (`single`) | [`tents_2_8x8.txt`](../examples/tents_2_8x8.txt) (`cover2`) | [`tents_3_4x4.txt`](../examples/tents_3_4x4.txt) (`what_if`) |
 | Minesweeper-style | — | [`minesweeper_1_8x8.txt`](../examples/minesweeper_1_8x8.txt) (`subsumption`) | [`minesweeper_4_8x8.txt`](../examples/minesweeper_4_8x8.txt) (`cover3`) |
 | Light Up / Akari | — | [`akari_1_6x6.txt`](../examples/akari_1_6x6.txt) (`subsumption`) | [`akari_2_8x8.txt`](../examples/akari_2_8x8.txt) (`chains`) |
@@ -173,7 +175,7 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-14 of the 189 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+14 of the 188 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
 `tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
 `food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
 `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
@@ -193,7 +195,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Queens / Star Battle | Queens (`Stars: 1`): `queens_1_4x4.txt`, `queens_2_5x5.txt`, `queens_6_4x4.txt`; Star Battle: `starbattle_2_8x8.txt` | Queens: `queens_3_7x7.txt`, `queens_4_8x8.txt`, `queens_5_9x9.txt`; Star Battle: `starbattle_4_10x10.txt`, `starbattle_3_12x12.txt` |
 | Zebra-style logic grids | `logicgrid_1_3x3.txt` | `logicgrid_2_6x6.txt` |
 | Binairo / Takuzu | `binairo_3_4x4.txt` | `binairo_2_8x8.txt` |
-| Tango | `tango_2_4x4.txt` | `tango_4_8x8.txt` |
+| Tango | `tango_2_4x4.txt` | `tango_3_8x8.txt` |
 | Tents and Trees | `tents_3_4x4.txt` | `tents_1_8x8.txt` |
 | Minesweeper-style | `minesweeper_2_5x5.txt` | `minesweeper_3_8x8.txt` |
 | Light Up / Akari | `akari_1_6x6.txt` | `akari_2_8x8.txt` |
