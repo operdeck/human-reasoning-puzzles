@@ -3179,3 +3179,33 @@ def test_relation_links_stay_bounded_past_the_arity_cap():
     # Arity 5 > ARITY_CAP (4): the relation is skipped, so no cross-variable
     # weak link is derived (only each variable's own two values link).
     assert literals["w1"][1] not in links.weak.get(literals["w0"][1], set())
+
+
+def test_incremental_relation_scan_matches_a_full_scan():
+    """Issue #200: skipping relations whose variables did not change yields the
+    same deductions as re-scanning every relation each pass."""
+    from csp.core import prune_relation
+
+    def full_scan(model):
+        return any(prune_relation(model, relation) for relation in model.relations)
+
+    def build():
+        model = Model()
+        for var in "abc":
+            _variable(model, var, (0, 1, 2))
+        model.relate("a<b", ["a", "b"], lambda x, y: x < y)
+        model.relate("b<c", ["b", "c"], lambda x, y: x < y)
+        return model
+
+    def rules(relation_rule):
+        return tuple(
+            Rule("relations", relation_rule) if rule.name == "relations" else rule
+            for rule in DEFAULT_RULES
+        )
+
+    def solve_log(relation_rule):
+        model = build()
+        result = Solver(model, rules(relation_rule)).solve()
+        return result.solved, [(step.var, step.value, step.asserted) for step in model.log]
+
+    assert solve_log(rule_relations) == solve_log(full_scan)
