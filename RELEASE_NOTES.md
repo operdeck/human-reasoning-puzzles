@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**New**
+* Busiest and quietest area clues: new Murdoku clue forms `busiest area:A` and `quietest area:A [area:B ...]` say which area holds the most (or the fewest) people; named areas tie with each other and every other area compares strictly. Compiled as hidden "holds at least k people" literals per area, so the comparison is sound for any board, and the independent brute force checks it too.
+    * New example `examples/japan/samen-in-japan.txt` (6×6, grade `cover2`): four Japanese places whose populations do the work — Tokyo is the busiest (three people together), Okinawa the quietest (nobody), Osaka holds exactly two.
+
 **BREAKING**
 * [#138 Consolidate Queens](https://github.com/operdeck/human-reasoning-puzzles/issues/138): removed DogDoku as a separate family and generator target; `Family: dogdoku` is rejected rather than retained as an alias. Change older files to `Family: queens`; `Icon:` remains an optional cosmetic choice, not a family.
     * The consolidated Queens gallery has six unique boards, numbered by measured difficulty: 4x4/5x5 (`single`), 7x7/8x8 (`subsumption`), 9x9 (`cover2`), and hard 4x4 (`chains`). Removed the overlapping 7x7 and surplus 4x4; regenerated pictures with queens and updated gallery, web/booklet, benchmarks and authoring guidance.
