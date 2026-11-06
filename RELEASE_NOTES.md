@@ -10,7 +10,9 @@
 
 **Licensing**
 * The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
+
 **Bug Fix(es)**
+* [#206 Murdoku: express "next to a marked square"](https://github.com/operdeck/human-reasoning-puzzles/issues/206): `next_to` / `not_next_to` now take a `Marks:` cell set as a target, written bare (`next_to P special`) or with the prefix counts already use (`next_to P mark:special`); before this only the bare name worked and `mark:special` was rejected as an unknown name. `on_mark` / `not_on_mark` and the role targets accept either spelling too. A mark counts across an area border, like a point object, because it belongs to its squares rather than to one area; standing on a marked square remains `on_mark`, not `next_to`, unless another cell of the same mark shares a side with it (then the clue reads "on or next to"). The independent brute force implements the same rule, and the Murdoku skill and format reference describe the target and its meaning.
 * [#183 Rectangles clue cells start filled in the web player](https://github.com/operdeck/human-reasoning-puzzles/issues/183): every numbered cell is exported as a fixed given in its own colour, so players begin with forced placements already filled and only need to solve the remaining cells.
 * [#184 Sandwich Sudoku rule wording](https://github.com/operdeck/human-reasoning-puzzles/issues/184): English and Dutch Sandwich clues now explain which line they apply to, sum the digits between 1 and the grid's top digit (excluding both endpoints and in either order), and define a zero clue as adjacency. Skyscraper Sudoku wording also explains visibility from the clue's side and gives a short example.
 * Murdoku count-scope rings are now drawn beneath object icons, so the dashed scope cue no longer obscures the objects it identifies.

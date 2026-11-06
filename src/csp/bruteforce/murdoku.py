@@ -352,7 +352,8 @@ def _role_rules_hold(
 def _target_cells(board: Board, names: Sequence[str]) -> set[Square]:
     """Resolve role bindings independently from the engine's compiler."""
     cells: set[Square] = set()
-    for name in names:
+    for raw in names:
+        name = raw[len("mark:") :] if raw.startswith("mark:") and len(raw) > 5 else raw
         if name in ("blocking", "standable"):
             cells.update(
                 square for obj in board.objects if obj.kind == name for square in obj.squares
@@ -384,11 +385,21 @@ def _membership_matches(
 
 
 def _next_to(board: Board, square: Square, names: Sequence[str]) -> bool:
-    for name in names:
+    for raw in names:
+        # `mark:<name>` and the bare name both name a marked set.
+        name = raw[len("mark:") :] if raw.startswith("mark:") and len(raw) > 5 else raw
         if name in board.edge_item_names and square in board.edge_item_cells([name]):
             return True
         if name in board.point_object_names and square in board.point_object_cells([name]):
             return True
+        if name in board.mark_names:
+            # A mark belongs to its squares, not to one area, so it counts across a border.
+            if any(
+                abs(square.row - cell.row) + abs(square.col - cell.col) == 1
+                for cell in board.mark_cells([name])
+            ):
+                return True
+            continue
         if any(
             abs(square.row - target.row) + abs(square.col - target.col) == 1
             and board.region_of(square) == board.region_of(target)
