@@ -175,7 +175,7 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-14 of the 188 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
+14 of the 189 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
 `tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
 `food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
 `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
