@@ -917,50 +917,12 @@ class _Links:
                     self.strong.setdefault(b, set()).add(a)
                     self.why.setdefault(frozenset((a, b)), c.name)
         for relation in model.relations:
-            self._relation_links(relation)
-
-    # A relation with more variables than this, or whose open domains multiply
-    # past this, is skipped rather than enumerated: link building must stay
-    # bounded (issue #51). Skipping only drops candidate links, never soundness.
-    ARITY_CAP = 4
-    PRODUCT_CAP = 50_000
-
-    def _relation_links(self, relation: "Relation") -> None:
-        """Weak links the relation implies, for any arity (issue #51).
-
-        Two values are weakly linked when no completion of the relation's other
-        variables can satisfy both. For two variables that is one support check
-        per pair; for more, each satisfying tuple of the open domains is
-        enumerated once and any pair that never co-occurs in one is a weak link.
-        The enumeration is bounded by `ARITY_CAP` and `PRODUCT_CAP`.
-        """
-        variables = relation.variables
-        if len(variables) < 2 or len(variables) > self.ARITY_CAP:
-            return
-        domains = [self._open(var) for var in variables]
-        product = 1
-        for domain in domains:
-            product *= len(domain)
-        if product == 0 or product > self.PRODUCT_CAP:
-            return
-        if len(variables) == 2:
-            for a, b in itertools.product(*domains):
-                if not relation.holds(self.model.value_of(a), self.model.value_of(b)):
-                    self._weak(a, b, relation.name)
-            return
-        co_occurs: set[tuple[int, LiteralId, int, LiteralId]] = set()
-        for combo in itertools.product(*domains):
-            if not relation.holds(*(self.model.value_of(lit) for lit in combo)):
+            if len(relation.variables) != 2:
                 continue
-            for i in range(len(combo)):
-                for j in range(i + 1, len(combo)):
-                    co_occurs.add((i, combo[i], j, combo[j]))
-        for i in range(len(domains)):
-            for j in range(i + 1, len(domains)):
-                for a in domains[i]:
-                    for b in domains[j]:
-                        if (i, a, j, b) not in co_occurs:
-                            self._weak(a, b, relation.name)
+            left, right = (self._open(var) for var in relation.variables)
+            for a, b in itertools.product(left, right):
+                if not relation.holds(model.value_of(a), model.value_of(b)):
+                    self._weak(a, b, relation.name)
 
     def _open(self, var: str) -> list[LiteralId]:
         return [lit for lit in self.model.options(var) if not self.model.is_true(lit)]

@@ -20,7 +20,6 @@ from csp.core import (
     Model,
     Rule,
     Solver,
-    _Links,
     follow_chain,
     rule_chains,
     rule_count,
@@ -3148,37 +3147,6 @@ def test_selector_subject_rejects_a_role():
     board, clues = load_board(text)
     with pytest.raises(ValueError, match="role as its subject"):
         murdoku.compile_puzzle(board, clues)
-
-
-def test_relation_of_three_or_more_variables_yields_weak_links():
-    """Issue #51: a value pair that no completion of a 3+-ary relation allows
-    is a weak link; a pair it does allow is not."""
-    model = Model()
-    a = _variable(model, "a", (0, 1))
-    b = _variable(model, "b", (0, 1))
-    _variable(model, "c", (0, 1))
-    model.relate(
-        "exactly one of three", ["a", "b", "c"], lambda x, y, z: int(x) + int(y) + int(z) == 1
-    )
-
-    links = _Links(model)
-    # a=1 and b=1 can never both hold: weak link.
-    assert b[1] in links.weak.get(a[1], set())
-    # a=0 and b=0 can both hold (c=1): not a weak link.
-    assert b[0] not in links.weak.get(a[0], set())
-
-
-def test_relation_links_stay_bounded_past_the_arity_cap():
-    """A relation wider than `_Links.ARITY_CAP` is skipped, not enumerated."""
-    model = Model()
-    names = [f"w{i}" for i in range(5)]
-    literals = {name: _variable(model, name, (0, 1)) for name in names}
-    model.relate("exactly one of five", names, lambda *vals: sum(int(v) for v in vals) == 1)
-
-    links = _Links(model)
-    # Arity 5 > ARITY_CAP (4): the relation is skipped, so no cross-variable
-    # weak link is derived (only each variable's own two values link).
-    assert literals["w1"][1] not in links.weak.get(literals["w0"][1], set())
 
 
 def test_incremental_relation_scan_matches_a_full_scan():
