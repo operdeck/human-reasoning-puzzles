@@ -10,12 +10,14 @@ from itertools import combinations
 from typing import Any
 
 from ..murdoku import (
+    AreaPopulationCondition,
     Board,
     Condition,
     GlobalCountCondition,
     QuantifiedCondition,
     RoleCondition,
     Square,
+    area_population_conditions,
     conditions,
     global_count_conditions,
     quantified_conditions,
@@ -28,6 +30,7 @@ _Checks = tuple[
     list[RoleCondition],
     list[QuantifiedCondition],
     list[GlobalCountCondition],
+    list[AreaPopulationCondition],
 ]
 
 
@@ -55,6 +58,7 @@ def _prepare(
         role_conditions(board, clues),
         quantified_conditions(board, clues),
         global_count_conditions(board, clues),
+        area_population_conditions(board, clues),
     )
     return board, order, allowed, rest
 
@@ -137,6 +141,7 @@ def _search(
     role_checks: list[RoleCondition],
     target_checks: list[QuantifiedCondition],
     global_checks: list[GlobalCountCondition],
+    population_checks: list[AreaPopulationCondition],
     placed: dict[str, Square],
     found: list[dict[str, Any]],
     limit: int,
@@ -147,6 +152,8 @@ def _search(
         if budget[0] < 0:
             return
     if len(placed) == len(order):
+        if not all(check.holds(board, placed) for check in population_checks):
+            return
         for roles in _role_assignments(
             board, role_checks, target_checks, global_checks, placed, limit - len(found)
         ):
@@ -172,6 +179,7 @@ def _search(
                 role_checks,
                 target_checks,
                 global_checks,
+                population_checks,
                 placed,
                 found,
                 limit,
