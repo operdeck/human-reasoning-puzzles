@@ -3197,4 +3197,3 @@ in_region Ada "Graanschuur A"
     board, clues = load_board(text)
     assert board.region_names["a"] == "Graanschuur A"
     assert clues == [("in_region", ["Ada", "Graanschuur A"])]
-
