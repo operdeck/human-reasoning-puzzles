@@ -594,3 +594,46 @@ def test_corpus_jobs_name_the_file_and_carry_the_samples_answer(tmp_path):
     assert jobs[0].group == "top95"  # no group column: the file name stands in
     assert jobs[0].answer == corpus.oracle(SOLVED)
     assert jobs[0].text == corpus.grid(PUZZLE)
+
+
+def test_measure_records_the_last_rule_before_it_stops():
+    job = bench.Job(
+        0,
+        "tiny.txt",
+        "easy",
+        None,
+        "sudoku",
+        corpus.grid(PUZZLE),
+        corpus.oracle(SOLVED),
+        "full",
+        60,
+    )
+    outcome = bench.measure(job)
+    # PUZZLE closes on singles, so the last rule to change anything is `single`.
+    assert outcome.last_rule == "single"
+
+
+def test_failure_buckets_group_by_how_far_the_top_rungs_got():
+    stalled = {"solved": False, "agrees": False, "grade": "unsolved"}
+    no_chain = _outcome(last_rule="single", counts={"single": 5}, **stalled)
+    chain = _outcome(index=1, last_rule="chains", counts={"single": 5, "chains": 2}, **stalled)
+    wing = _outcome(index=2, last_rule="wing", counts={"single": 5, "wing": 1}, **stalled)
+    both = _outcome(
+        index=3, last_rule="wing", counts={"single": 5, "chains": 1, "wing": 1}, **stalled
+    )
+    solved = _outcome(index=4)  # not a failure: must be left out
+    buckets = {
+        label: [o.index for o in members]
+        for label, members in bench.failure_buckets([no_chain, chain, wing, both, solved])
+    }
+    assert buckets["stalled before chains (nothing on the top rungs fired)"] == [0]
+    assert buckets["stalled after chains, no wing"] == [1]
+    assert buckets["stalled after wing, no chains"] == [2]
+    assert buckets["stalled after chains and wing"] == [3]
+    assert 4 not in [index for members in buckets.values() for index in members]
+
+
+def test_failure_buckets_counts_a_timeout_apart():
+    timed_out = _outcome(solved=False, agrees=False, grade="timeout", timed_out=True)
+    buckets = bench.failure_buckets([timed_out])
+    assert [label for label, _ in buckets] == ["timed out"]

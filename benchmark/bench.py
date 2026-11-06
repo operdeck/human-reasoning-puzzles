@@ -126,6 +126,7 @@ class Outcome:
     steps: int
     what_if: int
     counts: dict[str, int]
+    last_rule: str | None = None
 
     @property
     def suspect(self) -> bool:
@@ -242,6 +243,7 @@ def measure(job: Job) -> Outcome:
         steps=len(model.log),
         what_if=counts["what_if"],
         counts=dict(counts),
+        last_rule=fired[-1] if fired else None,
     )
 
 
@@ -341,6 +343,39 @@ def _why(outcome: Outcome) -> str:
 
 def _number(value: float | None) -> str:
     return "n/a" if value is None else f"{value:+.2f}"
+
+
+def _bucket(outcome: Outcome) -> str:
+    """Which rung a failing puzzle reached, as a bucket label.
+
+    `no-what-if` stops just below `what_if`, so an unsolved puzzle is one the
+    cheaper rungs cannot finish. Whether `chains` and `wing` fired says where a
+    strength change would bite (issue #171).
+    """
+    if outcome.timed_out:
+        return "timed out"
+    if outcome.solved and not outcome.agrees:
+        return "wrong answer"
+    if outcome.unsound:
+        return "unsound"
+    chains = outcome.counts.get("chains", 0)
+    wing = outcome.counts.get("wing", 0)
+    if chains and wing:
+        return "stalled after chains and wing"
+    if chains:
+        return "stalled after chains, no wing"
+    if wing:
+        return "stalled after wing, no chains"
+    return "stalled before chains (nothing on the top rungs fired)"
+
+
+def failure_buckets(outcomes: Sequence[Outcome]) -> list[tuple[str, list[Outcome]]]:
+    """The failing puzzles grouped by how far up the ladder they got (issue #171)."""
+    groups: dict[str, list[Outcome]] = {}
+    for outcome in outcomes:
+        if outcome.suspect:
+            groups.setdefault(_bucket(outcome), []).append(outcome)
+    return sorted(groups.items())
 
 
 def report(outcomes: Sequence[Outcome], *, title: str, ladder: str, timeout: float) -> str:
@@ -477,15 +512,33 @@ def _tail(
     if not failures:
         lines.append("Empty: every puzzle was solved, and every step agrees with the source.")
         return lines
+
     lines += [
-        "| # | Origin | Group | Rating | Grade | ms | Why |",
-        "|---|---|---|---|---|---:|---|",
+        "",
+        "**Failure buckets** (where a strength change would bite, issue #171)",
+        "",
+        "| Bucket | Puzzles | Median iterations | Median ms | Last rules |",
+        "|---|---:|---:|---:|---|",
+    ]
+    for label, members in failure_buckets(failures):
+        last = Counter(outcome.last_rule or "-" for outcome in members)
+        rules = ", ".join(f"{rule} x{count}" for rule, count in last.most_common())
+        lines.append(
+            f"| {label} | {len(members)} "
+            f"| {statistics.median(o.iterations for o in members):.0f} "
+            f"| {statistics.median(o.ms for o in members):.0f} | {rules} |"
+        )
+
+    lines += [
+        "| # | Origin | Group | Rating | Grade | Last rule | ms | Why |",
+        "|---|---|---|---|---|---|---:|---|",
     ]
     for outcome in failures[:40]:
         rating = "" if outcome.rating is None else f"{outcome.rating:g}"
         lines.append(
             f"| {outcome.index} | {outcome.origin} | {outcome.group} | {rating} "
-            f"| `{outcome.grade}` | {outcome.ms:.0f} | {_why(outcome)[:160]} |"
+            f"| `{outcome.grade}` | {outcome.last_rule or '-'} | {outcome.ms:.0f} "
+            f"| {_why(outcome)[:160]} |"
         )
     if len(failures) > 40:
         lines.append(f"\n(first 40 of {len(failures)}; see the CSV for the rest.)")
@@ -507,6 +560,7 @@ CSV_COLUMNS = (
     "steps",
     "what_if",
     "rules",
+    "last_rule",
 )
 
 
@@ -528,6 +582,7 @@ def csv_rows(outcomes: Iterable[Outcome]) -> Iterable[dict[str, Any]]:
             "steps": outcome.steps,
             "what_if": outcome.what_if,
             "rules": json.dumps(outcome.counts, sort_keys=True),
+            "last_rule": outcome.last_rule or "",
         }
 
 
