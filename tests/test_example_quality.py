@@ -53,8 +53,11 @@ def test_documentation_and_skills_use_the_web_index_instead_of_the_retired_galle
 def test_agent_entrypoints_share_one_repository_guide():
     root = Path(__file__).resolve().parents[1]
     pointer = "Read and follow `AGENT.md`."
-    for relative in (".clinerules", ".github/copilot-instructions.md"):
-        assert (root / relative).read_text().strip() == pointer
+    # Every entrypoint points at the one guide. `.clinerules` opens with the
+    # pointer and may add local shell-hygiene notes after it; the others are the
+    # bare pointer.
+    assert (root / ".clinerules").read_text().splitlines()[0].strip() == pointer
+    assert (root / ".github/copilot-instructions.md").read_text().strip() == pointer
     assert (root / "CLAUDE.md").read_text().strip() == "@AGENT.md"
 
 
