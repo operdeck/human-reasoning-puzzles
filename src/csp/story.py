@@ -48,6 +48,7 @@ from .murdoku import (
     quantified_conditions,
     role_conditions,
     role_statuses,
+    target_name,
 )
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_presentation, read_sections
@@ -1032,6 +1033,7 @@ class Places:
         return self.say.words.get(name) or self.say("region", name=name.replace("_", " "))
 
     def thing(self, name: str) -> str:
+        name = target_name(name)
         if name in self.board.edge_item_names:
             many = sum(item.name == name for item in self.board.edge_items) > 1
         elif name in self.board.point_object_names:

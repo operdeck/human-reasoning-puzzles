@@ -2025,6 +2025,102 @@ adjacent_regions Ada Ben
     Solver(model).solve()
     _assert_logged_steps_preserve_solutions(model, solutions)
 
+def test_next_to_accepts_a_mark_target_and_stays_distinct_from_on_the_mark():
+    """`next_to X mark:<name>` is beside any cell of the mark, in any area.
+
+    A mark is a property of its squares rather than furniture in one area, so it
+    counts across an area border; standing on a marked square is not "next to" it.
+    """
+    text = """Size: 3
+Regions:
+a: room
+b: yard
+Grid:
+a a a
+a a a
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+special: r2c2
+Clues:
+next_to Ada mark:special
+not_next_to Ben mark:special
+on_mark Cal mark:special
+"""
+    board, clues = load_board(text)
+    checks = {check.kind: check for check in murdoku.conditions(board, clues)}
+    square = murdoku.Square
+    beside = checks["next_to"]
+    assert beside.test(square(0, 1))  # r1c2
+    assert beside.test(square(1, 0))  # r2c1
+    assert beside.test(square(1, 2))  # r2c3
+    assert beside.test(square(2, 1))  # r3c2 lies in the other area
+    assert not beside.test(square(1, 1))  # on the mark, not beside it
+    assert not beside.test(square(0, 0))  # diagonal
+    assert checks["not_next_to"].test(square(1, 1))
+    assert not checks["not_next_to"].test(square(0, 1))
+    on_mark = checks["on_mark"]
+    assert on_mark.test(square(1, 1)) and not on_mark.test(square(0, 1))
+
+
+def test_next_to_a_mark_agrees_with_the_independent_brute_force():
+    text = """Size: 3
+Regions:
+a: room
+b: yard
+Grid:
+a a a
+a a a
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+special: r2c2
+Clues:
+next_to Ada mark:special
+in_row Ben 1
+in_column Cal 1
+"""
+    board, clues = load_board(text)
+    beside = next(check for check in murdoku.conditions(board, clues) if check.kind == "next_to")
+    solutions = bruteforce.solutions(text, "murdoku", limit=10)
+    assert solutions
+    for solution in solutions:
+        assert beside.test(solution["Ada"])
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, solutions)
+
+
+def test_next_to_a_mark_wording_names_the_marked_set():
+    from csp.story import clue_texts
+
+    text = """Size: 2
+Language: nl
+Regions:
+a: kamer
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Words:
+vak: het vak
+Marks:
+vak: r1c1
+Clues:
+next_to Ada mark:vak
+"""
+    assert clue_texts(text) == ["Ada zit naast het vak."]
+
+
+
 
 def test_mark_names_cells_and_conditions_are_validated():
     base = """Size: 2

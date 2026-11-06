@@ -535,40 +535,60 @@ def _not_in_tagged(board: Board, *tags: str) -> SquareTest:
 
 
 def _on_mark(board: Board, *names: str) -> SquareTest:
-    cells = board.mark_cells(names)
+    cells = board.mark_cells([target_name(name) for name in names])
     return lambda square: square in cells
 
 
 def _not_on_mark(board: Board, *names: str) -> SquareTest:
-    cells = board.mark_cells(names)
+    cells = board.mark_cells([target_name(name) for name in names])
     return lambda square: square not in cells
 
 
+def target_name(token: str) -> str:
+    """A clue target written `mark:<name>` names the mark <name>.
+
+    Counts already spell a marked set `mark:<name>` (`count people on mark:X`).
+    Filters and role targets take the bare name, so they pass tokens through this
+    helper to accept either spelling.
+    """
+    kind, separator, name = token.partition(":")
+    return name if separator and name and kind == "mark" else token
+
+
 def _next_to(board: Board, *things: str) -> SquareTest:
-    """Beside objects in the same area, or on a boundary/corner item's cells."""
+    """Beside objects in the same area, a point object's touched cells, an edge
+    item's cells, or any cell of a marked set.
+
+    A mark counts across an area border, like a point object: it is a property of
+    a square, not a piece of furniture standing in one area. Standing on a marked
+    square is not "next to" it unless another cell of the mark lies beside it.
+    """
     targets: set[Square] = set()
+    marked: set[Square] = set()
     touched: set[Square] = set()
     for thing in things:
-        if thing in board.edge_item_names:
-            touched.update(board.edge_item_cells([thing]))
-        elif thing in board.point_object_names:
-            touched.update(board.point_object_cells([thing]))
-        elif thing in board.mark_names:
-            targets.update(board.mark_cells([thing]))
-        elif thing in ("blocking", "standable"):
+        name = target_name(thing)
+        if name in board.mark_names:
+            marked.update(board.mark_cells([name]))
+        elif name in board.edge_item_names:
+            touched.update(board.edge_item_cells([name]))
+        elif name in board.point_object_names:
+            touched.update(board.point_object_cells([name]))
+        elif name in ("blocking", "standable"):
             targets.update(
-                square for obj in board.objects if obj.kind == thing for square in obj.squares
+                square for obj in board.objects if obj.kind == name for square in obj.squares
             )
         else:
-            targets.update(board.squares_of([thing]))
+            targets.update(board.squares_of([name]))
 
     def test(square: Square) -> bool:
-        beside_thing = any(
+        if square in touched or any(steps_between(square, cell) == 1 for cell in marked):
+            return True
+        return any(
             steps_between(square, target) == 1
             and board.region_of(target) == board.region_of(square)
             for target in targets
         )
-        return square in touched or beside_thing
 
     return test
 
@@ -577,11 +597,14 @@ def next_to_covers_own_squares(board: Board, *things: str) -> bool:
     """True when standing on one of the things already counts as next to them.
 
     A square of a multi-square standable object borders another square of it, so
-    `next_to bench` includes the bench itself; clue text must then say "on or next to".
+    `next_to bench` includes the bench itself; the same holds when two cells of one
+    marked set touch. Clue text must then say "on or next to".
     """
     beside = _next_to(board, *things)
+    names = [target_name(thing) for thing in things]
     standable = {obj.name for obj in board.standable_objects}
-    own = board.squares_of([t for t in things if t in standable])
+    own = board.squares_of([name for name in names if name in standable])
+    own |= board.mark_cells([name for name in names if name in board.mark_names])
     return any(beside(square) for square in own)
 
 
@@ -1503,7 +1526,8 @@ def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
 def _role_target_cells(board: Board, names: Iterable[str]) -> set[Square]:
     """Cell targets for role bindings: objects, object kinds, edge items, corners or marks."""
     cells: set[Square] = set()
-    for name in names:
+    for raw in names:
+        name = target_name(raw)
         if name in ("blocking", "standable"):
             cells.update(
                 square for obj in board.objects if obj.kind == name for square in obj.squares
@@ -1690,7 +1714,7 @@ def _conditions(board: Board, kind: str, args: list[str], number: int | None) ->
     if kind in ("on_mark", "not_on_mark"):
         if len(args) < 2:
             raise ValueError(f"clue {kind!r} expects a person and at least one mark")
-        board.mark_cells(args[1:])
+        board.mark_cells([target_name(name) for name in args[1:]])
     if kind in ("on", "not_on"):
         if len(args) < 2:
             raise ValueError(f"clue {kind!r} expects a person and at least one object")
