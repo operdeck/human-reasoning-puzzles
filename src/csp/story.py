@@ -203,8 +203,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.exactly": "exactly {n} of these is true: {list}",
         "clue.either": "either {first}, or {second}, but not both",
         "clue.either_same_region": "{a} is in the same region as either {b} or {c}",
-        "clue.busiest": "the area with the most people is {areas}",
-        "clue.quietest": "the area with the fewest people is {areas}",
+        "clue.busiest_area": "the area with the most people is {areas}",
+        "clue.quietest_area": "the area with the fewest people is {areas}",
         "count_reason": "the allowed counts for {name} are {counts}",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
@@ -410,8 +410,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.exactly": "precies {n} hiervan klopt: {list}",
         "clue.either": "ofwel {first}, ofwel {second}, maar niet allebei",
         "clue.either_same_region": "{a} is in hetzelfde gebied als {b} of {c}",
-        "clue.busiest": "het gebied met de meeste mensen is {areas}",
-        "clue.quietest": "het gebied met de minste mensen is {areas}",
+        "clue.busiest_area": "het gebied met de meeste mensen is {areas}",
+        "clue.quietest_area": "het gebied met de minste mensen is {areas}",
         "clue.alone_with_anyone": "{a} deelt een gebied met precies één ander persoon",
         "clue.alone_with_n": (
             "{a} deelt een gebied met precies {n} anderen, en dat zijn allemaal {target}"

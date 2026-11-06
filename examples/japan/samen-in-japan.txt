@@ -48,8 +48,8 @@ Emi
 Fumiko
 
 Clues:
-busiest area:Tokyo
-quietest area:Okinawa
+busiest_area area:Tokyo
+quietest_area area:Okinawa
 count people in area:Osaka = 2
 in_row Aiko 1
 in_column Aiko 4

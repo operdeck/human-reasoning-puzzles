@@ -2117,12 +2117,12 @@ Cal
 Dot
 Eve
 Clues:
-busiest area:Bravo
-quietest area:Alpha
+busiest_area area:Bravo
+quietest_area area:Alpha
 """
     board, clues = load_board(text)
     checks = murdoku.area_population_conditions(board, clues)
-    assert [check.kind for check in checks] == ["busiest", "quietest"]
+    assert [check.kind for check in checks] == ["busiest_area", "quietest_area"]
     placements = bruteforce.solutions(text, "murdoku", limit=20)
     assert placements
     bravo, charlie, alpha = (
@@ -2135,7 +2135,7 @@ quietest area:Alpha
         counts = checks[0].counts(board, placement)
         assert (counts[bravo], counts[charlie], counts[alpha]) == (3, 2, 0)
     # Bravo holding three people cannot also be the quietest area.
-    contradiction = text.replace("busiest area:Bravo", "quietest area:Bravo")
+    contradiction = text.replace("busiest_area area:Bravo", "quietest_area area:Bravo")
     assert not bruteforce.solutions(contradiction, "murdoku", limit=1)
     model = murdoku.compile_puzzle(board, clues)
     Solver(model).solve()

@@ -780,9 +780,9 @@ GROUP_CLUES = {
 # COUNTED_PEOPLE people, since the engine tries every combination of their squares.
 COUNTING = "exactly"
 GLOBAL_COUNTING = "count"
-# The area with the most (or the fewest) people: `busiest area:Tokyo`,
-# `quietest area:Okinawa area:Kyoto`. Named areas tie with each other.
-AREA_POPULATION = {"busiest": "most", "quietest": "fewest"}
+# The area with the most (or the fewest) people: `busiest_area area:Tokyo`,
+# `quietest_area area:Okinawa area:Kyoto`. Named areas tie with each other.
+AREA_POPULATION = {"busiest_area": "most", "quietest_area": "fewest"}
 POPULATION_PREFIX = "area_population"
 COUNTED_PEOPLE = 3
 ATTRIBUTE_FILTERS = frozenset(("has_attribute", "not_attribute"))
@@ -1010,7 +1010,7 @@ class AreaPopulationCondition:
             if region not in self.regions
             and any(board.region_of(square) == region for square in board.free)
         ]
-        if self.kind == "busiest":
+        if self.kind == "busiest_area":
             return all(count < only for count in rest)
         return all(count > only for count in rest)
 
@@ -2063,7 +2063,7 @@ def _compile_global_counts(
 def _compile_area_population(
     model: Model, board: Board, conditions: Sequence[AreaPopulationCondition]
 ) -> None:
-    """Compare area populations for `busiest` and `quietest` clues.
+    """Compare area populations for `busiest_area` and `quietest_area` clues.
 
     "This area holds at least k people" is a hidden Boolean per area and k, so
     one comparison between two areas costs one implication per k and stays sound
@@ -2160,7 +2160,7 @@ def _compile_area_population(
             same(first, second)
         for region in named:
             for other in others:
-                if condition.kind == "busiest":
+                if AREA_POPULATION[condition.kind] == "most":
                     above(region, other)
                 else:
                     above(other, region)

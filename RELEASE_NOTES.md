@@ -3,7 +3,7 @@
 ## Unreleased
 
 **New**
-* Busiest and quietest area clues: new Murdoku clue forms `busiest area:A` and `quietest area:A [area:B ...]` say which area holds the most (or the fewest) people; named areas tie with each other and every other area compares strictly. Compiled as hidden "holds at least k people" literals per area, so the comparison is sound for any board, and the independent brute force checks it too.
+* Busiest and quietest area clues: new Murdoku clue forms `busiest_area area:A` and `quietest_area area:A [area:B ...]` say which area holds the most (or the fewest) people; named areas tie with each other and every other area compares strictly. Compiled as hidden "holds at least k people" literals per area, so the comparison is sound for any board, and the independent brute force checks it too.
     * New example `examples/japan/samen-in-japan.txt` (6×6, grade `cover2`): four Japanese places whose populations do the work — Tokyo is the busiest (three people together), Okinawa the quietest (nobody), Osaka holds exactly two.
 
 **BREAKING**
