@@ -657,6 +657,8 @@ CATALOGUE: dict[str, str] = {
     "boulder": "1faa8", "rots": "1faa8", "rock": "1faa8",
     "paard": "1f40e", "horse": "1f40e",
     "muis": "1f401", "mouse": "1f401",
+    "kat": "1f408", "cat": "1f408",
+    "graan": "1f33e", "grain": "1f33e", "koren": "1f33e", "tarwe": "1f33e", "wheat": "1f33e",
     "vuurtje": "1f525", "kampvuur": "1f525", "campfire": "1f525", "fire": "1f525",
     "vuurkist": "1f525", "firebox": "1f525",
     "tent": "26fa",
