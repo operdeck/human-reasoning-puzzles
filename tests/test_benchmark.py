@@ -594,3 +594,46 @@ def test_corpus_jobs_name_the_file_and_carry_the_samples_answer(tmp_path):
     assert jobs[0].group == "top95"  # no group column: the file name stands in
     assert jobs[0].answer == corpus.oracle(SOLVED)
     assert jobs[0].text == corpus.grid(PUZZLE)
+
+
+def _report(grade: str, times: list[int], solved: int = 1) -> list[dict[str, str]]:
+    return [
+        {"grade": grade, "solved": str(solved), "timed_out": "0", "ms": str(ms)} for ms in times
+    ]
+
+
+def test_budget_summarises_each_grade_over_finished_puzzles_only():
+    from benchmark import budget
+
+    rows = [
+        {"grade": "single", "solved": "1", "timed_out": "0", "ms": "10"},
+        {"grade": "single", "solved": "1", "timed_out": "1", "ms": "9000"},
+        {"grade": "chains", "solved": "0", "timed_out": "0", "ms": "100"},
+    ]
+    summary = budget.per_grade(rows)
+    assert summary["single"]["puzzles"] == 2
+    assert summary["single"]["median"] == 10  # the 9 s timeout does not set the budget
+    assert summary["chains"]["median"] == 100
+
+
+def test_budget_flags_a_grade_whose_p90_rose_past_the_tolerance():
+    from benchmark import budget
+
+    baseline = _report("single", [10, 20, 30, 40])
+    slower = _report("single", [10, 20, 30, 100])
+    steady = _report("single", [11, 21, 31, 41])
+    flagged = budget.compare(baseline, slower)
+    assert [line["grade"] for line in flagged] == ["single"]
+    assert flagged[0]["over"] is True
+    assert budget.compare(baseline, steady)[0]["over"] is False
+
+
+def test_budget_render_puts_strength_delta_beside_timing_delta():
+    from benchmark import budget
+
+    text = budget.render(
+        budget.compare(_report("chains", [100], solved=0), _report("chains", [50], solved=1)),
+        1.25,
+    )
+    assert "| `chains` | 1 → 1 | +1 |" in text
+    assert "100 → 50" in text
