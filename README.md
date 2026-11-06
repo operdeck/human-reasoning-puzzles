@@ -110,7 +110,7 @@ The newest families come from Simon Tatham's puzzle collection and compile to th
 <tr>
 <td><strong><a href="examples/rectangles_3_9x9.txt">Rectangles</a></strong><br>Cut the grid into rectangles, each holding one number equal to its area.<br><img src="docs/images/rectangles_3_9x9-solution.png" width="150" alt="Solved Rectangles puzzle"></td>
 <td><strong><a href="examples/magnets_3_6x6.txt">Magnets</a></strong><br>Place plus and minus poles so touching magnets repel and the counts match.<br><img src="docs/images/magnets_3_6x6-solution.png" width="150" alt="Solved Magnets puzzle"></td>
-<td><strong><a href="examples/undead_2_5x5.txt">Undead</a></strong><br>Ghosts, vampires and zombies seen along sight lines that bend at mirrors.<br><img src="docs/images/undead_2_5x5-solution.png" width="150" alt="Solved Undead puzzle"></td>
+<td><strong><a href="examples/undead_5_5x5.txt">Undead</a></strong><br>Ghosts, vampires and zombies seen along sight lines that bend at mirrors.<br><img src="docs/images/undead_5_5x5-solution.png" width="150" alt="Solved Undead puzzle"></td>
 </tr>
 <tr>
 <td><strong><a href="examples/pattern_2_8x8.txt">Pattern</a></strong><br>A nonogram: fill cells to match the run lengths of each row and column.<br><img src="docs/images/pattern_2_8x8-solution.png" width="150" alt="Solved Pattern puzzle"></td>

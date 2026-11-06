@@ -1,0 +1,17 @@
+# Undead 4x4: easy; mirror-heavy, so several sight lines turn before they leave.
+Family: undead
+Grid:
+. . / .
+\ . / .
+. / / .
+/ . / .
+Counts:
+3 3 3
+Top:
+3 2 . 4
+Bottom:
+1 0 1 .
+Left:
+. . 1 .
+Right:
+. 2 2 1

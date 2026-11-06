@@ -1,0 +1,17 @@
+# Undead 4x4: easy; the counts and small sight-line relations settle it.
+Family: undead
+Grid:
+. \ / .
+\ . . .
+. / \ .
+. . . .
+Counts:
+2 6 3
+Top:
+0 0 0 .
+Bottom:
+2 2 1 .
+Left:
+0 0 . .
+Right:
+. . 2 4
