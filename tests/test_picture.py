@@ -554,6 +554,51 @@ social: r1c1 ; not_alone
     assert image.height > 2 * CELL + 2 * margin
 
 
+def test_conditioned_marks_get_a_dashed_cue_by_dash_style_and_colour():
+    import re
+
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Marks:
+quiet: r1c1 ; alone
+social: r1c2 ; not_alone
+"""
+    board, _ = load_board(text)
+    svg = drawing.murdoku_picture(board, cell=CELL, coordinates=False, legend=False).to_svg()
+
+    def hexed(rgb):
+        return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+
+    dashes = set(re.findall(r'stroke-dasharray="([^"]+)"', svg))
+    strokes = set(re.findall(r'stroke="(#[0-9A-Fa-f]{6})"[^>]*stroke-dasharray', svg))
+    # "must be alone" and "must not be alone" differ by dash *style* and colour.
+    assert len(dashes) == 2
+    assert strokes == {hexed(drawing.MARK_ALONE), hexed(drawing.MARK_NOT_ALONE)}
+
+    plain = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+A
+B
+Marks:
+plain: r1c1
+"""
+    pboard, _ = load_board(plain)
+    plain_svg = drawing.murdoku_picture(pboard, cell=CELL, coordinates=False, legend=False).to_svg()
+    assert "stroke-dasharray" not in plain_svg
+
+
 def test_png_legend_lists_role_membership_states():
     board = Board(
         3,
