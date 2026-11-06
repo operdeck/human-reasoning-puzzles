@@ -3177,3 +3177,24 @@ def test_incremental_relation_scan_matches_a_full_scan():
         return result.solved, [(step.var, step.value, step.asserted) for step in model.log]
 
     assert solve_log(rule_relations) == solve_log(full_scan)
+
+
+def test_quoted_multi_word_region_name_parses_as_one_token():
+    """A region may be named with spaces by quoting it, and clues may use it."""
+    text = """Size: 2
+Regions:
+a: "Graanschuur A" #F4CBC3
+b: Veld
+Grid:
+a a
+b b
+People:
+Ada
+Ben
+Clues:
+in_region Ada "Graanschuur A"
+"""
+    board, clues = load_board(text)
+    assert board.region_names["a"] == "Graanschuur A"
+    assert clues == [("in_region", ["Ada", "Graanschuur A"])]
+

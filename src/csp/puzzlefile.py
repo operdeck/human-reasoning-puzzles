@@ -6,6 +6,7 @@ one-line section can be written inline before the first header, as in
 """
 
 import re
+import shlex
 from dataclasses import dataclass, field
 
 from .murdoku import (
@@ -128,6 +129,28 @@ def language_of(text: str) -> str:
     return (read_sections(text).get("Language") or ["en"])[0]
 
 
+def words(text: str) -> list[str]:
+    """Split a line into tokens, honouring double quotes for multi-word names.
+
+    A quoted name stays one token with the quotes removed, so a region or object
+    can be called `"Graanschuur A"` and used as one word in a clue. Ordinary
+    tokens split on whitespace exactly as before; `#` is never a comment here.
+    """
+    lexer = shlex.shlex(text, posix=True)
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    return list(lexer)
+
+
+def unquote(name: str) -> str:
+    """The name before a `:`, with a surrounding pair of double quotes removed.
+
+    Lets a `name:` key itself hold spaces, as in `"grain sack": blocking r1c1`.
+    """
+    name = name.strip()
+    return name[1:-1] if len(name) >= 2 and name[0] == name[-1] == '"' else name
+
+
 def read_sections(text: str) -> dict[str, list[str]]:
     """Section name -> its non-blank, non-comment lines."""
     out: dict[str, list[str]] = {}
@@ -169,7 +192,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     colours = {}
     for line in section["Regions"]:
         rid, _, rest = line.partition(":")
-        name, *colour = rest.split()
+        name, *colour = words(rest)
         region_names[rid.strip()] = name
         if colour:
             if not re.fullmatch(r"#[0-9A-Fa-f]{6}", colour[0]):
@@ -188,7 +211,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     area_tags: dict[str, list[str]] = {}
     for line in section.get("AreaTags", []):
         tag, separator, names = line.partition(":")
-        members = names.split()
+        members = words(names)
         if not separator or not tag.strip() or not members:
             raise ValueError(f"bad area tag {line!r}, expected 'tag: region_name ...'")
         if tag.strip() in area_tags:
@@ -230,7 +253,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
         pronouns=pronouns,
     )
     board.hatched = board.area_ids(
-        name for line in section.get("Hatched", []) for name in line.split()
+        name for line in section.get("Hatched", []) for name in words(line)
     )
     board.backdrop = " ".join(section.get("Backdrop", [])) or None
     board.decorations = _decorations(section.get("Decorations", []))
@@ -240,7 +263,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
 
 def _clues(lines: list[str]) -> list[Clue]:
     """'next_to Tim klimwand' lines -> [('next_to', ['Tim', 'klimwand'])]."""
-    return [(kind, args) for kind, *args in (_split_clue(line)[0].split() for line in lines)]
+    return [(kind, args) for kind, *args in (words(_split_clue(line)[0]) for line in lines)]
 
 
 def _split_clue(line: str) -> tuple[str, str]:
@@ -258,7 +281,8 @@ def _object_placements(lines: list[str]) -> list[BoardObject]:
     kinds: dict[str, ObjectKind] = {}
     for line in lines:
         name, separator, definition = line.partition(":")
-        parts = definition.split()
+        name = unquote(name)
+        parts = words(definition)
         if not separator or not name.strip():
             raise ValueError(f"bad object {line!r}, expected 'name: kind r1c1 ...'")
         if not parts or parts[0] not in ("blocking", "standable"):
@@ -285,7 +309,8 @@ def _edge_item_placements(lines: list[str]) -> list[EdgeItem]:
     items: list[EdgeItem] = []
     for line in lines:
         name, separator, definition = line.partition(":")
-        parts = definition.split()
+        name = unquote(name)
+        parts = words(definition)
         if not separator or not name.strip():
             raise ValueError(f"bad edge item {line!r}, expected 'name: door|window r1c1 ...'")
         if not parts or parts[0] not in ("door", "window"):
@@ -304,9 +329,11 @@ def _point_object_placements(lines: list[str], size: int) -> list[PointObject]:
     items: list[PointObject] = []
     for line in lines:
         name, separator, position = line.partition(":")
-        if not separator or not name.strip() or len(position.split()) != 1:
+        name = unquote(name)
+        anchors = words(position)
+        if not separator or not name.strip() or len(anchors) != 1:
             raise ValueError(f"bad point object {line!r}, expected 'name: r2.5c3.5'")
-        items.append(PointObject.at(name.strip(), parse_anchor(position.split()[0]), size))
+        items.append(PointObject.at(name.strip(), parse_anchor(anchors[0]), size))
     return items
 
 
@@ -315,9 +342,11 @@ def _decorations(lines: list[str]) -> list[tuple[str, tuple[int, int]]]:
     items: list[tuple[str, tuple[int, int]]] = []
     for line in lines:
         name, separator, positions = line.partition(":")
-        if not separator or not name.strip() or not positions.split():
+        name = unquote(name)
+        anchors = words(positions)
+        if not separator or not name.strip() or not anchors:
             raise ValueError(f"bad decoration {line!r}, expected 'icon: r0.5c0.5 ...'")
-        items += [(name.strip(), parse_anchor(token)) for token in positions.split()]
+        items += [(name.strip(), parse_anchor(token)) for token in anchors]
     return items
 
 
@@ -336,8 +365,9 @@ def _mark_placements(lines: list[str]) -> list[CellMark]:
     marks: list[CellMark] = []
     for line in lines:
         name, separator, definition = line.partition(":")
+        name = unquote(name)
         cells_text, condition_separator, condition_text = definition.partition(";")
-        tokens = cells_text.split()
+        tokens = words(cells_text)
         condition: OccupantCondition | None = None
         if condition_separator:
             condition_text = condition_text.strip()
@@ -362,8 +392,9 @@ def _role_eligibility(
     eligibility: dict[str, frozenset[str]] = {}
     for line in lines:
         role, separator, people = line.partition(":")
+        role = unquote(role)
         names: set[str] = set()
-        for token in people.split():
+        for token in words(people):
             if token.startswith("attribute:"):
                 attribute = token.partition(":")[2]
                 if attribute not in attributes:
@@ -389,7 +420,8 @@ def _attribute_placements(lines: list[str], people: list[str]) -> dict[str, froz
     attributes: dict[str, frozenset[str]] = {}
     for line in lines:
         attribute, separator, members = line.partition(":")
-        holders = frozenset(members.split())
+        attribute = unquote(attribute)
+        holders = frozenset(words(members))
         if not separator or not attribute.strip() or not holders:
             raise ValueError(f"bad attribute {line!r}, expected 'attribute: person ...'")
         if attribute.strip() in attributes:
@@ -408,7 +440,8 @@ def _pronoun_placements(lines: list[str], people: list[str]) -> dict[str, Pronou
     pronouns: dict[str, PronounSet] = {}
     for line in lines:
         person, separator, forms = line.partition(":")
-        tokens = forms.split()
+        person = unquote(person)
+        tokens = words(forms)
         if not separator or not person.strip() or len(tokens) != 3:
             raise ValueError(f"bad pronouns {line!r}, expected 'person: subject object possessive'")
         if person.strip() not in people:
@@ -424,13 +457,14 @@ def _role_placements(
 ) -> list[RoleSpec]:
     """Read role cardinalities and the optional distinct-region modifier."""
     roles: list[RoleSpec] = []
-    names = {line.partition(":")[0].strip() for line in lines}
+    names = {unquote(line.partition(":")[0]) for line in lines}
     unknown = set(eligibility) - names
     if unknown:
         raise ValueError(f"RoleEligibility names unknown roles {sorted(unknown)}")
     for line in lines:
         name, separator, definition = line.partition(":")
-        tokens = definition.split()
+        name = unquote(name)
+        tokens = words(definition)
         if not separator or not name.strip():
             raise ValueError(f"bad role {line!r}, expected 'name: [count] [different_regions]'")
         allowed_counts = frozenset(range(len(people) + 1))
