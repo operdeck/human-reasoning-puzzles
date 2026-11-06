@@ -405,6 +405,10 @@ The forms people most often assume are missing:
   cell set with a trailing `; alone` or `; not_alone` ("whoever stands here must /
   must not be alone"). Clues then use `on_mark` / `not_on_mark` / `next_to` the mark,
   and `count people on mark:<name> = n` for "exactly n people on the special squares".
+  A mark target may be written bare (`next_to P special`) or as `mark:special`;
+  `next_to` a mark means orthogonally beside **any** of its cells and, like a point
+  object, counts **across an area border** — while `on_mark` is on the square itself,
+  so they stay distinct ("beside the special square", not "on it").
 - **Counts anywhere** — `count people on|in|with <selector> <cmp>` over objects,
   areas, lines, marks, roles or attributes; `count empty areas …` and
   `count empty cells in rows:… / columns:… / area:…` for empty lines and areas.
@@ -424,10 +428,10 @@ Arguments are one-token names; `[n]` is optional.
 |---|---|
 | `in_region` / `outside P region...` | in one of / none of the regions |
 | `in_tagged` / `not_in_tagged` / `only_in_tagged P tag...` | in / not in tagged regions; `only_` is for `Rules:` |
-| `next_to` / `not_next_to P thing...` | shares a side with an object cell **in the same area**; doors and point objects count across borders; no diagonals. On a multi-square standable object you are also next to it (text: "on or next to") |
+| `next_to` / `not_next_to P thing...` | shares a side with an object cell **in the same area**; doors and point objects count across borders; no diagonals. On a multi-square standable object you are also next to it (text: "on or next to"). A **mark** target (bare or `mark:<name>`) counts across borders and is *beside* the marked cells, not on them |
 | `on` / `not_on` / `only_on P standable...` | on one / none; `only_on` also keeps everyone else off them |
 | `at P edge-item...` | on a door or window cell |
-| `on_mark` / `not_on_mark P mark...` | on / off marked cells |
+| `on_mark` / `not_on_mark P mark...` | on / off marked cells (bare or `mark:<name>`) |
 | `knight_from P thing...` | a knight's move from a thing |
 | `in_corner P`, `in_area_corner P [area...]` | board corner; right-angle corner of an area |
 | `in_row` / `not_in_row` / `in_column` / `not_in_column P k` | 1-based line |
