@@ -86,6 +86,8 @@ EXTRA = (214, 214, 214)  # extra houses, grey as NRC prints them
 THIN = (190, 190, 190)
 MARK_FILL = (246, 249, 229)
 MARK_INK = (57, 89, 66)
+MARK_ALONE = (120, 52, 138)  # cue: whoever stands here must be alone
+MARK_NOT_ALONE = (191, 92, 23)  # cue: whoever stands here must not be alone
 COUNT_SCOPE = (45, 110, 155)
 TONGUE = (232, 106, 126)  # the puppy's tongue, see icons.PUPPY
 # Used for regions the puzzle file gives no colour.
@@ -95,6 +97,20 @@ PALETTE = ["#F3C8C0", "#FADFB5", "#CBE6B9", "#D8D2F0", "#C4DCF2", "#BEE5D6", "#F
 type RGB = tuple[int, int, int]
 type Box = tuple[int, int, int, int]
 type Cell = tuple[int, int]
+
+
+def _mark_cue(condition: str | None, cell: int) -> tuple[RGB, tuple[float, float]] | None:
+    """Colour and dash pattern for a mark's occupant rule; None when it has none.
+
+    The two rules differ in dash *style* as well as colour, so they stay
+    distinguishable without relying on hue: "alone" is a short even dash,
+    "not_alone" a long dash with a short gap.
+    """
+    if condition == "alone":
+        return MARK_ALONE, (max(2.0, cell / 26), max(2.0, cell / 26))
+    if condition == "not_alone":
+        return MARK_NOT_ALONE, (max(5.0, cell / 9), max(2.0, cell / 26))
+    return None
 
 
 @dataclass(frozen=True)
@@ -260,6 +276,24 @@ def murdoku_picture(
         y = margin + (row2 - 1) * cell // 2
         radius = cell // 3
         _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
+    # A conditioned mark gets a dashed ring in a colour and dash style of its own,
+    # so "must be alone" and "must not be alone" read differently on the board
+    # (the legend already says which rule a named mark carries).
+    for mark in board.marks:
+        cue = _mark_cue(mark.occupant_condition, cell)
+        if cue is None:
+            continue
+        cue_colour, cue_dash = cue
+        cue_width = max(1, cell // 55)
+        inset = max(2, cell // 10)
+        for square in mark.cells:
+            x0, y0, x1, y1 = box(square)
+            canvas.ellipse(
+                (x0 + inset, y0 + inset, x1 - inset, y1 - inset),
+                outline=cue_colour,
+                width=cue_width,
+                dash=cue_dash,
+            )
     marks_by_cell: dict[Square, list[str]] = {}
     for mark in board.marks:
         for square in mark.cells:
@@ -2207,6 +2241,16 @@ class _Legend:
             )
             mark = next(item for item in self.board.marks if item.name == name)
             condition = mark.occupant_condition or ""
+            cue = _mark_cue(mark.occupant_condition, self.swatch)
+            if cue is not None:
+                cue_colour, cue_dash = cue
+                pad = max(1, self.swatch // 12)
+                canvas.ellipse(
+                    (area[0] + pad, area[1] + pad, area[2] - pad, area[3] - pad),
+                    outline=cue_colour,
+                    width=max(1, self.swatch // 16),
+                    dash=cue_dash,
+                )
             label(
                 top,
                 f"{name}: {self.words[condition]}"
