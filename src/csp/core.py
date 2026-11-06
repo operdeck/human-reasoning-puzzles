@@ -144,6 +144,7 @@ class Model:
         self._domain_of: dict[str, ConstraintId] = {}
         self._hidden_variables: set[str] = set()
         self.log: list[Step] = []
+        self._relation_state: Any = None  # incremental relation scans (issue #200)
 
     # --- construction -----------------------------------------------------
 
@@ -235,6 +236,7 @@ class Model:
         twin = copy.copy(self)
         twin._state = list(self._state)
         twin.log = []
+        twin._relation_state = None  # never share incremental scans across states
         return twin
 
     # --- inspection -------------------------------------------------------
@@ -501,6 +503,34 @@ def rule_single(model: Model) -> bool:
     return False
 
 
+class _RelationState:
+    """Which variables changed and when each relation was last scanned (#200).
+
+    `clock` is the length of the model's log, so a change at log index `p` came
+    after a scan taken when the log held `s` entries exactly when `p >= s`.
+    """
+
+    def __init__(self) -> None:
+        self.seen = 0
+        self.changed: dict[str, int] = {}
+        self.scanned: dict[int, int] = {}
+
+    def absorb(self, model: Model) -> None:
+        """Record a log index for every variable a new step touched."""
+        clock = len(model.log)
+        for index in range(self.seen, clock):
+            self.changed[model.log[index].var] = index
+        self.seen = clock
+
+    def dirty(self, index: int, relation: Relation) -> bool:
+        """Whether `relation` must be re-scanned: never scanned, or a var changed since."""
+        last = self.scanned.get(index)
+        return last is None or any(self.changed.get(var, -1) >= last for var in relation.variables)
+
+    def mark(self, index: int) -> None:
+        self.scanned[index] = self.seen
+
+
 def rule_relations(model: Model) -> bool:
     """Generalised arc consistency: drop every value that no combination of the
     other variables' values can satisfy, one relation at a time.
@@ -508,8 +538,25 @@ def rule_relations(model: Model) -> bool:
     All unsupported values of a relation go together. That is sound: support
     is checked against the options before any are removed, and removing
     options never creates support.
+
+    `prune_relation` depends only on a relation's variables' current options, so
+    a relation none of whose variables changed since it last found nothing to
+    prune cannot prune now; those are skipped (issue #200). Only the relations a
+    change reaches are re-scanned, which reaches the same first-pruning relation
+    a full scan would and so yields identical deductions.
     """
-    return any(prune_relation(model, relation) for relation in model.relations)
+    state = getattr(model, "_relation_state", None)
+    if state is None:
+        state = _RelationState()
+        model._relation_state = state
+    state.absorb(model)
+    for index, relation in enumerate(model.relations):
+        if not state.dirty(index, relation):
+            continue
+        state.mark(index)
+        if prune_relation(model, relation):
+            return True
+    return False
 
 
 def rule_count(model: Model) -> bool:
