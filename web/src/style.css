@@ -63,6 +63,22 @@ footer {
   margin-bottom: 0.25rem;
 }
 
+.site-header .repo-link {
+  margin: 0.5rem 0 0;
+}
+
+.site-header .repo-link a {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.site-header .repo-link a:hover,
+.site-header .repo-link a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .family {
   display: grid;
   grid-template-columns: 11rem minmax(0, 1fr);

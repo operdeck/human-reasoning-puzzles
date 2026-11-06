@@ -129,6 +129,17 @@ async function showIndex(current: () => boolean): Promise<void> {
         textContent:
           "Logic puzzles that can be solved by reasoning alone, as a person would. Pick one to play in the browser.",
       }),
+      el(
+        "p",
+        { className: "repo-link" },
+        el("a", {
+          href: "https://github.com/operdeck/human-reasoning-puzzles",
+          textContent: "GitHub",
+          target: "_blank",
+          rel: "noreferrer",
+          title: "View the source repository on GitHub",
+        }),
+      ),
     ),
     ...sections,
     el(
@@ -142,8 +153,6 @@ async function showIndex(current: () => boolean): Promise<void> {
           href: "https://github.com/operdeck/human-reasoning-puzzles/blob/main/examples/LICENSE.md",
           textContent: "Licence",
         }),
-        " · ",
-        el("a", { href: "https://github.com/operdeck/human-reasoning-puzzles", textContent: "Source" }),
       ),
     ),
   );
