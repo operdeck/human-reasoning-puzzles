@@ -596,7 +596,9 @@ plain: r1c1
 """
     pboard, _ = load_board(plain)
     plain_svg = drawing.murdoku_picture(pboard, cell=CELL, coordinates=False, legend=False).to_svg()
-    assert "stroke-dasharray" not in plain_svg
+    # A plain mark still gets a dashed cue, in the neutral "special square" colour.
+    assert "stroke-dasharray" in plain_svg
+    assert hexed(drawing.COUNT_SCOPE) in plain_svg
 
 
 def test_png_legend_lists_role_membership_states():
@@ -614,6 +616,21 @@ def test_png_legend_lists_role_membership_states():
 
     assert legend.role_names == ["bandit"]
     assert image.height > 3 * CELL + CELL // 3
+
+
+def test_role_legend_gives_a_count_instead_of_listing_everyone():
+    """When every person may hold a single-holder role, don't enumerate them."""
+    board = Board(
+        2,
+        [["a", "a"], ["a", "a"]],
+        {"a": "room"},
+        [],
+        ["Ada", "Ben"],
+        roles=[RoleSpec("moordenaar", frozenset({1}))],
+    )
+    line = picture._Legend(board, CELL)._role_line("moordenaar")
+    assert "Moordenaar: 1" in line
+    assert "Ada" not in line and "Ben" not in line
 
 
 def test_cli_initial_png_receives_compile_time_role_states(tmp_path, monkeypatch):
@@ -1576,9 +1593,9 @@ def test_the_legend_explains_the_dashed_ring_that_marks_a_count():
     board, clues = load_board(text)
     counts = murdoku.global_count_conditions(board, clues)
     dutch = drawing.murdoku_picture(board, global_counts=counts, language="nl").to_svg()
-    assert "gestippelde ring: de voorwerpen waar een telling over gaat" in dutch
+    assert "gestippelde ring: de vakjes waar een telling over gaat" in dutch
     english = drawing.murdoku_picture(board, global_counts=counts, language="en").to_svg()
-    assert "dashed ring: the objects a count is about" in english
+    assert "dashed ring: the squares a count is about" in english
     # No count, no ring, and so nothing to explain either.
     plain = drawing.murdoku_picture(board, language="nl").to_svg()
     assert "gestippelde ring" not in plain

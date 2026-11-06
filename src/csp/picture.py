@@ -99,18 +99,20 @@ type Box = tuple[int, int, int, int]
 type Cell = tuple[int, int]
 
 
-def _mark_cue(condition: str | None, cell: int) -> tuple[RGB, tuple[float, float]] | None:
-    """Colour and dash pattern for a mark's occupant rule; None when it has none.
+def _mark_cue(condition: str | None, cell: int) -> tuple[RGB, tuple[float, float]]:
+    """Colour and dash pattern for a mark's dashed cue on the board.
 
-    The two rules differ in dash *style* as well as colour, so they stay
-    distinguishable without relying on hue: "alone" is a short even dash,
-    "not_alone" a long dash with a short gap.
+    Every marked square gets a dashed ring so it reads as special. The occupant
+    rules differ in dash *style* as well as colour, so they stay distinguishable
+    without relying on hue: "alone" is a short even dash, "not_alone" a long dash
+    with a short gap. A plain mark (no occupant rule) takes the neutral special
+    colour with a medium dash.
     """
     if condition == "alone":
         return MARK_ALONE, (max(2.0, cell / 26), max(2.0, cell / 26))
     if condition == "not_alone":
         return MARK_NOT_ALONE, (max(5.0, cell / 9), max(2.0, cell / 26))
-    return None
+    return COUNT_SCOPE, (max(3.0, cell / 15), max(2.0, cell / 22))
 
 
 @dataclass(frozen=True)
@@ -200,7 +202,13 @@ def murdoku_picture(
     if board.backdrop:
         _backdrop(canvas, board.backdrop, margin, side)
     blocked = board.blocked
-    count_scope = {square for condition in global_counts for square in condition.scope_cells(board)}
+    # A count's dashed scope ring points at what it counts, but a square that is
+    # already part of a mark carries that mark's own cue, so ring scope only the
+    # unmarked squares it counts (avoids a second, misleading ring).
+    marked = {square for mark in board.marks for square in mark.cells}
+    count_scope = {
+        square for condition in global_counts for square in condition.scope_cells(board)
+    } - marked
     for r in range(board.size):
         for c in range(board.size):
             sq = Square(r, c)
@@ -276,15 +284,12 @@ def murdoku_picture(
         y = margin + (row2 - 1) * cell // 2
         radius = cell // 3
         _icon(canvas, name, (x - radius, y - radius, x + radius, y + radius), cell)
-    # A conditioned mark gets a dashed ring in a colour and dash style of its own,
-    # so "must be alone" and "must not be alone" read differently on the board
-    # (the legend already says which rule a named mark carries).
+    # Every mark gets a dashed ring so its squares read as special; a mark with an
+    # occupant rule ("must / must not be alone") uses a colour and dash style of
+    # its own (the legend says which rule a named mark carries).
     for mark in board.marks:
-        cue = _mark_cue(mark.occupant_condition, cell)
-        if cue is None:
-            continue
-        cue_colour, cue_dash = cue
-        cue_width = max(1, cell // 55)
+        cue_colour, cue_dash = _mark_cue(mark.occupant_condition, cell)
+        cue_width = max(2, cell // 40)
         inset = max(2, cell // 10)
         for square in mark.cells:
             x0, y0, x1, y1 = box(square)
@@ -2082,14 +2087,16 @@ def _coordinates(canvas: Canvas, n: int, margin: int, cell: int, gap: float | No
 LEGEND_WORDS = {
     "en": {"door": "Door", "window": "Window", "point": "Point", "cells": "cells",
            "alone": "alone in area", "not_alone": "shares area", "global": "Global",
-           "ring": "dashed ring: the objects a count is about",
-           "maybe": "maybe", "apart": "at most one of these per area", "one": "a {name}"},
+           "ring": "dashed ring: the squares a count is about",
+           "maybe": "maybe", "apart": "at most one of these per area", "one": "a {name}",
+           "of_anyone": "of anyone"},
     "nl": {"door": "Deur", "window": "Raam", "point": "Punt", "cells": "vakjes",
            "alone": "alleen in het gebied", "not_alone": "deelt het gebied",
            "global": "Telling",
-           "ring": "gestippelde ring: de voorwerpen waar een telling over gaat",
+           "ring": "gestippelde ring: de vakjes waar een telling over gaat",
            "maybe": "misschien",
-           "apart": "niet meer dan 1 hiervan per gebied", "one": "een {name}"},
+           "apart": "niet meer dan 1 hiervan per gebied", "one": "een {name}",
+           "of_anyone": "van iedereen"},
 }  # fmt: skip
 
 
@@ -2159,7 +2166,10 @@ class _Legend:
         ]
         # Rings are drawn exactly when a count has squares to point at, so that is
         # when the key has to explain them.
-        ring = any(condition.scope_cells(board) for condition in self.global_counts)
+        # A square already in a mark shows that mark's cue, not a count ring, so
+        # the key only explains count rings that are actually drawn.
+        marked = {square for mark in board.marks for square in mark.cells}
+        ring = any(set(condition.scope_cells(board)) - marked for condition in self.global_counts)
         self.ring_lines = (
             textwrap.wrap(self.words["ring"], width=max(12, max_chars - 3)) if ring else []
         )
@@ -2328,6 +2338,15 @@ class _Legend:
         if not present and group is not None and len(unknown) > 1:
             # Say who may hold it by their shared attribute rather than naming every suspect.
             parts.append(self.words["one"].format(name=group.replace("_", " ")))
+        elif (
+            not present
+            and group is None
+            and role.eligible_people is None
+            and set(unknown) == set(self.board.people)
+            and len(role.allowed_counts) == 1
+        ):
+            # Every person is a candidate: give the count, not a list of everyone.
+            parts.append(f"{next(iter(role.allowed_counts))} {self.words['of_anyone']}")
         elif unknown:
             maybe = ", ".join(unknown)
             parts.append(f"{self.words['maybe']} {maybe}" if present else maybe)
