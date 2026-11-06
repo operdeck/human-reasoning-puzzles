@@ -1,0 +1,22 @@
+# NRC Sudoku 9x9: easy; the four extra boxes let singles finish it.
+Givens:
+. . . . 6 5 . . .
+. . . . . . . 6 .
+1 . . . . . . 7 8
+. . . . . . . . .
+. . 2 7 . . . . .
+. 3 . . 9 . . . 1
+. . 6 . . 4 5 . .
+. 8 . . . 2 . . .
+. . . . . . . . .
+
+Extra:
+. . . . . . . . .
+. a a a . b b b .
+. a a a . b b b .
+. a a a . b b b .
+. . . . . . . . .
+. c c c . d d d .
+. c c c . d d d .
+. c c c . d d d .
+. . . . . . . . .

@@ -1096,20 +1096,20 @@ HOUSE = r"\d once in [a-z]+ [\d,]+"  # any digit in any row, column or box
 
 # file, the rule it needs, and the deduction pattern it must show
 GRADED = [
-    ("sudoku_10_9x9_pointing.txt", "subsumption", r"once in box"),
+    ("sudoku_17_9x9_pointing.txt", "subsumption", r"once in box"),
     (
-        "sudoku_13_9x9_naked_pair.txt",
+        "sudoku_21_9x9_naked_pair.txt",
         "cover2",
         r"^r\dc\d holds one digit, r\dc\d holds one digit use up",
     ),
-    ("sudoku_11_9x9_hidden_pair.txt", "cover2", rf"^{HOUSE}, {HOUSE} use up r\dc\d holds"),
-    ("sudoku_14_9x9_xwing.txt", "cover2", rf"^{FISH}, \1 {LINE} use up \1 once in (?!\2)"),
+    ("sudoku_19_9x9_hidden_pair.txt", "cover2", rf"^{HOUSE}, {HOUSE} use up r\dc\d holds"),
+    ("sudoku_22_9x9_xwing.txt", "cover2", rf"^{FISH}, \1 {LINE} use up \1 once in (?!\2)"),
     (
-        "sudoku_15_9x9_swordfish.txt",
+        "sudoku_28_9x9_swordfish.txt",
         "cover3",
         rf"^{FISH}, \1 {LINE}, \1 {LINE} use up \1 once in (?!\2)",
     ),
-    ("sudoku_17_9x9_chains.txt", "chains", r"holds, by a chain of"),
+    ("sudoku_33_9x9_chains.txt", "chains", r"holds, by a chain of"),
 ]
 
 
@@ -1146,7 +1146,7 @@ def test_mini_sudoku_has_two_by_two_boxes():
 
 
 def test_jigsaw_boxes_and_x_diagonals_are_houses():
-    jigsaw = sudoku.parse((example("sudoku_12_6x6_jigsaw.txt")).read_text())
+    jigsaw = sudoku.parse((example("sudoku_20_6x6_jigsaw.txt")).read_text())
     assert jigsaw.size == 6 and jigsaw.jigsaw and not jigsaw.extra_houses()
     boxes = [cells for family, _, cells in jigsaw.houses() if family == "box"]
     assert len(boxes) == 6 and all(len(cells) == 6 for cells in boxes)
@@ -2837,7 +2837,7 @@ def test_report_groups_unlabelled_constraints_by_name():
 
 
 def test_report_leaves_the_model_untouched():
-    model, _ = sudoku.compile_puzzle((example("sudoku_14_9x9_xwing.txt")).read_text())
+    model, _ = sudoku.compile_puzzle((example("sudoku_22_9x9_xwing.txt")).read_text())
     before = (len(model.log), model.assignment(), [model.options(v) for v in model.variables])
     report.describe(model)
     assert before == (
@@ -2868,9 +2868,9 @@ def test_beyond_deduction_is_exactly_the_top_rung_of_the_ladder():
     "name, grade",
     [
         ("sudoku_5_9x9.txt", "single"),
-        ("sudoku_10_9x9_pointing.txt", "subsumption"),
-        ("sudoku_15_9x9_swordfish.txt", "cover3"),
-        ("sudoku_17_9x9_chains.txt", "chains"),
+        ("sudoku_17_9x9_pointing.txt", "subsumption"),
+        ("sudoku_28_9x9_swordfish.txt", "cover3"),
+        ("sudoku_33_9x9_chains.txt", "chains"),
         ("prrrdoku2.txt", "what_if"),
         ("prrrdoku3.txt", "what_if"),
     ],

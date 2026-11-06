@@ -360,9 +360,9 @@ def test_sudoku_web_rules_describe_the_active_variants(exported):
     for name in (
         "sudoku_2_4x4_anti_knight",
         "sudoku_4_9x9_anti_king",
-        "sudoku_9_4x4_kropki_consecutive_thermometers",
+        "sudoku_16_4x4_kropki_consecutive_thermometers",
         "sudoku_6_9x9_nrc",
-        "sudoku_12_6x6_jigsaw",
+        "sudoku_20_6x6_jigsaw",
         "sandwich_1_4x4",
         "sandwich_3_6x6",
         "skyscrapersudoku_1_4x4",
@@ -377,7 +377,7 @@ def test_dutch_sudoku_web_rules_are_localized():
     from csp.web import _family
 
     text = (
-        example("sudoku_9_4x4_kropki_consecutive_thermometers.txt").read_text()
+        example("sudoku_16_4x4_kropki_consecutive_thermometers.txt").read_text()
         + "\nLanguage:\nnl\n"
     )
     data = _family(text, "sudoku", cli.load(text, "sudoku").model, {}, "")

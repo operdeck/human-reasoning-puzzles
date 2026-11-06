@@ -1119,7 +1119,7 @@ def _corner(image, r, c):
 def test_jigsaw_picture_colours_touching_boxes_apart():
     from csp import sudoku
 
-    puzzle = sudoku.parse((example("sudoku_12_6x6_jigsaw.txt")).read_text())
+    puzzle = sudoku.parse((example("sudoku_20_6x6_jigsaw.txt")).read_text())
     image = picture.sudoku_picture(puzzle, cell=CELL)
     boxes = puzzle.boxes
     for r in range(6):
@@ -1213,9 +1213,9 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
 @pytest.mark.parametrize(
     "name",
     [
-        "sudoku_9_4x4_kropki_consecutive_thermometers.txt",
+        "sudoku_16_4x4_kropki_consecutive_thermometers.txt",
         "sudoku_2_4x4_anti_knight.txt",
-        "sudoku_16_6x6_anti_king.txt",
+        "sudoku_32_6x6_anti_king.txt",
         "suguru_1_4x4.txt",
         "starbattle_2_8x8.txt",
         "logicgrid_1_3x3.txt",

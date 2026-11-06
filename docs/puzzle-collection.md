@@ -54,7 +54,7 @@ changes do not create another family or gallery section.
 
 | Puzzle type | Easy | Medium | Hard |
 |---|---|---|---|
-| Sudoku | [`sudoku_5_9x9.txt`](../examples/sudoku_5_9x9.txt) (`single`) | [`sudoku_13_9x9_naked_pair.txt`](../examples/sudoku_13_9x9_naked_pair.txt) (`cover2`) | [`sudoku_17_9x9_chains.txt`](../examples/sudoku_17_9x9_chains.txt) (`chains`) |
+| Sudoku | [`sudoku_5_9x9.txt`](../examples/sudoku_5_9x9.txt) (`single`) | [`sudoku_21_9x9_naked_pair.txt`](../examples/sudoku_21_9x9_naked_pair.txt) (`cover2`) | [`sudoku_33_9x9_chains.txt`](../examples/sudoku_33_9x9_chains.txt) (`chains`) |
 | Calcudoku | [`calcudoku_1_4x4.txt`](../examples/calcudoku_1_4x4.txt) (`relations`) | [`calcudoku_3_6x6.txt`](../examples/calcudoku_3_6x6.txt) (`relations`) | [`calcudoku_5_7x7.txt`](../examples/calcudoku_5_7x7.txt) (`cover3`) |
 | Futoshiki | [`futoshiki_1_5x5.txt`](../examples/futoshiki_1_5x5.txt) (`single`) | [`futoshiki_2_5x5.txt`](../examples/futoshiki_2_5x5.txt) (`relations`) | [`futoshiki_3_5x5.txt`](../examples/futoshiki_3_5x5.txt) (`chains`) |
 | Tectonic / Suguru | [`suguru_1_4x4.txt`](../examples/suguru_1_4x4.txt) (`single`) | — | [`suguru_2_8x8.txt`](../examples/suguru_2_8x8.txt) (`chains`) |
@@ -173,20 +173,22 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-14 of the 172 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+14 of the 189 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
 `tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
 `food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
 `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
 reports them as `deductive: false`, the web index and puzzle pages badge them,
 and a test pins the list, which only moves when the ladder does.
 
+Seventeen hard 9 × 9 Sudoku boards from the owner's earlier Java solver ([`operdeck/sudoku`](https://github.com/operdeck/sudoku)) — its own boards, not the Norvig/MagicTour `top95` it also runs — join the set as `sudoku_9_9x9` … `sudoku_34_9x9` (five of them the NRC four-box variant). They span `single` to `chains` and every one closes by deduction, so the Sudoku section still runs easiest to hardest.
+
 The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The one-star Queens display progresses from `single` through `subsumption` and `cover2` to `chains`; the multi-star Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
 
 | Family | Small example | Larger example |
 |---|---|---|
-| Sudoku relations | `sudoku_9_4x4_kropki_consecutive_thermometers.txt` | `sudoku_7_9x9_kropki_consecutive_thermometers.txt` |
+| Sudoku relations | `sudoku_16_4x4_kropki_consecutive_thermometers.txt` | `sudoku_7_9x9_kropki_consecutive_thermometers.txt` |
 | Anti-knight Sudoku | `sudoku_2_4x4_anti_knight.txt` | `sudoku_3_9x9_anti_knight.txt` |
-| Anti-king Sudoku | `sudoku_16_6x6_anti_king.txt` | `sudoku_4_9x9_anti_king.txt` |
+| Anti-king Sudoku | `sudoku_32_6x6_anti_king.txt` | `sudoku_4_9x9_anti_king.txt` |
 | Tectonic / Suguru | `suguru_1_4x4.txt` | `suguru_2_8x8.txt` |
 | Queens / Star Battle | Queens (`Stars: 1`): `queens_1_4x4.txt`, `queens_2_5x5.txt`, `queens_6_4x4.txt`; Star Battle: `starbattle_2_8x8.txt` | Queens: `queens_3_7x7.txt`, `queens_4_8x8.txt`, `queens_5_9x9.txt`; Star Battle: `starbattle_4_10x10.txt`, `starbattle_3_12x12.txt` |
 | Zebra-style logic grids | `logicgrid_1_3x3.txt` | `logicgrid_2_6x6.txt` |
