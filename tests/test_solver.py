@@ -2025,6 +2025,7 @@ adjacent_regions Ada Ben
     Solver(model).solve()
     _assert_logged_steps_preserve_solutions(model, solutions)
 
+
 def test_next_to_accepts_a_mark_target_and_stays_distinct_from_on_the_mark():
     """`next_to X mark:<name>` is beside any cell of the mark, in any area.
 
@@ -2118,8 +2119,6 @@ Clues:
 next_to Ada mark:vak
 """
     assert clue_texts(text) == ["Ada zit naast het vak."]
-
-
 
 
 def test_mark_names_cells_and_conditions_are_validated():
