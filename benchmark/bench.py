@@ -45,7 +45,7 @@ from typing import Any, NamedTuple
 
 from benchmark import corpus
 from csp import bruteforce, cli
-from csp.core import DEFAULT_RULES, Rule, Solver, rule_cover
+from csp.core import DEFAULT_RULES, Rule, Solver, rule_cover, rule_forcing
 from csp.puzzle_lab import TIERS, family_of
 from csp.puzzlefile import detect
 from csp.report import grade as grade_of
@@ -76,12 +76,29 @@ def _with_cover4() -> tuple[Rule, ...]:
     return tuple(rules)
 
 
+def _with_forcing() -> tuple[Rule, ...]:
+    """The default ladder with the experimental `forcing` rule before `what_if`.
+
+    Issue #171: most no-what-if failures stall after `chains`, so a rule that
+    draws a conclusion both branches of a two-option variable agree on is tried
+    here, measured against the corpus, and promoted only if the delta earns it.
+    """
+    rules: list[Rule] = []
+    for rule in DEFAULT_RULES:
+        if rule.name == "what_if":
+            rules.append(Rule("forcing", rule_forcing))
+        rules.append(rule)
+    return tuple(rules)
+
+
 LADDERS: dict[str, tuple[Rule, ...]] = {
     "full": DEFAULT_RULES,
     "no-what-if": _without("what_if"),
     "no-chains": _without("chains"),
     "cover4": _with_cover4(),
     "cover4-no-what-if": tuple(rule for rule in _with_cover4() if rule.name != "what_if"),
+    "forcing": _with_forcing(),
+    "forcing-no-what-if": tuple(rule for rule in _with_forcing() if rule.name != "what_if"),
 }
 
 # The grades a run can end on, cheapest first, then the ways it can fail.

@@ -1100,6 +1100,63 @@ def _sole_other(model: Model, var: str, value: Any) -> Any | None:
     return others[0] if len(others) == 1 else None
 
 
+def rule_forcing(model: Model) -> bool:
+    """Rule out what every option of a two-option variable rules out.
+
+    A two-option variable is an exhaustive split: assume each option on its own
+    copy, run the cheap rules to a fixed point, and any literal the two branches
+    *both* eliminate is false. This reaches conclusions `rule_what_if` cannot,
+    because it needs no contradiction in either branch — only that they agree.
+    Sound because each branch is a sound deduction and the two options cover
+    every possibility. Only two-option variables are tried, so the cost stays a
+    pair of cheap sub-solves; this is the experimental rung measured for #171,
+    not part of `DEFAULT_RULES` until the corpus run justifies it.
+    """
+    undecided = sorted(
+        (var for var in model.variables if model.chosen(var) is None),
+        key=lambda var: len(model.options(var)),
+    )
+    for var in undecided:
+        options = model.options(var)
+        if len(options) != 2 or any(model.is_true(lit) for lit in options):
+            continue
+        twins: list[Model] = []
+        for lit in options:
+            twin = model.clone()
+            try:
+                twin.assign(lit, "forcing", "assumed")
+                twin.check()
+                while any(rule(twin) for rule in _WHAT_IF_INNER):
+                    twin.check()
+            except Contradiction:
+                twins = []
+                break
+            twins.append(twin)
+        if len(twins) != 2:
+            continue
+        first, second = twins
+        target = _shared_false(model, first, second)
+        if target is None:
+            continue
+        reason = f"whether {model.describe(options[0])} or {model.describe(options[1])}, it is out"
+        model.eliminate(target, "forcing", reason, trail=tuple(first.log) + tuple(second.log))
+        return True
+    return False
+
+
+def _shared_false(model: Model, first: Model, second: Model) -> LiteralId | None:
+    """A literal both branch copies eliminated and the model has not decided."""
+    for var in model.variables:
+        if model.chosen(var) is not None:
+            continue
+        for lit in model.options(var):
+            if model.is_true(lit) or model.is_false(lit):
+                continue
+            if first.is_false(lit) and second.is_false(lit):
+                return lit
+    return None
+
+
 def rule_what_if(model: Model) -> bool:
     """Assume a literal on a copy; if the cheap rules then contradict, it is false.
 

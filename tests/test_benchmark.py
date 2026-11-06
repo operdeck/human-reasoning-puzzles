@@ -637,3 +637,32 @@ def test_failure_buckets_counts_a_timeout_apart():
     timed_out = _outcome(solved=False, agrees=False, grade="timeout", timed_out=True)
     buckets = bench.failure_buckets([timed_out])
     assert [label for label, _ in buckets] == ["timed out"]
+
+
+def test_rule_forcing_eliminates_what_both_branch_copies_rule_out():
+    from csp.core import Kind, Model, rule_forcing
+
+    model = Model()
+    model.constrain(
+        "x holds one",
+        Kind.EXACTLY_ONE,
+        [model.literal("x", "a"), model.literal("x", "b")],
+        defines="x",
+    )
+    model.constrain(
+        "y holds one",
+        Kind.EXACTLY_ONE,
+        [model.literal("y", "a"), model.literal("y", "b"), model.literal("y", "c")],
+        defines="y",
+    )
+    model.relate("y is not a", ["x", "y"], lambda xv, yv: yv != "a")
+    # Whichever value `x` takes, `y` is not `a`; that is a shared conclusion.
+    assert rule_forcing(model) is True
+    assert model.is_false(model.literal("y", "a"))
+
+
+def test_rule_forcing_is_not_in_the_default_ladder():
+    from csp.core import DEFAULT_RULES
+
+    assert all(rule.name != "forcing" for rule in DEFAULT_RULES)
+    assert "forcing" in bench.LADDERS and "forcing-no-what-if" in bench.LADDERS
