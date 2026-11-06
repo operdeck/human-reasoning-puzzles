@@ -675,8 +675,10 @@ FAMILY_RULES = {
     "not even diagonally.",
     "binairo": "Fill the grid with two symbols: no three equal in a row or column, "
     "each row and column has equally many of each, and no two rows or columns are identical.",
-    "tango": "Follow the Binairo rules; = signs join equal neighbouring cells and x signs "
-    "join different neighbouring cells.",
+    "tango": "Fill the grid with two symbols: no three equal in a row or column, each row and "
+    "column has equally many of each, and no two rows or columns are identical (unlike the "
+    "printed game, this engine also forbids identical lines); = signs join equal neighbouring "
+    "cells and x signs join different neighbouring cells.",
     "tents": "Put a tent next to each tree (horizontally or vertically), one tent per tree; "
     "tents never touch each other, and the numbers give the tents per row and column.",
     "minesweeper": "Mark the mines: each number tells how many of its eight neighbours are mines.",

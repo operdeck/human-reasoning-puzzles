@@ -1240,7 +1240,7 @@ def test_family_png_cli_writes_nonblank_solution(name, tmp_path):
     assert image.getbbox() is not None
 
 
-@pytest.mark.parametrize("filename", ["tango_2_4x4.txt", "tango_5_4x4.txt"])
+@pytest.mark.parametrize("filename", ["tango_2_4x4.txt", "tango_4_4x4.txt"])
 def test_tango_picture_marks_equal_and_different_signs(filename):
     from csp import binairo
 
