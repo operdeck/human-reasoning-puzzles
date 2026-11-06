@@ -72,7 +72,7 @@ changes do not create another family or gallery section.
 | Dominosa | [`dominosa_1_5x6.txt`](../examples/dominosa_1_5x6.txt) (`single`) | [`dominosa_2_6x7.txt`](../examples/dominosa_2_6x7.txt) (`subsumption`), [`dominosa_3_7x8.txt`](../examples/dominosa_3_7x8.txt) (`cover2`) | [`dominosa_4_6x7.txt`](../examples/dominosa_4_6x7.txt) (`cover3`), [`dominosa_5_7x8.txt`](../examples/dominosa_5_7x8.txt) (`chains`) |
 | Rectangles | [`rectangles_1_5x5.txt`](../examples/rectangles_1_5x5.txt), [`rectangles_2_9x9.txt`](../examples/rectangles_2_9x9.txt) (`single`) | [`rectangles_3_9x9.txt`](../examples/rectangles_3_9x9.txt), [`rectangles_4_14x14.txt`](../examples/rectangles_4_14x14.txt) (`subsumption`) | [`rectangles_5_9x9.txt`](../examples/rectangles_5_9x9.txt) (`cover3`), [`rectangles_6_9x9.txt`](../examples/rectangles_6_9x9.txt) (`chains`) |
 | Magnets | [`magnets_1_4x4.txt`](../examples/magnets_1_4x4.txt) (`relations`) | [`magnets_2_6x6.txt`](../examples/magnets_2_6x6.txt) (`relations`), [`magnets_3_6x6.txt`](../examples/magnets_3_6x6.txt) (`cover2`) | [`magnets_4_6x6.txt`](../examples/magnets_4_6x6.txt) (`cover3`) |
-| Undead | [`undead_1_4x4.txt`](../examples/undead_1_4x4.txt) (`relations`) | [`undead_2_5x5.txt`](../examples/undead_2_5x5.txt) (`relations`) | [`undead_3_5x5.txt`](../examples/undead_3_5x5.txt) (`what_if`) |
+| Undead | [`undead_1_4x4.txt`](../examples/undead_1_4x4.txt), [`undead_2_4x4.txt`](../examples/undead_2_4x4.txt), [`undead_3_4x4.txt`](../examples/undead_3_4x4.txt), [`undead_4_4x4.txt`](../examples/undead_4_4x4.txt) (`relations`) | [`undead_5_5x5.txt`](../examples/undead_5_5x5.txt) (`relations`) | [`undead_6_5x5.txt`](../examples/undead_6_5x5.txt) (`what_if`) |
 | Pattern (nonogram) | [`pattern_1_4x4.txt`](../examples/pattern_1_4x4.txt) (`relations`) | [`pattern_2_8x8.txt`](../examples/pattern_2_8x8.txt), [`pattern_3_12x12.txt`](../examples/pattern_3_12x12.txt) (`relations`) | [`pattern_4_10x10.txt`](../examples/pattern_4_10x10.txt) (`what_if`) |
 | Map (four colouring) | [`map_1_6x6.txt`](../examples/map_1_6x6.txt), [`map_2_9x9.txt`](../examples/map_2_9x9.txt) (`single`) | — | [`map_3_9x9.txt`](../examples/map_3_9x9.txt), [`map_4_12x12.txt`](../examples/map_4_12x12.txt) (`chains`) |
 | Thermometers | [`thermometers_1_4x4.txt`](../examples/thermometers_1_4x4.txt) (`count`) | [`thermometers_2_5x5.txt`](../examples/thermometers_2_5x5.txt), [`thermometers_3_8x8.txt`](../examples/thermometers_3_8x8.txt) (`relations`) | [`thermometers_4_6x6.txt`](../examples/thermometers_4_6x6.txt), [`thermometers_5_8x8.txt`](../examples/thermometers_5_8x8.txt) (`chains`) |
@@ -106,7 +106,7 @@ that never fires on a family's boards is not claimed. Measured with
   are easy and 5 × 5 and 6 × 6 boards are `relations`. A `chains` board turns up in about
   one of a hundred 5 × 5 boards; the rest of the hard boards close only with `what_if`.
 - **Undead and Pattern** have no board between `relations` and `what_if` in the sweeps, so
-  their hard boards (`undead_3_5x5`, `pattern_4_10x10`) are beyond deduction and flagged.
+  their hard boards (`undead_6_5x5`, `pattern_4_10x10`) are beyond deduction and flagged.
 - **Rectangles**: random partitions reach only `single` and `subsumption`, so its hard
   boards come from `puzzle-lab fresh rectangles --tier hard` (module `csp.climb`), which
   starts from a unique board and moves numbers, merges and splits pieces, keeping only
@@ -173,8 +173,8 @@ locked as invisible givens.
 
 `what_if` is the ladder's fallback, so the examples that need it are exactly the
 ones no deduction path closes: this collection's beyond-deduction frontier.
-14 of the 186 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
-`tents_3_4x4`, `calcudoku_6_6x6`, `undead_3_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
+14 of the 189 published puzzles sit there — `binairo_3_4x4`, `tango_5_4x4`,
+`tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
 `food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3` and
 `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
 reports them as `deductive: false`, the web index and puzzle pages badge them,
@@ -204,7 +204,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Dominosa | `dominosa_1_5x6.txt` | `dominosa_5_7x8.txt` |
 | Rectangles | `rectangles_1_5x5.txt` | `rectangles_4_14x14.txt` |
 | Magnets | `magnets_1_4x4.txt` | `magnets_4_6x6.txt` |
-| Undead | `undead_1_4x4.txt` | `undead_3_5x5.txt` |
+| Undead | `undead_1_4x4.txt` | `undead_6_5x5.txt` |
 | Pattern (nonogram) | `pattern_1_4x4.txt` | `pattern_3_12x12.txt` |
 | Map (four colouring) | `map_1_6x6.txt` | `map_4_12x12.txt` |
 
@@ -220,7 +220,7 @@ The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, a
 | Dominosa | Cover the grid with dominoes, every pair of numbers used once. | 5×6 to 7×8, `single` to `chains` |
 | Rectangles | Divide the grid into rectangles, each with one number equal to its area. | 5×5 to 14×14, `single` to `chains` |
 | Magnets | Each domino is a magnet or neutral; line counts per pole; touching poles differ. | 4×4 and 6×6, `relations` to `cover3` |
-| Undead | Monsters in every empty cell, counted along sight lines that bend at mirrors. | 4×4 and 5×5, `relations` and `what_if` |
+| Undead | Monsters in every empty cell, counted along sight lines that bend at mirrors. | 4×4 (four boards) and 5×5, `relations` and `what_if` |
 | Pattern | Fill cells to match the run lengths of each row and column. | 4×4 to 12×12, `relations` and `what_if` |
 | Map | Four-colour the regions so neighbours differ. | 6×6 to 12×12, `single` and `chains` |
 | Murdoku | Place each person on a free square, at most one per row and column, so all clues hold; the murderer is alone with the victim. | `murdoku_1_first_case`, `wie-doet-het-met-wie-1/2/3/4/5`, `murdoku_3_house`, `murdoku_sparse_mystery`, `murdoku_global_counts`, `murdoku_composition`, `food-murdoku-2/2/3`, `zoo-murdoku-1/2/3`, `tamagotchi-murdoku-6x6/9x9/12x12`, and owner-authored `prrrdoku1-3` |

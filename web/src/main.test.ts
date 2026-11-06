@@ -87,6 +87,15 @@ describe("puzzle index", () => {
     expect(document.querySelector("footer")?.textContent).toContain("All rights reserved.");
   });
 
+  it("links back to the source repository from the landing page header", async () => {
+    await openIndex();
+    const github = document.querySelector<HTMLAnchorElement>(".site-header .repo-link a");
+    expect(github?.textContent).toBe("GitHub");
+    expect(github?.getAttribute("href")).toBe("https://github.com/operdeck/human-reasoning-puzzles");
+    expect(github?.target).toBe("_blank");
+    expect(github?.rel).toBe("noreferrer");
+  });
+
   it("flags a puzzle the deduction ladder cannot close on its own", async () => {
     const collection = [
       { ...puzzles[0], id: "frontier", grade: "what_if", static: "frontier.svg", deductive: false },

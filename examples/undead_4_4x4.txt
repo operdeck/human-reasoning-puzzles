@@ -1,0 +1,17 @@
+# Undead 4x4: easy; staggered mirrors keep every border clue a small relation.
+Family: undead
+Grid:
+\ . . \
+. \ . /
+. / . .
+. . . \
+Counts:
+5 4 1
+Top:
+. 4 1 .
+Bottom:
+. . 1 0
+Left:
+1 . 2 .
+Right:
+0 1 0 1
