@@ -594,3 +594,68 @@ def test_corpus_jobs_name_the_file_and_carry_the_samples_answer(tmp_path):
     assert jobs[0].group == "top95"  # no group column: the file name stands in
     assert jobs[0].answer == corpus.oracle(SOLVED)
     assert jobs[0].text == corpus.grid(PUZZLE)
+
+
+# --- the operdeck/sudoku (Java) parity corpus (issue #78) --------------------
+
+ROWS = [PUZZLE[start : start + 9] for start in range(0, 81, 9)]
+
+
+def _quoted(rows, indent="        ", tail=")"):
+    """Rows as Java/Python string literals, one per line, as the source writes them."""
+    return ",\n".join(f'{indent}"{row}"' for row in rows) + tail
+
+
+def test_java_parity_reads_the_java_puzzle_database():
+    from benchmark import java_parity as java
+
+    source = (
+        f'new StandardSudoku("Named", {_quoted(ROWS)});\n'
+        f'new NRCSudoku("NRC", {_quoted(ROWS)});\n'
+        f'new StandardSudoku("Empty standard Sudoku", {_quoted(["." * 9] * 9)});\n'
+        f'new NRCSudoku("Unsolvable", {_quoted(ROWS)});\n'
+    )
+    found = java.extract_java(source)
+    assert [name for name, _, _ in found] == ["Named", "NRC"]
+    assert [nrc for _, nrc, _ in found] == [False, True]
+    assert found[0][2] == ROWS
+
+
+def test_java_parity_reads_the_python_puzzles():
+    from benchmark import java_parity as java
+
+    def block(type_, pretty):
+        body = ",\n".join(f'        "{row}"' for row in ROWS)
+        # `Sudoku(("..", ))` on one line; `NRCSudoku(("..", )` then the outer
+        # `)` on its own line, both as `SudokuPuzzles.py` writes them.
+        close = ")\n              )" if pretty else "))"
+        return f"{type_}(({body}{close}"
+
+    source = (
+        f"first = \\\n    {block('Sudoku', pretty=False)}\n"
+        f"second = \\\n    {block('NRCSudoku', pretty=True)}\n"
+    )
+    found = java.extract_python(source)
+    assert [name for name, _, _ in found] == ["first", "second"]
+    assert [nrc for _, nrc, _ in found] == [False, True]
+    assert found[1][2] == ROWS
+
+
+def test_java_parity_rejects_a_row_count_that_is_not_nine_by_nine():
+    from benchmark import java_parity as java
+
+    assert java._rows("." * 80) is None
+    assert java._rows("1" * 81 + "2") is None
+    assert java._rows("x" * 81) is None
+    assert java._rows("." * 81) is None  # an all-blank placeholder is not a puzzle
+
+
+def test_java_parity_puzzle_text_is_a_grid_or_givens_plus_extra():
+    from benchmark import java_parity as java
+
+    assert java.puzzle_text(ROWS, nrc=False) == corpus.grid(PUZZLE)
+    text = java.puzzle_text(ROWS, nrc=True)
+    parsed = csp.sudoku.parse(text)
+    assert "Givens:" in text and "Extra:" in text
+    # The four extra 3x3 squares of an NRC Sudoku are four more houses.
+    assert len(parsed.houses()) == 27 + 4

@@ -288,6 +288,19 @@ file hashes, bucket, size and seed, and an existing sample is reused until
 `--force`. `test_benchmark.py` keeps all of this offline, and holds the import
 direction: the benchmark imports `csp`, never the other way round.
 
+`benchmark/java_parity.py` confirms parity with the older `operdeck/sudoku`
+Java solver (issue #78). Its corpus is the MagicTour/Norvig `top95` its `main`
+runs, the named hard puzzles in its `PuzzleDB.java`, and its four-square (NRC)
+puzzles; `top95.txt` is byte-identical to `norvig`, so `bench --source norvig`
+already covers it and only the named and NRC puzzles are new. The module
+fetches that source into the same cache and reads the puzzle literals out of
+the Java and Python files (`extract_java`, `extract_python`), then runs the
+ladder with `bench`'s own machinery; `--ladder no-what-if` is the parity
+question in one flag. Measured: every named and NRC puzzle the Java solver's
+tests assert it solves is solved here, and none of the eighteen needs
+`what_if`. The Java solver cannot crack the `HardestDatabase110626.txt` set
+either, so that list is out of scope.
+
 ## Adding a puzzle family
 
 1. New module with `compile_puzzle(...) -> Model`.
