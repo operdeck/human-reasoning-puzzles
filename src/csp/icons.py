@@ -213,6 +213,28 @@ TABLE = (
     ' stroke-width="3"/>'
     '<path d="M26 50h48M50 28v44" stroke="#a87949" stroke-width="2"/>'
 )
+# A sushi bar: a noren curtain over a wooden counter with sushi on a board.
+SUSHI_BAR = (
+    '<path d="M6 8h88v14H6z" fill="#2c4a7a" stroke="#1c3358" stroke-width="2"/>'
+    '<path d="M24 8v14M42 8v14M60 8v14M78 8v14" stroke="#1c3358" stroke-width="2"/>'
+    '<circle cx="50" cy="15" r="4" fill="#f4f1e7"/>'
+    '<rect x="6" y="56" width="88" height="11" rx="3" fill="#d7a15a" stroke="#6b4423"'
+    ' stroke-width="3"/>'
+    '<rect x="12" y="67" width="76" height="27" rx="3" fill="#b97a3f" stroke="#6b4423"'
+    ' stroke-width="3"/>'
+    '<path d="M22 67v27M34 67v27M46 67v27M58 67v27M70 67v27M82 67v27" stroke="#8f5a2d"'
+    ' stroke-width="2"/>'
+    '<rect x="20" y="44" width="60" height="12" rx="3" fill="#efd6a4" stroke="#8a5b2f"'
+    ' stroke-width="2"/>'
+    '<g stroke="#8a5b2f" stroke-width="1.5">'
+    '<ellipse cx="34" cy="44" rx="10" ry="4.5" fill="#fff"/>'
+    '<path d="M24 44Q34 36 44 44Z" fill="#ef8a5a"/>'
+    '<ellipse cx="55" cy="44" rx="10" ry="4.5" fill="#fff"/>'
+    '<path d="M45 44Q55 36 65 44Z" fill="#e26d4e"/>'
+    "</g>"
+    '<circle cx="74" cy="44" r="5" fill="#2f3b4c"/>'
+    '<circle cx="74" cy="44" r="2" fill="#f4f1e7"/>'
+)
 ELEVATOR = (
     '<rect x="12" y="7" width="76" height="86" rx="6" fill="#c6d0d5" stroke="#43545d"'
     ' stroke-width="5"/>'
@@ -529,6 +551,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("tent", "\u25b2", "tent", emoji="26fa"),
         Icon("tree", "\u2663", "tree", emoji="1f332"),
         Icon("bonsai", "\u2663", "bonsai", markup=BONSAI),
+        Icon("sushi_bar", "\u25a4", "sushi bar", markup=SUSHI_BAR),
         Icon("mine", "\u2731", "mine", emoji="1f4a3"),
         Icon("flag", "\u2691", "flag", emoji="1f6a9"),
         Icon("bulb", "\u25cf", "bulb", emoji="1f4a1"),
@@ -643,6 +666,7 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "zaisu": "zaisu", "japanese_chair": "zaisu",
                 "acacia": "acacia", "baobab": "baobab",
                 "bonsai": "bonsai",
+                "sushibar": "sushi_bar", "sushi_bar": "sushi_bar",
                 "waterval": "waterfall", "waterfall": "waterfall",
                 "waterput": "well", "well": "well",
                 "tweepersoonsbed": "double_bed", "double_bed": "double_bed",
