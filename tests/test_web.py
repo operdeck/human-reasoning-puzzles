@@ -128,8 +128,9 @@ def test_murdoku_bundle_has_everything_to_play(exported):
         rule.startswith("Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.")
         for rule in bundle["rules"]
     )
-    names = [condition["name"] for condition in bundle["conditions"]]
-    assert names == ["alleen met", "aantallen", "op", "links van", "naast"]
+    assert "conditions" not in bundle
+    assert isinstance(bundle["key"], list)
+    assert all(set(item) == {"name", "text"} for item in bundle["key"])
 
 
 def test_every_murdoku_web_bundle_includes_the_character_description_note(exported):
@@ -157,7 +158,7 @@ def test_dutch_murdoku_is_worded_in_dutch(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["language"] == "nl"
     assert bundle["headings"]["clues"] == "Aanwijzingen"
-    assert bundle["headings"]["conditions"] == "Voorwaarden"
+    assert bundle["headings"]["key"] == "Legenda"
     assert all(item["svg"].startswith("<svg") for item in bundle["palette"])
 
 
@@ -300,10 +301,39 @@ def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
             assert f"cond.{key}.name" in story.PHRASES[language]
 
 
-def test_conditions_only_list_the_kinds_a_puzzle_uses():
-    text = (example("wie-doet-het-met-wie-2.txt")).read_text()
-    used = {kind for kind, _ in re.findall(r"^\s*(\w+)\s+(.*)$", text, re.M)}
-    assert len(story.condition_list(text)) <= len(used)
+def test_murdoku_web_key_lists_board_symbols_only(exported):
+    point = _bundle(exported, "murdoku_2_point_objects")
+    assert "conditions" not in point
+    assert any(name in {"Point", "Punt"} for name in [item["name"] for item in point["key"]])
+    assert all(
+        item["name"]
+        in {"Deur", "Door", "Raam", "Window", "Punt", "Point", "Gestippelde ring", "Dashed ring"}
+        for item in point["key"]
+    )
+
+    counted = _bundle(exported, "samen-in-japan")
+    assert "Gestippelde ring" in [item["name"] for item in counted["key"]]
+
+
+def test_every_murdoku_key_lists_only_board_symbols(exported):
+    allowed = {
+        "Door",
+        "Deur",
+        "Window",
+        "Raam",
+        "Point",
+        "Punt",
+        "Dashed ring",
+        "Gestippelde ring",
+    }
+    for path in exported.glob("*.json"):
+        if path.name == "index.json":
+            continue
+        bundle = json.loads(path.read_text())
+        assert "conditions" not in bundle, path.name
+        if bundle.get("family") != "murdoku":
+            continue
+        assert {item["name"] for item in bundle["key"]} <= allowed, path.name
 
 
 def test_digit_puzzles_get_pencil_marks_and_peer_groups(exported):
@@ -429,6 +459,15 @@ def test_author_wordings_reach_the_web_player(exported):
     assert "Marloes heeft alleen een badjas aan." in bundle["clues"]
 
 
+def test_every_non_murdoku_bundle_states_its_rules(exported):
+    for path in exported.glob("*.json"):
+        if path.name == "index.json":
+            continue
+        bundle = json.loads(path.read_text())
+        if bundle.get("family") != "murdoku":
+            assert bundle["rules"], path.name
+
+
 def test_the_hotel_lists_wouters_rule_once(exported):
     """Issue #152: the intro repeated the wording of the same board rule."""
     rules = _bundle(exported, "wie-doet-het-met-wie-5")["rules"]
@@ -436,9 +475,9 @@ def test_the_hotel_lists_wouters_rule_once(exported):
         "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
         "met wie hij het doet: iemand in een badjas."
     )
-    assert rules.count(wouter) == 1
+    assert sum(wouter in rule for rule in rules) == 1
     # The intro says it first, so the player reads it there.
-    assert rules.index(wouter) == 2
+    assert wouter in rules[0]
 
 
 def test_no_puzzle_lists_the_same_rule_twice(exported):

@@ -1,0 +1,75 @@
+# Murdoku 6x6 -- "Samen in Japan" (area populations, togetherness)
+#
+# Six travellers spread over four places. The population clues fix how crowded
+# each place is: Tokyo is the busiest, Okinawa the quietest, and Osaka holds
+# exactly two people together. The placement clues lean on four objects -- a
+# bonsai, a temple, a sushi plate and a tatami mat -- instead of row and column
+# pins, so nobody starts with only one square left.
+#
+# Solution: Aiko r1c4, Benjiro r2c2, Chiaki r3c3, Daiki r4c5, Emi r5c1,
+# Fumiko r6c6 -- Tokyo 3, Osaka 2, Kyoto 1, Okinawa 0.
+
+Size: 6
+Language: nl
+
+Title:
+Samen in Japan
+
+Intro:
+Zes reizigers zijn neergestreken in Tokyo, Osaka, Kyoto en Okinawa. Onderweg
+komen ze een bonsai, een tempel, een sushibord en een tatami tegen. Zet iedereen
+op een vrij vakje, met één persoon per rij en per kolom. In het ene gebied staan
+meer mensen bij elkaar dan in het andere; de aanwijzingen vertellen hoe vol elk
+gebied is.
+
+Words:
+Tokyo: in Tokyo
+Osaka: in Osaka
+Kyoto: in Kyoto
+Okinawa: in Okinawa
+bonsai: de bonsai
+tempel: de tempel
+sushi: het sushibord
+tatami: de tatami
+
+Regions:
+t: Tokyo #F6D8D8
+o: Osaka #FBE7C6
+k: Kyoto #D9EAD3
+q: Okinawa #CFE8F0
+
+Grid:
+t t t t t q
+t t t t t q
+t t t q q q
+o o o o o q
+o o o o q q
+k k k k k k
+
+Objects:
+bonsai: blocking r1c5
+tempel: blocking r3c2
+sushi: blocking r4c4
+tatami: standable r6c4 r6c5
+
+People:
+Aiko
+Benjiro
+Chiaki
+Daiki
+Emi
+Fumiko
+
+Clues:
+busiest_area area:Tokyo
+quietest_area area:Okinawa
+count people in area:Osaka = 2
+next_to Aiko bonsai
+same_region Daiki Emi
+next_to Benjiro tempel
+next_to Chiaki tempel
+left_of Benjiro Chiaki
+left_of Emi Benjiro
+
+Question:
+Waar staat iedereen?

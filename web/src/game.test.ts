@@ -19,7 +19,7 @@ import {
 
 function murdoku(): Bundle {
   return {
-    schema: 1,
+    schema: 3,
     id: "murdoku_intro",
     family: "murdoku",
     title: "Murdoku 0",
@@ -40,7 +40,7 @@ function murdoku(): Bundle {
     solution: { r1c1: "Joost", r3c4: "Ingrid" },
     rules: [],
     clues: ["a", "b"],
-    conditions: [],
+    key: [],
     question: "",
   };
 }

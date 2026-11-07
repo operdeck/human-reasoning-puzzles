@@ -2098,6 +2098,50 @@ in_column Cal 1
     _assert_logged_steps_preserve_solutions(model, solutions)
 
 
+def test_busiest_and_quietest_area_clues_agree_with_the_brute_force():
+    text = """Size: 5
+Regions:
+a: Alpha
+b: Bravo
+c: Charlie
+Grid:
+a a a b b
+a a b b b
+a b b b b
+c c c c c
+c c c c c
+People:
+Ada
+Ben
+Cal
+Dot
+Eve
+Clues:
+busiest_area area:Bravo
+quietest_area area:Alpha
+"""
+    board, clues = load_board(text)
+    checks = murdoku.area_population_conditions(board, clues)
+    assert [check.kind for check in checks] == ["busiest_area", "quietest_area"]
+    placements = bruteforce.solutions(text, "murdoku", limit=20)
+    assert placements
+    bravo, charlie, alpha = (
+        board.region_id("Bravo"),
+        board.region_id("Charlie"),
+        board.region_id("Alpha"),
+    )
+    for placement in placements:
+        assert all(check.holds(board, placement) for check in checks)
+        counts = checks[0].counts(board, placement)
+        assert (counts[bravo], counts[charlie], counts[alpha]) == (3, 2, 0)
+    # Bravo holding three people cannot also be the quietest area.
+    contradiction = text.replace("busiest_area area:Bravo", "quietest_area area:Bravo")
+    assert not bruteforce.solutions(contradiction, "murdoku", limit=1)
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, placements)
+
+
 def test_next_to_a_mark_wording_names_the_marked_set():
     from csp.story import clue_texts
 

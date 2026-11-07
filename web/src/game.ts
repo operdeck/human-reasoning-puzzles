@@ -56,7 +56,7 @@ export interface Bundle {
   headings?: Record<string, string>;
   rules: string[];
   clues: string[];
-  conditions: Named[];
+  key: Named[];
   question: string;
   reveal?: string;
   attributes?: Named[];

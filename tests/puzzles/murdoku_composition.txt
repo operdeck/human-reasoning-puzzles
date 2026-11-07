@@ -68,6 +68,7 @@ Murdoku: Composition test
 
 Intro:
 A neutral four-by-four board that uses many Murdoku features at once: roles, attributes, marks and counting clues.
+Place every figure on a free square, one per row and column.
 
 Question:
 Where does everyone stand, and who has which role?

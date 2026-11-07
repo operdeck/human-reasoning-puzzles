@@ -780,6 +780,10 @@ GROUP_CLUES = {
 # COUNTED_PEOPLE people, since the engine tries every combination of their squares.
 COUNTING = "exactly"
 GLOBAL_COUNTING = "count"
+# The area with the most (or the fewest) people: `busiest_area area:Tokyo`,
+# `quietest_area area:Okinawa area:Kyoto`. Named areas tie with each other.
+AREA_POPULATION = {"busiest_area": "most", "quietest_area": "fewest"}
+POPULATION_PREFIX = "area_population"
 COUNTED_PEOPLE = 3
 ATTRIBUTE_FILTERS = frozenset(("has_attribute", "not_attribute"))
 
@@ -964,6 +968,53 @@ class GlobalCountCondition:
         return len(cells - set(placed.values()))
 
 
+@dataclass(frozen=True)
+class AreaPopulationCondition:
+    """Which areas hold the most or the fewest people (`busiest`, `quietest`).
+
+    The named areas share one count, and every other area compares with them:
+    strictly fewer people for `busiest`, strictly more for `quietest`. Areas
+    nobody can stand in hold nobody and are left out of the comparison.
+    """
+
+    label: str
+    kind: str
+    regions: tuple[str, ...]
+    tokens: tuple[str, ...]
+    number: int | None
+    index: int
+
+    @property
+    def description(self) -> str:
+        return " ".join((self.kind, *self.tokens))
+
+    def counts(self, board: Board, placed: dict[str, Square]) -> dict[str, int]:
+        """How many people stand in each area of `board`."""
+        tally = dict.fromkeys(board.region_names, 0)
+        for square in placed.values():
+            tally[board.region_of(square)] += 1
+        return tally
+
+    def holds(self, board: Board, placed: dict[str, Square]) -> bool:
+        """Whether the arrangement puts the named areas at the extreme."""
+        if len(placed) != len(board.people):
+            return True
+        tally = self.counts(board, placed)
+        named = {tally[region] for region in self.regions}
+        if len(named) != 1:
+            return False
+        (only,) = named
+        rest = [
+            tally[region]
+            for region in board.region_names
+            if region not in self.regions
+            and any(board.region_of(square) == region for square in board.free)
+        ]
+        if self.kind == "busiest_area":
+            return all(count < only for count in rest)
+        return all(count > only for count in rest)
+
+
 def global_count_conditions(board: Board, clues: Iterable[Clue]) -> list[GlobalCountCondition]:
     """Parse and validate whole-board count clues in rules and numbered clues."""
     rules: list[tuple[str, list[str], int | None]] = [
@@ -991,6 +1042,36 @@ def global_count_conditions(board: Board, clues: Iterable[Clue]) -> list[GlobalC
                 len(out),
                 tuple(args),
             )
+        )
+    return out
+
+
+def area_population_conditions(
+    board: Board, clues: Iterable[Clue]
+) -> list[AreaPopulationCondition]:
+    """Parse `busiest`/`quietest` clues from board rules and numbered clues."""
+    rules: list[tuple[str, list[str], int | None]] = [
+        (kind, args, None) for kind, args in board.rules
+    ]
+    rules.extend((kind, args, number) for number, (kind, args) in enumerate(clues, 1))
+    out: list[AreaPopulationCondition] = []
+    for kind, args, number in rules:
+        if kind not in AREA_POPULATION:
+            continue
+        if not args:
+            raise ValueError(f"{kind} needs at least one area:name")
+        regions: list[str] = []
+        for token in args:
+            selector = _target_selector(board, token)
+            if selector.kind != "area":
+                raise ValueError(f"{kind} takes area:name targets, not {token!r}")
+            for region in sorted(board.area_ids([selector.name])):
+                if region not in regions:
+                    regions.append(region)
+        source = f"rule {len(out) + 1}" if number is None else f"clue {number}"
+        label = f"{source} area population: {' '.join(args)}"
+        out.append(
+            AreaPopulationCondition(label, kind, tuple(regions), tuple(args), number, len(out))
         )
     return out
 
@@ -1202,7 +1283,7 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
     for kind, args in board.rules:
         if kind in ROLE_CONDITION_KINDS or _is_quantified_target(kind, args):
             continue
-        if kind == GLOBAL_COUNTING:
+        if kind == GLOBAL_COUNTING or kind in AREA_POPULATION:
             continue
         out += _conditions(board, kind, args, None)
     out.extend(
@@ -1211,7 +1292,7 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
     for number, (kind, args) in enumerate(clues, 1):
         if kind in ROLE_CONDITION_KINDS or _is_quantified_target(kind, args):
             continue
-        if kind == GLOBAL_COUNTING:
+        if kind == GLOBAL_COUNTING or kind in AREA_POPULATION:
             continue
         out += _conditions(board, kind, args, number)
     return out
@@ -1827,6 +1908,7 @@ def compile_puzzle(board: Board, clues: Iterable[Clue]) -> Model:
     count_conditions = global_count_conditions(board, clues)
     attribute_membership = _global_attribute_membership(model, board, count_conditions)
     _compile_global_counts(model, board, count_conditions, role_literals, attribute_membership)
+    _compile_area_population(model, board, area_population_conditions(board, clues))
     for target_condition in quantified_conditions(board, clues):
         _compile_quantified_condition(model, board, target_condition)
     for location_condition in conditions(board, clues):
@@ -1976,6 +2058,112 @@ def _compile_global_counts(
             allowed_counts=condition.allowed_counts,
             family=f"global count clue {condition.number or condition.index + 1}: {condition.kind}",
         )
+
+
+def _compile_area_population(
+    model: Model, board: Board, conditions: Sequence[AreaPopulationCondition]
+) -> None:
+    """Compare area populations for `busiest_area` and `quietest_area` clues.
+
+    "This area holds at least k people" is a hidden Boolean per area and k, so
+    one comparison between two areas costs one implication per k and stays sound
+    for any board, however many people or areas it has.
+    """
+    if not conditions:
+        return
+    maximum = len(board.people)
+    occupants: dict[str, list[int]] = {
+        region: [
+            model.literal(person, square)
+            for person in board.people
+            for square in sorted(board.free)
+            if board.region_of(square) == region
+        ]
+        for region in board.region_names
+    }
+    usable = [region for region in sorted(board.region_names) if occupants[region]]
+    levels: dict[tuple[str, int], tuple[int, int]] = {}
+
+    def level(region: str, k: int) -> tuple[int, int]:
+        """(the area holds at least k people, the area holds fewer than k)."""
+        if (region, k) not in levels:
+            name = board.region_names[region]
+            _variable, is_at_least, is_below = _hidden_boolean(
+                model,
+                f"{POPULATION_PREFIX}_{region}_{k}",
+                f"{name} holds at least {k}",
+                "area population",
+            )
+            if k > len(occupants[region]):
+                model.assign(
+                    is_below,
+                    "area population",
+                    f"{name} cannot hold {k} people",
+                    sources=(f"{name} has {len(occupants[region])} free squares",),
+                )
+            else:
+                model.constrain(
+                    f"{name} holds at least {k}",
+                    Kind.COUNT,
+                    occupants[region],
+                    allowed_counts=set(range(k, len(occupants[region]) + 1)),
+                    reified_by=is_at_least,
+                    family="area population",
+                )
+            levels[region, k] = (is_at_least, is_below)
+        return levels[region, k]
+
+    def above(more: str, fewer: str) -> None:
+        """`more` holds strictly more people than `fewer`."""
+        for k in range(1, maximum + 1):
+            at_least, below = level(fewer, k)
+            if k == maximum:
+                model.assign(
+                    below,
+                    "area population",
+                    f"{board.region_names[fewer]} holds fewer than {k}",
+                    sources=(f"{board.region_names[more]} holds more",),
+                )
+                continue
+            _, short = level(more, k + 1)
+            model.constrain(
+                f"{board.region_names[more]} outnumbers {board.region_names[fewer]}",
+                Kind.AT_MOST_ONE,
+                [at_least, short],
+                family="area population",
+            )
+
+    def same(first: str, second: str) -> None:
+        """`first` and `second` hold the same number of people."""
+        for k in range(1, maximum + 1):
+            up, _ = level(first, k)
+            _, short = level(second, k)
+            model.constrain(
+                f"{board.region_names[first]} and {board.region_names[second]} agree on {k}",
+                Kind.AT_MOST_ONE,
+                [up, short],
+                family="area population",
+            )
+            up, _ = level(second, k)
+            _, short = level(first, k)
+            model.constrain(
+                f"{board.region_names[second]} and {board.region_names[first]} agree on {k}",
+                Kind.AT_MOST_ONE,
+                [up, short],
+                family="area population",
+            )
+
+    for condition in conditions:
+        named = condition.regions
+        others = [region for region in usable if region not in named]
+        for first, second in combinations(named, 2):
+            same(first, second)
+        for region in named:
+            for other in others:
+                if AREA_POPULATION[condition.kind] == "most":
+                    above(region, other)
+                else:
+                    above(other, region)
 
 
 def _compile_quantified_condition(

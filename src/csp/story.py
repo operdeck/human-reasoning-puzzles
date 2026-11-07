@@ -27,6 +27,7 @@ from typing import Any, Literal
 from . import battleships, minesweeper, starbattle, sudoku
 from .core import Kind, Model, Solver, Step
 from .murdoku import (
+    AREA_POPULATION,
     COUNTING,
     FILTERS,
     Board,
@@ -79,6 +80,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.attribute": "{people}",
         "doc.roles": "The roles",
         "doc.objects": "The objects",
+        "doc.key": "Key",
+        "doc.key_door": "Door",
+        "doc.key_window": "Window",
+        "doc.key_point": "Point",
+        "doc.key_ring": "Dashed ring",
+        "doc.key_ring_text": "the squares a count is about",
+        "doc.clue_next_to_border": (
+            "A door, window or point object counts as next to across an area border."
+        ),
+        "doc.clue_distance": "Distance counts steps across sides, not diagonals.",
         "doc.standable": "you can stand on it",
         "doc.blocking": "nobody can stand here",
         "doc.standable_group": "Standable",
@@ -202,6 +213,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.exactly": "exactly {n} of these is true: {list}",
         "clue.either": "either {first}, or {second}, but not both",
         "clue.either_same_region": "{a} is in the same region as either {b} or {c}",
+        "clue.busiest_area": "the area with the most people is {areas}",
+        "clue.quietest_area": "the area with the fewest people is {areas}",
         "count_reason": "the allowed counts for {name} are {counts}",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
@@ -289,6 +302,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.attribute": "{people}",
         "doc.roles": "De rollen",
         "doc.objects": "De voorwerpen",
+        "doc.key": "Legenda",
+        "doc.key_door": "Deur",
+        "doc.key_window": "Raam",
+        "doc.key_point": "Punt",
+        "doc.key_ring": "Gestippelde ring",
+        "doc.key_ring_text": "de vakjes waar een telling over gaat",
+        "doc.clue_next_to_border": (
+            "Een deur, raam of puntobject telt ook over een gebiedsgrens heen als 'naast'."
+        ),
+        "doc.clue_distance": "Afstand telt stappen over zijden, niet schuin.",
         "doc.standable": "hier kun je op staan",
         "doc.blocking": "hier kan niemand staan",
         "doc.standable_group": "Begaanbaar",
@@ -407,6 +430,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.exactly": "precies {n} hiervan klopt: {list}",
         "clue.either": "ofwel {first}, ofwel {second}, maar niet allebei",
         "clue.either_same_region": "{a} is in hetzelfde gebied als {b} of {c}",
+        "clue.busiest_area": "het gebied met de meeste mensen is {areas}",
+        "clue.quietest_area": "het gebied met de minste mensen is {areas}",
         "clue.alone_with_anyone": "{a} deelt een gebied met precies één ander persoon",
         "clue.alone_with_n": (
             "{a} deelt een gebied met precies {n} anderen, en dat zijn allemaal {target}"
@@ -2324,6 +2349,12 @@ class Story:
         return "" if rule.number is None else f" ({rule.number})"
 
     def _clue_text(self, kind: str, args: Sequence[str], people: Sequence[str]) -> str:
+        if kind in AREA_POPULATION:
+            names = [token.partition(":")[2] or token for token in args]
+            listed = self.say.join(
+                [self.board.region_names[region] for region in sorted(self.board.area_ids(names))]
+            )
+            return self.say(f"clue.{kind}", areas=listed)
         if kind == COUNTING:
             n, parts = counted(args)
             if n == 1 and len(parts) == 2:
@@ -2654,25 +2685,83 @@ def board_notes(text: str) -> list[str]:
     return notes
 
 
+def murdoku_key(text: str) -> list[tuple[str, str]]:
+    """(label, name) for each board symbol the rules do not otherwise name.
+
+    Doors, windows, point objects and the dashed count ring are the symbols
+    whose meaning is not in the text; regions are labelled on the board, and
+    marks, roles and attributes are stated in the rules or listed beside it.
+    """
+    board, clues = load_board(text)
+    say = Wording.read(text)
+    out: list[tuple[str, str]] = []
+    for name in sorted(board.edge_item_names | board.point_object_names):
+        if name in board.edge_item_names:
+            kind = "door" if board.edge_item_kind(name) == "door" else "window"
+        else:
+            kind = "point"
+        label = say(f"doc.key_{kind}")
+        pretty = say.words.get(name, name.replace("_", " "))
+        bare = re.sub(r"^(the|a|an|de|het|een)\s+", "", pretty, flags=re.IGNORECASE)
+        out.append((label, "" if bare.casefold() == label.casefold() else pretty))
+    marked = {square for mark in board.marks for square in mark.cells}
+    if any(
+        set(condition.scope_cells(board)) - marked
+        for condition in global_count_conditions(board, clues)
+    ):
+        out.append((say("doc.key_ring"), say("doc.key_ring_text")))
+    return out
+
+
 def murdoku_rules(text: str) -> list[str]:
     """The rules a Murdoku player reads before starting, in the author's order.
 
     The `Intro:` paragraphs (or the standard rules when a file has none), what
-    the board picture only abbreviates, and the note that a figure's story
-    detail is not a clue.
+    the board picture only abbreviates, the clue semantics the short clue text
+    leaves implicit, and the note that a figure's story detail is not a clue.
 
     One constraint can be said twice: an author may write a rule's sentence in
     the intro *and* as that rule's `| wording`, and both land here. Say such a
     sentence once, where it appears first, so the rules list reads as one rule
     rather than two conditions.
     """
+    board, clues = load_board(text)
     presentation = load_presentation(text)
+    intro = " ".join(presentation.intro).lower()
+    kinds = {
+        entry[0] if isinstance(entry, tuple) else entry.kind for entry in (*board.rules, *clues)
+    }
+    clue_notes = []
+    explains_next_to = ("next to" in intro or "naast" in intro) and any(
+        word in intro for word in ("border", "grens", "another area", "ander gebied")
+    )
+    explains_distance = ("distance" in intro or "afstand" in intro) and any(
+        word in intro for word in ("step", "stap", "diagonal", "schuin")
+    )
+    if (
+        kinds & {"next_to", "not_next_to", "role_next_to"}
+        and not explains_next_to
+        and (board.edge_items or board.point_objects)
+    ):
+        clue_notes.append(phrase(text, "doc.clue_next_to_border"))
+    if kinds & {"within", "at_least", "furthest"} and not explains_distance:
+        clue_notes.append(phrase(text, "doc.clue_distance"))
     said = [
         *(presentation.intro or [phrase(text, "doc.rules")]),
         *board_notes(text),
+        *clue_notes,
         phrase(text, "doc.murdoku_note"),
     ]
-    return list(dict.fromkeys(said))
+    intro_count = len(presentation.intro) if presentation.intro else 1
+    intro_items = said[:intro_count]
+    # An intro paragraph may already contain a board rule or mark note; do not
+    # print that same sentence again as a separate bullet.
+    kept = intro_items + [
+        item
+        for item in said[intro_count:]
+        if not any(item in paragraph for paragraph in intro_items)
+    ]
+    return list(dict.fromkeys(kept))
 
 
 def role_list(text: str) -> list[tuple[str, str]]:

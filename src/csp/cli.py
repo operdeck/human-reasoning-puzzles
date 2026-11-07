@@ -283,6 +283,7 @@ def make_image(
         interactive=interactive,
         language=language_of(text),
         count_texts=story.global_count_texts(text),
+        names=story.Wording.read(text).words,
     )
 
 

@@ -171,6 +171,36 @@ def read_sections(text: str) -> dict[str, list[str]]:
     return out
 
 
+def read_paragraphs(text: str, section_name: str) -> list[str]:
+    """The named section with blank lines treated as paragraph breaks.
+
+    `read_sections` drops blank lines, which is right for grids and clue blocks
+    but splits a hand-wrapped `Intro:` into fragments. This keeps each blank-line
+    separated paragraph whole, joining its wrapped lines with a space.
+    """
+    paragraphs: list[str] = []
+    current: list[str] = []
+    active = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.endswith(":") and " " not in line[:-1]:
+            if active:
+                break
+            active = line[:-1] == section_name
+            continue
+        if not active:
+            continue
+        if not line or line.startswith("#"):
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+            continue
+        current.append(line)
+    if current:
+        paragraphs.append(" ".join(current))
+    return paragraphs
+
+
 def parse_square(token: str) -> Square:
     """'r2c5' -> Square(1, 4)."""
     match = re.fullmatch(r"r(\d+)c(\d+)", token.strip().lower())
@@ -536,7 +566,7 @@ def load_presentation(text: str) -> Presentation:
         figures[name.strip()] = Figure(description, values["image"], values["icon"])
     return Presentation(
         title=" ".join(section.get("Title", [])),
-        intro=section.get("Intro", []),
+        intro=read_paragraphs(text, "Intro"),
         question=" ".join(section.get("Question", [])),
         clue_text=clue_text,
         figures=figures,

@@ -1,0 +1,67 @@
+# Murdoku 5x5 -- "Samen onderweg" (area populations, togetherness)
+#
+# An easier sibling of samen-in-japan.txt: three places, five travellers, a few
+# objects to lean the clues on, and the population clues doing the work.
+#
+# Solution: Haru r1c2, Isamu r2c3, Jun r3c1, Keiko r4c5, Mio r5c4 --
+# Tokyo 3, Osaka 2, Okinawa 0.
+
+Size: 5
+Language: nl
+
+Title:
+Samen onderweg
+
+Intro:
+Vijf reizigers trekken door Japan: drie blijven er in Tokyo, twee reizen door
+naar Osaka en in Okinawa blijft niemand. Onderweg komen ze een torii, een
+kersenbloesem, een lantaarn en een bank tegen. Zet iedereen op een vrij vakje,
+met één persoon per rij en per kolom.
+
+Words:
+Tokyo: in Tokyo
+Osaka: in Osaka
+Okinawa: in Okinawa
+torii: de torii
+sakura: de kersenbloesem
+lantaarn: de lantaarn
+bank: de bank
+
+Regions:
+t: Tokyo #F6D8D8
+o: Osaka #FBE7C6
+q: Okinawa #CFE8F0
+
+Grid:
+t t t t o
+t t t t o
+t t t o o
+q t t o o
+q q o o o
+
+Objects:
+torii: blocking r2c1
+sakura: blocking r4c3
+lantaarn: blocking r3c5
+bank: standable r5c4 r5c5
+
+People:
+Haru
+Isamu
+Jun
+Keiko
+Mio
+
+Clues:
+busiest_area area:Tokyo
+quietest_area area:Okinawa
+count people in area:Osaka = 2
+next_to Keiko lantaarn
+on Mio bank
+next_to Jun torii
+above Haru Jun
+left_of Haru Isamu
+not_next_to Haru torii
+
+Question:
+Waar staat iedereen?

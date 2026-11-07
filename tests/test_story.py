@@ -14,9 +14,17 @@ import csp
 from csp import bruteforce, cli, murdoku
 from csp.core import Kind, Model, Solver
 from csp.proof import Move, replay, shortest
-from csp.puzzlefile import load_board
-from csp.story import Story, Wording, board_notes, explain, family_rules
-from tests.examples import example
+from csp.puzzlefile import detect, load_board
+from csp.story import (
+    Story,
+    Wording,
+    board_notes,
+    explain,
+    family_rules,
+    murdoku_key,
+    murdoku_rules,
+)
+from tests.examples import example, played_examples
 
 pytestmark = pytest.mark.solutions
 
@@ -1014,15 +1022,15 @@ def test_a_rule_the_intro_already_says_is_listed_once():
     )
     rules = murdoku_rules(example("wie-doet-het-met-wie-5.txt").read_text())
 
-    assert rules.count(wouter) == 1
+    assert sum(wouter in rule for rule in rules) == 1
     # The intro says it first, so that copy stays; the remaining rules keep their order.
-    assert rules.index(wouter) == 2
-    assert rules[3:] == [
+    assert wouter in rules[0]
+    assert rules[1:4] == [
         "Precies twee mensen dragen een badjas.",
         "Precies één persoon heeft sloffen aan.",
         "Precies één persoon heeft een bril op.",
-        rules[-1],
     ]
+    assert rules[4] == rules[-1]
     assert len(rules) == len(dict.fromkeys(rules))
 
 
@@ -1032,8 +1040,81 @@ def test_intro_sentences_keep_their_own_order_when_none_repeat_a_rule():
     rules = murdoku_rules(example("wie-doet-het-met-wie-4.txt").read_text())
 
     assert rules[0].startswith("Zes mensen logeren een weekend in een huis.")
-    assert rules[2] == (
+    assert (
         "Wouter wordt als laatste geplaatst en is alleen in een kamer met degene "
-        "met wie hij het doet."
+        "met wie hij het doet." in rules[0]
     )
+    assert rules[1:4] == [
+        "Precies twee mensen dragen een badjas.",
+        "Precies één persoon heeft sloffen aan.",
+        "Precies één persoon heeft een bril op.",
+    ]
     assert len(rules) == len(dict.fromkeys(rules))
+
+
+def test_every_example_has_player_rules_without_duplicates():
+    for path in played_examples():
+        text = path.read_text()
+        kind = detect(text)
+        rules = murdoku_rules(text) if kind == "murdoku" else family_rules(text, kind)
+        assert rules, path.name
+        assert len(rules) == len(dict.fromkeys(rules)), path.name
+
+
+SUDOKU_VARIANT_MARKERS = (
+    "Boxes:",
+    "Extra:",
+    "Kropki:",
+    "Consecutive:",
+    "Thermometers:",
+    "AntiKnight:",
+    "AntiKing:",
+    "Parity:",
+    "SandwichRows:",
+    "SandwichColumns:",
+    "SkyscraperTop:",
+    "SkyscraperBottom:",
+    "SkyscraperLeft:",
+    "SkyscraperRight:",
+    "Cages:",
+    "Arrow:",
+)
+SUDOKU_VARIANT_FAMILIES = {
+    "killer",
+    "arrow",
+    "evenodd",
+    "sandwich",
+    "skyscrapersudoku",
+}
+
+
+def test_every_sudoku_variant_states_its_extra_rule():
+    from csp.puzzlefile import display_family
+
+    for path in played_examples():
+        text = path.read_text()
+        if detect(text) != "sudoku":
+            continue
+        family = display_family(text, "sudoku")
+        if family not in SUDOKU_VARIANT_FAMILIES and not any(
+            marker in text for marker in SUDOKU_VARIANT_MARKERS
+        ):
+            continue
+        assert len(family_rules(text, "sudoku")) > 1, path.name
+
+
+def test_murdoku_key_lists_only_board_symbols():
+    key = murdoku_key(example("murdoku_composition.txt").read_text())
+    assert [name for name, _ in key] == ["Door", "Point", "Window", "Dashed ring"]
+    assert key[-1][1] == "the squares a count is about"
+
+
+def test_murdoku_key_uses_the_words_aliases():
+    key = murdoku_key(example("murdoku_2_point_objects.txt").read_text())
+    assert any("top edge" in text for _, text in key)
+
+
+def test_wrapped_intro_lines_stay_one_rule():
+    rules = murdoku_rules(example("samen-in-japan.txt").read_text())
+    assert rules[0].startswith("Zes reizigers zijn neergestreken")
+    assert rules[0].endswith("gebied is.")

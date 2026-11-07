@@ -679,6 +679,8 @@ CATALOGUE: dict[str, str] = {
     "sakura": "1f338", "cherry_blossom": "1f338",
     "shrine": "26e9", "torii": "26e9",
     "castle": "1f3ef", "fuji": "1f5fb", "tokyo_tower": "1f5fc",
+    "tempel": "1f3ef", "temple": "1f3ef",
+    "sushi": "1f363", "sushibar": "1f363", "sushi_bar": "1f363",
     "taiko": "1f941", "drum": "1f941",
     "carp": "1f38f", "koinobori": "1f38f",
     "bonsai": "1f38d", "tanabata": "1f38b",
