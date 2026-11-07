@@ -298,6 +298,31 @@ WATERFALL = (
 )
 
 
+# A bonsai: a squat pot, a curved trunk and layered, asymmetric canopy pads.
+BONSAI = (
+    '<ellipse cx="50" cy="94" rx="26" ry="4" fill="#000" opacity="0.12"/>'
+    '<path d="M32 78H68L63 92H37Z" fill="#b96a45" stroke="#7d4429" stroke-width="2"/>'
+    '<rect x="28" y="72" width="44" height="8" rx="2" fill="#cf8057" stroke="#7d4429"'
+    ' stroke-width="2"/>'
+    '<path d="M38 72Q40 67 45 67H55Q60 67 62 72Z" fill="#5a3a22"/>'
+    '<path d="M50 72C48 60 52 54 48 44C45 36 35 34 28 28" fill="none" stroke="#5b3a25"'
+    ' stroke-width="7" stroke-linecap="round"/>'
+    '<path d="M48 52C57 49 61 44 68 40" fill="none" stroke="#5b3a25" stroke-width="5"'
+    ' stroke-linecap="round"/>'
+    '<path d="M44 42C38 40 35 36 32 31" fill="none" stroke="#5b3a25" stroke-width="4"'
+    ' stroke-linecap="round"/>'
+    '<g fill="#3f7d3a" stroke="#2b5a28" stroke-width="2">'
+    '<ellipse cx="28" cy="26" rx="17" ry="10"/>'
+    '<ellipse cx="50" cy="20" rx="20" ry="11"/>'
+    '<ellipse cx="70" cy="28" rx="18" ry="10"/>'
+    '<ellipse cx="54" cy="36" rx="15" ry="9" fill="#4f9448"/>'
+    "</g>"
+    '<g fill="#6cae5a">'
+    '<ellipse cx="46" cy="15" rx="11" ry="4"/>'
+    '<ellipse cx="25" cy="22" rx="8" ry="3"/>'
+    '<ellipse cx="67" cy="24" rx="9" ry="3"/>'
+    "</g>"
+)
 # A train bench seen from above: a faint red cushion split into seats, a backrest
 # along one long side and an armrest at each end.
 TRAIN_BENCH = (
@@ -503,6 +528,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("puppy", "\U0001f436", "puppy", markup=PUPPY),
         Icon("tent", "\u25b2", "tent", emoji="26fa"),
         Icon("tree", "\u2663", "tree", emoji="1f332"),
+        Icon("bonsai", "\u2663", "bonsai", markup=BONSAI),
         Icon("mine", "\u2731", "mine", emoji="1f4a3"),
         Icon("flag", "\u2691", "flag", emoji="1f6a9"),
         Icon("bulb", "\u25cf", "bulb", emoji="1f4a1"),
@@ -616,6 +642,7 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "tatami": "tatami", "plate": "plate", "sara": "plate",
                 "zaisu": "zaisu", "japanese_chair": "zaisu",
                 "acacia": "acacia", "baobab": "baobab",
+                "bonsai": "bonsai",
                 "waterval": "waterfall", "waterfall": "waterfall",
                 "waterput": "well", "well": "well",
                 "tweepersoonsbed": "double_bed", "double_bed": "double_bed",

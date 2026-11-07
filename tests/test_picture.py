@@ -118,6 +118,8 @@ def test_object_names_keep_their_catalogue_meaning():
     assert icons.object_icon("tweepersoonsbed").name == "double_bed"
     assert icons.object_icon("badjas").name == "bathrobe"
     assert icons.object_icon("sloffen").name == "slippers"
+    assert icons.object_icon("bonsai").name == "bonsai"
+    assert icons.object_icon("bonsai").markup == icons.BONSAI
     # A garden bench stays a garden bench; the sauna has its own bare wooden bench.
     assert icons.object_icon("bankje").name == "bench"
     assert icons.object_icon("saunabank").name == "sauna_bench"
