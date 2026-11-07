@@ -1132,4 +1132,4 @@ def test_only_object_counts_get_a_dashed_scope_ring():
 def test_wrapped_intro_lines_stay_one_rule():
     rules = murdoku_rules(example("samen-in-japan.txt").read_text())
     assert rules[0].startswith("Zes reizigers zijn neergestreken")
-    assert rules[0].endswith("gebied is.")
+    assert rules[0].endswith("de objecten.")

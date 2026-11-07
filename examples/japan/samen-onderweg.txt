@@ -1,7 +1,7 @@
 # Murdoku 5x5 -- "Samen onderweg" (area populations, togetherness)
 #
 # An easier sibling of samen-in-japan.txt: three places, five travellers, a few
-# objects to lean the clues on, and the population clues doing the work.
+# objects to lean the clues on, and population clues that set the scene.
 #
 # Solution: Haru r1c2, Isamu r2c3, Jun r3c1, Keiko r4c5, Mio r5c4 --
 # Tokyo 3, Osaka 2, Okinawa 0.
@@ -13,10 +13,10 @@ Title:
 Samen onderweg
 
 Intro:
-Vijf reizigers trekken door Japan: drie blijven er in Tokyo, twee reizen door
-naar Osaka en in Okinawa blijft niemand. Onderweg komen ze een torii, een
+Vijf reizigers trekken door Japan. Onderweg komen ze een torii, een
 kersenbloesem, een lantaarn en een bank tegen. Zet iedereen op een vrij vakje,
-met één persoon per rij en per kolom.
+met één persoon per rij en per kolom. De aanwijzingen vertellen hoe vol Tokyo,
+Osaka en Okinawa zijn.
 
 Words:
 Tokyo: in Tokyo
