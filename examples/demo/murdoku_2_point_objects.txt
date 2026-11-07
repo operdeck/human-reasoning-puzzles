@@ -11,6 +11,7 @@ Language: en
 Words:
 mouse1: the mouse on the top edge
 mouse2: the mouse in the corner
+cat: the cat
 Patio: on the patio
 Greenhouse: in the greenhouse
 Lawn: on the lawn
@@ -33,7 +34,7 @@ fountain: r2.5c2.5
 mouse1: r0.5c4.5
 mouse2: r5.5c0.5
 cheese: r3.5c5
-lantern: r5.5c2
+cat: r5.5c2
 Backdrop:
 U+1F50D
 
@@ -48,7 +49,7 @@ next_to Ada mouse1
 next_to Bo fountain
 next_to Cal cheese
 in_region Cal Greenhouse
-next_to Eli lantern
+next_to Eli cat
 not_next_to Dee mouse2
 
 # Booklet text for --docx (optional).
@@ -56,7 +57,7 @@ Title:
 Murdoku: Mice in the garden
 
 Intro:
-Two mice, a fountain, a lantern and some cheese sit on the grid lines of this garden, not inside the squares.
+Two mice, a fountain, a cat and some cheese sit on the grid lines of this garden, not inside the squares.
 Place everyone on a free square, one per row and column.
 Whoever stands in a square touching such a point is next to it, even when that square lies in another area.
 

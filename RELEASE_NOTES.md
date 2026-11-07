@@ -19,6 +19,7 @@
 
 **Bug Fix(es)**
 * Murdoku bonsai icon: `bonsai` now uses a custom potted miniature-tree drawing instead of the Japanese pine-decoration emoji (`U+1F38D`), which did not read as a bonsai.
+* *Murdoku: Mice in the garden* (`examples/demo/murdoku_2_point_objects.txt`): the red paper lantern on the bottom edge is now a **cat**, so the point-objects demo reads as an ordinary garden. The anchor and the clue are unchanged (`cat: r5.5c2`, `next_to Eli cat`), so the solution, the grade and the point-object lesson stay the same.
 * Samen in Japan now uses a sushi bar (`sushibar`, a counter with a noren and sushi) instead of a sushi plate; the food puzzles keep their sushi plate.
 * Samen in Japan: the Osaka population clue was logically redundant because the placement clues alone were unique. Rebalanced the clue set (replaced `same_region Daiki Emi` with `in_region Daiki Osaka`, dropped the entailed area comparisons) so every clue is necessary; the solution is unchanged and the grade is `subsumption`.
 * Samen onderweg: `busiest_area area:Tokyo` was removable. Removed `next_to Jun torii` and the Osaka count so the busiest-area clue is necessary while `quietest_area area:Okinawa` stays; solution unchanged, grade `what_if`.
