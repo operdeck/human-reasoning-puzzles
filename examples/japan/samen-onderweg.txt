@@ -1,7 +1,8 @@
 # Murdoku 5x5 -- "Samen onderweg" (area populations, togetherness)
 #
-# An easier sibling of samen-in-japan.txt: three places, five travellers, a few
-# objects to lean the clues on, and population clues that set the scene.
+# A sibling of samen-in-japan.txt: three places, five travellers, a few objects
+# to lean the clues on, and both area comparisons; the busiest-area clue is
+# load-bearing.
 #
 # Solution: Haru r1c2, Isamu r2c3, Jun r3c1, Keiko r4c5, Mio r5c4 --
 # Tokyo 3, Osaka 2, Okinawa 0.
@@ -55,10 +56,8 @@ Mio
 Clues:
 busiest_area area:Tokyo
 quietest_area area:Okinawa
-count people in area:Osaka = 2
 next_to Keiko lantaarn
 on Mio bank
-next_to Jun torii
 above Haru Jun
 left_of Haru Isamu
 not_next_to Haru torii
