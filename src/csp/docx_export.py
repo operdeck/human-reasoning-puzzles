@@ -15,6 +15,7 @@ from typing import Any
 from . import icons, murdoku, picture
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
+    Wording,
     attribute_list,
     clue_paragraphs,
     explain,
@@ -75,10 +76,13 @@ def _picture_stream(
         board,
         solution,
         show_roles=False,
+        show_marks=False,
+        show_attributes=False,
         language=language_of(text),
         area_tags=False,
         global_counts=murdoku.global_count_conditions(board, clues),
         count_lines=False,
+        names=Wording.read(text).words,
     )
     return io.BytesIO(image.to_png()), image.height / image.width
 

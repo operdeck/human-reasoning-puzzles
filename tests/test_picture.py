@@ -12,7 +12,15 @@ from PIL import Image  # noqa: E402
 
 from csp import bruteforce, cli, icons, svg  # noqa: E402
 from csp import picture as drawing  # noqa: E402
-from csp.murdoku import Board, BoardObject, EdgeItem, PointObject, RoleSpec, Square  # noqa: E402
+from csp.murdoku import (  # noqa: E402
+    Board,
+    BoardObject,
+    EdgeItem,
+    PointObject,
+    RoleSpec,
+    Square,
+    global_count_conditions,
+)
 from csp.puzzlefile import load_board, load_presentation  # noqa: E402
 from tests.examples import all_examples, example  # noqa: E402
 
@@ -1687,3 +1695,29 @@ def test_a_backdrop_with_bounds_sticks_out_above_the_board():
     assert 'overflow="visible"' in image.to_svg()
     board.backdrop = "pumpkin"  # a plain picture fits its box: no headroom
     assert drawing.murdoku_picture(board, cell=CELL, legend=False).headroom == 0
+
+
+def test_interactive_murdoku_has_no_legend_and_booklet_keeps_only_the_symbol_key():
+    text = example("murdoku_composition.txt").read_text()
+    board, clues = load_board(text)
+    full = drawing.murdoku_picture(board)
+    interactive = drawing.murdoku_picture(board, interactive=True)
+    booklet = drawing.murdoku_picture(
+        board,
+        show_roles=False,
+        show_marks=False,
+        show_attributes=False,
+        area_tags=False,
+        global_counts=global_count_conditions(board, clues),
+        count_lines=False,
+    )
+
+    assert interactive.height < full.height
+    assert booklet.height < full.height
+    interactive_svg = interactive.to_svg()
+    booklet_svg = booklet.to_svg()
+    assert "dashed ring" not in interactive_svg
+    assert "dashed ring" in booklet_svg
+    assert "Door: archway" in booklet_svg
+    for omitted in ("quiet: alone", "Navigator", "Trained", "North:", "Global"):
+        assert omitted not in booklet_svg

@@ -657,5 +657,5 @@ def test_the_booklet_prints_a_rule_the_intro_already_gave_once(tmp_path):
         "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
         "met wie hij het doet: iemand in een badjas."
     )
-    assert bullets.count(wouter) == 1
+    assert sum(wouter in bullet for bullet in bullets) == 1
     assert len(bullets) == len(dict.fromkeys(bullets))

@@ -25,15 +25,15 @@ from .story import (
     PEER_RULE_LABELS,
     attribute_list,
     clue_paragraphs,
-    condition_list,
     family_rules,
+    murdoku_key,
     murdoku_rules,
     object_list,
     phrase,
     role_list,
 )
 
-SCHEMA = 2  # 2 added `deductive`, how the ladder solves the puzzle
+SCHEMA = 3  # 3 replaced `conditions` with the board `key`; 2 added `deductive`
 LICENSE = (
     "\u00a9 Otto Perdeck. All rights reserved. You may play these puzzles on this site; "
     "any other use needs the author's written permission."
@@ -280,17 +280,17 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
             for key in (
                 "rules_title",
                 "clues",
-                "conditions",
                 "question",
                 "figures",
                 "attributes",
                 "roles",
                 "objects",
+                "key",
             )
         },
         "rules": rules,
         "clues": clue_paragraphs(text, presentation.clue_text),
-        "conditions": [{"name": n, "text": t} for n, t in condition_list(text)],
+        "key": [{"name": n, "text": t} for n, t in murdoku_key(text)],
         "question": presentation.question,
         "reveal": " ".join(presentation.reveal),
         "attributes": [{"name": n, "text": t} for n, t in attribute_list(text)],
@@ -324,7 +324,7 @@ def _family(
         "rules": family_rules(text, kind),
         "headings": {"rules_title": phrase(text, "doc.rules_title")},
         "clues": [],
-        "conditions": [],
+        "key": [],
         "question": "",
     }
     if kind in UNSUPPORTED:

@@ -277,7 +277,7 @@ export class PuzzleView {
     );
   }
 
-  // --- panel: clues, rules, conditions -------------------------------------
+  // --- panel: clues, rules, key -------------------------------------------
 
   private heading(key: string, fallback: string): string {
     return this.bundle.headings?.[key] ?? fallback;
@@ -315,8 +315,8 @@ export class PuzzleView {
     if (b.roles?.length) rules.append(this.namedList(this.heading("roles", "Roles"), b.roles));
     if (b.objects?.length) rules.append(this.namedList(this.heading("objects", "Objects"), b.objects));
     sections.push(["rules", this.heading("rules_title", "Rules"), rules]);
-    if (b.conditions.length > 0) {
-      sections.push(["conditions", this.heading("conditions", "Conditions"), this.namedList(null, b.conditions)]);
+    if (b.key.length > 0) {
+      sections.push(["key", this.heading("key", "Key"), this.namedList(null, b.key)]);
     }
 
     const tabs = el("div", { className: "tabs" });
@@ -352,7 +352,8 @@ export class PuzzleView {
         term.append(icon);
       }
       term.append(name);
-      list.append(term, el("dd", { textContent: text }));
+      if (text) list.append(term, el("dd", { textContent: text }));
+      else list.append(term);
     }
     return title ? el("div", {}, el("h3", { textContent: title }), list) : list;
   }

@@ -57,6 +57,7 @@ Murdoku: Mice in the garden
 
 Intro:
 Two mice, a fountain, a lantern and some cheese sit on the grid lines of this garden, not inside the squares.
+Place everyone on a free square, one per row and column.
 Whoever stands in a square touching such a point is next to it, even when that square lies in another area.
 
 Question:
