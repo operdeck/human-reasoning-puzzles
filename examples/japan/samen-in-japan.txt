@@ -16,8 +16,8 @@ Samen in Japan
 
 Intro:
 Zes reizigers zijn neergestreken in Tokyo, Osaka, Kyoto en Okinawa. Onderweg
-komen ze een bonsai, een tempel, een sushibar en een tatami tegen. Zet iedereen
-op een vrij vakje, met één persoon per rij en per kolom.
+komen ze een bonsai, een tempel, een sushibar en een tatami mat tegen. Zet
+iedereen op een vrij vakje, met één persoon per rij en per kolom.
 
 Words:
 Tokyo: in Tokyo
@@ -27,7 +27,7 @@ Okinawa: in Okinawa
 bonsai: de bonsai
 tempel: de tempel
 sushibar: de sushibar
-tatami: de tatami
+tatami: de tatami mat
 
 Regions:
 t: Tokyo #F6D8D8
