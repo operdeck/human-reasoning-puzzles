@@ -1030,8 +1030,7 @@ def test_a_rule_the_intro_already_says_is_listed_once():
         "Precies één persoon heeft sloffen aan.",
         "Precies één persoon heeft een bril op.",
     ]
-    assert rules[4].startswith("Een vakje van een begaanbaar voorwerp")
-    assert rules[5] == rules[-1]
+    assert rules[4] == rules[-1]
     assert len(rules) == len(dict.fromkeys(rules))
 
 

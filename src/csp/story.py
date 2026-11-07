@@ -89,9 +89,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.clue_next_to_border": (
             "A door, window or point object counts as next to across an area border."
         ),
-        "doc.clue_next_to_large": (
-            "A square of a multi-square standable object counts as on or next to it."
-        ),
         "doc.clue_distance": "Distance counts steps across sides, not diagonals.",
         "doc.standable": "you can stand on it",
         "doc.blocking": "nobody can stand here",
@@ -313,9 +310,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.key_ring_text": "de vakjes waar een telling over gaat",
         "doc.clue_next_to_border": (
             "Een deur, raam of puntobject telt ook over een gebiedsgrens heen als 'naast'."
-        ),
-        "doc.clue_next_to_large": (
-            "Een vakje van een begaanbaar voorwerp met meerdere vakjes telt als 'op of naast'."
         ),
         "doc.clue_distance": "Afstand telt stappen over zijden, niet schuin.",
         "doc.standable": "hier kun je op staan",
@@ -2744,11 +2738,12 @@ def murdoku_rules(text: str) -> list[str]:
     explains_distance = ("distance" in intro or "afstand" in intro) and any(
         word in intro for word in ("step", "stap", "diagonal", "schuin")
     )
-    if kinds & {"next_to", "not_next_to", "role_next_to"} and not explains_next_to:
-        if board.edge_items or board.point_objects:
-            clue_notes.append(phrase(text, "doc.clue_next_to_border"))
-        if any(len(obj.squares) > 1 for obj in board.standable_objects):
-            clue_notes.append(phrase(text, "doc.clue_next_to_large"))
+    if (
+        kinds & {"next_to", "not_next_to", "role_next_to"}
+        and not explains_next_to
+        and (board.edge_items or board.point_objects)
+    ):
+        clue_notes.append(phrase(text, "doc.clue_next_to_border"))
     if kinds & {"within", "at_least", "furthest"} and not explains_distance:
         clue_notes.append(phrase(text, "doc.clue_distance"))
     said = [
