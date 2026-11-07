@@ -639,8 +639,7 @@ def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
     monkeypatch.setattr(picture, "murdoku_picture", capture)
     docx_export._picture_stream(example("wie-doet-het-met-wie-1.txt").read_text(), None, None)
     assert seen["global_counts"]
-    # The page states the counts itself, so the picture leaves those lines out and
-    # only keeps the key for the dashed ring.
+    # The page states the counts itself, so the picture leaves those lines out.
     assert seen["count_lines"] is False
 
 

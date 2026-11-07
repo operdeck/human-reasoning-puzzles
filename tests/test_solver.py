@@ -2142,6 +2142,66 @@ quietest_area area:Alpha
     _assert_logged_steps_preserve_solutions(model, placements)
 
 
+def test_both_area_population_clues_take_multiple_areas():
+    base = """Size: 5
+Regions:
+a: Alpha
+b: Bravo
+c: Charlie
+Grid:
+a a a b b
+a a b b b
+a b b b b
+c c c c c
+c c c c c
+People:
+Ada
+Ben
+Cal
+Dot
+Eve
+Clues:
+busiest_area area:Bravo
+quietest_area area:Alpha
+"""
+    square = murdoku.Square
+    bravo_tie = {
+        "Ada": square(0, 0),  # Alpha
+        "Ben": square(0, 3),  # Bravo
+        "Cal": square(1, 3),  # Bravo
+        "Dot": square(3, 0),  # Charlie
+        "Eve": square(4, 1),  # Charlie
+    }
+    quiet_tie = {
+        "Ada": square(0, 0),  # Alpha
+        "Ben": square(0, 3),  # Bravo
+        "Cal": square(1, 3),  # Bravo
+        "Dot": square(2, 2),  # Bravo
+        "Eve": square(3, 0),  # Charlie
+    }
+    for old, new, placement in (
+        (
+            "busiest_area area:Bravo",
+            "busiest_area area:Bravo area:Charlie",
+            bravo_tie,
+        ),
+        (
+            "quietest_area area:Alpha",
+            "quietest_area area:Alpha area:Charlie",
+            quiet_tie,
+        ),
+    ):
+        text = base.replace(old, new)
+        board, clues = load_board(text)
+        (check,) = [
+            item
+            for item in murdoku.area_population_conditions(board, clues)
+            if old.split()[0] == item.kind
+        ]
+        assert check.tokens == tuple(new.split()[1:])
+        assert check.holds(board, placement)
+
+
 def test_next_to_a_mark_wording_names_the_marked_set():
     from csp.story import clue_texts
 

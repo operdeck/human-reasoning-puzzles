@@ -84,8 +84,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.key_door": "Door",
         "doc.key_window": "Window",
         "doc.key_point": "Point",
-        "doc.key_ring": "Dashed ring",
-        "doc.key_ring_text": "the squares a count is about",
         "doc.clue_next_to_border": (
             "A door, window or point object counts as next to across an area border."
         ),
@@ -306,8 +304,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.key_door": "Deur",
         "doc.key_window": "Raam",
         "doc.key_point": "Punt",
-        "doc.key_ring": "Gestippelde ring",
-        "doc.key_ring_text": "de vakjes waar een telling over gaat",
         "doc.clue_next_to_border": (
             "Een deur, raam of puntobject telt ook over een gebiedsgrens heen als 'naast'."
         ),
@@ -2688,11 +2684,11 @@ def board_notes(text: str) -> list[str]:
 def murdoku_key(text: str) -> list[tuple[str, str]]:
     """(label, name) for each board symbol the rules do not otherwise name.
 
-    Doors, windows, point objects and the dashed count ring are the symbols
-    whose meaning is not in the text; regions are labelled on the board, and
-    marks, roles and attributes are stated in the rules or listed beside it.
+    Doors, windows and point objects are symbols whose meaning is not in the
+    text; regions are labelled on the board, and marks, roles and attributes are
+    stated in the rules or listed beside it.
     """
-    board, clues = load_board(text)
+    board, _ = load_board(text)
     say = Wording.read(text)
     out: list[tuple[str, str]] = []
     for name in sorted(board.edge_item_names | board.point_object_names):
@@ -2704,12 +2700,6 @@ def murdoku_key(text: str) -> list[tuple[str, str]]:
         pretty = say.words.get(name, name.replace("_", " "))
         bare = re.sub(r"^(the|a|an|de|het|een)\s+", "", pretty, flags=re.IGNORECASE)
         out.append((label, "" if bare.casefold() == label.casefold() else pretty))
-    marked = {square for mark in board.marks for square in mark.cells}
-    if any(
-        set(condition.scope_cells(board)) - marked
-        for condition in global_count_conditions(board, clues)
-    ):
-        out.append((say("doc.key_ring"), say("doc.key_ring_text")))
     return out
 
 

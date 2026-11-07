@@ -166,10 +166,9 @@ def murdoku_picture(
     document that states them in the rules or in a list beside the board.
     Without `area_tags` it leaves out the area tags (for documents that state
     them). `language` ("en" or "nl") sets the legend wording; `count_texts` gives
-    the plain-language global counts (from `story`), else their clue syntax, and
-    the legend explains the dashed ring that marks what a count counts. Without
-    `count_lines` it leaves the counts themselves to the document around the
-    picture, which is what the booklet does. An interactive picture has no
+    the plain-language global counts (from `story`), else their clue syntax.
+    Without `count_lines` it leaves the counts themselves to the document around
+    the picture, which is what the booklet does. An interactive picture has no
     legend: the player panel explains the symbols.
     """
     if interactive:
@@ -218,7 +217,10 @@ def murdoku_picture(
     # unmarked squares it counts (avoids a second, misleading ring).
     marked = {square for mark in board.marks for square in mark.cells}
     count_scope = {
-        square for condition in global_counts for square in condition.scope_cells(board)
+        square
+        for condition in global_counts
+        if condition.object_scope
+        for square in condition.scope_cells(board)
     } - marked
     for r in range(board.size):
         for c in range(board.size):
@@ -2110,13 +2112,11 @@ def _bare_name(name: str) -> str:
 LEGEND_WORDS = {
     "en": {"door": "Door", "window": "Window", "point": "Point", "cells": "cells",
            "alone": "alone in area", "not_alone": "shares area", "global": "Global",
-           "ring": "dashed ring: the squares a count is about",
            "maybe": "maybe", "apart": "at most one of these per area", "one": "a {name}",
            "of_anyone": "of anyone"},
     "nl": {"door": "Deur", "window": "Raam", "point": "Punt", "cells": "vakjes",
            "alone": "alleen in het gebied", "not_alone": "deelt het gebied",
            "global": "Telling",
-           "ring": "gestippelde ring: de vakjes waar een telling over gaat",
            "maybe": "misschien",
            "apart": "niet meer dan 1 hiervan per gebied", "one": "een {name}",
            "of_anyone": "van iedereen"},
@@ -2204,15 +2204,6 @@ class _Legend:
                 )
             ]
         ]
-        # Rings are drawn exactly when a count has squares to point at, so that is
-        # when the key has to explain them.
-        # A square already in a mark shows that mark's cue, not a count ring, so
-        # the key only explains count rings that are actually drawn.
-        marked = {square for mark in board.marks for square in mark.cells}
-        ring = any(set(condition.scope_cells(board)) - marked for condition in self.global_counts)
-        self.ring_lines = (
-            textwrap.wrap(self.words["ring"], width=max(12, max_chars - 3)) if ring else []
-        )
         self.count_rows = sum(max(1, len(lines)) for lines in self.global_count_lines)
         self.height = (
             (
@@ -2224,7 +2215,7 @@ class _Legend:
                 + len(self.tag_lines)
             )
             * self.line
-            + (self.count_rows + len(self.ring_lines)) * self.count_line
+            + self.count_rows * self.count_line
             + cell // 6
         )
 
@@ -2343,29 +2334,6 @@ class _Legend:
                 middle = (x, top + self.count_line / 2)
                 canvas.text(middle, line, COUNT_SCOPE, self.count_size, anchor="lm")
                 top += self.count_line
-        if self.ring_lines:
-            self._ring_note(canvas, x, top)
-
-    def _ring_note(self, canvas: Canvas, x: int, top: int) -> None:
-        """The dashed-ring swatch with what it means, under the count lines."""
-        side = self.count_size
-        wide = side * 8 // 5
-        ring = (x, top + (self.count_line - side) / 2, x + wide, top + (self.count_line + side) / 2)
-        canvas.ellipse(
-            ring,
-            outline=COUNT_SCOPE,
-            width=max(1, side // 5),
-            dash=(max(2.0, wide / 4), max(2.0, wide / 7)),
-        )
-        left = x + wide + side // 2
-        for index, line in enumerate(self.ring_lines):
-            canvas.text(
-                (left, top + self.count_line * (index + 0.5)),
-                line,
-                COUNT_SCOPE,
-                self.count_size,
-                anchor="lm",
-            )
 
     def _role_line(self, name: str) -> str:
         """Who holds the role, who may, and whether holders are in different areas."""

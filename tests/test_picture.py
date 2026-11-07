@@ -1594,45 +1594,28 @@ def test_count_legend_uses_the_given_plain_language_texts():
     assert "object:badjas" not in markup
 
 
-def test_the_legend_explains_the_dashed_ring_that_marks_a_count():
+def test_the_legend_does_not_explain_the_count_ring():
     from csp import murdoku
 
     text = example("wie-doet-het-met-wie-1.txt").read_text()
     board, clues = load_board(text)
     counts = murdoku.global_count_conditions(board, clues)
     dutch = drawing.murdoku_picture(board, global_counts=counts, language="nl").to_svg()
-    assert "gestippelde ring: de vakjes waar een telling over gaat" in dutch
     english = drawing.murdoku_picture(board, global_counts=counts, language="en").to_svg()
-    assert "dashed ring: the squares a count is about" in english
-    # No count, no ring, and so nothing to explain either.
-    plain = drawing.murdoku_picture(board, language="nl").to_svg()
-    assert "gestippelde ring" not in plain
+    assert "gestippelde ring" not in dutch
+    assert "dashed ring" not in english
 
 
-def test_a_count_with_nothing_to_ring_adds_no_note():
+def test_only_object_counts_have_a_scope_ring():
     from csp import murdoku
 
-    text = """Size: 2
-Regions:
-a: room
-Grid:
-a a
-a a
-Attributes:
-bril: Ada
-People:
-Ada
-Ben
-Clues:
-count people with attribute:bril = 1
-"""
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
     board, clues = load_board(text)
-    (condition,) = murdoku.global_count_conditions(board, clues)
-    legend = picture._Legend(board, CELL, global_counts=[condition])
-    # A count over an attribute has no square to point at: it is listed, not rung.
-    assert legend.ring_lines == []
-    assert legend.global_count_lines
-    assert legend.height > picture._Legend(board, CELL).height
+    counts = murdoku.global_count_conditions(board, clues)
+    assert any(condition.object_scope for condition in counts)
+
+    plain = load_board(example("samen-in-japan.txt").read_text())
+    assert not any(condition.object_scope for condition in murdoku.global_count_conditions(*plain))
 
 
 def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
@@ -1717,7 +1700,7 @@ def test_interactive_murdoku_has_no_legend_and_booklet_keeps_only_the_symbol_key
     interactive_svg = interactive.to_svg()
     booklet_svg = booklet.to_svg()
     assert "dashed ring" not in interactive_svg
-    assert "dashed ring" in booklet_svg
+    assert "dashed ring" not in booklet_svg
     assert "Door: archway" in booklet_svg
     for omitted in ("quiet: alone", "Navigator", "Trained", "North:", "Global"):
         assert omitted not in booklet_svg

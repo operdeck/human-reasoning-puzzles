@@ -70,8 +70,8 @@ def _picture_stream(
     board, clues = load_board(text)
     if not backdrop:
         board.backdrop = None
-    # The counts are rules the page states itself, but the dashed ring on the
-    # board still has to be explained where it is drawn.
+    # The counts are rules the page states itself, so leave their lines out of
+    # the picture.
     image = picture.murdoku_picture(
         board,
         solution,

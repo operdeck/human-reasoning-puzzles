@@ -451,7 +451,7 @@ Arguments are one-token names; `[n]` is optional.
 | `<relation> P selector [args]` | quantified pair clue, e.g. `above Ada role:bandit` |
 | `exactly n clue ; clue ...` | exactly `n` of the simple clues hold (≤ 3 people; no quantified targets, `only_on`, `alone_with`) |
 | `count people on\|in\|with selector cmp` | occupants of objects, areas/lines/marks, or holders of a role/attribute |
-| `busiest_area area:A`, `quietest_area area:A [area:B ...]` | the area(s) holding the most (fewest) people: named areas tie with each other and every other area is strictly below (above) them; areas nobody can stand in are ignored |
+| `busiest_area area:A [area:B ...]`, `quietest_area area:A [area:B ...]` | the area(s) holding the most (fewest) people: named areas tie with each other and every other area is strictly below (above) them; areas nobody can stand in are ignored |
 | `count empty areas all\|in area cmp`, `count empty cells in selector cmp` | empty logical areas or free cells |
 
 `cmp` is `= n`, `<= n`, `>= n`, `odd`, `even` or `lo..hi`. Selectors:

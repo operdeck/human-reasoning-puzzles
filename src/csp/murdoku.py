@@ -780,8 +780,9 @@ GROUP_CLUES = {
 # COUNTED_PEOPLE people, since the engine tries every combination of their squares.
 COUNTING = "exactly"
 GLOBAL_COUNTING = "count"
-# The area with the most (or the fewest) people: `busiest_area area:Tokyo`,
-# `quietest_area area:Okinawa area:Kyoto`. Named areas tie with each other.
+# The area(s) with the most (or the fewest) people:
+# `busiest_area area:Tokyo area:Kyoto`, `quietest_area area:Okinawa area:Osaka`.
+# Named areas tie with each other.
 AREA_POPULATION = {"busiest_area": "most", "quietest_area": "fewest"}
 POPULATION_PREFIX = "area_population"
 COUNTED_PEOPLE = 3
@@ -910,6 +911,16 @@ class GlobalCountCondition:
         if self.kind == "people_with":
             return set()
         return set(self.cells(board))
+
+    @property
+    def object_scope(self) -> bool:
+        """Whether this count is about concrete objects/marks, not whole areas."""
+        return self.selector is not None and self.selector.kind in (
+            "object",
+            "object_kind",
+            "edge_item",
+            "point_object",
+        )
 
     def regions(self, board: Board) -> set[str]:
         return set(
@@ -2791,7 +2802,7 @@ def render(
     count_scope = {
         square
         for condition in global_counts
-        if condition.label in active_sources
+        if condition.object_scope and condition.label in active_sources
         for square in condition.scope_cells(board)
     }
     at: dict[Square, str] = {}

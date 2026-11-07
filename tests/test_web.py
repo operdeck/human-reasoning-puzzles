@@ -306,13 +306,11 @@ def test_murdoku_web_key_lists_board_symbols_only(exported):
     assert "conditions" not in point
     assert any(name in {"Point", "Punt"} for name in [item["name"] for item in point["key"]])
     assert all(
-        item["name"]
-        in {"Deur", "Door", "Raam", "Window", "Punt", "Point", "Gestippelde ring", "Dashed ring"}
-        for item in point["key"]
+        item["name"] in {"Deur", "Door", "Raam", "Window", "Punt", "Point"} for item in point["key"]
     )
 
     counted = _bundle(exported, "samen-in-japan")
-    assert "Gestippelde ring" in [item["name"] for item in counted["key"]]
+    assert counted["key"] == []
 
 
 def test_every_murdoku_key_lists_only_board_symbols(exported):
@@ -323,8 +321,6 @@ def test_every_murdoku_key_lists_only_board_symbols(exported):
         "Raam",
         "Point",
         "Punt",
-        "Dashed ring",
-        "Gestippelde ring",
     }
     for path in exported.glob("*.json"):
         if path.name == "index.json":

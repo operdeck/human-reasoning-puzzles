@@ -1105,13 +1105,28 @@ def test_every_sudoku_variant_states_its_extra_rule():
 
 def test_murdoku_key_lists_only_board_symbols():
     key = murdoku_key(example("murdoku_composition.txt").read_text())
-    assert [name for name, _ in key] == ["Door", "Point", "Window", "Dashed ring"]
-    assert key[-1][1] == "the squares a count is about"
+    assert [name for name, _ in key] == ["Door", "Point", "Window"]
 
 
 def test_murdoku_key_uses_the_words_aliases():
     key = murdoku_key(example("murdoku_2_point_objects.txt").read_text())
     assert any("top edge" in text for _, text in key)
+
+
+def test_only_object_counts_get_a_dashed_scope_ring():
+    board, clues = load_board(example("murdoku_composition.txt").read_text())
+    conditions = murdoku.global_count_conditions(board, clues)
+    assert [condition.object_scope for condition in conditions] == [
+        True,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+    ]
 
 
 def test_wrapped_intro_lines_stay_one_rule():
