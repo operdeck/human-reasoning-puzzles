@@ -1,14 +1,36 @@
 # Human Reasoning Puzzles
 
-**Create, solve, play, and print original logic puzzles.**
+**Play free logic puzzles online, and build your own with an explainable Python constraint solver.**
 
 [![Play the puzzles](https://img.shields.io/badge/%E2%96%B6%20Play%20the%20puzzles-online-2ea44f?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/)
+[![Play Murdoku online](https://img.shields.io/badge/%F0%9F%94%8E%20Play%20Murdoku-murder%20mysteries-8957e5?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/murdoku/)
 
 Explore a growing collection of playable and printable puzzles, from Sudoku,
 Queens and Star Battle to Zebra grids and custom Murdoku mystery series. An explainable
-constraint engine powers the solver; Puzzle Lab helps create and validate new
+constraint engine powers the solver, which solves the way a person would, with named
+deduction rules rather than search; Puzzle Lab helps create and validate new
 puzzles from seeds and specifications, while dedicated Murdoku tools turn loose
 clues and board sketches into original mysteries.
+
+**For players:** [Murdoku](https://operdeck.github.io/human-reasoning-puzzles/murdoku/), Sudoku, Queens, Kakuro,
+Akari and more run in the browser, with notes and auto-marking. **For developers:** a
+Python 3.12 constraint-propagation engine, a puzzle generator and difficulty grader, and a
+TypeScript + Vite player, all Apache-2.0.
+
+## Credits
+
+**Murdoku is [Manuel Garand](https://murdoku.com)'s invention, not this project's.** He is
+a puzzle maker from Montréal, and his Murdoku books (Lannoo in Dutch, Union Square & Co.
+in English) are the real thing: they are better designed and more fun than the cases in
+this repository, so buy one and solve it with pen and paper. The Murdoku puzzles here are
+the author's own, some of them written with AI help; they are an homage, not a
+replacement. Murdoku is a trademark of Digivoid Studios Inc., and this project is not
+affiliated with it.
+
+The same line stands under every Murdoku board in the player, on the home page and the
+Murdoku landing page, on each Murdoku puzzle's own page, and in front of a generated
+`--docx` booklet that contains Murdoku cases. The Sudoku, Queens, Kakuro and other
+families get their own puzzles only.
 
 ## Quick start
 
@@ -141,6 +163,11 @@ cd web && npm install
 npm run export   # writes web/public/puzzles
 npm run dev      # or: npm test, npm run build
 ```
+
+`npm run build` also prerenders a static page per puzzle, a Murdoku landing page,
+`sitemap.xml` and `robots.txt` over the player, so search engines see real pages
+(`web/scripts/prerender.mjs`). The one-time repository topics, site verification and
+sitemap submission that go with it are in [discoverability notes](docs/discoverability.md).
 
 Place a piece with a click or tap (or arrow keys and Space, or the piece's number key),
 cross off a square with right-click, long-press or the Cross tool, and undo with Ctrl+Z.

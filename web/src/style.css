@@ -57,6 +57,10 @@ footer {
   color: var(--muted);
 }
 
+footer .credit {
+  margin: 0.25rem 0 0;
+}
+
 /* --- landing page ------------------------------------------------------- */
 
 .site-header h1 {
@@ -77,6 +81,13 @@ footer {
 .site-header .repo-link a:focus-visible {
   color: var(--accent);
   text-decoration: underline;
+}
+
+/* Credit to Murdoku's inventor, kept in the header above the puzzle list. */
+.site-header .credit {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .family {
