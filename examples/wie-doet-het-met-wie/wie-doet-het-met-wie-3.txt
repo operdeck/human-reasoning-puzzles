@@ -69,7 +69,7 @@ count people on object:zonnebril = 1 | Precies één persoon heeft een zonnebril
 
 Clues:
 above object:zonnebril Pieter 1 | De gast met de zonnebril staat precies één rij boven Pieter.
-on Sanne badjas | Sanne draagt een badjas.
+on Sanne badjas | Sanne draagt alleen een badjas.
 on Daan zonnebril | Daan heeft een zonnebril op.
 in_region Sanne bosjes
 in_region Femke zee

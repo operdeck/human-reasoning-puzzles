@@ -58,7 +58,7 @@ count people on object:badjas = 1 | Precies één persoon draagt een badjas.
 count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
 
 Clues:
-on Bram badjas | Bram draagt een badjas.
+on Bram badjas | Bram draagt slechts een badjas.
 left_of object:badjas Noor | Noor staat ergens rechts van de gast met de badjas.
 next_to Eva tafel
 
