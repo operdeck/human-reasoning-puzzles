@@ -259,7 +259,7 @@ Right:
 
 ### Dominosa
 
-`Numbers:` is a grid of N+1 rows and N+2 columns of numbers 0..N, N from 1 to 6 (no `Size:`). Cover the grid with dominoes so every pair {0-0, 0-1, …, N-N} is used exactly once. Only the numbers are given; the compiler builds one variable per domino type. In the web player each cell is marked as the left, right, top or bottom half of its domino.
+`Numbers:` is a grid of N+1 rows and N+2 columns of numbers 0..N, N from 1 to 6 (no `Size:`). Cover the grid with dominoes so every pair {0-0, 0-1, …, N-N} is used exactly once. Only the numbers are given; the compiler builds one variable per domino type. Pictures print each number as that many pips on a 3×3 lattice, the way a domino stone does, so a 0 is a blank half; the pips sit above the solution's ivory stones, so a solved board looks like real dominoes. In the web player each cell is marked as the left, right, top or bottom half of its domino.
 
 ### Rectangles (Shikaku)
 

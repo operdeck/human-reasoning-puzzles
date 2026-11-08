@@ -1040,17 +1040,48 @@ def dominosa_picture(
         for r in range(puzzle.rows):
             for c in range(puzzle.cols):
                 x, y = margin + c * cell, margin + r * cell
-                canvas.text(
-                    (x + cell / 2, y + cell * 0.56),
-                    str(puzzle.numbers[r][c]),
-                    INK,
-                    int(cell * 0.5),
-                    anchor="mm",
-                    halo=(246, 239, 217),
-                )
+                _domino_pips(canvas, (x, y, x + cell, y + cell), puzzle.numbers[r][c])
     if interactive:
         _rect_cells(canvas, puzzle.rows, puzzle.cols, margin, cell)
     return canvas
+
+
+# Where the pips of a domino sit, on a 3x3 lattice: each entry is (column, row), both 0..2.
+# The patterns are the familiar ones, 0 being a blank half.
+DOMINO_PIPS: dict[int, tuple[tuple[int, int], ...]] = {
+    0: (),
+    1: ((1, 1),),
+    2: ((0, 0), (2, 2)),
+    3: ((0, 0), (1, 1), (2, 2)),
+    4: ((0, 0), (2, 0), (0, 2), (2, 2)),
+    5: ((0, 0), (2, 0), (1, 1), (0, 2), (2, 2)),
+    6: ((0, 0), (0, 1), (0, 2), (2, 0), (2, 1), (2, 2)),
+}
+
+
+def _domino_pips(canvas: Canvas, box: Box, value: int) -> None:
+    """Draw a number as domino pips: dots on a 3x3 lattice, `0` left blank."""
+    pattern = DOMINO_PIPS.get(value)
+    if pattern is None:  # a stone has no face for more than six; keep the digit readable
+        x0, y0, x1, y1 = box
+        canvas.text(
+            ((x0 + x1) / 2, y0 + (y1 - y0) * 0.56),
+            str(value),
+            INK,
+            int((x1 - x0) * 0.5),
+            anchor="mm",
+            halo=(246, 239, 217),
+        )
+        return
+    x0, y0, x1, y1 = box
+    size = min(x1 - x0, y1 - y0)
+    radius = size * 0.085
+    inset = size * 0.25
+    step = (size - 2 * inset) / 2
+    for column, row in pattern:
+        cx = x0 + inset + column * step
+        cy = y0 + inset + row * step
+        canvas.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=INK)
 
 
 POLE_ICONS = {"+": "magnet_plus", "-": "magnet_minus", "0": "magnet_neutral"}

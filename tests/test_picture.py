@@ -10,7 +10,7 @@ PIL = pytest.importorskip("PIL")
 pytest.importorskip("resvg_py")
 from PIL import Image  # noqa: E402
 
-from csp import bruteforce, cli, icons, svg  # noqa: E402
+from csp import bruteforce, cli, dominosa, icons, svg  # noqa: E402
 from csp import picture as drawing  # noqa: E402
 from csp.murdoku import Board, BoardObject, EdgeItem, PointObject, RoleSpec, Square  # noqa: E402
 from csp.puzzlefile import load_board, load_presentation  # noqa: E402
@@ -1678,7 +1678,16 @@ def test_a_bad_decoration_line_is_rejected():
         load_board(text)
 
 
-def test_a_backdrop_with_bounds_sticks_out_above_the_board():
+def test_dominosa_draws_pips_instead_of_digits():
+    puzzle = dominosa.parse(example("dominosa_1_5x6.txt").read_text())
+    svg_text = drawing.dominosa_picture(puzzle, cell=CELL).to_svg()
+    # One dot per number, and a 0 has none: no digits are printed any more.
+    assert svg_text.count("<ellipse") == sum(map(sum, puzzle.numbers))
+    assert not re.search(r">\s*[0-6]\s*<", svg_text)
+    for value, pips in drawing.DOMINO_PIPS.items():
+        assert len(pips) == value and len(set(pips)) == value
+        assert all(0 <= column <= 2 and 0 <= row <= 2 for column, row in pips)
+
     board = load_board(example("prrrdoku1.txt").read_text())[0]
     assert board.backdrop == "lapjeskat"
     image = drawing.murdoku_picture(board, cell=CELL, legend=False)
