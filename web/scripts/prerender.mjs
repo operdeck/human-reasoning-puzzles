@@ -8,6 +8,12 @@
 //
 // No dependencies. Usage: node scripts/prerender.mjs [distDir]
 // SITE_URL overrides the public address (default: the GitHub Pages URL).
+//
+// Site-verification meta tags (Google, Bing, Yandex) in web/index.html are copied into
+// every prerendered <head>: the build's own head is replaced below, so a tag added there
+// would otherwise vanish in dist/. robots.txt is written for completeness, but on a
+// GitHub Pages project site it is not served from the domain root, so crawlers ignore it:
+// submit sitemap.xml by hand instead. See docs/discoverability.md.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -15,6 +21,13 @@ const SITE = (process.env.SITE_URL ?? "https://operdeck.github.io/human-reasonin
 const REPO = "https://github.com/operdeck/human-reasoning-puzzles";
 const SITE_NAME = "Human reasoning puzzles";
 const dist = path.resolve(process.argv[2] ?? "dist");
+
+// The shell vite just built: it keeps the CSS/JS tags for the home page below, and carries
+// whatever site-verification meta tags web/index.html had (head() below rebuilds the rest).
+const built = await readFile(path.join(dist, "index.html"), "utf8");
+const verificationTags = [
+  ...built.matchAll(/<meta name="(?:google-site-verification|msvalidate\.01|yandex-verification)"[^>]*>/g),
+].map((match) => match[0]);
 
 const esc = (text) =>
   String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -25,7 +38,7 @@ const sizeText = (entry) => `${entry.size[0]}×${entry.size[1]}`;
 function head({ title, description, canonical, image, jsonLd }) {
   return `<meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${esc(title)}</title>
+    ${verificationTags.map((tag) => `${tag}\n    `).join("")}<title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}" />
     <link rel="canonical" href="${esc(canonical)}" />
     <meta property="og:type" content="website" />
@@ -74,8 +87,9 @@ const families = [...new Set(puzzles.map((p) => p.familyLabel))];
 const homeDescription =
   `Play ${puzzles.length} free logic puzzles online: Murdoku murder mysteries, Sudoku, Queens, Star Battle, ` +
   `Kakuro, Zebra grids and more. Every puzzle can be solved by reasoning alone, with an open-source explainable solver.`;
-const built = await readFile(path.join(dist, "index.html"), "utf8");
-const assets = [...built.matchAll(/<(?:link rel="stylesheet"|script type="module")[^>]*>(?:<\/script>)?/g)].map((m) => m[0]);
+const builtAssets = [...built.matchAll(/<(?:link rel="stylesheet"|script type="module")[^>]*>(?:<\/script>)?/g)].map(
+  (m) => m[0],
+);
 const homeHead = head({
   title: `${SITE_NAME} – play Murdoku, Sudoku, Queens and more online`,
   description: homeDescription,
@@ -104,7 +118,7 @@ const homeBody = `<main id="app">
     </main>`;
 await writeFile(
   path.join(dist, "index.html"),
-  `<!doctype html>\n<html lang="en">\n  <head>\n    ${homeHead}\n    ${assets.join("\n    ")}\n  </head>\n  <body>\n    ${homeBody}\n  </body>\n</html>\n`,
+  `<!doctype html>\n<html lang="en">\n  <head>\n    ${homeHead}\n    ${builtAssets.join("\n    ")}\n  </head>\n  <body>\n    ${homeBody}\n  </body>\n</html>\n`,
 );
 
 // 2. Murdoku landing page.
