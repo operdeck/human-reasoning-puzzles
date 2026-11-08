@@ -19,6 +19,7 @@
 
 **Bug Fix(es)**
 * Murdoku bonsai icon: `bonsai` now uses a custom potted miniature-tree drawing instead of the Japanese pine-decoration emoji (`U+1F38D`), which did not read as a bonsai.
+* Web player: with **Auto-mark** on, the palette now crosses out the people already on the board, in the same grey as an auto-marked square, so a Murdoku no longer makes you scan the board to see who is left. The cross lives over the person's picture and its label greys out; the button still works for moving that person. Items a board may hold more than once (mines, stars) keep their button, because crossing them would be wrong.
 * *Murdoku: Mice in the garden* (`examples/demo/murdoku_2_point_objects.txt`): the red paper lantern on the bottom edge is now a **cat**, so the point-objects demo reads as an ordinary garden. The anchor and the clue are unchanged (`cat: r5.5c2`, `next_to Eli cat`), so the solution, the grade and the point-object lesson stay the same.
 * *Wie doet het met wie?*: the garment clue in *Na het tuinfeest* now reads "Bram draagt slechts een badjas." and in *Op het strand* "Sanne draagt alleen een badjas en is in de bosjes.", matching the "alleen een badjas" wording the sleepover puzzle already used. Only the player-facing clue text changed; clues, boards, grades and solutions are unchanged.
 * Samen in Japan now uses a sushi bar (`sushibar`, a counter with a noren and sushi) instead of a sushi plate; the food puzzles keep their sushi plate.

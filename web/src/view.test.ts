@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { conflictText, mineCounter, verdictText } from "./view";
+// @vitest-environment happy-dom
+import { beforeEach, describe, expect, it } from "vitest";
+import { conflictText, mineCounter, PuzzleView, verdictText } from "./view";
+import type { Bundle } from "./game";
 
 describe("conflictText", () => {
   it("identifies the conflicting cell and the exported rule", () => {
@@ -38,6 +40,88 @@ describe("verdictText", () => {
     expect(verdictText({ status: "incomplete", missing: 2 }, "nl", undefined, mijn)).toBe(
       "Nog geen fouten; nog 2 mijnen te plaatsen.",
     );
+  });
+});
+
+describe("palette", () => {
+  const BOARD = `<svg viewBox="0 0 100 100"><g class="cells">
+    <rect class="cell" id="r1c1" x="0" y="0" width="50" height="50"/>
+    <rect class="cell" id="r1c2" x="50" y="0" width="50" height="50"/>
+    <rect class="cell" id="r2c1" x="0" y="50" width="50" height="50"/>
+    <rect class="cell" id="r2c2" x="50" y="50" width="50" height="50"/>
+  </g></svg>`;
+
+  function bundle(overrides: Partial<Bundle> = {}): Bundle {
+    return {
+      schema: 3,
+      id: "crossed-people",
+      family: "murdoku",
+      title: "Two people",
+      grade: "single",
+      deductive: true,
+      static: "two-people.svg",
+      license: "",
+      language: "en",
+      size: [2, 2],
+      playable: true,
+      palette: [
+        { id: "Ada", label: "Ada", symbol: "Ad" },
+        { id: "Bo", label: "Bo", symbol: "Bo" },
+      ],
+      placement: { perItem: 1, blocked: [] },
+      autoMark: { default: true, mark: "cross", onPlace: [{ scope: "row" }, { scope: "col" }] },
+      givens: {},
+      solution: { r1c1: "Ada", r2c2: "Bo" },
+      rules: [],
+      clues: [],
+      key: [],
+      question: "",
+      ...overrides,
+    };
+  }
+
+  function mount(overrides: Partial<Bundle> = {}): HTMLElement {
+    const root = document.createElement("main");
+    new PuzzleView(bundle(overrides), BOARD).render(root);
+    return root;
+  }
+
+  function press(root: HTMLElement, key: string): void {
+    const board = root.querySelector<HTMLElement>(".board");
+    if (!board) throw new Error("no board");
+    board.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  }
+
+  beforeEach(() => localStorage.clear());
+
+  it("crosses the person that is on the board", () => {
+    const root = mount();
+    expect(root.querySelectorAll(".tool.used")).toHaveLength(0);
+    press(root, "ArrowRight");
+    press(root, "Enter");
+    const used = [...root.querySelectorAll(".palette .tool.used")];
+    expect(used).toHaveLength(1);
+    expect(used[0].textContent).toContain("Ada");
+    expect(used[0].querySelectorAll(".used-cross line")).toHaveLength(2);
+  });
+
+  it("drops the cross when auto-mark is switched off", () => {
+    const root = mount();
+    press(root, "ArrowRight");
+    press(root, "Enter");
+    const auto = root.querySelector<HTMLInputElement>(".assist-controls .auto input");
+    if (!auto) throw new Error("no auto-mark switch");
+    auto.checked = false;
+    auto.dispatchEvent(new Event("change"));
+    expect(root.querySelectorAll(".tool.used")).toHaveLength(0);
+    expect(auto.checked).toBe(false);
+  });
+
+  it("never crosses an item the board may hold more than once", () => {
+    const root = mount({ placement: { perCell: 1, blocked: [] } });
+    press(root, "ArrowRight");
+    press(root, "Enter");
+    expect(root.querySelectorAll(".tool.used")).toHaveLength(0);
   });
 });
 

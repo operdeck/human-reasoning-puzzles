@@ -15,6 +15,7 @@ import {
   toggleClue,
   toggleNote,
   cellId,
+  usedItems,
   type Bundle,
   type CellId,
   type Named,
@@ -376,10 +377,12 @@ export class PuzzleView {
         button.append(swatch);
         if (item.svg || item.label !== item.symbol) button.append(el("span", { textContent: item.label }));
         button.title = item.description ? `${item.label}: ${item.description}` : item.label;
+        swatch.append(this.usedCross());
       } else {
         button.append(el("span", { className: "swatch cross", textContent: "✕" }), el("span", { textContent: "Cross" }));
         button.title = "Cross tool (also right-click or long-press)";
       }
+      button.dataset.baseTitle = button.title;
       button.addEventListener("click", () => this.selectTool(id));
       this.paletteButtons.set(id, button);
       bar.append(button);
@@ -392,6 +395,26 @@ export class PuzzleView {
       bar.append(this.notesButton);
     }
     return bar;
+  }
+
+  /**
+   * The grey cross over a palette button whose item is already on the board.
+   * `preserveAspectRatio="none"` keeps the two lines corner to corner whatever
+   * the button's width, so it reads like the auto-mark on a cell.
+   */
+  private usedCross(): SVGElement {
+    const svg = svgEl("svg", {
+      class: "used-cross",
+      viewBox: "0 0 100 100",
+      preserveAspectRatio: "none",
+      "aria-hidden": "true",
+    });
+    const pad = 18;
+    svg.append(
+      svgEl("line", { x1: pad, y1: pad, x2: 100 - pad, y2: 100 - pad }),
+      svgEl("line", { x1: 100 - pad, y1: pad, x2: pad, y2: 100 - pad }),
+    );
+    return svg;
   }
 
   private selectTool(id: string): void {
@@ -616,6 +639,14 @@ export class PuzzleView {
     this.redoButton.disabled = !this.history.canRedo;
     this.autoBox.checked = state.auto;
     this.warningsBox.checked = state.warnings;
+    const used = usedItems(this.bundle, state);
+    for (const [id, button] of this.paletteButtons) {
+      const crossed = used.has(id);
+      button.classList.toggle("used", crossed);
+      button.title = crossed
+        ? `${button.dataset.baseTitle ?? ""} — ${this.bundle.language === "nl" ? "al geplaatst" : "already placed"}`
+        : button.dataset.baseTitle ?? "";
+    }
     this.clueBoxes.forEach((box, index) => {
       box.checked = state.usedClues.includes(index);
       box.closest("li")?.classList.toggle("used", box.checked);

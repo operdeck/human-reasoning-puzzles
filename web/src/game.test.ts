@@ -14,6 +14,7 @@ import {
   setCross,
   struckNotes,
   toggleNote,
+  usedItems,
   type Bundle,
 } from "./game";
 
@@ -112,6 +113,26 @@ describe("auto marks", () => {
     expect(autoMarks(b, state).has("r1c4")).toBe(false);
     state = place(b, state, "r1c3", "star");
     expect(autoMarks(b, state).has("r1c4")).toBe(true);
+  });
+});
+
+describe("palette crosses", () => {
+  it("name the items the board already holds, so the palette can grey them", () => {
+    const b = murdoku();
+    let state = emptyState(b);
+    expect(usedItems(b, state).size).toBe(0);
+    state = place(b, state, "r1c1", "Joost");
+    expect(usedItems(b, state)).toEqual(new Set(["Joost"]));
+  });
+
+  it("follow auto-mark and never cross an item that may repeat", () => {
+    const b = murdoku();
+    const off = { ...place(b, emptyState(b), "r1c1", "Joost"), auto: false };
+    expect(usedItems(b, off).size).toBe(0);
+
+    const stars2 = stars();
+    const placedStar = place(stars2, emptyState(stars2), "r1c1", "star");
+    expect(usedItems(stars2, placedStar).size).toBe(0);
   });
 });
 

@@ -195,6 +195,19 @@ export function autoMarks(bundle: Bundle, state: State): Set<CellId> {
 }
 
 /**
+ * The palette items the board already holds, so the palette can cross them out
+ * like an auto-marked cell.
+ *
+ * Only when auto-mark is switched on — the same toggle that greys the cells a
+ * piece rules out — and only for items that appear at most once per board. A
+ * mine or a star may be placed many times, so its button is never crossed.
+ */
+export function usedItems(bundle: Bundle, state: State): Set<string> {
+  if (!state.auto || !bundle.autoMark || bundle.placement?.perItem !== 1) return new Set();
+  return new Set(Object.values(state.placed));
+}
+
+/**
  * Pencil marks ruled out by a placement: `cell` maps to the noted items that a
  * peer already holds. Derived like the auto marks, so they come back on undo.
  */
