@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildDate,
   DEFAULT_SITE,
   MURDOKU_CREDIT,
   prerender,
@@ -37,6 +38,9 @@ const sudoku = {
 
 const index = { license: "All rights reserved.", puzzles: [murdoku, sudoku] };
 
+// A fixed build date keeps the sitemap assertions (and diffs) stable.
+const TODAY = "2026-11-08";
+
 const shell = `<!doctype html>
 <html lang="en">
   <head>
@@ -49,7 +53,8 @@ const shell = `<!doctype html>
 </html>
 `;
 
-const render = (site = DEFAULT_SITE, built = shell) => renderPages({ index, built, site });
+const render = (site = DEFAULT_SITE, built = shell, lastmod = TODAY) =>
+  renderPages({ index, built, site, lastmod });
 const pageFor = (files: { path: string; contents: string }[], wanted: string) =>
   files.find((file) => file.path === wanted)?.contents ?? "";
 
@@ -120,6 +125,20 @@ describe("renderPages", () => {
     expect(pageFor(render(), "robots.txt")).toContain(`Sitemap: ${DEFAULT_SITE}/sitemap.xml`);
   });
 
+  it("dates every sitemap entry, and lets a puzzle date itself", () => {
+    const dates = pageFor(render(), "sitemap.xml").match(/<lastmod>[^<]+<\/lastmod>/g);
+    expect(dates).toEqual(Array(4).fill(`<lastmod>${TODAY}</lastmod>`));
+    const dated = renderPages({
+      index: { ...index, puzzles: [{ ...murdoku, updated: "2025-01-02" }, sudoku] },
+      built: shell,
+      site: DEFAULT_SITE,
+      lastmod: TODAY,
+    });
+    expect(pageFor(dated, "sitemap.xml")).toContain(
+      `<url><loc>${DEFAULT_SITE}/p/first-case/</loc><lastmod>2025-01-02</lastmod></url>`,
+    );
+  });
+
   it("follows SITE_URL for previews on another host", () => {
     const files = render("https://example.test/preview/");
     expect(pageFor(files, "index.html")).toContain('<link rel="canonical" href="https://example.test/preview/" />');
@@ -162,5 +181,19 @@ describe("prerender", () => {
       "The first case",
     );
     expect(await readFile(path.join(dist, "robots.txt"), "utf8")).toContain("Sitemap:");
+  });
+});
+
+describe("buildDate", () => {
+  it("uses today in UTC, or SOURCE_DATE_EPOCH for a reproducible build", () => {
+    expect(buildDate(new Date("2026-11-08T23:30:00Z"))).toBe("2026-11-08");
+    const saved = process.env.SOURCE_DATE_EPOCH;
+    process.env.SOURCE_DATE_EPOCH = "1700000000";
+    try {
+      expect(buildDate(new Date("2026-11-08T23:30:00Z"))).toBe("2023-11-14");
+    } finally {
+      if (saved === undefined) delete process.env.SOURCE_DATE_EPOCH;
+      else process.env.SOURCE_DATE_EPOCH = saved;
+    }
   });
 });

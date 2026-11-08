@@ -43,6 +43,15 @@ export function verificationTags(built) {
   return [...built.matchAll(VERIFICATION)].map((match) => match[0]);
 }
 
+/** What a sitemap should claim as "last modified" for the pages this build writes: today in
+ * UTC, or `SOURCE_DATE_EPOCH` when the build sets it (GitHub Actions sets nothing, so the
+ * deploy date is the honest default). Sitemaps take a W3C date, so keep it to YYYY-MM-DD. */
+export function buildDate(now = new Date()) {
+  const epoch = process.env.SOURCE_DATE_EPOCH;
+  const date = epoch && /^\d+$/.test(epoch) ? new Date(Number(epoch) * 1000) : now;
+  return date.toISOString().slice(0, 10);
+}
+
 function head({ title, description, canonical, image, jsonLd }, tags) {
   return `<meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -93,7 +102,7 @@ function page(headHtml, body) {
 
 
 /** Every file the post-build step writes, as { path, contents } relative to the dist dir. */
-export function renderPages({ index, built, site = DEFAULT_SITE }) {
+export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = buildDate() }) {
   const address = site.replace(/\/$/, "");
   const tags = verificationTags(built);
   const puzzles = index.puzzles;
@@ -218,15 +227,21 @@ export function renderPages({ index, built, site = DEFAULT_SITE }) {
   }
 
 
-  // 4. Sitemap and robots.txt.
-  const urls = [
-    `${address}/`,
-    `${address}/murdoku/`,
-    ...puzzles.map((p) => `${address}/p/${encodeURIComponent(p.id)}/`),
+  // 4. Sitemap and robots.txt. A puzzle may date itself (`updated` in the export); the
+  // hand-written pages take the build date, so nothing claims to be fresher than it is.
+  const entries = [
+    { loc: `${address}/`, lastmod },
+    { loc: `${address}/murdoku/`, lastmod },
+    ...puzzles.map((p) => ({
+      loc: `${address}/p/${encodeURIComponent(p.id)}/`,
+      lastmod: p.updated ?? lastmod,
+    })),
   ];
   files.push({
     path: "sitemap.xml",
-    contents: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${esc(u)}</loc></url>`).join("\n")}\n</urlset>\n`,
+    contents: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries
+      .map((entry) => `  <url><loc>${esc(entry.loc)}</loc><lastmod>${esc(entry.lastmod)}</lastmod></url>`)
+      .join("\n")}\n</urlset>\n`,
   });
   files.push({
     path: "robots.txt",
