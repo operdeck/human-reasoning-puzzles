@@ -1,14 +1,21 @@
 # Human Reasoning Puzzles
 
-**Create, solve, play, and print original logic puzzles.**
+**Play free logic puzzles online, and build your own with an explainable Python constraint solver.**
 
 [![Play the puzzles](https://img.shields.io/badge/%E2%96%B6%20Play%20the%20puzzles-online-2ea44f?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/)
+[![Play Murdoku online](https://img.shields.io/badge/%F0%9F%94%8E%20Play%20Murdoku-murder%20mysteries-8957e5?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/murdoku/)
 
 Explore a growing collection of playable and printable puzzles, from Sudoku,
 Queens and Star Battle to Zebra grids and custom Murdoku mystery series. An explainable
-constraint engine powers the solver; Puzzle Lab helps create and validate new
+constraint engine powers the solver, which solves the way a person would, with named
+deduction rules rather than search; Puzzle Lab helps create and validate new
 puzzles from seeds and specifications, while dedicated Murdoku tools turn loose
 clues and board sketches into original mysteries.
+
+**For players:** [Murdoku](https://operdeck.github.io/human-reasoning-puzzles/murdoku/), Sudoku, Queens, Kakuro,
+Akari and more run in the browser, with notes and auto-marking. **For developers:** a
+Python 3.12 constraint-propagation engine, a puzzle generator and difficulty grader, and a
+TypeScript + Vite player, all Apache-2.0.
 
 ## Quick start
 
