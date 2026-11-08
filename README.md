@@ -27,6 +27,11 @@ the author's own, some of them written with AI help; they are an homage, not a
 replacement. Murdoku is a trademark of Digivoid Studios Inc., and this project is not
 affiliated with it.
 
+The same line stands under every Murdoku board in the player, on the home page and the
+Murdoku landing page, on each Murdoku puzzle's own page, and in front of a generated
+`--docx` booklet that contains Murdoku cases. The Sudoku, Queens, Kakuro and other
+families get their own puzzles only.
+
 ## Quick start
 
 Requires Python 3.12+. Run directly with `uv`:

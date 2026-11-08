@@ -20,7 +20,10 @@ After `vite build`, `scripts/prerender.mjs` reads `dist/puzzles/index.json` (wri
 
 Every page gets a specific title, a meta description, a canonical URL, Open Graph
 tags and JSON-LD taken from the export. `SITE_URL` overrides the public address
-(default: the GitHub Pages URL) for previews on another host.
+(default: the GitHub Pages URL) for previews on another host. `prerender.mjs` keeps the
+pages as data (`renderPages`) and only writes them in `prerender`, so
+`web/scripts/prerender.test.ts` checks their HTML from a two-puzzle fixture at build time
+without running vite or the export.
 
 `robots.txt` is written for completeness but is **inert here**: this is a GitHub Pages
 *project* site, so `robots.txt` is not served from the domain root and crawlers ignore
