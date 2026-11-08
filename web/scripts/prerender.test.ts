@@ -1,7 +1,8 @@
 // The post-build step is a build script, but every page it writes is a string, so the
 // pages are checked here by rendering them from a small fixture index and comparing the
 // text, without running vite or a Python export.
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,9 +11,12 @@ import {
   DEFAULT_SITE,
   MURDOKU_CREDIT,
   prerender,
+  puzzleId,
   renderPages,
   REPO,
+  siteAddress,
   SITE_NAME,
+  sitemapDate,
   verificationTags,
 } from "./prerender.mjs";
 
@@ -154,6 +158,77 @@ describe("renderPages", () => {
   });
 });
 
+describe("hostile input", () => {
+  it("refuses puzzle ids that could leave the dist directory", () => {
+    for (const id of ["../../escaped", "a/b", "..", ".", "", "a\\b", null, 42]) {
+      expect(() =>
+        renderPages({
+          index: { puzzles: [{ ...murdoku, id }] },
+          built: shell,
+          site: DEFAULT_SITE,
+          lastmod: TODAY,
+        }),
+      ).toThrow(/unsafe puzzle id/);
+    }
+    expect(puzzleId({ id: "murdoku_1_first_case" }, 0)).toBe("murdoku_1_first_case");
+    expect(puzzleId({ id: "food-murdoku-2" }, 3)).toBe("food-murdoku-2");
+  });
+
+  it("writes nothing outside the directory being built", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "prerender-hostile-"));
+    const dist = path.join(root, "dist");
+    await mkdir(path.join(dist, "puzzles"), { recursive: true });
+    await writeFile(path.join(dist, "index.html"), shell);
+    await writeFile(
+      path.join(dist, "puzzles", "index.json"),
+      JSON.stringify({ puzzles: [{ ...murdoku, id: "../../escaped" }] }),
+    );
+    await expect(prerender({ distDir: dist })).rejects.toThrow(/unsafe puzzle id/);
+    expect(existsSync(path.join(root, "escaped"))).toBe(false);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("refuses a SITE_URL that is not a plain http(s) origin", () => {
+    for (const site of ["not a url", "javascript:alert(1)", "file:///etc/passwd",
+      "https://user:pass@example.test", "data:text/html,<script>"]) {
+      expect(() =>
+        renderPages({ index, built: shell, site, lastmod: TODAY }),
+      ).toThrow(/SITE_URL/);
+    }
+    expect(siteAddress("https://example.test/preview/")).toBe("https://example.test/preview");
+    expect(siteAddress("https://example.test/preview///?x=1#y")).toBe("https://example.test/preview");
+  });
+
+  it("refuses a SITE_URL that carries whitespace or control characters", () => {
+    for (const site of ["https://evil.test/\nUser-agent: *\nDisallow: /", "https://evil.test/ ", "https://evil.test/\u0000"]) {
+      expect(() =>
+        renderPages({ index, built: shell, site, lastmod: TODAY }),
+      ).toThrow(/whitespace or control characters/);
+    }
+  });
+
+  it("ignores dates the export cannot promise", () => {
+    const files = renderPages({
+      index: { puzzles: [{ ...murdoku, updated: "not-a-date</lastmod><x>" }] },
+      built: shell,
+      site: DEFAULT_SITE,
+      lastmod: TODAY,
+    });
+    expect(pageFor(files, "sitemap.xml")).not.toContain("not-a-date");
+    expect(pageFor(files, "sitemap.xml")).toContain(`<lastmod>${TODAY}</lastmod>`);
+    expect(sitemapDate("2025-01-02", TODAY)).toBe("2025-01-02");
+    expect(sitemapDate(undefined, TODAY)).toBe(TODAY);
+  });
+
+  it("fails loudly on an index without puzzles instead of writing junk", () => {
+    for (const bad of [{}, { puzzles: "nope" }, null]) {
+      expect(() =>
+        renderPages({ index: bad as never, built: shell, site: DEFAULT_SITE, lastmod: TODAY }),
+      ).toThrow(/no puzzles array/);
+    }
+  });
+});
+
 describe("verificationTags", () => {
   it("carries a Google or Bing verification tag from the built shell into every page", () => {
     const tagged = shell.replace(
@@ -181,6 +256,7 @@ describe("prerender", () => {
       "The first case",
     );
     expect(await readFile(path.join(dist, "robots.txt"), "utf8")).toContain("Sitemap:");
+    await rm(dist, { recursive: true, force: true });
   });
 });
 

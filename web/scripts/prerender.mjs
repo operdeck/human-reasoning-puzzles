@@ -31,6 +31,10 @@ export const MURDOKU_CREDIT =
 
 const VERIFICATION =
   /<meta name="(?:google-site-verification|msvalidate\.01|yandex-verification)"[^>]*>/g;
+// A puzzle id becomes a directory name under dist/p/, so accept only what the player accepts
+// in location.hash: no separators, no "..", no escapes that could leave the dist directory.
+const SAFE_ID = /^[\w.-]+$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const esc = (text) =>
   String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -50,6 +54,40 @@ export function buildDate(now = new Date()) {
   const epoch = process.env.SOURCE_DATE_EPOCH;
   const date = epoch && /^\d+$/.test(epoch) ? new Date(Number(epoch) * 1000) : now;
   return date.toISOString().slice(0, 10);
+}
+
+/** A sitemap date, or `fallback` (a date from the export is data, not a promise). */
+export const sitemapDate = (value, fallback) =>
+  typeof value === "string" && DATE.test(value) ? value : fallback;
+
+/** The public address: absolute, http(s), no credentials, no query or fragment, no trailing
+ * slash. Throws instead of letting a mistyped SITE_URL reach robots.txt or a canonical URL. */
+export function siteAddress(site = DEFAULT_SITE) {
+  if (typeof site !== "string" || /[\s\u0000-\u001f\u007f]/.test(site)) {
+    throw new Error("prerender: SITE_URL must be one URL without whitespace or control characters");
+  }
+  let url;
+  try {
+    url = new URL(site);
+  } catch {
+    throw new Error(`prerender: SITE_URL is not an absolute URL: ${JSON.stringify(site)}`);
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error(`prerender: SITE_URL must be http(s), not ${url.protocol}`);
+  }
+  if (url.username || url.password) {
+    throw new Error("prerender: SITE_URL must not carry credentials");
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+}
+
+/** A puzzle id, checked before it is used as a directory name; throws on anything else. */
+export function puzzleId(entry, position) {
+  const id = entry?.id;
+  if (typeof id !== "string" || !SAFE_ID.test(id) || id === "." || id === "..") {
+    throw new Error(`prerender: refusing unsafe puzzle id ${JSON.stringify(id)} at index ${position}`);
+  }
+  return id;
 }
 
 function head({ title, description, canonical, image, jsonLd }, tags) {
@@ -103,9 +141,15 @@ function page(headHtml, body) {
 
 /** Every file the post-build step writes, as { path, contents } relative to the dist dir. */
 export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = buildDate() }) {
-  const address = site.replace(/\/$/, "");
+  if (!index || !Array.isArray(index.puzzles)) {
+    throw new Error("prerender: index.json has no puzzles array");
+  }
+  const address = siteAddress(site);
+  const buildDay = sitemapDate(lastmod, buildDate());
   const tags = verificationTags(built);
   const puzzles = index.puzzles;
+  // Every id is checked before anything is written: it becomes dist/p/<id>/index.html.
+  puzzles.forEach(puzzleId);
   const murdoku = puzzles.filter(isMurdoku);
   const families = [...new Set(puzzles.map((p) => p.familyLabel))];
   const files = [];
@@ -230,11 +274,11 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
   // 4. Sitemap and robots.txt. A puzzle may date itself (`updated` in the export); the
   // hand-written pages take the build date, so nothing claims to be fresher than it is.
   const entries = [
-    { loc: `${address}/`, lastmod },
-    { loc: `${address}/murdoku/`, lastmod },
+    { loc: `${address}/`, lastmod: buildDay },
+    { loc: `${address}/murdoku/`, lastmod: buildDay },
     ...puzzles.map((p) => ({
       loc: `${address}/p/${encodeURIComponent(p.id)}/`,
-      lastmod: p.updated ?? lastmod,
+      lastmod: sitemapDate(p.updated, buildDay),
     })),
   ];
   files.push({
@@ -252,11 +296,16 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
 
 /** Write the prerendered pages into `distDir`; returns the puzzle count and the files written. */
 export async function prerender({ distDir = "dist", site, built } = {}) {
-  const shell = built ?? (await readFile(path.join(distDir, "index.html"), "utf8"));
-  const index = JSON.parse(await readFile(path.join(distDir, "puzzles", "index.json"), "utf8"));
+  const root = path.resolve(distDir);
+  const shell = built ?? (await readFile(path.join(root, "index.html"), "utf8"));
+  const index = JSON.parse(await readFile(path.join(root, "puzzles", "index.json"), "utf8"));
   const files = renderPages({ index, built: shell, site: site ?? siteFromEnv() });
   for (const file of files) {
-    const target = path.join(distDir, file.path);
+    const target = path.resolve(root, file.path);
+    // Belt and braces next to the id check: never write outside the directory being built.
+    if (!target.startsWith(`${root}${path.sep}`)) {
+      throw new Error(`prerender: refusing to write outside ${root}: ${file.path}`);
+    }
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, file.contents);
   }
