@@ -57,6 +57,10 @@ footer {
   color: var(--muted);
 }
 
+footer .credit {
+  margin: 0.25rem 0 0;
+}
+
 /* --- landing page ------------------------------------------------------- */
 
 .site-header h1 {
