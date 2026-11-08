@@ -785,6 +785,7 @@ GLOBAL_COUNTING = "count"
 # Named areas tie with each other.
 AREA_POPULATION = {"busiest_area": "most", "quietest_area": "fewest"}
 POPULATION_PREFIX = "area_population"
+POPULATION_FAMILY = "area population"
 COUNTED_PEOPLE = 3
 ATTRIBUTE_FILTERS = frozenset(("has_attribute", "not_attribute"))
 
@@ -2103,12 +2104,12 @@ def _compile_area_population(
                 model,
                 f"{POPULATION_PREFIX}_{region}_{k}",
                 f"{name} holds at least {k}",
-                "area population",
+                POPULATION_FAMILY,
             )
             if k > len(occupants[region]):
                 model.assign(
                     is_below,
-                    "area population",
+                    POPULATION_FAMILY,
                     f"{name} cannot hold {k} people",
                     sources=(f"{name} has {len(occupants[region])} free squares",),
                 )
@@ -2119,7 +2120,7 @@ def _compile_area_population(
                     occupants[region],
                     allowed_counts=set(range(k, len(occupants[region]) + 1)),
                     reified_by=is_at_least,
-                    family="area population",
+                    family=POPULATION_FAMILY,
                 )
             levels[region, k] = (is_at_least, is_below)
         return levels[region, k]
@@ -2131,7 +2132,7 @@ def _compile_area_population(
             if k == maximum:
                 model.assign(
                     below,
-                    "area population",
+                    POPULATION_FAMILY,
                     f"{board.region_names[fewer]} holds fewer than {k}",
                     sources=(f"{board.region_names[more]} holds more",),
                 )
@@ -2141,7 +2142,7 @@ def _compile_area_population(
                 f"{board.region_names[more]} outnumbers {board.region_names[fewer]}",
                 Kind.AT_MOST_ONE,
                 [at_least, short],
-                family="area population",
+                family=POPULATION_FAMILY,
             )
 
     def same(first: str, second: str) -> None:
@@ -2153,7 +2154,7 @@ def _compile_area_population(
                 f"{board.region_names[first]} and {board.region_names[second]} agree on {k}",
                 Kind.AT_MOST_ONE,
                 [up, short],
-                family="area population",
+                family=POPULATION_FAMILY,
             )
             up, _ = level(second, k)
             _, short = level(first, k)
@@ -2161,7 +2162,7 @@ def _compile_area_population(
                 f"{board.region_names[second]} and {board.region_names[first]} agree on {k}",
                 Kind.AT_MOST_ONE,
                 [up, short],
-                family="area population",
+                family=POPULATION_FAMILY,
             )
 
     for condition in conditions:

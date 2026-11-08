@@ -176,6 +176,20 @@ candidate**, deduced from board-wide rules, never told.
   when the open candidates share an attribute it says so ("Moordenaar: een
   vrouw"); only the solution picture names them. Check with `--png`. Figure
   descriptions must not hint at the role.
+- **"Who wears it?" is the same shape.** A standable garment with no clue of its
+  own answers it: put the garment on the square of the person with no clues and
+  check with `--explain` that this person is placed last, so the `Reveal:`
+  ("Sora heeft de jumpsuit aan.") is the final deduction. A
+  `count people on object:<garment> = 1` rule tells the solver the square is
+  occupied and pins the wearer early, so leave it out and let the `Intro:` say
+  that standing on the garment means wearing it.
+- **Population clues need squares that can change area.** `busiest_area`,
+  `quietest_area` and `count people in area:…` constrain which *squares* are
+  used, not who stands on them, so a puzzle whose people are each anchored to a
+  square implies them and `report` calls them removable. Two people swapping
+  two squares never changes a count: leave a row/column whose cells straddle an
+  area border (a staircase border is ideal) and re-run `report`, which must say
+  "several" for each population clue you want load-bearing.
 
 ## Where files go
 

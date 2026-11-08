@@ -25,11 +25,12 @@ from itertools import combinations, groupby
 from typing import Any, Literal
 
 from . import battleships, minesweeper, starbattle, sudoku
-from .core import Kind, Model, Solver, Step
+from .core import Constraint, Kind, Model, Solver, Step
 from .murdoku import (
     AREA_POPULATION,
     COUNTING,
     FILTERS,
+    POPULATION_FAMILY,
     Board,
     Clue,
     Condition,
@@ -53,6 +54,11 @@ from .murdoku import (
 )
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_presentation, read_sections
+
+# The hidden "this area holds at least k people" literals behind `busiest_area` and
+# `quietest_area` are compiled with an English label; the narrator says them in the
+# puzzle's own language.
+_POPULATION_NAME = re.compile(r"^(?P<area>.+) holds at least (?P<count>\d+)$")
 
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
@@ -214,6 +220,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.busiest_area": "the area with the most people is {areas}",
         "clue.quietest_area": "the area with the fewest people is {areas}",
         "count_reason": "the allowed counts for {name} are {counts}",
+        "count.population_reason": "the {area} area holding at least {count} people",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
         "global_count.at_least": "at least {n}",
@@ -434,6 +441,7 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "clue.alone_with_anyone_n": "{a} deelt een gebied met precies {n} anderen",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
+        "count.population_reason": "het gebied {area} met minstens {count} mensen",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
         "global_count.at_least": "minstens {n}",
@@ -1606,6 +1614,25 @@ class Story:
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return _cap(self.say("chain_so", ends=ends, outcome=outcome))
 
+    def _count_name(self, constraint: Constraint) -> str:
+        """A count constraint's name as the player reads it, not as the engine spells it.
+
+        The hidden "this area holds at least k people" literals behind
+        `busiest_area`/`quietest_area` are compiled with an English label; reading it
+        out would put engine words in a Dutch explanation.
+        """
+        if constraint.family == POPULATION_FAMILY:
+            found = _POPULATION_NAME.match(constraint.name)
+            if found:
+                return str(
+                    self.say(
+                        "count.population_reason",
+                        area=found["area"],
+                        count=self.say.number(int(found["count"])),
+                    )
+                )
+        return constraint.name
+
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
     ) -> str:
@@ -1645,7 +1672,7 @@ class Story:
                 allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
         counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
         reason = self._role_area_reason(constraint, allowed) or self.say(
-            "count_reason", name=constraint.name, counts=counts
+            "count_reason", name=self._count_name(constraint), counts=counts
         )
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."

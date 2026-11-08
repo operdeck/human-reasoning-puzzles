@@ -249,6 +249,17 @@ def test_story_is_bullets_and_leads_with_the_direct_clues(name):
     assert paragraphs[0].startswith("- **De directe aanwijzingen.**")
 
 
+def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal():
+    """`busiest_area`/`quietest_area` compile hidden "holds at least k" literals.
+
+    Their names are engine labels, so a Dutch explanation has to say them in Dutch
+    instead of quoting "Voor Hiroshima holds at least 2 ...".
+    """
+    story = explain(example("samen-in-de-blauwe-bladeren.txt").read_text())
+    assert "holds at least" not in story
+    assert "het gebied Okinawa met minstens twee mensen" in story
+
+
 def test_story_describes_by_region_and_row_before_squares():
     story = explain((example("prrrdoku3.txt")).read_text())
     assert "Luna zit in het water" in story

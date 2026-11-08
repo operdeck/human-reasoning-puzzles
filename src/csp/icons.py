@@ -510,6 +510,66 @@ ALLIUM = (
     )
     + "</g>"
 )
+# A katana at rest: a long blade with a bright edge, a small oval guard and a
+# wrapped hilt with red lacing. Hanzo steel, and no blood on it.
+KATANA = (
+    '<path d="M38 64C56 48 74 30 90 14L94 20C78 36 60 54 42 70Z" fill="#dfe6ee"'
+    ' stroke="#8b98a6" stroke-width="2" stroke-linejoin="round"/>'
+    '<path d="M40 62C57 46 75 28 90 14L89 25C74 40 57 57 42 68Z" fill="#ffffff"'
+    ' opacity="0.75"/>'
+    '<ellipse cx="36" cy="72" rx="12" ry="4.5" fill="#3a4048" stroke="#20242a"'
+    ' stroke-width="2" transform="rotate(-42 36 72)"/>'
+    '<path d="M33 76L14 92" stroke="#20242a" stroke-width="10" stroke-linecap="round"/>'
+    '<path d="M30 79L11 95" stroke="#c0392b" stroke-width="3" stroke-dasharray="5 5"/>'
+)
+# The yellow jumpsuit: sleeves, a zip down the front and a black racing stripe
+# down each side.
+JUMPSUIT = (
+    '<path d="M36 10L18 24L26 42L33 37V90H67V37L74 42L82 24L64 10L50 24Z"'
+    ' fill="#f5c542" stroke="#a8862a" stroke-width="3" stroke-linejoin="round"/>'
+    '<path d="M33 37V90M67 37V90" stroke="#2b2b2b" stroke-width="6"/>'
+    '<path d="M50 24V90" stroke="#a8862a" stroke-width="2"/>'
+    '<path d="M40 10L50 26L60 10" fill="none" stroke="#a8862a" stroke-width="2.5"'
+    ' stroke-linejoin="round"/>'
+    '<circle cx="50" cy="40" r="3" fill="#a8862a"/>'
+)
+# The yellow van from the side: a long bonnet, a dark window band, a black
+# stripe along the flank and two wheels.
+VAN = (
+    '<path d="M6 40H48L62 22H80L92 40V72H6Z" fill="#f5c542" stroke="#a8862a"'
+    ' stroke-width="3" stroke-linejoin="round"/>'
+    '<path d="M52 26H78L86 38H52Z" fill="#9dc4d8" stroke="#a8862a" stroke-width="2"/>'
+    '<path d="M6 54H92" stroke="#2b2b2b" stroke-width="5"/>'
+    '<circle cx="26" cy="74" r="10" fill="#2b2b2b"/>'
+    '<circle cx="26" cy="74" r="4" fill="#cfcfcf"/>'
+    '<circle cx="72" cy="74" r="10" fill="#2b2b2b"/>'
+    '<circle cx="72" cy="74" r="4" fill="#cfcfcf"/>'
+)
+# A neon sign over the street: kanji-like glyphs glowing in a dark frame.
+NEON_SIGN = (
+    '<rect x="26" y="4" width="48" height="92" rx="7" fill="#1b222c" stroke="#0e131a"'
+    ' stroke-width="3"/>'
+    '<g fill="none" stroke="#ff5fa2" stroke-width="5" stroke-linecap="round">'
+    '<path d="M37 22H63M50 22V44M37 44H63M38 44V66H62V44"/>'
+    "</g>"
+    '<g fill="none" stroke="#6fe3ff" stroke-width="4" stroke-linecap="round">'
+    '<path d="M38 74H62M50 74V88"/>'
+    "</g>"
+    '<g fill="none" stroke="#ffd166" stroke-width="3" opacity="0.85">'
+    '<path d="M26 4v92M74 4v92"/>'
+    "</g>"
+)
+# A hanging signboard: a warm white panel with kanji-like strokes in a red frame,
+# the shop signs that hang over a Tokyo street.
+SIGNBOARD = (
+    '<rect x="30" y="8" width="40" height="80" rx="4" fill="#f3ead6" stroke="#8d2b1f"'
+    ' stroke-width="5"/>'
+    '<g fill="none" stroke="#8d2b1f" stroke-width="5" stroke-linecap="round">'
+    '<path d="M40 24H60M50 24V40M40 40H60M41 40V58H59V40"/>'
+    '<path d="M40 68H60M50 68V80"/>'
+    "</g>"
+    '<path d="M50 8V0" stroke="#4c4c4c" stroke-width="3"/>'
+)
 LINE = 'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"'
 
 FILL = 'fill="currentColor"'
@@ -649,6 +709,11 @@ REGISTRY: dict[str, Icon] = {
             bounds=(0, 22, 100, 122),
         ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
+        Icon("katana", "\u2694", "katana", markup=KATANA),
+        Icon("jumpsuit", "\U0001f455", "jumpsuit", markup=JUMPSUIT),
+        Icon("van", "\U0001f699", "yellow van", markup=VAN),
+        Icon("neon", "\U0001f506", "neon sign", markup=NEON_SIGN),
+        Icon("signboard", "\U0001f3ee", "kanji signboard", markup=SIGNBOARD),
     )
 }
 
@@ -683,7 +748,11 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "table": "table", "tafel": "table",
                 "elevator_car": "elevator", "wall": "wall",
                 "rails": "rails", "spoor": "rails", "track": "rails",
-                "loopplank": "gangplank", "gangplank": "gangplank"}  # fmt: skip
+                "loopplank": "gangplank", "gangplank": "gangplank",
+                "katana": "katana", "zwaard": "katana", "sword": "katana",
+                "jumpsuit": "jumpsuit", "overall": "jumpsuit",
+                "wagen": "van", "busje": "van", "van": "van",
+                "neon": "neon", "neonbord": "neon", "uithangbord": "signboard"}  # fmt: skip
 
 # Dutch names as used in the puzzles, plus English synonyms.
 CATALOGUE: dict[str, str] = {

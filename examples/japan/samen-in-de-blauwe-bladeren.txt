@@ -1,0 +1,109 @@
+# Murdoku 9x9 -- "Samen in de Blauwe Bladeren" (area populations, a late reveal)
+#
+# The big sibling of samen-in-japan.txt and samen-onderweg.txt: nine clubbers,
+# five places, the same population theme on a board with room for more areas,
+# and one question instead of "where is everyone". Tokyo is the busiest and
+# Okinawa is one of the two quietest, so the pair only says "Tokyo holds the
+# most, Okinawa and Hiroshima tie for the fewest"; the quietest clue is what
+# keeps Yuki, Nami and Sora out of Okinawa.
+#
+# Sora has no clues of her own: she is placed last, and she is the one wearing
+# the yellow jumpsuit, so the answer only follows once everyone else stands.
+#
+# Decor (Kill Bill, without naming its characters): a katana of Hanzo steel, a
+# yellow jumpsuit to stand on, the yellow wagen in the corner, a pink neon sign
+# and a kanji signboard over the street, a lantern on the top edge, a torii on
+# the left edge and a cherry blossom on the bottom edge.
+#
+# Solution: Kaori r1c2, Renji r2c5, Mizuki r3c1, Goro r4c6, Hideo r5c8,
+# Yuki r6c9, Nami r7c3, Sora r8c4, Tatsuya r9c7 --
+# Tokyo 3, Osaka 2, Kyoto 2, Okinawa 1, Hiroshima 1. Sora wears the jumpsuit.
+
+Size: 9
+Language: nl
+
+Title:
+Samen in de Blauwe Bladeren
+
+Intro:
+Negen stamgasten van de Blauwe Bladeren, een neonclub in Japan, zoeken hun
+plek. Er ligt één gele jumpsuit; wie erop staat, heeft hem aan. Zet iedereen op
+een vrij vakje, met één persoon per rij en per kolom.
+
+Words:
+Tokyo: in Tokyo
+Osaka: in Osaka
+Kyoto: in Kyoto
+Okinawa: in Okinawa
+Hiroshima: in Hiroshima
+katana: de katana
+jumpsuit: de gele jumpsuit
+wagen: de gele wagen
+lantaarn: de lantaarn
+neon: het neonbord
+torii: de torii
+uithangbord: het uithangbord met kanji
+sakura: de kersenbloesem
+
+Regions:
+t: Tokyo #F6D8D8
+o: Osaka #FBE7C6
+h: Hiroshima #DCD6EF
+k: Kyoto #D9EAD3
+q: Okinawa #CFE8F0
+
+Grid:
+t t t t t t t o o
+t t t t t t o o o
+t t t t t o o o o
+h h h h h h o o o
+k k k k h h h o o
+k k k k h h h o o
+k k k k q q q q q
+k k k k q q q q q
+k k k q q q q q q
+
+Objects:
+katana: blocking r4c5
+jumpsuit: standable r8c4
+wagen: blocking r8c8 r8c9
+
+PointObjects:
+lantaarn: r0.5c2
+neon: r1.5c5
+torii: r3.5c0.5
+uithangbord: r3.5c6
+sakura: r9.5c7
+
+People:
+Kaori
+Renji
+Mizuki
+Goro
+Hideo
+Yuki
+Nami
+Tatsuya
+Sora
+
+Clues:
+busiest_area area:Tokyo
+quietest_area area:Okinawa area:Hiroshima
+next_to Kaori lantaarn
+next_to Renji neon
+next_to Mizuki torii
+same_region Mizuki Kaori
+next_to Goro uithangbord
+in_region Goro Hiroshima
+next_to Tatsuya sakura
+in_region Hideo Osaka
+left_of Hideo Yuki
+above Hideo Yuki
+left_of Nami Sora
+above Nami Sora
+
+Question:
+Wie heeft de jumpsuit aan?
+
+Reveal:
+Sora heeft de jumpsuit aan.
