@@ -7,6 +7,7 @@
     "export": "cd .. && uv run csp \"examples/**/*.txt\" --export web/public/puzzles",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "postbuild": "node scripts/prerender.mjs",
     "preview": "vite preview",
     "test": "vitest run"
   },
