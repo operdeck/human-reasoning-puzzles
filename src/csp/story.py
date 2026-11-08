@@ -219,6 +219,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.either_same_region": "{a} is in the same region as either {b} or {c}",
         "clue.busiest_area": "the area with the most people is {areas}",
         "clue.quietest_area": "the area with the fewest people is {areas}",
+        "clue.busiest_area_tie": "the areas with the most people are {areas}",
+        "clue.quietest_area_tie": "the areas with the fewest people are {areas}",
         "count_reason": "the allowed counts for {name} are {counts}",
         "count.population_reason": "the {area} area holding at least {count} people",
         "global_count.exact": "exactly {n}",
@@ -435,6 +437,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.either_same_region": "{a} is in hetzelfde gebied als {b} of {c}",
         "clue.busiest_area": "het gebied met de meeste mensen is {areas}",
         "clue.quietest_area": "het gebied met de minste mensen is {areas}",
+        "clue.busiest_area_tie": "de gebieden met de meeste mensen zijn {areas}",
+        "clue.quietest_area_tie": "de gebieden met de minste mensen zijn {areas}",
         "clue.alone_with_anyone": "{a} deelt een gebied met precies één ander persoon",
         "clue.alone_with_n": (
             "{a} deelt een gebied met precies {n} anderen, en dat zijn allemaal {target}"
@@ -2375,10 +2379,12 @@ class Story:
     def _clue_text(self, kind: str, args: Sequence[str], people: Sequence[str]) -> str:
         if kind in AREA_POPULATION:
             names = [token.partition(":")[2] or token for token in args]
-            listed = self.say.join(
-                [self.board.region_names[region] for region in sorted(self.board.area_ids(names))]
-            )
-            return self.say(f"clue.{kind}", areas=listed)
+            regions = sorted(self.board.area_ids(names))
+            listed = self.say.join([self.board.region_names[region] for region in regions])
+            # One named area reads as "the area with the fewest people is X"; a tie
+            # names several, so the sentence has to be plural.
+            key = f"clue.{kind}" if len(regions) == 1 else f"clue.{kind}_tie"
+            return self.say(key, areas=listed)
         if kind == COUNTING:
             n, parts = counted(args)
             if n == 1 and len(parts) == 2:

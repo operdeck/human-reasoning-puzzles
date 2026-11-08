@@ -2202,6 +2202,28 @@ quietest_area area:Alpha
         assert check.holds(board, placement)
 
 
+def test_a_population_tie_is_worded_in_the_plural():
+    from csp.story import clue_texts
+
+    one = """Size: 2
+Language: nl
+Regions:
+a: Alpha
+b: Bravo
+Grid:
+a b
+a b
+People:
+Ada
+Ben
+Clues:
+quietest_area area:Alpha
+"""
+    tie = one.replace("quietest_area area:Alpha", "quietest_area area:Alpha area:Bravo")
+    assert clue_texts(one) == ["Het gebied met de minste mensen is Alpha."]
+    assert clue_texts(tie) == ["De gebieden met de minste mensen zijn Alpha en Bravo."]
+
+
 def test_next_to_a_mark_wording_names_the_marked_set():
     from csp.story import clue_texts
 
