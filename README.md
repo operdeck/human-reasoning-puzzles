@@ -105,7 +105,7 @@ The newest families come from Simon Tatham's puzzle collection and compile to th
 <tr>
 <td><strong><a href="examples/towers_2_5x5.txt">Towers</a></strong><br>Each height once per row and column; an edge clue counts the towers you can see.<br><img src="docs/images/towers_2_5x5-solution.png" width="150" alt="Solved Towers puzzle"></td>
 <td><strong><a href="examples/mosaic_2_5x5.txt">Mosaic</a></strong><br>Black or white, so every number counts the black cells around it.<br><img src="docs/images/mosaic_2_5x5-solution.png" width="150" alt="Solved Mosaic puzzle"></td>
-<td><strong><a href="examples/dominosa_2_6x7.txt">Dominosa</a></strong><br>Cover the grid with dominoes, each pair of numbers used once.<br><img src="docs/images/dominosa_2_6x7-solution.png" width="150" alt="Solved Dominosa puzzle"></td>
+<td><strong><a href="examples/dominosa_2_6x7.txt">Dominosa</a></strong><br>Cover the grid with dominoes, each pair of numbers used once; the numbers are pips, as on a stone.<br><img src="docs/images/dominosa_2_6x7-solution.png" width="150" alt="Solved Dominosa puzzle"></td>
 </tr>
 <tr>
 <td><strong><a href="examples/rectangles_3_9x9.txt">Rectangles</a></strong><br>Cut the grid into rectangles, each holding one number equal to its area.<br><img src="docs/images/rectangles_3_9x9-solution.png" width="150" alt="Solved Rectangles puzzle"></td>
