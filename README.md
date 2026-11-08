@@ -17,6 +17,16 @@ Akari and more run in the browser, with notes and auto-marking. **For developers
 Python 3.12 constraint-propagation engine, a puzzle generator and difficulty grader, and a
 TypeScript + Vite player, all Apache-2.0.
 
+## Credits
+
+**Murdoku is [Manuel Garand](https://murdoku.com)'s invention, not this project's.** He is
+a puzzle maker from Montréal, and his Murdoku books (Lannoo in Dutch, Union Square & Co.
+in English) are the real thing: they are better designed and more fun than the cases in
+this repository, so buy one and solve it with pen and paper. The Murdoku puzzles here are
+the author's own, some of them written with AI help; they are an homage, not a
+replacement. Murdoku is a trademark of Digivoid Studios Inc., and this project is not
+affiliated with it.
+
 ## Quick start
 
 Requires Python 3.12+. Run directly with `uv`:
