@@ -220,6 +220,20 @@ describe("hostile input", () => {
     expect(sitemapDate(undefined, TODAY)).toBe(TODAY);
   });
 
+  it("escapes a hostile title out of the HTML and the JSON-LD block", () => {
+    const files = renderPages({
+      index: { puzzles: [{ ...sudoku, id: "ok", title: '</script><script>alert(1)</script>' }] },
+      built: shell,
+      site: DEFAULT_SITE,
+      lastmod: TODAY,
+    });
+    const page = pageFor(files, "p/ok/index.html");
+    expect(page).not.toContain("<script>alert");
+    expect(page.match(/<script/g)).toHaveLength(1); // the ld+json block, nothing else
+    expect(page).toContain("&lt;/script&gt;");
+    expect(page).toContain("\\u003c/script>");
+  });
+
   it("fails loudly on an index without puzzles instead of writing junk", () => {
     for (const bad of [{}, { puzzles: "nope" }, null]) {
       expect(() =>
