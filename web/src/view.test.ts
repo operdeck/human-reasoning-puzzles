@@ -1,7 +1,24 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from "vitest";
-import { conflictText, mineCounter, PuzzleView, verdictText } from "./view";
+import { conflictText, footerParagraphs, mineCounter, PuzzleView, verdictText } from "./view";
 import type { Bundle } from "./game";
+
+describe("footerParagraphs", () => {
+  it("credits Murdoku's inventor under a Murdoku board", () => {
+    const paragraphs = footerParagraphs("All rights reserved.", "murdoku");
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0].textContent).toContain("All rights reserved.");
+    expect(paragraphs[0].querySelector("a")?.textContent).toBe("Licence");
+    expect(paragraphs[1].className).toBe("credit");
+    expect(paragraphs[1].querySelector("a")?.getAttribute("href")).toBe("https://murdoku.com");
+  });
+
+  it("keeps other families to the licence alone", () => {
+    const paragraphs = footerParagraphs("All rights reserved.", "sudoku");
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0].querySelector(".credit")).toBeNull();
+  });
+});
 
 describe("conflictText", () => {
   it("identifies the conflicting cell and the exported rule", () => {

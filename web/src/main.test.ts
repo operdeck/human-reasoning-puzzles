@@ -96,6 +96,18 @@ describe("puzzle index", () => {
     expect(github?.rel).toBe("noreferrer");
   });
 
+  it("credits the inventor of Murdoku in the landing page header", async () => {
+    await openIndex();
+    const credit = document.querySelector(".site-header .credit");
+    expect(credit?.textContent).toContain("Murdoku was invented by Manuel Garand");
+    expect(credit?.textContent).toContain("better designed and more fun than the cases here");
+    const inventor = credit?.querySelector<HTMLAnchorElement>("a");
+    expect(inventor?.textContent).toBe("Manuel Garand");
+    expect(inventor?.getAttribute("href")).toBe("https://murdoku.com");
+    expect(inventor?.target).toBe("_blank");
+    expect(inventor?.rel).toBe("noreferrer");
+  });
+
   it("flags a puzzle the deduction ladder cannot close on its own", async () => {
     const collection = [
       { ...puzzles[0], id: "frontier", grade: "what_if", static: "frontier.svg", deductive: false },

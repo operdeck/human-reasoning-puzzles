@@ -716,7 +716,8 @@ FAMILY_RULES = {
     "mosaic": "Colour every cell black or white; a number says how many cells in the 3x3 "
     "block around it, itself included, are black.",
     "dominosa": "Cover the whole grid with dominoes so that every pair of numbers from the "
-    "full set (0-0, 0-1, ... up to the highest number) is used exactly once.",
+    "full set (0-0, 0-1, ... up to the highest number) is used exactly once. Each cell "
+    "shows its number as dots, the way a domino stone does; a cell without dots is a 0.",
     "rectangles": "Divide the grid into rectangles so that each contains exactly one number, "
     "equal to the number of cells in that rectangle.",
     "magnets": "Each domino is either a magnet, with one plus and one minus end, or neutral. "

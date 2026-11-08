@@ -24,6 +24,7 @@ import {
   type Verdict,
 } from "./game";
 import type { PuzzleNavigationEntry } from "./navigation";
+import { creditLine } from "./credit";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CROSS = "__cross__";
@@ -37,6 +38,24 @@ function el<K extends keyof HTMLElementTagNameMap>(
   const node = Object.assign(document.createElement(tag), props);
   node.append(...children);
   return node;
+}
+
+/** What stands under the board: the licence, plus the credit when the board is a Murdoku. */
+export function footerParagraphs(license: string, family: string): HTMLElement[] {
+  const paragraphs = [
+    el(
+      "p",
+      {},
+      license + " ",
+      el("a", {
+        href: "https://github.com/operdeck/human-reasoning-puzzles/blob/main/examples/LICENSE.md",
+        textContent: "Licence",
+      }),
+    ),
+  ];
+  // The puzzle family is Manuel Garand's invention; say so wherever one of his boards stands.
+  if (family === "murdoku") paragraphs.push(creditLine());
+  return paragraphs;
 }
 
 function svgEl(tag: string, attrs: Record<string, string | number> = {}): SVGElement {
@@ -260,22 +279,10 @@ export class PuzzleView {
     root.replaceChildren(
       header,
       el("div", { className: "layout" }, play, this.panel()),
-      el("footer", {}, this.licence()),
+      el("footer", {}, ...footerParagraphs(this.bundle.license, this.bundle.family)),
     );
     this.setUpBoard(board);
     this.redraw();
-  }
-
-  private licence(): HTMLElement {
-    return el(
-      "p",
-      {},
-      this.bundle.license + " ",
-      el("a", {
-        href: "https://github.com/operdeck/human-reasoning-puzzles/blob/main/examples/LICENSE.md",
-        textContent: "Licence",
-      }),
-    );
   }
 
   // --- panel: clues, rules, key -------------------------------------------

@@ -1,4 +1,5 @@
 import type { Bundle } from "./game";
+import { creditLine } from "./credit";
 import { adjacentPuzzles } from "./navigation";
 import { PuzzleView } from "./view";
 
@@ -129,6 +130,7 @@ async function showIndex(current: () => boolean): Promise<void> {
         textContent:
           "Logic puzzles that can be solved by reasoning alone, as a person would. Pick one to play in the browser.",
       }),
+      creditLine(),
       el(
         "p",
         { className: "repo-link" },
