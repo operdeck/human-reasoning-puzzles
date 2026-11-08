@@ -29,7 +29,13 @@ def test_calcudoku_examples_have_no_single_cell_cages(path):
 
 
 @pytest.mark.parametrize(
-    "relative", ("README.md", "docs/puzzle-collection.md", "docs/model-and-puzzle-formats.md")
+    "relative",
+    (
+        "README.md",
+        "docs/puzzle-collection.md",
+        "docs/model-and-puzzle-formats.md",
+        "docs/discoverability.md",
+    ),
 )
 def test_documentation_links_and_images_exist(relative):
     source = Path(__file__).resolve().parents[1] / relative
