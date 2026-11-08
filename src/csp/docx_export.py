@@ -584,6 +584,23 @@ COPYRIGHT_NOTICE = (
     "of these puzzles without the explicit written permission of the author."
 )
 
+MURDOKU_CREDIT = (
+    "Murdoku was invented by Manuel Garand, whose books are better designed and more fun "
+    "than the cases in this booklet: buy one and solve it with pen and paper (murdoku.com). "
+    "Murdoku is a trademark of Digivoid Studios Inc.; this booklet is not affiliated with it."
+)
+
+
+def _murdoku_credit(document: Any) -> None:
+    """Credit Murdoku's inventor in front of a booklet that contains his puzzle family."""
+    from docx.shared import Pt
+
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_after = Pt(6)
+    run = paragraph.add_run(MURDOKU_CREDIT)
+    run.font.size = Pt(8)
+    run.italic = True
+
 
 def _footer(document: Any) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -632,6 +649,8 @@ def write_booklet(entries: list[Entry], path: Path) -> None:
         if solved:
             items.append(("", phrase(solved[0].text, "doc.solutions"), "solution0"))
         _contents(document, phrase(entries[0].text, "doc.contents"), items)
+    if any(entry.kind == "murdoku" for entry in entries):
+        _murdoku_credit(document)
     for number, entry in enumerate(entries):
         _add_puzzle(
             document, entry, new_page=number > 0 or len(entries) > 1, bookmark=f"puzzle{number}"
