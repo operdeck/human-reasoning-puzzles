@@ -20,6 +20,11 @@ import path from "node:path";
 const SITE = (process.env.SITE_URL ?? "https://operdeck.github.io/human-reasoning-puzzles").replace(/\/$/, "");
 const REPO = "https://github.com/operdeck/human-reasoning-puzzles";
 const SITE_NAME = "Human reasoning puzzles";
+// Credit where it is due: the puzzle family is Manuel Garand's invention, not ours.
+const MURDOKU_CREDIT =
+  `Murdoku was invented by <a href="https://murdoku.com">Manuel Garand</a>, ` +
+  `whose books are better designed and more fun than the cases here: buy one and solve it with pen and paper.`;
+
 const dist = path.resolve(process.argv[2] ?? "dist");
 
 // The shell vite just built: it keeps the CSS/JS tags for the home page below, and carries
@@ -76,7 +81,7 @@ function sectionsHtml(puzzles, prefix) {
 }
 
 const pageStyle = `<style>body{font:16px/1.5 system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:1rem 16px}
-img{max-width:100%;height:auto}.meta{color:#666;font-size:.9em}.cta{display:inline-block;padding:.5rem 1rem;background:#2ea44f;color:#fff;border-radius:6px;text-decoration:none;font-weight:600}</style>`;
+img{max-width:100%;height:auto}.meta{color:#666;font-size:.9em}.credit{color:#555;font-size:.95em}.cta{display:inline-block;padding:.5rem 1rem;background:#2ea44f;color:#fff;border-radius:6px;text-decoration:none;font-weight:600}</style>`;
 
 const index = JSON.parse(await readFile(path.join(dist, "puzzles", "index.json"), "utf8"));
 const puzzles = index.puzzles;
@@ -113,7 +118,8 @@ const homeBody = `<main id="app">
       <header><h1>${SITE_NAME}</h1>
       <p>Logic puzzles that can be solved by reasoning alone, as a person would: ${esc(families.slice(0, 12).join(", "))} and more.
       Start with the <a href="murdoku/">Murdoku murder mysteries</a>, or browse the full list below.
-      The solver behind them is <a href="${REPO}">open source</a>.</p></header>
+      The solver behind them is <a href="${REPO}">open source</a>.</p>
+      <p class="credit">${MURDOKU_CREDIT}</p></header>
       ${sectionsHtml(puzzles, "")}
     </main>`;
 await writeFile(
@@ -139,6 +145,7 @@ await writeFile(
     <p>Murdoku is a murder-mystery logic puzzle: place each suspect on the floor plan so that nobody shares a row or column,
     use the clues to work out who stood where, and find the murderer, who is alone with the victim.
     These original cases play in your browser, with notes, auto-marking and explanations. Every one can be solved by deduction, with no guessing.</p>
+    <p class="credit">${MURDOKU_CREDIT}</p>
     ${sectionsHtml(murdoku, "../")}
     <p>Curious how it works? The explainable solver and puzzle generator are <a href="${REPO}">open source on GitHub</a>.</p>
   </body>\n</html>\n`,

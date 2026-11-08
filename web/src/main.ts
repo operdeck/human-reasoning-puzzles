@@ -131,6 +131,19 @@ async function showIndex(current: () => boolean): Promise<void> {
       }),
       el(
         "p",
+        { className: "credit" },
+        "Murdoku was invented by ",
+        el("a", {
+          href: "https://murdoku.com",
+          textContent: "Manuel Garand",
+          target: "_blank",
+          rel: "noreferrer",
+          title: "Murdoku books and free puzzles by their inventor",
+        }),
+        ", whose books are better designed and more fun than the cases here: buy one and solve it with pen and paper.",
+      ),
+      el(
+        "p",
         { className: "repo-link" },
         el("a", {
           href: "https://github.com/operdeck/human-reasoning-puzzles",

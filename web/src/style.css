@@ -79,6 +79,13 @@ footer {
   text-decoration: underline;
 }
 
+/* Credit to Murdoku's inventor, kept in the header above the puzzle list. */
+.site-header .credit {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .family {
   display: grid;
   grid-template-columns: 11rem minmax(0, 1fr);
