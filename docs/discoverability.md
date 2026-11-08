@@ -3,8 +3,8 @@
 The published site is a client-side player, so the build does the mechanical half of
 being findable: `npm run build` in `web/` prerenders real HTML over it
 (`web/scripts/prerender.mjs`, run as the `postbuild` step). What is left is one-time
-work on GitHub and with the search engines, listed here. None of it is in the code, so
-nothing in a pull request can do it for you.
+work on GitHub and with the search engines, which no pull request can do, so it is
+written down here.
 
 ## What the build already produces
 
@@ -48,11 +48,11 @@ no command for it; drag the file in.
 
 ## Search engines
 
-No verification tag is checked in. When you get one, put it in `web/index.html` and not
-in `dist/`: `head()` rebuilds every prerendered page, and copies any
-`google-site-verification`, `msvalidate.01` or `yandex-verification` meta tag it finds
-in the built shell into all of them, so the one tag covers the home page, `/murdoku/`
-and every `/p/<id>/`. Rebuild and check `dist/p/<id>/index.html` before verifying.
+No verification tag is checked in. When you get one, put it in `web/index.html` and never
+in `dist/`: `head()` rebuilds every prerendered `<head>` and copies any
+`google-site-verification`, `msvalidate.01` or `yandex-verification` meta tag it finds in
+the built shell into all of them, so one tag covers the home page, `/murdoku/` and every
+`/p/<id>/`. Rebuild and check `dist/p/<id>/index.html` before verifying.
 
 1. **Google Search Console**: add the URL-prefix property
    `https://operdeck.github.io/human-reasoning-puzzles/`, verify with the HTML tag (or
