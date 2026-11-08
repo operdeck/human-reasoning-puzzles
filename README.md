@@ -149,6 +149,11 @@ npm run export   # writes web/public/puzzles
 npm run dev      # or: npm test, npm run build
 ```
 
+`npm run build` also prerenders a static page per puzzle, a Murdoku landing page,
+`sitemap.xml` and `robots.txt` over the player, so search engines see real pages
+(`web/scripts/prerender.mjs`). The one-time repository topics, site verification and
+sitemap submission that go with it are in [discoverability notes](docs/discoverability.md).
+
 Place a piece with a click or tap (or arrow keys and Space, or the piece's number key),
 cross off a square with right-click, long-press or the Cross tool, and undo with Ctrl+Z.
 Auto-mark crosses the squares a placement rules out (in Akari it lights what a bulb sees).
