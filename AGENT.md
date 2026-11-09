@@ -267,14 +267,13 @@ the chain rule or this workload.
 The text board and `--step` show true/open totals, additional demand, and
 feasible totals; active location scopes are highlighted without adding
 puzzle-specific behavior to `core.py`.
-Pictures mark the same scope with one subtle dashed ring per object
-(`picture._scope_outline`), never a solid box per square: a blue box around a
-badjas reads as a cell of its own rather than as what the clue counts. Two
-objects side by side keep two rings, so a ring never spans a neighbour. The
-legend explains the ring in the puzzle's language (`LEGEND_WORDS[...]["ring"]`)
-under its count lines, so the web board explains itself; the booklet board draws
-the rings too but leaves the count lines out (`count_lines=False`), because its
-rules page already states the counts.
+Pictures mark object-related count scopes with subtle dashed rings
+(`picture._scope_outline`), not whole-area, line, mark or empty-area counts.
+Adjacent object footprints keep separate rings; irregular footprints use
+per-square rings so no uncounted square is enclosed. Do not explain the rings
+in the static legend or the booklet/web key. Booklet boards draw the rings but
+leave out count lines (`count_lines=False`) because the surrounding puzzle text
+already states the counts.
 
 ## External corpora
 

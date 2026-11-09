@@ -915,7 +915,7 @@ class GlobalCountCondition:
 
     @property
     def object_scope(self) -> bool:
-        """Whether this count is about concrete objects/marks, not whole areas."""
+        """Whether this count targets an object, edge item, or point object."""
         return self.selector is not None and self.selector.kind in (
             "object",
             "object_kind",

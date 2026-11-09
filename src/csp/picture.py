@@ -1871,9 +1871,9 @@ def _scope_groups(board: Board, squares: Iterable[Square]) -> list[set[Square]]:
     """The scope squares grouped per object, in reading order.
 
     Two objects that lie side by side are two rings, not one: the ring means
-    "this object", so it must not span neighbours. A count of empty squares in
-    an area refers to no object, and those squares group by orthogonal
-    neighbours instead.
+    "this object", so it must not span neighbours. Scoped cells outside object
+    footprints, such as cells touching an edge or point item, group by
+    orthogonal neighbours instead.
     """
     scope = set(squares)
     groups: list[set[Square]] = []
@@ -1904,7 +1904,7 @@ def _scope_groups(board: Board, squares: Iterable[Square]) -> list[set[Square]]:
 def _scope_outline(
     canvas: Canvas, board: Board, squares: Iterable[Square], box: Callable[[Square], Box], cell: int
 ) -> None:
-    """A subtle dashed ring around each object that a global count refers to.
+    """Subtle dashed rings around object-related count scopes.
 
     One ellipse around the whole footprint when the object fills its bounding
     rectangle, a circle per square otherwise, so no square outside the scope is
