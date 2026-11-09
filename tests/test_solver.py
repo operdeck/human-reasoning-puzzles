@@ -2249,6 +2249,57 @@ quietest_area area:Alpha
         assert check.holds(board, placement)
 
 
+@pytest.mark.parametrize("section", ["Rules", "Clues"])
+@pytest.mark.parametrize("kind", ["busiest_area", "quietest_area"])
+@pytest.mark.parametrize("targets", ["area:Blocked", "area:Alpha area:Blocked"])
+def test_area_population_rejects_named_areas_without_free_squares(section, kind, targets):
+    text = f"""Size: 2
+Regions:
+a: Alpha
+b: Blocked
+Grid:
+a b
+a a
+Objects:
+rock: blocking r1c2
+People:
+Ada
+{section}:
+{kind} {targets}
+"""
+    board, clues = load_board(text)
+    with pytest.raises(ValueError, match=r"Blocked.*no free squares"):
+        murdoku.compile_puzzle(board, clues)
+    with pytest.raises(ValueError, match=r"Blocked.*no free squares"):
+        bruteforce.solutions(text, "murdoku", limit=1)
+    with pytest.raises(ValueError, match=r"Blocked.*no free squares"):
+        bruteforce.murdoku.accepts(text, {"Ada": murdoku.Square(0, 0)})
+
+
+@pytest.mark.parametrize("kind", ["busiest_area", "quietest_area"])
+def test_area_population_ignores_unnamed_areas_without_free_squares(kind):
+    text = f"""Size: 2
+Regions:
+a: Alpha
+b: Blocked
+Grid:
+a b
+a a
+Objects:
+rock: blocking r1c2
+People:
+Ada
+Clues:
+{kind} area:Alpha
+"""
+    board, clues = load_board(text)
+    placements = bruteforce.solutions(text, "murdoku", limit=10)
+    assert len(placements) == 3
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, placements)
+
+
 def test_a_population_tie_is_worded_in_the_plural():
     from csp.story import clue_texts
 

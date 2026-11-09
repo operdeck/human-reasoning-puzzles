@@ -1062,6 +1062,7 @@ def area_population_conditions(
     board: Board, clues: Iterable[Clue]
 ) -> list[AreaPopulationCondition]:
     """Parse `busiest`/`quietest` clues from board rules and numbered clues."""
+    usable = {board.region_of(square) for square in board.free}
     rules: list[tuple[str, list[str], int | None]] = [
         (kind, args, None) for kind, args in board.rules
     ]
@@ -1078,6 +1079,10 @@ def area_population_conditions(
             if selector.kind != "area":
                 raise ValueError(f"{kind} takes area:name targets, not {token!r}")
             for region in sorted(board.area_ids([selector.name])):
+                if region not in usable:
+                    raise ValueError(
+                        f"{kind} area {board.region_names[region]!r} has no free squares"
+                    )
                 if region not in regions:
                     regions.append(region)
         source = f"rule {len(out) + 1}" if number is None else f"clue {number}"
