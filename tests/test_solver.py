@@ -2142,6 +2142,53 @@ quietest_area area:Alpha
     _assert_logged_steps_preserve_solutions(model, placements)
 
 
+@pytest.mark.parametrize(
+    "clue",
+    [
+        "busiest_area area:Alpha",
+        "busiest_area area:Alpha area:Bravo",
+        "quietest_area area:Alpha",
+        "quietest_area area:Alpha area:Bravo",
+    ],
+)
+def test_area_population_compilation_matches_every_brute_force_placement(clue):
+    text = f"""Size: 3
+Regions:
+a: Alpha
+b: Bravo
+c: Charlie
+Grid:
+a c c
+c b c
+c a c
+People:
+Ada
+Ben
+Clues:
+{clue}
+"""
+    board, clues = load_board(text)
+    expected = {
+        tuple(placement[person] for person in board.people)
+        for placement in bruteforce.solutions(text, "murdoku", limit=1000)
+    }
+    model = murdoku.compile_puzzle(board, clues)
+    rules = (Rule("single", rule_single), Rule("count", rule_count))
+    for squares in product(board.free, repeat=len(board.people)):
+        if len({square.row for square in squares}) < len(squares):
+            continue
+        if len({square.col for square in squares}) < len(squares):
+            continue
+        candidate = model.clone()
+        try:
+            for person, square in zip(board.people, squares, strict=True):
+                candidate.assign(candidate.literal(person, square), "test", "fixed placement")
+            accepted = Solver(candidate, rules).solve().solved
+        except Contradiction:
+            accepted = False
+        assert accepted == (squares in expected), (clue, squares)
+
+
 def test_both_area_population_clues_take_multiple_areas():
     base = """Size: 5
 Regions:

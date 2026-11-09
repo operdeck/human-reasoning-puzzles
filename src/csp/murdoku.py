@@ -2127,6 +2127,14 @@ def _compile_area_population(
 
     def above(more: str, fewer: str) -> None:
         """`more` holds strictly more people than `fewer`."""
+        # A nonnegative population is at least zero, so the greater one is nonempty.
+        at_least_one, _ = level(more, 1)
+        model.constrain(
+            f"{board.region_names[more]} outnumbers {board.region_names[fewer]}: nonempty",
+            Kind.EXACTLY_ONE,
+            [at_least_one],
+            family=POPULATION_FAMILY,
+        )
         for k in range(1, maximum + 1):
             at_least, below = level(fewer, k)
             if k == maximum:
