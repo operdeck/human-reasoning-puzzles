@@ -1041,7 +1041,7 @@ def test_a_rule_the_intro_already_says_is_listed_once():
         "Precies één persoon heeft sloffen aan.",
         "Precies één persoon heeft een bril op.",
     ]
-    assert rules[4] == rules[-1]
+    assert rules[-1].startswith("Soorten en beschrijvingen van personages")
     assert len(rules) == len(dict.fromkeys(rules))
 
 
@@ -1138,6 +1138,95 @@ def test_only_object_counts_get_a_dashed_scope_ring():
         False,
         False,
     ]
+
+
+@pytest.mark.parametrize(
+    ("clue", "note"),
+    [
+        (
+            "next_to Ada tree",
+            "Next to an object in a square means sharing a side with one of its squares in the "
+            "same area; diagonals do not count.",
+        ),
+        (
+            "not_next_to Ada tree",
+            "Next to an object in a square means sharing a side with one of its squares in the "
+            "same area; diagonals do not count.",
+        ),
+        (
+            "role_next_to Ada navigator tree",
+            "Next to an object in a square means sharing a side with one of its squares in the "
+            "same area; diagonals do not count.",
+        ),
+        (
+            "exactly 1 next_to Ada tree ; in_region Ben Bravo",
+            "Next to an object in a square means sharing a side with one of its squares in the "
+            "same area; diagonals do not count.",
+        ),
+        (
+            "next_to Ada fountain",
+            "A door or point object is next to every square it touches, even across an area "
+            "boundary.",
+        ),
+        (
+            "next_to Ada archway",
+            "A door or point object is next to every square it touches, even across an area "
+            "boundary.",
+        ),
+        ("next_to Ada window", "A window is next to its one inside square."),
+        ("at Ada archway", "At a door or window means standing on a square it touches."),
+        (
+            "next_to Ada mark:meadow",
+            "A marked square is next to a square that shares a side with it, even across an "
+            "area boundary.",
+        ),
+    ],
+)
+def test_player_rules_explain_next_to_targets(clue, note):
+    text = f"""Size: 2
+Regions:
+a: Alpha
+b: Bravo
+Grid:
+a b
+a b
+Objects:
+tree: blocking r2c1
+EdgeItems:
+archway: door r1c1 r1c2
+window: window r2c2
+PointObjects:
+fountain: r1.5c1.5
+Marks:
+meadow: r2c1
+People:
+Ada
+Ben
+Roles:
+navigator: 1
+Clues:
+{clue}
+"""
+    rules = murdoku_rules(text)
+    notes = {
+        csp.story.phrase(text, key)
+        for key in (
+            "doc.clue_next_to_object",
+            "doc.clue_next_to_border",
+            "doc.clue_next_to_window",
+            "doc.clue_next_to_mark",
+            "doc.clue_at",
+        )
+    }
+    assert [rule for rule in rules if rule in notes] == [note]
+
+
+def test_dutch_player_rules_explain_object_adjacency():
+    rules = murdoku_rules(example("samen-in-japan.txt").read_text())
+    assert (
+        "Naast een voorwerp in een vakje betekent een zijde delen met een vakje van het "
+        "voorwerp in hetzelfde gebied; schuin telt niet."
+    ) in rules
 
 
 def test_wrapped_intro_lines_stay_one_rule():

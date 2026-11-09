@@ -90,9 +90,20 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.key_door": "Door",
         "doc.key_window": "Window",
         "doc.key_point": "Point",
-        "doc.clue_next_to_border": (
-            "A door, window or point object counts as next to across an area border."
+        "doc.clue_next_to_object": (
+            "Next to an object in a square means sharing a side with one of its squares in the "
+            "same area; diagonals do not count."
         ),
+        "doc.clue_next_to_border": (
+            "A door or point object is next to every square it touches, even across an area "
+            "boundary."
+        ),
+        "doc.clue_next_to_window": "A window is next to its one inside square.",
+        "doc.clue_next_to_mark": (
+            "A marked square is next to a square that shares a side with it, even across an "
+            "area boundary."
+        ),
+        "doc.clue_at": "At a door or window means standing on a square it touches.",
         "doc.clue_distance": "Distance counts steps across sides, not diagonals.",
         "doc.standable": "you can stand on it",
         "doc.blocking": "nobody can stand here",
@@ -313,9 +324,20 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.key_door": "Deur",
         "doc.key_window": "Raam",
         "doc.key_point": "Punt",
-        "doc.clue_next_to_border": (
-            "Een deur, raam of puntobject telt ook over een gebiedsgrens heen als 'naast'."
+        "doc.clue_next_to_object": (
+            "Naast een voorwerp in een vakje betekent een zijde delen met een vakje van het "
+            "voorwerp in hetzelfde gebied; schuin telt niet."
         ),
+        "doc.clue_next_to_border": (
+            "Een deur of puntobject is naast elk vakje dat het raakt, ook over een "
+            "gebiedsgrens heen."
+        ),
+        "doc.clue_next_to_window": "Een raam is naast het ene vakje aan de binnenkant.",
+        "doc.clue_next_to_mark": (
+            "Een gemarkeerd vakje is naast elk vakje dat er een zijde mee deelt, ook over "
+            "een gebiedsgrens heen."
+        ),
+        "doc.clue_at": "Bij een deur of raam betekent op een vakje staan dat eraan raakt.",
         "doc.clue_distance": "Afstand telt stappen over zijden, niet schuin.",
         "doc.standable": "hier kun je op staan",
         "doc.blocking": "hier kan niemand staan",
@@ -2752,9 +2774,19 @@ def murdoku_rules(text: str) -> list[str]:
     board, clues = load_board(text)
     presentation = load_presentation(text)
     intro = " ".join(presentation.intro).lower()
-    kinds = {
-        entry[0] if isinstance(entry, tuple) else entry.kind for entry in (*board.rules, *clues)
-    }
+    entries = [*board.rules, *clues]
+    entries += [part for kind, args in entries if kind == COUNTING for part in counted(args)[1]]
+    kinds = {kind for kind, _ in entries}
+    targets: set[str] = set()
+    for kind, args in entries:
+        if kind in ("next_to", "not_next_to"):
+            targets.update(target_name(token) for token in args[1:])
+        elif kind == "role_next_to":
+            targets.update(target_name(token) for token in args[2:])
+    marks = targets & board.mark_names
+    edges = (targets - marks) & board.edge_item_names
+    points = (targets - marks - edges) & board.point_object_names
+    objects = targets - marks - edges - points
     clue_notes = []
     explains_next_to = ("next to" in intro or "naast" in intro) and any(
         word in intro for word in ("border", "grens", "another area", "ander gebied")
@@ -2762,12 +2794,18 @@ def murdoku_rules(text: str) -> list[str]:
     explains_distance = ("distance" in intro or "afstand" in intro) and any(
         word in intro for word in ("step", "stap", "diagonal", "schuin")
     )
-    if (
-        kinds & {"next_to", "not_next_to", "role_next_to"}
-        and not explains_next_to
-        and (board.edge_items or board.point_objects)
+    if objects & (board.object_names | {"blocking", "standable"}):
+        clue_notes.append(phrase(text, "doc.clue_next_to_object"))
+    if not explains_next_to and (
+        points or any(board.edge_item_kind(name) == "door" for name in edges)
     ):
         clue_notes.append(phrase(text, "doc.clue_next_to_border"))
+    if any(board.edge_item_kind(name) == "window" for name in edges):
+        clue_notes.append(phrase(text, "doc.clue_next_to_window"))
+    if marks:
+        clue_notes.append(phrase(text, "doc.clue_next_to_mark"))
+    if "at" in kinds:
+        clue_notes.append(phrase(text, "doc.clue_at"))
     if kinds & {"within", "at_least", "furthest"} and not explains_distance:
         clue_notes.append(phrase(text, "doc.clue_distance"))
     said = [
