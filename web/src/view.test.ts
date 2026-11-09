@@ -129,6 +129,15 @@ describe("palette", () => {
     expect(used[0].textContent).toContain("Bo");
   });
 
+  it("draws the symbols supplied with the board key", () => {
+    const root = mount({
+      key: [{ name: "Point", text: "fountain", svg: '<svg viewBox="0 0 1 1"><circle r="1"/></svg>' }],
+    });
+    const key = root.querySelector('.panel-section[data-tab="key"]');
+    expect(key?.querySelector("dt .icon svg circle")).not.toBeNull();
+    expect(key?.textContent).toContain("fountain");
+  });
+
   it("drops the cross when auto-mark is switched off", () => {
     const root = mount();
     press(root, "ArrowRight");

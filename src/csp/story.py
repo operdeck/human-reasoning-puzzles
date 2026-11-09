@@ -2737,8 +2737,8 @@ def board_notes(text: str) -> list[str]:
     return notes
 
 
-def murdoku_key(text: str) -> list[tuple[str, str]]:
-    """(label, name) for each board symbol the rules do not otherwise name.
+def murdoku_key_items(text: str) -> list[tuple[str, str, str]]:
+    """(target, label, name) for each symbol the rules do not otherwise name.
 
     Doors, windows and point objects are symbols whose meaning is not in the
     text; regions are labelled on the board, and marks, roles and attributes are
@@ -2746,7 +2746,7 @@ def murdoku_key(text: str) -> list[tuple[str, str]]:
     """
     board, _ = load_board(text)
     say = Wording.read(text)
-    out: list[tuple[str, str]] = []
+    out: list[tuple[str, str, str]] = []
     for name in sorted(board.edge_item_names | board.point_object_names):
         if name in board.edge_item_names:
             kind = "door" if board.edge_item_kind(name) == "door" else "window"
@@ -2755,8 +2755,13 @@ def murdoku_key(text: str) -> list[tuple[str, str]]:
         label = say(f"doc.key_{kind}")
         pretty = say.words.get(name, name.replace("_", " "))
         bare = re.sub(r"^(the|a|an|de|het|een)\s+", "", pretty, flags=re.IGNORECASE)
-        out.append((label, "" if bare.casefold() == label.casefold() else pretty))
+        out.append((name, label, "" if bare.casefold() == label.casefold() else pretty))
     return out
+
+
+def murdoku_key(text: str) -> list[tuple[str, str]]:
+    """(label, name) for each board symbol."""
+    return [(label, name) for _, label, name in murdoku_key_items(text)]
 
 
 def murdoku_rules(text: str) -> list[str]:

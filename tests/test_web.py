@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("fontTools")
 
-from csp import cli, murdoku, story, svg
+from csp import cli, icons, murdoku, story, svg, web
 from tests.examples import EXAMPLES, example, played_examples
 
 pytestmark = pytest.mark.solutions
@@ -314,6 +314,52 @@ def test_murdoku_web_key_lists_board_symbols_only(exported):
     assert counted["key"] == []
 
 
+def test_murdoku_web_key_shows_the_symbols_players_see():
+    points = web._murdoku(example("murdoku_2_point_objects.txt").read_text(), {})["key"]
+    for label, name in (
+        ("the cat", "cat"),
+        ("cheese", "cheese"),
+        ("fountain", "fountain"),
+        ("the mouse on the top edge", "mouse1"),
+        ("the mouse in the corner", "mouse2"),
+    ):
+        (entry,) = [item for item in points if item["text"] == label]
+        assert entry["svg"] == icons.to_svg(icons.object_icon(name))
+
+    train = web._murdoku(example("murdoku_orient_express.txt").read_text(), {})["key"]
+    door = next(item for item in train if item["name"] == "Deur")
+    window = next(item for item in train if item["name"] == "Raam")
+    assert "#754b2f" in door["svg"]
+    assert "#d0e4f2" in window["svg"]
+
+
+def test_murdoku_web_key_shows_both_styles_of_window():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace("window: window r3c4", "window: window r3c4\nwindow: window r1c1 top")
+    )
+    windows = [item for item in web._murdoku(text, {})["key"] if item["name"] == "Window"]
+    assert len(windows) == 2
+    assert any("#d0e4f2" in item["svg"] for item in windows)
+    assert any(item["svg"] == icons.to_svg(icons.object_icon("window")) for item in windows)
+
+
+def test_murdoku_web_key_keeps_text_fallbacks_for_unknown_symbols():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace("fountain", "unlisted_thing")
+        .replace("window: window", "mystery_window: window")
+        .replace("at Cal window", "at Cal mystery_window")
+    )
+    key = web._murdoku(text, {})["key"]
+    point = next(item for item in key if item["text"] == "unlisted thing")
+    window = next(item for item in key if item["text"] == "mystery window")
+    assert "<ellipse" in point["svg"] and '<use href="#g' in point["svg"]
+    assert '<use href="#g' in window["svg"]
+
+
 def test_every_murdoku_key_lists_only_board_symbols(exported):
     allowed = {
         "Door",
@@ -331,6 +377,7 @@ def test_every_murdoku_key_lists_only_board_symbols(exported):
         if bundle.get("family") != "murdoku":
             continue
         assert {item["name"] for item in bundle["key"]} <= allowed, path.name
+        assert all(item.get("svg", "").startswith("<svg") for item in bundle["key"]), path.name
 
 
 def test_digit_puzzles_get_pencil_marks_and_peer_groups(exported):

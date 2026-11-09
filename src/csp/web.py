@@ -20,13 +20,14 @@ from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Square
+from .picture import murdoku_key_symbols
 from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
     PEER_RULE_LABELS,
     attribute_list,
     clue_paragraphs,
     family_rules,
-    murdoku_key,
+    murdoku_key_items,
     murdoku_rules,
     object_list,
     phrase,
@@ -290,7 +291,11 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         },
         "rules": rules,
         "clues": clue_paragraphs(text, presentation.clue_text),
-        "key": [{"name": n, "text": t} for n, t in murdoku_key(text)],
+        "key": [
+            {"name": label, "text": shown, "svg": symbol}
+            for name, label, shown in murdoku_key_items(text)
+            for symbol in murdoku_key_symbols(board, name)
+        ],
         "question": presentation.question,
         "reveal": " ".join(presentation.reveal),
         "attributes": [{"name": n, "text": t} for n, t in attribute_list(text)],

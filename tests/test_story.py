@@ -110,6 +110,7 @@ ALLOWED = {
         "mapcolour",
         "murdoku",
         "minesweeper",
+        "picture",
         "puzzlefile",
         "rectangles",
         "starbattle",

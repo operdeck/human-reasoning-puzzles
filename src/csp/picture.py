@@ -81,6 +81,7 @@ from .undead import cell_name as undead_cell
 
 INK = (26, 26, 26)
 WHITE = (255, 255, 255)
+DOOR_WOOD = (117, 75, 47)
 SOLVED = (33, 90, 200)  # numbers the solver filled in
 EXTRA = (214, 214, 214)  # extra houses, grey as NRC prints them
 THIN = (190, 190, 190)
@@ -2004,7 +2005,6 @@ def _walls(
 
 def _draw_edge_item_doors(canvas: Canvas, board: Board, margin: int, cell: int) -> None:
     """Mark each simple door on the shared edge between its two cells."""
-    wood = (117, 75, 47)
     width = max(4, cell // 10)
     for item in board.edge_items:
         if item.kind != "door":
@@ -2013,11 +2013,11 @@ def _draw_edge_item_doors(canvas: Canvas, board: Board, margin: int, cell: int) 
         if first.row == second.row:
             x = margin + max(first.col, second.col) * cell
             y = margin + first.row * cell + cell // 2
-            canvas.line((x, y - cell // 4, x, y + cell // 4), fill=wood, width=width)
+            canvas.line((x, y - cell // 4, x, y + cell // 4), fill=DOOR_WOOD, width=width)
         else:
             x = margin + first.col * cell + cell // 2
             y = margin + max(first.row, second.row) * cell
-            canvas.line((x - cell // 4, y, x + cell // 4, y), fill=wood, width=width)
+            canvas.line((x - cell // 4, y, x + cell // 4, y), fill=DOOR_WOOD, width=width)
 
 
 def _draw_wall_window(canvas: Canvas, area: Box, side: str, cell: int) -> None:
@@ -2041,6 +2041,40 @@ def _draw_wall_window(canvas: Canvas, area: Box, side: str, cell: int) -> None:
         for k in (1, 2):
             y = py0 + (py1 - py0) * k / 3
             canvas.line((px0, y, px1, y), fill=frame, width=max(1, cell // 60))
+
+
+def murdoku_key_symbols(board: Board, name: str, size: int = 64) -> list[str]:
+    """The actual door, window or point-object drawings for one board key entry."""
+    edges = [item for item in board.edge_items if item.name == name]
+    if edges and edges[0].kind == "door":
+        canvas = Canvas(size, size, background="none")
+        canvas.line(
+            (size // 8, size // 2, size * 7 // 8, size // 2),
+            fill=DOOR_WOOD,
+            width=max(4, size // 10),
+        )
+        return [canvas.to_svg()]
+    if edges:
+        drawings = []
+        if any(item.side is not None for item in edges):
+            canvas = Canvas(size, size, background="none")
+            _draw_wall_window(canvas, (0, size * 3 // 8, size - 1, size * 5 // 8), "top", size)
+            drawings.append(canvas.to_svg())
+        if any(item.side is None for item in edges):
+            if (icon := icons.object_icon(name)) and (drawing := icons.to_svg(icon, size)):
+                drawings.append(drawing)
+            else:
+                canvas = Canvas(size, size, background="none")
+                _icon(canvas, name, (0, 0, size - 1, size - 1), size, scale=0.9)
+                drawings.append(canvas.to_svg())
+        return drawings
+    if name not in board.point_object_names:
+        raise ValueError(f"{name!r} is not a door, window or point object")
+    if (icon := icons.object_icon(name)) and (drawing := icons.to_svg(icon, size)):
+        return [drawing]
+    canvas = Canvas(size, size, background="none")
+    _badge(canvas, name, (0, 0, size - 1, size - 1), size)
+    return [canvas.to_svg()]
 
 
 # --- things on the board --------------------------------------------------
@@ -2296,7 +2330,7 @@ class _Legend:
             if kind == "door":
                 canvas.line(
                     (left, top + self.swatch // 2, left + self.swatch, top + self.swatch // 2),
-                    fill=(117, 75, 47),
+                    fill=DOOR_WOOD,
                     width=max(4, self.swatch // 5),
                 )
             else:
