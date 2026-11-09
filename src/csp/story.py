@@ -2778,7 +2778,6 @@ def murdoku_rules(text: str) -> list[str]:
     """
     board, clues = load_board(text)
     presentation = load_presentation(text)
-    intro = " ".join(presentation.intro).lower()
     entries = [*board.rules, *clues]
     entries += [part for kind, args in entries if kind == COUNTING for part in counted(args)[1]]
     kinds = {kind for kind, _ in entries}
@@ -2793,17 +2792,10 @@ def murdoku_rules(text: str) -> list[str]:
     points = (targets - marks - edges) & board.point_object_names
     objects = targets - marks - edges - points
     clue_notes = []
-    explains_next_to = ("next to" in intro or "naast" in intro) and any(
-        word in intro for word in ("border", "grens", "another area", "ander gebied")
-    )
-    explains_distance = ("distance" in intro or "afstand" in intro) and any(
-        word in intro for word in ("step", "stap", "diagonal", "schuin")
-    )
+    # Intro keywords may describe a different target or omit a necessary detail.
     if objects & (board.object_names | {"blocking", "standable"}):
         clue_notes.append(phrase(text, "doc.clue_next_to_object"))
-    if not explains_next_to and (
-        points or any(board.edge_item_kind(name) == "door" for name in edges)
-    ):
+    if points or any(board.edge_item_kind(name) == "door" for name in edges):
         clue_notes.append(phrase(text, "doc.clue_next_to_border"))
     if any(board.edge_item_kind(name) == "window" for name in edges):
         clue_notes.append(phrase(text, "doc.clue_next_to_window"))
@@ -2811,7 +2803,7 @@ def murdoku_rules(text: str) -> list[str]:
         clue_notes.append(phrase(text, "doc.clue_next_to_mark"))
     if "at" in kinds:
         clue_notes.append(phrase(text, "doc.clue_at"))
-    if kinds & {"within", "at_least", "furthest"} and not explains_distance:
+    if kinds & {"within", "at_least", "furthest"}:
         clue_notes.append(phrase(text, "doc.clue_distance"))
     said = [
         *(presentation.intro or [phrase(text, "doc.rules")]),

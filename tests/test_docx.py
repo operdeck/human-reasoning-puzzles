@@ -110,6 +110,27 @@ def test_murdoku_booklet_includes_the_character_description_note(name, note, tmp
     assert text.count(note) == 1
 
 
+def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_points(tmp_path):
+    source = example("murdoku_2_point_objects.txt")
+    text = (
+        source.read_text()
+        .replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
+        .replace("Clues:\n", "Clues:\nnext_to Ada gate\nwithin Ada Bo 2\n")
+        .replace(
+            "\n\nQuestion:",
+            "\nThe distance is a mystery; take your first steps into the garden.\n\nQuestion:",
+        )
+    )
+    out = tmp_path / "mixed-targets.docx"
+    write_docx(text, out, source.parent)
+    rendered = _text(out)
+    assert (
+        "A door or point object is next to every square it touches, even across an area boundary."
+        in rendered
+    )
+    assert "Distance counts steps across sides, not diagonals." in rendered
+
+
 def test_missing_figure_image_falls_back_to_text(tmp_path):
     base = (example("prrrdoku1.txt")).read_text()
     source = base.replace(

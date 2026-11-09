@@ -1222,6 +1222,55 @@ Clues:
     assert [rule for rule in rules if rule in notes] == [note]
 
 
+@pytest.mark.parametrize(
+    ("language", "intro"),
+    [
+        (
+            "en",
+            "A square can be next to a point in another area. "
+            "The distance is a mystery; take your first steps into the garden.",
+        ),
+        (
+            "nl",
+            "Een vakje kan naast een punt in een ander gebied liggen. "
+            "De afstand is een raadsel; zet je eerste stap in de tuin.",
+        ),
+    ],
+)
+def test_intro_keywords_do_not_hide_door_or_distance_rules(language, intro):
+    text = f"""Size: 2
+Language: {language}
+Intro: {intro}
+Regions:
+a: Alpha
+b: Bravo
+Grid:
+a b
+a b
+EdgeItems:
+gate: door r1c1 r1c2
+PointObjects:
+fountain: r1.5c1.5
+People:
+Ada
+Ben
+Clues:
+next_to Ada fountain
+next_to Ben gate
+within Ada Ben 1
+"""
+    notes = [
+        csp.story.phrase(text, "doc.clue_next_to_border"),
+        csp.story.phrase(text, "doc.clue_distance"),
+    ]
+    rules = murdoku_rules(text)
+    assert all(note in rules for note in notes)
+
+    text = text.replace(intro, " ".join(notes))
+    rules = murdoku_rules(text)
+    assert all(sum(note in rule for rule in rules) == 1 for note in notes)
+
+
 def test_dutch_player_rules_explain_object_adjacency():
     rules = murdoku_rules(example("samen-in-japan.txt").read_text())
     assert (
