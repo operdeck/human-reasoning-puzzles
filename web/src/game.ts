@@ -204,7 +204,7 @@ export function autoMarks(bundle: Bundle, state: State): Set<CellId> {
  */
 export function usedItems(bundle: Bundle, state: State): Set<string> {
   if (!state.auto || !bundle.autoMark || bundle.placement?.perItem !== 1) return new Set();
-  return new Set(Object.values(state.placed));
+  return new Set(Object.values(occupied(bundle, state)));
 }
 
 /**

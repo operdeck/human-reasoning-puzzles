@@ -122,6 +122,13 @@ describe("palette", () => {
     expect(used[0].querySelectorAll(".used-cross line")).toHaveLength(2);
   });
 
+  it("crosses a person already placed as a given", () => {
+    const root = mount({ givens: { r1c1: "Bo" } });
+    const used = [...root.querySelectorAll(".palette .tool.used")];
+    expect(used).toHaveLength(1);
+    expect(used[0].textContent).toContain("Bo");
+  });
+
   it("drops the cross when auto-mark is switched off", () => {
     const root = mount();
     press(root, "ArrowRight");

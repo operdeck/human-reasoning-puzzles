@@ -125,6 +125,17 @@ describe("palette crosses", () => {
     expect(usedItems(b, state)).toEqual(new Set(["Joost"]));
   });
 
+  it("include givens as well as the player's placements", () => {
+    const b = { ...murdoku(), givens: { r1c1: "Joost" } };
+    let state = emptyState(b);
+    expect(usedItems(b, state)).toEqual(new Set(["Joost"]));
+    state = place(b, state, "r3c4", "Ingrid");
+    expect(usedItems(b, state)).toEqual(new Set(["Joost", "Ingrid"]));
+    state = clearCell(b, state, "r3c4");
+    expect(usedItems(b, state)).toEqual(new Set(["Joost"]));
+    expect(usedItems(b, { ...state, auto: false }).size).toBe(0);
+  });
+
   it("follow auto-mark and never cross an item that may repeat", () => {
     const b = murdoku();
     const off = { ...place(b, emptyState(b), "r1c1", "Joost"), auto: false };
