@@ -98,6 +98,13 @@ PHRASES: dict[str, dict[str, str]] = {
             "A door or point object is next to every square it touches, even across an area "
             "boundary."
         ),
+        "doc.clue_next_to_door": (
+            "A door is next to both squares it touches, even across an area boundary."
+        ),
+        "doc.clue_next_to_point": (
+            "A point object is next to every square it touches, even if the square lies in "
+            "another area."
+        ),
         "doc.clue_next_to_window": "A window is next to its one inside square.",
         "doc.clue_next_to_mark": (
             "A marked square is next to a square that shares a side with it, even across an "
@@ -331,6 +338,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.clue_next_to_border": (
             "Een deur of puntobject is naast elk vakje dat het raakt, ook over een "
             "gebiedsgrens heen."
+        ),
+        "doc.clue_next_to_door": (
+            "Een deur is naast beide vakjes die eraan raken, ook over een gebiedsgrens heen."
+        ),
+        "doc.clue_next_to_point": (
+            "Een puntobject is naast elk vakje dat het raakt, ook als het vakje in een ander "
+            "gebied ligt."
         ),
         "doc.clue_next_to_window": "Een raam is naast het ene vakje aan de binnenkant.",
         "doc.clue_next_to_mark": (
@@ -2792,11 +2806,19 @@ def murdoku_rules(text: str) -> list[str]:
     points = (targets - marks - edges) & board.point_object_names
     objects = targets - marks - edges - points
     clue_notes = []
+    say = Wording.read(text)
     # Intro keywords may describe a different target or omit a necessary detail.
     if objects & (board.object_names | {"blocking", "standable"}):
         clue_notes.append(phrase(text, "doc.clue_next_to_object"))
-    if points or any(board.edge_item_kind(name) == "door" for name in edges):
-        clue_notes.append(phrase(text, "doc.clue_next_to_border"))
+    for kind, used in (
+        ("door", any(board.edge_item_kind(name) == "door" for name in edges)),
+        ("point", bool(points)),
+    ):
+        if used:
+            key = f"doc.clue_next_to_{kind}"
+            if key not in say.phrases and "doc.clue_next_to_border" in say.phrases:
+                key = "doc.clue_next_to_border"
+            clue_notes.append(say(key))
     if any(board.edge_item_kind(name) == "window" for name in edges):
         clue_notes.append(phrase(text, "doc.clue_next_to_window"))
     if marks:

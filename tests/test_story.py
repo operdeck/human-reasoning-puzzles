@@ -1166,13 +1166,12 @@ def test_only_object_counts_get_a_dashed_scope_ring():
         ),
         (
             "next_to Ada fountain",
-            "A door or point object is next to every square it touches, even across an area "
-            "boundary.",
+            "A point object is next to every square it touches, even if the square lies in "
+            "another area.",
         ),
         (
             "next_to Ada archway",
-            "A door or point object is next to every square it touches, even across an area "
-            "boundary.",
+            "A door is next to both squares it touches, even across an area boundary.",
         ),
         ("next_to Ada window", "A window is next to its one inside square."),
         ("at Ada archway", "At a door or window means standing on a square it touches."),
@@ -1213,7 +1212,8 @@ Clues:
         csp.story.phrase(text, key)
         for key in (
             "doc.clue_next_to_object",
-            "doc.clue_next_to_border",
+            "doc.clue_next_to_door",
+            "doc.clue_next_to_point",
             "doc.clue_next_to_window",
             "doc.clue_next_to_mark",
             "doc.clue_at",
@@ -1260,7 +1260,8 @@ next_to Ben gate
 within Ada Ben 1
 """
     notes = [
-        csp.story.phrase(text, "doc.clue_next_to_border"),
+        csp.story.phrase(text, "doc.clue_next_to_door"),
+        csp.story.phrase(text, "doc.clue_next_to_point"),
         csp.story.phrase(text, "doc.clue_distance"),
     ]
     rules = murdoku_rules(text)
@@ -1269,6 +1270,42 @@ within Ada Ben 1
     text = text.replace(intro, " ".join(notes))
     rules = murdoku_rules(text)
     assert all(sum(note in rule for rule in rules) == 1 for note in notes)
+
+
+def test_point_intro_does_not_repeat_the_note_or_mention_a_door():
+    text = example("murdoku_2_point_objects.txt").read_text()
+    rules = murdoku_rules(text)
+    point = csp.story.phrase(text, "doc.clue_next_to_point")
+    assert sum(point in rule for rule in rules) == 1
+    assert csp.story.phrase(text, "doc.clue_next_to_door") not in rules
+
+    text = text.replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
+    text = text.replace("Clues:\n", "Clues:\nnext_to Ada gate\n")
+    rules = murdoku_rules(text)
+    assert sum(point in rule for rule in rules) == 1
+    assert csp.story.phrase(text, "doc.clue_next_to_door") in rules
+
+
+def test_shared_boundary_wording_remains_a_fallback():
+    text = (
+        example("murdoku_2_point_objects.txt")
+        .read_text()
+        .replace("Words:\n", "Words:\ndoc.clue_next_to_border: Custom boundary rule.\n")
+        .replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
+        .replace("Clues:\n", "Clues:\nnext_to Ada gate\n")
+    )
+    rules = murdoku_rules(text)
+    assert rules.count("Custom boundary rule.") == 1
+    assert csp.story.phrase(text, "doc.clue_next_to_door") not in rules
+
+    text = text.replace(
+        "doc.clue_next_to_border: Custom boundary rule.",
+        "doc.clue_next_to_border: Custom boundary rule.\n"
+        "doc.clue_next_to_point: Custom point rule.",
+    )
+    rules = murdoku_rules(text)
+    assert rules.count("Custom boundary rule.") == 1
+    assert rules.count("Custom point rule.") == 1
 
 
 def test_dutch_player_rules_explain_object_adjacency():

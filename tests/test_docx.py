@@ -124,9 +124,10 @@ def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_point
     out = tmp_path / "mixed-targets.docx"
     write_docx(text, out, source.parent)
     rendered = _text(out)
+    assert "A door is next to both squares it touches, even across an area boundary." in rendered
     assert (
-        "A door or point object is next to every square it touches, even across an area boundary."
-        in rendered
+        "A point object is next to every square it touches, even if the square lies in "
+        "another area." in rendered
     )
     assert "Distance counts steps across sides, not diagonals." in rendered
 
