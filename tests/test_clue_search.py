@@ -159,6 +159,45 @@ def test_accepts_checks_role_rules():
     assert all(bruteforce.murdoku.accepts(loose, placement) for placement in found)
 
 
+@pytest.mark.parametrize("section", ["Rules", "Clues"])
+@pytest.mark.parametrize(
+    "clue",
+    [
+        "busiest_area area:Alpha",
+        "busiest_area area:Alpha area:Bravo",
+        "quietest_area area:Alpha",
+        "quietest_area area:Alpha area:Bravo",
+    ],
+)
+def test_accepts_checks_area_population_conditions(section, clue):
+    base = """Size: 3
+Regions:
+a: Alpha
+b: Bravo
+c: Charlie
+Grid:
+a c c
+c b c
+c a c
+People:
+Ada
+Ben
+"""
+    text = f"{base}{section}:\n{clue}\n"
+    placements = bruteforce.murdoku.solutions(base, 1000)
+    expected = {
+        (placement["Ada"], placement["Ben"])
+        for placement in bruteforce.murdoku.solutions(text, 1000)
+    }
+    accepted = {
+        (placement["Ada"], placement["Ben"])
+        for placement in placements
+        if bruteforce.murdoku.accepts(text, placement)
+    }
+    assert expected and len(expected) < len(placements)
+    assert accepted == expected
+
+
 def test_candidate_clues_offer_lines_only_on_request():
     museum = example("halloween-museum-1.txt").read_text()
     board, _ = load_board(museum)

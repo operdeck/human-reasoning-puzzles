@@ -78,6 +78,8 @@ def accepts(text: str, placement: dict[str, Square]) -> bool:
         not check.test(*(placement[p] for p in check.people)) for check in conditions(board, clues)
     ):
         return False
+    if any(not check.holds(board, placement) for check in area_population_conditions(board, clues)):
+        return False
     return bool(
         _role_assignments(
             board,
