@@ -181,21 +181,31 @@ def read_paragraphs(text: str, section_name: str) -> list[str]:
     paragraphs: list[str] = []
     current: list[str] = []
     active = False
+    in_block = False
     for raw in text.splitlines():
         line = raw.strip()
-        if line.endswith(":") and " " not in line[:-1]:
-            if active:
-                break
-            active = line[:-1] == section_name
+        if line.startswith("#"):
             continue
-        if not active:
-            continue
-        if not line or line.startswith("#"):
-            if current:
+        if not line:
+            if active and current:
                 paragraphs.append(" ".join(current))
                 current = []
             continue
-        current.append(line)
+        if line.endswith(":") and " " not in line[:-1]:
+            if active and current:
+                paragraphs.append(" ".join(current))
+                current = []
+            active = line[:-1] == section_name
+            in_block = True
+            if active:
+                paragraphs = []
+            continue
+        if active:
+            current.append(line)
+        elif not in_block:
+            head, _, rest = line.partition(":")
+            if head.strip() == section_name and rest.strip():
+                paragraphs = [rest.strip()]
     if current:
         paragraphs.append(" ".join(current))
     return paragraphs

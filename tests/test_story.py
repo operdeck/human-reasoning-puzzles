@@ -1144,3 +1144,29 @@ def test_wrapped_intro_lines_stay_one_rule():
     rules = murdoku_rules(example("samen-in-japan.txt").read_text())
     assert rules[0].startswith("Zes reizigers zijn neergestreken")
     assert rules[0].endswith("per kolom.")
+
+
+def test_inline_intro_is_preserved_in_player_rules():
+    from csp.puzzlefile import load_presentation
+
+    text = """#note:
+Size: 1
+Intro: Ada searches the room.
+Regions:
+a: Room
+Grid:
+a
+People:
+Ada
+"""
+    assert load_presentation(text).intro == ["Ada searches the room."]
+    assert murdoku_rules(text)[0] == "Ada searches the room."
+
+    replaced = text.replace(
+        "Regions:\n",
+        "Intro:\nThe first line wraps\n#note:\nonto this one.\n\nAnother paragraph.\nRegions:\n",
+    )
+    assert load_presentation(replaced).intro == [
+        "The first line wraps onto this one.",
+        "Another paragraph.",
+    ]
