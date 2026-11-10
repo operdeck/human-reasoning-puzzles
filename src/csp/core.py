@@ -651,8 +651,7 @@ def _count_bounds(
         return lower, upper, ()
     sources: list[str] = []
     scope = frozenset(constraint.literals)
-    subsets: list[tuple[int, str]] = []
-    apart: list[tuple[int, str, frozenset[LiteralId]]] = []
+    floors: dict[frozenset[LiteralId], tuple[int, int, str]] = {}
     for other in model.constraints:
         if (
             other.index == constraint.index
@@ -665,11 +664,18 @@ def _count_bounds(
         if base <= 0:
             continue
         other_scope = frozenset(other.literals)
+        candidate = (base, min(other.allowed_counts), other.name)
+        current = floors.get(other_scope)
+        if current is None or _floor_rank(candidate) < _floor_rank(current):
+            floors[other_scope] = candidate
+    subsets: list[tuple[int, str]] = []
+    apart: list[tuple[int, str, frozenset[LiteralId]]] = []
+    for other_scope, (base, _, name) in floors.items():
         if other_scope <= scope:
-            subsets.append((base, other.name))
+            subsets.append((base, name))
         elif other_scope.isdisjoint(scope):
-            apart.append((base, other.name, other_scope))
-    for base, name in subsets:
+            apart.append((base, name, other_scope))
+    for base, name in sorted(subsets, key=lambda item: -item[0]):
         if base > lower:
             lower = base
             sources.append(name)
@@ -721,6 +727,12 @@ def _count_floor(model: Model, constraint: Constraint) -> int:
     if constraint.reified_by is not None and model.is_true(constraint.reified_by):
         lower = max(lower, min(constraint.allowed_counts))
     return lower
+
+
+def _floor_rank(item: tuple[int, int, str]) -> tuple[int, int, int, str]:
+    """Prefer the strongest floor, named by the level that matches it."""
+    base, allowed_floor, name = item
+    return -base, abs(allowed_floor - base), allowed_floor, name
 
 
 def _scope_capacity(model: Model, literals: Iterable[LiteralId]) -> int | None:
