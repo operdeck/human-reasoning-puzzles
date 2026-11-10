@@ -208,6 +208,70 @@ def test_cover2_uses_count_demand_and_outer_capacity():
     m.check()
 
 
+def test_count_sees_whole_variables_inside_its_literals():
+    model = Model()
+    a1, a2 = _variable(model, "a", (1, 2))
+    b1, b2 = _variable(model, "b", (1, 2))
+    holds = _variable(model, "holds", (False, True))
+    model.eliminate(b2, "test", "b is pinned to its first square")
+    model.constrain(
+        "a or b first",
+        Kind.COUNT,
+        [a1, a2, b1],
+        allowed_counts={1, 2, 3},
+        reified_by=holds[1],
+    )
+    solutions = _brute_force_count_solutions(model)
+    assert solutions
+
+    assert rule_count(model) is True
+    assert model.is_true(holds[1])
+    _assert_logged_steps_preserve_solutions(model, solutions)
+    model.check()
+
+
+def test_count_capacity_reserves_room_for_disjoint_scopes():
+    model = Model()
+    a1, a2, a3 = _variable(model, "a", (1, 2, 3))
+    b1, b2, b3 = _variable(model, "b", (1, 2, 3))
+    first = _variable(model, "first", (False, True))
+    second = _variable(model, "second", (False, True))
+    target = _variable(model, "target", (False, True))
+    model.constrain(
+        "first is nonempty",
+        Kind.COUNT,
+        [a1, a2],
+        allowed_counts={1, 2},
+        reified_by=first[1],
+    )
+    model.constrain(
+        "second is nonempty",
+        Kind.COUNT,
+        [b1, b2],
+        allowed_counts={1, 2},
+        reified_by=second[1],
+    )
+    model.constrain(
+        "target is nonempty",
+        Kind.COUNT,
+        [a3, b3],
+        allowed_counts={1, 2},
+        reified_by=target[1],
+    )
+    model.assign(first[1], "test", "given")
+    model.assign(second[1], "test", "given")
+    solutions = _brute_force_count_solutions(model)
+    assert solutions
+
+    assert rule_count(model) is True
+    assert model.is_false(target[1])
+    _assert_logged_steps_preserve_solutions(model, solutions)
+    model.check()
+    assert all(
+        solution["a"] != 3 and solution["b"] != 3 for solution in solutions
+    )  # fmt: skip
+
+
 def test_count_constraints_create_only_supported_chain_links():
     model = Model()
     a, b, candidate = (_variable(model, var, (False, True))[1] for var in "abc")
@@ -2140,6 +2204,23 @@ quietest_area area:Alpha
     model = murdoku.compile_puzzle(board, clues)
     Solver(model).solve()
     _assert_logged_steps_preserve_solutions(model, placements)
+
+
+def test_area_population_capacity_solves_samen_onderweg_without_what_if():
+    """Issue #224: the count rule finds the human argument, so no case split."""
+    text = (example("samen-onderweg.txt")).read_text()
+    board, clues = load_board(text)
+    model = murdoku.compile_puzzle(board, clues)
+    fired: list[str] = []
+    rules = tuple(rule for rule in DEFAULT_RULES if rule.name != "what_if")
+    result = Solver(model, rules).solve(lambda name, steps: fired.append(name))
+
+    assert result.solved
+    assert set(result.assignment) == set(board.people)
+    assert "count" in fired
+    assert "what_if" not in fired
+    okinawa = board.region_id("Okinawa")
+    assert all(board.region_of(square) != okinawa for square in result.assignment.values())
 
 
 @pytest.mark.parametrize(

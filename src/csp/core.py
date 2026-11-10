@@ -560,7 +560,7 @@ def rule_relations(model: Model) -> bool:
 
 
 def rule_count(model: Model) -> bool:
-    """Propagate allowed counts, including parity and reified count constraints."""
+    """Propagate allowed counts, including parity, reified counts and shared capacity."""
     return any(
         propagate_count(model, constraint.index)
         for constraint in model.constraints
@@ -576,18 +576,20 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
 
     live = model.live(constraint_id)
     already_true = sum(model.is_true(lit) for lit in constraint.literals)
-    possible = range(already_true, already_true + len(live) + 1)
+    lower, upper, counted = _count_bounds(model, constraint, already_true, len(live))
     if constraint.reified_by is not None and not (
         model.is_true(constraint.reified_by) or model.is_false(constraint.reified_by)
     ):
-        can_be_true = any(count in constraint.allowed_counts for count in possible)
-        can_be_false = any(count not in constraint.allowed_counts for count in possible)
+        can_be_true = any(count in constraint.allowed_counts for count in range(lower, upper + 1))
+        can_be_false = any(
+            count not in constraint.allowed_counts for count in range(lower, upper + 1)
+        )
         if not can_be_true:
             model.eliminate(
                 constraint.reified_by,
                 "count",
                 f"{constraint.name} cannot reach an allowed count",
-                sources=(constraint.name,),
+                sources=(constraint.name, *counted),
             )
             return True
         if not can_be_false:
@@ -595,16 +597,15 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
                 constraint.reified_by,
                 "count",
                 f"{constraint.name} can reach only allowed counts",
-                sources=(constraint.name,),
+                sources=(constraint.name, *counted),
             )
             return True
         return False
 
     allowed = model.active_counts(constraint_id)
-    can_be_true = any(
-        total in allowed for total in range(already_true + 1, already_true + len(live) + 1)
-    )
-    can_be_false = any(total in allowed for total in range(already_true, already_true + len(live)))
+    can_be_true = any(total in allowed for total in range(max(lower, already_true + 1), upper + 1))
+    without_lit_max = min(upper, already_true + len(live) - 1)
+    can_be_false = any(total in allowed for total in range(lower, without_lit_max + 1))
     eliminate: list[LiteralId] = []
     for lit in live:
         if not can_be_true:
@@ -614,7 +615,7 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
                 lit,
                 "count",
                 f"{constraint.name} requires this literal to reach an allowed count",
-                sources=(constraint.name,),
+                sources=(constraint.name, *counted),
             )
             return True
     for lit in eliminate:
@@ -622,9 +623,125 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
             lit,
             "count",
             f"{constraint.name} cannot reach an allowed count with this literal true",
-            sources=(constraint.name,),
+            sources=(constraint.name, *counted),
         )
     return bool(eliminate)
+
+
+def _count_bounds(
+    model: Model, constraint: Constraint, already_true: int, open_count: int
+) -> tuple[int, int, tuple[str, ...]]:
+    """Safe lower and upper bounds on this count, and the constraints proving them.
+
+    A whole variable whose options all lie in the counted set contributes one
+    true literal, so the count must reach it. Areas of the same family also
+    bound each other: a smaller area of the family sets a floor, and disjoint
+    areas reserve part of the variables in their union, lowering the ceiling.
+    The ceiling never exceeds the number of variables that can hold one true
+    literal in those literals.
+    """
+    lower = already_true + _whole_variables_inside(model, constraint)
+    upper = already_true + open_count
+    floor = min(constraint.allowed_counts)
+    if (
+        constraint.reified_by is None
+        or floor < 1
+        or constraint.allowed_counts != frozenset(range(floor, len(constraint.literals) + 1))
+    ):
+        return lower, upper, ()
+    sources: list[str] = []
+    scope = frozenset(constraint.literals)
+    subsets: list[tuple[int, str]] = []
+    apart: list[tuple[int, str, frozenset[LiteralId]]] = []
+    for other in model.constraints:
+        if (
+            other.index == constraint.index
+            or other.kind is not Kind.COUNT
+            or other.reified_by is None
+            or other.family != constraint.family
+        ):
+            continue
+        base = _count_floor(model, other)
+        if base <= 0:
+            continue
+        other_scope = frozenset(other.literals)
+        if other_scope <= scope:
+            subsets.append((base, other.name))
+        elif other_scope.isdisjoint(scope):
+            apart.append((base, other.name, other_scope))
+    for base, name in subsets:
+        if base > lower:
+            lower = base
+            sources.append(name)
+    apart.sort(key=lambda item: (-item[0], min(item[2])))
+    chosen: list[frozenset[LiteralId]] = []
+    reserved = 0
+    for base, name, other_scope in apart:
+        if any(not other_scope.isdisjoint(taken) for taken in chosen):
+            continue
+        chosen.append(other_scope)
+        reserved += base
+        sources.append(name)
+    if chosen:
+        union = set(scope).union(*chosen)
+        capacity = _scope_capacity(model, union)
+        if capacity is not None and capacity - reserved >= lower:
+            upper = min(upper, capacity - reserved)
+    return lower, upper, tuple(sources)
+
+
+def _whole_variables_inside(model: Model, constraint: Constraint) -> int:
+    """How many more true literals whole variables force into this set.
+
+    A variable whose remaining options all lie inside the set must put its one
+    true literal there. Variables already true inside are left to the caller's
+    count of true literals. Overlapping domains are counted at most once, so
+    the bound stays sound for models that share options between variables.
+    """
+    literals = set(constraint.literals)
+    claimed: set[LiteralId] = set()
+    found = 0
+    for var in model.all_variables:
+        options = set(model.options(var))
+        if not options or not options <= literals:
+            continue
+        if any(model.is_true(lit) for lit in options):
+            continue
+        if options & claimed:
+            continue
+        claimed |= options
+        found += 1
+    return found
+
+
+def _count_floor(model: Model, constraint: Constraint) -> int:
+    """A guaranteed minimum count for `constraint` in the current state."""
+    already_true = sum(model.is_true(lit) for lit in constraint.literals)
+    lower = already_true + _whole_variables_inside(model, constraint)
+    if constraint.reified_by is not None and model.is_true(constraint.reified_by):
+        lower = max(lower, min(constraint.allowed_counts))
+    return lower
+
+
+def _scope_capacity(model: Model, literals: Iterable[LiteralId]) -> int | None:
+    """How many variables can hold a true literal in `literals`, or None if unsure.
+
+    Each variable contributes at most one true literal, so this is the ceiling
+    on how many of these literals can be true together. Options outside their
+    variable's domain would break that guarantee, so the bound is only offered
+    when every counted literal belongs to its variable's domain.
+    """
+    variables: set[str] = set()
+    for lit in literals:
+        var = model.var_of(lit)
+        domain_id = model._domain_of.get(var)
+        if domain_id is None:
+            return None
+        domain = model.constraints[domain_id]
+        if domain.kind is not Kind.EXACTLY_ONE or lit not in domain.literals:
+            return None
+        variables.add(var)
+    return len(variables)
 
 
 def prune_relation(model: Model, relation: Relation) -> bool:

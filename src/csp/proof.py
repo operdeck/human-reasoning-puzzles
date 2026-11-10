@@ -204,7 +204,10 @@ class _Replay:
             and self.constraints[source].kind is Kind.COUNT
             and step.rule in ("count", "single")
         ):
-            return self._constraint_state(source)
+            names = step.sources if step.rule == "count" else (source,)
+            return set().union(
+                *(self._constraint_state(name) for name in names if name in self.constraints)
+            )
         if source in self.relations:
             return self._unsupported(source, lit)
         if source in self.constraints and step.asserted:
