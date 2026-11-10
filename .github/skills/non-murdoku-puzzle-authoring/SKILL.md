@@ -29,9 +29,9 @@ family except Murdoku; Murdoku keeps its own skill and tools.
 3. Generate a candidate with a fixed seed so it can be reproduced. For a new
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
    layout (Binairo, Tango, Suguru, Minesweeper, Akari, Sudoku, Futoshiki,
-   Calcudoku, Star Battle, Tents, Battleships, Towers, Mosaic, Dominosa,
-   Rectangles, Magnets, Undead, Pattern, Map), so the example does not share
-   a solution with the rest of the gallery. Before choosing seeds, ask
+   Calcudoku, Kakurasu, Star Battle, Tents, Battleships, Towers, Mosaic,
+   Dominosa, Rectangles, Magnets, Undead, Pattern, Map), so the example does
+   not share a solution with the rest of the gallery. Before choosing seeds, ask
    `puzzle-lab sweep` what a builder reaches: it rates one fresh board per seed
    and counts the tiers and grades, and `--save DIR` keeps each board named by
    size, tier, grade and seed, so the pick is made from measured boards:
@@ -91,6 +91,11 @@ family except Murdoku; Murdoku keeps its own skill and tools.
    Only unique, deductively solved, nontrivial candidates qualify. Preserve the
    reported family, grade, tier, and uniqueness status; never promote an
    unrated or invalid candidate by hand.
+   Check for structural triviality too: Puzzle Lab marks Kakurasu trivial when
+   every row and column sum independently fixes its line, and Binairo trivial
+   when all rows or all columns can be completed independently from their
+   givens. A solving grade and uniqueness do not by themselves make a puzzle
+   interesting.
    When preserving technique coverage, pass optional `--grade` to `fresh`
    or `generate` as well as `--tier`, for example `--tier hard --grade cover3`.
    A tier alone cannot distinguish the different hard deduction rules.

@@ -88,11 +88,11 @@ Cosmetic piece changes do not create another family or gallery section.
 | Sandwich Sudoku | [`sandwich_1_4x4.txt`](../examples/sandwich_1_4x4.txt) (`single`), [`sandwich_2_4x4.txt`](../examples/sandwich_2_4x4.txt) (`relations`) | [`sandwich_3_6x6.txt`](../examples/sandwich_3_6x6.txt) (`relations`) | [`sandwich_4_4x4.txt`](../examples/sandwich_4_4x4.txt) (`chains`) |
 | Skyscraper Sudoku | [`skyscrapersudoku_1_4x4.txt`](../examples/skyscrapersudoku_1_4x4.txt) (`relations`) | [`skyscrapersudoku_2_6x6.txt`](../examples/skyscrapersudoku_2_6x6.txt) (`relations`) | [`skyscrapersudoku_3_6x6.txt`](../examples/skyscrapersudoku_3_6x6.txt) (`what_if`) |
 
-The most visible gaps are Tectonic/Suguru, counts-only Battleships, Kakurasu,
-and logic grids. In particular, the existing 8 × 8 Suguru file is
-trivial, and is intentionally excluded. These gaps require stronger
-family-specific deduction or generation support before a harder human-like
-example can be claimed.
+The most visible gaps are Tectonic/Suguru, counts-only Battleships and logic
+grids; Kakurasu is represented at easy and medium but has no hard example yet.
+In particular, the existing 8 × 8 Suguru file is trivial, and is intentionally
+excluded. These gaps require stronger family-specific deduction or generation
+support before a harder human-like example can be claimed.
 
 ## The newer families: what the ladder reaches
 

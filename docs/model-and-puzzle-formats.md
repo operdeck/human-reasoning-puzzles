@@ -209,7 +209,7 @@ Sign cell pairs must be orthogonal neighbors. The unique-line encoding uses exis
 
 ### Kakurasu
 
-`RowSums:` and `ColumnSums:` each contain N weighted totals. A filled cell in column c contributes c to its row sum; a filled cell in row r contributes r to its column sum. Optional `Givens:` uses `.`, `0`, and `1`. The current compiler expresses weighted line equations as generic relations; it does not add weighted propagation to `core.py`.
+`RowSums:` and `ColumnSums:` each contain N weighted totals. A filled cell in column c contributes c to its row sum; a filled cell in row r contributes r to its column sum. Optional `Givens:` uses `.`, `0`, and `1`. The current compiler expresses weighted line equations as generic relations; it does not add weighted propagation to `core.py`. For original boards, use `puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp/kakurasu.txt`. Reject puzzles where each row and column sum independently fixes its line: those need no interaction between clues.
 
 ### Battleships
 
@@ -387,9 +387,9 @@ If no candidate matches both requirements, they fail without writing a file.
 `search` reports every rated puzzle's `deductive` field — whether the ladder
 closes it without `what_if` — and `--deductive` keeps only the ones it does.
 `fresh` builds a brand-new board and solution for Binairo, Tango, Suguru,
-Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Star Battle (including the
-one-star Queens presentation), and Tents, then removes givens while the
-solution stays unique. Battleships
+Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Kakurasu, Star Battle
+(including the one-star Queens presentation), and Tents, then removes givens
+while the solution stays unique. Battleships
 builds a non-touching fleet on 4x4, 6x6, 8x8 or 10x10, derives its line totals,
 and removes shaped givens while the answer stays unique.
 Use `--stars 1` for the Queens presentation, or `--stars 2` (the default on

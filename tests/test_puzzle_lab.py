@@ -45,6 +45,55 @@ def test_mostly_prefilled_board_is_trivial():
     assert result.tier == "trivial"
 
 
+def test_kakurasu_line_sums_that_independently_fix_every_line_are_trivial():
+    text = """Family: kakurasu
+Size: 2
+RowSums:
+3 0
+ColumnSums:
+1 1
+"""
+    result = rate(text)
+    assert result.solved
+    assert result.solutions == "unique"
+    assert result.tier == "trivial"
+
+
+def test_kakurasu_staircase_solution_is_trivial():
+    text = """Family: kakurasu
+Size: 8
+RowSums:
+36 28 21 15 10 6 3 1
+ColumnSums:
+36 28 21 15 10 6 3 1
+"""
+    result = rate(text)
+    assert result.solved
+    assert result.solutions == "unique"
+    assert result.tier == "trivial"
+
+
+def test_binairo_lines_that_independently_fix_the_whole_board_are_trivial():
+    text = """Family: binairo
+Size: 4
+Givens:
+0 0 1 .
+0 1 . 0
+1 . 0 0
+. 0 0 1
+"""
+    result = rate(text)
+    assert result.solved
+    assert result.solutions == "unique"
+    assert result.initial_open == 4
+    assert result.tier == "trivial"
+
+
+def test_binairo_with_cross_line_deductions_is_not_misclassified_as_trivial():
+    result = rate(example("binairo_1_8x8.txt").read_text())
+    assert result.tier == "easy"
+
+
 @pytest.mark.parametrize(
     ("filename", "family", "tier"),
     [
@@ -167,6 +216,7 @@ def test_generate_refuses_murdoku(tmp_path, capsys):
         ("undead", 4, 0.5),
         ("pattern", 5, 0.4),
         ("map", 6, 0.6),
+        ("kakurasu", 6, 0.5),
     ],
 )
 def test_fresh_boards_have_their_own_unique_solution(family, size, open_share):
@@ -198,6 +248,29 @@ def test_fresh_command_writes_a_rated_board(tmp_path, capsys):
     args = ["fresh", "binairo", "--size", "6", "--tier", "easy", "--open-share", "0.4"]
     assert main([*args, "--seed", "1", "--attempts", "20", "--output", str(out)]) == 0
     assert rate(out.read_text()).tier == "easy"
+    assert "wrote" in capsys.readouterr().out
+
+
+def test_fresh_command_accepts_kakurasu(tmp_path, capsys):
+    out = tmp_path / "kakurasu.txt"
+    args = [
+        "fresh",
+        "kakurasu",
+        "--size",
+        "8",
+        "--tier",
+        "medium",
+        "--seed",
+        "226",
+        "--attempts",
+        "10",
+        "--output",
+        str(out),
+    ]
+    assert main(args) == 0
+    result = rate(out.read_text())
+    assert result.solved and result.solutions == "unique"
+    assert result.tier == "medium"
     assert "wrote" in capsys.readouterr().out
 
 
