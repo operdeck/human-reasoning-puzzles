@@ -205,9 +205,14 @@ class _Replay:
             and step.rule in ("count", "single")
         ):
             names = step.sources if step.rule == "count" else (source,)
-            return set().union(
+            needs = set().union(
                 *(self._constraint_state(name) for name in names if name in self.constraints)
             )
+            if step.rule == "count":
+                for name in names:
+                    if name in self.constraints:
+                        needs |= self._covered_outside(name)
+            return needs
         if source in self.relations:
             return self._unsupported(source, lit)
         if source in self.constraints and step.asserted:
@@ -226,6 +231,20 @@ class _Replay:
         return {self.out[x] for x in literals if x in self.out} | {
             self.placed[x] for x in literals if x in self.placed
         }
+
+    def _covered_outside(self, name: str) -> set[Key]:
+        """Prior rulings that confine whole variables to this constraint's literals."""
+        scope = set(self.constraints[name].literals)
+        needs: set[Key] = set()
+        for var in self.model.all_variables:
+            domain = self.model.constraints[self.model.domain_of(var)].literals
+            live = [x for x in domain if x not in self.out and x not in self.placed]
+            if not live or not set(live) <= scope:
+                continue
+            if any(x in self.placed for x in live):
+                continue
+            needs |= self._out_of(x for x in domain if x not in scope)
+        return needs
 
     def _unsupported(self, name: str, lit: LiteralId) -> set[Key]:
         """For each way `name` could hold with `lit`, the earliest ruling that ended it."""
