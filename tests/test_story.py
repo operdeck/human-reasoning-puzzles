@@ -261,6 +261,14 @@ def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal(
     assert "het gebied Okinawa met minstens twee mensen" in story
 
 
+def test_story_says_area_capacity_the_way_a_person_does():
+    """The count rule's shared-capacity step reads as the counting argument."""
+    story = explain(example("samen-onderweg.txt").read_text())
+    assert "bevatten samen al alle vijf mensen" in story
+    assert "holds at least" not in story
+    assert "minstens één mensen" not in story
+
+
 def test_story_describes_by_region_and_row_before_squares():
     story = explain((example("prrrdoku3.txt")).read_text())
     assert "Luna zit in het water" in story

@@ -186,9 +186,11 @@ Candidates, roughly in order of value:
   in 10 s.
 - ~~Counting constraints~~ — `Kind.COUNT` accepts an allowed set of true
   counts and an optional `reified_by` literal. `rule_count` handles bounds and
-  gaps, while `single`, `cover2`/`cover3`, and support-checked chain links
-  generalize the existing deductions. Proof replay, story narration, and
-  model reports include count deductions.
+  gaps, whole variables whose options all lie inside the counted literals, and
+  shared capacity between disjoint scopes of one family, while `single`,
+  `cover2`/`cover3`, and support-checked chain links generalize the existing
+  deductions. Proof replay, story narration, and model reports include count
+  deductions.
 
 A new rule also needs: a case in `proof.Move` so `--explain` can replay it,
 wording in `story`, and a place in `proof.HARDEST_FIRST`.
@@ -411,6 +413,7 @@ Numbers from actual runs, not estimates:
 | `murdoku_sparse_mystery.txt` | solved, 5 iterations | `single` 4 |
 | `murdoku_global_counts.txt` | solved, 13 iterations | `single` 9, `count` 3 |
 | `murdoku_composition.txt` | solved, 38 iterations | `single` 20, `count` 14, `relations` 3 |
+| `samen-onderweg.txt` | solved, 29 iterations | `single` 17, `count` 7, `relations` 3, `subsumption` 1 |
 | `prrrdoku1.txt` | solved, 14 iterations | `single` 7, `relations` 4, `subsumption` 2 |
 | `prrrdoku2.txt` | solved, 27 iterations | `single` 9, `relations` 14, `chains` 2, `what_if` 1 |
 | `prrrdoku3.txt` | solved, 40 iterations | `single` 9, `relations` 18, `subsumption` 5, `cover2` 2, `what_if` 5 |
@@ -422,6 +425,12 @@ Numbers from actual runs, not estimates:
 
 No example in `examples/` needs `rule_wing`; it is in the ladder for models
 that do, and the Norvig benchmark credits it (see `benchmark/`).
+
+`samen-onderweg.txt` shows the count bounds in use. Mio on the bank and Keiko
+beside the lantern put two whole variables in Osaka, so `count` raises its
+floor to two; the busiest-area comparison then gives Tokyo three; two plus
+three reserves all five travellers, so Okinawa's ceiling is zero. The puzzle
+needs no `what_if`, and its worked solution states that argument in words.
 
 The Calcudokus were generated the same way as the graded Sudokus (random
 Latin square, random cages, uniqueness checked by brute force) because

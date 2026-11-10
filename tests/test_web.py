@@ -38,7 +38,6 @@ BEYOND_DEDUCTION = {
     "prrrdoku2",
     "pattern_4_10x10",
     "prrrdoku3",
-    "samen-onderweg",
     "tamagotchi-murdoku-12x12",
     "tango_4_4x4",
     "tents_3_4x4",

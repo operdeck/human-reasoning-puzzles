@@ -22,7 +22,7 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | Rule | Meaning |
 |---|---|
 | `single` | Force the last option in an `EXACTLY_ONE` constraint, or the only literal forced by a `COUNT` with one feasible total. |
-| `count` | Propagate allowed count totals, including bounds, gaps, parity, and reified counts. |
+| `count` | Propagate allowed count totals, including bounds, gaps, parity, reified counts, whole variables confined to the counted literals, and shared capacity between disjoint scopes of one family. |
 | `relations` | Generalized arc consistency: remove a value if no combination of the other variables' values supports it. |
 | `subsumption` | Use the remaining capacity of an outer constraint when an inner constraint requires another true literal. |
 | `cover2`, `cover3` | Combine disjoint inner constraints whose guaranteed demand fills an outer constraint's remaining capacity. |

@@ -241,6 +241,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.quietest_area_tie": "the areas with the fewest people are {areas}",
         "count_reason": "the allowed counts for {name} are {counts}",
         "count.population_reason": "the {area} area holding at least {count} people",
+        "count.population_reason_one": "the {area} area holding at least one person",
+        "count.population_full": "{areas} already hold all {n} people",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
         "global_count.at_least": "at least {n}",
@@ -482,6 +484,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.alone_with_anyone_n": "{a} deelt een gebied met precies {n} anderen",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
         "count.population_reason": "het gebied {area} met minstens {count} mensen",
+        "count.population_reason_one": "het gebied {area} met minstens één mens",
+        "count.population_full": "{areas} bevatten samen al alle {n} mensen",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
         "global_count.at_least": "minstens {n}",
@@ -1664,14 +1668,48 @@ class Story:
         if constraint.family == POPULATION_FAMILY:
             found = _POPULATION_NAME.match(constraint.name)
             if found:
+                count = int(found["count"])
+                key = "count.population_reason_one" if count == 1 else "count.population_reason"
                 return str(
                     self.say(
-                        "count.population_reason",
+                        key,
                         area=found["area"],
-                        count=self.say.number(int(found["count"])),
+                        count=self.say.number(count),
                     )
                 )
         return constraint.name
+
+    def _population_full(
+        self, step: Step, constraint: Constraint, known: bool | None
+    ) -> str | None:
+        """'Osaka and Tokyo already hold all five people' when that empties an area.
+
+        The count step refutes "an area holds at least one person". If the
+        constraints that bounded it account for everybody, say so, which is
+        the argument a person makes instead of quoting allowed totals.
+        """
+        if constraint.family != POPULATION_FAMILY or known is not False:
+            return None
+        target = _POPULATION_NAME.match(constraint.name)
+        if target is None or int(target["count"]) != 1:
+            return None
+        parts: list[str] = []
+        total = 0
+        for name in step.sources[1:]:
+            found = _POPULATION_NAME.match(name)
+            if found is None:
+                continue
+            count = int(found["count"])
+            key = "count.population_reason_one" if count == 1 else "count.population_reason"
+            parts.append(self.say(key, area=found["area"], count=self.say.number(count)))
+            total += count
+        if len(parts) < 2 or total != len(self.board.people):
+            return None
+        return self.say(
+            "count.population_full",
+            areas=self.say.join(parts),
+            n=self.say.number(total),
+        )
 
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
@@ -1692,6 +1730,7 @@ class Story:
             return f"{clue}, {self.say('so')} {outcome}."
         constraint = next(c for c in self.model.constraints if c.name == step.sources[0])
         allowed = constraint.allowed_counts
+        known: bool | None = None
         if constraint.reified_by is not None:
             var = self.model.var_of(constraint.reified_by)
             value = self.model.value_of(constraint.reified_by)
@@ -1711,8 +1750,10 @@ class Story:
             if known is False:
                 allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
         counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
-        reason = self._role_area_reason(constraint, allowed) or self.say(
-            "count_reason", name=self._count_name(constraint), counts=counts
+        reason = (
+            self._population_full(step, constraint, known)
+            or self._role_area_reason(constraint, allowed)
+            or self.say("count_reason", name=self._count_name(constraint), counts=counts)
         )
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."

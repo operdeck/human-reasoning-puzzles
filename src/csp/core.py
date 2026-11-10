@@ -560,34 +560,56 @@ def rule_relations(model: Model) -> bool:
 
 
 def rule_count(model: Model) -> bool:
-    """Propagate allowed counts, including parity and reified count constraints."""
+    """Propagate allowed counts, including parity, reified counts and shared capacity."""
+    cache = _CountCache()
     return any(
-        propagate_count(model, constraint.index)
+        propagate_count(model, constraint.index, cache)
         for constraint in model.constraints
         if constraint.kind is Kind.COUNT
     )
 
 
-def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
+class _CountCache:
+    """Bounds reused across one rule pass, before any state change.
+
+    A pass stops at its first deduction, so every constraint it visited before
+    that shares one model state; floors and scopes therefore cannot change.
+    """
+
+    def __init__(self) -> None:
+        self.whole: dict[int, int] = {}
+        self.scope: dict[int, frozenset[LiteralId]] = {}
+        self.family: dict[str | None, list[Constraint]] = {}
+        self.options: dict[str, frozenset[LiteralId]] | None = None
+        self.true: dict[int, int] = {}
+
+
+def propagate_count(
+    model: Model, constraint_id: ConstraintId, cache: _CountCache | None = None
+) -> bool:
     """Make one sound deduction from a count constraint; whether it changed state."""
     constraint = model.constraints[constraint_id]
     if constraint.kind is not Kind.COUNT or model.satisfied(constraint_id):
         return False
+    if cache is None:
+        cache = _CountCache()
 
     live = model.live(constraint_id)
-    already_true = sum(model.is_true(lit) for lit in constraint.literals)
-    possible = range(already_true, already_true + len(live) + 1)
+    already_true = _true_count(model, constraint, cache)
+    lower, upper, counted = _count_bounds(model, constraint, already_true, len(live), cache)
     if constraint.reified_by is not None and not (
         model.is_true(constraint.reified_by) or model.is_false(constraint.reified_by)
     ):
-        can_be_true = any(count in constraint.allowed_counts for count in possible)
-        can_be_false = any(count not in constraint.allowed_counts for count in possible)
+        can_be_true = any(count in constraint.allowed_counts for count in range(lower, upper + 1))
+        can_be_false = any(
+            count not in constraint.allowed_counts for count in range(lower, upper + 1)
+        )
         if not can_be_true:
             model.eliminate(
                 constraint.reified_by,
                 "count",
                 f"{constraint.name} cannot reach an allowed count",
-                sources=(constraint.name,),
+                sources=(constraint.name, *counted),
             )
             return True
         if not can_be_false:
@@ -595,16 +617,15 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
                 constraint.reified_by,
                 "count",
                 f"{constraint.name} can reach only allowed counts",
-                sources=(constraint.name,),
+                sources=(constraint.name, *counted),
             )
             return True
         return False
 
     allowed = model.active_counts(constraint_id)
-    can_be_true = any(
-        total in allowed for total in range(already_true + 1, already_true + len(live) + 1)
-    )
-    can_be_false = any(total in allowed for total in range(already_true, already_true + len(live)))
+    can_be_true = any(total in allowed for total in range(max(lower, already_true + 1), upper + 1))
+    without_lit_max = min(upper, already_true + len(live) - 1)
+    can_be_false = any(total in allowed for total in range(lower, without_lit_max + 1))
     eliminate: list[LiteralId] = []
     for lit in live:
         if not can_be_true:
@@ -614,7 +635,7 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
                 lit,
                 "count",
                 f"{constraint.name} requires this literal to reach an allowed count",
-                sources=(constraint.name,),
+                sources=(constraint.name, *counted),
             )
             return True
     for lit in eliminate:
@@ -622,9 +643,203 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
             lit,
             "count",
             f"{constraint.name} cannot reach an allowed count with this literal true",
-            sources=(constraint.name,),
+            sources=(constraint.name, *counted),
         )
     return bool(eliminate)
+
+
+def _count_bounds(
+    model: Model,
+    constraint: Constraint,
+    already_true: int,
+    open_count: int,
+    cache: _CountCache,
+) -> tuple[int, int, tuple[str, ...]]:
+    """Safe lower and upper bounds on this count, and the constraints proving them.
+
+    A whole variable whose options all lie in the counted set contributes one
+    true literal, so the count must reach it. Areas of the same family also
+    bound each other: a smaller area of the family sets a floor, and disjoint
+    areas reserve part of the variables in their union, lowering the ceiling.
+    The ceiling never exceeds the number of variables that can hold one true
+    literal in those literals.
+    """
+    upper = already_true + open_count
+    if not _at_least(constraint):
+        return already_true, upper, ()
+    lower = already_true + _whole_variables_inside(model, constraint, cache)
+    sources: list[str] = []
+    scope = _scope_of(constraint, cache)
+    floors: dict[frozenset[LiteralId], tuple[int, int, str]] = {}
+    for other in _family_counts(model, constraint.family, cache):
+        if other.index == constraint.index:
+            continue
+        base = _count_floor(model, other, cache)
+        if base <= 0:
+            continue
+        other_scope = _scope_of(other, cache)
+        candidate = (base, min(other.allowed_counts), other.name)
+        current = floors.get(other_scope)
+        if current is None or _floor_rank(candidate) < _floor_rank(current):
+            floors[other_scope] = candidate
+    subsets: list[tuple[int, str]] = []
+    apart: list[tuple[int, str, frozenset[LiteralId]]] = []
+    for other_scope, (base, _, name) in floors.items():
+        if other_scope <= scope:
+            subsets.append((base, name))
+        elif other_scope.isdisjoint(scope):
+            apart.append((base, name, other_scope))
+    for base, name in sorted(subsets, key=lambda item: -item[0]):
+        if base > lower:
+            lower = base
+            sources.append(name)
+    apart.sort(key=lambda item: (-item[0], min(item[2])))
+    chosen: list[frozenset[LiteralId]] = []
+    reserved = 0
+    for base, name, other_scope in apart:
+        if any(not other_scope.isdisjoint(taken) for taken in chosen):
+            continue
+        chosen.append(other_scope)
+        reserved += base
+        sources.append(name)
+    if chosen:
+        union = set(scope).union(*chosen)
+        capacity = _scope_capacity(model, union)
+        if capacity is not None and capacity - reserved >= lower:
+            upper = min(upper, capacity - reserved)
+    return lower, upper, tuple(sources)
+
+
+def _at_least(constraint: Constraint) -> bool:
+    """Whether a reified count means 'at least k', the only shape bounds combine."""
+    if constraint.reified_by is None:
+        return False
+    floor = min(constraint.allowed_counts)
+    return floor >= 1 and constraint.allowed_counts == frozenset(
+        range(floor, len(constraint.literals) + 1)
+    )
+
+
+def _family_counts(model: Model, family: str | None, cache: _CountCache) -> list[Constraint]:
+    """The reified at-least counts of one family, shared for the rest of this pass."""
+    found = cache.family.get(family)
+    if found is None:
+        found = [
+            constraint
+            for constraint in model.constraints
+            if constraint.kind is Kind.COUNT
+            and constraint.family == family
+            and _at_least(constraint)
+        ]
+        cache.family[family] = found
+    return found
+
+
+def _scope_of(constraint: Constraint, cache: _CountCache) -> frozenset[LiteralId]:
+    """The constraint's literals, made once for the rest of this pass."""
+    scope = cache.scope.get(constraint.index)
+    if scope is None:
+        scope = frozenset(constraint.literals)
+        cache.scope[constraint.index] = scope
+    return scope
+
+
+def _true_count(model: Model, constraint: Constraint, cache: _CountCache | None) -> int:
+    """How many of the constraint's literals are already true."""
+    if cache is not None and constraint.index in cache.true:
+        return cache.true[constraint.index]
+    count = sum(model.is_true(lit) for lit in constraint.literals)
+    if cache is not None:
+        cache.true[constraint.index] = count
+    return count
+
+
+def _whole_variables(model: Model) -> list[str]:
+    """Variables that must take exactly one value: their domain is EXACTLY_ONE."""
+    return [
+        var
+        for var in model.all_variables
+        if model.constraints[model.domain_of(var)].kind is Kind.EXACTLY_ONE
+    ]
+
+
+def _options_by_var(model: Model, cache: _CountCache) -> dict[str, frozenset[LiteralId]]:
+    """Each whole variable's live options, made once for the rest of this pass."""
+    if cache.options is None:
+        cache.options = {var: frozenset(model.options(var)) for var in _whole_variables(model)}
+    return cache.options
+
+
+def _whole_variables_inside(
+    model: Model, constraint: Constraint, cache: _CountCache | None = None
+) -> int:
+    """How many more true literals whole variables force into this set.
+
+    A variable whose remaining options all lie inside the set must put its one
+    true literal there. Only EXACTLY_ONE domains promise that literal; a domain
+    of another kind may leave every option false, so it adds nothing. Variables
+    already true inside are left to the caller's count of true literals.
+    Overlapping domains are counted at most once, so the bound stays sound for
+    models that share options between variables.
+    """
+    if cache is not None and constraint.index in cache.whole:
+        return cache.whole[constraint.index]
+    literals = set(constraint.literals)
+    claimed: set[LiteralId] = set()
+    found = 0
+    options: Iterable[frozenset[LiteralId]]
+    if cache is None:
+        options = (frozenset(model.options(var)) for var in _whole_variables(model))
+    else:
+        options = _options_by_var(model, cache).values()
+    for option_set in options:
+        if not option_set or not option_set <= literals:
+            continue
+        if any(model.is_true(lit) for lit in option_set):
+            continue
+        if option_set & claimed:
+            continue
+        claimed |= option_set
+        found += 1
+    if cache is not None:
+        cache.whole[constraint.index] = found
+    return found
+
+
+def _count_floor(model: Model, constraint: Constraint, cache: _CountCache | None = None) -> int:
+    """A guaranteed minimum count for `constraint` in the current state."""
+    already_true = _true_count(model, constraint, cache)
+    lower = already_true + _whole_variables_inside(model, constraint, cache)
+    if constraint.reified_by is not None and model.is_true(constraint.reified_by):
+        lower = max(lower, min(constraint.allowed_counts))
+    return lower
+
+
+def _floor_rank(item: tuple[int, int, str]) -> tuple[int, int, int, str]:
+    """Prefer the strongest floor, named by the level that matches it."""
+    base, allowed_floor, name = item
+    return -base, abs(allowed_floor - base), allowed_floor, name
+
+
+def _scope_capacity(model: Model, literals: Iterable[LiteralId]) -> int | None:
+    """How many variables can hold a true literal in `literals`, or None if unsure.
+
+    Each variable contributes at most one true literal, so this is the ceiling
+    on how many of these literals can be true together. Options outside their
+    variable's domain would break that guarantee, so the bound is only offered
+    when every counted literal belongs to its variable's domain.
+    """
+    variables: set[str] = set()
+    for lit in literals:
+        var = model.var_of(lit)
+        domain_id = model._domain_of.get(var)
+        if domain_id is None:
+            return None
+        domain = model.constraints[domain_id]
+        if domain.kind is not Kind.EXACTLY_ONE or lit not in domain.literals:
+            return None
+        variables.add(var)
+    return len(variables)
 
 
 def prune_relation(model: Model, relation: Relation) -> bool:

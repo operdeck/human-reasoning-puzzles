@@ -236,6 +236,12 @@ quarter of its cells open (`PREFILLED_OPEN_SHARE`) rates `trivial`, whatever
 rule its last cells need. `tests/test_example_quality.py` rejects trivial or
 non-unique gallery examples. Known exceptions there must link to an open issue.
 
+The `count` rule also uses variables whose remaining options all lie inside a
+counted set, and reserves capacity across disjoint scopes of one family.
+Re-rate a board after such engine changes instead of relabelling it or adding
+givens to hide a deduction the ladder now makes; keep the measured grade even
+when it drops.
+
 ## Towers, Mosaic, Dominosa, Rectangles, Magnets, Undead, Pattern and Map
 
 These eight families share one authoring loop, and its lessons apply to any new
