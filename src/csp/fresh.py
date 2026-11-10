@@ -63,6 +63,7 @@ FAMILIES = (
     "hidato",
     "numbrix",
     "kakuro",
+    "kakurasu",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -221,6 +222,53 @@ def fresh_binairo(
         )
         signs = [pair for pair in signs if pair in kept]
     return _binairo_text(family, grid, givens, signs, comment)
+
+
+def _kakurasu_text(grid: list[list[int]], givens: set[Cell], comment: str) -> str:
+    size = len(grid)
+    row_sums = [sum((col + 1) * grid[row][col] for col in range(size)) for row in range(size)]
+    column_sums = [sum((row + 1) * grid[row][col] for row in range(size)) for col in range(size)]
+    lines = _header(
+        comment,
+        "Family: kakurasu",
+        f"Size: {size}",
+        "RowSums:",
+        " ".join(map(str, row_sums)),
+        "ColumnSums:",
+        " ".join(map(str, column_sums)),
+    )
+    if givens:
+        lines.append("Givens:")
+        lines.extend(
+            " ".join(str(grid[row][col]) if (row, col) in givens else "." for col in range(size))
+            for row in range(size)
+        )
+    return "\n".join(lines) + "\n"
+
+
+def fresh_kakurasu(
+    size: int, rng: random.Random, attempts: int = 100, comment: str = ""
+) -> str | None:
+    """A new Kakurasu board with weighted line clues and a unique filling."""
+    if size < 2:
+        raise ValueError("fresh Kakurasu boards need to be at least 2x2")
+    for _ in range(attempts):
+        grid = [[rng.randrange(2) for _ in range(size)] for _ in range(size)]
+        if any(not any(row) or all(row) for row in grid):
+            continue
+        if any(
+            not any(grid[row][col] for row in range(size))
+            or all(grid[row][col] for row in range(size))
+            for col in range(size)
+        ):
+            continue
+        cells = set(_cells(size))
+        build = partial(_kakurasu_text, grid, comment=comment)
+        givens = thin(cells, build, rng)
+        if size * size - len(givens) < (size * size + 3) // 4:
+            continue
+        return build(givens)
+    return None
 
 
 def _region_text(
@@ -1757,6 +1805,8 @@ def fresh(
         return fresh_hidato(family, size, rng, open_share, comment)
     if family == "kakuro":
         return fresh_kakuro(size, rng, comment)
+    if family == "kakurasu":
+        return fresh_kakurasu(size, rng, comment=comment)
     if family in SUDOKU_VARIANTS:
         return fresh_sudoku_variant(family, size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")

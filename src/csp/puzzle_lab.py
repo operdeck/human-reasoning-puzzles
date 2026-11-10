@@ -10,10 +10,11 @@ from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from glob import glob
+from itertools import product
 from pathlib import Path
 from typing import Any, cast
 
-from csp import bruteforce, cli, fresh, report
+from csp import binairo, bruteforce, cli, fresh, kakurasu, report
 from csp.core import Solver
 from csp.puzzlefile import detect, display_family, read_sections
 
@@ -46,6 +47,105 @@ SMALL_RELATION_FAMILIES = frozenset(
 )
 # A board with fewer open cells than this share is a prefilled exercise, not a puzzle.
 PREFILLED_OPEN_SHARE = 0.25
+
+
+def _kakurasu_lines_are_independently_forced(text: str) -> bool:
+    puzzle = kakurasu.parse(text)
+
+    def completions(givens: list[int], target: int) -> int:
+        ways = [0] * (target + 1)
+        ways[0] = 1
+        for weight, given in enumerate(givens, 1):
+            updated = [0] * (target + 1)
+            for subtotal, count in enumerate(ways):
+                if not count:
+                    continue
+                if given != 1:
+                    updated[subtotal] = min(2, updated[subtotal] + count)
+                if given != 0 and subtotal + weight <= target:
+                    updated[subtotal + weight] = min(2, updated[subtotal + weight] + count)
+            ways = updated
+        return ways[target]
+
+    rows_are_forced = all(
+        completions(puzzle.givens[row], target) == 1 for row, target in enumerate(puzzle.row_sums)
+    )
+    columns_are_forced = all(
+        completions([puzzle.givens[row][col] for row in range(puzzle.size)], target) == 1
+        for col, target in enumerate(puzzle.column_sums)
+    )
+    return rows_are_forced and columns_are_forced
+
+
+def _kakurasu_solution_is_staircase(text: str, assignment: Mapping[str, Any]) -> bool:
+    puzzle = kakurasu.parse(text)
+    grid = [
+        [assignment[kakurasu.cell_name((row, col))] for col in range(puzzle.size)]
+        for row in range(puzzle.size)
+    ]
+
+    def is_top_left_staircase(candidate: list[list[bool]]) -> bool:
+        return all(
+            not candidate[row][col]
+            or all(candidate[above][left] for above in range(row + 1) for left in range(col + 1))
+            for row in range(puzzle.size)
+            for col in range(puzzle.size)
+        )
+
+    for flip_rows in (False, True):
+        for flip_columns in (False, True):
+            oriented = [
+                row[::-1] if flip_columns else row for row in (grid[::-1] if flip_rows else grid)
+            ]
+            transposed = [
+                [oriented[row][col] for row in range(puzzle.size)] for col in range(puzzle.size)
+            ]
+            if is_top_left_staircase(oriented) or is_top_left_staircase(transposed):
+                return True
+    return False
+
+
+def _binairo_lines_are_independently_forced(text: str) -> bool:
+    puzzle = binairo.parse(text)
+    patterns = [
+        pattern
+        for pattern in product((0, 1), repeat=puzzle.size)
+        if sum(pattern) == puzzle.size // 2
+        and all(
+            not (pattern[index] == pattern[index + 1] == pattern[index + 2])
+            for index in range(puzzle.size - 2)
+        )
+    ]
+
+    def is_forced(givens: list[int]) -> bool:
+        matches = 0
+        for pattern in patterns:
+            if all(
+                given < 0 or given == value for given, value in zip(givens, pattern, strict=True)
+            ):
+                matches += 1
+                if matches > 1:
+                    return False
+        return matches == 1
+
+    rows = puzzle.givens
+    columns = [
+        [puzzle.givens[row][col] for row in range(puzzle.size)] for col in range(puzzle.size)
+    ]
+    return all(map(is_forced, rows)) or all(map(is_forced, columns))
+
+
+def _line_clues_solve_puzzle_without_interaction(
+    text: str, family: str, assignment: Mapping[str, Any]
+) -> bool:
+    """Whether a family with line clues can be filled without combining those clues."""
+    if family == "kakurasu":
+        return _kakurasu_lines_are_independently_forced(text) or _kakurasu_solution_is_staircase(
+            text, assignment
+        )
+    if family == "binairo":
+        return _binairo_lines_are_independently_forced(text)
+    return False
 
 
 @dataclass(frozen=True)
@@ -113,7 +213,15 @@ def rate(text: str, path: str = "<memory>") -> Rating:
             tier = "medium"
         elif density >= 0.3:
             tier = "hard"
-    if initial_open < 2 or not any(fired) or open_share < PREFILLED_OPEN_SHARE:
+    if (
+        initial_open < 2
+        or not any(fired)
+        or open_share < PREFILLED_OPEN_SHARE
+        or (
+            result.solved
+            and _line_clues_solve_puzzle_without_interaction(text, family, result.assignment)
+        )
+    ):
         tier = "trivial"
     return Rating(
         path=path,
