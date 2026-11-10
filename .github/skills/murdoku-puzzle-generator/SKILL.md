@@ -237,6 +237,13 @@ uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
   `chains` < `what_if`), not universal difficulty. `--require-forward` forbids
   `what_if`.
 - `--track-person P` shows a person's live squares and companion candidates.
+- `count` also uses whole variables confined to a counted area and reserves the
+  shared capacity of disjoint areas in one family. A puzzle like
+  `examples/japan/samen-onderweg.txt` needs no `what_if`: Mio on the bank and
+  Keiko beside the lantern give Osaka two, the busiest clue gives Tokyo three,
+  and five travellers leave Okinawa empty. When a population clue grades
+  `what_if`, check whether that capacity argument should close it before adding
+  decoys or loosening clues.
 - `--brute-force` must finish in < 5 s for a generated puzzle; if not, add
   clues or shrink the board. `clue_search` runs every solve with `--timeout`.
 - For a transcription, `--brute-force` and `--grade` are diagnostics: report
