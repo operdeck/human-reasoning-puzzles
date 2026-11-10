@@ -230,6 +230,22 @@ def test_count_sees_whole_variables_inside_its_literals():
     model.check()
 
 
+def test_count_does_not_treat_an_at_most_one_domain_as_a_whole_variable():
+    """A domain that may leave every option false does not raise a count's floor."""
+    model = Model()
+    a, b = model.literal("x", 1), model.literal("x", 2)
+    model.constrain("x picks at most one", Kind.AT_MOST_ONE, [a, b], defines="x")
+    holds = _variable(model, "holds", (False, True))
+    model.constrain(
+        "x is set", Kind.COUNT, [a, b], allowed_counts={1, 2}, reified_by=holds[1]
+    )  # fmt: skip
+
+    # Both completions are valid: x = 1 with holds true, and neither with holds false.
+    assert rule_count(model) is False
+    assert not model.is_true(holds[1]) and not model.is_false(holds[1])
+    model.check()
+
+
 def test_count_capacity_reserves_room_for_disjoint_scopes():
     model = Model()
     a1, a2, a3 = _variable(model, "a", (1, 2, 3))

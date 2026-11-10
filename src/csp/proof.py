@@ -237,8 +237,11 @@ class _Replay:
         scope = set(self.constraints[name].literals)
         needs: set[Key] = set()
         for var in self.model.all_variables:
-            domain = self.model.constraints[self.model.domain_of(var)].literals
-            live = [x for x in domain if x not in self.out and x not in self.placed]
+            domain_constraint = self.model.constraints[self.model.domain_of(var)]
+            if domain_constraint.kind is not Kind.EXACTLY_ONE:
+                continue
+            domain = domain_constraint.literals
+            live = [x for x in domain if x not in self.out]
             if not live or not set(live) <= scope:
                 continue
             if any(x in self.placed for x in live):

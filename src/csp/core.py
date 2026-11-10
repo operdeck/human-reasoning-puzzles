@@ -754,10 +754,19 @@ def _true_count(model: Model, constraint: Constraint, cache: _CountCache | None)
     return count
 
 
+def _whole_variables(model: Model) -> list[str]:
+    """Variables that must take exactly one value: their domain is EXACTLY_ONE."""
+    return [
+        var
+        for var in model.all_variables
+        if model.constraints[model.domain_of(var)].kind is Kind.EXACTLY_ONE
+    ]
+
+
 def _options_by_var(model: Model, cache: _CountCache) -> dict[str, frozenset[LiteralId]]:
-    """Each variable's live options, made once for the rest of this pass."""
+    """Each whole variable's live options, made once for the rest of this pass."""
     if cache.options is None:
-        cache.options = {var: frozenset(model.options(var)) for var in model.all_variables}
+        cache.options = {var: frozenset(model.options(var)) for var in _whole_variables(model)}
     return cache.options
 
 
@@ -767,9 +776,11 @@ def _whole_variables_inside(
     """How many more true literals whole variables force into this set.
 
     A variable whose remaining options all lie inside the set must put its one
-    true literal there. Variables already true inside are left to the caller's
-    count of true literals. Overlapping domains are counted at most once, so
-    the bound stays sound for models that share options between variables.
+    true literal there. Only EXACTLY_ONE domains promise that literal; a domain
+    of another kind may leave every option false, so it adds nothing. Variables
+    already true inside are left to the caller's count of true literals.
+    Overlapping domains are counted at most once, so the bound stays sound for
+    models that share options between variables.
     """
     if cache is not None and constraint.index in cache.whole:
         return cache.whole[constraint.index]
@@ -778,7 +789,7 @@ def _whole_variables_inside(
     found = 0
     options: Iterable[frozenset[LiteralId]]
     if cache is None:
-        options = (frozenset(model.options(var)) for var in model.all_variables)
+        options = (frozenset(model.options(var)) for var in _whole_variables(model))
     else:
         options = _options_by_var(model, cache).values()
     for option_set in options:
