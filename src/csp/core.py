@@ -561,22 +561,42 @@ def rule_relations(model: Model) -> bool:
 
 def rule_count(model: Model) -> bool:
     """Propagate allowed counts, including parity, reified counts and shared capacity."""
+    cache = _CountCache()
     return any(
-        propagate_count(model, constraint.index)
+        propagate_count(model, constraint.index, cache)
         for constraint in model.constraints
         if constraint.kind is Kind.COUNT
     )
 
 
-def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
+class _CountCache:
+    """Bounds reused across one rule pass, before any state change.
+
+    A pass stops at its first deduction, so every constraint it visited before
+    that shares one model state; floors and scopes therefore cannot change.
+    """
+
+    def __init__(self) -> None:
+        self.whole: dict[int, int] = {}
+        self.scope: dict[int, frozenset[LiteralId]] = {}
+        self.family: dict[str | None, list[Constraint]] = {}
+        self.options: dict[str, frozenset[LiteralId]] | None = None
+        self.true: dict[int, int] = {}
+
+
+def propagate_count(
+    model: Model, constraint_id: ConstraintId, cache: _CountCache | None = None
+) -> bool:
     """Make one sound deduction from a count constraint; whether it changed state."""
     constraint = model.constraints[constraint_id]
     if constraint.kind is not Kind.COUNT or model.satisfied(constraint_id):
         return False
+    if cache is None:
+        cache = _CountCache()
 
     live = model.live(constraint_id)
-    already_true = sum(model.is_true(lit) for lit in constraint.literals)
-    lower, upper, counted = _count_bounds(model, constraint, already_true, len(live))
+    already_true = _true_count(model, constraint, cache)
+    lower, upper, counted = _count_bounds(model, constraint, already_true, len(live), cache)
     if constraint.reified_by is not None and not (
         model.is_true(constraint.reified_by) or model.is_false(constraint.reified_by)
     ):
@@ -629,7 +649,11 @@ def propagate_count(model: Model, constraint_id: ConstraintId) -> bool:
 
 
 def _count_bounds(
-    model: Model, constraint: Constraint, already_true: int, open_count: int
+    model: Model,
+    constraint: Constraint,
+    already_true: int,
+    open_count: int,
+    cache: _CountCache,
 ) -> tuple[int, int, tuple[str, ...]]:
     """Safe lower and upper bounds on this count, and the constraints proving them.
 
@@ -640,30 +664,20 @@ def _count_bounds(
     The ceiling never exceeds the number of variables that can hold one true
     literal in those literals.
     """
-    lower = already_true + _whole_variables_inside(model, constraint)
     upper = already_true + open_count
-    floor = min(constraint.allowed_counts)
-    if (
-        constraint.reified_by is None
-        or floor < 1
-        or constraint.allowed_counts != frozenset(range(floor, len(constraint.literals) + 1))
-    ):
-        return lower, upper, ()
+    if not _at_least(constraint):
+        return already_true, upper, ()
+    lower = already_true + _whole_variables_inside(model, constraint, cache)
     sources: list[str] = []
-    scope = frozenset(constraint.literals)
+    scope = _scope_of(constraint, cache)
     floors: dict[frozenset[LiteralId], tuple[int, int, str]] = {}
-    for other in model.constraints:
-        if (
-            other.index == constraint.index
-            or other.kind is not Kind.COUNT
-            or other.reified_by is None
-            or other.family != constraint.family
-        ):
+    for other in _family_counts(model, constraint.family, cache):
+        if other.index == constraint.index:
             continue
-        base = _count_floor(model, other)
+        base = _count_floor(model, other, cache)
         if base <= 0:
             continue
-        other_scope = frozenset(other.literals)
+        other_scope = _scope_of(other, cache)
         candidate = (base, min(other.allowed_counts), other.name)
         current = floors.get(other_scope)
         if current is None or _floor_rank(candidate) < _floor_rank(current):
@@ -696,7 +710,60 @@ def _count_bounds(
     return lower, upper, tuple(sources)
 
 
-def _whole_variables_inside(model: Model, constraint: Constraint) -> int:
+def _at_least(constraint: Constraint) -> bool:
+    """Whether a reified count means 'at least k', the only shape bounds combine."""
+    if constraint.reified_by is None:
+        return False
+    floor = min(constraint.allowed_counts)
+    return floor >= 1 and constraint.allowed_counts == frozenset(
+        range(floor, len(constraint.literals) + 1)
+    )
+
+
+def _family_counts(model: Model, family: str | None, cache: _CountCache) -> list[Constraint]:
+    """The reified at-least counts of one family, shared for the rest of this pass."""
+    found = cache.family.get(family)
+    if found is None:
+        found = [
+            constraint
+            for constraint in model.constraints
+            if constraint.kind is Kind.COUNT
+            and constraint.family == family
+            and _at_least(constraint)
+        ]
+        cache.family[family] = found
+    return found
+
+
+def _scope_of(constraint: Constraint, cache: _CountCache) -> frozenset[LiteralId]:
+    """The constraint's literals, made once for the rest of this pass."""
+    scope = cache.scope.get(constraint.index)
+    if scope is None:
+        scope = frozenset(constraint.literals)
+        cache.scope[constraint.index] = scope
+    return scope
+
+
+def _true_count(model: Model, constraint: Constraint, cache: _CountCache | None) -> int:
+    """How many of the constraint's literals are already true."""
+    if cache is not None and constraint.index in cache.true:
+        return cache.true[constraint.index]
+    count = sum(model.is_true(lit) for lit in constraint.literals)
+    if cache is not None:
+        cache.true[constraint.index] = count
+    return count
+
+
+def _options_by_var(model: Model, cache: _CountCache) -> dict[str, frozenset[LiteralId]]:
+    """Each variable's live options, made once for the rest of this pass."""
+    if cache.options is None:
+        cache.options = {var: frozenset(model.options(var)) for var in model.all_variables}
+    return cache.options
+
+
+def _whole_variables_inside(
+    model: Model, constraint: Constraint, cache: _CountCache | None = None
+) -> int:
     """How many more true literals whole variables force into this set.
 
     A variable whose remaining options all lie inside the set must put its one
@@ -704,26 +771,34 @@ def _whole_variables_inside(model: Model, constraint: Constraint) -> int:
     count of true literals. Overlapping domains are counted at most once, so
     the bound stays sound for models that share options between variables.
     """
+    if cache is not None and constraint.index in cache.whole:
+        return cache.whole[constraint.index]
     literals = set(constraint.literals)
     claimed: set[LiteralId] = set()
     found = 0
-    for var in model.all_variables:
-        options = set(model.options(var))
-        if not options or not options <= literals:
+    options: Iterable[frozenset[LiteralId]]
+    if cache is None:
+        options = (frozenset(model.options(var)) for var in model.all_variables)
+    else:
+        options = _options_by_var(model, cache).values()
+    for option_set in options:
+        if not option_set or not option_set <= literals:
             continue
-        if any(model.is_true(lit) for lit in options):
+        if any(model.is_true(lit) for lit in option_set):
             continue
-        if options & claimed:
+        if option_set & claimed:
             continue
-        claimed |= options
+        claimed |= option_set
         found += 1
+    if cache is not None:
+        cache.whole[constraint.index] = found
     return found
 
 
-def _count_floor(model: Model, constraint: Constraint) -> int:
+def _count_floor(model: Model, constraint: Constraint, cache: _CountCache | None = None) -> int:
     """A guaranteed minimum count for `constraint` in the current state."""
-    already_true = sum(model.is_true(lit) for lit in constraint.literals)
-    lower = already_true + _whole_variables_inside(model, constraint)
+    already_true = _true_count(model, constraint, cache)
+    lower = already_true + _whole_variables_inside(model, constraint, cache)
     if constraint.reified_by is not None and model.is_true(constraint.reified_by):
         lower = max(lower, min(constraint.allowed_counts))
     return lower
