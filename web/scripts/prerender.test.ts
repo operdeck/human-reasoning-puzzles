@@ -105,6 +105,10 @@ describe("renderPages", () => {
 
   it("credits Murdoku's inventor wherever a Murdoku appears, and nowhere else", () => {
     const files = render();
+    expect(MURDOKU_CREDIT).toBe(
+      'Murdoku was invented by <a href="https://murdoku.com" ' +
+      'title="Murdoku books and free puzzles by their inventor">Manuel Garand</a>.',
+    );
     for (const file of ["index.html", "murdoku/index.html", "p/first-case/index.html"]) {
       expect(pageFor(files, file)).toContain(`<p class="credit">${MURDOKU_CREDIT}</p>`);
     }

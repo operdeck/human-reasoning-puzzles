@@ -99,8 +99,7 @@ describe("puzzle index", () => {
   it("credits the inventor of Murdoku in the landing page header", async () => {
     await openIndex();
     const credit = document.querySelector(".site-header .credit");
-    expect(credit?.textContent).toContain("Murdoku was invented by Manuel Garand");
-    expect(credit?.textContent).toContain("better designed and more fun than the cases here");
+    expect(credit?.textContent).toBe("Murdoku was invented by Manuel Garand.");
     const inventor = credit?.querySelector<HTMLAnchorElement>("a");
     expect(inventor?.textContent).toBe("Manuel Garand");
     expect(inventor?.getAttribute("href")).toBe("https://murdoku.com");

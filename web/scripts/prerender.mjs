@@ -26,8 +26,8 @@ export const REPO = "https://github.com/operdeck/human-reasoning-puzzles";
 export const DEFAULT_SITE = "https://operdeck.github.io/human-reasoning-puzzles";
 // Credit where it is due: Murdoku is Manuel Garand's invention, not ours.
 export const MURDOKU_CREDIT =
-  `Murdoku was invented by <a href="https://murdoku.com">Manuel Garand</a>, ` +
-  `whose books are better designed and more fun than the cases here: buy one and solve it with pen and paper.`;
+  `Murdoku was invented by <a href="https://murdoku.com" ` +
+  `title="Murdoku books and free puzzles by their inventor">Manuel Garand</a>.`;
 
 const VERIFICATION =
   /<meta name="(?:google-site-verification|msvalidate\.01|yandex-verification)"[^>]*>/g;
