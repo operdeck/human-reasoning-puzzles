@@ -134,6 +134,14 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     assert all(set(item) == {"name", "text"} for item in bundle["key"])
 
 
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_zoo_intro_appears_in_player_rules(number):
+    text = example(f"zoo-murdoku-{number}.txt").read_text()
+    rules = web._murdoku(text, {})["rules"]
+    assert any("Een aap is nooit alleen in zijn verblijf." in rule for rule in rules)
+    assert all("Elke aap deelt zijn verblijf altijd met iemand." not in rule for rule in rules)
+
+
 def test_every_murdoku_web_bundle_includes_the_character_description_note(exported):
     expected = {
         "en": "Only the puzzle's stated rules and clues determine what is possible;",

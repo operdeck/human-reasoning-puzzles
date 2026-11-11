@@ -88,7 +88,7 @@ Dierentuin-murdoku 6x6: Het verblijf van de tijger
 
 Intro:
 Dieren zijn de personages en de verblijven zijn de gebieden. Zet iedereen op een vrij vakje; geen twee figuren staan in dezelfde rij of kolom.
-De tijger is altijd alleen in zijn verblijf. Elke aap deelt zijn verblijf altijd met iemand.
+De tijger is altijd alleen in zijn verblijf. Een aap is nooit alleen in zijn verblijf.
 De verzorger wordt als laatste geplaatst en staat alleen met precies één dier.
 
 Figures:
