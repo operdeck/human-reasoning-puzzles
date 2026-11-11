@@ -94,12 +94,11 @@ interface Box {
   h: number;
 }
 
-interface CellTooltip {
-  cell: CellId;
+type CellTooltip = {
   x: number;
   y: number;
   keyboard: boolean;
-}
+} & ({ cell: CellId } | { lines: string[] });
 
 /** One puzzle: the board from the export, an overlay for the player's moves, and the panel. */
 export function verdictText(
@@ -284,7 +283,7 @@ export class PuzzleView {
     board.setAttribute("role", "application");
     board.setAttribute("aria-label", "Puzzle board; arrow keys move, space places");
     board.innerHTML = this.boardSvg;
-    if (b.cellDetails) {
+    if (b.cellDetails || b.detailTargets?.length) {
       this.tooltip.id = `cell-tooltip-${++nextTooltipId}`;
       this.tooltip.setAttribute("role", "tooltip");
       this.cellStatus.setAttribute("role", "status");
@@ -658,6 +657,25 @@ export class PuzzleView {
     this.refreshCellTooltip();
   }
 
+  private showPointerTooltip(x: number, y: number, cell: CellId | null): void {
+    if (this.bundle.detailTargets?.length) {
+      const origin = this.cells.get("r1c1")?.getBoundingClientRect();
+      if (origin?.width && origin.height) {
+        const col = (x - origin.left) / origin.width;
+        const row = (y - origin.top) / origin.height;
+        const target = this.bundle.detailTargets.find((item) =>
+          Math.abs(col - item.x) <= item.radius && Math.abs(row - item.y) <= item.radius);
+        if (target) {
+          this.currentTooltip = { lines: target.lines, x, y, keyboard: false };
+          this.refreshCellTooltip();
+          return;
+        }
+      }
+    }
+    if (cell) this.showCellTooltip(cell, x, y);
+    else this.hideCellTooltip();
+  }
+
   private showKeyboardTooltip(cell: CellId): void {
     const rect = this.cells.get(cell);
     if (!rect) return;
@@ -667,8 +685,9 @@ export class PuzzleView {
 
   private refreshCellTooltip(): void {
     if (!this.currentTooltip) return;
-    const { cell, x, y, keyboard } = this.currentTooltip;
-    const lines = this.cellLines(cell);
+    const { x, y, keyboard } = this.currentTooltip;
+    const lines = "cell" in this.currentTooltip
+      ? this.cellLines(this.currentTooltip.cell) : this.currentTooltip.lines;
     const text = lines.join("\n");
     if (this.tooltip.textContent !== text) this.tooltip.textContent = text;
     this.tooltip.hidden = false;
@@ -731,9 +750,7 @@ export class PuzzleView {
           }
         }
       } else if (event.pointerType !== "touch") {
-        const cell = this.cellForTarget(event.target);
-        if (cell) this.showCellTooltip(cell, event.clientX, event.clientY);
-        else this.hideCellTooltip();
+        this.showPointerTooltip(event.clientX, event.clientY, this.cellForTarget(event.target));
       }
     });
     svg.addEventListener("pointerleave", () => {
@@ -750,8 +767,7 @@ export class PuzzleView {
         this.apply(current.cell);
       }
       if (!cancelled && event.pointerType !== "touch") {
-        const cell = this.cellAt(event.clientX, event.clientY);
-        if (cell) this.showCellTooltip(cell, event.clientX, event.clientY);
+        this.showPointerTooltip(event.clientX, event.clientY, this.cellAt(event.clientX, event.clientY));
       }
     };
     svg.addEventListener("pointerup", (event) => finish(event, false));
@@ -853,7 +869,7 @@ export class PuzzleView {
         ? `✓ ${this.bundle.language === "nl" ? "Geplaatst" : "Placed"}: ${cells.join(", ")}`
         : this.bundle.language === "nl" ? "Nog te plaatsen" : "Not placed yet";
     }
-    if (this.bundle.cellDetails) {
+    if (this.bundle.cellDetails || this.bundle.detailTargets?.length) {
       for (const [cell, rect] of this.cells) {
         rect.setAttribute("aria-label", this.cellLines(cell, occupants).join("; ") || cell);
       }

@@ -283,6 +283,23 @@ def test_murdoku_count_details_follow_edge_and_point_scopes():
     assert fountain not in details["r2c2"]
 
 
+def test_murdoku_point_hovers_include_outer_edges_and_corners():
+    bundle = web._murdoku(example("menu-murdoku-3.txt").read_text(), {})
+    targets = bundle["detailTargets"]
+    assert len(targets) == 8
+    edge = next(target for target in targets if (target["x"], target["y"]) == (8, 4))
+    corner = next(target for target in targets if (target["x"], target["y"]) == (8, 8))
+    assert edge["lines"][0] == "Sierui"
+    assert corner["lines"][0] == "Zonnebloem"
+    assert edge["radius"] > 0 and corner["radius"] > 0
+    assert "elk vakje dat het raakt" in edge["lines"][1]
+
+    text = example("murdoku_2_point_objects.txt").read_text()
+    targets = web._murdoku(text, {})["detailTargets"]
+    assert any(target["lines"][0] == "The mouse on the top edge" for target in targets)
+    assert all("every square it touches" in target["lines"][1] for target in targets)
+
+
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["headings"]["objects"] == "De voorwerpen"

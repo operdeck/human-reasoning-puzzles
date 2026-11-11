@@ -284,6 +284,7 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "givens": {},
         "solution": dict(sorted(placed.items())),
         "cellDetails": _murdoku_cell_details(board, clues, text, presentation.clue_text),
+        "detailTargets": _murdoku_point_details(board, text),
         "headings": {
             **{
                 key: phrase(text, f"doc.{key}")
@@ -381,6 +382,24 @@ def _murdoku_cell_details(
                     wording += "."
                 add(count.scope_cells(board), wording)
     return details
+
+
+def _murdoku_point_details(board: Board, text: str) -> list[dict[str, Any]]:
+    """Hover targets in cell units, including the part outside the grid."""
+    say = Wording.read(text)
+    targets = []
+    for point in board.point_objects:
+        row2, col2 = point.anchor
+        name = say.words.get(point.name, point.name.replace("_", " "))
+        targets.append(
+            {
+                "x": (col2 - 1) / 2,
+                "y": (row2 - 1) / 2,
+                "radius": 1 / 3,
+                "lines": [name[:1].upper() + name[1:], say("doc.clue_next_to_point")],
+            }
+        )
+    return targets
 
 
 def _objects(text: str) -> list[dict[str, Any]]:

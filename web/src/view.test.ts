@@ -245,6 +245,49 @@ describe("palette", () => {
     expect(tooltip.hidden).toBe(true);
   });
 
+  it("shows object details beyond the grid without blocking cell placement", () => {
+    const root = mount({
+      cellDetails: { r1c1: ["Area: Atrium"] },
+      detailTargets: [
+        { x: 2, y: 1, radius: 1 / 3, lines: ["Allium", "Touches the neighbouring cells."] },
+        { x: 2, y: 2, radius: 1 / 3, lines: ["Sunflower"] },
+        { x: 0.5, y: 0.5, radius: 1 / 3, lines: ["Fountain"] },
+      ],
+    });
+    const svg = root.querySelector("svg")!;
+    const first = root.querySelector<SVGRectElement>("#r1c1")!;
+    const origin = vi.spyOn(first, "getBoundingClientRect").mockReturnValue(new DOMRect(100, 50, 50, 50));
+    const hit = vi.spyOn(document, "elementFromPoint").mockReturnValue(first);
+    const tooltip = root.querySelector<HTMLElement>(".cell-tooltip")!;
+    const move = (x: number, y: number, pointerType = "mouse") =>
+      svg.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, pointerType, clientX: x, clientY: y,
+      }));
+    try {
+      move(205, 100);
+      expect(tooltip.hidden).toBe(false);
+      expect(tooltip.textContent).toContain("Allium");
+      expect(tooltip.textContent).not.toContain("Cell:");
+      move(205, 155);
+      expect(tooltip.textContent).toBe("Sunflower");
+      move(225, 175);
+      expect(tooltip.hidden).toBe(true);
+      move(205, 100, "touch");
+      expect(tooltip.hidden).toBe(true);
+
+      for (const type of ["pointerdown", "pointerup"]) first.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, pointerId: 1, pointerType: "mouse", button: 0, clientX: 125, clientY: 75,
+      }));
+      expect(first.getAttribute("aria-label")).toContain("Figure: Ada");
+      expect(tooltip.textContent).toBe("Fountain");
+      svg.dispatchEvent(new PointerEvent("pointerleave"));
+      expect(tooltip.hidden).toBe(true);
+    } finally {
+      origin.mockRestore();
+      hit.mockRestore();
+    }
+  });
+
   it("does not leave a tooltip over the board after a touch placement", () => {
     const root = mount({ cellDetails: { r1c1: ["Area: Atrium"] } });
     const board = root.querySelector<HTMLElement>(".board")!;

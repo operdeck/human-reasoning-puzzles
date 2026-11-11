@@ -61,6 +61,7 @@ export interface Bundle {
   solution?: Record<CellId, string>;
   regions?: Record<CellId, string>;
   cellDetails?: Record<CellId, string[]>;
+  detailTargets?: { x: number; y: number; radius: number; lines: string[] }[];
   headings?: Record<string, string>;
   combineExtras?: boolean;
   rules: string[];
