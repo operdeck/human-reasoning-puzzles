@@ -704,6 +704,17 @@ dd {
   }
 }
 
+@media (max-width: 420px) {
+  .with-clue-entries .controls {
+    gap: 0.2rem;
+  }
+
+  .with-clue-entries .controls > button,
+  .with-clue-entries .controls .tool {
+    padding-inline: 0.25rem;
+  }
+}
+
 dt .icon {
   display: inline-block;
   width: 1.4em;

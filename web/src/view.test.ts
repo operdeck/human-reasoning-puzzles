@@ -128,6 +128,8 @@ describe("palette", () => {
     expect(cards).toHaveLength(2);
     expect(root.querySelectorAll(".panel input")).toHaveLength(0);
     expect([...root.querySelectorAll(".palette .tool")].map((tool) => tool.textContent)).toEqual(["✕Cross"]);
+    expect([...root.querySelectorAll(".controls button")].map((button) => button.textContent))
+      .toEqual(["✕Cross", "Undo", "Redo", "Clear", "Check"]);
     expect(cards[0].querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c1");
     expect(cards[0].querySelector(".entry-select")?.classList.contains("used")).toBe(true);
     expect(cards[0].querySelectorAll(".used-cross line")).toHaveLength(2);
