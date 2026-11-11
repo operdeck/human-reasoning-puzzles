@@ -161,6 +161,19 @@ describe("palette", () => {
     expect(root.querySelector('.panel-section[data-tab="rules"]')?.textContent).not.toContain("The figures");
   });
 
+  it("moves focus between clue and rule tabs with the keyboard", () => {
+    const root = mount({ clueEntries: [] });
+    const tabs = root.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    expect(tabs[0].tabIndex).toBe(0);
+    tabs[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    expect(document.activeElement).toBe(tabs[1]);
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(tabs[0].tabIndex).toBe(-1);
+    expect(root.querySelector(`#${tabs[1].getAttribute("aria-controls")}`)?.getAttribute("role")).toBe("tabpanel");
+    tabs[1].dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+    expect(document.activeElement).toBe(tabs[0]);
+  });
+
   it("crosses the person that is on the board", () => {
     const root = mount();
     expect(root.querySelectorAll(".tool.used")).toHaveLength(0);
