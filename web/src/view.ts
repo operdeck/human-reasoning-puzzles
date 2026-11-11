@@ -13,7 +13,6 @@ import {
   setCross,
   struckNotes,
   toggleClue,
-  toggleClueSources,
   toggleNote,
   cellId,
   usedItems,
@@ -184,7 +183,7 @@ export class PuzzleView {
   private warningsBox = el("input", { type: "checkbox" });
   private notesMode = false;
   private notesButton = el("button", { type: "button", className: "tool notes-toggle" });
-  private clueBoxes: { box: HTMLInputElement; index?: number; sources?: string[] }[] = [];
+  private clueBoxes: { box: HTMLInputElement; index: number }[] = [];
   private entryButtons = new Map<string, HTMLButtonElement>();
   private placementLabels = new Map<string, HTMLElement>();
 
@@ -274,7 +273,12 @@ export class PuzzleView {
     board.setAttribute("aria-label", "Puzzle board; arrow keys move, space places");
     board.innerHTML = this.boardSvg;
     const play = el("section", { className: "play" }, board);
-    if (b.playable) {
+    if (b.playable && b.clueEntries) {
+      // Figure cards select figures, so only the cross joins the controls.
+      const controls = this.controls();
+      controls.prepend(this.paletteBar());
+      play.append(controls, this.verdict);
+    } else if (b.playable) {
       play.append(this.paletteBar(), this.mineCount, this.controls(), this.verdict);
     } else {
       play.append(el("p", { className: "note", textContent: b.unsupported ?? "Not playable yet." }));
@@ -384,12 +388,7 @@ export class PuzzleView {
 
   private entryClues(entries: ClueEntry[]): HTMLElement {
     const list = el("ul", { className: "clues entry-clues" });
-    for (const entry of entries) {
-      const box = this.clueBox();
-      box.addEventListener("change", () => this.commit(toggleClueSources(this.state, entry.sources)));
-      this.clueBoxes.push({ box, sources: entry.sources });
-      list.append(el("li", {}, el("label", {}, el("span", { textContent: entry.text }), box)));
-    }
+    for (const entry of entries) list.append(el("li", { textContent: entry.text }));
     return list;
   }
 
@@ -400,6 +399,7 @@ export class PuzzleView {
       portrait.setAttribute("aria-hidden", "true");
       if (item.svg) portrait.innerHTML = item.svg;
       else portrait.textContent = item.symbol;
+      portrait.append(this.usedCross());
       const status = el("span", { className: "placement-status" });
       this.placementLabels.set(item.id, status);
       const name = el("span", { className: "entry-name" },
@@ -444,7 +444,8 @@ export class PuzzleView {
     const bar = el("div", { className: "palette" });
     bar.setAttribute("role", "radiogroup");
     bar.setAttribute("aria-label", "Palette");
-    const items: (PaletteItem | null)[] = [...(this.bundle.palette ?? []), null];
+    const figures = this.bundle.clueEntries ? [] : this.bundle.palette ?? [];
+    const items: (PaletteItem | null)[] = [...figures, null];
     for (const item of items) {
       const id = item?.id ?? CROSS;
       const button = el("button", { type: "button", className: "tool" });
@@ -730,11 +731,9 @@ export class PuzzleView {
         ? `${button.dataset.baseTitle ?? ""} — ${this.bundle.language === "nl" ? "al geplaatst" : "already placed"}`
         : button.dataset.baseTitle ?? "";
     }
-    this.clueBoxes.forEach(({ box, index, sources }) => {
-      box.checked = sources
-        ? sources.every((source) => state.checkedClues?.includes(source))
-        : index !== undefined && state.usedClues.includes(index);
-      box.indeterminate = !box.checked && !!sources?.some((source) => state.checkedClues?.includes(source));
+    for (const [id, button] of this.entryButtons) button.classList.toggle("used", used.has(id));
+    this.clueBoxes.forEach(({ box, index }) => {
+      box.checked = state.usedClues.includes(index);
       box.closest("li")?.classList.toggle("used", box.checked);
     });
     const placements = Object.entries(occupied(this.bundle, state));

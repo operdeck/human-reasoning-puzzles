@@ -308,9 +308,6 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
                 *entries.other,
             )
         ],
-        "legacyClueSources": [
-            [f"clue:{number}" for number in sources] for sources in entries.legacy_sources
-        ],
         "key": [
             {"name": label, "text": shown, "svg": symbol}
             for name, label, shown in murdoku_key_items(text)

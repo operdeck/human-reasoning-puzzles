@@ -2695,7 +2695,6 @@ class FigureClues:
 class CluePresentation:
     figures: tuple[FigureClues, ...]
     other: tuple[ClueParagraph, ...]
-    legacy_sources: tuple[tuple[int, ...], ...]
 
 
 def figure_clues(text: str) -> CluePresentation:
@@ -2713,11 +2712,7 @@ def figure_clues(text: str) -> CluePresentation:
         )
         for person in board.people
     )
-    return CluePresentation(
-        figures,
-        tuple(clue for clue in paragraphs if clue.person is None),
-        tuple(clue.sources for clue in _clue_paragraphs(text, presentation.clue_text)),
-    )
+    return CluePresentation(figures, tuple(clue for clue in paragraphs if clue.person is None))
 
 
 def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[str]:

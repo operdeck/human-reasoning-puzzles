@@ -115,49 +115,44 @@ describe("palette", () => {
     document.body.replaceChildren();
   });
 
-  it("selects a clue card independently of its checkbox and restores saved progress", () => {
+  it("selects figures from their clue cards, which replace the palette's figure buttons", () => {
     const overrides: Partial<Bundle> = {
       clues: ["Bo's old clue"],
       clueEntries: [{ id: "clue:1", item: "Bo", text: "Bo is here.", sources: ["clue:1"] }],
-      legacyClueSources: [["clue:1"]],
     };
     localStorage.setItem("hrp:v1:crossed-people", JSON.stringify({
       placed: { r1c1: "Ada" }, crosses: ["r1c2"], usedClues: [0],
     }));
     const root = mount(overrides);
-    expect(root.querySelectorAll(".figure-entry")).toHaveLength(2);
     const cards = root.querySelectorAll<HTMLElement>(".figure-entry");
+    expect(cards).toHaveLength(2);
+    expect(root.querySelectorAll(".panel input")).toHaveLength(0);
+    expect([...root.querySelectorAll(".palette .tool")].map((tool) => tool.textContent)).toEqual(["✕Cross"]);
     expect(cards[0].querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c1");
-    expect(cards[0].querySelector("input")).toBeNull();
-    const checkbox = cards[1].querySelector<HTMLInputElement>("input")!;
-    expect(checkbox.checked).toBe(true);
-    checkbox.click();
-    expect(root.querySelector('.palette [aria-checked="true"]')?.textContent).toContain("Ada");
+    expect(cards[0].querySelector(".entry-select")?.classList.contains("used")).toBe(true);
+    expect(cards[0].querySelectorAll(".used-cross line")).toHaveLength(2);
     const button = cards[1].querySelector<HTMLButtonElement>(".entry-select")!;
     button.click();
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(checkbox.checked).toBe(false);
     press(root, "ArrowRight");
     press(root, "ArrowRight");
     press(root, "Enter");
     expect(cards[1].querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c2");
+    expect(button.classList.contains("used")).toBe(true);
     const again = mount(overrides);
-    expect(again.querySelectorAll<HTMLInputElement>(".entry-clues input")[0].checked).toBe(false);
     expect(again.querySelectorAll(".placement-status")[1].textContent).toBe("✓ Placed: r1c2");
   });
 
-  it("uses shared checked sources for multiple references and keeps loose clues separate", () => {
+  it("keeps loose clues separate from the figure cards", () => {
     const root = mount({
       clueEntries: [
         { id: "a", item: "Ada", text: "Ada and Bo.", sources: ["clue:1"] },
-        { id: "b", text: "Another reference.", sources: ["clue:1"] },
+        { id: "b", text: "Another reference.", sources: ["clue:2"] },
       ],
       headings: { other_clues: "Overige aanwijzingen" },
     });
-    const boxes = root.querySelectorAll<HTMLInputElement>(".entry-clues input");
-    boxes[0].click();
-    expect(boxes[1].checked).toBe(true);
     expect(root.querySelector(".figure-entries h3")?.textContent).toBe("Overige aanwijzingen");
+    expect(root.querySelectorAll(".figure-entries > .entry-clues li")[0].textContent).toBe("Another reference.");
     expect(root.querySelector('.panel-section[data-tab="rules"]')?.textContent).not.toContain("The figures");
   });
 

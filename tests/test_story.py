@@ -1046,7 +1046,6 @@ def test_figure_clues_keep_combined_sources_global_clues_and_clueless_figures():
     assert result.figures[1].clues[0].sources == (3, 6)
     paragraphs = [clue for figure in result.figures for clue in figure.clues] + list(result.other)
     assert sorted(n for clue in paragraphs for n in clue.sources) == list(range(1, 7))
-    assert sorted(n for sources in result.legacy_sources for n in sources) == list(range(1, 7))
 
 
 def test_rule_wording_and_garment_clue_are_told_in_the_opener():

@@ -147,7 +147,7 @@ def test_every_murdoku_web_bundle_includes_the_character_description_note(export
             )
 
 
-def test_murdoku_cards_cover_every_source_clue_once_and_keep_legacy_checkbox_mapping(exported):
+def test_murdoku_cards_cover_every_source_clue_once(exported):
     for source in played_examples():
         bundle = _bundle(exported, source.stem)
         if bundle["family"] != "murdoku":
@@ -157,10 +157,6 @@ def test_murdoku_cards_cover_every_source_clue_once_and_keep_legacy_checkbox_map
         expected = [f"clue:{number}" for number in range(1, len(clues) + 1)]
         actual = [source for entry in entries for source in entry["sources"]]
         assert sorted(actual) == sorted(expected), source.name
-        assert sorted(
-            source for group in bundle["legacyClueSources"] for source in group
-        ) == sorted(expected), source.name
-        assert len(bundle["legacyClueSources"]) == len(bundle["clues"])
         assert [item["id"] for item in bundle["palette"]] == board.people
         assert all(entry.get("item") in (None, *board.people) for entry in entries)
         assert len({entry["id"] for entry in entries}) == len(entries)
