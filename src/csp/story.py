@@ -32,6 +32,7 @@ from .murdoku import (
     FILTERS,
     POPULATION_FAMILY,
     Board,
+    CellMark,
     Clue,
     Condition,
     GlobalCountCondition,
@@ -82,6 +83,12 @@ PHRASES: dict[str, dict[str, str]] = {
             "Cells marked {abbr} are {name} cells: whoever stands on one shares the area "
             "with someone else."
         ),
+        "web.cell": "Cell",
+        "web.cell_area": "Area: {name}",
+        "web.cell_tag": "Area tag: {name}",
+        "web.cell_object": "Object: {name} ({condition})",
+        "web.cell_touch": "Touches: {name}",
+        "web.cell_figure": "Figure",
         "doc.area_tag": "The {tag} are {areas}.",
         "doc.area_tag_one": "The {tag} is {areas}.",
         "doc.attributes": "The attributes",
@@ -325,6 +332,12 @@ PHRASES: dict[str, dict[str, str]] = {
             "Vakjes met {abbr} zijn {name}-vakjes: wie daar staat, deelt het gebied met "
             "iemand anders."
         ),
+        "web.cell": "Vakje",
+        "web.cell_area": "Gebied: {name}",
+        "web.cell_tag": "Gebiedsgroep: {name}",
+        "web.cell_object": "Voorwerp: {name} ({condition})",
+        "web.cell_touch": "Raakt: {name}",
+        "web.cell_figure": "Figuur",
         "doc.area_tag": "{Tag}: {areas}.",
         "doc.area_tag_one": "{Tag}: {areas}.",
         "doc.attributes": "De kenmerken",
@@ -2841,6 +2854,13 @@ def _tagged_area(say: Wording, rid: str, name: str) -> str:
     return text[:1].upper() + text[1:]
 
 
+def mark_note(mark: CellMark, say: Wording) -> str:
+    """The player-facing meaning of one marked set of cells."""
+    key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
+    name = say.words.get(mark.name, mark.name.replace("_", " "))
+    return say(key, abbr=mark.name[:2].upper(), name=name)
+
+
 def board_notes(text: str) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
     the author's `| wording` of board rules."""
@@ -2864,9 +2884,7 @@ def board_notes(text: str) -> list[str]:
                 areas=tagged,
             )
         )
-    for mark in board.marks:
-        key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
-        notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
+    notes.extend(mark_note(mark, say) for mark in board.marks)
     notes.extend(f"{wording}." for wording in say.rules.values())
     return notes
 

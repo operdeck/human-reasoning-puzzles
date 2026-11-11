@@ -19,15 +19,18 @@ from typing import Any
 from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
-from .murdoku import Square
+from .murdoku import Board, Square
 from .picture import murdoku_key_symbols
 from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
     PEER_RULE_LABELS,
+    Places,
+    Wording,
     attribute_list,
     clue_paragraphs,
     family_rules,
     figure_clues,
+    mark_note,
     murdoku_key_items,
     murdoku_rules,
     object_list,
@@ -279,20 +282,25 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "autoMark": {"default": True, "mark": "cross", "onPlace": LINES},
         "givens": {},
         "solution": dict(sorted(placed.items())),
+        "cellDetails": _murdoku_cell_details(board, text),
         "headings": {
-            key: phrase(text, f"doc.{key}")
-            for key in (
-                "rules_title",
-                "clues",
-                "question",
-                "figures",
-                "figure_clues",
-                "other_clues",
-                "attributes",
-                "roles",
-                "objects",
-                "key",
-            )
+            **{
+                key: phrase(text, f"doc.{key}")
+                for key in (
+                    "rules_title",
+                    "clues",
+                    "question",
+                    "figures",
+                    "figure_clues",
+                    "other_clues",
+                    "attributes",
+                    "roles",
+                    "objects",
+                    "key",
+                )
+            },
+            "cell": phrase(text, "web.cell"),
+            "cell_figure": phrase(text, "web.cell_figure"),
         },
         "rules": rules,
         "clues": clue_paragraphs(text, presentation.clue_text),
@@ -319,6 +327,42 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "roles": [{"name": n, "text": t} for n, t in role_list(text)],
         "objects": _objects(text),
     }
+
+
+def _murdoku_cell_details(board: Board, text: str) -> dict[str, list[str]]:
+    """Player-visible board facts for each cell, independent of the solution."""
+    say = Wording.read(text)
+    places = Places(board, say)
+    tags = {tag: board.region_ids(names) for tag, names in board.area_tags.items()}
+    details: dict[str, list[str]] = {}
+    for row in range(board.size):
+        for col in range(board.size):
+            square = Square(row, col)
+            region = board.region_of(square)
+            name = board.region_names[region].replace("_", " ")
+            lines = [say("web.cell_area", name=name[:1].upper() + name[1:])]
+            for tag, regions in tags.items():
+                if region in regions:
+                    name = say.words.get(tag, tag.replace("_", " "))
+                    lines.append(say("web.cell_tag", name=name))
+            details[str(square)] = lines
+
+    def add(squares: tuple[Square, ...], line: str) -> None:
+        for square in squares:
+            lines = details[str(square)]
+            if line not in lines:
+                lines.append(line)
+
+    for obj in board.objects:
+        condition = say("doc.standable" if obj.kind == "standable" else "doc.blocking")
+        add(obj.squares, say("web.cell_object", name=places.thing(obj.name), condition=condition))
+    for item in board.edge_items:
+        add(item.cells, say("web.cell_touch", name=places.thing(item.name)))
+    for point in board.point_objects:
+        add(point.cells, say("web.cell_touch", name=places.thing(point.name)))
+    for mark in board.marks:
+        add(mark.cells, mark_note(mark, say))
+    return details
 
 
 def _objects(text: str) -> list[dict[str, Any]]:

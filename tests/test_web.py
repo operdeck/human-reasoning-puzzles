@@ -182,6 +182,45 @@ def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
     assert "Ben remembers Ada in the study." in entry["text"]
 
 
+def test_murdoku_cell_details_describe_board_facts_without_solution():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace("quiet: r1c1 r2c1 ; alone", "quiet: r1c1 r2c1 ; alone\nbusy: r2c1 ; not_alone")
+    )
+    details = web._murdoku(text, {"Ada": murdoku.Square(0, 0)})["cellDetails"]
+
+    assert len(details) == 16
+    assert details["r1c1"] == [
+        "Area: Atrium",
+        "Area tag: north",
+        "Area tag: west",
+        "Cells marked QU are quiet cells: whoever stands on one is alone in their area.",
+    ]
+    assert any("shares the area with someone else" in line for line in details["r2c1"])
+    assert "Object: the tree (nobody can stand here)" in details["r1c4"]
+    assert "Object: the bench (you can stand on it)" in details["r4c2"]
+    assert all("Touches: the archway" in details[cell] for cell in ("r2c2", "r2c3"))
+    assert "Touches: the archway" not in details["r2c1"]
+    assert all(
+        "Touches: the fountain" in details[cell] for cell in ("r3c1", "r3c2", "r4c1", "r4c2")
+    )
+    assert all("Ada" not in line for lines in details.values() for line in lines)
+
+
+def test_murdoku_cell_details_use_dutch_and_author_wording():
+    text = example("zoo-murdoku-1.txt").read_text()
+    details = web._murdoku(text, {})["cellDetails"]
+    assert "Gebied: Savanne" in details["r1c2"]
+    assert "Voorwerp: de acacia (hier kan niemand staan)" in details["r1c2"]
+    assert "Voorwerp: het gras (hier kun je op staan)" in details["r2c2"]
+
+    point_text = example("murdoku_2_point_objects.txt").read_text()
+    points = web._murdoku(point_text, {})["cellDetails"]
+    assert "Touches: the mouse on the top edge" in points["r1c4"]
+    assert "Touches: the mouse on the top edge" in points["r1c5"]
+
+
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["headings"]["objects"] == "De voorwerpen"
