@@ -1013,6 +1013,42 @@ def test_next_to_and_not_on_a_single_square_object_keep_existing_wording():
     assert bob == "Bob is next to the chair and is not on the chair."
 
 
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_figure_clues_use_semantics_even_when_author_wording_names_someone_else(language):
+    from csp.story import figure_clues
+
+    text = ON_OR_NEXT_TO.format(lang=language).replace(
+        "not_next_to Ann bench",
+        "not_next_to Ann bench | Bob saw Ann away from the bench.",
+    )
+    result = figure_clues(text)
+    assert [figure.person for figure in result.figures] == ["Ann", "Bob", "Cy", "Di"]
+    assert result.figures[0].clues[0].text == "Bob saw Ann away from the bench."
+    assert result.figures[0].clues[0].sources == (1,)
+    assert result.figures[0].clues[0].id == "clue:1"
+    assert result.figures[1].clues[0].sources == (2,)
+
+
+def test_figure_clues_keep_combined_sources_global_clues_and_clueless_figures():
+    from csp.story import figure_clues
+
+    text = (
+        ON_OR_NEXT_TO.format(lang="en")
+        .replace("not_next_to Ann bench", "next_to Ann bench\nnot_on Ann bench")
+        .replace("next_to Di stool", "count people on object:stool = 1\nabove Bob Cy")
+    )
+    result = figure_clues(text)
+    assert result.figures[0].clues[0].sources == (1, 2)
+    assert result.figures[0].clues[0].text == "Ann is beside the bench, but not on the bench."
+    assert result.figures[-1].person == "Di"
+    assert result.figures[-1].clues == ()
+    assert result.other[0].sources == (5,)
+    assert result.figures[1].clues[0].sources == (3, 6)
+    paragraphs = [clue for figure in result.figures for clue in figure.clues] + list(result.other)
+    assert sorted(n for clue in paragraphs for n in clue.sources) == list(range(1, 7))
+    assert sorted(n for sources in result.legacy_sources for n in sources) == list(range(1, 7))
+
+
 def test_rule_wording_and_garment_clue_are_told_in_the_opener():
     from csp.story import board_notes, global_count_texts
 
