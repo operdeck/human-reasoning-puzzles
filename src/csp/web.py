@@ -12,21 +12,26 @@ bundle, with `playable` false, so the site can show them read-only.
 """
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
-from .murdoku import Square
+from .murdoku import Board, Clue, Square, global_count_conditions
 from .picture import murdoku_key_symbols
 from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
     PEER_RULE_LABELS,
+    Places,
+    Wording,
     attribute_list,
     clue_paragraphs,
     family_rules,
+    figure_clues,
+    global_count_texts,
+    mark_note,
     murdoku_key_items,
     murdoku_rules,
     object_list,
@@ -250,14 +255,17 @@ def bundle(
 
 
 def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
-    board, _ = load_board(text)
+    board, clues = load_board(text)
     presentation = load_presentation(text)
+    entries = figure_clues(text)
+    say = Wording.read(text)
     palette = []
-    for person in board.people:
+    for entry in entries.figures:
+        person = entry.person
         figure = presentation.figures.get(person)
-        item: dict[str, Any] = {"id": person, "label": person, "symbol": person[:2]}
-        if figure and figure.description:
-            item["description"] = figure.description
+        item: dict[str, Any] = {"id": person, "label": entry.name, "symbol": person[:2]}
+        if entry.description:
+            item["description"] = entry.description
         icon = icons.object_icon(figure.icon) if figure and figure.icon else None
         if icon is not None and (picture := icons.to_svg(icon)):
             item["svg"] = picture
@@ -269,6 +277,13 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "size": [board.size, board.size],
         "playable": True,
         "palette": palette,
+        "textNames": list(
+            dict.fromkeys(
+                name
+                for entry in entries.figures
+                for name in (entry.person, entry.name, say.words.get(entry.person, entry.person))
+            )
+        ),
         "placement": {
             "perItem": 1,
             "blocked": sorted(str(sq) for sq in board.blocked),
@@ -276,23 +291,49 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "autoMark": {"default": True, "mark": "cross", "onPlace": LINES},
         "givens": {},
         "solution": dict(sorted(placed.items())),
+        "cellDetails": _murdoku_cell_details(board, clues, text, presentation.clue_text),
+        "detailTargets": _murdoku_point_details(board, text),
         "headings": {
-            key: phrase(text, f"doc.{key}")
-            for key in (
-                "rules_title",
-                "clues",
-                "question",
-                "figures",
-                "attributes",
-                "roles",
-                "objects",
-                "key",
-            )
+            **{
+                key: phrase(text, f"doc.{key}")
+                for key in (
+                    "rules_title",
+                    "clues",
+                    "question",
+                    "figures",
+                    "figure_clues",
+                    "other_clues",
+                    "attributes",
+                    "roles",
+                    "objects",
+                    "key",
+                )
+            },
+            "cell": phrase(text, "web.cell"),
+            "cell_figure": phrase(text, "web.cell_figure"),
+            "extras": phrase(text, "web.extras"),
         },
+        "combineExtras": True,
         "rules": rules,
         "clues": clue_paragraphs(text, presentation.clue_text),
+        "clueEntries": [
+            {
+                "id": clue.id,
+                "text": clue.text,
+                "sources": [f"clue:{number}" for number in clue.sources],
+                **({"item": clue.person} if clue.person is not None else {}),
+            }
+            for clue in (
+                *(clue for figure in entries.figures for clue in figure.clues),
+                *entries.other,
+            )
+        ],
         "key": [
-            {"name": label, "text": shown, "svg": symbol}
+            {
+                "name": shown[:1].upper() + shown[1:] if shown else label,
+                "text": label if shown else "",
+                "svg": symbol,
+            }
             for name, label, shown in murdoku_key_items(text)
             for symbol in murdoku_key_symbols(board, name)
         ],
@@ -302,6 +343,71 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "roles": [{"name": n, "text": t} for n, t in role_list(text)],
         "objects": _objects(text),
     }
+
+
+def _murdoku_cell_details(
+    board: Board, clues: list[Clue], text: str, clue_text: Mapping[int, str]
+) -> dict[str, list[str]]:
+    """Player-visible board facts for each cell, independent of the solution."""
+    say = Wording.read(text)
+    places = Places(board, say)
+    tags = {tag: board.region_ids(names) for tag, names in board.area_tags.items()}
+    details: dict[str, list[str]] = {}
+    for row in range(board.size):
+        for col in range(board.size):
+            square = Square(row, col)
+            region = board.region_of(square)
+            name = board.region_names[region].replace("_", " ")
+            lines = [say("web.cell_area", name=name[:1].upper() + name[1:])]
+            for tag, regions in tags.items():
+                if region in regions:
+                    name = say.words.get(tag, tag.replace("_", " "))
+                    lines.append(say("web.cell_tag", name=name))
+            details[str(square)] = lines
+
+    def add(squares: Iterable[Square], line: str) -> None:
+        for square in squares:
+            lines = details[str(square)]
+            if line not in lines:
+                lines.append(line)
+
+    for obj in board.objects:
+        condition = say("doc.standable" if obj.kind == "standable" else "doc.blocking")
+        add(obj.squares, say("web.cell_object", name=places.thing(obj.name), condition=condition))
+    for item in board.edge_items:
+        add(item.cells, say("web.cell_touch", name=places.thing(item.name)))
+    for point in board.point_objects:
+        add(point.cells, say("web.cell_touch", name=places.thing(point.name)))
+    for mark in board.marks:
+        add(mark.cells, mark_note(mark, say))
+    counts = global_count_conditions(board, clues)
+    if any(count.object_scope for count in counts):
+        for count, wording in zip(counts, global_count_texts(text), strict=True):
+            if count.object_scope:
+                if count.number is not None:
+                    wording = clue_text.get(count.number, wording)
+                if not wording.endswith((".", "!", "?")):
+                    wording += "."
+                add(count.scope_cells(board), wording)
+    return details
+
+
+def _murdoku_point_details(board: Board, text: str) -> list[dict[str, Any]]:
+    """Hover targets in cell units, including the part outside the grid."""
+    say = Wording.read(text)
+    targets = []
+    for point in board.point_objects:
+        row2, col2 = point.anchor
+        name = say.words.get(point.name, point.name.replace("_", " "))
+        targets.append(
+            {
+                "x": (col2 - 1) / 2,
+                "y": (row2 - 1) / 2,
+                "radius": 1 / 3,
+                "lines": [name[:1].upper() + name[1:], say("doc.clue_next_to_point")],
+            }
+        )
+    return targets
 
 
 def _objects(text: str) -> list[dict[str, Any]]:

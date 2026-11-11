@@ -32,6 +32,7 @@ from .murdoku import (
     FILTERS,
     POPULATION_FAMILY,
     Board,
+    CellMark,
     Clue,
     Condition,
     GlobalCountCondition,
@@ -64,6 +65,8 @@ PHRASES: dict[str, dict[str, str]] = {
     "en": {
         "square": "r{row}c{col}",
         "doc.figures": "The figures",
+        "doc.figure_clues": "The figures and their clues",
+        "doc.other_clues": "Other clues",
         "doc.rules_title": "Rules",
         "doc.how": "How to get there.",
         "doc.clues": "Clues",
@@ -80,6 +83,13 @@ PHRASES: dict[str, dict[str, str]] = {
             "Cells marked {abbr} are {name} cells: whoever stands on one shares the area "
             "with someone else."
         ),
+        "web.cell": "Cell",
+        "web.cell_area": "Area: {name}",
+        "web.cell_tag": "Area tag: {name}",
+        "web.cell_object": "Object: {name} ({condition})",
+        "web.cell_touch": "Touches: {name}",
+        "web.cell_figure": "Figure",
+        "web.extras": "Case details",
         "doc.area_tag": "The {tag} are {areas}.",
         "doc.area_tag_one": "The {tag} is {areas}.",
         "doc.attributes": "The attributes",
@@ -130,9 +140,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "object can."
         ),
         "doc.murdoku_note": (
-            "Character kinds and descriptions are story details, not clues. Do not infer where a "
-            "character can be or what they can do from their species, job, name, or description. "
-            "Only the puzzle's stated rules and numbered clues determine what is possible; a kind "
+            "Only the puzzle's stated rules and clues determine what is possible; a kind "
             "or trait matters only when a rule or clue explicitly uses it."
         ),
         "and": "and",
@@ -307,6 +315,8 @@ PHRASES: dict[str, dict[str, str]] = {
     "nl": {
         "square": "r{row}k{col}",
         "doc.figures": "De figuren",
+        "doc.figure_clues": "De figuren en hun aanwijzingen",
+        "doc.other_clues": "Overige aanwijzingen",
         "doc.rules_title": "Spelregels",
         "doc.how": "Zo kom je erop.",
         "doc.clues": "Aanwijzingen",
@@ -323,6 +333,13 @@ PHRASES: dict[str, dict[str, str]] = {
             "Vakjes met {abbr} zijn {name}-vakjes: wie daar staat, deelt het gebied met "
             "iemand anders."
         ),
+        "web.cell": "Vakje",
+        "web.cell_area": "Gebied: {name}",
+        "web.cell_tag": "Gebiedsgroep: {name}",
+        "web.cell_object": "Voorwerp: {name} ({condition})",
+        "web.cell_touch": "Raakt: {name}",
+        "web.cell_figure": "Figuur",
+        "web.extras": "Bijzonderheden",
         "doc.area_tag": "{Tag}: {areas}.",
         "doc.area_tag_one": "{Tag}: {areas}.",
         "doc.attributes": "De kenmerken",
@@ -373,10 +390,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "een begaanbaar voorwerp wel."
         ),
         "doc.murdoku_note": (
-            "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen. Leid niet "
-            "af waar een personage kan zijn of wat die kan doen op basis van diens diersoort, "
-            "beroep, "
-            "naam of beschrijving. Alleen de expliciete regels en genummerde aanwijzingen bepalen "
+            "Alleen de expliciete regels en aanwijzingen bepalen "
             "wat mogelijk is; een soort of eigenschap telt alleen mee als een regel of aanwijzing "
             "die uitdrukkelijk gebruikt."
         ),
@@ -2669,6 +2683,53 @@ def _merge_predicates(predicates: Sequence[str], say: Wording) -> str:
     return say.join(segments, "and")
 
 
+@dataclass(frozen=True)
+class ClueParagraph:
+    """A canonical paragraph with its source clue numbers and semantic owner."""
+
+    text: str
+    sources: tuple[int, ...]
+    person: str | None
+
+    @property
+    def id(self) -> str:
+        return "clue:" + ",".join(map(str, self.sources))
+
+
+@dataclass(frozen=True)
+class FigureClues:
+    """One cast member, including people who have no numbered clues."""
+
+    person: str
+    name: str
+    description: str
+    clues: tuple[ClueParagraph, ...]
+
+
+@dataclass(frozen=True)
+class CluePresentation:
+    figures: tuple[FigureClues, ...]
+    other: tuple[ClueParagraph, ...]
+
+
+def figure_clues(text: str) -> CluePresentation:
+    """Shared booklet/player entries; ownership comes from syntax, never wording."""
+    board, _ = load_board(text)
+    presentation = load_presentation(text)
+    say = Wording.read(text).for_people(board.people)
+    paragraphs = _clue_paragraphs(text, presentation.clue_text, semantic=True)
+    figures = tuple(
+        FigureClues(
+            person,
+            _cap(say.people.get(person, person)),
+            presentation.figures[person].description if person in presentation.figures else "",
+            tuple(clue for clue in paragraphs if clue.person == person),
+        )
+        for person in board.people
+    )
+    return CluePresentation(figures, tuple(clue for clue in paragraphs if clue.person is None))
+
+
 def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[str]:
     """The clues grouped per person, one paragraph each, in the order of the people.
 
@@ -2676,10 +2737,17 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
     clues that are not about one person come last, one paragraph each.
     `overrides` replaces the generated wording of clue numbers.
     """
+    return [paragraph.text for paragraph in _clue_paragraphs(text, overrides)]
+
+
+def _clue_paragraphs(
+    text: str, overrides: dict[int, str] | None = None, *, semantic: bool = False
+) -> list[ClueParagraph]:
     board, clues = load_board(text)
     story = Story(board, clues, Wording.read(text))
     texts = story.clue_texts()
     combined: dict[int, str] = {}
+    combined_sources: dict[int, tuple[int, ...]] = {}
     skipped: set[int] = set()
     for number, (kind, args) in enumerate(clues, 1):
         if number in skipped or number in (overrides or {}) or kind != "next_to" or len(args) != 2:
@@ -2703,20 +2771,46 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
                 things=story.places.thing(thing),
             )
             combined[first] = f"{_cap(text)}."
+            combined_sources[first] = tuple(sorted((number, other_number)))
             skipped.update((number, other_number))
             break
     shown = {p: _cap(story.say.people.get(p, p)) for p in board.people}
     owners = sorted(board.people, key=lambda p: len(shown[p]), reverse=True)
     predicates: dict[str, list[str]] = {person: [] for person in board.people}
     extra: dict[str, list[str]] = {person: [] for person in board.people}
-    loose: list[str] = []
+    sources: dict[str, list[int]] = {person: [] for person in board.people}
+    loose: list[ClueParagraph] = []
     for number, generated in enumerate(texts, 1):
         if number in skipped and number not in combined:
             continue
         sentence = (overrides or {}).get(number, combined.get(number, generated))
-        owner = next((p for p in owners if sentence.startswith(f"{shown[p]} ")), None)
+        numbers = combined_sources.get(number, (number,))
+        kind, args = clues[number - 1]
+        if semantic:
+            owner = args[0] if args and args[0] in board.people else None
+            if kind in (
+                "count",
+                "busiest_area",
+                "quietest_area",
+                "unique_attribute",
+                "role_subset",
+                "role_occupant",
+                "min_role_in_tagged",
+            ):
+                owner = None
+            if kind == COUNTING:
+                subjects = {a[0] for _, a in counted(args)[1] if a}
+                owner = next(iter(subjects)) if len(subjects) == 1 else None
+                if owner not in board.people:
+                    owner = None
+        else:
+            owner = next((p for p in owners if sentence.startswith(f"{shown[p]} ")), None)
         if owner is None:
-            loose.append(sentence)
+            loose.append(ClueParagraph(sentence, numbers, None))
+            continue
+        sources[owner].extend(numbers)
+        if not sentence.startswith(f"{shown[owner]} "):
+            extra[owner].append(sentence)
             continue
         rest = sentence[len(shown[owner]) + 1 :].rstrip(".")
         if rest.split(" ", 1)[0] in (story.say("and"),):
@@ -2730,7 +2824,7 @@ def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[
             parts.append(f"{shown[person]} {_merge_predicates(predicates[person], story.say)}.")
         parts.extend(extra[person])
         if parts:
-            out.append(" ".join(parts))
+            out.append(ClueParagraph(" ".join(parts), tuple(sorted(sources[person])), person))
     return out + loose
 
 
@@ -2762,6 +2856,13 @@ def _tagged_area(say: Wording, rid: str, name: str) -> str:
     return text[:1].upper() + text[1:]
 
 
+def mark_note(mark: CellMark, say: Wording) -> str:
+    """The player-facing meaning of one marked set of cells."""
+    key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
+    name = say.words.get(mark.name, mark.name.replace("_", " "))
+    return say(key, abbr=mark.name[:2].upper(), name=name)
+
+
 def board_notes(text: str) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
     the author's `| wording` of board rules."""
@@ -2785,9 +2886,7 @@ def board_notes(text: str) -> list[str]:
                 areas=tagged,
             )
         )
-    for mark in board.marks:
-        key = f"doc.mark_{mark.occupant_condition}" if mark.occupant_condition else "doc.mark"
-        notes.append(say(key, abbr=mark.name[:2].upper(), name=name(mark.name)))
+    notes.extend(mark_note(mark, say) for mark in board.marks)
     notes.extend(f"{wording}." for wording in say.rules.values())
     return notes
 

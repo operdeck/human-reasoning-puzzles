@@ -29,6 +29,13 @@ export interface Named {
   svg?: string;
 }
 
+export interface ClueEntry {
+  id: string;
+  text: string;
+  sources: string[];
+  item?: string;
+}
+
 export interface Bundle {
   schema: number;
   id: string;
@@ -53,9 +60,14 @@ export interface Bundle {
   givens?: Record<CellId, string>;
   solution?: Record<CellId, string>;
   regions?: Record<CellId, string>;
+  cellDetails?: Record<CellId, string[]>;
+  detailTargets?: { x: number; y: number; radius: number; lines: string[] }[];
+  textNames?: string[];
   headings?: Record<string, string>;
+  combineExtras?: boolean;
   rules: string[];
   clues: string[];
+  clueEntries?: ClueEntry[];
   key: Named[];
   question: string;
   reveal?: string;

@@ -325,9 +325,27 @@ The `doc.clue_next_to_door` and `doc.clue_next_to_point` entries in `Words:` can
 
 ### Booklet text (`--docx`)
 
-In the booklet the clues of each person are folded into one paragraph ("Makaak is in de Bergen en zit niet naast de struik of de bank."), in the order of the people, with clues about no single person last; paragraphs are numbered, and the board sits beside the figure list (70/30). Board notes explain the marks and area tags used by the clues, and the attributes and roles are listed under the figures. `Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
+In the booklet the board sits above **The figures and their clues** (Dutch:
+**De figuren en hun aanwijzingen**). Every cast member appears in file order,
+including figures without clues, with their portrait if available, bold name,
+optional description and unnumbered clues together. Ordinary clue predicates
+do not repeat the figure's heading; joint subjects and custom wording retain
+names when needed. Descriptions sit in parentheses beside the name so ordinary
+clues can continue on the same line. Descriptions supplied in `Figures:` are preserved, including
+late-reveal information. Clues are attached by their semantic subject, not by
+guessing from their wording. Loose and global clues follow under **Other clues**
+(Dutch: **Overige aanwijzingen**), only when needed. Board notes explain the
+marks and area tags used by the clues; attributes, roles and objects remain
+separate under the board. The layout reserves space for wrapped descriptions,
+clueless figures and portraits, shrinking the board or omitting its backdrop
+on crowded pages. Worked solutions do not refer to clue numbers.
+Booklets use A4 pages, matching the dimensions used by the page-fit estimates.
+`Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
 
-Every Murdoku booklet puzzle page and web player rules panel also includes a general reminder that character kinds and descriptions are story details, not clues. The reminder is provided by the renderer; do not repeat it in each puzzle's `Intro:`.
+Every Murdoku booklet puzzle page and web player rules panel also reminds players
+that only stated rules and clues determine what is possible: a kind or trait
+matters only when a rule or clue explicitly uses it. The renderer provides this
+reminder; do not repeat it in each puzzle's `Intro:`.
 
 `--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 

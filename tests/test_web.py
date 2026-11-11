@@ -9,6 +9,7 @@ import pytest
 pytest.importorskip("fontTools")
 
 from csp import cli, icons, murdoku, story, svg, web
+from csp.puzzlefile import load_board
 from tests.examples import EXAMPLES, example, played_examples
 
 pytestmark = pytest.mark.solutions
@@ -125,7 +126,7 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     assert bundle["reveal"].startswith("Wouter doet het met Noor")
     assert bundle["rules"]
     assert any(
-        rule.startswith("Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.")
+        rule.startswith("Alleen de expliciete regels en aanwijzingen bepalen")
         for rule in bundle["rules"]
     )
     assert "conditions" not in bundle
@@ -133,10 +134,18 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     assert all(set(item) == {"name", "text"} for item in bundle["key"])
 
 
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_zoo_intro_appears_in_player_rules(number):
+    text = example(f"zoo-murdoku-{number}.txt").read_text()
+    rules = web._murdoku(text, {})["rules"]
+    assert any("Een aap is nooit alleen in zijn verblijf." in rule for rule in rules)
+    assert all("Elke aap deelt zijn verblijf altijd met iemand." not in rule for rule in rules)
+
+
 def test_every_murdoku_web_bundle_includes_the_character_description_note(exported):
     expected = {
-        "en": "Character kinds and descriptions are story details, not clues.",
-        "nl": "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.",
+        "en": "Only the puzzle's stated rules and clues determine what is possible;",
+        "nl": "Alleen de expliciete regels en aanwijzingen bepalen",
     }
     for path in exported.glob("*.json"):
         bundle = json.loads(path.read_text())
@@ -146,12 +155,178 @@ def test_every_murdoku_web_bundle_includes_the_character_description_note(export
             )
 
 
+def test_murdoku_cards_cover_every_source_clue_once(exported):
+    for source in played_examples():
+        bundle = _bundle(exported, source.stem)
+        if bundle["family"] != "murdoku":
+            continue
+        board, clues = load_board(source.read_text())
+        entries = bundle["clueEntries"]
+        expected = [f"clue:{number}" for number in range(1, len(clues) + 1)]
+        actual = [source for entry in entries for source in entry["sources"]]
+        assert sorted(actual) == sorted(expected), source.name
+        assert [item["id"] for item in bundle["palette"]] == board.people
+        assert all(entry.get("item") in (None, *board.people) for entry in entries)
+        assert len({entry["id"] for entry in entries}) == len(entries)
+
+
+def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
+    text = (
+        example("murdoku_3_house.txt")
+        .read_text()
+        .replace("Clues:\n", "Clues:\nin_region Ada study | Ben remembers Ada in the study.\n")
+    )
+    bundle = web._murdoku(text, {})
+    entry = next(entry for entry in bundle["clueEntries"] if "clue:1" in entry["sources"])
+    assert entry["item"] == "Ada"
+    assert "Ben remembers Ada in the study." in entry["text"]
+
+
+def test_murdoku_cell_details_describe_board_facts_without_solution():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace("quiet: r1c1 r2c1 ; alone", "quiet: r1c1 r2c1 ; alone\nbusy: r2c1 ; not_alone")
+    )
+    details = web._murdoku(text, {"Ada": murdoku.Square(0, 0)})["cellDetails"]
+
+    assert len(details) == 16
+    assert details["r1c1"] == [
+        "Area: Atrium",
+        "Area tag: north",
+        "Area tag: west",
+        "Cells marked QU are quiet cells: whoever stands on one is alone in their area.",
+    ]
+    assert any("shares the area with someone else" in line for line in details["r2c1"])
+    assert "Object: the tree (nobody can stand here)" in details["r1c4"]
+    assert "Object: the bench (you can stand on it)" in details["r4c2"]
+    assert all("Touches: the archway" in details[cell] for cell in ("r2c2", "r2c3"))
+    assert "Touches: the archway" not in details["r2c1"]
+    assert all(
+        "Touches: the fountain" in details[cell] for cell in ("r3c1", "r3c2", "r4c1", "r4c2")
+    )
+    assert all("Ada" not in line for lines in details.values() for line in lines)
+
+
+def test_murdoku_cell_details_use_dutch_and_author_wording():
+    text = example("zoo-murdoku-1.txt").read_text()
+    details = web._murdoku(text, {})["cellDetails"]
+    assert "Gebied: Savanne" in details["r1c2"]
+    assert "Voorwerp: de acacia (hier kan niemand staan)" in details["r1c2"]
+    assert "Voorwerp: het gras (hier kun je op staan)" in details["r2c2"]
+
+    point_text = example("murdoku_2_point_objects.txt").read_text()
+    points = web._murdoku(point_text, {})["cellDetails"]
+    assert "Touches: the mouse on the top edge" in points["r1c4"]
+    assert "Touches: the mouse on the top edge" in points["r1c5"]
+
+
+def test_murdoku_cell_details_include_object_count_rules_on_each_matching_object():
+    text = example("wie-doet-het-met-wie-4.txt").read_text()
+    details = web._murdoku(text, {})["cellDetails"]
+    robe = "Precies twee mensen dragen een badjas."
+    slippers = "Precies één persoon heeft sloffen aan."
+    glasses = "Precies één persoon heeft een bril op."
+
+    assert all(robe in details[cell] for cell in ("r2c3", "r3c6", "r4c3"))
+    assert all(slippers in details[cell] for cell in ("r3c5", "r5c4"))
+    assert all(glasses in details[cell] for cell in ("r4c4", "r6c5"))
+    assert robe not in details["r3c5"]
+    assert slippers not in details["r3c6"]
+    assert glasses not in details["r3c6"]
+    assert robe not in details["r1c2"]
+
+
+def test_murdoku_object_count_details_use_generated_and_authored_clue_wording():
+    text = (
+        example("murdoku_3_house.txt")
+        .read_text()
+        .replace(
+            "Clues:\n",
+            "Rules:\n"
+            "count people on object:carpet <= 1\n"
+            "count people in area:garden >= 1\n"
+            "count empty cells in object:carpet = 1 | One carpet square is left empty.\n"
+            "Clues:\n"
+            "count people on object:chair = 1 | Only one guest uses the chair!\n",
+        )
+    )
+    details = web._murdoku(text, {})["cellDetails"]
+
+    for cell in ("r3c3", "r3c4"):
+        assert "At most one person is on the carpet." in details[cell]
+        assert "One carpet square is left empty." in details[cell]
+        assert "Only one guest uses the chair!" not in details[cell]
+    assert "Only one guest uses the chair!" in details["r5c2"]
+    assert "At most one person is on the carpet." not in details["r5c2"]
+
+
+def test_murdoku_count_details_follow_edge_and_point_scopes():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace(
+            "Clues:\n",
+            "Rules:\n"
+            "count people on edge_item:archway >= 1\n"
+            "count people on point_object:fountain = 1\n"
+            "Clues:\n",
+        )
+    )
+    details = web._murdoku(text, {})["cellDetails"]
+    archway = "At least one person is on the archway."
+    fountain = "Exactly one person is on the fountain."
+
+    assert all(archway in details[cell] for cell in ("r2c2", "r2c3"))
+    assert archway not in details["r3c1"]
+    assert all(fountain in details[cell] for cell in ("r3c1", "r3c2", "r4c1", "r4c2"))
+    assert fountain not in details["r2c2"]
+
+
+def test_murdoku_point_hovers_include_outer_edges_and_corners():
+    bundle = web._murdoku(example("menu-murdoku-3.txt").read_text(), {})
+    targets = bundle["detailTargets"]
+    assert len(targets) == 8
+    edge = next(target for target in targets if (target["x"], target["y"]) == (8, 4))
+    corner = next(target for target in targets if (target["x"], target["y"]) == (8, 8))
+    assert edge["lines"][0] == "Sierui"
+    assert corner["lines"][0] == "Zonnebloem"
+    assert edge["radius"] > 0 and corner["radius"] > 0
+    assert "elk vakje dat het raakt" in edge["lines"][1]
+
+    text = example("murdoku_2_point_objects.txt").read_text()
+    targets = web._murdoku(text, {})["detailTargets"]
+    assert any(target["lines"][0] == "The mouse on the top edge" for target in targets)
+    assert all("every square it touches" in target["lines"][1] for target in targets)
+
+
+def test_murdoku_text_names_keep_ids_and_authored_forms():
+    text = (
+        example("murdoku_3_house.txt")
+        .read_text()
+        .replace("Regions:\n", "Words:\nAda: de gids\nRegions:\n")
+    )
+    names = web._murdoku(text, {})["textNames"]
+    assert {"Ada", "De gids", "de gids", "Ben", "Cleo", "Dirk", "Eva"} <= set(names)
+    assert len(names) == len(set(names))
+
+
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["headings"]["objects"] == "De voorwerpen"
     objects = bundle["objects"]
     assert objects and all(item["svg"].startswith("<svg") for item in objects)
     assert {item["text"] for item in objects} <= {"hier kun je op staan", "hier kan niemand staan"}
+
+
+@pytest.mark.parametrize(
+    ("name", "heading"),
+    [("halloween-museum-1.txt", "Case details"), ("zoo-murdoku-1.txt", "Bijzonderheden")],
+)
+def test_murdoku_bundle_combines_extras_in_the_puzzle_language(name, heading):
+    bundle = web._murdoku(example(name).read_text(), {})
+    assert bundle["combineExtras"] is True
+    assert bundle["headings"]["extras"] == heading
 
 
 def test_dutch_murdoku_is_worded_in_dutch(exported):
@@ -304,9 +479,10 @@ def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
 def test_murdoku_web_key_lists_board_symbols_only(exported):
     point = _bundle(exported, "murdoku_2_point_objects")
     assert "conditions" not in point
-    assert any(name in {"Point", "Punt"} for name in [item["name"] for item in point["key"]])
+    assert any((item["text"] or item["name"]) in {"Point", "Punt"} for item in point["key"])
     assert all(
-        item["name"] in {"Deur", "Door", "Raam", "Window", "Punt", "Point"} for item in point["key"]
+        (item["text"] or item["name"]) in {"Deur", "Door", "Raam", "Window", "Punt", "Point"}
+        for item in point["key"]
     )
 
     counted = _bundle(exported, "samen-in-japan")
@@ -316,13 +492,14 @@ def test_murdoku_web_key_lists_board_symbols_only(exported):
 def test_murdoku_web_key_shows_the_symbols_players_see():
     points = web._murdoku(example("murdoku_2_point_objects.txt").read_text(), {})["key"]
     for label, name in (
-        ("the cat", "cat"),
-        ("cheese", "cheese"),
-        ("fountain", "fountain"),
-        ("the mouse on the top edge", "mouse1"),
-        ("the mouse in the corner", "mouse2"),
+        ("The cat", "cat"),
+        ("Cheese", "cheese"),
+        ("Fountain", "fountain"),
+        ("The mouse on the top edge", "mouse1"),
+        ("The mouse in the corner", "mouse2"),
     ):
-        (entry,) = [item for item in points if item["text"] == label]
+        (entry,) = [item for item in points if item["name"] == label]
+        assert entry["text"] == "Point"
         assert entry["svg"] == icons.to_svg(icons.object_icon(name))
 
     train = web._murdoku(example("murdoku_orient_express.txt").read_text(), {})["key"]
@@ -353,8 +530,10 @@ def test_murdoku_web_key_keeps_text_fallbacks_for_unknown_symbols():
         .replace("at Cal window", "at Cal mystery_window")
     )
     key = web._murdoku(text, {})["key"]
-    point = next(item for item in key if item["text"] == "unlisted thing")
-    window = next(item for item in key if item["text"] == "mystery window")
+    point = next(item for item in key if item["name"] == "Unlisted thing")
+    window = next(item for item in key if item["name"] == "Mystery window")
+    assert point["text"] == "Point"
+    assert window["text"] == "Window"
     assert "<ellipse" in point["svg"] and '<use href="#g' in point["svg"]
     assert '<use href="#g' in window["svg"]
 
@@ -375,7 +554,7 @@ def test_every_murdoku_key_lists_only_board_symbols(exported):
         assert "conditions" not in bundle, path.name
         if bundle.get("family") != "murdoku":
             continue
-        assert {item["name"] for item in bundle["key"]} <= allowed, path.name
+        assert {item["text"] or item["name"] for item in bundle["key"]} <= allowed, path.name
         assert all(item.get("svg", "").startswith("<svg") for item in bundle["key"]), path.name
 
 

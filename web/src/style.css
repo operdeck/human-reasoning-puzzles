@@ -225,6 +225,7 @@ footer .credit {
 .play {
   position: sticky;
   top: 0.5rem;
+  min-width: 0;
 }
 
 .board {
@@ -249,6 +250,33 @@ footer .credit {
 
 .board rect.cell {
   cursor: pointer;
+}
+
+.cell-tooltip {
+  position: fixed;
+  z-index: 20;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 1rem));
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 3px 12px #0003;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  white-space: pre-line;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .overlay .mark line {
@@ -349,7 +377,8 @@ footer .credit {
   pointer-events: none;
 }
 
-.tool.used .used-cross {
+.tool.used .used-cross,
+.entry-select.used .used-cross {
   display: block;
 }
 
@@ -380,6 +409,10 @@ footer .credit {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.controls .palette {
+  margin: 0;
 }
 
 .verdict {
@@ -458,7 +491,7 @@ footer .credit {
   color: var(--muted);
 }
 
-/* --- panel: clues, rules, key ------------------------------------------- */
+/* --- panel: clues, rules and details ------------------------------------ */
 
 .panel {
   background: var(--paper);
@@ -469,9 +502,47 @@ footer .credit {
   top: 0.5rem;
   max-height: calc(100vh - 1rem);
   overflow-y: auto;
+  min-width: 0;
 }
 
 .tabs {
+  display: none;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.tabs button {
+  flex: 1;
+}
+
+.tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.panel.with-details .tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.panel.with-details .tabs button {
+  flex-basis: 6rem;
+}
+
+.panel.with-details .tabs button:first-child {
+  flex: 2 1 10rem;
+}
+
+.panel.with-details .panel-section {
+  display: none;
+}
+
+.panel.with-details .panel-section.active {
+  display: block;
+}
+
+.panel.with-details .panel-section h2 {
   display: none;
 }
 
@@ -517,6 +588,114 @@ footer .credit {
   text-decoration: line-through;
 }
 
+.figure-entry {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 0.6rem 0;
+  overflow: hidden;
+}
+
+.figure-entry.selected {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.entry-select {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.65rem;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+}
+
+.entry-select[aria-pressed="true"] {
+  background: #e8eef9;
+}
+
+.entry-select:focus-visible,
+.clues input:focus-visible,
+.tabs button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.entry-portrait {
+  position: relative;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: none;
+}
+
+.entry-select.used .entry-portrait > svg:not(.used-cross) {
+  opacity: 0.45;
+}
+
+.entry-select.used .used-cross line {
+  stroke-width: 2.4;
+  stroke-opacity: 0.85;
+}
+
+.entry-portrait svg {
+  width: 100%;
+  height: 100%;
+}
+
+.entry-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.entry-mark {
+  display: none;
+  position: relative;
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: none;
+}
+
+.entry-select.used .entry-mark {
+  display: block;
+}
+
+.entry-name {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.placement-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.figure-entry.placed .placement-status {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.with-clue-entries .verdict:empty {
+  display: none;
+}
+
+.entry-description {
+  margin: 0 0.7rem 0.4rem;
+  line-height: 1.35;
+}
+
+.panel .entry-clues {
+  list-style: none;
+  padding: 0 0.7rem;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.entry-clues li {
+  margin: 0.25rem 0;
+  line-height: 1.35;
+}
+
 .question {
   margin-top: 0.75rem;
   padding: 0.5rem 0.7rem;
@@ -546,7 +725,7 @@ dd {
   }
 
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .play,
@@ -567,18 +746,6 @@ dd {
 
   .tabs {
     display: flex;
-    gap: 0.25rem;
-    margin: 0.5rem 0 0.25rem;
-  }
-
-  .tabs button {
-    flex: 1;
-  }
-
-  .tabs button.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
   }
 
   .panel-section {
@@ -591,6 +758,30 @@ dd {
 
   .panel-section h2 {
     display: none;
+  }
+
+  .with-clue-entries .play {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--soft);
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .with-clue-entries .board svg {
+    max-height: 36vh;
+  }
+}
+
+@media (max-width: 420px) {
+  .with-clue-entries .controls {
+    gap: 0.2rem;
+  }
+
+  .with-clue-entries .controls > button,
+  .with-clue-entries .controls .tool {
+    padding-inline: 0.25rem;
   }
 }
 

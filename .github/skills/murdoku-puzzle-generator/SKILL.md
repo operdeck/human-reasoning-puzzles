@@ -487,10 +487,10 @@ so there is no person-to-person `next_to`.
 Presentation only; the solver ignores it. Add it last, in the puzzle's
 `Language:` (`en`/`nl`), after `Clues:`:
 
-The DOCX/PDF booklet and web player automatically show a general note that
-character kinds and descriptions are story details, not clues. Do not duplicate
-this note in each puzzle's `Intro:`; players should use only explicit rules and
-numbered clues to determine what is possible.
+The DOCX/PDF booklet and web player automatically remind players that only the
+stated rules and clues determine what is possible; a kind or trait matters only
+when a rule or clue explicitly uses it. Do not duplicate this note in each
+puzzle's `Intro:`.
 
 ```
 Title:
@@ -508,6 +508,11 @@ One or two lines, true for the verified solution (check against --explain).
 - No numbers like "0" in titles; the booklet numbers puzzles.
 - Figures: give everyone an icon. Leave the description empty (`Name: ; icon=...`)
   rather than a role-only filler like "a suspect", "the victim" or "een dier".
+  The booklet combines portraits, bold names, descriptions and unnumbered clues
+  under "The figures and their clues" / "De figuren en hun aanwijzingen".
+  Everyone appears, even without clues; global and loose clues follow under
+  "Other clues" / "Overige aanwijzingen". Ownership comes from clue semantics,
+  so a custom wording need not start with the owner's name.
 - `clue | wording` overrides one generated sentence; it must mean exactly the
   clue. Use it only where the generated text reads badly or for flavour. A
   `Rules:` line takes `| wording` too; it is then listed with the rules in the
@@ -519,8 +524,9 @@ One or two lines, true for the verified solution (check against --explain).
   `target.attribute` so roles that are really kinds read naturally
   ("Makaak is een aap"). Dutch region phrases are lower case. Give people that
   are things or animals a display name with article (`Leeuw: de leeuw`).
-- Figure descriptions must not repeat clues, roles or rules ("placed last",
-  "a Japanese dish"). A `Reveal:` names the answer, checked against the solve
+- Keep descriptions useful and concise; avoid repeating clues, roles or rules.
+  Preserve supplied information, especially meaningful late-reveal descriptions,
+  when changing presentation. A `Reveal:` names the answer, checked against the solve
   (e.g. the late-reveal companion); never point to text that is not printed.
 - A series (same folder) shares one title pattern; each puzzle gets its own
   subtitle and its own `Reveal:`.
@@ -554,6 +560,11 @@ with articles, consistent titles and subtitles, reveals present and correct,
 no repeated or empty sentences ("…, ."), no raw clue numbers in solutions, no
 facts already given by the figure list. Fix generic prose in `src/csp/story.py`
 (with a test) and one-off wording in the puzzle file (`Words:`, `| wording`).
+Check portrait rows as well: no cast member or supplied description is lost,
+clues sit with their semantic owner, ordinary sentences do not repeat the name
+heading, and global clues are printed exactly once. Inspect rendered short and
+dense pages, including long descriptions and figures without clues; fitting
+estimates and DOCX text checks alone are not a visual page review.
 
 Watch the articles in particular. An object, window, door or point object that
 occurs more than once should be named indefinitely ("een treinbank", "a bench"; "het perronbankje" is

@@ -26,7 +26,7 @@ the author's own, some of them written with AI help; they are an homage, not a
 replacement. Murdoku is a trademark of Digivoid Studios Inc., and this project is not
 affiliated with it.
 
-The same line stands under every Murdoku board in the player, on the home page and the
+A credit also appears under every Murdoku board in the player, on the home page and the
 Murdoku landing page, on each Murdoku puzzle's own page, and in front of a generated
 `--docx` booklet that contains Murdoku cases. The Sudoku, Queens, Kakuro and other
 families get their own puzzles only.
@@ -176,6 +176,18 @@ and crosses out the palette buttons of the pieces already on the board — grey,
 auto-marked squares. Pieces a board may hold more than once (mines, stars) keep their button.
 Digit puzzles take pencil marks: the Notes tool (key N) writes small digits, and auto-mark
 hides any that a placed peer rules out. Progress is kept in the browser.
+Murdoku's figure cards bring portraits, descriptions, clues and placement status
+together, and replace the figure buttons under the board: select a card to place
+that figure, and with auto-mark on a placed figure's portrait is crossed out
+(or a cross appears beside its name when it has no portrait).
+References to figures in the puzzle text are bold.
+Figures without clues remain in the cast, and global clues have their own
+section. Existing placements and marks carry over. Hover over a Murdoku cell,
+or move to it with the arrow keys, to read its area, objects and their count
+rules, marked-cell rules and any figure you have placed there. The Case details
+tab keeps objects, board symbols, roles and attributes available together,
+including on touchscreens. Point objects have their own hover, including the
+part of an icon outside the grid.
 Conflicting placements or notes show the other cell and, when available, the
 exported rule name; mistakes remain editable rather than being silently refused.
 The Warnings toggle controls this feedback independently of Auto-mark. It is on

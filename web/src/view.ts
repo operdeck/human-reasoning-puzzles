@@ -18,6 +18,7 @@ import {
   usedItems,
   type Bundle,
   type CellId,
+  type ClueEntry,
   type Named,
   type PaletteItem,
   type State,
@@ -29,6 +30,7 @@ import { creditLine } from "./credit";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CROSS = "__cross__";
 const LONG_PRESS_MS = 450;
+let nextTooltipId = 0;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -91,6 +93,12 @@ interface Box {
   w: number;
   h: number;
 }
+
+type CellTooltip = {
+  x: number;
+  y: number;
+  keyboard: boolean;
+} & ({ cell: CellId } | { lines: string[] });
 
 /** One puzzle: the board from the export, an overlay for the player's moves, and the panel. */
 export function verdictText(
@@ -171,6 +179,10 @@ export class PuzzleView {
   private tool: string;
   private cursor: CellId | null = null;
   private boxes = new Map<CellId, Box>();
+  private cells = new Map<CellId, SVGRectElement>();
+  private tooltip = el("div", { className: "cell-tooltip", hidden: true });
+  private cellStatus = el("span", { className: "visually-hidden" });
+  private currentTooltip: CellTooltip | null = null;
   private overlay!: SVGGElement;
   private icons = new Map<string, SVGSVGElement>();
   private paletteButtons = new Map<string, HTMLButtonElement>();
@@ -182,7 +194,10 @@ export class PuzzleView {
   private warningsBox = el("input", { type: "checkbox" });
   private notesMode = false;
   private notesButton = el("button", { type: "button", className: "tool notes-toggle" });
-  private clueBoxes: HTMLInputElement[] = [];
+  private clueBoxes: { box: HTMLInputElement; index: number }[] = [];
+  private entryButtons = new Map<string, HTMLButtonElement>();
+  private placementLabels = new Map<string, HTMLElement>();
+  private namePattern: RegExp | null = null;
 
   constructor(
     private bundle: Bundle,
@@ -191,6 +206,11 @@ export class PuzzleView {
   ) {
     this.history = new History(load(bundle));
     this.tool = bundle.palette?.[0]?.id ?? CROSS;
+    const names = [...new Set(bundle.textNames ?? [])].filter(Boolean).sort((a, b) => b.length - a.length);
+    if (names.length) {
+      const alternatives = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+      this.namePattern = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${alternatives})(?![\\p{L}\\p{N}_])`, "gu");
+    }
     this.verdict.setAttribute("aria-live", "polite");
     this.mineCount.setAttribute("aria-live", "polite");
   }
@@ -269,8 +289,20 @@ export class PuzzleView {
     board.setAttribute("role", "application");
     board.setAttribute("aria-label", "Puzzle board; arrow keys move, space places");
     board.innerHTML = this.boardSvg;
+    if (b.cellDetails || b.detailTargets?.length) {
+      this.tooltip.id = `cell-tooltip-${++nextTooltipId}`;
+      this.tooltip.setAttribute("role", "tooltip");
+      this.cellStatus.setAttribute("role", "status");
+      board.setAttribute("aria-describedby", this.tooltip.id);
+      board.append(this.tooltip, this.cellStatus);
+    }
     const play = el("section", { className: "play" }, board);
-    if (b.playable) {
+    if (b.playable && b.clueEntries) {
+      // Figure cards select figures, so only the cross joins the controls.
+      const controls = this.controls();
+      controls.prepend(this.paletteBar());
+      play.append(controls, this.verdict);
+    } else if (b.playable) {
       play.append(this.paletteBar(), this.mineCount, this.controls(), this.verdict);
     } else {
       play.append(el("p", { className: "note", textContent: b.unsupported ?? "Not playable yet." }));
@@ -278,76 +310,165 @@ export class PuzzleView {
 
     root.replaceChildren(
       header,
-      el("div", { className: "layout" }, play, this.panel()),
+      el("div", { className: `layout${b.clueEntries ? " with-clue-entries" : ""}` }, play, this.panel()),
       el("footer", {}, ...footerParagraphs(this.bundle.license, this.bundle.family)),
     );
     this.setUpBoard(board);
     this.redraw();
   }
 
-  // --- panel: clues, rules, key -------------------------------------------
+  // --- panel: clues, rules and details ------------------------------------
 
   private heading(key: string, fallback: string): string {
     return this.bundle.headings?.[key] ?? fallback;
   }
 
+  private prose(text: string): DocumentFragment {
+    const fragment = document.createDocumentFragment();
+    let start = 0;
+    if (this.namePattern) {
+      for (const match of text.matchAll(this.namePattern)) {
+        fragment.append(text.slice(start, match.index), el("strong", { textContent: match[0] }));
+        start = match.index + match[0].length;
+      }
+    }
+    fragment.append(text.slice(start));
+    return fragment;
+  }
+
   private panel(): HTMLElement {
     const b = this.bundle;
     const sections: [string, string, HTMLElement][] = [];
-    if (b.clues.length > 0 || b.question) {
+    if (b.clueEntries || b.clues.length > 0 || b.question) {
       const list = el("ol", { className: "clues" });
-      b.clues.forEach((clue, index) => {
-        const box = el("input", { type: "checkbox", title: "Mark this clue as used" });
-        box.addEventListener("change", () => this.commit(toggleClue(this.state, index)));
-        this.clueBoxes.push(box);
-        list.append(el("li", {}, el("label", {}, el("span", { textContent: clue }), box)));
-      });
-      const section = el("div", {}, list);
+      let section: HTMLElement;
+      if (b.clueEntries) {
+        section = this.figureEntries(b.clueEntries);
+      } else {
+        b.clues.forEach((clue, index) => {
+          const box = this.clueBox();
+          box.addEventListener("change", () => this.commit(toggleClue(this.state, index)));
+          this.clueBoxes.push({ box, index });
+          list.append(el("li", {}, el("label", {}, el("span", {}, this.prose(clue)), box)));
+        });
+        section = el("div", {}, list);
+      }
       if (b.question) {
         section.append(
           el(
             "div",
             { className: "question" },
             el("strong", { textContent: this.heading("question", "Question") }),
-            el("p", { textContent: b.question }),
+            el("p", {}, this.prose(b.question)),
           ),
         );
       }
-      sections.push(["clues", this.heading("clues", "Clues"), section]);
+      sections.push(["clues", this.heading(b.clueEntries ? "figure_clues" : "clues", "Clues"), section]);
     }
-    const rules = el("div", {}, el("ul", {}, ...b.rules.map((rule) => el("li", { textContent: rule }))));
-    const figures = b.family === "murdoku" ? (b.palette ?? []) : [];
+    const rules = el("div", {}, el("ul", {}, ...b.rules.map((rule) => el("li", {}, this.prose(rule)))));
+    const figures = !b.clueEntries && b.family === "murdoku" ? (b.palette ?? []) : [];
     if (figures.length > 0) rules.append(this.namedList(this.heading("figures", "The figures"),
       figures.map((item) => ({ name: item.label, text: item.description ?? "", svg: item.svg }))));
-    if (b.attributes?.length) rules.append(this.namedList(this.heading("attributes", "Attributes"), b.attributes));
-    if (b.roles?.length) rules.append(this.namedList(this.heading("roles", "Roles"), b.roles));
-    if (b.objects?.length) rules.append(this.namedList(this.heading("objects", "Objects"), b.objects));
+    if (!b.combineExtras) {
+      if (b.attributes?.length) rules.append(this.namedList(this.heading("attributes", "Attributes"), b.attributes));
+      if (b.roles?.length) rules.append(this.namedList(this.heading("roles", "Roles"), b.roles));
+    }
     sections.push(["rules", this.heading("rules_title", "Rules"), rules]);
-    if (b.key.length > 0) {
-      sections.push(["key", this.heading("key", "Key"), this.namedList(null, b.key)]);
+    const extras = [...(b.attributes ?? []), ...(b.roles ?? []), ...b.key, ...(b.objects ?? [])];
+    if (b.combineExtras) {
+      if (extras.length) sections.push(["extras", this.heading("extras", "Case details"), this.namedList(null, extras)]);
+    } else {
+      if (b.objects?.length) {
+        sections.push(["objects", this.heading("objects", "Objects"), this.namedList(null, b.objects)]);
+      }
+      if (b.key.length > 0) {
+        sections.push(["key", this.heading("key", "Key"), this.namedList(null, b.key)]);
+      }
     }
 
     const tabs = el("div", { className: "tabs" });
     tabs.setAttribute("role", "tablist");
-    const aside = el("aside", { className: "panel" }, tabs);
+    const tabbed = b.combineExtras ? extras.length > 0 : Boolean(b.objects?.length);
+    const aside = el("aside", { className: `panel${tabbed ? " with-details" : ""}` }, tabs);
     const select = (name: string) => {
       for (const node of aside.querySelectorAll<HTMLElement>("[data-tab]")) {
         node.classList.toggle("active", node.dataset.tab === name);
-        if (node instanceof HTMLButtonElement) node.setAttribute("aria-selected", String(node.dataset.tab === name));
+        if (node instanceof HTMLButtonElement) {
+          node.setAttribute("aria-selected", String(node.dataset.tab === name));
+          node.tabIndex = node.dataset.tab === name ? 0 : -1;
+        }
       }
     };
     for (const [name, title, body] of sections) {
       const tab = el("button", { type: "button", textContent: title });
       tab.dataset.tab = name;
+      tab.id = `tab-${name}`;
       tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-controls", `section-${name}`);
       tab.addEventListener("click", () => select(name));
+      tab.addEventListener("keydown", (event) => {
+        const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+        if (!keys.includes(event.key)) return;
+        event.preventDefault();
+        const index = sections.findIndex(([key]) => key === name);
+        const next = event.key === "Home" ? 0 : event.key === "End" ? sections.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : sections.length - 1)) % sections.length;
+        select(sections[next][0]);
+        tabs.querySelector<HTMLButtonElement>(`[data-tab="${sections[next][0]}"]`)?.focus();
+      });
       tabs.append(tab);
       const section = el("section", { className: "panel-section" }, el("h2", { textContent: title }), body);
       section.dataset.tab = name;
+      section.id = `section-${name}`;
+      section.setAttribute("role", "tabpanel");
+      section.setAttribute("aria-labelledby", tab.id);
       aside.append(section);
     }
     select(sections[0][0]);
     return aside;
+  }
+
+  private clueBox(): HTMLInputElement {
+    const title = this.bundle.language === "nl" ? "Aanwijzing afvinken" : "Mark this clue as used";
+    return el("input", { type: "checkbox", title });
+  }
+
+  private entryClues(entries: ClueEntry[]): HTMLElement {
+    const list = el("ul", { className: "clues entry-clues" });
+    for (const entry of entries) list.append(el("li", {}, this.prose(entry.text)));
+    return list;
+  }
+
+  private figureEntries(entries: ClueEntry[]): HTMLElement {
+    const section = el("div", { className: "figure-entries" });
+    for (const item of this.bundle.palette ?? []) {
+      const portrait = el("span", { className: item.svg ? "entry-portrait" : "entry-mark" });
+      portrait.setAttribute("aria-hidden", "true");
+      if (item.svg) portrait.innerHTML = item.svg;
+      portrait.append(this.usedCross());
+      const status = el("span", { className: "placement-status" });
+      this.placementLabels.set(item.id, status);
+      const heading = el("span", { className: "entry-label" },
+        el("strong", { textContent: item.label }), ...(!item.svg ? [portrait] : []));
+      const name = el("span", { className: "entry-name" },
+        heading, status);
+      const select = el("button", { type: "button", className: "entry-select" },
+        ...(item.svg ? [portrait] : []), name);
+      select.setAttribute("aria-pressed", String(this.tool === item.id));
+      select.addEventListener("click", () => this.selectTool(item.id));
+      this.entryButtons.set(item.id, select);
+      const card = el("article", { className: "figure-entry" }, select);
+      if (item.description) card.append(el("p", { className: "entry-description" }, this.prose(item.description)));
+      const clues = entries.filter((entry) => entry.item === item.id);
+      if (clues.length) card.append(this.entryClues(clues));
+      section.append(card);
+    }
+    const other = entries.filter((entry) => !entry.item);
+    if (other.length) section.append(
+      el("h3", { textContent: this.heading("other_clues", "Other clues") }),
+      this.entryClues(other),
+    );
+    return section;
   }
 
   private namedList(title: string | null, items: Named[]): HTMLElement {
@@ -360,7 +481,7 @@ export class PuzzleView {
         term.append(icon);
       }
       term.append(name);
-      if (text) list.append(term, el("dd", { textContent: text }));
+      if (text) list.append(term, el("dd", {}, this.prose(text)));
       else list.append(term);
     }
     return title ? el("div", {}, el("h3", { textContent: title }), list) : list;
@@ -372,7 +493,8 @@ export class PuzzleView {
     const bar = el("div", { className: "palette" });
     bar.setAttribute("role", "radiogroup");
     bar.setAttribute("aria-label", "Palette");
-    const items: (PaletteItem | null)[] = [...(this.bundle.palette ?? []), null];
+    const figures = this.bundle.clueEntries ? [] : this.bundle.palette ?? [];
+    const items: (PaletteItem | null)[] = [...figures, null];
     for (const item of items) {
       const id = item?.id ?? CROSS;
       const button = el("button", { type: "button", className: "tool" });
@@ -427,6 +549,10 @@ export class PuzzleView {
   private selectTool(id: string): void {
     this.tool = id;
     for (const [key, button] of this.paletteButtons) button.setAttribute("aria-checked", String(key === id));
+    for (const [key, button] of this.entryButtons) {
+      button.setAttribute("aria-pressed", String(key === id));
+      button.closest(".figure-entry")?.classList.toggle("selected", key === id);
+    }
   }
 
   private setNotesMode(on: boolean): void {
@@ -459,9 +585,9 @@ export class PuzzleView {
           singular: this.bundle.language === "nl" ? "mijn" : "mine",
           plural: this.bundle.language === "nl" ? "mijnen" : "mines",
         };
-    this.verdict.textContent = verdictText(
+    this.verdict.replaceChildren(this.prose(verdictText(
       verdict, this.bundle.language, this.bundle.reveal, missingItem,
-    );
+    )));
     if (verdict.status === "solved") celebrate();
   }
 
@@ -503,6 +629,7 @@ export class PuzzleView {
         h: Number(rect.getAttribute("height")),
       };
       this.boxes.set(rect.id, box);
+      this.cells.set(rect.id, rect);
       rect.setAttribute("aria-label", rect.id);
     }
     this.overlay = svgEl("g", { class: "overlay", "pointer-events": "none" }) as SVGGElement;
@@ -518,11 +645,83 @@ export class PuzzleView {
     this.listen(board, svg);
   }
 
-  private cellAt(x: number, y: number): CellId | null {
-    const target = document.elementFromPoint(x, y);
+  private cellForTarget(target: EventTarget | null): CellId | null {
     return target instanceof SVGRectElement && target.classList.contains("cell") && this.boxes.has(target.id)
       ? target.id
       : null;
+  }
+
+  private cellAt(x: number, y: number): CellId | null {
+    return this.cellForTarget(document.elementFromPoint(x, y));
+  }
+
+  private cellLines(cell: CellId, occupants = occupied(this.bundle, this.state)): string[] {
+    const details = this.bundle.cellDetails?.[cell];
+    if (!details) return [];
+    const lines = [`${this.heading("cell", "Cell")}: ${cell}`, ...details];
+    const item = occupants[cell];
+    if (item) {
+      const label = this.bundle.palette?.find((candidate) => candidate.id === item)?.label ?? item;
+      lines.push(`${this.heading("cell_figure", "Figure")}: ${label}`);
+    }
+    return lines;
+  }
+
+  private showCellTooltip(cell: CellId, x: number, y: number, keyboard = false): void {
+    if (!this.bundle.cellDetails?.[cell]) {
+      this.hideCellTooltip();
+      return;
+    }
+    this.currentTooltip = { cell, x, y, keyboard };
+    this.refreshCellTooltip();
+  }
+
+  private showPointerTooltip(x: number, y: number, cell: CellId | null): void {
+    if (this.bundle.detailTargets?.length) {
+      const origin = this.cells.get("r1c1")?.getBoundingClientRect();
+      if (origin?.width && origin.height) {
+        const col = (x - origin.left) / origin.width;
+        const row = (y - origin.top) / origin.height;
+        const target = this.bundle.detailTargets.find((item) =>
+          Math.abs(col - item.x) <= item.radius && Math.abs(row - item.y) <= item.radius);
+        if (target) {
+          this.currentTooltip = { lines: target.lines, x, y, keyboard: false };
+          this.refreshCellTooltip();
+          return;
+        }
+      }
+    }
+    if (cell) this.showCellTooltip(cell, x, y);
+    else this.hideCellTooltip();
+  }
+
+  private showKeyboardTooltip(cell: CellId): void {
+    const rect = this.cells.get(cell);
+    if (!rect) return;
+    const box = rect.getBoundingClientRect();
+    this.showCellTooltip(cell, box.left + box.width / 2, box.top + box.height / 2, true);
+  }
+
+  private refreshCellTooltip(): void {
+    if (!this.currentTooltip) return;
+    const { x, y, keyboard } = this.currentTooltip;
+    const lines = "cell" in this.currentTooltip
+      ? this.cellLines(this.currentTooltip.cell) : this.currentTooltip.lines;
+    const text = lines.join("\n");
+    if (this.tooltip.textContent !== text) this.tooltip.replaceChildren(this.prose(text));
+    this.tooltip.hidden = false;
+    const pad = 8;
+    this.tooltip.style.left = `${Math.max(pad, Math.min(x + 14, window.innerWidth - this.tooltip.offsetWidth - pad))}px`;
+    this.tooltip.style.top = `${Math.max(pad, Math.min(y + 18, window.innerHeight - this.tooltip.offsetHeight - pad))}px`;
+    const announcement = keyboard ? lines.join("; ") : "";
+    if (this.cellStatus.textContent !== announcement) this.cellStatus.textContent = announcement;
+  }
+
+  private hideCellTooltip(): void {
+    this.currentTooltip = null;
+    this.tooltip.hidden = true;
+    this.tooltip.textContent = "";
+    this.cellStatus.textContent = "";
   }
 
   private listen(board: HTMLElement, svg: SVGSVGElement): void {
@@ -537,6 +736,7 @@ export class PuzzleView {
     svg.addEventListener("pointerdown", (event) => {
       const cell = this.cellAt(event.clientX, event.clientY);
       if (!cell || press || (event.button !== 0 && event.button !== 2)) return;
+      this.hideCellTooltip();
       // Keep the pointer's events even if it leaves the board, so a press always ends.
       try {
         svg.setPointerCapture(event.pointerId);
@@ -560,12 +760,20 @@ export class PuzzleView {
       this.redraw();
     });
     svg.addEventListener("pointermove", (event) => {
-      if (!press || event.pointerId !== press.pointer || press.cross === null) return;
-      const cell = this.cellAt(event.clientX, event.clientY);
-      if (cell && this.working) {
-        this.working = setCross(this.bundle, this.working, cell, press.cross);
-        this.redraw();
+      if (press) {
+        if (event.pointerId === press.pointer && press.cross !== null) {
+          const cell = this.cellAt(event.clientX, event.clientY);
+          if (cell && this.working) {
+            this.working = setCross(this.bundle, this.working, cell, press.cross);
+            this.redraw();
+          }
+        }
+      } else if (event.pointerType !== "touch") {
+        this.showPointerTooltip(event.clientX, event.clientY, this.cellForTarget(event.target));
       }
+    });
+    svg.addEventListener("pointerleave", () => {
+      if (!press && !this.currentTooltip?.keyboard) this.hideCellTooltip();
     });
     const finish = (event: PointerEvent, cancelled: boolean) => {
       if (!press || event.pointerId !== press.pointer) return;
@@ -577,6 +785,9 @@ export class PuzzleView {
       } else if (!cancelled) {
         this.apply(current.cell);
       }
+      if (!cancelled && event.pointerType !== "touch") {
+        this.showPointerTooltip(event.clientX, event.clientY, this.cellAt(event.clientX, event.clientY));
+      }
     };
     svg.addEventListener("pointerup", (event) => finish(event, false));
     svg.addEventListener("pointercancel", (event) => finish(event, true));
@@ -584,6 +795,12 @@ export class PuzzleView {
     svg.style.touchAction = "none";
 
     board.addEventListener("keydown", (event) => this.key(event));
+    board.addEventListener("focus", () => {
+      if (!press && this.cursor && board.matches(":focus-visible")) this.showKeyboardTooltip(this.cursor);
+    });
+    board.addEventListener("blur", () => {
+      if (this.currentTooltip?.keyboard) this.hideCellTooltip();
+    });
   }
 
   private apply(cell: CellId): void {
@@ -615,6 +832,7 @@ export class PuzzleView {
       const next = this.cursor ? [r + dr, c + dc] : [1, 1];
       this.cursor = cellId(Math.min(rows, Math.max(1, next[0])), Math.min(cols, Math.max(1, next[1])));
       this.redraw();
+      this.showKeyboardTooltip(this.cursor);
     } else if ((event.key === " " || event.key === "Enter") && this.cursor) {
       this.apply(this.cursor);
     } else if ((event.key === "Delete" || event.key === "Backspace") && this.cursor) {
@@ -630,6 +848,8 @@ export class PuzzleView {
     } else if (!mod && /^[1-9]$/.test(event.key)) {
       const item = this.bundle.palette?.[Number(event.key) - 1];
       if (item) this.selectTool(item.id);
+    } else if (event.key === "Escape" && this.currentTooltip) {
+      this.hideCellTooltip();
     } else {
       return;
     }
@@ -654,10 +874,26 @@ export class PuzzleView {
         ? `${button.dataset.baseTitle ?? ""} — ${this.bundle.language === "nl" ? "al geplaatst" : "already placed"}`
         : button.dataset.baseTitle ?? "";
     }
-    this.clueBoxes.forEach((box, index) => {
+    for (const [id, button] of this.entryButtons) button.classList.toggle("used", used.has(id));
+    this.clueBoxes.forEach(({ box, index }) => {
       box.checked = state.usedClues.includes(index);
       box.closest("li")?.classList.toggle("used", box.checked);
     });
+    const occupants = occupied(this.bundle, state);
+    const placements = Object.entries(occupants);
+    for (const [id, label] of this.placementLabels) {
+      const cells = placements.filter(([, item]) => item === id).map(([cell]) => cell);
+      label.closest(".figure-entry")?.classList.toggle("placed", cells.length > 0);
+      label.textContent = cells.length
+        ? `✓ ${this.bundle.language === "nl" ? "Geplaatst" : "Placed"}: ${cells.join(", ")}`
+        : this.bundle.language === "nl" ? "Nog te plaatsen" : "Not placed yet";
+    }
+    if (this.bundle.cellDetails || this.bundle.detailTargets?.length) {
+      for (const [cell, rect] of this.cells) {
+        rect.setAttribute("aria-label", this.cellLines(cell, occupants).join("; ") || cell);
+      }
+      this.refreshCellTooltip();
+    }
     if (!this.overlay) return;
     const marks = autoMarks(this.bundle, state);
     const parts: SVGElement[] = [];
