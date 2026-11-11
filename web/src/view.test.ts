@@ -127,7 +127,7 @@ describe("palette", () => {
     const root = mount(overrides);
     expect(root.querySelectorAll(".figure-entry")).toHaveLength(2);
     const cards = root.querySelectorAll<HTMLElement>(".figure-entry");
-    expect(cards[0].querySelector(".placement-status")?.textContent).toBe("Placed: r1c1");
+    expect(cards[0].querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c1");
     expect(cards[0].querySelector("input")).toBeNull();
     const checkbox = cards[1].querySelector<HTMLInputElement>("input")!;
     expect(checkbox.checked).toBe(true);
@@ -140,10 +140,10 @@ describe("palette", () => {
     press(root, "ArrowRight");
     press(root, "ArrowRight");
     press(root, "Enter");
-    expect(cards[1].querySelector(".placement-status")?.textContent).toBe("Placed: r1c2");
+    expect(cards[1].querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c2");
     const again = mount(overrides);
     expect(again.querySelectorAll<HTMLInputElement>(".entry-clues input")[0].checked).toBe(false);
-    expect(again.querySelectorAll(".placement-status")[1].textContent).toBe("Placed: r1c2");
+    expect(again.querySelectorAll(".placement-status")[1].textContent).toBe("✓ Placed: r1c2");
   });
 
   it("uses shared checked sources for multiple references and keeps loose clues separate", () => {

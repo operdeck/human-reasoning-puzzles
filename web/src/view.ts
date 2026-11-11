@@ -379,9 +379,7 @@ export class PuzzleView {
 
   private clueBox(): HTMLInputElement {
     const title = this.bundle.language === "nl" ? "Aanwijzing afvinken" : "Mark this clue as used";
-    const box = el("input", { type: "checkbox", title });
-    box.setAttribute("aria-label", title);
-    return box;
+    return el("input", { type: "checkbox", title });
   }
 
   private entryClues(entries: ClueEntry[]): HTMLElement {
@@ -742,8 +740,9 @@ export class PuzzleView {
     const placements = Object.entries(occupied(this.bundle, state));
     for (const [id, label] of this.placementLabels) {
       const cells = placements.filter(([, item]) => item === id).map(([cell]) => cell);
+      label.closest(".figure-entry")?.classList.toggle("placed", cells.length > 0);
       label.textContent = cells.length
-        ? `${this.bundle.language === "nl" ? "Geplaatst" : "Placed"}: ${cells.join(", ")}`
+        ? `✓ ${this.bundle.language === "nl" ? "Geplaatst" : "Placed"}: ${cells.join(", ")}`
         : this.bundle.language === "nl" ? "Nog te plaatsen" : "Not placed";
     }
     if (!this.overlay) return;
