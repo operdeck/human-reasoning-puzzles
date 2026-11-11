@@ -182,7 +182,8 @@ that figure, and with auto-mark on a placed figure's portrait is crossed out.
 Figures without clues remain in the cast, and global clues have their own
 section. Existing placements and marks carry over. Hover over a Murdoku cell,
 or move to it with the arrow keys, to read its area, objects, marked-cell rules
-and any figure you have placed there.
+and any figure you have placed there. The Objects tab keeps object names and
+standability available on touchscreens.
 Conflicting placements or notes show the other cell and, when available, the
 exported rule name; mistakes remain editable rather than being silently refused.
 The Warnings toggle controls this feedback independently of Auto-mark. It is on

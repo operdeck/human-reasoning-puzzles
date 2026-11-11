@@ -251,6 +251,35 @@ describe("palette", () => {
     expect(root.querySelector('.panel-section[data-tab="rules"]')?.textContent).not.toContain("The figures");
   });
 
+  it("keeps the object list in its own tab instead of the rules", () => {
+    const root = mount({
+      clueEntries: [],
+      rules: ["Place each figure on a free cell."],
+      headings: { rules_title: "Spelregels", objects: "De voorwerpen" },
+      objects: [{ name: "Boom", text: "hier kan niemand staan", svg: '<svg viewBox="0 0 1 1"><circle r="1"/></svg>' }],
+      key: [{ name: "Poort", text: "een markering" }],
+    });
+    const rules = root.querySelector<HTMLElement>("#section-rules")!;
+    const objects = root.querySelector<HTMLElement>("#section-objects")!;
+    const tab = root.querySelector<HTMLButtonElement>("#tab-objects")!;
+    expect(rules.textContent).toContain("Place each figure");
+    expect(rules.textContent).not.toContain("Boom");
+    expect(tab.textContent).toBe("De voorwerpen");
+    expect(tab.getAttribute("aria-controls")).toBe(objects.id);
+    tab.click();
+    expect(tab.getAttribute("aria-selected")).toBe("true");
+    expect(objects.classList.contains("active")).toBe(true);
+    expect(objects.textContent).toContain("Boom");
+    expect(objects.textContent).toContain("hier kan niemand staan");
+    expect(objects.querySelector("svg circle")).not.toBeNull();
+    tab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    expect(document.activeElement?.id).toBe("tab-key");
+    document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    expect(document.activeElement?.id).toBe("tab-objects");
+    tab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    expect(document.activeElement?.id).toBe("tab-rules");
+  });
+
   it("moves focus between clue and rule tabs with the keyboard", () => {
     const root = mount({ clueEntries: [] });
     const tabs = root.querySelectorAll<HTMLButtonElement>('[role="tab"]');

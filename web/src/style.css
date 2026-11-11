@@ -506,6 +506,43 @@ footer .credit {
 
 .tabs {
   display: none;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.tabs button {
+  flex: 1;
+}
+
+.tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.panel.with-objects .tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.panel.with-objects .tabs button {
+  flex-basis: 6rem;
+}
+
+.panel.with-objects .tabs button:first-child {
+  flex: 2 1 10rem;
+}
+
+.panel.with-objects .panel-section {
+  display: none;
+}
+
+.panel.with-objects .panel-section.active {
+  display: block;
+}
+
+.panel.with-objects .panel-section h2 {
+  display: none;
 }
 
 .panel h2 {
@@ -690,18 +727,6 @@ dd {
 
   .tabs {
     display: flex;
-    gap: 0.25rem;
-    margin: 0.5rem 0 0.25rem;
-  }
-
-  .tabs button {
-    flex: 1;
-  }
-
-  .tabs button.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
   }
 
   .panel-section {

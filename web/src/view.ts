@@ -312,7 +312,7 @@ export class PuzzleView {
     this.redraw();
   }
 
-  // --- panel: clues, rules, key -------------------------------------------
+  // --- panel: clues, rules, objects, key ----------------------------------
 
   private heading(key: string, fallback: string): string {
     return this.bundle.headings?.[key] ?? fallback;
@@ -353,15 +353,17 @@ export class PuzzleView {
       figures.map((item) => ({ name: item.label, text: item.description ?? "", svg: item.svg }))));
     if (b.attributes?.length) rules.append(this.namedList(this.heading("attributes", "Attributes"), b.attributes));
     if (b.roles?.length) rules.append(this.namedList(this.heading("roles", "Roles"), b.roles));
-    if (b.objects?.length) rules.append(this.namedList(this.heading("objects", "Objects"), b.objects));
     sections.push(["rules", this.heading("rules_title", "Rules"), rules]);
+    if (b.objects?.length) {
+      sections.push(["objects", this.heading("objects", "Objects"), this.namedList(null, b.objects)]);
+    }
     if (b.key.length > 0) {
       sections.push(["key", this.heading("key", "Key"), this.namedList(null, b.key)]);
     }
 
     const tabs = el("div", { className: "tabs" });
     tabs.setAttribute("role", "tablist");
-    const aside = el("aside", { className: "panel" }, tabs);
+    const aside = el("aside", { className: `panel${b.objects?.length ? " with-objects" : ""}` }, tabs);
     const select = (name: string) => {
       for (const node of aside.querySelectorAll<HTMLElement>("[data-tab]")) {
         node.classList.toggle("active", node.dataset.tab === name);
