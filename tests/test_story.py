@@ -1086,7 +1086,7 @@ def test_a_rule_the_intro_already_says_is_listed_once():
         "Precies één persoon heeft sloffen aan.",
         "Precies één persoon heeft een bril op.",
     ]
-    assert rules[-1].startswith("Soorten en beschrijvingen van personages")
+    assert rules[-1].startswith("Alleen de expliciete regels en aanwijzingen")
     assert len(rules) == len(dict.fromkeys(rules))
 
 
