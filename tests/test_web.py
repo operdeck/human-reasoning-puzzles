@@ -221,6 +221,68 @@ def test_murdoku_cell_details_use_dutch_and_author_wording():
     assert "Touches: the mouse on the top edge" in points["r1c5"]
 
 
+def test_murdoku_cell_details_include_object_count_rules_on_each_matching_object():
+    text = example("wie-doet-het-met-wie-4.txt").read_text()
+    details = web._murdoku(text, {})["cellDetails"]
+    robe = "Precies twee mensen dragen een badjas."
+    slippers = "Precies één persoon heeft sloffen aan."
+    glasses = "Precies één persoon heeft een bril op."
+
+    assert all(robe in details[cell] for cell in ("r2c3", "r3c6", "r4c3"))
+    assert all(slippers in details[cell] for cell in ("r3c5", "r5c4"))
+    assert all(glasses in details[cell] for cell in ("r4c4", "r6c5"))
+    assert robe not in details["r3c5"]
+    assert slippers not in details["r3c6"]
+    assert glasses not in details["r3c6"]
+    assert robe not in details["r1c2"]
+
+
+def test_murdoku_object_count_details_use_generated_and_authored_clue_wording():
+    text = (
+        example("murdoku_3_house.txt")
+        .read_text()
+        .replace(
+            "Clues:\n",
+            "Rules:\n"
+            "count people on object:carpet <= 1\n"
+            "count people in area:garden >= 1\n"
+            "count empty cells in object:carpet = 1 | One carpet square is left empty.\n"
+            "Clues:\n"
+            "count people on object:chair = 1 | Only one guest uses the chair!\n",
+        )
+    )
+    details = web._murdoku(text, {})["cellDetails"]
+
+    for cell in ("r3c3", "r3c4"):
+        assert "At most one person is on the carpet." in details[cell]
+        assert "One carpet square is left empty." in details[cell]
+        assert "Only one guest uses the chair!" not in details[cell]
+    assert "Only one guest uses the chair!" in details["r5c2"]
+    assert "At most one person is on the carpet." not in details["r5c2"]
+
+
+def test_murdoku_count_details_follow_edge_and_point_scopes():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace(
+            "Clues:\n",
+            "Rules:\n"
+            "count people on edge_item:archway >= 1\n"
+            "count people on point_object:fountain = 1\n"
+            "Clues:\n",
+        )
+    )
+    details = web._murdoku(text, {})["cellDetails"]
+    archway = "At least one person is on the archway."
+    fountain = "Exactly one person is on the fountain."
+
+    assert all(archway in details[cell] for cell in ("r2c2", "r2c3"))
+    assert archway not in details["r3c1"]
+    assert all(fountain in details[cell] for cell in ("r3c1", "r3c2", "r4c1", "r4c2"))
+    assert fountain not in details["r2c2"]
+
+
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["headings"]["objects"] == "De voorwerpen"

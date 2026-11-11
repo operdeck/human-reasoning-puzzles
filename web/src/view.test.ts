@@ -178,7 +178,11 @@ describe("palette", () => {
       placement: { perItem: 1, blocked: ["r1c1"] },
       cellDetails: {
         r1c1: ["Gebied: Tuin", "Voorwerp: de boom (hier kan niemand staan)"],
-        r1c2: ["Gebied: Atelier", "Wie daar staat, is alleen in zijn gebied."],
+        r1c2: [
+          "Gebied: Atelier",
+          "Wie daar staat, is alleen in zijn gebied.",
+          "Precies twee mensen dragen een badjas.",
+        ],
       },
       headings: { cell: "Vakje", cell_figure: "Figuur" },
     });
@@ -197,6 +201,8 @@ describe("palette", () => {
       bubbles: true, pointerType: "mouse", clientX: 60, clientY: 10,
     }));
     expect(tooltip.textContent).toContain("Wie daar staat, is alleen");
+    expect(tooltip.textContent).toContain("Precies twee mensen dragen een badjas.");
+    expect(root.querySelector("#r1c2")?.getAttribute("aria-label")).toContain("Precies twee mensen");
     expect(tooltip.textContent).not.toContain("de boom");
     root.querySelector("svg")!.dispatchEvent(new PointerEvent("pointerleave"));
     expect(tooltip.hidden).toBe(true);

@@ -12,14 +12,14 @@ bundle, with `playable` false, so the site can show them read-only.
 """
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
-from .murdoku import Board, Square
+from .murdoku import Board, Clue, Square, global_count_conditions
 from .picture import murdoku_key_symbols
 from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
@@ -30,6 +30,7 @@ from .story import (
     clue_paragraphs,
     family_rules,
     figure_clues,
+    global_count_texts,
     mark_note,
     murdoku_key_items,
     murdoku_rules,
@@ -254,7 +255,7 @@ def bundle(
 
 
 def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
-    board, _ = load_board(text)
+    board, clues = load_board(text)
     presentation = load_presentation(text)
     entries = figure_clues(text)
     palette = []
@@ -282,7 +283,7 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "autoMark": {"default": True, "mark": "cross", "onPlace": LINES},
         "givens": {},
         "solution": dict(sorted(placed.items())),
-        "cellDetails": _murdoku_cell_details(board, text),
+        "cellDetails": _murdoku_cell_details(board, clues, text, presentation.clue_text),
         "headings": {
             **{
                 key: phrase(text, f"doc.{key}")
@@ -335,7 +336,9 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _murdoku_cell_details(board: Board, text: str) -> dict[str, list[str]]:
+def _murdoku_cell_details(
+    board: Board, clues: list[Clue], text: str, clue_text: Mapping[int, str]
+) -> dict[str, list[str]]:
     """Player-visible board facts for each cell, independent of the solution."""
     say = Wording.read(text)
     places = Places(board, say)
@@ -353,7 +356,7 @@ def _murdoku_cell_details(board: Board, text: str) -> dict[str, list[str]]:
                     lines.append(say("web.cell_tag", name=name))
             details[str(square)] = lines
 
-    def add(squares: tuple[Square, ...], line: str) -> None:
+    def add(squares: Iterable[Square], line: str) -> None:
         for square in squares:
             lines = details[str(square)]
             if line not in lines:
@@ -368,6 +371,15 @@ def _murdoku_cell_details(board: Board, text: str) -> dict[str, list[str]]:
         add(point.cells, say("web.cell_touch", name=places.thing(point.name)))
     for mark in board.marks:
         add(mark.cells, mark_note(mark, say))
+    counts = global_count_conditions(board, clues)
+    if any(count.object_scope for count in counts):
+        for count, wording in zip(counts, global_count_texts(text), strict=True):
+            if count.object_scope:
+                if count.number is not None:
+                    wording = clue_text.get(count.number, wording)
+                if not wording.endswith((".", "!", "?")):
+                    wording += "."
+                add(count.scope_cells(board), wording)
     return details
 
 

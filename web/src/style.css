@@ -255,6 +255,7 @@ footer .credit {
 .cell-tooltip {
   position: fixed;
   z-index: 20;
+  width: max-content;
   max-width: min(22rem, calc(100vw - 1rem));
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--line);
