@@ -145,6 +145,34 @@ describe("palette", () => {
     expect(again.querySelectorAll(".placement-status")[1].textContent).toBe("✓ Placed: r1c2");
   });
 
+  it("shows a cross beside an iconless figure's name when auto-marked", () => {
+    const root = mount({
+      clueEntries: [],
+      palette: [
+        { id: "Ada", label: "Ada", symbol: "Ad" },
+        { id: "Bo", label: "Bo", symbol: "Bo", svg: '<svg viewBox="0 0 1 1"><circle r="1"/></svg>' },
+      ],
+    });
+    const cards = root.querySelectorAll<HTMLElement>(".figure-entry");
+    const iconless = cards[0].querySelector<HTMLElement>(".entry-select")!;
+    expect(iconless.querySelector(".entry-portrait")).toBeNull();
+    expect(iconless.querySelector(".entry-label")?.textContent).toBe("Ada");
+    expect(iconless.querySelector(".placement-status")?.textContent).toBe("Not placed yet");
+    expect(iconless.querySelectorAll(".entry-mark .used-cross line")).toHaveLength(2);
+    expect(iconless.classList.contains("used")).toBe(false);
+    expect(cards[1].querySelector(".entry-portrait svg circle")).not.toBeNull();
+
+    press(root, "ArrowRight");
+    press(root, "Enter");
+    expect(iconless.classList.contains("used")).toBe(true);
+    expect(iconless.querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c1");
+    const auto = root.querySelector<HTMLInputElement>(".assist-controls .auto input")!;
+    auto.checked = false;
+    auto.dispatchEvent(new Event("change"));
+    expect(iconless.classList.contains("used")).toBe(false);
+    expect(iconless.querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c1");
+  });
+
   it("shows cell details on hover, including blocked and empty marked cells", () => {
     const root = mount({
       placement: { perItem: 1, blocked: ["r1c1"] },
@@ -251,33 +279,53 @@ describe("palette", () => {
     expect(root.querySelector('.panel-section[data-tab="rules"]')?.textContent).not.toContain("The figures");
   });
 
-  it("keeps the object list in its own tab instead of the rules", () => {
+  it("combines objects, board symbols, roles and attributes into one details list", () => {
     const root = mount({
       clueEntries: [],
+      combineExtras: true,
       rules: ["Place each figure on a free cell."],
-      headings: { rules_title: "Spelregels", objects: "De voorwerpen" },
+      headings: { rules_title: "Spelregels", extras: "Bijzonderheden" },
+      attributes: [{ name: "Vrouw", text: "Ada en Bo" }],
+      roles: [{ name: "Dader", text: "precies één persoon" }],
       objects: [{ name: "Boom", text: "hier kan niemand staan", svg: '<svg viewBox="0 0 1 1"><circle r="1"/></svg>' }],
-      key: [{ name: "Poort", text: "een markering" }],
+      key: [{ name: "Poort", text: "een markering", svg: '<svg viewBox="0 0 1 1"><path d="M0 0"/></svg>' }],
     });
     const rules = root.querySelector<HTMLElement>("#section-rules")!;
-    const objects = root.querySelector<HTMLElement>("#section-objects")!;
-    const tab = root.querySelector<HTMLButtonElement>("#tab-objects")!;
+    const extras = root.querySelector<HTMLElement>("#section-extras")!;
+    const tab = root.querySelector<HTMLButtonElement>("#tab-extras")!;
     expect(rules.textContent).toContain("Place each figure");
-    expect(rules.textContent).not.toContain("Boom");
-    expect(tab.textContent).toBe("De voorwerpen");
-    expect(tab.getAttribute("aria-controls")).toBe(objects.id);
+    expect(rules.textContent).not.toMatch(/Boom|Vrouw|Dader|Poort/);
+    expect(tab.textContent).toBe("Bijzonderheden");
+    expect(tab.getAttribute("aria-controls")).toBe(extras.id);
+    expect(root.querySelector("#tab-objects, #tab-key")).toBeNull();
     tab.click();
     expect(tab.getAttribute("aria-selected")).toBe("true");
-    expect(objects.classList.contains("active")).toBe(true);
-    expect(objects.textContent).toContain("Boom");
-    expect(objects.textContent).toContain("hier kan niemand staan");
-    expect(objects.querySelector("svg circle")).not.toBeNull();
+    expect(extras.classList.contains("active")).toBe(true);
+    expect(extras.querySelectorAll("dl")).toHaveLength(1);
+    expect(extras.textContent).toMatch(/Vrouw.*Ada en Bo.*Dader.*precies één persoon.*Poort.*een markering.*Boom.*hier kan niemand staan/);
+    expect(extras.querySelector("svg circle")).not.toBeNull();
+    expect(extras.querySelector("svg path")).not.toBeNull();
     tab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-    expect(document.activeElement?.id).toBe("tab-key");
+    expect(document.activeElement?.id).toBe("tab-clues");
     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
-    expect(document.activeElement?.id).toBe("tab-objects");
+    expect(document.activeElement?.id).toBe("tab-extras");
     tab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
     expect(document.activeElement?.id).toBe("tab-rules");
+  });
+
+  it("shows a details tab for board symbols even without objects", () => {
+    const root = mount({
+      combineExtras: true,
+      key: [{ name: "Point", text: "fountain", svg: '<svg viewBox="0 0 1 1"><circle r="1"/></svg>' }],
+    });
+    expect(root.querySelector(".panel.with-details #tab-extras")).not.toBeNull();
+    expect(root.querySelector("#section-extras")?.textContent).toContain("fountain");
+    expect(root.querySelector("#section-extras svg circle")).not.toBeNull();
+  });
+
+  it("does not add an empty details tab", () => {
+    const root = mount({ combineExtras: true });
+    expect(root.querySelector("#tab-extras")).toBeNull();
   });
 
   it("moves focus between clue and rule tabs with the keyboard", () => {

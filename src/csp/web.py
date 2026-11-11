@@ -301,7 +301,9 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
             },
             "cell": phrase(text, "web.cell"),
             "cell_figure": phrase(text, "web.cell_figure"),
+            "extras": phrase(text, "web.extras"),
         },
+        "combineExtras": True,
         "rules": rules,
         "clues": clue_paragraphs(text, presentation.clue_text),
         "clueEntries": [
@@ -317,7 +319,11 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
             )
         ],
         "key": [
-            {"name": label, "text": shown, "svg": symbol}
+            {
+                "name": shown[:1].upper() + shown[1:] if shown else label,
+                "text": label if shown else "",
+                "svg": symbol,
+            }
             for name, label, shown in murdoku_key_items(text)
             for symbol in murdoku_key_symbols(board, name)
         ],

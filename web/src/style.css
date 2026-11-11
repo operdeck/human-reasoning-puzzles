@@ -490,7 +490,7 @@ footer .credit {
   color: var(--muted);
 }
 
-/* --- panel: clues, rules, key ------------------------------------------- */
+/* --- panel: clues, rules and details ------------------------------------ */
 
 .panel {
   background: var(--paper);
@@ -520,28 +520,28 @@ footer .credit {
   color: #fff;
 }
 
-.panel.with-objects .tabs {
+.panel.with-details .tabs {
   display: flex;
   flex-wrap: wrap;
 }
 
-.panel.with-objects .tabs button {
+.panel.with-details .tabs button {
   flex-basis: 6rem;
 }
 
-.panel.with-objects .tabs button:first-child {
+.panel.with-details .tabs button:first-child {
   flex: 2 1 10rem;
 }
 
-.panel.with-objects .panel-section {
+.panel.with-details .panel-section {
   display: none;
 }
 
-.panel.with-objects .panel-section.active {
+.panel.with-details .panel-section.active {
   display: block;
 }
 
-.panel.with-objects .panel-section h2 {
+.panel.with-details .panel-section h2 {
   display: none;
 }
 
@@ -640,6 +640,24 @@ footer .credit {
 .entry-portrait svg {
   width: 100%;
   height: 100%;
+}
+
+.entry-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.entry-mark {
+  display: none;
+  position: relative;
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: none;
+}
+
+.entry-select.used .entry-mark {
+  display: block;
 }
 
 .entry-name {

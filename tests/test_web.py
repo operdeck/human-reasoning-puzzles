@@ -229,6 +229,16 @@ def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
     assert {item["text"] for item in objects} <= {"hier kun je op staan", "hier kan niemand staan"}
 
 
+@pytest.mark.parametrize(
+    ("name", "heading"),
+    [("halloween-museum-1.txt", "Case details"), ("zoo-murdoku-1.txt", "Bijzonderheden")],
+)
+def test_murdoku_bundle_combines_extras_in_the_puzzle_language(name, heading):
+    bundle = web._murdoku(example(name).read_text(), {})
+    assert bundle["combineExtras"] is True
+    assert bundle["headings"]["extras"] == heading
+
+
 def test_dutch_murdoku_is_worded_in_dutch(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["language"] == "nl"
@@ -379,9 +389,10 @@ def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
 def test_murdoku_web_key_lists_board_symbols_only(exported):
     point = _bundle(exported, "murdoku_2_point_objects")
     assert "conditions" not in point
-    assert any(name in {"Point", "Punt"} for name in [item["name"] for item in point["key"]])
+    assert any((item["text"] or item["name"]) in {"Point", "Punt"} for item in point["key"])
     assert all(
-        item["name"] in {"Deur", "Door", "Raam", "Window", "Punt", "Point"} for item in point["key"]
+        (item["text"] or item["name"]) in {"Deur", "Door", "Raam", "Window", "Punt", "Point"}
+        for item in point["key"]
     )
 
     counted = _bundle(exported, "samen-in-japan")
@@ -391,13 +402,14 @@ def test_murdoku_web_key_lists_board_symbols_only(exported):
 def test_murdoku_web_key_shows_the_symbols_players_see():
     points = web._murdoku(example("murdoku_2_point_objects.txt").read_text(), {})["key"]
     for label, name in (
-        ("the cat", "cat"),
-        ("cheese", "cheese"),
-        ("fountain", "fountain"),
-        ("the mouse on the top edge", "mouse1"),
-        ("the mouse in the corner", "mouse2"),
+        ("The cat", "cat"),
+        ("Cheese", "cheese"),
+        ("Fountain", "fountain"),
+        ("The mouse on the top edge", "mouse1"),
+        ("The mouse in the corner", "mouse2"),
     ):
-        (entry,) = [item for item in points if item["text"] == label]
+        (entry,) = [item for item in points if item["name"] == label]
+        assert entry["text"] == "Point"
         assert entry["svg"] == icons.to_svg(icons.object_icon(name))
 
     train = web._murdoku(example("murdoku_orient_express.txt").read_text(), {})["key"]
@@ -428,8 +440,10 @@ def test_murdoku_web_key_keeps_text_fallbacks_for_unknown_symbols():
         .replace("at Cal window", "at Cal mystery_window")
     )
     key = web._murdoku(text, {})["key"]
-    point = next(item for item in key if item["text"] == "unlisted thing")
-    window = next(item for item in key if item["text"] == "mystery window")
+    point = next(item for item in key if item["name"] == "Unlisted thing")
+    window = next(item for item in key if item["name"] == "Mystery window")
+    assert point["text"] == "Point"
+    assert window["text"] == "Window"
     assert "<ellipse" in point["svg"] and '<use href="#g' in point["svg"]
     assert '<use href="#g' in window["svg"]
 
@@ -450,7 +464,7 @@ def test_every_murdoku_key_lists_only_board_symbols(exported):
         assert "conditions" not in bundle, path.name
         if bundle.get("family") != "murdoku":
             continue
-        assert {item["name"] for item in bundle["key"]} <= allowed, path.name
+        assert {item["text"] or item["name"] for item in bundle["key"]} <= allowed, path.name
         assert all(item.get("svg", "").startswith("<svg") for item in bundle["key"]), path.name
 
 

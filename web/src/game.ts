@@ -62,6 +62,7 @@ export interface Bundle {
   regions?: Record<CellId, string>;
   cellDetails?: Record<CellId, string[]>;
   headings?: Record<string, string>;
+  combineExtras?: boolean;
   rules: string[];
   clues: string[];
   clueEntries?: ClueEntry[];

@@ -312,7 +312,7 @@ export class PuzzleView {
     this.redraw();
   }
 
-  // --- panel: clues, rules, objects, key ----------------------------------
+  // --- panel: clues, rules and details ------------------------------------
 
   private heading(key: string, fallback: string): string {
     return this.bundle.headings?.[key] ?? fallback;
@@ -351,19 +351,27 @@ export class PuzzleView {
     const figures = !b.clueEntries && b.family === "murdoku" ? (b.palette ?? []) : [];
     if (figures.length > 0) rules.append(this.namedList(this.heading("figures", "The figures"),
       figures.map((item) => ({ name: item.label, text: item.description ?? "", svg: item.svg }))));
-    if (b.attributes?.length) rules.append(this.namedList(this.heading("attributes", "Attributes"), b.attributes));
-    if (b.roles?.length) rules.append(this.namedList(this.heading("roles", "Roles"), b.roles));
-    sections.push(["rules", this.heading("rules_title", "Rules"), rules]);
-    if (b.objects?.length) {
-      sections.push(["objects", this.heading("objects", "Objects"), this.namedList(null, b.objects)]);
+    if (!b.combineExtras) {
+      if (b.attributes?.length) rules.append(this.namedList(this.heading("attributes", "Attributes"), b.attributes));
+      if (b.roles?.length) rules.append(this.namedList(this.heading("roles", "Roles"), b.roles));
     }
-    if (b.key.length > 0) {
-      sections.push(["key", this.heading("key", "Key"), this.namedList(null, b.key)]);
+    sections.push(["rules", this.heading("rules_title", "Rules"), rules]);
+    const extras = [...(b.attributes ?? []), ...(b.roles ?? []), ...b.key, ...(b.objects ?? [])];
+    if (b.combineExtras) {
+      if (extras.length) sections.push(["extras", this.heading("extras", "Case details"), this.namedList(null, extras)]);
+    } else {
+      if (b.objects?.length) {
+        sections.push(["objects", this.heading("objects", "Objects"), this.namedList(null, b.objects)]);
+      }
+      if (b.key.length > 0) {
+        sections.push(["key", this.heading("key", "Key"), this.namedList(null, b.key)]);
+      }
     }
 
     const tabs = el("div", { className: "tabs" });
     tabs.setAttribute("role", "tablist");
-    const aside = el("aside", { className: `panel${b.objects?.length ? " with-objects" : ""}` }, tabs);
+    const tabbed = b.combineExtras ? extras.length > 0 : Boolean(b.objects?.length);
+    const aside = el("aside", { className: `panel${tabbed ? " with-details" : ""}` }, tabs);
     const select = (name: string) => {
       for (const node of aside.querySelectorAll<HTMLElement>("[data-tab]")) {
         node.classList.toggle("active", node.dataset.tab === name);
@@ -416,16 +424,18 @@ export class PuzzleView {
   private figureEntries(entries: ClueEntry[]): HTMLElement {
     const section = el("div", { className: "figure-entries" });
     for (const item of this.bundle.palette ?? []) {
-      const portrait = el("span", { className: "entry-portrait" });
+      const portrait = el("span", { className: item.svg ? "entry-portrait" : "entry-mark" });
       portrait.setAttribute("aria-hidden", "true");
       if (item.svg) portrait.innerHTML = item.svg;
-      else portrait.textContent = item.symbol;
       portrait.append(this.usedCross());
       const status = el("span", { className: "placement-status" });
       this.placementLabels.set(item.id, status);
+      const heading = el("span", { className: "entry-label" },
+        el("strong", { textContent: item.label }), ...(!item.svg ? [portrait] : []));
       const name = el("span", { className: "entry-name" },
-        el("strong", { textContent: item.label }), status);
-      const select = el("button", { type: "button", className: "entry-select" }, portrait, name);
+        heading, status);
+      const select = el("button", { type: "button", className: "entry-select" },
+        ...(item.svg ? [portrait] : []), name);
       select.setAttribute("aria-pressed", String(this.tool === item.id));
       select.addEventListener("click", () => this.selectTool(item.id));
       this.entryButtons.set(item.id, select);
@@ -841,7 +851,7 @@ export class PuzzleView {
       label.closest(".figure-entry")?.classList.toggle("placed", cells.length > 0);
       label.textContent = cells.length
         ? `✓ ${this.bundle.language === "nl" ? "Geplaatst" : "Placed"}: ${cells.join(", ")}`
-        : this.bundle.language === "nl" ? "Nog te plaatsen" : "Not placed";
+        : this.bundle.language === "nl" ? "Nog te plaatsen" : "Not placed yet";
     }
     if (this.bundle.cellDetails) {
       for (const [cell, rect] of this.cells) {
