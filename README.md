@@ -176,6 +176,10 @@ and crosses out the palette buttons of the pieces already on the board — grey,
 auto-marked squares. Pieces a board may hold more than once (mines, stars) keep their button.
 Digit puzzles take pencil marks: the Notes tool (key N) writes small digits, and auto-mark
 hides any that a placed peer rules out. Progress is kept in the browser.
+Murdoku's figure cards bring portraits, descriptions, clues and placement status
+together. Select a card to choose that figure's placement tool; its clue checkbox
+is independent. Figures without clues remain in the cast, and global clues have
+their own section. Existing placements, marks and checked clues carry over.
 Conflicting placements or notes show the other cell and, when available, the
 exported rule name; mistakes remain editable rather than being silently refused.
 The Warnings toggle controls this feedback independently of Auto-mark. It is on

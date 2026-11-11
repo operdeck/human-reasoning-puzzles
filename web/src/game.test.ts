@@ -14,6 +14,7 @@ import {
   setCross,
   struckNotes,
   toggleNote,
+  toggleClueSources,
   usedItems,
   type Bundle,
 } from "./game";
@@ -271,6 +272,37 @@ describe("history and storage", () => {
     expect(emptyState(b).warnings).toBe(true);
     expect(restore(b, { auto: false }).warnings).toBe(true);
     expect(restore(b, { warnings: "false" }).warnings).toBe(true);
+  });
+
+  it("migrates checked paragraphs to source identities without losing moves or notes", () => {
+    const b = {
+      ...murdoku(),
+      notes: true,
+      clueEntries: [
+        { id: "clue:1,3", text: "Ingrid's clues", sources: ["clue:1", "clue:3"], item: "Ingrid" },
+        { id: "clue:2", text: "Joost's clue", sources: ["clue:2"], item: "Joost" },
+      ],
+      legacyClueSources: [["clue:2"], ["clue:1", "clue:3"]],
+    };
+    const saved = {
+      placed: { r1c1: "Joost" }, crosses: ["r2c2"], notes: { r3c3: ["Ingrid"] },
+      usedClues: [1], auto: false, warnings: false,
+    };
+    const state = restore(b, saved);
+    expect(state).toMatchObject({ ...saved, checkedClues: ["clue:1", "clue:3"] });
+    const unchecked = toggleClueSources(state, ["clue:1", "clue:3"]);
+    expect(restore(b, JSON.parse(JSON.stringify(unchecked))).checkedClues).toEqual([]);
+    expect(toggleClueSources(state, ["clue:2"]).checkedClues).toEqual(["clue:1", "clue:3", "clue:2"]);
+  });
+
+  it("keeps checked sources when paragraphs regroup and filters stale source IDs", () => {
+    const b = {
+      ...murdoku(),
+      clueEntries: [{ id: "clue:1,2", text: "Together", sources: ["clue:1", "clue:2"] }],
+    };
+    const state = restore(b, { checkedClues: ["clue:1", "clue:1", "clue:9", 2] });
+    expect(state.checkedClues).toEqual(["clue:1"]);
+    expect(toggleClueSources(state, ["clue:1", "clue:2"]).checkedClues).toEqual(["clue:1", "clue:2"]);
   });
 
   it("saves the warnings choice independently from auto-mark and supports undo", () => {

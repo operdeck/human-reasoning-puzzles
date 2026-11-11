@@ -13,11 +13,13 @@ import {
   setCross,
   struckNotes,
   toggleClue,
+  toggleClueSources,
   toggleNote,
   cellId,
   usedItems,
   type Bundle,
   type CellId,
+  type ClueEntry,
   type Named,
   type PaletteItem,
   type State,
@@ -182,7 +184,9 @@ export class PuzzleView {
   private warningsBox = el("input", { type: "checkbox" });
   private notesMode = false;
   private notesButton = el("button", { type: "button", className: "tool notes-toggle" });
-  private clueBoxes: HTMLInputElement[] = [];
+  private clueBoxes: { box: HTMLInputElement; index?: number; sources?: string[] }[] = [];
+  private entryButtons = new Map<string, HTMLButtonElement>();
+  private placementLabels = new Map<string, HTMLElement>();
 
   constructor(
     private bundle: Bundle,
@@ -278,7 +282,7 @@ export class PuzzleView {
 
     root.replaceChildren(
       header,
-      el("div", { className: "layout" }, play, this.panel()),
+      el("div", { className: `layout${b.clueEntries ? " with-clue-entries" : ""}` }, play, this.panel()),
       el("footer", {}, ...footerParagraphs(this.bundle.license, this.bundle.family)),
     );
     this.setUpBoard(board);
@@ -294,15 +298,20 @@ export class PuzzleView {
   private panel(): HTMLElement {
     const b = this.bundle;
     const sections: [string, string, HTMLElement][] = [];
-    if (b.clues.length > 0 || b.question) {
+    if (b.clueEntries || b.clues.length > 0 || b.question) {
       const list = el("ol", { className: "clues" });
-      b.clues.forEach((clue, index) => {
-        const box = el("input", { type: "checkbox", title: "Mark this clue as used" });
-        box.addEventListener("change", () => this.commit(toggleClue(this.state, index)));
-        this.clueBoxes.push(box);
-        list.append(el("li", {}, el("label", {}, el("span", { textContent: clue }), box)));
-      });
-      const section = el("div", {}, list);
+      let section: HTMLElement;
+      if (b.clueEntries) {
+        section = this.figureEntries(b.clueEntries);
+      } else {
+        b.clues.forEach((clue, index) => {
+          const box = this.clueBox();
+          box.addEventListener("change", () => this.commit(toggleClue(this.state, index)));
+          this.clueBoxes.push({ box, index });
+          list.append(el("li", {}, el("label", {}, el("span", { textContent: clue }), box)));
+        });
+        section = el("div", {}, list);
+      }
       if (b.question) {
         section.append(
           el(
@@ -313,10 +322,10 @@ export class PuzzleView {
           ),
         );
       }
-      sections.push(["clues", this.heading("clues", "Clues"), section]);
+      sections.push(["clues", this.heading(b.clueEntries ? "figure_clues" : "clues", "Clues"), section]);
     }
     const rules = el("div", {}, el("ul", {}, ...b.rules.map((rule) => el("li", { textContent: rule }))));
-    const figures = b.family === "murdoku" ? (b.palette ?? []) : [];
+    const figures = !b.clueEntries && b.family === "murdoku" ? (b.palette ?? []) : [];
     if (figures.length > 0) rules.append(this.namedList(this.heading("figures", "The figures"),
       figures.map((item) => ({ name: item.label, text: item.description ?? "", svg: item.svg }))));
     if (b.attributes?.length) rules.append(this.namedList(this.heading("attributes", "Attributes"), b.attributes));
@@ -333,21 +342,86 @@ export class PuzzleView {
     const select = (name: string) => {
       for (const node of aside.querySelectorAll<HTMLElement>("[data-tab]")) {
         node.classList.toggle("active", node.dataset.tab === name);
-        if (node instanceof HTMLButtonElement) node.setAttribute("aria-selected", String(node.dataset.tab === name));
+        if (node instanceof HTMLButtonElement) {
+          node.setAttribute("aria-selected", String(node.dataset.tab === name));
+          node.tabIndex = node.dataset.tab === name ? 0 : -1;
+        }
       }
     };
     for (const [name, title, body] of sections) {
       const tab = el("button", { type: "button", textContent: title });
       tab.dataset.tab = name;
+      tab.id = `tab-${name}`;
       tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-controls", `section-${name}`);
       tab.addEventListener("click", () => select(name));
+      tab.addEventListener("keydown", (event) => {
+        const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+        if (!keys.includes(event.key)) return;
+        event.preventDefault();
+        const index = sections.findIndex(([key]) => key === name);
+        const next = event.key === "Home" ? 0 : event.key === "End" ? sections.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : sections.length - 1)) % sections.length;
+        select(sections[next][0]);
+        tabs.querySelector<HTMLButtonElement>(`[data-tab="${sections[next][0]}"]`)?.focus();
+      });
       tabs.append(tab);
       const section = el("section", { className: "panel-section" }, el("h2", { textContent: title }), body);
       section.dataset.tab = name;
+      section.id = `section-${name}`;
+      section.setAttribute("role", "tabpanel");
+      section.setAttribute("aria-labelledby", tab.id);
       aside.append(section);
     }
     select(sections[0][0]);
     return aside;
+  }
+
+  private clueBox(): HTMLInputElement {
+    const title = this.bundle.language === "nl" ? "Aanwijzing afvinken" : "Mark this clue as used";
+    const box = el("input", { type: "checkbox", title });
+    box.setAttribute("aria-label", title);
+    return box;
+  }
+
+  private entryClues(entries: ClueEntry[]): HTMLElement {
+    const list = el("ul", { className: "clues entry-clues" });
+    for (const entry of entries) {
+      const box = this.clueBox();
+      box.addEventListener("change", () => this.commit(toggleClueSources(this.state, entry.sources)));
+      this.clueBoxes.push({ box, sources: entry.sources });
+      list.append(el("li", {}, el("label", {}, el("span", { textContent: entry.text }), box)));
+    }
+    return list;
+  }
+
+  private figureEntries(entries: ClueEntry[]): HTMLElement {
+    const section = el("div", { className: "figure-entries" });
+    for (const item of this.bundle.palette ?? []) {
+      const portrait = el("span", { className: "entry-portrait" });
+      portrait.setAttribute("aria-hidden", "true");
+      if (item.svg) portrait.innerHTML = item.svg;
+      else portrait.textContent = item.symbol;
+      const status = el("span", { className: "placement-status" });
+      this.placementLabels.set(item.id, status);
+      const name = el("span", { className: "entry-name" },
+        el("strong", { textContent: item.label }), status);
+      const select = el("button", { type: "button", className: "entry-select" }, portrait, name);
+      select.setAttribute("aria-pressed", String(this.tool === item.id));
+      select.addEventListener("click", () => this.selectTool(item.id));
+      this.entryButtons.set(item.id, select);
+      const card = el("article", { className: "figure-entry" }, select);
+      if (item.description) card.append(el("p", { className: "entry-description", textContent: item.description }));
+      const clues = entries.filter((entry) => entry.item === item.id);
+      if (clues.length) card.append(this.entryClues(clues));
+      section.append(card);
+    }
+    const other = entries.filter((entry) => !entry.item);
+    if (other.length) section.append(
+      el("h3", { textContent: this.heading("other_clues", "Other clues") }),
+      this.entryClues(other),
+    );
+    return section;
   }
 
   private namedList(title: string | null, items: Named[]): HTMLElement {
@@ -427,6 +501,10 @@ export class PuzzleView {
   private selectTool(id: string): void {
     this.tool = id;
     for (const [key, button] of this.paletteButtons) button.setAttribute("aria-checked", String(key === id));
+    for (const [key, button] of this.entryButtons) {
+      button.setAttribute("aria-pressed", String(key === id));
+      button.closest(".figure-entry")?.classList.toggle("selected", key === id);
+    }
   }
 
   private setNotesMode(on: boolean): void {
@@ -654,10 +732,20 @@ export class PuzzleView {
         ? `${button.dataset.baseTitle ?? ""} — ${this.bundle.language === "nl" ? "al geplaatst" : "already placed"}`
         : button.dataset.baseTitle ?? "";
     }
-    this.clueBoxes.forEach((box, index) => {
-      box.checked = state.usedClues.includes(index);
+    this.clueBoxes.forEach(({ box, index, sources }) => {
+      box.checked = sources
+        ? sources.every((source) => state.checkedClues?.includes(source))
+        : index !== undefined && state.usedClues.includes(index);
+      box.indeterminate = !box.checked && !!sources?.some((source) => state.checkedClues?.includes(source));
       box.closest("li")?.classList.toggle("used", box.checked);
     });
+    const placements = Object.entries(occupied(this.bundle, state));
+    for (const [id, label] of this.placementLabels) {
+      const cells = placements.filter(([, item]) => item === id).map(([cell]) => cell);
+      label.textContent = cells.length
+        ? `${this.bundle.language === "nl" ? "Geplaatst" : "Placed"}: ${cells.join(", ")}`
+        : this.bundle.language === "nl" ? "Nog te plaatsen" : "Not placed";
+    }
     if (!this.overlay) return;
     const marks = autoMarks(this.bundle, state);
     const parts: SVGElement[] = [];

@@ -29,6 +29,13 @@ export interface Named {
   svg?: string;
 }
 
+export interface ClueEntry {
+  id: string;
+  text: string;
+  sources: string[];
+  item?: string;
+}
+
 export interface Bundle {
   schema: number;
   id: string;
@@ -56,6 +63,8 @@ export interface Bundle {
   headings?: Record<string, string>;
   rules: string[];
   clues: string[];
+  clueEntries?: ClueEntry[];
+  legacyClueSources?: string[][];
   key: Named[];
   question: string;
   reveal?: string;
@@ -69,6 +78,7 @@ export interface State {
   crosses: CellId[];
   notes: Record<CellId, string[]>;
   usedClues: number[];
+  checkedClues?: string[];
   auto: boolean;
   warnings: boolean;
 }
@@ -76,6 +86,7 @@ export interface State {
 export function emptyState(bundle: Bundle): State {
   return {
     placed: {}, crosses: [], notes: {}, usedClues: [],
+    ...(bundle.clueEntries ? { checkedClues: [] } : {}),
     auto: bundle.autoMark?.default ?? false, warnings: true,
   };
 }
@@ -286,6 +297,16 @@ export function toggleClue(state: State, index: number): State {
   return { ...state, usedClues };
 }
 
+export function toggleClueSources(state: State, sources: string[]): State {
+  const checked = new Set(state.checkedClues ?? []);
+  const remove = sources.every((source) => checked.has(source));
+  for (const source of sources) {
+    if (remove) checked.delete(source);
+    else checked.add(source);
+  }
+  return { ...state, checkedClues: [...checked] };
+}
+
 export type Verdict =
   | { status: "solved" }
   | { status: "incomplete"; missing: number }
@@ -378,6 +399,14 @@ export function restore(bundle: Bundle, saved: unknown): State {
     state.usedClues = [...new Set(raw.usedClues)]
       .filter((n): n is number => Number.isInteger(n) && n >= 0 && n < bundle.clues.length)
       .sort((a, b) => a - b);
+  }
+  if (bundle.clueEntries) {
+    const sources = new Set(bundle.clueEntries.flatMap((entry) => entry.sources));
+    const checked = Array.isArray(raw.checkedClues)
+      ? raw.checkedClues
+      : state.usedClues.flatMap((index) => bundle.legacyClueSources?.[index] ?? []);
+    state.checkedClues = [...new Set(checked)]
+      .filter((id): id is string => typeof id === "string" && sources.has(id));
   }
   if (typeof raw.auto === "boolean") state.auto = raw.auto;
   if (typeof raw.warnings === "boolean") state.warnings = raw.warnings;

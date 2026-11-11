@@ -132,9 +132,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "object can."
         ),
         "doc.murdoku_note": (
-            "Character kinds and descriptions are story details, not clues. Do not infer where a "
-            "character can be or what they can do from their species, job, name, or description. "
-            "Only the puzzle's stated rules and numbered clues determine what is possible; a kind "
+            "Only the puzzle's stated rules and clues determine what is possible; a kind "
             "or trait matters only when a rule or clue explicitly uses it."
         ),
         "and": "and",
@@ -377,10 +375,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "een begaanbaar voorwerp wel."
         ),
         "doc.murdoku_note": (
-            "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen. Leid niet "
-            "af waar een personage kan zijn of wat die kan doen op basis van diens diersoort, "
-            "beroep, "
-            "naam of beschrijving. Alleen de expliciete regels en genummerde aanwijzingen bepalen "
+            "Alleen de expliciete regels en aanwijzingen bepalen "
             "wat mogelijk is; een soort of eigenschap telt alleen mee als een regel of aanwijzing "
             "die uitdrukkelijk gebruikt."
         ),
@@ -2707,7 +2702,7 @@ def figure_clues(text: str) -> CluePresentation:
     """Shared booklet/player entries; ownership comes from syntax, never wording."""
     board, _ = load_board(text)
     presentation = load_presentation(text)
-    say = Wording.read(text)
+    say = Wording.read(text).for_people(board.people)
     paragraphs = _clue_paragraphs(text, presentation.clue_text, semantic=True)
     figures = tuple(
         FigureClues(
@@ -2783,6 +2778,16 @@ def _clue_paragraphs(
         kind, args = clues[number - 1]
         if semantic:
             owner = args[0] if args and args[0] in board.people else None
+            if kind in (
+                "count",
+                "busiest_area",
+                "quietest_area",
+                "unique_attribute",
+                "role_subset",
+                "role_occupant",
+                "min_role_in_tagged",
+            ):
+                owner = None
             if kind == COUNTING:
                 subjects = {a[0] for _, a in counted(args)[1] if a}
                 owner = next(iter(subjects)) if len(subjects) == 1 else None

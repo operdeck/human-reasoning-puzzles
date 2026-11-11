@@ -27,6 +27,7 @@ from .story import (
     attribute_list,
     clue_paragraphs,
     family_rules,
+    figure_clues,
     murdoku_key_items,
     murdoku_rules,
     object_list,
@@ -252,12 +253,14 @@ def bundle(
 def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
     board, _ = load_board(text)
     presentation = load_presentation(text)
+    entries = figure_clues(text)
     palette = []
-    for person in board.people:
+    for entry in entries.figures:
+        person = entry.person
         figure = presentation.figures.get(person)
-        item: dict[str, Any] = {"id": person, "label": person, "symbol": person[:2]}
-        if figure and figure.description:
-            item["description"] = figure.description
+        item: dict[str, Any] = {"id": person, "label": entry.name, "symbol": person[:2]}
+        if entry.description:
+            item["description"] = entry.description
         icon = icons.object_icon(figure.icon) if figure and figure.icon else None
         if icon is not None and (picture := icons.to_svg(icon)):
             item["svg"] = picture
@@ -283,6 +286,8 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
                 "clues",
                 "question",
                 "figures",
+                "figure_clues",
+                "other_clues",
                 "attributes",
                 "roles",
                 "objects",
@@ -291,6 +296,21 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         },
         "rules": rules,
         "clues": clue_paragraphs(text, presentation.clue_text),
+        "clueEntries": [
+            {
+                "id": clue.id,
+                "text": clue.text,
+                "sources": [f"clue:{number}" for number in clue.sources],
+                **({"item": clue.person} if clue.person is not None else {}),
+            }
+            for clue in (
+                *(clue for figure in entries.figures for clue in figure.clues),
+                *entries.other,
+            )
+        ],
+        "legacyClueSources": [
+            [f"clue:{number}" for number in sources] for sources in entries.legacy_sources
+        ],
         "key": [
             {"name": label, "text": shown, "svg": symbol}
             for name, label, shown in murdoku_key_items(text)

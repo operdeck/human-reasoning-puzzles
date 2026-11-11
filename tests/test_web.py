@@ -9,6 +9,7 @@ import pytest
 pytest.importorskip("fontTools")
 
 from csp import cli, icons, murdoku, story, svg, web
+from csp.puzzlefile import load_board
 from tests.examples import EXAMPLES, example, played_examples
 
 pytestmark = pytest.mark.solutions
@@ -125,7 +126,7 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     assert bundle["reveal"].startswith("Wouter doet het met Noor")
     assert bundle["rules"]
     assert any(
-        rule.startswith("Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.")
+        rule.startswith("Alleen de expliciete regels en aanwijzingen bepalen")
         for rule in bundle["rules"]
     )
     assert "conditions" not in bundle
@@ -135,8 +136,8 @@ def test_murdoku_bundle_has_everything_to_play(exported):
 
 def test_every_murdoku_web_bundle_includes_the_character_description_note(exported):
     expected = {
-        "en": "Character kinds and descriptions are story details, not clues.",
-        "nl": "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.",
+        "en": "Only the puzzle's stated rules and clues determine what is possible;",
+        "nl": "Alleen de expliciete regels en aanwijzingen bepalen",
     }
     for path in exported.glob("*.json"):
         bundle = json.loads(path.read_text())
@@ -144,6 +145,37 @@ def test_every_murdoku_web_bundle_includes_the_character_description_note(export
             assert any(rule.startswith(expected[bundle["language"]]) for rule in bundle["rules"]), (
                 path.name
             )
+
+
+def test_murdoku_cards_cover_every_source_clue_once_and_keep_legacy_checkbox_mapping(exported):
+    for source in played_examples():
+        bundle = _bundle(exported, source.stem)
+        if bundle["family"] != "murdoku":
+            continue
+        board, clues = load_board(source.read_text())
+        entries = bundle["clueEntries"]
+        expected = [f"clue:{number}" for number in range(1, len(clues) + 1)]
+        actual = [source for entry in entries for source in entry["sources"]]
+        assert sorted(actual) == sorted(expected), source.name
+        assert sorted(
+            source for group in bundle["legacyClueSources"] for source in group
+        ) == sorted(expected), source.name
+        assert len(bundle["legacyClueSources"]) == len(bundle["clues"])
+        assert [item["id"] for item in bundle["palette"]] == board.people
+        assert all(entry.get("item") in (None, *board.people) for entry in entries)
+        assert len({entry["id"] for entry in entries}) == len(entries)
+
+
+def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
+    text = (
+        example("murdoku_3_house.txt")
+        .read_text()
+        .replace("Clues:\n", "Clues:\nin_region Ada study | Ben remembers Ada in the study.\n")
+    )
+    bundle = web._murdoku(text, {})
+    entry = next(entry for entry in bundle["clueEntries"] if "clue:1" in entry["sources"])
+    assert entry["item"] == "Ada"
+    assert "Ben remembers Ada in the study." in entry["text"]
 
 
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):

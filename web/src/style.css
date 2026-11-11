@@ -225,6 +225,7 @@ footer .credit {
 .play {
   position: sticky;
   top: 0.5rem;
+  min-width: 0;
 }
 
 .board {
@@ -469,6 +470,7 @@ footer .credit {
   top: 0.5rem;
   max-height: calc(100vh - 1rem);
   overflow-y: auto;
+  min-width: 0;
 }
 
 .tabs {
@@ -517,6 +519,78 @@ footer .credit {
   text-decoration: line-through;
 }
 
+.figure-entry {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 0.6rem 0;
+  overflow: hidden;
+}
+
+.figure-entry.selected {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.entry-select {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.65rem;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+}
+
+.entry-select[aria-pressed="true"] {
+  background: #e8eef9;
+}
+
+.entry-select:focus-visible,
+.clues input:focus-visible,
+.tabs button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.entry-portrait {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: none;
+}
+
+.entry-portrait svg {
+  width: 100%;
+  height: 100%;
+}
+
+.entry-name {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.placement-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.entry-description {
+  margin: 0 0.7rem 0.4rem;
+  line-height: 1.35;
+}
+
+.panel .entry-clues {
+  list-style: none;
+  padding: 0 0.7rem;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.entry-clues input {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--accent);
+}
+
 .question {
   margin-top: 0.75rem;
   padding: 0.5rem 0.7rem;
@@ -546,7 +620,7 @@ dd {
   }
 
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .play,
@@ -591,6 +665,28 @@ dd {
 
   .panel-section h2 {
     display: none;
+  }
+
+  .with-clue-entries .play {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--soft);
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .with-clue-entries .board svg {
+    max-height: 36vh;
+  }
+
+  .with-clue-entries .palette {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .with-clue-entries .tool {
+    flex-shrink: 0;
   }
 }
 
