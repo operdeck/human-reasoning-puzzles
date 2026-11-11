@@ -197,6 +197,7 @@ export class PuzzleView {
   private clueBoxes: { box: HTMLInputElement; index: number }[] = [];
   private entryButtons = new Map<string, HTMLButtonElement>();
   private placementLabels = new Map<string, HTMLElement>();
+  private namePattern: RegExp | null = null;
 
   constructor(
     private bundle: Bundle,
@@ -205,6 +206,11 @@ export class PuzzleView {
   ) {
     this.history = new History(load(bundle));
     this.tool = bundle.palette?.[0]?.id ?? CROSS;
+    const names = [...new Set(bundle.textNames ?? [])].filter(Boolean).sort((a, b) => b.length - a.length);
+    if (names.length) {
+      const alternatives = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+      this.namePattern = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${alternatives})(?![\\p{L}\\p{N}_])`, "gu");
+    }
     this.verdict.setAttribute("aria-live", "polite");
     this.mineCount.setAttribute("aria-live", "polite");
   }
@@ -317,6 +323,19 @@ export class PuzzleView {
     return this.bundle.headings?.[key] ?? fallback;
   }
 
+  private prose(text: string): DocumentFragment {
+    const fragment = document.createDocumentFragment();
+    let start = 0;
+    if (this.namePattern) {
+      for (const match of text.matchAll(this.namePattern)) {
+        fragment.append(text.slice(start, match.index), el("strong", { textContent: match[0] }));
+        start = match.index + match[0].length;
+      }
+    }
+    fragment.append(text.slice(start));
+    return fragment;
+  }
+
   private panel(): HTMLElement {
     const b = this.bundle;
     const sections: [string, string, HTMLElement][] = [];
@@ -330,7 +349,7 @@ export class PuzzleView {
           const box = this.clueBox();
           box.addEventListener("change", () => this.commit(toggleClue(this.state, index)));
           this.clueBoxes.push({ box, index });
-          list.append(el("li", {}, el("label", {}, el("span", { textContent: clue }), box)));
+          list.append(el("li", {}, el("label", {}, el("span", {}, this.prose(clue)), box)));
         });
         section = el("div", {}, list);
       }
@@ -340,13 +359,13 @@ export class PuzzleView {
             "div",
             { className: "question" },
             el("strong", { textContent: this.heading("question", "Question") }),
-            el("p", { textContent: b.question }),
+            el("p", {}, this.prose(b.question)),
           ),
         );
       }
       sections.push(["clues", this.heading(b.clueEntries ? "figure_clues" : "clues", "Clues"), section]);
     }
-    const rules = el("div", {}, el("ul", {}, ...b.rules.map((rule) => el("li", { textContent: rule }))));
+    const rules = el("div", {}, el("ul", {}, ...b.rules.map((rule) => el("li", {}, this.prose(rule)))));
     const figures = !b.clueEntries && b.family === "murdoku" ? (b.palette ?? []) : [];
     if (figures.length > 0) rules.append(this.namedList(this.heading("figures", "The figures"),
       figures.map((item) => ({ name: item.label, text: item.description ?? "", svg: item.svg }))));
@@ -416,7 +435,7 @@ export class PuzzleView {
 
   private entryClues(entries: ClueEntry[]): HTMLElement {
     const list = el("ul", { className: "clues entry-clues" });
-    for (const entry of entries) list.append(el("li", { textContent: entry.text }));
+    for (const entry of entries) list.append(el("li", {}, this.prose(entry.text)));
     return list;
   }
 
@@ -439,7 +458,7 @@ export class PuzzleView {
       select.addEventListener("click", () => this.selectTool(item.id));
       this.entryButtons.set(item.id, select);
       const card = el("article", { className: "figure-entry" }, select);
-      if (item.description) card.append(el("p", { className: "entry-description", textContent: item.description }));
+      if (item.description) card.append(el("p", { className: "entry-description" }, this.prose(item.description)));
       const clues = entries.filter((entry) => entry.item === item.id);
       if (clues.length) card.append(this.entryClues(clues));
       section.append(card);
@@ -462,7 +481,7 @@ export class PuzzleView {
         term.append(icon);
       }
       term.append(name);
-      if (text) list.append(term, el("dd", { textContent: text }));
+      if (text) list.append(term, el("dd", {}, this.prose(text)));
       else list.append(term);
     }
     return title ? el("div", {}, el("h3", { textContent: title }), list) : list;
@@ -566,9 +585,9 @@ export class PuzzleView {
           singular: this.bundle.language === "nl" ? "mijn" : "mine",
           plural: this.bundle.language === "nl" ? "mijnen" : "mines",
         };
-    this.verdict.textContent = verdictText(
+    this.verdict.replaceChildren(this.prose(verdictText(
       verdict, this.bundle.language, this.bundle.reveal, missingItem,
-    );
+    )));
     if (verdict.status === "solved") celebrate();
   }
 
@@ -689,7 +708,7 @@ export class PuzzleView {
     const lines = "cell" in this.currentTooltip
       ? this.cellLines(this.currentTooltip.cell) : this.currentTooltip.lines;
     const text = lines.join("\n");
-    if (this.tooltip.textContent !== text) this.tooltip.textContent = text;
+    if (this.tooltip.textContent !== text) this.tooltip.replaceChildren(this.prose(text));
     this.tooltip.hidden = false;
     const pad = 8;
     this.tooltip.style.left = `${Math.max(pad, Math.min(x + 14, window.innerWidth - this.tooltip.offsetWidth - pad))}px`;

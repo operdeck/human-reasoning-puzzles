@@ -300,6 +300,17 @@ def test_murdoku_point_hovers_include_outer_edges_and_corners():
     assert all("every square it touches" in target["lines"][1] for target in targets)
 
 
+def test_murdoku_text_names_keep_ids_and_authored_forms():
+    text = (
+        example("murdoku_3_house.txt")
+        .read_text()
+        .replace("Regions:\n", "Words:\nAda: de gids\nRegions:\n")
+    )
+    names = web._murdoku(text, {})["textNames"]
+    assert {"Ada", "De gids", "de gids", "Ben", "Cleo", "Dirk", "Eva"} <= set(names)
+    assert len(names) == len(set(names))
+
+
 def test_murdoku_bundle_lists_its_objects_with_pictures(exported):
     bundle = _bundle(exported, "zoo-murdoku-1")
     assert bundle["headings"]["objects"] == "De voorwerpen"

@@ -258,6 +258,7 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
     board, clues = load_board(text)
     presentation = load_presentation(text)
     entries = figure_clues(text)
+    say = Wording.read(text)
     palette = []
     for entry in entries.figures:
         person = entry.person
@@ -276,6 +277,13 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         "size": [board.size, board.size],
         "playable": True,
         "palette": palette,
+        "textNames": list(
+            dict.fromkeys(
+                name
+                for entry in entries.figures
+                for name in (entry.person, entry.name, say.words.get(entry.person, entry.person))
+            )
+        ),
         "placement": {
             "perItem": 1,
             "blocked": sorted(str(sq) for sq in board.blocked),

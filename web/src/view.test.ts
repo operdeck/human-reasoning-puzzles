@@ -173,6 +173,43 @@ describe("palette", () => {
     expect(iconless.querySelector(".placement-status")?.textContent).toBe("✓ Placed: r1c1");
   });
 
+  it("bolds complete character references throughout the puzzle prose without interpreting HTML", () => {
+    const sentence = "Anna meets Ann, Dr. Éva and de leeuw; Ann's note mentions Annabelle and Annélise. <em>Ann</em>";
+    const root = mount({
+      textNames: ["Ann", "Anna", "Dr. Éva", "de leeuw"],
+      clueEntries: [
+        { id: "ada", item: "Ada", text: sentence, sources: ["clue:1"] },
+        { id: "loose", text: "Ann watches Anna.", sources: ["clue:2"] },
+      ],
+      rules: ["Anna waits for Ann."],
+      question: "Where is Dr. Éva?",
+      attributes: [{ name: "Guide", text: "Ann and Anna" }],
+      palette: [
+        { id: "Ada", label: "Ada", symbol: "Ad", description: "Ann knows Anna." },
+        { id: "Bo", label: "Bo", symbol: "Bo" },
+      ],
+    });
+    const clue = root.querySelector(".entry-clues li")!;
+    expect(clue.textContent).toBe(sentence);
+    expect([...clue.querySelectorAll("strong")].map((node) => node.textContent)).toEqual([
+      "Anna", "Ann", "Dr. Éva", "de leeuw", "Ann", "Ann",
+    ]);
+    expect(clue.querySelector("em")).toBeNull();
+    expect(root.querySelector(".entry-description strong")?.textContent).toBe("Ann");
+    expect(root.querySelectorAll(".figure-entries > .entry-clues strong")).toHaveLength(2);
+    expect(root.querySelectorAll("#section-rules li strong")).toHaveLength(2);
+    expect(root.querySelector(".question p strong")?.textContent).toBe("Dr. Éva");
+    expect(root.querySelectorAll("dd strong")).toHaveLength(2);
+  });
+
+  it("leaves prose without exported character names unchanged", () => {
+    const root = mount({
+      clueEntries: [{ id: "ada", item: "Ada", text: "Ada meets Bo.", sources: ["clue:1"] }],
+    });
+    expect(root.querySelector(".entry-clues strong")).toBeNull();
+    expect(root.querySelector(".entry-clues")?.textContent).toBe("Ada meets Bo.");
+  });
+
   it("shows cell details on hover, including blocked and empty marked cells", () => {
     const root = mount({
       placement: { perItem: 1, blocked: ["r1c1"] },

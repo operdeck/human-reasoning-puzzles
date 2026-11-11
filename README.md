@@ -180,6 +180,7 @@ Murdoku's figure cards bring portraits, descriptions, clues and placement status
 together, and replace the figure buttons under the board: select a card to place
 that figure, and with auto-mark on a placed figure's portrait is crossed out
 (or a cross appears beside its name when it has no portrait).
+References to figures in the puzzle text are bold.
 Figures without clues remain in the cast, and global clues have their own
 section. Existing placements and marks carry over. Hover over a Murdoku cell,
 or move to it with the arrow keys, to read its area, objects and their count
