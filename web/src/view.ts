@@ -30,6 +30,7 @@ import { creditLine } from "./credit";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CROSS = "__cross__";
 const LONG_PRESS_MS = 450;
+let nextTooltipId = 0;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -91,6 +92,13 @@ interface Box {
   y: number;
   w: number;
   h: number;
+}
+
+interface CellTooltip {
+  cell: CellId;
+  x: number;
+  y: number;
+  keyboard: boolean;
 }
 
 /** One puzzle: the board from the export, an overlay for the player's moves, and the panel. */
@@ -172,6 +180,10 @@ export class PuzzleView {
   private tool: string;
   private cursor: CellId | null = null;
   private boxes = new Map<CellId, Box>();
+  private cells = new Map<CellId, SVGRectElement>();
+  private tooltip = el("div", { className: "cell-tooltip", hidden: true });
+  private cellStatus = el("span", { className: "visually-hidden" });
+  private currentTooltip: CellTooltip | null = null;
   private overlay!: SVGGElement;
   private icons = new Map<string, SVGSVGElement>();
   private paletteButtons = new Map<string, HTMLButtonElement>();
@@ -272,6 +284,13 @@ export class PuzzleView {
     board.setAttribute("role", "application");
     board.setAttribute("aria-label", "Puzzle board; arrow keys move, space places");
     board.innerHTML = this.boardSvg;
+    if (b.cellDetails) {
+      this.tooltip.id = `cell-tooltip-${++nextTooltipId}`;
+      this.tooltip.setAttribute("role", "tooltip");
+      this.cellStatus.setAttribute("role", "status");
+      board.setAttribute("aria-describedby", this.tooltip.id);
+      board.append(this.tooltip, this.cellStatus);
+    }
     const play = el("section", { className: "play" }, board);
     if (b.playable && b.clueEntries) {
       // Figure cards select figures, so only the cross joins the controls.
@@ -580,6 +599,7 @@ export class PuzzleView {
         h: Number(rect.getAttribute("height")),
       };
       this.boxes.set(rect.id, box);
+      this.cells.set(rect.id, rect);
       rect.setAttribute("aria-label", rect.id);
     }
     this.overlay = svgEl("g", { class: "overlay", "pointer-events": "none" }) as SVGGElement;
@@ -595,11 +615,63 @@ export class PuzzleView {
     this.listen(board, svg);
   }
 
-  private cellAt(x: number, y: number): CellId | null {
-    const target = document.elementFromPoint(x, y);
+  private cellForTarget(target: EventTarget | null): CellId | null {
     return target instanceof SVGRectElement && target.classList.contains("cell") && this.boxes.has(target.id)
       ? target.id
       : null;
+  }
+
+  private cellAt(x: number, y: number): CellId | null {
+    return this.cellForTarget(document.elementFromPoint(x, y));
+  }
+
+  private cellLines(cell: CellId, occupants = occupied(this.bundle, this.state)): string[] {
+    const details = this.bundle.cellDetails?.[cell];
+    if (!details) return [];
+    const lines = [`${this.heading("cell", "Cell")}: ${cell}`, ...details];
+    const item = occupants[cell];
+    if (item) {
+      const label = this.bundle.palette?.find((candidate) => candidate.id === item)?.label ?? item;
+      lines.push(`${this.heading("cell_figure", "Figure")}: ${label}`);
+    }
+    return lines;
+  }
+
+  private showCellTooltip(cell: CellId, x: number, y: number, keyboard = false): void {
+    if (!this.bundle.cellDetails?.[cell]) {
+      this.hideCellTooltip();
+      return;
+    }
+    this.currentTooltip = { cell, x, y, keyboard };
+    this.refreshCellTooltip();
+  }
+
+  private showKeyboardTooltip(cell: CellId): void {
+    const rect = this.cells.get(cell);
+    if (!rect) return;
+    const box = rect.getBoundingClientRect();
+    this.showCellTooltip(cell, box.left + box.width / 2, box.top + box.height / 2, true);
+  }
+
+  private refreshCellTooltip(): void {
+    if (!this.currentTooltip) return;
+    const { cell, x, y, keyboard } = this.currentTooltip;
+    const lines = this.cellLines(cell);
+    const text = lines.join("\n");
+    if (this.tooltip.textContent !== text) this.tooltip.textContent = text;
+    this.tooltip.hidden = false;
+    const pad = 8;
+    this.tooltip.style.left = `${Math.max(pad, Math.min(x + 14, window.innerWidth - this.tooltip.offsetWidth - pad))}px`;
+    this.tooltip.style.top = `${Math.max(pad, Math.min(y + 18, window.innerHeight - this.tooltip.offsetHeight - pad))}px`;
+    const announcement = keyboard ? lines.join("; ") : "";
+    if (this.cellStatus.textContent !== announcement) this.cellStatus.textContent = announcement;
+  }
+
+  private hideCellTooltip(): void {
+    this.currentTooltip = null;
+    this.tooltip.hidden = true;
+    this.tooltip.textContent = "";
+    this.cellStatus.textContent = "";
   }
 
   private listen(board: HTMLElement, svg: SVGSVGElement): void {
@@ -614,6 +686,7 @@ export class PuzzleView {
     svg.addEventListener("pointerdown", (event) => {
       const cell = this.cellAt(event.clientX, event.clientY);
       if (!cell || press || (event.button !== 0 && event.button !== 2)) return;
+      this.hideCellTooltip();
       // Keep the pointer's events even if it leaves the board, so a press always ends.
       try {
         svg.setPointerCapture(event.pointerId);
@@ -637,12 +710,22 @@ export class PuzzleView {
       this.redraw();
     });
     svg.addEventListener("pointermove", (event) => {
-      if (!press || event.pointerId !== press.pointer || press.cross === null) return;
-      const cell = this.cellAt(event.clientX, event.clientY);
-      if (cell && this.working) {
-        this.working = setCross(this.bundle, this.working, cell, press.cross);
-        this.redraw();
+      if (press) {
+        if (event.pointerId === press.pointer && press.cross !== null) {
+          const cell = this.cellAt(event.clientX, event.clientY);
+          if (cell && this.working) {
+            this.working = setCross(this.bundle, this.working, cell, press.cross);
+            this.redraw();
+          }
+        }
+      } else if (event.pointerType !== "touch") {
+        const cell = this.cellForTarget(event.target);
+        if (cell) this.showCellTooltip(cell, event.clientX, event.clientY);
+        else this.hideCellTooltip();
       }
+    });
+    svg.addEventListener("pointerleave", () => {
+      if (!press && !this.currentTooltip?.keyboard) this.hideCellTooltip();
     });
     const finish = (event: PointerEvent, cancelled: boolean) => {
       if (!press || event.pointerId !== press.pointer) return;
@@ -654,6 +737,10 @@ export class PuzzleView {
       } else if (!cancelled) {
         this.apply(current.cell);
       }
+      if (!cancelled && event.pointerType !== "touch") {
+        const cell = this.cellAt(event.clientX, event.clientY);
+        if (cell) this.showCellTooltip(cell, event.clientX, event.clientY);
+      }
     };
     svg.addEventListener("pointerup", (event) => finish(event, false));
     svg.addEventListener("pointercancel", (event) => finish(event, true));
@@ -661,6 +748,12 @@ export class PuzzleView {
     svg.style.touchAction = "none";
 
     board.addEventListener("keydown", (event) => this.key(event));
+    board.addEventListener("focus", () => {
+      if (!press && this.cursor && board.matches(":focus-visible")) this.showKeyboardTooltip(this.cursor);
+    });
+    board.addEventListener("blur", () => {
+      if (this.currentTooltip?.keyboard) this.hideCellTooltip();
+    });
   }
 
   private apply(cell: CellId): void {
@@ -692,6 +785,7 @@ export class PuzzleView {
       const next = this.cursor ? [r + dr, c + dc] : [1, 1];
       this.cursor = cellId(Math.min(rows, Math.max(1, next[0])), Math.min(cols, Math.max(1, next[1])));
       this.redraw();
+      this.showKeyboardTooltip(this.cursor);
     } else if ((event.key === " " || event.key === "Enter") && this.cursor) {
       this.apply(this.cursor);
     } else if ((event.key === "Delete" || event.key === "Backspace") && this.cursor) {
@@ -707,6 +801,8 @@ export class PuzzleView {
     } else if (!mod && /^[1-9]$/.test(event.key)) {
       const item = this.bundle.palette?.[Number(event.key) - 1];
       if (item) this.selectTool(item.id);
+    } else if (event.key === "Escape" && this.currentTooltip) {
+      this.hideCellTooltip();
     } else {
       return;
     }
@@ -736,13 +832,20 @@ export class PuzzleView {
       box.checked = state.usedClues.includes(index);
       box.closest("li")?.classList.toggle("used", box.checked);
     });
-    const placements = Object.entries(occupied(this.bundle, state));
+    const occupants = occupied(this.bundle, state);
+    const placements = Object.entries(occupants);
     for (const [id, label] of this.placementLabels) {
       const cells = placements.filter(([, item]) => item === id).map(([cell]) => cell);
       label.closest(".figure-entry")?.classList.toggle("placed", cells.length > 0);
       label.textContent = cells.length
         ? `✓ ${this.bundle.language === "nl" ? "Geplaatst" : "Placed"}: ${cells.join(", ")}`
         : this.bundle.language === "nl" ? "Nog te plaatsen" : "Not placed";
+    }
+    if (this.bundle.cellDetails) {
+      for (const [cell, rect] of this.cells) {
+        rect.setAttribute("aria-label", this.cellLines(cell, occupants).join("; ") || cell);
+      }
+      this.refreshCellTooltip();
     }
     if (!this.overlay) return;
     const marks = autoMarks(this.bundle, state);

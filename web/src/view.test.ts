@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { conflictText, footerParagraphs, mineCounter, PuzzleView, verdictText } from "./view";
 import type { Bundle } from "./game";
 
@@ -143,6 +143,99 @@ describe("palette", () => {
     expect(button.classList.contains("used")).toBe(true);
     const again = mount(overrides);
     expect(again.querySelectorAll(".placement-status")[1].textContent).toBe("✓ Placed: r1c2");
+  });
+
+  it("shows cell details on hover, including blocked and empty marked cells", () => {
+    const root = mount({
+      placement: { perItem: 1, blocked: ["r1c1"] },
+      cellDetails: {
+        r1c1: ["Gebied: Tuin", "Voorwerp: de boom (hier kan niemand staan)"],
+        r1c2: ["Gebied: Atelier", "Wie daar staat, is alleen in zijn gebied."],
+      },
+      headings: { cell: "Vakje", cell_figure: "Figuur" },
+    });
+    const tooltip = root.querySelector<HTMLElement>(".cell-tooltip")!;
+    const tree = root.querySelector<SVGRectElement>("#r1c1")!;
+    tree.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, pointerType: "mouse", clientX: 10, clientY: 10,
+    }));
+    expect(tooltip.hidden).toBe(false);
+    expect(tooltip.textContent).toContain("Vakje: r1c1");
+    expect(tooltip.textContent).toContain("Voorwerp: de boom");
+    expect(tooltip.textContent).not.toContain("Ada");
+    expect(tree.getAttribute("aria-label")).toContain("Gebied: Tuin");
+
+    root.querySelector<SVGRectElement>("#r1c2")!.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, pointerType: "mouse", clientX: 60, clientY: 10,
+    }));
+    expect(tooltip.textContent).toContain("Wie daar staat, is alleen");
+    expect(tooltip.textContent).not.toContain("de boom");
+    root.querySelector("svg")!.dispatchEvent(new PointerEvent("pointerleave"));
+    expect(tooltip.hidden).toBe(true);
+
+    tree.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerType: "touch" }));
+    expect(tooltip.hidden).toBe(true);
+  });
+
+  it("announces keyboard details and updates figures through undo, redo and clearing", () => {
+    const root = mount({
+      givens: { r2c2: "Bo" },
+      cellDetails: {
+        r1c1: ["Area: Atrium", "Cells marked QU are quiet cells."],
+        r2c2: ["Area: Studio"],
+      },
+    });
+    const board = root.querySelector<HTMLElement>(".board")!;
+    const tooltip = root.querySelector<HTMLElement>(".cell-tooltip")!;
+    const status = root.querySelector<HTMLElement>('[role="status"]')!;
+    board.focus();
+    press(root, "ArrowRight");
+    expect(board.getAttribute("aria-describedby")).toBe(tooltip.id);
+    expect(status.textContent).toContain("Cells marked QU");
+    expect(tooltip.textContent).not.toContain("Ada");
+
+    press(root, "Enter");
+    expect(tooltip.textContent).toContain("Figure: Ada");
+    expect(root.querySelector("#r1c1")?.getAttribute("aria-label")).toContain("Figure: Ada");
+    board.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }));
+    expect(tooltip.textContent).not.toContain("Figure: Ada");
+    board.dispatchEvent(new KeyboardEvent("keydown", { key: "y", ctrlKey: true, bubbles: true }));
+    expect(status.textContent).toContain("Figure: Ada");
+    press(root, "Delete");
+    expect(tooltip.textContent).not.toContain("Figure: Ada");
+
+    press(root, "ArrowDown");
+    press(root, "ArrowRight");
+    expect(tooltip.textContent).toContain("Figure: Bo");
+    press(root, "Escape");
+    expect(tooltip.hidden).toBe(true);
+  });
+
+  it("does not leave a tooltip over the board after a touch placement", () => {
+    const root = mount({ cellDetails: { r1c1: ["Area: Atrium"] } });
+    const board = root.querySelector<HTMLElement>(".board")!;
+    const cell = root.querySelector<SVGRectElement>("#r1c1")!;
+    const hit = vi.spyOn(document, "elementFromPoint").mockReturnValue(cell);
+    try {
+      cell.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, pointerId: 1, pointerType: "touch", button: 0,
+      }));
+      board.focus();
+      cell.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true, pointerId: 1, pointerType: "touch", button: 0,
+      }));
+      expect(root.querySelector<HTMLElement>(".cell-tooltip")!.hidden).toBe(true);
+      expect(cell.getAttribute("aria-label")).toContain("Figure: Ada");
+    } finally {
+      hit.mockRestore();
+    }
+  });
+
+  it("leaves boards without cell details unchanged", () => {
+    const root = mount();
+    expect(root.querySelector(".cell-tooltip")).toBeNull();
+    press(root, "ArrowRight");
+    expect(root.querySelector("#r1c1")?.getAttribute("aria-label")).toBe("r1c1");
   });
 
   it("keeps loose clues separate from the figure cards", () => {

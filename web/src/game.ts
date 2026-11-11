@@ -60,6 +60,7 @@ export interface Bundle {
   givens?: Record<CellId, string>;
   solution?: Record<CellId, string>;
   regions?: Record<CellId, string>;
+  cellDetails?: Record<CellId, string[]>;
   headings?: Record<string, string>;
   rules: string[];
   clues: string[];

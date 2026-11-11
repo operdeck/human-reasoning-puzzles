@@ -252,6 +252,32 @@ footer .credit {
   cursor: pointer;
 }
 
+.cell-tooltip {
+  position: fixed;
+  z-index: 20;
+  max-width: min(22rem, calc(100vw - 1rem));
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 3px 12px #0003;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  white-space: pre-line;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .overlay .mark line {
   stroke-linecap: round;
 }
