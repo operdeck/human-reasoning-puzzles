@@ -12,7 +12,7 @@ from docx import Document
 from csp.cli import main
 from csp.docx_export import Entry, write_booklet
 from csp.puzzlefile import load_presentation
-from csp.story import clue_paragraphs, clue_texts, object_list
+from csp.story import clue_paragraphs, clue_texts, figure_clues, object_list
 from tests.examples import all_examples, example, played_examples
 
 pytestmark = pytest.mark.booklet
@@ -41,9 +41,18 @@ def write_docx(text, out, base, solution=None):
 
 
 def _text(path: Path) -> str:
+    from docx.table import Table
+
     document = Document(str(path))
-    cells = [p for t in document.tables for r in t.rows for c in r.cells for p in c.paragraphs]
-    return "\n".join(p.text for p in [*document.paragraphs, *cells])
+    paragraphs = []
+    for block in document.iter_inner_content():
+        if isinstance(block, Table):
+            paragraphs.extend(
+                p for row in block.rows for cell in row.cells for p in cell.paragraphs
+            )
+        else:
+            paragraphs.append(block)
+    return "\n".join(p.text for p in paragraphs)
 
 
 @pytest.mark.parametrize("language", ["en", "nl"])
@@ -66,12 +75,13 @@ def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
     out = tmp_path / f"{name}.docx"
     assert main([str(source), "--docx", str(out)]) == 0
     text = _text(out)
-    assert "Prrrdoku" in text and "Aanwijzingen" in text and "Vladimir" in text
+    heading = "De figuren en hun aanwijzingen"
+    assert "Prrrdoku" in text and heading in text and "Vladimir" in text
     assert any(n.startswith("word/media/") for n in zipfile.ZipFile(out).namelist())
     assert "Oplossing" in text
     media = [n for n in zipfile.ZipFile(out).namelist() if n.startswith("word/media/")]
     assert len(media) == 2 + len(object_list(source.read_text()))  # puzzle, solution, objects
-    assert text.index("Aanwijzingen") < text.index("Oplossing")
+    assert text.index(heading) < text.index("Oplossing")
 
 
 def test_clue_text_override_wins():
@@ -86,8 +96,11 @@ def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
     out = tmp_path / "plain.docx"
     write_docx(plain, out, source.parent)
     text = _text(out)
-    assert "Clues" in text
-    assert all(paragraph in text for paragraph in clue_paragraphs(plain))
+    assert "The figures and their clues" in text
+    groups = figure_clues(plain)
+    assert all(figure.name in text for figure in groups.figures)
+    assert all(clue.text in text for clue in groups.other)
+    assert "Ben is on the carpet and is not next to the lamp." in text
 
 
 @pytest.mark.parametrize(
@@ -95,11 +108,11 @@ def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
     [
         (
             "murdoku_3_house",
-            "Character kinds and descriptions are story details, not clues.",
+            "Only the puzzle's stated rules and clues determine what is possible;",
         ),
         (
             "zoo-murdoku-1",
-            "Soorten en beschrijvingen van personages zijn verhaal, geen aanwijzingen.",
+            "Alleen de expliciete regels en aanwijzingen bepalen wat mogelijk is;",
         ),
     ],
 )
@@ -140,7 +153,7 @@ def test_missing_figure_image_falls_back_to_text(tmp_path):
     )
     out = tmp_path / "x.docx"
     write_docx(source, out, tmp_path)
-    assert "Vladimir: de poes" in _text(out)
+    assert "Vladimir (de poes)" in _text(out)
 
 
 def test_pages_pdf_export_converts_paths_to_posix_files(monkeypatch, tmp_path):
@@ -202,7 +215,7 @@ def test_glob_makes_one_multi_puzzle_booklet(tmp_path):
     assert main([str(tmp_path / "prrrdoku*.txt"), "--docx", str(out)]) == 0
     text = _text(out)
     assert "Prrrdoku 1" in text and "Prrrdoku 2" in text
-    assert text.count("Aanwijzingen") == 2 and "Oplossing" in text
+    assert text.count("De figuren en hun aanwijzingen") == 2 and "Oplossing" in text
     assert text.rindex("Prrrdoku 1") > text.index("Oplossing")
     assert not (tmp_path / "all-solution.docx").exists()
 
@@ -479,14 +492,102 @@ def test_booklet_groups_objects_by_kind_on_one_line(tmp_path):
     assert "hier kan niemand staan" not in line
 
 
-def test_booklet_numbers_the_clues_and_lists_the_figures_beside_the_board(tmp_path):
+def test_booklet_combines_each_figure_description_and_clues_without_numbers(tmp_path):
     out = tmp_path / "b.docx"
     assert main([str(example("prrrdoku1.txt")), "--docx", str(out)]) == 0
     document = Document(str(out))
-    assert next(p.text for p in document.paragraphs if p.text[:2] == "1.").startswith("1.\t")
+    assert not any(p.text.startswith("1.\t") for p in document.paragraphs)
+    assert "De figuren en hun aanwijzingen" in [p.text for p in document.paragraphs]
+    assert "De figuren" not in [p.text for p in document.paragraphs]
+    assert "Aanwijzingen" not in [p.text for p in document.paragraphs]
     assert len(document.tables) == 1
-    names = [p.text for p in document.tables[0].rows[0].cells[1].paragraphs]
-    assert any(n.startswith("Vladimir") for n in names)
+    rows = document.tables[0].rows
+    assert len(rows) == 7
+    assert rows[0].cells[1].text == "Tim zit naast de klimwand."
+    assert rows[-1].cells[1].text == "Vladimir (de poes die iemand op schoot zoekt)"
+    assert rows[-1].cells[1].paragraphs[0].runs[0].bold
+    # Joint subjects retain both names without repeating the heading.
+    assert rows[3].cells[1].text == "Anna en Jos zijn in hetzelfde gebied."
+
+
+def test_booklet_keeps_semantic_custom_clues_with_their_figure(tmp_path):
+    source = example("murdoku_3_house.txt")
+    text = source.read_text().replace(
+        "left_of Ada Dirk", "left_of Ada Dirk | The person to Dirk's left is Ada."
+    )
+    out = tmp_path / "custom.docx"
+    write_docx(text, out, source.parent)
+    document = Document(str(out))
+    ada = document.tables[0].rows[0].cells[1].text
+    assert ada.startswith("Ada\n")
+    assert "The person to Dirk's left is Ada." in ada
+    assert "Other clues" in _text(out)  # The either/or clue has no single owner.
+
+
+def test_booklet_uses_display_names_and_keeps_late_reveal_descriptions(tmp_path):
+    source = example("zoo-murdoku-1.txt")
+    out = tmp_path / "zoo.docx"
+    write_docx(source.read_text(), out, source.parent)
+    rows = Document(str(out)).tables[0].rows
+    assert rows[0].cells[1].text == "De leeuw (altijd alleen in zijn verblijf) is in de savanne."
+    assert rows[-1].cells[1].text == "De verzorger (wordt als laatste geplaatst)"
+    assert rows[3].cells[1].text == "De kameel is ergens links van de berggorilla."
+
+
+def test_booklet_global_clues_are_separate_and_each_shown_once(tmp_path):
+    source = example("murdoku_composition.txt")
+    text = source.read_text()
+    out = tmp_path / "counts.docx"
+    write_docx(text, out, source.parent)
+    document = Document(str(out))
+    paragraphs = [p.text for p in document.paragraphs]
+    heading = paragraphs.index("Other clues")
+    other = [clue.text for clue in figure_clues(text).other]
+    assert paragraphs[heading + 1 : heading + 1 + len(other)] == other
+    rendered = _text(out)
+    assert all(rendered.count(clue) == 1 for clue in other)
+    assert all(
+        clue not in cell.text
+        for row in document.tables[0].rows
+        for cell in row.cells
+        for clue in other
+    )
+
+
+def test_figure_fit_reserves_clueless_rows_and_wrapped_descriptions():
+    from dataclasses import replace
+
+    from csp.docx_export import _figure_clue_height, _puzzle_board_width
+    from csp.story import FigureClues
+
+    clues = figure_clues(_read("prrrdoku1"))
+    height = _figure_clue_height(clues, False)
+    more_cast = replace(clues, figures=(*clues.figures, FigureClues("Extra", "Extra", "", ())))
+    long_description = replace(clues.figures[-1], description="Late-reveal description. " * 30)
+    longer = replace(clues, figures=(*clues.figures[:-1], long_description))
+    assert _figure_clue_height(more_cast, False) > height
+    assert _figure_clue_height(longer, False) > height
+    assert _figure_clue_height(longer, True) < _figure_clue_height(longer, False)
+    assert _puzzle_board_width(1, 0, 0, 0, _figure_clue_height(longer, False)) < (
+        _puzzle_board_width(1, 0, 0, 0, height)
+    )
+
+
+def test_booklet_page_has_the_space_used_by_its_fit_estimates(tmp_path):
+    from docx.shared import Cm
+
+    from csp.docx_export import PAGE_BODY_CM, TEXT_WIDTH_CM
+
+    source = example("murdoku_3_house.txt")
+    out = tmp_path / "page.docx"
+    write_docx(source.read_text(), out, source.parent)
+    section = Document(str(out)).sections[0]
+    assert (section.page_height - section.top_margin - section.bottom_margin) / Cm(1) >= (
+        PAGE_BODY_CM
+    )
+    assert (section.page_width - section.left_margin - section.right_margin) / Cm(1) == (
+        pytest.approx(TEXT_WIDTH_CM, abs=0.01)
+    )
 
 
 def test_board_notes_name_the_areas_of_a_tag():
@@ -647,9 +748,7 @@ def test_one_of_several_windows_is_named_indefinitely():
     assert not any("het raam" in clue for clue in clues)
 
 
-@pytest.mark.parametrize(
-    ("name", "kept"), [("halloween-museum-1.txt", True), ("murder-hotel-3.txt", False)]
-)
+@pytest.mark.parametrize(("name", "kept"), [("prrrdoku1.txt", True), ("murder-hotel-3.txt", False)])
 def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_path, monkeypatch):
     import csp.docx_export as docx_export
 

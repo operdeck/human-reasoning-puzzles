@@ -15,11 +15,12 @@ from typing import Any
 from . import icons, murdoku, picture
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
+    CluePresentation,
     Wording,
     attribute_list,
-    clue_paragraphs,
     explain,
     family_rules,
+    figure_clues,
     murdoku_rules,
     object_list,
     phrase,
@@ -30,7 +31,6 @@ BOLD = re.compile(r"\*\*(.+?)\*\*")
 BOARD_WIDTH_CM = 11.6
 MIN_BOARD_WIDTH_CM = 5.0
 TEXT_WIDTH_CM = 17.4
-BOARD_SHARE = 0.7
 PAGE_BODY_CM = 26.4
 FIXED_CM = 7.8
 RULE_LINE_CM = 0.48
@@ -40,11 +40,11 @@ MANY_CLUES = 18
 CLUE_LINE_CHARS = 105
 MANY_SOLUTION_LINES = 30
 SOLUTION_MIN_BOARD_CM = 5.0
-FIGURE_LINE_CM = 1.2
 FIGURE_IMAGE_CM = 0.7
-MIN_FIGURE_IMAGE_CM = 0.4
+SMALL_FIGURE_IMAGE_CM = 0.5
 FIGURE_HEADING_CM = 0.7
-FIGURE_GAP_CM = 0.27
+FIGURE_GAP_CM = 0.12
+FIGURE_TEXT_CHARS = 98
 OBJECT_IMAGE_CM = 0.5
 GENERIC_BOARD_WIDTH_CM = 14.0
 
@@ -87,10 +87,19 @@ def _picture_stream(
     return io.BytesIO(image.to_png()), image.height / image.width
 
 
-def _puzzle_board_width(aspect: float, clue_lines: int, clues: int, rules_lines: int) -> float:
+def _puzzle_board_width(
+    aspect: float, clue_lines: int, clues: int, rules_lines: int, figures_cm: float = 0
+) -> float:
     """Board width in cm, shrunk so the rules, clues and question still fit the page."""
     line = CLUE_LINE_CM if clue_lines <= MANY_CLUES else SMALL_CLUE_LINE_CM
-    free = PAGE_BODY_CM - FIXED_CM - RULE_LINE_CM * rules_lines - line * clue_lines - 0.12 * clues
+    free = (
+        PAGE_BODY_CM
+        - FIXED_CM
+        - RULE_LINE_CM * rules_lines
+        - line * clue_lines
+        - 0.12 * clues
+        - figures_cm
+    )
     return max(MIN_BOARD_WIDTH_CM, min(BOARD_WIDTH_CM, free / aspect))
 
 
@@ -111,40 +120,95 @@ def _figure_image(person: str, figure: Figure | None, source: Path) -> Path | io
     return None
 
 
-def _figure_image_cm(board_height: float, people: int) -> float:
-    """Thumbnail height that keeps the list of `people` no taller than the board beside it."""
-    fit = (board_height - FIGURE_HEADING_CM) / max(1, people) - FIGURE_GAP_CM
-    return max(MIN_FIGURE_IMAGE_CM, min(FIGURE_IMAGE_CM, fit))
+def _figure_clue_height(clues: CluePresentation, small: bool) -> float:
+    """Space for full-width figure rows, including portraits and description wrapping."""
+    line = SMALL_CLUE_LINE_CM if small else CLUE_LINE_CM
+    height = FIGURE_HEADING_CM
+    for figure in clues.figures:
+        heading = figure.name + (f" ({figure.description})" if figure.description else "")
+        texts = [heading]
+        for index, clue in enumerate(figure.clues):
+            predicate = _figure_clue_text(figure.name, clue.text, inline=index == 0)
+            if index == 0 and predicate != clue.text:
+                texts[0] += f" {predicate}"
+            else:
+                texts.append(predicate)
+        lines = sum(max(1, -(-len(text) // FIGURE_TEXT_CHARS)) for text in texts)
+        image_cm = SMALL_FIGURE_IMAGE_CM if small else FIGURE_IMAGE_CM
+        height += max(image_cm, line * lines) + FIGURE_GAP_CM
+    if clues.other:
+        height += FIGURE_HEADING_CM
+        height += sum(
+            line * max(1, -(-len(clue.text) // CLUE_LINE_CHARS)) + 0.12 for clue in clues.other
+        )
+    return height
 
 
-def _figure_list(
-    cell: Any,
+def _figure_clue_text(name: str, text: str, *, inline: bool = False) -> str:
+    """Drop only a repeated subject; separate joint sentences still need both names."""
+    prefix = f"{name} "
+    if not text.startswith(prefix):
+        return text
+    predicate = text.removeprefix(prefix)
+    if not inline and predicate.split(maxsplit=1)[0].lower() in {"and", "or", "en", "of"}:
+        return text
+    return predicate if inline else predicate[:1].upper() + predicate[1:]
+
+
+def _figure_clues(
+    document: Any,
     text: str,
+    clues: CluePresentation,
     presentation: Presentation,
     source: Path,
-    image_cm: float = FIGURE_IMAGE_CM,
+    small: bool,
 ) -> None:
-    """One paragraph per person, with the thumbnail and the description if there are any."""
+    """Portraits beside each figure's name, optional description and unnumbered clues."""
+    from docx.oxml import OxmlElement
     from docx.shared import Cm, Pt
 
-    board, _ = load_board(text)
-    figures = presentation.figures
-    heading = cell.paragraphs[0]
-    heading.paragraph_format.space_after = Pt(4)
-    run = heading.add_run(phrase(text, "doc.figures"))
-    _section_run(run)
-    for person in board.people:
-        figure = figures.get(person)
-        paragraph = cell.add_paragraph()
-        paragraph.paragraph_format.space_after = Pt(3)
-        image = _figure_image(person, figure, source)
+    document.add_heading(phrase(text, "doc.figure_clues"), level=2)
+    table = document.add_table(rows=0, cols=2)
+    table.autofit = False
+    table.columns[0].width = Cm(1.0)
+    table.columns[1].width = Cm(TEXT_WIDTH_CM - 1.0)
+    for figure in clues.figures:
+        row = table.add_row()
+        row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
+        portrait, content = row.cells
+        portrait.width, content.width = Cm(1.0), Cm(TEXT_WIDTH_CM - 1.0)
+        image = _figure_image(figure.person, presentation.figures.get(figure.person), source)
         if image is not None:
             source_image = str(image) if isinstance(image, Path) else image
-            paragraph.add_run().add_picture(source_image, height=Cm(image_cm))
-            paragraph.add_run(" ")
-        paragraph.add_run(person).bold = True
-        if figure is not None and figure.description:
-            paragraph.add_run(f": {figure.description}")
+            image_cm = SMALL_FIGURE_IMAGE_CM if small else FIGURE_IMAGE_CM
+            portrait.paragraphs[0].add_run().add_picture(source_image, height=Cm(image_cm))
+        paragraph = content.paragraphs[0]
+        paragraph.add_run(figure.name).bold = True
+        if figure.description:
+            paragraph.add_run(f" ({figure.description})")
+        for index, clue in enumerate(figure.clues):
+            predicate = _figure_clue_text(figure.name, clue.text, inline=index == 0)
+            if index == 0 and predicate != clue.text:
+                _runs(paragraph, f" {predicate}")
+            else:
+                paragraph.add_run().add_break()
+                _runs(paragraph, predicate)
+        for column, cell in enumerate(row.cells):
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_after = Pt(0 if column == 0 else 3)
+                paragraph.paragraph_format.keep_together = True
+                if small:
+                    for run in paragraph.runs:
+                        run.font.size = Pt(9)
+    if clues.other:
+        document.add_heading(phrase(text, "doc.other_clues"), level=2)
+        for clue in clues.other:
+            paragraph = document.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(2)
+            _runs(paragraph, clue.text)
+            if small:
+                for run in paragraph.runs:
+                    run.font.size = Pt(9)
 
 
 def _list_lines(text: str) -> int:
@@ -313,40 +377,15 @@ def _boxed(document: Any, text: str) -> None:
         run.bold = True
 
 
-def _numbered(document: Any, number: int, text: str, small: bool) -> None:
-    """A clue with its number and a hanging indent."""
-    from docx.shared import Cm, Pt
-
-    paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_after = Pt(2)
-    paragraph.paragraph_format.left_indent = Cm(0.7)
-    paragraph.paragraph_format.first_line_indent = Cm(-0.7)
-    paragraph.paragraph_format.tab_stops.add_tab_stop(Cm(0.7))
-    paragraph.add_run(f"{number}.\t")
-    _runs(paragraph, text)
-    if small:
-        for run in paragraph.runs:
-            run.font.size = Pt(9)
-
-
-def _board_and_figures(
-    document: Any, entry: Entry, presentation: Presentation, width: float, backdrop: bool = True
-) -> None:
-    """The board at 70% of the text width, the list of people in the other 30%."""
+def _puzzle_board(document: Any, entry: Entry, width: float, backdrop: bool = True) -> None:
+    """A centred board above the full-width figure-and-clue list."""
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm
 
-    stream, aspect = _picture_stream(entry.text, None, None, backdrop)
-    table = document.add_table(rows=1, cols=2)
-    table.autofit = False
-    left, right = table.rows[0].cells
-    left.width = Cm(TEXT_WIDTH_CM * BOARD_SHARE)
-    right.width = Cm(TEXT_WIDTH_CM * (1 - BOARD_SHARE))
-    left.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    left.paragraphs[0].add_run().add_picture(stream, width=Cm(width))
-    people = len(load_board(entry.text)[0].people)
-    image_cm = _figure_image_cm(width * aspect, people)
-    _figure_list(right, entry.text, presentation, entry.path, image_cm)
+    stream, _ = _picture_stream(entry.text, None, None, backdrop)
+    paragraph = document.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.add_run().add_picture(stream, width=Cm(width))
 
 
 def _puzzle_title(entry: Entry) -> str:
@@ -382,21 +421,23 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     rules = murdoku_rules(text)
     for line in rules:
         _runs(document.add_paragraph(style="List Bullet"), line)
-    clues = clue_paragraphs(text, presentation.clue_text)
+    clues = figure_clues(text)
     _, aspect = _picture_stream(text, None, None)
-    clue_lines = sum(-(-len(clue) // CLUE_LINE_CHARS) for clue in clues)
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)
-    width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)
+    small = (
+        _puzzle_board_width(aspect, 0, 0, rules_lines, _figure_clue_height(clues, False))
+        <= MIN_BOARD_WIDTH_CM
+    )
+    figures_cm = _figure_clue_height(clues, small)
+    width = _puzzle_board_width(aspect, 0, 0, rules_lines, figures_cm)
     backdrop = width > MIN_BOARD_WIDTH_CM
     if not backdrop:
         _, aspect = _picture_stream(text, None, None, backdrop=False)
-        width = _puzzle_board_width(aspect, clue_lines, len(clues), rules_lines)
-    _board_and_figures(document, entry, presentation, width, backdrop)
+        width = _puzzle_board_width(aspect, 0, 0, rules_lines, figures_cm)
+    _puzzle_board(document, entry, width, backdrop)
     _board_lists(document, text)
-    document.add_heading(phrase(text, "doc.clues"), level=2)
-    for number, clue in enumerate(clues, 1):
-        _numbered(document, number, clue, clue_lines > MANY_CLUES)
+    _figure_clues(document, text, clues, presentation, entry.path, small)
     if presentation.question:
         _boxed(document, presentation.question)
 
@@ -623,6 +664,8 @@ def _compact(document: Any) -> None:
     from docx.shared import Cm, Pt
 
     for section in document.sections:
+        section.page_width = Cm(21)
+        section.page_height = Cm(29.7)
         section.top_margin = section.bottom_margin = Cm(1.4)
         section.left_margin = section.right_margin = Cm(1.8)
     normal = document.styles["Normal"]
