@@ -180,6 +180,49 @@ TAMAGOTCHI = (
     '<circle cx="34" cy="118.5" r="2.6"/><circle cx="50" cy="119.3" r="2.6"/>'
     '<circle cx="66" cy="118.5" r="2.6"/></g>'
 )
+# A Vietnamese conical hat (non la) to lie behind a board: the tip rises above the
+# board, the brim and a ribbon chin strap hang below it; y = 30..110 is behind it.
+NON_LA = (
+    '<path d="M50 1L1 104Q50 116 99 104Z" fill="#ead39a" stroke="#8a6a32"'
+    ' stroke-width="1.5" stroke-linejoin="round"/>'
+    '<g fill="none" stroke="#b8975a" stroke-width="1">'
+    '<path d="M50 1L19 108M50 1L34 111M50 1V113M50 1L66 111M50 1L81 108"/>'
+    '<path d="M42 16Q50 18 58 16M33 34Q50 38 67 34M23 56Q50 61 77 56M13 80Q50 87 87 80"/>'
+    "</g>"
+    '<path d="M1 104Q50 116 99 104Q50 111 1 104Z" fill="#c9ad6c"/>'
+    '<path d="M24 107Q50 128 76 107" fill="none" stroke="#c8405e" stroke-width="2.5"'
+    ' stroke-linecap="round"/>'
+)
+# A fried spring roll on a lettuce leaf, drawn because no emoji shows one.
+LOEMPIA = (
+    '<path d="M10 74Q22 50 52 56Q84 60 90 80Q60 94 28 90Q12 86 10 74Z" fill="#7cc35a"'
+    ' stroke="#3f7a2c" stroke-width="3" stroke-linejoin="round"/>'
+    '<g transform="rotate(-24 50 60)">'
+    '<rect x="14" y="44" width="72" height="28" rx="14" fill="#e3a23e" stroke="#7a4a14"'
+    ' stroke-width="4"/>'
+    '<path d="M30 46Q26 58 30 70M46 45Q42 58 46 71M62 45Q58 58 62 71M76 47Q72 58 76 69"'
+    ' fill="none" stroke="#b86e1c" stroke-width="3" stroke-linecap="round"/>'
+    '<path d="M22 52Q40 48 70 50" fill="none" stroke="#f6d48a" stroke-width="3"'
+    ' stroke-linecap="round"/>'
+    "</g>"
+)
+# A tunnel seen from above: two camouflaged holes joined by a passage underground.
+TUNNEL = (
+    '<rect x="4" y="22" width="192" height="56" rx="26" fill="#b98a55" stroke="#6b4a26"'
+    ' stroke-width="3"/>'
+    '<path d="M50 50H150" fill="none" stroke="#5a3d1e" stroke-width="5"'
+    ' stroke-dasharray="10 8" stroke-linecap="round"/>'
+    '<g fill="#5f9e3c" stroke="#2f5e1c" stroke-width="1.5">'
+    '<ellipse cx="22" cy="32" rx="10" ry="5" transform="rotate(-30 22 32)"/>'
+    '<ellipse cx="74" cy="68" rx="10" ry="5" transform="rotate(25 74 68)"/>'
+    '<ellipse cx="126" cy="32" rx="10" ry="5" transform="rotate(-25 126 32)"/>'
+    '<ellipse cx="178" cy="68" rx="10" ry="5" transform="rotate(30 178 68)"/>'
+    "</g>"
+    '<g fill="#2b1d10" stroke="#6b4a26" stroke-width="3">'
+    '<rect x="26" y="33" width="34" height="34" rx="4"/>'
+    '<rect x="140" y="33" width="34" height="34" rx="4"/>'
+    "</g>"
+)
 BATHROBE = (
     '<path d="M31 12L15 25L22 40L29 36V87H71V36L78 40L85 25L69 12L60 23H40Z"'
     ' fill="#ffffff" stroke="#5a6670" stroke-width="4" stroke-linejoin="round"/>'
@@ -709,6 +752,16 @@ REGISTRY: dict[str, Icon] = {
             bounds=(0, 22, 100, 122),
         ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
+        Icon(
+            "non_la",
+            "\U0001f452",
+            "Vietnamese conical hat",
+            markup=NON_LA,
+            view=(0, 0, 100, 124),
+            bounds=(10, 30, 90, 110),
+        ),
+        Icon("loempia", "\U0001f32f", "spring roll", markup=LOEMPIA),
+        Icon("tunnel", "\U0001f573", "tunnel", markup=TUNNEL, view=(0, 0, 200, 100)),
         Icon("katana", "\u2694", "katana", markup=KATANA),
         Icon("jumpsuit", "\U0001f455", "jumpsuit", markup=JUMPSUIT),
         Icon("van", "\U0001f699", "yellow van", markup=VAN),
@@ -739,6 +792,9 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "lapjeskat": "tortie_cat", "tortie_cat": "tortie_cat",
                 "ramenkom": "ramen_bowl", "ramen_bowl": "ramen_bowl",
                 "tamagotchi": "tamagotchi",
+                "non_la": "non_la", "nonla": "non_la", "conical_hat": "non_la",
+                "loempia": "loempia", "spring_roll": "loempia",
+                "tunnel": "tunnel",
                 "sloffen": "slippers", "slippers": "slippers",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
@@ -806,6 +862,13 @@ CATALOGUE: dict[str, str] = {
     "bonsai": "1f38d", "tanabata": "1f38b",
     "tea": "1f375", "sake": "1f376",
     "scroll": "1f4dc", "hanafuda": "1f3b4",
+    # Vietnamese dishes
+    "buncha": "1f356", "bun_cha": "1f356",
+    "thitkho": "1f953", "thit_kho": "1f953",
+    "chaolong": "1f963", "chao_long": "1f963",
+    "phalau": "1f372", "pha_lau": "1f372",
+    "doi": "1f32d", "blood_sausage": "1f32d",
+    "pho": "1f35c", "rau_muong": "1f96c", "morning_glory": "1f96c",
     # indoors
     "bank": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bankstel": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",

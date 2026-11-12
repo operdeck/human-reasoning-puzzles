@@ -275,8 +275,8 @@ def murdoku_picture(
                     _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
         else:
             icon = icons.object_icon(name)
-            vertical_panel = icon is not None and icon.name == "control_panel" and y1 - y0 > x1 - x0
-            rotate = 90 if vertical_panel else 0
+            vertical = y1 - y0 > x1 - x0
+            rotate = 90 if icon is not None and icon.name in TURNED_ICONS and vertical else 0
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
     for item in board.edge_items:
         if item.kind == "window" and item.side is not None:
@@ -476,6 +476,8 @@ WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon
 # Objects drawn once per square, so a long stretch of them repeats rather than stretches.
 TILED_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "rails")
 BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
+# Wide blocking drawings that turn on a vertical footprint instead of squashing.
+TURNED_ICONS = frozenset({"control_panel", "tunnel"})
 SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"}) | frozenset(
     name
     for name, icon in icons.OBJECT_ICONS.items()
