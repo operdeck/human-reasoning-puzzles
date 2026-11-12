@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from csp import bruteforce, calcudoku, cli, futoshiki, murdoku, report, sudoku
+from csp import bruteforce, calcudoku, cli, futoshiki, murdoku, report, story, sudoku
 from csp.core import (
     DEFAULT_RULES,
     Contradiction,
@@ -2636,6 +2636,34 @@ next_to A critter
     assert {sq for sq in board.free if condition.test(sq)} == touched
     not_next = murdoku.conditions(board, [("not_next_to", ["A", "critter"])])[0]
     assert {sq for sq in board.free if not not_next.test(sq)} == touched
+
+
+def test_away_from_keeps_off_sides_and_corners_across_areas():
+    text = """Size: 4
+Language: nl
+Regions:
+a: west
+b: east
+Grid:
+a a b b
+a a b b
+a a b b
+a a b b
+Objects:
+pot: blocking r2c2
+People:
+A
+Clues:
+away_from A pot
+"""
+    board, clues = load_board(text)
+    (condition,) = murdoku.conditions(board, clues)
+    near = {(r, c) for r in range(3) for c in range(3)}
+
+    assert board.region_of(murdoku.Square(0, 2)) != board.region_of(murdoku.Square(1, 1))
+    assert {(sq.row, sq.col) for sq in board.free if not condition.test(sq)} == near - {(1, 1)}
+    assert story.clue_texts(text) == ["A zit niet op of naast de pot, ook niet schuin."]
+    assert any("geen zijde of hoek" in note for note in story.murdoku_rules(text))
 
 
 def test_point_object_next_to_crosses_area_boundaries():

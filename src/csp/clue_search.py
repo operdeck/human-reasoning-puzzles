@@ -55,7 +55,7 @@ SUGGEST_KINDS = (
     "above",
 )
 # Also available on request (`--kinds`): exact lines are fair only sparingly.
-EXTRA_KINDS = ("not_on", "in_row", "not_in_row", "in_column", "not_in_column")
+EXTRA_KINDS = ("away_from", "not_on", "in_row", "not_in_row", "in_column", "not_in_column")
 
 _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
@@ -231,6 +231,7 @@ def candidate_clues(
         "outside": [f"outside {p} {r}" for p in people for r in regions],
         "next_to": [f"next_to {p} {t}" for p in people for t in things],
         "not_next_to": [f"not_next_to {p} {t}" for p in people for t in things],
+        "away_from": [f"away_from {p} {t}" for p in people for t in things],
         "on": [f"on {p} {t}" for p in people for t in standable],
         "at": [f"at {p} {t}" for p in people for t in edges],
         "same_region": [f"same_region {a} {b}" for a, b in pairs if a < b],

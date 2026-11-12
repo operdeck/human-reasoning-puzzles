@@ -122,6 +122,10 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "doc.clue_at": "At a door or window means standing on a square it touches.",
         "doc.clue_distance": "Distance counts steps across sides, not diagonals.",
+        "doc.clue_away_from": (
+            "Away from an object means not on it and sharing neither a side nor a corner with "
+            "it, in any area."
+        ),
         "doc.standable": "you can stand on it",
         "doc.blocking": "nobody can stand here",
         "doc.standable_group": "Standable",
@@ -207,6 +211,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.only_in_tagged": "{a} is only {where}",
         "clue.next_to": "{a} is next to {things}",
         "clue.not_next_to": "{a} is not next to {things}",
+        "clue.away_from": "{a} is not on or beside {things}, not even diagonally",
         "clue.on_or_next_to": "{a} is on or next to {things}",
         "clue.not_on_or_next_to": "{a} is neither on nor next to {things}",
         "clue.beside_but_not_on": "{a} is beside {things}, but not on {things}",
@@ -372,6 +377,10 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "doc.clue_at": "Bij een deur of raam betekent op een vakje staan dat eraan raakt.",
         "doc.clue_distance": "Afstand telt stappen over zijden, niet schuin.",
+        "doc.clue_away_from": (
+            "Uit de buurt van een voorwerp betekent er niet op staan en er geen zijde of hoek "
+            "mee delen, in welk gebied dan ook."
+        ),
         "doc.standable": "hier kun je op staan",
         "doc.blocking": "hier kan niemand staan",
         "doc.standable_group": "Begaanbaar",
@@ -458,6 +467,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.only_in_tagged": "{a} is alleen {where}",
         "clue.next_to": "{a} zit naast {things}",
         "clue.not_next_to": "{a} zit niet naast {things}",
+        "clue.away_from": "{a} zit niet op of naast {things}, ook niet schuin",
         "clue.on_or_next_to": "{a} zit op of naast {things}",
         "clue.not_on_or_next_to": "{a} zit niet op of naast {things}",
         "clue.beside_but_not_on": "{a} zit naast {things}, maar niet op {things}",
@@ -818,6 +828,7 @@ CONDITION_KEYS = {
     "only_in_tagged": "in_tagged",
     "next_to": "next_to",
     "not_next_to": "next_to",
+    "away_from": "away_from",
     "at": "at",
     "on_mark": "on_mark",
     "not_on_mark": "on_mark",
@@ -878,6 +889,9 @@ CONDITION_PHRASES = {
         "same area; diagonals do not count. A door, window or corner object counts across an "
         "area border. On an object of several squares you are also next to it, so such clues "
         "say 'on or next to'.",
+        "cond.away_from.name": "away from",
+        "cond.away_from": "The figure's square shares neither a side nor a corner with a square "
+        "of the object, and is not on it; this also holds across an area border.",
         "cond.at.name": "at a door or window",
         "cond.at": "The figure stands on one of the squares on either side of the door or window.",
         "cond.on_mark.name": "on a marked square",
@@ -948,6 +962,9 @@ CONDITION_PHRASES = {
         "in hetzelfde gebied; schuin telt niet. Een deur, raam of hoekobject telt ook over een "
         "gebiedsgrens heen. Wie op een object van meerdere vakjes staat, staat er ook naast; "
         "zulke aanwijzingen zeggen daarom 'op of naast'.",
+        "cond.away_from.name": "uit de buurt van",
+        "cond.away_from": "Het vakje van het figuur deelt geen zijde en geen hoek met een vakje "
+        "van het object en ligt er niet op; dat geldt ook over een gebiedsgrens heen.",
         "cond.at.name": "bij een deur of raam",
         "cond.at": "Het figuur staat op een van de vakjes aan weerszijden van de deur of het raam.",
         "cond.on_mark.name": "op een gemarkeerd vakje",
@@ -2967,6 +2984,8 @@ def murdoku_rules(text: str) -> list[str]:
         clue_notes.append(phrase(text, "doc.clue_at"))
     if kinds & {"within", "at_least", "furthest"}:
         clue_notes.append(phrase(text, "doc.clue_distance"))
+    if "away_from" in kinds:
+        clue_notes.append(phrase(text, "doc.clue_away_from"))
     said = [
         *(presentation.intro or [phrase(text, "doc.rules")]),
         *board_notes(text),

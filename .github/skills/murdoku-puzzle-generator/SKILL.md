@@ -53,6 +53,11 @@ reasoning in the conversation or by throwaway scripts; see
    them and `thin` remove the unneeded ones (see [Repo tools first](#repo-tools-first)).
    Follow [Fair clues](#fair-clues) and, for a mystery,
    [Late-reveal mysteries](#late-reveal-mysteries).
+   For a fresh board, start from `uv run puzzle-lab murdoku-board SPEC` (see
+   `specs/murdoku/vietnam.txt`): a short spec of size, areas, people, the
+   late figure with companions, objects and key clues gives ranked drafts
+   with an intended placement, contact sheets and a report of rejections.
+   Pick one, then add clues as above.
 4. Render the puzzle and solution PNGs and get an independent, image-based
    critique from another LLM (see [Independent visual critique](#independent-visual-critique)).
    Review the suggestions against the user's constraints; incorporate useful
@@ -79,6 +84,7 @@ its short output, and decide:
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
+| draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` |
 | pictures, booklet | `--png`, `--docx` |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
@@ -450,6 +456,7 @@ Arguments are one-token names; `[n]` is optional.
 | `in_region` / `outside P region...` | in one of / none of the regions |
 | `in_tagged` / `not_in_tagged` / `only_in_tagged P tag...` | in / not in tagged regions; `only_` is for `Rules:` |
 | `next_to` / `not_next_to P thing...` | shares a side with an object cell **in the same area**; doors and point objects count across borders; no diagonals. On a multi-square standable object you are also next to it (text: "on or next to"). A **mark** target (bare or `mark:<name>`) counts across borders and is *beside* the marked cells, not on them |
+| `away_from P thing...` | not on and sharing neither a side nor a corner with any square of the things, in any area (doors, windows and point objects by the squares they touch) |
 | `on` / `not_on` / `only_on P standable...` | on one / none; `only_on` also keeps everyone else off them |
 | `at P edge-item...` | on a door or window cell |
 | `on_mark` / `not_on_mark P mark...` | on / off marked cells (bare or `mark:<name>`) |
