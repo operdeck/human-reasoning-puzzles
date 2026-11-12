@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Generate, rate, and search non-Murdoku puzzle examples with the repository solver."""
+"""Generate, rate, and search puzzle examples with the repository solver.
+
+`murdoku-board` drafts Murdoku boards from a theme spec; every other command is for
+non-Murdoku families.
+"""
 
 import argparse
 import json
@@ -854,6 +858,44 @@ def _generate_command(args: argparse.Namespace) -> int:
     return 1
 
 
+def _murdoku_board_command(args: argparse.Namespace) -> int:
+    from dataclasses import replace
+
+    from csp import murdoku_board
+
+    spec = murdoku_board.read_spec(Path(args.spec).read_text())
+    overrides = {
+        key: value
+        for key, value in (
+            ("seed", args.seed),
+            ("candidates", args.candidates),
+            ("keep", args.keep),
+            ("template", args.template),
+        )
+        if value is not None
+    }
+    if args.key_clue:
+        overrides["key_clues"] = (*spec.key_clues, *args.key_clue)
+    spec = replace(spec, **overrides)
+
+    def progress(index: int, built: Any) -> None:
+        state = f"score {built.total:.3f} ({built.template})" if built else "no board"
+        print(f"candidate {index}: {state}", file=sys.stderr, flush=True)
+
+    found = murdoku_board.generate(spec, progress)
+    folder = Path(args.output or f"drafts/murdoku-board/{spec.theme}")
+    try:
+        paths = murdoku_board.write(found, spec, folder, pictures=not args.no_pictures)
+    except FileExistsError as error:
+        print(error, file=sys.stderr)
+        return 1
+    for line in [murdoku_board.describe(c) for c in found.candidates[: spec.keep]]:
+        print(line)
+    for path in paths:
+        print(f"wrote {path}")
+    return 0 if found.candidates else 1
+
+
 def _audit_command(args: argparse.Namespace) -> int:
     from csp import audit
 
@@ -1037,6 +1079,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit_parser.add_argument("paths", nargs="+", help="puzzle files or folders, e.g. examples")
     audit_parser.add_argument("--json", action="store_true")
     audit_parser.set_defaults(run=_audit_command)
+
+    board_parser = commands.add_parser(
+        "murdoku-board",
+        help="draft ranked Murdoku boards (areas, objects, placement) from a theme spec",
+    )
+    board_parser.add_argument("spec", help="spec file, e.g. specs/murdoku/vietnam.txt")
+    board_parser.add_argument(
+        "--output", help="folder for drafts and contact sheets (default drafts/murdoku-board/THEME)"
+    )
+    board_parser.add_argument("--seed", type=int)
+    board_parser.add_argument("--candidates", type=int, help="how many candidates to build")
+    board_parser.add_argument("--keep", type=int, help="how many of the best to write")
+    board_parser.add_argument("--template", help="auto, bands, blobs, staircase or free")
+    board_parser.add_argument(
+        "--key-clue",
+        action="append",
+        default=[],
+        help="an extra key clue in puzzle-file syntax; may repeat",
+    )
+    board_parser.add_argument(
+        "--no-pictures", action="store_true", help="skip the PNG contact sheets"
+    )
+    board_parser.set_defaults(run=_murdoku_board_command)
 
     args = parser.parse_args(argv)
     return cast(Callable[[argparse.Namespace], int], args.run)(args)

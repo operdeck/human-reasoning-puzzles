@@ -380,7 +380,10 @@ deductive solving and uniqueness checks; if the current solver cannot support
 a tier for a family, document the gap rather than label an unsolved or trivial
 puzzle. Follow `.github/skills/non-murdoku-puzzle-authoring/SKILL.md`.
 Murdoku has its own generator skill and tools; do not change them for
-non-Murdoku work.
+non-Murdoku work. `puzzle-lab murdoku-board SPEC` (`src/csp/murdoku_board.py`)
+drafts Murdoku boards from a short theme spec; it decides placements only with
+the Murdoku brute force, so clue meaning stays in `murdoku`. Drafts go to the
+git-ignored `drafts/` folder.
 
 The web index is the full visual inventory. Show one representative unsolved
 `static` SVG per existing `section`, including each Murdoku series, not one

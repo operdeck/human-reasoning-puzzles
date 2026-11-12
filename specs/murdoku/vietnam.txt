@@ -1,0 +1,19 @@
+# Spec for: uv run puzzle-lab murdoku-board specs/murdoku/vietnam.txt
+# A board-only draft: areas, objects and an intended placement, no clues yet.
+theme: vietnam
+size: 6
+language: nl
+areas: Hanoi Hue HoiAn Saigon
+colours: HoiAn=#F6E3A1
+people: Pippo Swena Linh Minh Tuan
+# Loempia is placed last; Pippo and Swena are the others in her area.
+late: Loempia
+companions: Pippo Swena
+object: tempel blocking x2
+object: palm blocking x2
+object: kruk standable x3
+object: bank standable x1 size 2
+key_clue: not_next_to Pippo tempel
+candidates: 12
+keep: 4
+seed: 7
