@@ -101,6 +101,7 @@ class Spec:
     companions: tuple[str, ...] = ()
     companion_trait: str = "companion"
     objects: tuple[ObjectSpec, ...] = ()
+    decor: tuple[str, ...] = ()
     key_clues: tuple[str, ...] = ()
     template: str = "auto"
     candidates: int = 20
@@ -141,17 +142,21 @@ class Spec:
                 raise ValueError(f"object {obj.name!r}: unknown area {obj.area!r}")
             if obj.across and (obj.area is not None or obj.length < 2):
                 raise ValueError(f"object {obj.name!r}: across needs size 2+ and no area")
+        if unknown := set(self.decor) - {obj.name for obj in self.objects}:
+            raise ValueError(f"decor names unknown objects: {', '.join(sorted(unknown))}")
         for clue in self.key_clues:
             if self.late is not None and self.late in clue.split():
                 raise ValueError(f"key clue {clue!r} names the late figure {self.late}")
+            if set(clue.split()) & set(self.decor):
+                raise ValueError(f"key clue {clue!r} names decorative objects")
 
 
 def read_spec(text: str) -> Spec:
     """A spec from `key: value` lines; `object:` and `key_clue:` may repeat.
 
     `object: bank standable x2 size 2 in Hue` asks for two standable benches of two
-    squares in area Hue. `colours: Hanoi=#F4CBC3` fixes area colours. `#` starts a
-    comment.
+    squares in area Hue. `decor: lantern` keeps a decorative object out of clue
+    suggestions. `colours: Hanoi=#F4CBC3` fixes area colours. `#` starts a comment.
     """
     values: dict[str, str] = {}
     objects: list[ObjectSpec] = []
@@ -183,6 +188,7 @@ def read_spec(text: str) -> Spec:
         "late",
         "companions",
         "companion_trait",
+        "decor",
         "template",
         "candidates",
         "keep",
@@ -216,6 +222,7 @@ def read_spec(text: str) -> Spec:
         companions=tuple(values.get("companions", "").split()),
         companion_trait=values.get("companion_trait", "companion"),
         objects=tuple(objects),
+        decor=tuple(values.get("decor", "").split()),
         key_clues=tuple(clues),
         template=values.get("template", "auto"),
         candidates=int(values.get("candidates", 20)),
@@ -1041,7 +1048,13 @@ def close(spec: Spec, item: Candidate, timeout: float = 5.0) -> Candidate:
     needs = range(1, len(spec.key_clues) + 1)
     exclude = (spec.late,) if spec.late else ()
     added = clue_search.suggest(
-        item.text, item.placement, timeout=timeout, exclude=exclude, needs=needs, cover=True
+        item.text,
+        item.placement,
+        timeout=timeout,
+        exclude=exclude,
+        needs=needs,
+        cover=True,
+        exclude_targets=spec.decor,
     )
     text = clue_search.with_clues(item.text, [*spec.key_clues, *added])
     outcome = clue_search.outcome(text, timeout, late_person=spec.late or None)

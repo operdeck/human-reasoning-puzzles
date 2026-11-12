@@ -35,6 +35,15 @@ def test_read_spec_keeps_hex_colours_and_drops_comments():
     ]
 
 
+def test_read_spec_accepts_only_declared_decorative_objects():
+    spec = mb.read_spec(SPEC + "decor: kruk\n")
+    assert spec.decor == ("kruk",)
+    with pytest.raises(ValueError, match="decor names unknown objects"):
+        mb.read_spec(SPEC + "decor: lantern\n")
+    with pytest.raises(ValueError, match=r"key clue .* decorative objects"):
+        mb.read_spec(SPEC + "decor: rots\n")
+
+
 @pytest.mark.parametrize(
     "line, problem",
     [
@@ -114,13 +123,14 @@ def test_candidate_skips_layouts_already_in_the_collection():
 
 
 def test_close_adds_clues_that_leave_the_late_figure_out():
-    spec = mb.read_spec(SPEC)
+    spec = mb.read_spec(SPEC + "decor: kruk\n")
     first = mb.candidate(spec, 0)
     assert first is not None
     closed = mb.close(spec, first)
     assert closed.closing.startswith(f"{len(clue_search.clue_lines(closed.text)) - 1} clues added")
     assert "# Suggested clues:" in closed.text
     assert not any("Dee" in line.split() for line in clue_search.clue_lines(closed.text))
+    assert all("kruk" not in line.split()[1:] for line in clue_search.clue_lines(closed.text))
     assert brute.accepts(closed.text, closed.placement)
 
 

@@ -12,8 +12,9 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   out the most other placements until the puzzle is unique. `--needs` names
   clue numbers that must each stay necessary, so a themed clue (or a rule
   moved into the clues while searching, role rules included) cannot be made
-  redundant. `--cover` then swaps added clues for clues about people no clue names, so every
-  figure outside `--exclude` gets a clue.
+  redundant. `--cover` then swaps added clues for clues about people no clue
+  names, so every figure outside `--exclude` gets a clue. `--exclude-target`
+  keeps decorative objects out of the suggestions.
 - `ease`: add true clues to a unique puzzle until it is within `--max-grade`,
   keeping each `--needs` clue necessary (same `--solution`/`--kinds`/`--exclude`).
 - `occupancy`: how often each object square is used across the placements the
@@ -247,10 +248,12 @@ def candidate_clues(
     placement: dict[str, murdoku.Square],
     kinds: Sequence[str] = SUGGEST_KINDS,
     exclude: Iterable[str] = (),
+    exclude_targets: Iterable[str] = (),
 ) -> list[str]:
     """Simple clues of `kinds` that are true for `placement`, in `kinds` order.
 
-    People in `exclude` (a late-reveal person) appear in none of them.
+    People in `exclude` (a late-reveal person) and targets in `exclude_targets`
+    (decorative objects) appear in none of them.
     """
     people = [person for person in placement if person not in set(exclude)]
     regions = sorted(set(board.region_names.values()))
@@ -279,8 +282,15 @@ def candidate_clues(
     }
     if unknown := [kind for kind in kinds if kind not in options]:
         raise ValueError(f"unknown clue kinds {unknown}; choose from {sorted(options)}")
+    targets = set(exclude_targets)
+    target_kinds = {"next_to", "not_next_to", "away_from", "on", "at", "not_on"}
     found = (clue for kind in kinds for clue in options.get(kind, []))
-    return [clue for clue in found if _true_for(board, clue, placement)]
+    return [
+        clue
+        for clue in found
+        if not (clue.split()[0] in target_kinds and set(clue.split()[2:]) & targets)
+        and _true_for(board, clue, placement)
+    ]
 
 
 def _placement(solution: dict[str, Any], people: Sequence[str]) -> dict[str, murdoku.Square]:
@@ -313,6 +323,7 @@ def suggest(
     exclude: Iterable[str] = (),
     needs: Iterable[int] = (),
     cover: bool = False,
+    exclude_targets: Iterable[str] = (),
 ) -> list[str]:
     """Clues to add to `text` so that `placement` becomes its only solution.
 
@@ -326,6 +337,8 @@ def suggest(
     unique and the needed clues necessary; failing that, the search restarts
     from a clue about them that must stay necessary.
 
+    Targets in `exclude_targets` are omitted from all suggested clues.
+
     `needs` lists clue numbers that must each remain necessary. A clue's rivals
     are the placements allowed without it but not with it (role rules are
     judged together, as one role holder must meet them all); a candidate that would rule out every
@@ -336,7 +349,8 @@ def suggest(
     unknown = set(board.people) ^ set(placement)
     if unknown:
         raise ValueError(f"--solution must place exactly the people {board.people}")
-    candidates = candidate_clues(board, placement, kinds, exclude)
+    exclude_targets = tuple(exclude_targets)
+    candidates = candidate_clues(board, placement, kinds, exclude, exclude_targets)
     lines = clue_lines(text)
     needed = sorted(set(needs))
     if bad := [n for n in needed if not 1 <= n <= len(lines)]:
@@ -356,6 +370,7 @@ def suggest(
                 timeout,
                 exclude=exclude,
                 needs=[*needed, len(lines) + 1],
+                exclude_targets=exclude_targets,
             )
             trial = [clue, *more]
             if len(brute.solutions(with_clues(text, lines + trial), 2)) == 1 and named.isdisjoint(
@@ -549,6 +564,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--exclude", nargs="*", default=[], help="suggest, ease: people no clue may mention"
     )
+    parser.add_argument(
+        "--exclude-target",
+        nargs="*",
+        default=[],
+        help="suggest: objects no clue may mention",
+    )
     parser.add_argument("--sample", type=int, default=400, help="suggest: solutions per round")
     parser.add_argument(
         "--cover",
@@ -611,6 +632,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.exclude,
         args.needs,
         args.cover,
+        args.exclude_target,
     )
     print("Clues to add:")
     print("\n".join(added))

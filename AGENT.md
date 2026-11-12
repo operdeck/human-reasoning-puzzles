@@ -384,7 +384,8 @@ non-Murdoku work. `puzzle-lab murdoku-board SPEC` (`src/csp/murdoku_board.py`)
 drafts Murdoku boards from a short theme spec; it decides placements only with
 the Murdoku brute force, so clue meaning stays in `murdoku`. Use `--avoid
 examples` to skip layouts already used in the collection (including rotated,
-mirrored and region-renamed copies). `--suggest` closes the kept drafts with
+mirrored and region-renamed copies). A spec's `decor:` objects are excluded
+from clue suggestions. `--suggest` closes the kept drafts with
 `clue_search suggest`, reports the grade, and checks whether the late figure is
 resolved after every other figure. Drafts go to the git-ignored `drafts/`
 folder.

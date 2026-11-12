@@ -83,8 +83,22 @@ def test_suggest_with_cover_names_everyone():
     start = clue_search.with_clues(house, [])
     plain = clue_search.suggest(start, placement, sample=200, timeout=30)
     assert clue_search._unnamed(board.people, plain, ())
-    added = clue_search.suggest(start, placement, sample=200, timeout=30, cover=True)
+    candidates = clue_search.candidate_clues(board, placement)
+    target = next(
+        name
+        for name in sorted(board.object_names)
+        if any(name in clue.split()[1:] for clue in candidates)
+    )
+    added = clue_search.suggest(
+        start,
+        placement,
+        sample=200,
+        timeout=30,
+        cover=True,
+        exclude_targets=[target],
+    )
     assert not clue_search._unnamed(board.people, added, ())
+    assert all(target not in clue.split()[1:] for clue in added)
     assert len(bruteforce.solutions(clue_search.with_clues(start, added))) == 1
 
 

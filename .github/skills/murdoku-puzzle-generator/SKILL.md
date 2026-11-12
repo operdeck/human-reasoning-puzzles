@@ -60,12 +60,13 @@ reasoning in the conversation or by throwaway scripts; see
    Use `--avoid examples` to skip layouts already in the collection, including
    rotated, mirrored or region-renamed copies. `--suggest` closes each kept
    draft with `clue_search suggest` (late figure excluded, key clues kept
-   necessary, every other figure named via `--cover`) and reports clue count,
-   grade and whether the late figure is resolved last. Pick a draft that closes
-   at the target grade and passes the late-reveal check; a roomy late-figure
-   area often lets a companion and the late figure swap and never closes. An
-   object line ending in `across` (a tunnel, a bridge) straddles one border
-   between exactly two areas. Pick one, then thin and check as above.
+   necessary, every other figure named via `--cover`, and `decor:` objects
+   omitted from clue suggestions) and reports clue count, grade and whether the
+   late figure is resolved last. Pick a draft that closes at the target grade
+   and passes the late-reveal check; a roomy late-figure area often lets a
+   companion and the late figure swap and never closes. An object line ending
+   in `across` (a tunnel, a bridge) straddles one border between exactly two
+   areas. Pick one, then thin and check as above.
 4. Render the puzzle and solution PNGs and get an independent, image-based
    critique from another LLM (see [Independent visual critique](#independent-visual-critique)).
    Review the suggestions against the user's constraints; incorporate useful
@@ -93,7 +94,7 @@ its short output, and decide:
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
-| draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts) |
+| draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts; `decor: tunnel` omits an object from clue suggestions) |
 | pictures, booklet | `--png`, `--docx` |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
