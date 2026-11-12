@@ -58,7 +58,8 @@ reasoning in the conversation or by throwaway scripts; see
    late figure with companions, objects and key clues gives ranked drafts
    with an intended placement, contact sheets and a report of rejections.
    `--suggest` closes each kept draft with `clue_search suggest` (late figure
-   excluded, key clues kept necessary) and reports clue count and grade, so
+   excluded, key clues kept necessary, every other figure named via
+   `--cover`) and reports clue count and grade, so
    pick a draft that closes at the target grade; a roomy late-figure area
    often lets a companion and the late figure swap and never closes. An
    object line ending in `across` (a tunnel, a bridge) straddles one border
@@ -86,6 +87,7 @@ its short output, and decide:
 | a person's live squares while solving | `uv run csp FILE --track-person P` |
 | clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
 | ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` (several numbers: each stays necessary) |
+| ... so every figure (outside `--exclude`) gets a clue | add `--cover` to `suggest` |
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |

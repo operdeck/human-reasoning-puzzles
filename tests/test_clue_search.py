@@ -66,6 +66,19 @@ def test_suggest_restores_a_dropped_clue_set():
     assert len(bruteforce.solutions(completed, limit=2)) == 1
 
 
+def test_suggest_with_cover_names_everyone():
+    house = example("murdoku_3_house.txt").read_text()
+    board, _ = load_board(house)
+    (solution,) = bruteforce.solutions(house)
+    placement = {person: solution[person] for person in board.people}
+    start = clue_search.with_clues(house, [])
+    plain = clue_search.suggest(start, placement, sample=200, timeout=30)
+    assert clue_search._unnamed(board.people, plain, ())
+    added = clue_search.suggest(start, placement, sample=200, timeout=30, cover=True)
+    assert not clue_search._unnamed(board.people, added, ())
+    assert len(bruteforce.solutions(clue_search.with_clues(start, added))) == 1
+
+
 def test_parse_solution_reads_one_based_squares():
     placement = clue_search.parse_solution("Ada=r1c2, Ben=r3c4")
     assert (placement["Ada"].row, placement["Ada"].col) == (0, 1)

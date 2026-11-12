@@ -12,7 +12,8 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   out the most other placements until the puzzle is unique. `--needs` names
   clue numbers that must each stay necessary, so a themed clue (or a rule
   moved into the clues while searching, role rules included) cannot be made
-  redundant.
+  redundant. `--cover` then swaps added clues for clues about people no clue names, so every
+  figure outside `--exclude` gets a clue.
 - `ease`: add true clues to a unique puzzle until it is within `--max-grade`,
   keeping each `--needs` clue necessary (same `--solution`/`--kinds`/`--exclude`).
 - `occupancy`: how often each object square is used across the placements the
@@ -264,6 +265,12 @@ def _mentions(people: Sequence[str], clues: Iterable[str]) -> dict[str, int]:
     return counts
 
 
+def _unnamed(people: Sequence[str], clues: Iterable[str], exclude: Iterable[str]) -> list[str]:
+    """People outside `exclude` that none of `clues` names."""
+    skip = set(exclude)
+    return [p for p, n in _mentions(people, clues).items() if not n and p not in skip]
+
+
 def suggest(
     text: str,
     placement: dict[str, murdoku.Square],
@@ -273,6 +280,7 @@ def suggest(
     log: Callable[[str], None] = lambda _line: None,
     exclude: Iterable[str] = (),
     needs: Iterable[int] = (),
+    cover: bool = False,
 ) -> list[str]:
     """Clues to add to `text` so that `placement` becomes its only solution.
 
@@ -280,6 +288,11 @@ def suggest(
     the true candidate clue that rules out most other placements; ties go to
     clues about the people named least so far, then to earlier `kinds`. Stops
     when unique, or when no candidate helps.
+
+    With `cover`, once unique, each person outside `exclude` that no clue names
+    gets a true clue swapped in for one added clue, when one keeps the puzzle
+    unique and the needed clues necessary; failing that, the search restarts
+    from a clue about them that must stay necessary.
 
     `needs` lists clue numbers that must each remain necessary. A clue's rivals
     are the placements allowed without it but not with it (role rules are
@@ -297,6 +310,30 @@ def suggest(
     if bad := [n for n in needed if not 1 <= n <= len(lines)]:
         raise ValueError(f"--needs names clue numbers {bad}; the puzzle has {len(lines)} clues")
     added: list[str] = []
+
+    def _reseed(person: str, added: list[str]) -> list[str]:
+        # Start again from one clue about `person`, kept necessary like a needed clue.
+        named = set(board.people) - set(_unnamed(board.people, lines + added, ())) | {person}
+        for clue in (c for c in candidates if person in c.split()[1:] and c not in lines):
+            seeded = with_clues(text, [*lines, clue])
+            more = suggest(
+                seeded,
+                placement,
+                kinds,
+                sample,
+                timeout,
+                exclude=exclude,
+                needs=[*needed, len(lines) + 1],
+            )
+            trial = [clue, *more]
+            if len(brute.solutions(with_clues(text, lines + trial), 2)) == 1 and named.isdisjoint(
+                _unnamed(board.people, lines + trial, ())
+            ):
+                log(f"restart from {clue} so {person} has a clue")
+                return trial
+        log(f"no clue about {person} fits")
+        return added
+
     while True:
         current = with_clues(text, lines + added)
         others = [_placement(found, board.people) for found in brute.sample(current, sample)]
@@ -313,7 +350,11 @@ def suggest(
                 return added
             rival_sets.append(rivals)
         if not others:
-            result = outcome(current, timeout)
+            if cover:
+                added = _cover(text, lines, added, candidates, board.people, exclude, needed, log)
+                for person in _unnamed(board.people, lines + added, exclude):
+                    added = _reseed(person, added)
+            result = outcome(with_clues(text, lines + added), timeout)
             log(f"unique with {len(added)} added clues ({result})")
             return added
         best, best_cut, best_key = None, 0, (0, 0)
@@ -339,6 +380,56 @@ def suggest(
             return added
         added.append(best)
         log(f"add {best} (rules out {best_cut} of {len(others)} sampled placements)")
+
+
+def _cover(
+    text: str,
+    lines: list[str],
+    added: list[str],
+    candidates: Sequence[str],
+    people: Sequence[str],
+    exclude: Iterable[str],
+    needed: Sequence[int],
+    log: Callable[[str], None],
+) -> list[str]:
+    """`added` with clues swapped so that every person outside `exclude` is named.
+
+    For each unnamed person, the first candidate about them that can replace one
+    added clue is swapped in; the puzzle must stay unique, no other person may
+    lose their last clue, and each needed clue must stay necessary.
+    """
+
+    def unique(clues: list[str]) -> bool:
+        return len(brute.solutions(with_clues(text, clues), 2)) == 1
+
+    def fine(trial: list[str]) -> bool:
+        named = {p for p, n in _mentions(people, lines + trial).items() if n}
+        return (
+            named >= {p for p, n in _mentions(people, lines + added).items() if n}
+            and unique(lines + trial)
+            and not any(unique(lines[: n - 1] + lines[n:] + trial) for n in needed)
+        )
+
+    skip = set(exclude)
+    for person in people:
+        if person in skip or _mentions(people, lines + added)[person]:
+            continue
+        swap = next(
+            (
+                [*added[:i], clue, *added[i + 1 :]]
+                for clue in candidates
+                if person in clue.split()[1:]
+                for i in reversed(range(len(added)))
+                if fine([*added[:i], clue, *added[i + 1 :]])
+            ),
+            None,
+        )
+        if swap is None:
+            log(f"no clue about {person} can replace an added clue")
+            continue
+        log(f"swap in {next(c for c in swap if c not in added)} so {person} has a clue")
+        added = swap
+    return added
 
 
 def ease(
@@ -428,6 +519,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--sample", type=int, default=400, help="suggest: solutions per round")
     parser.add_argument(
+        "--cover",
+        action="store_true",
+        help="suggest: swap in clues so everyone outside --exclude is named",
+    )
+    parser.add_argument(
         "--needs",
         type=int,
         nargs="*",
@@ -474,7 +570,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("\n".join(added))
         return 0
     added = suggest(
-        text, placement, args.kinds, args.sample, args.timeout, print, args.exclude, args.needs
+        text,
+        placement,
+        args.kinds,
+        args.sample,
+        args.timeout,
+        print,
+        args.exclude,
+        args.needs,
+        args.cover,
     )
     print("Clues to add:")
     print("\n".join(added))

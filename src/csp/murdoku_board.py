@@ -1016,17 +1016,18 @@ def generate(
 def close(spec: Spec, item: Candidate, timeout: float = 5.0) -> Candidate:
     """`item` with clues from `clue_search.suggest` added until its placement is unique.
 
-    The late figure is in no added clue and every key clue stays necessary, as a
-    late-reveal mystery needs. `closing` records the clue count and the outcome
-    (unique with a grade, or how far it got), so drafts can be compared on how
-    well they close, not only on looks.
+    The late figure is in no added clue, every other figure gets at least one
+    where a helping clue exists (`cover`), and every key clue stays necessary,
+    as a late-reveal mystery needs. `closing` records the clue count and the
+    outcome (unique with a grade, or how far it got), so drafts can be compared
+    on how well they close, not only on looks.
     """
     from . import clue_search
 
     needs = range(1, len(spec.key_clues) + 1)
     exclude = (spec.late,) if spec.late else ()
     added = clue_search.suggest(
-        item.text, item.placement, timeout=timeout, exclude=exclude, needs=needs
+        item.text, item.placement, timeout=timeout, exclude=exclude, needs=needs, cover=True
     )
     text = clue_search.with_clues(item.text, [*spec.key_clues, *added])
     outcome = clue_search.outcome(text, timeout)
