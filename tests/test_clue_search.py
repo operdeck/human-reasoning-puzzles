@@ -31,6 +31,15 @@ def test_outcome_reports_unique_solution_and_grade():
     assert result.good
 
 
+def test_outcome_checks_that_the_late_figure_is_resolved_last():
+    menu = example("menu-murdoku-1.txt").read_text()
+    result = clue_search.outcome(menu, timeout=30, late_person="Vla")
+    assert result.good
+    assert result.late_last
+    assert not clue_search.outcome(menu, timeout=30, late_person="Aardappel").late_last
+    assert clue_search.outcome(menu, timeout=30).late_last is None
+
+
 def test_removal_report_and_thin_keep_the_puzzle_unique():
     # A small puzzle keeps this quick: each trial is a solve in a child process.
     zoo = example("zoo-murdoku-1.txt").read_text()

@@ -57,11 +57,13 @@ reasoning in the conversation or by throwaway scripts; see
    `specs/murdoku/vietnam-6x6.txt`): a short spec of size, areas, people, the
    late figure with companions, objects and key clues gives ranked drafts
    with an intended placement, contact sheets and a report of rejections.
-   `--suggest` closes each kept draft with `clue_search suggest` (late figure
-   excluded, key clues kept necessary, every other figure named via
-   `--cover`) and reports clue count and grade, so
-   pick a draft that closes at the target grade; a roomy late-figure area
-   often lets a companion and the late figure swap and never closes. An
+   Use `--avoid examples` to skip layouts already in the collection, including
+   rotated, mirrored or region-renamed copies. `--suggest` closes each kept
+   draft with `clue_search suggest` (late figure excluded, key clues kept
+   necessary, every other figure named via `--cover`) and reports clue count,
+   grade and whether the late figure is resolved last. Pick a draft that closes
+   at the target grade and passes the late-reveal check; a roomy late-figure
+   area often lets a companion and the late figure swap and never closes. An
    object line ending in `across` (a tunnel, a bridge) straddles one border
    between exactly two areas. Pick one, then thin and check as above.
 4. Render the puzzle and solution PNGs and get an independent, image-based
@@ -91,7 +93,7 @@ its short output, and decide:
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
-| draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues) |
+| draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts) |
 | pictures, booklet | `--png`, `--docx` |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 

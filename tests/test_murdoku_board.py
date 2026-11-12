@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from csp import clue_search
+from csp import audit, clue_search
 from csp import murdoku_board as mb
 from csp.bruteforce import murdoku as brute
 from csp.puzzlefile import load_board
@@ -94,6 +94,23 @@ def test_candidates_are_reproducible_and_satisfy_the_late_rule():
     dee = board.region_of(first.placement["Dee"])
     others = {p for p, sq in first.placement.items() if p != "Dee" and board.region_of(sq) == dee}
     assert others == {"Ann"}
+
+
+def test_candidate_skips_layouts_already_in_the_collection():
+    spec = mb.read_spec(SPEC)
+    original = mb.candidate(spec, 0)
+    assert original is not None
+    original_layout = audit.layout_key(original.text, "murdoku")
+    rejected: dict[str, int] = {}
+    replacement = mb.candidate(
+        spec,
+        0,
+        rejected,
+        lambda text: audit.layout_key(text, "murdoku") == original_layout,
+    )
+    assert replacement is not None
+    assert audit.layout_key(replacement.text, "murdoku") != original_layout
+    assert rejected["layout already in the collection"] > 0
 
 
 def test_close_adds_clues_that_leave_the_late_figure_out():

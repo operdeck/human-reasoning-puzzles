@@ -63,10 +63,11 @@ _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
 @dataclass(frozen=True)
 class Outcome:
-    """A puzzle's solution count (0, 1 or 2 meaning "more") and grade; None on timeout."""
+    """A puzzle's solution count, grade and optional late-figure check; None on timeout."""
 
     solutions: int | None
     grade: str | None
+    late_last: bool | None = None
 
     @property
     def good(self) -> bool:
@@ -111,30 +112,61 @@ def with_clues(text: str, clues: Sequence[str]) -> str:
     return "\n".join(out) + "\n"
 
 
-def _measure(text: str) -> tuple[int, str]:
+def _measure(text: str, late_person: str | None) -> tuple[int, str, bool | None]:
     count = len(brute.solutions(text, 2))
     board, clues = load_board(text)
-    fired: list[str] = []
-    result = Solver(murdoku.compile_puzzle(board, clues)).solve(
-        on_step=lambda rule, steps: fired.append(rule)
+    model = murdoku.compile_puzzle(board, clues)
+    domains = (
+        {
+            person: {model.value_of(literal) for literal in model.options(person)}
+            for person in board.people
+        }
+        if late_person is not None
+        else {}
     )
-    return count, report.grade(fired) if result.solved else "unsolved"
+    initial_domains = {person: set(options) for person, options in domains.items()}
+    fired: list[str] = []
+    result = Solver(model).solve(on_step=lambda rule, steps: fired.append(rule))
+    late_last = None
+    if late_person is not None:
+        first_singleton = {person: -1 for person, options in domains.items() if len(options) == 1}
+        for index, step in enumerate(model.log):
+            if step.var not in domains:
+                continue
+            if step.asserted:
+                domains[step.var] = {step.value}
+            else:
+                domains[step.var].discard(step.value)
+            if len(domains[step.var]) == 1:
+                first_singleton.setdefault(step.var, index)
+        other_resolutions = [
+            index for person, index in first_singleton.items() if person != late_person
+        ]
+        late_last = (
+            result.solved
+            and late_person in initial_domains
+            and len(initial_domains[late_person]) > 1
+            and len(first_singleton) == len(board.people)
+            and bool(other_resolutions)
+            and first_singleton[late_person] > max(other_resolutions)
+        )
+    return count, report.grade(fired) if result.solved else "unsolved", late_last
 
 
-def _child(text: str, queue: Any) -> None:
+def _child(text: str, late_person: str | None, queue: Any) -> None:
     try:
-        queue.put(_measure(text))
+        queue.put(_measure(text, late_person))
     except ValueError as error:
         queue.put(error)
 
 
-def outcome(text: str, timeout: float = 5.0) -> Outcome:
-    """Solution count and grade of `text`, measured in a child process killed after `timeout`."""
+def outcome(text: str, timeout: float = 5.0, late_person: str | None = None) -> Outcome:
+    """Measure solutions and grade, optionally checking if `late_person` is placed last."""
     context: Any = multiprocessing.get_context(
         "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
     )
     queue = context.Queue()
-    process = context.Process(target=_child, args=(text, queue), daemon=True)
+    process = context.Process(target=_child, args=(text, late_person, queue), daemon=True)
     process.start()
     process.join(timeout)
     if process.is_alive():

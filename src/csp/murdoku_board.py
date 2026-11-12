@@ -922,8 +922,17 @@ def _bump(counter: dict[str, int], reason: str) -> None:
     counter[reason] = counter.get(reason, 0) + 1
 
 
-def candidate(spec: Spec, index: int, rejected: dict[str, int] | None = None) -> Candidate | None:
-    """The `index`-th candidate of a spec, rebuilt identically from the same seed."""
+def candidate(
+    spec: Spec,
+    index: int,
+    rejected: dict[str, int] | None = None,
+    taken: Callable[[str], bool] | None = None,
+) -> Candidate | None:
+    """The `index`-th candidate of a spec, rebuilt identically from the same seed.
+
+    `taken(text)` rejects a draft whose board an existing puzzle already uses
+    (`puzzle-lab murdoku-board --avoid`), so a series never repeats a layout.
+    """
     seed = f"{spec.seed}:{index}"
     rng = random.Random(seed)
     tally: dict[str, int] = {} if rejected is None else rejected
@@ -951,6 +960,9 @@ def candidate(spec: Spec, index: int, rejected: dict[str, int] | None = None) ->
             _bump(tally, "no area holds the late figure and companions")
             continue
         base = draft_text(spec, layout, colours, objects, clues=(), rules=False)
+        if taken is not None and taken(base):
+            _bump(tally, "layout already in the collection")
+            continue
         legal = brute.sample(base, int(THRESHOLDS["legal_sample"]))
         if not legal:
             _bump(tally, "nobody fits")
@@ -998,13 +1010,15 @@ def candidate(spec: Spec, index: int, rejected: dict[str, int] | None = None) ->
 
 
 def generate(
-    spec: Spec, on_candidate: Callable[[int, Candidate | None], None] | None = None
+    spec: Spec,
+    on_candidate: Callable[[int, Candidate | None], None] | None = None,
+    taken: Callable[[str], bool] | None = None,
 ) -> Report:
     """Build `spec.candidates` candidates and rank them, best first."""
     rejected: dict[str, int] = {}
     found = []
     for index in range(spec.candidates):
-        built = candidate(spec, index, rejected)
+        built = candidate(spec, index, rejected, taken)
         if on_candidate:
             on_candidate(index, built)
         if built is not None:
@@ -1017,10 +1031,10 @@ def close(spec: Spec, item: Candidate, timeout: float = 5.0) -> Candidate:
     """`item` with clues from `clue_search.suggest` added until its placement is unique.
 
     The late figure is in no added clue, every other figure gets at least one
-    where a helping clue exists (`cover`), and every key clue stays necessary,
-    as a late-reveal mystery needs. `closing` records the clue count and the
-    outcome (unique with a grade, or how far it got), so drafts can be compared
-    on how well they close, not only on looks.
+    where a helping clue exists (`cover`), every key clue stays necessary, and
+    the solve reports whether that figure is the last resolved. `closing`
+    records the clue count and outcome so drafts can be compared on how well
+    they close, not only on looks.
     """
     from . import clue_search
 
@@ -1030,8 +1044,10 @@ def close(spec: Spec, item: Candidate, timeout: float = 5.0) -> Candidate:
         item.text, item.placement, timeout=timeout, exclude=exclude, needs=needs, cover=True
     )
     text = clue_search.with_clues(item.text, [*spec.key_clues, *added])
-    outcome = clue_search.outcome(text, timeout)
+    outcome = clue_search.outcome(text, timeout, late_person=spec.late or None)
     state = str(outcome) if outcome.good else f"not closed ({outcome})"
+    if outcome.good and spec.late:
+        state += ", late figure last" if outcome.late_last else ", late figure not last"
     closing = f"{len(added)} clues added: {state}"
     marker = "# Intended placement:"
     text = text.replace(marker, f"# Suggested clues: {closing}\n{marker}", 1)

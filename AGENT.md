@@ -382,9 +382,12 @@ puzzle. Follow `.github/skills/non-murdoku-puzzle-authoring/SKILL.md`.
 Murdoku has its own generator skill and tools; do not change them for
 non-Murdoku work. `puzzle-lab murdoku-board SPEC` (`src/csp/murdoku_board.py`)
 drafts Murdoku boards from a short theme spec; it decides placements only with
-the Murdoku brute force, so clue meaning stays in `murdoku`. `--suggest` closes
-the kept drafts with `clue_search suggest`. Drafts go to the
-git-ignored `drafts/` folder.
+the Murdoku brute force, so clue meaning stays in `murdoku`. Use `--avoid
+examples` to skip layouts already used in the collection (including rotated,
+mirrored and region-renamed copies). `--suggest` closes the kept drafts with
+`clue_search suggest`, reports the grade, and checks whether the late figure is
+resolved after every other figure. Drafts go to the git-ignored `drafts/`
+folder.
 
 The web index is the full visual inventory. Show one representative unsolved
 `static` SVG per existing `section`, including each Murdoku series, not one

@@ -882,7 +882,21 @@ def _murdoku_board_command(args: argparse.Namespace) -> int:
         state = f"score {built.total:.3f} ({built.template})" if built else "no board"
         print(f"candidate {index}: {state}", file=sys.stderr, flush=True)
 
-    found = murdoku_board.generate(spec, progress)
+    taken = None
+    if args.avoid:
+        from csp import audit
+
+        known = {
+            key
+            for path in audit.puzzle_files(args.avoid)
+            if detect(text := path.read_text()) == "murdoku"
+            and (key := audit.layout_key(text, "murdoku")) is not None
+        }
+
+        def taken(text: str) -> bool:
+            return audit.layout_key(text, "murdoku") in known
+
+    found = murdoku_board.generate(spec, progress, taken)
     if args.suggest:
         kept = found.candidates[: spec.keep]
         for i, item in enumerate(kept):
@@ -1103,6 +1117,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="append",
         default=[],
         help="an extra key clue in puzzle-file syntax; may repeat",
+    )
+    board_parser.add_argument(
+        "--avoid",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="skip layouts (up to turning, mirroring and renaming) used by puzzles under "
+        "PATH, e.g. examples; may repeat",
     )
     board_parser.add_argument(
         "--no-pictures", action="store_true", help="skip the PNG contact sheets"
