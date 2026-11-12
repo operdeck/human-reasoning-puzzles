@@ -283,6 +283,12 @@ def test_text_is_drawn_as_paths_from_the_bundled_font():
     assert "<text" not in text and "aria-label" in text
 
 
+def test_name_tags_show_underscores_as_spaces():
+    canvas = svg.Canvas(120, 120)
+    drawing._name_tag(canvas, "Rau_Muong", (0, 0, 120, 120), 120)
+    assert 'aria-label="Rau Muong"' in canvas.to_svg()
+
+
 def test_every_character_in_the_example_pictures_is_in_the_bundled_font():
     # Missing glyphs would print as empty boxes; svg.SUBSTITUTES covers signs
     # such as the minus that Noto Sans lacks.

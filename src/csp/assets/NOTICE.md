@@ -22,8 +22,8 @@ Changes, made by `scripts/vendor_emoji.py`:
 
 ## Noto Sans (`fonts/`)
 
-`fonts/NotoSans-Regular.ttf` is a subset (Latin-1, Latin Extended-A, general
-punctuation and the euro sign) of Noto Sans Regular from
+`fonts/NotoSans-Regular.ttf` is a subset (Latin-1, Latin Extended-A, the
+Vietnamese letters, general punctuation and the euro sign) of Noto Sans Regular from
 [googlefonts/noto-fonts](https://github.com/googlefonts/noto-fonts) at commit
 `ffebf8c1ee449e544955a7e813c54f9b73848eac`, made by `scripts/subset_font.py`.
 Copyright 2018 The Noto Project Authors, under the SIL Open Font License 1.1

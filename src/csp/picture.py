@@ -2131,7 +2131,8 @@ def _name_tag(canvas: Canvas, person: str, area: Box, cell: int, low: bool = Fal
     canvas.rounded_rectangle(
         tag, radius=cell // 8, fill=WHITE, outline=INK, width=max(2, cell // 40)
     )
-    _centred_text(canvas, person, tag, cell // 5, INK, max_width=cell - 3 * pad)
+    shown = person.replace("_", " ")
+    _centred_text(canvas, shown, tag, cell // 5, INK, max_width=cell - 3 * pad)
 
 
 def _centred_text(
