@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from csp import clue_search
 from csp import murdoku_board as mb
 from csp.bruteforce import murdoku as brute
 from csp.puzzlefile import load_board
@@ -66,6 +67,23 @@ def test_spread_counts_people_one_per_row_and_column():
     assert mb._spread({(0, 0), (1, 1), (1, 0)}) == 2
 
 
+def test_an_across_object_joins_exactly_two_areas():
+    layout = ((0, 0, 1, 1),) * 3 + ((2, 2, 2, 2),)
+    tunnel = mb.Placed("tunnel", "blocking", ((0, 1), (0, 2)), across=True)
+    assert not mb.object_problems(layout, [tunnel])
+    inside = mb.Placed("tunnel", "blocking", ((0, 0), (1, 0)), across=True)
+    assert "tunnel does not join two areas" in mb.object_problems(layout, [inside])
+    third = mb.Placed("tunnel", "blocking", ((2, 1), (2, 2)), across=True)
+    assert "tunnel touches an area border" in mb.object_problems(layout, [third])
+    spec = mb.read_spec(SPEC + "object: tunnel blocking across\n")
+    placed = mb.place_objects(layout, spec, random.Random(0))
+    assert placed is not None
+    (cells,) = [p.cells for p in placed if p.name == "tunnel"]
+    assert len({layout[r][c] for r, c in cells}) == 2
+    with pytest.raises(ValueError, match="across needs"):
+        mb.read_spec(SPEC + "object: tunnel blocking across in West\n")
+
+
 def test_candidates_are_reproducible_and_satisfy_the_late_rule():
     spec = mb.read_spec(SPEC)
     first = mb.candidate(spec, 0)
@@ -76,6 +94,17 @@ def test_candidates_are_reproducible_and_satisfy_the_late_rule():
     dee = board.region_of(first.placement["Dee"])
     others = {p for p, sq in first.placement.items() if p != "Dee" and board.region_of(sq) == dee}
     assert others == {"Ann"}
+
+
+def test_close_adds_clues_that_leave_the_late_figure_out():
+    spec = mb.read_spec(SPEC)
+    first = mb.candidate(spec, 0)
+    assert first is not None
+    closed = mb.close(spec, first)
+    assert closed.closing.startswith(f"{len(clue_search.clue_lines(closed.text)) - 1} clues added")
+    assert "# Suggested clues:" in closed.text
+    assert not any("Dee" in line.split() for line in clue_search.clue_lines(closed.text))
+    assert brute.accepts(closed.text, closed.placement)
 
 
 def test_a_key_clue_that_rules_nothing_out_is_rejected():

@@ -78,7 +78,7 @@ ALLOWED = {
         "starbattle",
     },
     "docx_export": {"icons", "murdoku", "picture", "puzzlefile", "story"},
-    "murdoku_board": {"svg", "bruteforce", "murdoku", "puzzlefile", "picture"},
+    "murdoku_board": {"svg", "bruteforce", "murdoku", "puzzlefile", "picture", "clue_search"},
     "regiongrid": {"puzzlefile"},
     "suguru": {"core", "puzzlefile", "regiongrid"},
     "starbattle": {"core", "regiongrid", "icons"},

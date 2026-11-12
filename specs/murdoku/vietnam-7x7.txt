@@ -1,0 +1,23 @@
+# Spec for: uv run puzzle-lab murdoku-board specs/murdoku/vietnam-7x7.txt
+# Vietnam series, 7x7: Pippo and Swena look for rau muong xao.
+theme: vietnam-7x7
+size: 7
+language: nl
+areas: Hanoi Hue HoiAn DaLat Saigon
+colours: Hanoi=#F4CBC3 Hue=#D9C8EE HoiAn=#F6E3A1 DaLat=#CFE6C0 Saigon=#C4DCF2
+people: Pippo Swena Mai Hoa Duc Quang
+late: RauMuong
+companions: Pippo Swena
+companion_trait: reiziger
+object: buncha blocking in Hanoi
+object: chaolong blocking in Hue
+object: thitkho blocking in HoiAn
+object: doi blocking in DaLat
+object: phalau blocking in Saigon
+object: tunnel blocking across
+object: kruk standable x3
+key_clue: away_from Pippo buncha chaolong thitkho doi phalau
+key_clue: away_from Swena buncha chaolong thitkho doi phalau
+candidates: 24
+keep: 6
+seed: 231

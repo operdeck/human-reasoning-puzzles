@@ -883,6 +883,12 @@ def _murdoku_board_command(args: argparse.Namespace) -> int:
         print(f"candidate {index}: {state}", file=sys.stderr, flush=True)
 
     found = murdoku_board.generate(spec, progress)
+    if args.suggest:
+        kept = found.candidates[: spec.keep]
+        for i, item in enumerate(kept):
+            kept[i] = murdoku_board.close(spec, item)
+            print(f"closing #{item.index}: {kept[i].closing}", file=sys.stderr, flush=True)
+        found.candidates[: spec.keep] = kept
     folder = Path(args.output or f"drafts/murdoku-board/{spec.theme}")
     try:
         paths = murdoku_board.write(found, spec, folder, pictures=not args.no_pictures)
@@ -1084,7 +1090,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "murdoku-board",
         help="draft ranked Murdoku boards (areas, objects, placement) from a theme spec",
     )
-    board_parser.add_argument("spec", help="spec file, e.g. specs/murdoku/vietnam.txt")
+    board_parser.add_argument("spec", help="spec file, e.g. specs/murdoku/vietnam-6x6.txt")
     board_parser.add_argument(
         "--output", help="folder for drafts and contact sheets (default drafts/murdoku-board/THEME)"
     )
@@ -1100,6 +1106,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     board_parser.add_argument(
         "--no-pictures", action="store_true", help="skip the PNG contact sheets"
+    )
+    board_parser.add_argument(
+        "--suggest",
+        action="store_true",
+        help="close each kept draft with csp.clue_search suggest and report clue count and grade",
     )
     board_parser.set_defaults(run=_murdoku_board_command)
 

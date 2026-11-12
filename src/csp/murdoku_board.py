@@ -3,14 +3,16 @@
 Each candidate is a board (areas, objects, colours) with an intended placement
 of the people that satisfies the spec's late-reveal story and key clues. Hard
 filters reject ugly or unfair boards; a soft score ranks the survivors so a
-person can choose from pictures. Clues beyond the key clues are not written:
-`csp.clue_search suggest` and `thin` make a chosen draft unique afterwards.
+person can choose from pictures. Clues beyond the key clues are not written
+unless asked: `close` runs `csp.clue_search suggest` on a chosen draft, and
+`thin` removes what is not needed afterwards.
 
 What a clue or rule means is never decided here: placements come from the
 Murdoku brute force over the draft file itself.
 """
 
 import base64
+import dataclasses
 import math
 import random
 import re
@@ -73,13 +75,18 @@ SIDES = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
 @dataclass(frozen=True)
 class ObjectSpec:
-    """`count` straight footprints of `length` squares, optionally kept in one area."""
+    """`count` straight footprints of `length` squares, optionally kept in one area.
+
+    An `across` object (a tunnel, a bridge) instead straddles one border: its
+    squares lie in exactly two areas, and it touches no third.
+    """
 
     name: str
     kind: str
     count: int = 1
     length: int = 1
     area: str | None = None
+    across: bool = False
 
 
 @dataclass(frozen=True)
@@ -132,6 +139,8 @@ class Spec:
                 raise ValueError(f"object {obj.name!r}: count and size must be positive")
             if obj.area is not None and obj.area not in self.areas:
                 raise ValueError(f"object {obj.name!r}: unknown area {obj.area!r}")
+            if obj.across and (obj.area is not None or obj.length < 2):
+                raise ValueError(f"object {obj.name!r}: across needs size 2+ and no area")
         for clue in self.key_clues:
             if self.late is not None and self.late in clue.split():
                 raise ValueError(f"key clue {clue!r} names the late figure {self.late}")
@@ -219,7 +228,7 @@ def read_spec(text: str) -> Spec:
 
 def _object_spec(value: str) -> ObjectSpec:
     name, kind, *rest = value.split()
-    count, length, area = 1, 1, None
+    count, length, area, across = 1, None, None, False
     words = iter(rest)
     for word in words:
         if word.startswith("x") and word[1:].isdigit():
@@ -228,9 +237,12 @@ def _object_spec(value: str) -> ObjectSpec:
             length = int(next(words))
         elif word == "in":
             area = next(words)
+        elif word == "across":
+            across = True
         else:
             raise ValueError(f"object {value!r}: unexpected {word!r}")
-    return ObjectSpec(name, kind, count, length, area)
+    default = 2 if across else 1
+    return ObjectSpec(name, kind, count, default if length is None else length, area, across)
 
 
 # --- area geometry -------------------------------------------------------------
@@ -513,6 +525,7 @@ class Placed:
     name: str
     kind: str
     cells: tuple[Cell, ...]
+    across: bool = False
 
 
 def object_problems(layout: Layout, objects: Sequence[Placed]) -> list[str]:
@@ -527,7 +540,9 @@ def object_problems(layout: Layout, objects: Sequence[Placed]) -> list[str]:
             taken[cell] = index
     for index, obj in enumerate(objects):
         areas = {layout[r][c] for r, c in obj.cells}
-        if len(areas) > 1:
+        if obj.across and len(areas) != 2:
+            problems.append(f"{obj.name} does not join two areas")
+        if not obj.across and len(areas) > 1:
             problems.append(f"{obj.name} crosses an area border")
         if obj.kind == "blocking":
             for cell in obj.cells:
@@ -573,7 +588,7 @@ def place_objects(
                             layout[x][y] != index[obj.area] for x, y in cells
                         ):
                             continue
-                        candidate = [*placed, Placed(obj.name, obj.kind, cells)]
+                        candidate = [*placed, Placed(obj.name, obj.kind, cells, obj.across)]
                         if not object_problems(layout, candidate):
                             options.append(cells)
             if not options:
@@ -585,7 +600,7 @@ def place_objects(
             ]
             cells = rng.choice(options)
             load[layout[cells[0][0]][cells[0][1]]] += 1
-            placed.append(Placed(obj.name, obj.kind, cells))
+            placed.append(Placed(obj.name, obj.kind, cells, obj.across))
         else:
             return placed
     return None
@@ -890,6 +905,7 @@ class Candidate:
     placement: dict[str, Square]
     scores: dict[str, float]
     text: str
+    closing: str = ""  # what `close` found: clues added and the outcome
 
     @property
     def total(self) -> float:
@@ -997,12 +1013,37 @@ def generate(
     return Report(found, rejected)
 
 
+def close(spec: Spec, item: Candidate, timeout: float = 5.0) -> Candidate:
+    """`item` with clues from `clue_search.suggest` added until its placement is unique.
+
+    The late figure is in no added clue and every key clue stays necessary, as a
+    late-reveal mystery needs. `closing` records the clue count and the outcome
+    (unique with a grade, or how far it got), so drafts can be compared on how
+    well they close, not only on looks.
+    """
+    from . import clue_search
+
+    needs = range(1, len(spec.key_clues) + 1)
+    exclude = (spec.late,) if spec.late else ()
+    added = clue_search.suggest(
+        item.text, item.placement, timeout=timeout, exclude=exclude, needs=needs
+    )
+    text = clue_search.with_clues(item.text, [*spec.key_clues, *added])
+    outcome = clue_search.outcome(text, timeout)
+    state = str(outcome) if outcome.good else f"not closed ({outcome})"
+    closing = f"{len(added)} clues added: {state}"
+    marker = "# Intended placement:"
+    text = text.replace(marker, f"# Suggested clues: {closing}\n{marker}", 1)
+    return dataclasses.replace(item, text=text, closing=closing)
+
+
 # --- output ----------------------------------------------------------------------
 
 
 def describe(item: Candidate) -> str:
     aspects = " ".join(f"{k}={item.scores[k]:.2f}" for k in SCORE_WEIGHTS)
-    return f"#{item.index} total {item.total:.3f} ({item.template}, seed {item.seed}): {aspects}"
+    line = f"#{item.index} total {item.total:.3f} ({item.template}, seed {item.seed}): {aspects}"
+    return f"{line}; {item.closing}" if item.closing else line
 
 
 def contact_sheet(
@@ -1060,7 +1101,10 @@ def write(report: Report, spec: Spec, folder: Path, pictures: bool = True) -> li
                 image = murdoku_picture(
                     board, item.placement if solved else None, language=spec.language
                 )
-                images.append((f"#{item.index}  score {item.total:.3f}", image))
+                caption = f"#{item.index}  score {item.total:.3f}"
+                if item.closing:
+                    caption += "  " + item.closing.split(": ", 1)[1]
+                images.append((caption, image))
             contact_sheet(images).save(sheet)
             paths.append(sheet)
     return paths
