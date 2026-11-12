@@ -1,0 +1,86 @@
+# Board drafted with puzzle-lab murdoku-board (seed 231, candidate 11).
+
+Size: 6
+Language: nl
+
+Words:
+Hanoi: in Hanoi
+Huế: in Huế
+Hội_An: in Hội An
+Saigon: in Saigon
+Tuan: Tuấn
+Loempia: de loempia
+buncha: de bún chả
+chaolong: de cháo lòng
+thitkho: de thịt kho
+phalau: de phá lấu
+tunnel: de Vietcongtunnel
+clue.alone_with_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
+
+Regions:
+a: Hanoi #F4CBC3
+b: Huế #D9C8EE
+c: Hội_An #F6E3A1
+d: Saigon #C4DCF2
+
+Grid:
+b b b a a a
+b b a a a a
+b b b a c c
+b b b d c c
+b d d d c c
+d d d d c c
+
+Objects:
+buncha: blocking r1c6
+chaolong: blocking r3c2
+thitkho: blocking r6c6
+phalau: blocking r6c3
+tunnel: blocking r1c3 r2c3
+
+Backdrop:
+non_la
+
+People:
+Pippo
+Swena
+Linh
+Minh
+Tuan
+Loempia
+
+Attributes:
+reiziger: Pippo Swena
+
+Rules:
+alone_with Loempia attribute:reiziger 2
+
+Clues:
+away_from Pippo buncha chaolong thitkho phalau
+away_from Swena buncha chaolong thitkho phalau
+next_to Minh thitkho
+next_to Tuan buncha
+in_region Linh Hanoi
+above Pippo Swena
+
+# Booklet text for --docx (optional).
+Title:
+Vietnam Murdoku 6x6: Op zoek naar de loempia
+
+Intro:
+Na hun eerste kom phở gà zoeken Pippo en Swena in Vietnam naar een knapperige loempia. Overal staan gerechten met varkensvlees of orgaanvlees, en daar blijven ze ver vandaan. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
+De loempia is een van de zes figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De loempia ligt in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
+
+Figures:
+Pippo: oma 1 ; icon=U+1F475
+Swena: oma 2 ; icon=U+1F475-1F3FF
+Linh: ; icon=U+1F469
+Minh: ; icon=U+1F474
+Tuan: ; icon=U+1F468
+Loempia: chả giò, knapperig gefrituurd ; icon=loempia
+
+Question:
+Waar vinden Pippo en Swena hun loempia?
+
+Reveal:
+De loempia ligt in Huế, waar alleen Pippo en Swena zitten.

@@ -618,6 +618,29 @@ def _not_next_to(board: Board, *things: str) -> SquareTest:
     return lambda sq: not beside(sq)
 
 
+def _away_from(board: Board, *things: str) -> SquareTest:
+    """Not on, beside or diagonally beside any square of the things, in any area.
+
+    Doors, windows and point objects count by the squares they touch.
+    """
+    near: set[Square] = set()
+    for thing in things:
+        name = target_name(thing)
+        if name in board.mark_names:
+            near.update(board.mark_cells([name]))
+        elif name in board.edge_item_names:
+            near.update(board.edge_item_cells([name]))
+        elif name in board.point_object_names:
+            near.update(board.point_object_cells([name]))
+        elif name in ("blocking", "standable"):
+            near.update(
+                square for obj in board.objects if obj.kind == name for square in obj.squares
+            )
+        else:
+            near.update(board.squares_of([name]))
+    return lambda sq: all(max(abs(sq.row - cell.row), abs(sq.col - cell.col)) > 1 for cell in near)
+
+
 def _on(board: Board, *things: str) -> SquareTest:
     targets = board.squares_of(things)
     return lambda sq: sq in targets
@@ -746,6 +769,7 @@ FILTERS: dict[str, Callable[..., SquareTest]] = {
     "at": _at,  # at <person> <edge item>...
     "next_to": _next_to,  # next_to <person> <thing>...: beside any of them
     "not_next_to": _not_next_to,  # not_next_to <person> <thing>...: beside none of them
+    "away_from": _away_from,  # away_from <person> <thing>...: not even diagonally, any area
     "knight_from": _knight_from,  # knight_from <person> <thing>...: a knight's move away
     "on": _on,  # on <person> <standable object>...
     "not_on": _not_on,  # not_on <person> <standable object>...

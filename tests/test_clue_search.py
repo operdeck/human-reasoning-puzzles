@@ -31,6 +31,15 @@ def test_outcome_reports_unique_solution_and_grade():
     assert result.good
 
 
+def test_outcome_checks_that_the_late_figure_is_resolved_last():
+    menu = example("menu-murdoku-1.txt").read_text()
+    result = clue_search.outcome(menu, timeout=30, late_person="Vla")
+    assert result.good
+    assert result.late_last
+    assert not clue_search.outcome(menu, timeout=30, late_person="Aardappel").late_last
+    assert clue_search.outcome(menu, timeout=30).late_last is None
+
+
 def test_removal_report_and_thin_keep_the_puzzle_unique():
     # A small puzzle keeps this quick: each trial is a solve in a child process.
     zoo = example("zoo-murdoku-1.txt").read_text()
@@ -64,6 +73,33 @@ def test_suggest_restores_a_dropped_clue_set():
     added = clue_search.suggest(start, placement, sample=200, timeout=30)
     completed = clue_search.with_clues(start, lines[:4] + added)
     assert len(bruteforce.solutions(completed, limit=2)) == 1
+
+
+def test_suggest_with_cover_names_everyone():
+    house = example("murdoku_3_house.txt").read_text()
+    board, _ = load_board(house)
+    (solution,) = bruteforce.solutions(house)
+    placement = {person: solution[person] for person in board.people}
+    start = clue_search.with_clues(house, [])
+    plain = clue_search.suggest(start, placement, sample=200, timeout=30)
+    assert clue_search._unnamed(board.people, plain, ())
+    candidates = clue_search.candidate_clues(board, placement)
+    target = next(
+        name
+        for name in sorted(board.object_names)
+        if any(name in clue.split()[1:] for clue in candidates)
+    )
+    added = clue_search.suggest(
+        start,
+        placement,
+        sample=200,
+        timeout=30,
+        cover=True,
+        exclude_targets=[target],
+    )
+    assert not clue_search._unnamed(board.people, added, ())
+    assert all(target not in clue.split()[1:] for clue in added)
+    assert len(bruteforce.solutions(clue_search.with_clues(start, added))) == 1
 
 
 def test_parse_solution_reads_one_based_squares():

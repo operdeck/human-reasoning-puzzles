@@ -12,7 +12,9 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   out the most other placements until the puzzle is unique. `--needs` names
   clue numbers that must each stay necessary, so a themed clue (or a rule
   moved into the clues while searching, role rules included) cannot be made
-  redundant.
+  redundant. `--cover` then swaps added clues for clues about people no clue
+  names, so every figure outside `--exclude` gets a clue. `--exclude-target`
+  keeps decorative objects out of the suggestions.
 - `ease`: add true clues to a unique puzzle until it is within `--max-grade`,
   keeping each `--needs` clue necessary (same `--solution`/`--kinds`/`--exclude`).
 - `occupancy`: how often each object square is used across the placements the
@@ -55,17 +57,18 @@ SUGGEST_KINDS = (
     "above",
 )
 # Also available on request (`--kinds`): exact lines are fair only sparingly.
-EXTRA_KINDS = ("not_on", "in_row", "not_in_row", "in_column", "not_in_column")
+EXTRA_KINDS = ("away_from", "not_on", "in_row", "not_in_row", "in_column", "not_in_column")
 
 _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
 
 @dataclass(frozen=True)
 class Outcome:
-    """A puzzle's solution count (0, 1 or 2 meaning "more") and grade; None on timeout."""
+    """A puzzle's solution count, grade and optional late-figure check; None on timeout."""
 
     solutions: int | None
     grade: str | None
+    late_last: bool | None = None
 
     @property
     def good(self) -> bool:
@@ -110,30 +113,61 @@ def with_clues(text: str, clues: Sequence[str]) -> str:
     return "\n".join(out) + "\n"
 
 
-def _measure(text: str) -> tuple[int, str]:
+def _measure(text: str, late_person: str | None) -> tuple[int, str, bool | None]:
     count = len(brute.solutions(text, 2))
     board, clues = load_board(text)
-    fired: list[str] = []
-    result = Solver(murdoku.compile_puzzle(board, clues)).solve(
-        on_step=lambda rule, steps: fired.append(rule)
+    model = murdoku.compile_puzzle(board, clues)
+    domains = (
+        {
+            person: {model.value_of(literal) for literal in model.options(person)}
+            for person in board.people
+        }
+        if late_person is not None
+        else {}
     )
-    return count, report.grade(fired) if result.solved else "unsolved"
+    initial_domains = {person: set(options) for person, options in domains.items()}
+    fired: list[str] = []
+    result = Solver(model).solve(on_step=lambda rule, steps: fired.append(rule))
+    late_last = None
+    if late_person is not None:
+        first_singleton = {person: -1 for person, options in domains.items() if len(options) == 1}
+        for index, step in enumerate(model.log):
+            if step.var not in domains:
+                continue
+            if step.asserted:
+                domains[step.var] = {step.value}
+            else:
+                domains[step.var].discard(step.value)
+            if len(domains[step.var]) == 1:
+                first_singleton.setdefault(step.var, index)
+        other_resolutions = [
+            index for person, index in first_singleton.items() if person != late_person
+        ]
+        late_last = (
+            result.solved
+            and late_person in initial_domains
+            and len(initial_domains[late_person]) > 1
+            and len(first_singleton) == len(board.people)
+            and bool(other_resolutions)
+            and first_singleton[late_person] > max(other_resolutions)
+        )
+    return count, report.grade(fired) if result.solved else "unsolved", late_last
 
 
-def _child(text: str, queue: Any) -> None:
+def _child(text: str, late_person: str | None, queue: Any) -> None:
     try:
-        queue.put(_measure(text))
+        queue.put(_measure(text, late_person))
     except ValueError as error:
         queue.put(error)
 
 
-def outcome(text: str, timeout: float = 5.0) -> Outcome:
-    """Solution count and grade of `text`, measured in a child process killed after `timeout`."""
+def outcome(text: str, timeout: float = 5.0, late_person: str | None = None) -> Outcome:
+    """Measure solutions and grade, optionally checking if `late_person` is placed last."""
     context: Any = multiprocessing.get_context(
         "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
     )
     queue = context.Queue()
-    process = context.Process(target=_child, args=(text, queue), daemon=True)
+    process = context.Process(target=_child, args=(text, late_person, queue), daemon=True)
     process.start()
     process.join(timeout)
     if process.is_alive():
@@ -214,10 +248,12 @@ def candidate_clues(
     placement: dict[str, murdoku.Square],
     kinds: Sequence[str] = SUGGEST_KINDS,
     exclude: Iterable[str] = (),
+    exclude_targets: Iterable[str] = (),
 ) -> list[str]:
     """Simple clues of `kinds` that are true for `placement`, in `kinds` order.
 
-    People in `exclude` (a late-reveal person) appear in none of them.
+    People in `exclude` (a late-reveal person) and targets in `exclude_targets`
+    (decorative objects) appear in none of them.
     """
     people = [person for person in placement if person not in set(exclude)]
     regions = sorted(set(board.region_names.values()))
@@ -231,6 +267,7 @@ def candidate_clues(
         "outside": [f"outside {p} {r}" for p in people for r in regions],
         "next_to": [f"next_to {p} {t}" for p in people for t in things],
         "not_next_to": [f"not_next_to {p} {t}" for p in people for t in things],
+        "away_from": [f"away_from {p} {t}" for p in people for t in things],
         "on": [f"on {p} {t}" for p in people for t in standable],
         "at": [f"at {p} {t}" for p in people for t in edges],
         "same_region": [f"same_region {a} {b}" for a, b in pairs if a < b],
@@ -245,8 +282,15 @@ def candidate_clues(
     }
     if unknown := [kind for kind in kinds if kind not in options]:
         raise ValueError(f"unknown clue kinds {unknown}; choose from {sorted(options)}")
+    targets = set(exclude_targets)
+    target_kinds = {"next_to", "not_next_to", "away_from", "on", "at", "not_on"}
     found = (clue for kind in kinds for clue in options.get(kind, []))
-    return [clue for clue in found if _true_for(board, clue, placement)]
+    return [
+        clue
+        for clue in found
+        if not (clue.split()[0] in target_kinds and set(clue.split()[2:]) & targets)
+        and _true_for(board, clue, placement)
+    ]
 
 
 def _placement(solution: dict[str, Any], people: Sequence[str]) -> dict[str, murdoku.Square]:
@@ -263,6 +307,12 @@ def _mentions(people: Sequence[str], clues: Iterable[str]) -> dict[str, int]:
     return counts
 
 
+def _unnamed(people: Sequence[str], clues: Iterable[str], exclude: Iterable[str]) -> list[str]:
+    """People outside `exclude` that none of `clues` names."""
+    skip = set(exclude)
+    return [p for p, n in _mentions(people, clues).items() if not n and p not in skip]
+
+
 def suggest(
     text: str,
     placement: dict[str, murdoku.Square],
@@ -272,6 +322,8 @@ def suggest(
     log: Callable[[str], None] = lambda _line: None,
     exclude: Iterable[str] = (),
     needs: Iterable[int] = (),
+    cover: bool = False,
+    exclude_targets: Iterable[str] = (),
 ) -> list[str]:
     """Clues to add to `text` so that `placement` becomes its only solution.
 
@@ -279,6 +331,13 @@ def suggest(
     the true candidate clue that rules out most other placements; ties go to
     clues about the people named least so far, then to earlier `kinds`. Stops
     when unique, or when no candidate helps.
+
+    With `cover`, once unique, each person outside `exclude` that no clue names
+    gets a true clue swapped in for one added clue, when one keeps the puzzle
+    unique and the needed clues necessary; failing that, the search restarts
+    from a clue about them that must stay necessary.
+
+    Targets in `exclude_targets` are omitted from all suggested clues.
 
     `needs` lists clue numbers that must each remain necessary. A clue's rivals
     are the placements allowed without it but not with it (role rules are
@@ -290,12 +349,38 @@ def suggest(
     unknown = set(board.people) ^ set(placement)
     if unknown:
         raise ValueError(f"--solution must place exactly the people {board.people}")
-    candidates = candidate_clues(board, placement, kinds, exclude)
+    exclude_targets = tuple(exclude_targets)
+    candidates = candidate_clues(board, placement, kinds, exclude, exclude_targets)
     lines = clue_lines(text)
     needed = sorted(set(needs))
     if bad := [n for n in needed if not 1 <= n <= len(lines)]:
         raise ValueError(f"--needs names clue numbers {bad}; the puzzle has {len(lines)} clues")
     added: list[str] = []
+
+    def _reseed(person: str, added: list[str]) -> list[str]:
+        # Start again from one clue about `person`, kept necessary like a needed clue.
+        named = set(board.people) - set(_unnamed(board.people, lines + added, ())) | {person}
+        for clue in (c for c in candidates if person in c.split()[1:] and c not in lines):
+            seeded = with_clues(text, [*lines, clue])
+            more = suggest(
+                seeded,
+                placement,
+                kinds,
+                sample,
+                timeout,
+                exclude=exclude,
+                needs=[*needed, len(lines) + 1],
+                exclude_targets=exclude_targets,
+            )
+            trial = [clue, *more]
+            if len(brute.solutions(with_clues(text, lines + trial), 2)) == 1 and named.isdisjoint(
+                _unnamed(board.people, lines + trial, ())
+            ):
+                log(f"restart from {clue} so {person} has a clue")
+                return trial
+        log(f"no clue about {person} fits")
+        return added
+
     while True:
         current = with_clues(text, lines + added)
         others = [_placement(found, board.people) for found in brute.sample(current, sample)]
@@ -312,7 +397,11 @@ def suggest(
                 return added
             rival_sets.append(rivals)
         if not others:
-            result = outcome(current, timeout)
+            if cover:
+                added = _cover(text, lines, added, candidates, board.people, exclude, needed, log)
+                for person in _unnamed(board.people, lines + added, exclude):
+                    added = _reseed(person, added)
+            result = outcome(with_clues(text, lines + added), timeout)
             log(f"unique with {len(added)} added clues ({result})")
             return added
         best, best_cut, best_key = None, 0, (0, 0)
@@ -338,6 +427,56 @@ def suggest(
             return added
         added.append(best)
         log(f"add {best} (rules out {best_cut} of {len(others)} sampled placements)")
+
+
+def _cover(
+    text: str,
+    lines: list[str],
+    added: list[str],
+    candidates: Sequence[str],
+    people: Sequence[str],
+    exclude: Iterable[str],
+    needed: Sequence[int],
+    log: Callable[[str], None],
+) -> list[str]:
+    """`added` with clues swapped so that every person outside `exclude` is named.
+
+    For each unnamed person, the first candidate about them that can replace one
+    added clue is swapped in; the puzzle must stay unique, no other person may
+    lose their last clue, and each needed clue must stay necessary.
+    """
+
+    def unique(clues: list[str]) -> bool:
+        return len(brute.solutions(with_clues(text, clues), 2)) == 1
+
+    def fine(trial: list[str]) -> bool:
+        named = {p for p, n in _mentions(people, lines + trial).items() if n}
+        return (
+            named >= {p for p, n in _mentions(people, lines + added).items() if n}
+            and unique(lines + trial)
+            and not any(unique(lines[: n - 1] + lines[n:] + trial) for n in needed)
+        )
+
+    skip = set(exclude)
+    for person in people:
+        if person in skip or _mentions(people, lines + added)[person]:
+            continue
+        swap = next(
+            (
+                [*added[:i], clue, *added[i + 1 :]]
+                for clue in candidates
+                if person in clue.split()[1:]
+                for i in reversed(range(len(added)))
+                if fine([*added[:i], clue, *added[i + 1 :]])
+            ),
+            None,
+        )
+        if swap is None:
+            log(f"no clue about {person} can replace an added clue")
+            continue
+        log(f"swap in {next(c for c in swap if c not in added)} so {person} has a clue")
+        added = swap
+    return added
 
 
 def ease(
@@ -425,7 +564,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--exclude", nargs="*", default=[], help="suggest, ease: people no clue may mention"
     )
+    parser.add_argument(
+        "--exclude-target",
+        nargs="*",
+        default=[],
+        help="suggest: objects no clue may mention",
+    )
     parser.add_argument("--sample", type=int, default=400, help="suggest: solutions per round")
+    parser.add_argument(
+        "--cover",
+        action="store_true",
+        help="suggest: swap in clues so everyone outside --exclude is named",
+    )
     parser.add_argument(
         "--needs",
         type=int,
@@ -473,7 +623,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("\n".join(added))
         return 0
     added = suggest(
-        text, placement, args.kinds, args.sample, args.timeout, print, args.exclude, args.needs
+        text,
+        placement,
+        args.kinds,
+        args.sample,
+        args.timeout,
+        print,
+        args.exclude,
+        args.needs,
+        args.cover,
+        args.exclude_target,
     )
     print("Clues to add:")
     print("\n".join(added))

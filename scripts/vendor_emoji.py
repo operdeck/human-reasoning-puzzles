@@ -1,9 +1,9 @@
 """Vendor Noto Emoji SVGs into src/csp/assets/emoji (a developer tool; needs network).
 
-    uv run python scripts/vendor_emoji.py [U+1F35C ...]
+    uv run python scripts/vendor_emoji.py [U+1F35C U+1F475-1F3FF ...]
 
 Fetches every code point in `csp.icons.CATALOGUE` and the registry, every
-picture already vendored and any code points given, from the pinned Noto Emoji
+picture already vendored and any code points or sequences given, from the pinned Noto Emoji
 commit. Each file is
 cleaned (comments and editor attributes dropped, ids prefixed so several
 pictures can share one SVG document), per-picture fixes are applied, and the
@@ -99,7 +99,7 @@ def main(extra: list[str]) -> None:
     for literal in extra:
         code = icons.code_for(literal)
         if code is None:
-            raise SystemExit(f"not a code point or catalogue name: {literal}")
+            raise SystemExit(f"not a code point, sequence, or catalogue name: {literal}")
         codes.add(code)
     TARGET.mkdir(parents=True, exist_ok=True)
     found: dict[str, list[float]] = {}

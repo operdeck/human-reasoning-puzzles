@@ -275,9 +275,11 @@ def murdoku_picture(
                     _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
         else:
             icon = icons.object_icon(name)
-            vertical_panel = icon is not None and icon.name == "control_panel" and y1 - y0 > x1 - x0
-            rotate = 90 if vertical_panel else 0
+            vertical = y1 - y0 > x1 - x0
+            rotate = 90 if icon is not None and icon.name in TURNED_ICONS and vertical else 0
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
+        if base == "tunnel":
+            _draw_tunnel_seams(canvas, board, piece, margin, cell)
     for item in board.edge_items:
         if item.kind == "window" and item.side is not None:
             _draw_wall_window(canvas, box(item.cells[0]), item.side, cell)
@@ -476,6 +478,8 @@ WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon
 # Objects drawn once per square, so a long stretch of them repeats rather than stretches.
 TILED_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "rails")
 BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
+# Wide blocking drawings that turn on a vertical footprint instead of squashing.
+TURNED_ICONS = frozenset({"control_panel", "tunnel"})
 SEAT_NAMES = frozenset({"bench", "bank", "bankje", "parkbank"}) | frozenset(
     name
     for name, icon in icons.OBJECT_ICONS.items()
@@ -2003,6 +2007,27 @@ def _walls(
     canvas.rectangle((low, low, high, high), outline=INK, width=thick)
 
 
+def _draw_tunnel_seams(
+    canvas: Canvas, board: Board, footprint: Sequence[Square], margin: int, cell: int
+) -> None:
+    """Keep an area boundary visible where it crosses a tunnel footprint."""
+    cells = set(footprint)
+    width = max(5, cell // 22) | 1
+    for square in footprint:
+        for neighbor in (Square(square.row + 1, square.col), Square(square.row, square.col + 1)):
+            if neighbor not in cells or board.region_of(square) == board.region_of(neighbor):
+                continue
+            if neighbor.row == square.row:
+                x = margin + neighbor.col * cell
+                y = margin + square.row * cell
+                line = (x, y, x, y + cell)
+            else:
+                x = margin + square.col * cell
+                y = margin + neighbor.row * cell
+                line = (x, y, x + cell, y)
+            canvas.line(line, fill=INK, width=width)
+
+
 def _draw_edge_item_doors(canvas: Canvas, board: Board, margin: int, cell: int) -> None:
     """Mark each simple door on the shared edge between its two cells."""
     width = max(4, cell // 10)
@@ -2129,7 +2154,8 @@ def _name_tag(canvas: Canvas, person: str, area: Box, cell: int, low: bool = Fal
     canvas.rounded_rectangle(
         tag, radius=cell // 8, fill=WHITE, outline=INK, width=max(2, cell // 40)
     )
-    _centred_text(canvas, person, tag, cell // 5, INK, max_width=cell - 3 * pad)
+    shown = person.replace("_", " ")
+    _centred_text(canvas, shown, tag, cell // 5, INK, max_width=cell - 3 * pad)
 
 
 def _centred_text(

@@ -32,7 +32,7 @@ class Icon:
     name: str
     unicode: str
     label: str
-    emoji: str | None = None  # code point of a vendored Noto Emoji picture
+    emoji: str | None = None  # code point(s) of a vendored Noto Emoji picture
     markup: str | None = None  # SVG drawing in `view` units
     view: Box = (0, 0, 100, 100)
     bounds: Box | None = None  # the visible part of `markup`, used by `draw(crop=True)`
@@ -179,6 +179,50 @@ TAMAGOTCHI = (
     '<g fill="#f6c945" stroke="#7a5b12" stroke-width="1">'
     '<circle cx="34" cy="118.5" r="2.6"/><circle cx="50" cy="119.3" r="2.6"/>'
     '<circle cx="66" cy="118.5" r="2.6"/></g>'
+)
+# A Vietnamese conical hat (non la) to lie behind a board: the tip rises above it,
+# with the brim and woven ribs visible around the board's edges.
+NON_LA = (
+    '<path d="M50 1C43 20 20 62 1 98Q50 116 99 98C80 62 57 20 50 1Z"'
+    ' fill="#ead39a" stroke="#8a6a32"'
+    ' stroke-width="1.5" stroke-linejoin="round"/>'
+    '<g fill="none" stroke="#b8975a" stroke-width="1">'
+    '<path d="M50 1L14 90M50 1L34 93M50 1V95M50 1L66 93M50 1L86 90"/>'
+    '<path d="M42 16Q50 18 58 16M33 34Q50 38 67 34M23 56Q50 61 77 56M13 80Q50 87 87 80"/>'
+    "</g>"
+    '<path d="M37 23Q50 27 63 23L66 29Q50 33 34 29Z" fill="#b28a4b"'
+    ' stroke="#8a6a32" stroke-width="1"/>'
+    '<path d="M1 98Q50 116 99 98Q50 110 1 98Z" fill="#c9ad6c"/>'
+)
+# A fried spring roll on a lettuce leaf, drawn because no emoji shows one.
+LOEMPIA = (
+    '<path d="M10 74Q22 50 52 56Q84 60 90 80Q60 94 28 90Q12 86 10 74Z" fill="#7cc35a"'
+    ' stroke="#3f7a2c" stroke-width="3" stroke-linejoin="round"/>'
+    '<g transform="rotate(-24 50 60)">'
+    '<rect x="14" y="44" width="72" height="28" rx="14" fill="#e3a23e" stroke="#7a4a14"'
+    ' stroke-width="4"/>'
+    '<path d="M30 46Q26 58 30 70M46 45Q42 58 46 71M62 45Q58 58 62 71M76 47Q72 58 76 69"'
+    ' fill="none" stroke="#b86e1c" stroke-width="3" stroke-linecap="round"/>'
+    '<path d="M22 52Q40 48 70 50" fill="none" stroke="#f6d48a" stroke-width="3"'
+    ' stroke-linecap="round"/>'
+    "</g>"
+)
+# A tunnel seen from above: two camouflaged holes joined by a passage underground.
+TUNNEL = (
+    '<rect x="4" y="22" width="192" height="56" rx="26" fill="#b98a55" stroke="#6b4a26"'
+    ' stroke-width="3"/>'
+    '<path d="M50 50H150" fill="none" stroke="#5a3d1e" stroke-width="5"'
+    ' stroke-dasharray="10 8" stroke-linecap="round"/>'
+    '<g fill="#5f9e3c" stroke="#2f5e1c" stroke-width="1.5">'
+    '<ellipse cx="22" cy="32" rx="10" ry="5" transform="rotate(-30 22 32)"/>'
+    '<ellipse cx="74" cy="68" rx="10" ry="5" transform="rotate(25 74 68)"/>'
+    '<ellipse cx="126" cy="32" rx="10" ry="5" transform="rotate(-25 126 32)"/>'
+    '<ellipse cx="178" cy="68" rx="10" ry="5" transform="rotate(30 178 68)"/>'
+    "</g>"
+    '<g fill="#2b1d10" stroke="#6b4a26" stroke-width="3">'
+    '<rect x="26" y="33" width="34" height="34" rx="4"/>'
+    '<rect x="140" y="33" width="34" height="34" rx="4"/>'
+    "</g>"
 )
 BATHROBE = (
     '<path d="M31 12L15 25L22 40L29 36V87H71V36L78 40L85 25L69 12L60 23H40Z"'
@@ -709,6 +753,16 @@ REGISTRY: dict[str, Icon] = {
             bounds=(0, 22, 100, 122),
         ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
+        Icon(
+            "non_la",
+            "\U0001f452",
+            "Vietnamese conical hat",
+            markup=NON_LA,
+            view=(0, 0, 100, 124),
+            bounds=(10, 30, 90, 110),
+        ),
+        Icon("loempia", "\U0001f32f", "spring roll", markup=LOEMPIA),
+        Icon("tunnel", "\U0001f573", "tunnel", markup=TUNNEL, view=(0, 0, 200, 100)),
         Icon("katana", "\u2694", "katana", markup=KATANA),
         Icon("jumpsuit", "\U0001f455", "jumpsuit", markup=JUMPSUIT),
         Icon("van", "\U0001f699", "yellow van", markup=VAN),
@@ -739,6 +793,9 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "lapjeskat": "tortie_cat", "tortie_cat": "tortie_cat",
                 "ramenkom": "ramen_bowl", "ramen_bowl": "ramen_bowl",
                 "tamagotchi": "tamagotchi",
+                "non_la": "non_la", "nonla": "non_la", "conical_hat": "non_la",
+                "loempia": "loempia", "spring_roll": "loempia",
+                "tunnel": "tunnel",
                 "sloffen": "slippers", "slippers": "slippers",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
@@ -806,6 +863,13 @@ CATALOGUE: dict[str, str] = {
     "bonsai": "1f38d", "tanabata": "1f38b",
     "tea": "1f375", "sake": "1f376",
     "scroll": "1f4dc", "hanafuda": "1f3b4",
+    # Vietnamese dishes
+    "buncha": "1f356", "bun_cha": "1f356",
+    "thitkho": "1f953", "thit_kho": "1f953",
+    "chaolong": "1f963", "chao_long": "1f963",
+    "phalau": "1f372", "pha_lau": "1f372",
+    "doi": "1f32d", "blood_sausage": "1f32d",
+    "pho": "1f35c", "rau_muong": "1f96c", "morning_glory": "1f96c",
     # indoors
     "bank": "1f6cb", "couch": "1f6cb", "sofa": "1f6cb", "bankstel": "1f6cb",
     "stoel": "1fa91", "chair": "1fa91",
@@ -876,11 +940,12 @@ def _base(name: str) -> str:
 def code_for(name: str) -> str | None:
     """The emoji code point for an object name; 'boom2' finds 'boom'.
 
-    A literal code point such as 'U+1F35C' is accepted too.
+    A literal code point or sequence such as 'U+1F35C' or 'U+1F475-1F3FF' is
+    accepted too.
     """
-    literal = re.fullmatch(r"[Uu]\+([0-9a-fA-F]{4,6})", name)
+    literal = re.fullmatch(r"[Uu]\+([0-9a-fA-F]{4,6}(?:[-_][0-9a-fA-F]{4,6})*)", name)
     if literal:
-        return literal[1].lower()
+        return literal[1].lower().replace("-", "_")
     return CATALOGUE.get(_base(name))
 
 
@@ -900,7 +965,8 @@ def object_icon(name: str) -> Icon | None:
     code = code_for(name)
     if code is None or svg.emoji_markup(code) is None:
         return None
-    return Icon(name, chr(int(code, 16)), name.replace("_", " "), emoji=code)
+    symbol = "".join(chr(int(point, 16)) for point in code.split("_"))
+    return Icon(name, symbol, name.replace("_", " "), emoji=code)
 
 
 def symbol(name: str) -> str:

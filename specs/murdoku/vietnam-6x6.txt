@@ -1,0 +1,26 @@
+# Spec for: uv run puzzle-lab murdoku-board specs/murdoku/vietnam-6x6.txt
+# Vietnam series, 6x6: Pippo and Swena look for a loempia and stay away from
+# the pork and offal dishes. A board-only draft: clues come from csp.clue_search.
+theme: vietnam-6x6
+size: 6
+language: nl
+areas: Hanoi Hue HoiAn Saigon
+# Fixed city colours across the series.
+colours: Hanoi=#F4CBC3 Hue=#D9C8EE HoiAn=#F6E3A1 Saigon=#C4DCF2
+people: Pippo Swena Linh Minh Tuan
+# The loempia shares its area with exactly the two travellers.
+late: Loempia
+companions: Pippo Swena
+companion_trait: reiziger
+object: buncha blocking in Hanoi
+object: chaolong blocking in Hue
+object: thitkho blocking in HoiAn
+object: phalau blocking in Saigon
+object: tunnel blocking across
+object: kruk standable x2
+decor: tunnel
+key_clue: away_from Pippo buncha chaolong thitkho phalau
+key_clue: away_from Swena buncha chaolong thitkho phalau
+candidates: 24
+keep: 12
+seed: 231

@@ -91,6 +91,7 @@ def test_icon_names_map_to_code_points():
     assert icons.code_for("ton") == icons.code_for("barrel") == "1f6e2"
     assert icons.code_for("stoel") == icons.code_for("chair")
     assert icons.code_for("window") == "1fa9f"
+    assert icons.code_for("U+1F475-1F3FF") == "1f475_1f3ff"
     assert icons.code_for("zeppelin") is None
     assert len(icons.NOTO_COMMIT) == 40
 
@@ -107,6 +108,10 @@ def test_object_names_keep_their_catalogue_meaning():
     # The family registry's "tree" (Tents) is a fir; a Murdoku tree stays deciduous.
     assert icons.lookup("tree").emoji == "1f332"
     assert icons.object_icon("tree").emoji == "1f333"
+    dark_oma = icons.object_icon("U+1F475-1F3FF")
+    assert dark_oma is not None
+    assert dark_oma.emoji == "1f475_1f3ff"
+    assert dark_oma.unicode == "\U0001f475\U0001f3ff"
     assert icons.object_icon("rug2").name == "carpet"
     assert icons.object_icon("bedieningspaneel").name == "control_panel"
     assert icons.object_icon("kruk").name == "stool"
@@ -283,6 +288,12 @@ def test_text_is_drawn_as_paths_from_the_bundled_font():
     assert "<text" not in text and "aria-label" in text
 
 
+def test_name_tags_show_underscores_as_spaces():
+    canvas = svg.Canvas(120, 120)
+    drawing._name_tag(canvas, "Rau_Muong", (0, 0, 120, 120), 120)
+    assert 'aria-label="Rau Muong"' in canvas.to_svg()
+
+
 def test_every_character_in_the_example_pictures_is_in_the_bundled_font():
     # Missing glyphs would print as empty boxes; svg.SUBSTITUTES covers signs
     # such as the minus that Noto Sans lacks.
@@ -418,6 +429,20 @@ def test_two_square_blocking_object_uses_one_spanning_icon(monkeypatch):
     name, area, options = calls[0]
     assert name == "crate" and area[2] - area[0] == 2 * CELL
     assert options["stretch"] is True
+
+
+def test_tunnel_keeps_a_crossing_area_boundary_visible():
+    board = Board(
+        2,
+        [["a", "b"], ["a", "b"]],
+        {"a": "west", "b": "east"},
+        [BoardObject("tunnel", "blocking", (Square(0, 0), Square(0, 1)))],
+        ["A", "B"],
+    )
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+    margin = CELL // 6
+
+    assert image.getpixel((margin + CELL, margin + CELL // 4)) == drawing.INK
 
 
 def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):

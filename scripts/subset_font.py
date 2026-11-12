@@ -4,7 +4,8 @@
 
 Downloads Noto Sans Regular from the pinned googlefonts/noto-fonts commit and
 keeps only the characters pictures can write: Latin-1, Latin Extended-A,
-general punctuation and the euro sign. Noto Sans has no minus sign (U+2212);
+the Vietnamese letters (horn vowels and Latin Extended Additional), general
+punctuation and the euro sign. Noto Sans has no minus sign (U+2212);
 `svg.SUBSTITUTES` draws it with the en dash instead. Text in pictures is drawn
 as paths from this font, so rendering never needs a system font or the network.
 """
@@ -30,6 +31,8 @@ SOURCE = (
 UNICODES = [
     *range(0x20, 0x7F),
     *range(0xA0, 0x180),
+    0x1A0, 0x1A1, 0x1AF, 0x1B0,
+    *range(0x1EA0, 0x1EFA),
     *range(0x2010, 0x2040),
     0x20AC,
 ]

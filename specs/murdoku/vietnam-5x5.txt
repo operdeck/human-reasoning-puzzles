@@ -1,0 +1,22 @@
+# Spec for: uv run puzzle-lab murdoku-board specs/murdoku/vietnam-5x5.txt
+# Vietnam series, 5x5: Pippo and Swena look for pho ga.
+theme: vietnam-5x5
+size: 5
+language: nl
+areas: Hanoi HoiAn Saigon
+colours: Hanoi=#F4CBC3 HoiAn=#F6E3A1 Saigon=#C4DCF2
+people: Pippo Swena Lan Khoa
+late: PhoGa
+companions: Pippo Swena
+companion_trait: reiziger
+object: buncha blocking in Hanoi
+object: thitkho blocking in HoiAn
+object: phalau blocking in Saigon
+object: tunnel blocking across
+object: kruk standable x1
+decor: tunnel
+key_clue: away_from Pippo buncha thitkho phalau
+key_clue: away_from Swena buncha thitkho phalau
+candidates: 24
+keep: 12
+seed: 231

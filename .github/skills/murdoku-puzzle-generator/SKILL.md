@@ -53,6 +53,20 @@ reasoning in the conversation or by throwaway scripts; see
    them and `thin` remove the unneeded ones (see [Repo tools first](#repo-tools-first)).
    Follow [Fair clues](#fair-clues) and, for a mystery,
    [Late-reveal mysteries](#late-reveal-mysteries).
+   For a fresh board, start from `uv run puzzle-lab murdoku-board SPEC` (see
+   `specs/murdoku/vietnam-6x6.txt`): a short spec of size, areas, people, the
+   late figure with companions, objects and key clues gives ranked drafts
+   with an intended placement, contact sheets and a report of rejections.
+   Use `--avoid examples` to skip layouts already in the collection, including
+   rotated, mirrored or region-renamed copies. `--suggest` closes each kept
+   draft with `clue_search suggest` (late figure excluded, key clues kept
+   necessary, every other figure named via `--cover`, and `decor:` objects
+   omitted from clue suggestions) and reports clue count, grade and whether the
+   late figure is resolved last. Pick a draft that closes at the target grade
+   and passes the late-reveal check; a roomy late-figure area often lets a
+   companion and the late figure swap and never closes. An object line ending
+   in `across` (a tunnel, a bridge) straddles one border between exactly two
+   areas. Pick one, then thin and check as above.
 4. Render the puzzle and solution PNGs and get an independent, image-based
    critique from another LLM (see [Independent visual critique](#independent-visual-critique)).
    Review the suggestions against the user's constraints; incorporate useful
@@ -76,9 +90,11 @@ its short output, and decide:
 | a person's live squares while solving | `uv run csp FILE --track-person P` |
 | clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
 | ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` (several numbers: each stays necessary) |
+| ... so every figure (outside `--exclude`) gets a clue | add `--cover` to `suggest` |
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
+| draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts; `decor: tunnel` omits an object from clue suggestions) |
 | pictures, booklet | `--png`, `--docx` |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
@@ -450,6 +466,7 @@ Arguments are one-token names; `[n]` is optional.
 | `in_region` / `outside P region...` | in one of / none of the regions |
 | `in_tagged` / `not_in_tagged` / `only_in_tagged P tag...` | in / not in tagged regions; `only_` is for `Rules:` |
 | `next_to` / `not_next_to P thing...` | shares a side with an object cell **in the same area**; doors and point objects count across borders; no diagonals. On a multi-square standable object you are also next to it (text: "on or next to"). A **mark** target (bare or `mark:<name>`) counts across borders and is *beside* the marked cells, not on them |
+| `away_from P thing...` | not on and sharing neither a side nor a corner with any square of the things, in any area (doors, windows and point objects by the squares they touch) |
 | `on` / `not_on` / `only_on P standable...` | on one / none; `only_on` also keeps everyone else off them |
 | `at P edge-item...` | on a door or window cell |
 | `on_mark` / `not_on_mark P mark...` | on / off marked cells (bare or `mark:<name>`) |
