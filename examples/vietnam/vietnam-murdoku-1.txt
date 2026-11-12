@@ -68,7 +68,7 @@ De phở gà is een van de vijf figuren. Zet iedereen op een vrij vakje, met é�
 
 Figures:
 Pippo: oma 1 ; icon=U+1F475
-Swena: oma 2 ; icon=U+1F475
+Swena: oma 2 ; icon=U+1F475-1F3FF
 Lan: ; icon=U+1F469
 Khoa: ; icon=U+1F468
 PhoGa: kippensoep met rijstnoedels ; icon=U+1F35C

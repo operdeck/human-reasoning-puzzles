@@ -85,7 +85,7 @@ De rau muống xào is een van de zeven figuren. Zet iedereen op een vrij vakje,
 
 Figures:
 Pippo: oma 1 ; icon=U+1F475
-Swena: oma 2 ; icon=U+1F475
+Swena: oma 2 ; icon=U+1F475-1F3FF
 Mai: ; icon=U+1F475
 Hoa: ; icon=U+1F469
 Duc: ; icon=U+1F468

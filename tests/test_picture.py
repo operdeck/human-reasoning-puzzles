@@ -91,6 +91,7 @@ def test_icon_names_map_to_code_points():
     assert icons.code_for("ton") == icons.code_for("barrel") == "1f6e2"
     assert icons.code_for("stoel") == icons.code_for("chair")
     assert icons.code_for("window") == "1fa9f"
+    assert icons.code_for("U+1F475-1F3FF") == "1f475_1f3ff"
     assert icons.code_for("zeppelin") is None
     assert len(icons.NOTO_COMMIT) == 40
 
@@ -107,6 +108,10 @@ def test_object_names_keep_their_catalogue_meaning():
     # The family registry's "tree" (Tents) is a fir; a Murdoku tree stays deciduous.
     assert icons.lookup("tree").emoji == "1f332"
     assert icons.object_icon("tree").emoji == "1f333"
+    dark_oma = icons.object_icon("U+1F475-1F3FF")
+    assert dark_oma is not None
+    assert dark_oma.emoji == "1f475_1f3ff"
+    assert dark_oma.unicode == "\U0001f475\U0001f3ff"
     assert icons.object_icon("rug2").name == "carpet"
     assert icons.object_icon("bedieningspaneel").name == "control_panel"
     assert icons.object_icon("kruk").name == "stool"

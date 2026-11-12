@@ -73,7 +73,7 @@ De loempia is een van de zes figuren. Zet iedereen op een vrij vakje, met één 
 
 Figures:
 Pippo: oma 1 ; icon=U+1F475
-Swena: oma 2 ; icon=U+1F475
+Swena: oma 2 ; icon=U+1F475-1F3FF
 Linh: ; icon=U+1F469
 Minh: ; icon=U+1F474
 Tuan: ; icon=U+1F468

@@ -32,7 +32,7 @@ class Icon:
     name: str
     unicode: str
     label: str
-    emoji: str | None = None  # code point of a vendored Noto Emoji picture
+    emoji: str | None = None  # code point(s) of a vendored Noto Emoji picture
     markup: str | None = None  # SVG drawing in `view` units
     view: Box = (0, 0, 100, 100)
     bounds: Box | None = None  # the visible part of `markup`, used by `draw(crop=True)`
@@ -940,11 +940,12 @@ def _base(name: str) -> str:
 def code_for(name: str) -> str | None:
     """The emoji code point for an object name; 'boom2' finds 'boom'.
 
-    A literal code point such as 'U+1F35C' is accepted too.
+    A literal code point or sequence such as 'U+1F35C' or 'U+1F475-1F3FF' is
+    accepted too.
     """
-    literal = re.fullmatch(r"[Uu]\+([0-9a-fA-F]{4,6})", name)
+    literal = re.fullmatch(r"[Uu]\+([0-9a-fA-F]{4,6}(?:[-_][0-9a-fA-F]{4,6})*)", name)
     if literal:
-        return literal[1].lower()
+        return literal[1].lower().replace("-", "_")
     return CATALOGUE.get(_base(name))
 
 
@@ -964,7 +965,8 @@ def object_icon(name: str) -> Icon | None:
     code = code_for(name)
     if code is None or svg.emoji_markup(code) is None:
         return None
-    return Icon(name, chr(int(code, 16)), name.replace("_", " "), emoji=code)
+    symbol = "".join(chr(int(point, 16)) for point in code.split("_"))
+    return Icon(name, symbol, name.replace("_", " "), emoji=code)
 
 
 def symbol(name: str) -> str:
