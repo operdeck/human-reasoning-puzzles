@@ -72,8 +72,8 @@ Na hun eerste kom phở gà zoeken Pippo en Swena in Vietnam naar een knapperige
 De loempia is een van de zes figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De loempia ligt in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
 
 Figures:
-Pippo: oma ; icon=U+1F9D4
-Swena: oma ; icon=U+1F471
+Pippo: oma 1 ; icon=U+1F475
+Swena: oma 2 ; icon=U+1F475
 Linh: ; icon=U+1F469
 Minh: ; icon=U+1F474
 Tuan: ; icon=U+1F468

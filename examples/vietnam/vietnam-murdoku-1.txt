@@ -67,8 +67,8 @@ Pippo en Swena trekken met hun rugzak door Vietnam, op zoek naar een kom phở g
 De phở gà is een van de vijf figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De phở gà staat in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
 
 Figures:
-Pippo: oma ; icon=U+1F9D4
-Swena: oma ; icon=U+1F471
+Pippo: oma 1 ; icon=U+1F475
+Swena: oma 2 ; icon=U+1F475
 Lan: ; icon=U+1F469
 Khoa: ; icon=U+1F468
 PhoGa: kippensoep met rijstnoedels ; icon=U+1F35C
