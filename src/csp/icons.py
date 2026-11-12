@@ -180,18 +180,19 @@ TAMAGOTCHI = (
     '<circle cx="34" cy="118.5" r="2.6"/><circle cx="50" cy="119.3" r="2.6"/>'
     '<circle cx="66" cy="118.5" r="2.6"/></g>'
 )
-# A Vietnamese conical hat (non la) to lie behind a board: the tip rises above the
-# board, the brim and a ribbon chin strap hang below it; y = 30..110 is behind it.
+# A Vietnamese conical hat (non la) to lie behind a board: the tip rises above it,
+# with the brim and woven ribs visible around the board's edges.
 NON_LA = (
-    '<path d="M50 1L1 104Q50 116 99 104Z" fill="#ead39a" stroke="#8a6a32"'
+    '<path d="M50 1C43 20 20 62 1 98Q50 116 99 98C80 62 57 20 50 1Z"'
+    ' fill="#ead39a" stroke="#8a6a32"'
     ' stroke-width="1.5" stroke-linejoin="round"/>'
     '<g fill="none" stroke="#b8975a" stroke-width="1">'
-    '<path d="M50 1L19 108M50 1L34 111M50 1V113M50 1L66 111M50 1L81 108"/>'
+    '<path d="M50 1L14 90M50 1L34 93M50 1V95M50 1L66 93M50 1L86 90"/>'
     '<path d="M42 16Q50 18 58 16M33 34Q50 38 67 34M23 56Q50 61 77 56M13 80Q50 87 87 80"/>'
     "</g>"
-    '<path d="M1 104Q50 116 99 104Q50 111 1 104Z" fill="#c9ad6c"/>'
-    '<path d="M24 107Q50 128 76 107" fill="none" stroke="#c8405e" stroke-width="2.5"'
-    ' stroke-linecap="round"/>'
+    '<path d="M37 23Q50 27 63 23L66 29Q50 33 34 29Z" fill="#b28a4b"'
+    ' stroke="#8a6a32" stroke-width="1"/>'
+    '<path d="M1 98Q50 116 99 98Q50 110 1 98Z" fill="#c9ad6c"/>'
 )
 # A fried spring roll on a lettuce leaf, drawn because no emoji shows one.
 LOEMPIA = (

@@ -278,6 +278,8 @@ def murdoku_picture(
             vertical = y1 - y0 > x1 - x0
             rotate = 90 if icon is not None and icon.name in TURNED_ICONS and vertical else 0
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
+        if base == "tunnel":
+            _draw_tunnel_seams(canvas, board, piece, margin, cell)
     for item in board.edge_items:
         if item.kind == "window" and item.side is not None:
             _draw_wall_window(canvas, box(item.cells[0]), item.side, cell)
@@ -2003,6 +2005,27 @@ def _walls(
             y0, y1 = max(low, y0 - grow[0]), min(high, y1 + grow[1])
         canvas.line((x0, y0, x1, y1), fill=INK, width=thick)
     canvas.rectangle((low, low, high, high), outline=INK, width=thick)
+
+
+def _draw_tunnel_seams(
+    canvas: Canvas, board: Board, footprint: Sequence[Square], margin: int, cell: int
+) -> None:
+    """Keep an area boundary visible where it crosses a tunnel footprint."""
+    cells = set(footprint)
+    width = max(5, cell // 22) | 1
+    for square in footprint:
+        for neighbor in (Square(square.row + 1, square.col), Square(square.row, square.col + 1)):
+            if neighbor not in cells or board.region_of(square) == board.region_of(neighbor):
+                continue
+            if neighbor.row == square.row:
+                x = margin + neighbor.col * cell
+                y = margin + square.row * cell
+                line = (x, y, x, y + cell)
+            else:
+                x = margin + square.col * cell
+                y = margin + neighbor.row * cell
+                line = (x, y, x + cell, y)
+            canvas.line(line, fill=INK, width=width)
 
 
 def _draw_edge_item_doors(canvas: Canvas, board: Board, margin: int, cell: int) -> None:

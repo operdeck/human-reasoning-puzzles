@@ -1,0 +1,99 @@
+# Board drafted with puzzle-lab murdoku-board (seed 232, candidate 13).
+
+Size: 7
+Language: nl
+
+Words:
+Hanoi: in Hanoi
+Huế: in Huế
+Hội_An: in Hội An
+Đà_Lạt: in Đà Lạt
+Saigon: in Saigon
+Duc: Đức
+RauMuong: de rau muống
+buncha: de bún chả
+chaolong: de cháo lòng
+thitkho: de thịt kho
+doi: de dồi
+phalau: de phá lấu
+tunnel: de Vietcongtunnel
+kruk: de kruk
+clue.alone_with_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
+
+Regions:
+a: Hanoi #F4CBC3
+b: Huế #D9C8EE
+c: Hội_An #F6E3A1
+d: Đà_Lạt #CFE6C0
+e: Saigon #C4DCF2
+
+Grid:
+b b b a a a a
+b b b b a a a
+c c b b d a d
+c c c c d d d
+c c c e d d d
+c e e e e d d
+e e e e e e d
+
+Objects:
+buncha: blocking r1c6
+chaolong: blocking r1c1
+thitkho: blocking r4c2
+doi: blocking r5c6
+phalau: blocking r7c4
+tunnel: blocking r1c4 r2c4
+kruk: standable r7c2
+kruk: standable r4c4
+kruk: standable r3c3
+
+Backdrop:
+non_la
+
+People:
+Pippo
+Swena
+Mai
+Hoa
+Duc
+Quang
+RauMuong
+
+Attributes:
+reiziger: Pippo Swena
+
+Rules:
+alone_with RauMuong attribute:reiziger 2
+
+Clues:
+away_from Pippo buncha chaolong thitkho doi phalau
+away_from Swena buncha chaolong thitkho doi phalau
+next_to Mai thitkho
+next_to Duc doi
+next_to Quang doi
+not_next_to Pippo kruk
+in_region Hoa Đà_Lạt
+left_of Quang Duc
+
+# Booklet text for --docx (optional).
+Title:
+Vietnam Murdoku 7x7: Groen uit de wok
+
+Intro:
+Na phở gà en loempia willen Pippo en Swena iets groens: rau muống xào, waterspinazie uit de wok met knoflook. Overal staan ook gerechten met varkensvlees of orgaanvlees, en daar blijven ze ver vandaan. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
+De rau muống xào is een van de zeven figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De rau muống ligt in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
+
+Figures:
+Pippo: oma ; icon=U+1F9D4
+Swena: oma ; icon=U+1F471
+Mai: ; icon=U+1F475
+Hoa: ; icon=U+1F469
+Duc: ; icon=U+1F468
+Quang: ; icon=U+1F9D1
+RauMuong: rau muống xào, waterspinazie met knoflook ; icon=U+1F96C
+
+Question:
+Waar vinden Pippo en Swena hun rau muống xào?
+
+Reveal:
+De rau muống staat in Huế, waar alleen Pippo en Swena zitten.

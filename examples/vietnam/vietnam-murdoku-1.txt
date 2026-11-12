@@ -1,0 +1,80 @@
+# Board drafted with puzzle-lab murdoku-board (seed 232, candidate 11).
+
+Size: 5
+Language: nl
+
+Words:
+Hanoi: in Hanoi
+Hội_An: in Hội An
+Saigon: in Saigon
+PhoGa: de phở gà
+buncha: de bún chả
+thitkho: de thịt kho
+phalau: de phá lấu
+tunnel: de Vietcongtunnel
+kruk: de kruk
+clue.alone_with_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
+
+Regions:
+a: Hanoi #F4CBC3
+b: Hội_An #F6E3A1
+c: Saigon #C4DCF2
+
+Grid:
+a a b b b
+a a b b b
+c c b b b
+c c c c c
+c c c c c
+
+Objects:
+buncha: blocking r1c1
+thitkho: blocking r1c5
+phalau: blocking r4c1
+tunnel: blocking r3c5 r4c5
+kruk: standable r4c3
+
+Backdrop:
+non_la
+
+People:
+Pippo
+Swena
+Lan
+Khoa
+PhoGa
+
+Attributes:
+reiziger: Pippo Swena
+
+Rules:
+alone_with PhoGa attribute:reiziger 2
+
+Clues:
+away_from Pippo buncha thitkho phalau
+away_from Swena buncha thitkho phalau
+above Lan Khoa
+next_to Khoa thitkho
+not_next_to Pippo kruk
+above Swena Pippo
+
+# Booklet text for --docx (optional).
+Title:
+Vietnam Murdoku 5x5: Op zoek naar phở gà
+
+Intro:
+Pippo en Swena trekken met hun rugzak door Vietnam, op zoek naar een kom phở gà. Overal staan gerechten met varkensvlees of orgaanvlees, en daar blijven ze ver vandaan. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
+De phở gà is een van de vijf figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De phở gà staat in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
+
+Figures:
+Pippo: oma ; icon=U+1F9D4
+Swena: oma ; icon=U+1F471
+Lan: ; icon=U+1F469
+Khoa: ; icon=U+1F468
+PhoGa: kippensoep met rijstnoedels ; icon=U+1F35C
+
+Question:
+Waar vinden Pippo en Swena hun phở gà?
+
+Reveal:
+De phở gà staat in Saigon, waar alleen Pippo en Swena zitten.

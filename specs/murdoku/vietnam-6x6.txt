@@ -18,8 +18,9 @@ object: thitkho blocking in HoiAn
 object: phalau blocking in Saigon
 object: tunnel blocking across
 object: kruk standable x2
+decor: tunnel
 key_clue: away_from Pippo buncha chaolong thitkho phalau
 key_clue: away_from Swena buncha chaolong thitkho phalau
 candidates: 24
-keep: 6
+keep: 12
 seed: 231

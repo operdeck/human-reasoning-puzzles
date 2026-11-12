@@ -16,8 +16,9 @@ object: doi blocking in DaLat
 object: phalau blocking in Saigon
 object: tunnel blocking across
 object: kruk standable x3
+decor: tunnel
 key_clue: away_from Pippo buncha chaolong thitkho doi phalau
 key_clue: away_from Swena buncha chaolong thitkho doi phalau
 candidates: 24
-keep: 6
+keep: 12
 seed: 231

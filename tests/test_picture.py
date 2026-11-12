@@ -426,6 +426,20 @@ def test_two_square_blocking_object_uses_one_spanning_icon(monkeypatch):
     assert options["stretch"] is True
 
 
+def test_tunnel_keeps_a_crossing_area_boundary_visible():
+    board = Board(
+        2,
+        [["a", "b"], ["a", "b"]],
+        {"a": "west", "b": "east"},
+        [BoardObject("tunnel", "blocking", (Square(0, 0), Square(0, 1)))],
+        ["A", "B"],
+    )
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+    margin = CELL // 6
+
+    assert image.getpixel((margin + CELL, margin + CELL // 4)) == drawing.INK
+
+
 def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
     board = Board(
         2,
