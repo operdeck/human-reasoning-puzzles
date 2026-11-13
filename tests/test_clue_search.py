@@ -1,6 +1,8 @@
 """The clue search helpers used to thin and complete Murdoku clue sets."""
 
+import multiprocessing
 import re
+import time
 
 import pytest
 
@@ -29,6 +31,28 @@ def test_outcome_reports_unique_solution_and_grade():
     assert result.solutions == 1
     assert result.grade == "relations"
     assert result.good
+
+
+@pytest.mark.skipif("fork" not in multiprocessing.get_all_start_methods(), reason="fork-only stubs")
+def test_outcome_times_each_solver_separately_and_preserves_a_completed_count(monkeypatch):
+    def solutions(_text, _limit):
+        time.sleep(0.6)
+        return [{}]
+
+    def grade(_text, _late_person):
+        time.sleep(0.6)
+        return "count", None
+
+    monkeypatch.setattr(clue_search.brute, "solutions", solutions)
+    monkeypatch.setattr(clue_search, "_measure", grade)
+    assert clue_search.outcome("", timeout=1) == clue_search.Outcome(1, "count")
+
+    def slow_grade(_text, _late_person):
+        time.sleep(2)
+        return "count", None
+
+    monkeypatch.setattr(clue_search, "_measure", slow_grade)
+    assert clue_search.outcome("", timeout=1) == clue_search.Outcome(1, None)
 
 
 def test_outcome_checks_that_the_late_figure_is_resolved_last():

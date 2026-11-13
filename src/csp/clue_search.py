@@ -34,6 +34,7 @@ import sys
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from queue import Empty
 from typing import Any
 
 from . import murdoku, report
@@ -140,8 +141,7 @@ def without_mark_condition(text: str, name: str) -> str:
     return "\n".join(out) + "\n"
 
 
-def _measure(text: str, late_person: str | None) -> tuple[int, str, bool | None]:
-    count = len(brute.solutions(text, 2))
+def _measure(text: str, late_person: str | None) -> tuple[str, bool | None]:
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
     domains = (
@@ -178,35 +178,53 @@ def _measure(text: str, late_person: str | None) -> tuple[int, str, bool | None]
             and bool(other_resolutions)
             and first_singleton[late_person] > max(other_resolutions)
         )
-    return count, report.grade(fired) if result.solved else "unsolved", late_last
+    return report.grade(fired) if result.solved else "unsolved", late_last
 
 
-def _child(text: str, late_person: str | None, queue: Any) -> None:
+def _child(text: str, late_person: str | None, queue: Any, *, grading: bool) -> None:
     try:
-        queue.put(_measure(text, late_person))
+        queue.put(_measure(text, late_person) if grading else len(brute.solutions(text, 2)))
     except ValueError as error:
         queue.put(error)
 
 
-def outcome(text: str, timeout: float = 5.0, late_person: str | None = None) -> Outcome:
-    """Measure solutions and grade, optionally checking if `late_person` is placed last."""
+def _timed(text: str, timeout: float, late_person: str | None, *, grading: bool) -> Any:
     context: Any = multiprocessing.get_context(
         "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
     )
     queue = context.Queue()
-    process = context.Process(target=_child, args=(text, late_person, queue), daemon=True)
+    process = context.Process(
+        target=_child, args=(text, late_person, queue), kwargs={"grading": grading}, daemon=True
+    )
     process.start()
     process.join(timeout)
     if process.is_alive():
         process.kill()
         process.join()
-        return Outcome(None, None)
-    result = queue.get() if not queue.empty() else None
+        queue.close()
+        return None
+    try:
+        result = queue.get(timeout=1)
+    except Empty as error:
+        raise RuntimeError(
+            f"clue search worker exited without a result: {process.exitcode}"
+        ) from error
+    finally:
+        queue.close()
     if isinstance(result, ValueError):
         raise result
-    if result is None:
+    return result
+
+
+def outcome(text: str, timeout: float = 5.0, late_person: str | None = None) -> Outcome:
+    """Measure solutions and grade with separate timeouts for the two solvers."""
+    count = _timed(text, timeout, late_person, grading=False)
+    if count is None:
         return Outcome(None, None)
-    return Outcome(*result)
+    grade = _timed(text, timeout, late_person, grading=True)
+    if grade is None:
+        return Outcome(count, None)
+    return Outcome(count, *grade)
 
 
 def removal_report(text: str, timeout: float = 5.0) -> list[tuple[int, str, Outcome]]:
