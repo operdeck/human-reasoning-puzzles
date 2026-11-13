@@ -478,6 +478,21 @@ def test_tunnel_keeps_a_crossing_area_boundary_visible():
     assert image.getpixel((margin + CELL, margin + CELL // 4)) == drawing.INK
 
 
+@pytest.mark.parametrize(("right_region", "colour"), [("a", drawing.WHITE), ("b", drawing.INK)])
+def test_standable_object_keeps_square_and_area_boundaries_visible(right_region, colour):
+    board = Board(
+        2,
+        [["a", right_region], ["a", right_region]],
+        {"a": "west", "b": "east"},
+        [BoardObject("bridge", "standable", (Square(0, 0), Square(0, 1)))],
+        ["A", "B"],
+    )
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+    margin = CELL // 6
+
+    assert image.getpixel((margin + CELL, margin + CELL // 4)) == colour
+
+
 def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
     board = Board(
         2,
