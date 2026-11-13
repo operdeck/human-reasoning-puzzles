@@ -1207,7 +1207,64 @@ outside Ben room
 
     assert "Ada on r1c1" in story
     assert "Ben on r2c2" in story
+    assert "Ada is on a quiet square, so **Ada is alone in the room**" in story
     assert "__occupant_" not in story
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Ada is on a friendly square, so **Ada has company in the room**"),
+        (
+            "nl",
+            "Ada staat op een vakje met markering friendly, "
+            "dus **Ada heeft gezelschap in de room**",
+        ),
+    ],
+)
+def test_story_explains_company_when_a_marked_square_is_occupied(language, expected):
+    text = f"""Language: {language}
+Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Marks:
+friendly: r1c1 ; not_alone
+Clues:
+on_mark Ada friendly
+"""
+    assert expected in explain(text)
+
+
+def test_story_explains_a_marked_square_placed_after_a_direct_clue():
+    text = """Size: 3
+Regions:
+a: room
+b: hall
+c: garden
+Grid:
+a b b
+a b b
+c c c
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r2c1 ; alone
+bench: r1c2
+Clues:
+in_region Ada room
+on_mark Ben bench
+"""
+    explanation = explain(text)
+    expected = "**Ada on r2c1**. Ada is on a quiet square, so **Ada is alone in the room**"
+    assert expected in explanation
 
 
 def test_story_explains_complementary_reified_counts():

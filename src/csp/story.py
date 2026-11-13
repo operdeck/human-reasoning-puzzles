@@ -192,6 +192,8 @@ PHRASES: dict[str, dict[str, str]] = {
             "and its other squares would be empty"
         ),
         "mark_case.not_alone": "the square is marked {mark}, so {who} would have company {where}",
+        "mark_placed.alone": "{who} is on a {mark} square, so **{who} is alone {where}**",
+        "mark_placed.not_alone": "{who} is on a {mark} square, so **{who} has company {where}**",
         "mark_blocked.alone": (
             "{who} is {where} but cannot stand on a {mark} square there. "
             "Anyone on a {mark} square would be alone, so **nobody can use those squares {where}**"
@@ -474,6 +476,12 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "mark_case.not_alone": (
             "het vakje heeft markering {mark}, dus {who} zou samen met iemand zijn {where}"
+        ),
+        "mark_placed.alone": (
+            "{who} staat op een vakje met markering {mark}, dus **{who} is alleen {where}**"
+        ),
+        "mark_placed.not_alone": (
+            "{who} staat op een vakje met markering {mark}, dus **{who} heeft gezelschap {where}**"
         ),
         "mark_blocked.alone": (
             "{who} is {where} maar kan daar niet op een vakje met markering {mark} staan. "
@@ -1481,7 +1489,9 @@ class Story:
         options = {p: {start.value_of(lit) for lit in start.options(p)} for p in self.board.people}
         state = _State(options, {p: set(s) for p, s in options.items()})
         state.history = compiled
-        paragraphs = [self._opening(compiled, state)]
+        opening = self._opening(compiled, state)
+        consequences = self._mark_placement_consequences(state.announced, state)
+        paragraphs = [" ".join([opening, *consequences])]
         sentences: list[str] = []
         placed: list[str] = []
         mark = len(state.announced)  # who the current bullet has placed starts here
@@ -1502,9 +1512,15 @@ class Story:
             else:
                 sentences += self._refuted(refuted)
                 refuted = []
+                previously_announced = len(state.announced)
                 said = self._firing(rule, steps, state)
                 if said:
                     sentences.append(said)
+                    sentences.extend(
+                        self._mark_placement_consequences(
+                            state.announced[previously_announced:], state
+                        )
+                    )
                     if rule == "single" and steps[0].asserted and steps[0].var in self.board.people:
                         placed.append(steps[0].var)
             last = i + 1 == len(firings)
@@ -1521,6 +1537,26 @@ class Story:
             paragraphs.append(" ".join(self._merged(sentences)))
         paragraphs.extend(self._final_role_reveals(solved, state))
         return "\n\n".join(f"- {p}" for p in paragraphs)
+
+    def _mark_placement_consequences(self, people: Sequence[str], state: _State) -> list[str]:
+        consequences = []
+        for person in people:
+            if len(state.options[person]) != 1:
+                continue
+            square = next(iter(state.options[person]))
+            where = self.places.region(self.board.region_names[self.board.region_of(square)])
+            for mark in self.board.marks:
+                if square in mark.cells and mark.occupant_condition is not None:
+                    consequences.append(
+                        self.say(
+                            f"mark_placed.{mark.occupant_condition}",
+                            who=person,
+                            mark=mark.name.replace("_", " "),
+                            where=where,
+                        )
+                        + "."
+                    )
+        return consequences
 
     def _final_role_reveals(self, model: Model, state: _State) -> list[str]:
         """Close the explanation with a role identity inferred from solved positions."""
