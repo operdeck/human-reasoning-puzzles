@@ -1701,8 +1701,6 @@ class Story:
                         where = ""
                 if where:
                     where = _emphasize(where)
-                if where is None:
-                    where = self.say("squares", n=self.say.number(len(squares)))
             suffix = f": {where}" if where else ""
             if line and person not in placed:
                 kind, index = line

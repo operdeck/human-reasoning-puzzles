@@ -1095,6 +1095,8 @@ not_next_to Tarakotchi books
 not_next_to Violetchi backpack
 """
     explanation = explain(text)
+    assert "Memetchi is not next to the slide (10)." in explanation
+    assert "64 squares" not in explanation
     assert (
         "then Memetchi is on r9c7, then Akumatchi is in the market, "
         "but a friendly square needs company, "
