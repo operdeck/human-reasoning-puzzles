@@ -120,6 +120,9 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "doc.clue_at": "At a door or window means standing on a square it touches.",
         "doc.clue_distance": "Distance counts steps across sides, not diagonals.",
+        "doc.clue_neighboring_areas": (
+            "Areas are neighbors when they share a side, not just a corner."
+        ),
         "doc.clue_away_from": (
             "Away from an object means not on it and sharing neither a side nor a corner with "
             "it, in any area."
@@ -409,6 +412,9 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "doc.clue_at": "Bij een deur of raam betekent op een vakje staan dat eraan raakt.",
         "doc.clue_distance": "Afstand telt stappen over zijden, niet schuin.",
+        "doc.clue_neighboring_areas": (
+            "Gebieden grenzen aan elkaar als ze een zijde delen, niet alleen een hoek."
+        ),
         "doc.clue_away_from": (
             "Uit de buurt van een voorwerp betekent er niet op staan en er geen zijde of hoek "
             "mee delen, in welk gebied dan ook."
@@ -3625,6 +3631,8 @@ def murdoku_rules(text: str) -> list[str]:
         clue_notes.append(phrase(text, "doc.clue_at"))
     if kinds & {"within", "at_least", "furthest"}:
         clue_notes.append(phrase(text, "doc.clue_distance"))
+    if kinds & {"adjacent_regions", "apart"}:
+        clue_notes.append(phrase(text, "doc.clue_neighboring_areas"))
     if "away_from" in kinds:
         clue_notes.append(phrase(text, "doc.clue_away_from"))
     said = [

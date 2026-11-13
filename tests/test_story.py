@@ -2046,6 +2046,33 @@ def test_dutch_player_rules_explain_object_adjacency():
     ) in rules
 
 
+@pytest.mark.parametrize("kind", ["adjacent_regions", "apart"])
+@pytest.mark.parametrize(
+    ("language", "note"),
+    [
+        ("en", "Areas are neighbors when they share a side, not just a corner."),
+        ("nl", "Gebieden grenzen aan elkaar als ze een zijde delen, niet alleen een hoek."),
+    ],
+)
+def test_player_rules_explain_neighboring_areas(kind, language, note):
+    text = f"""Size: 2
+Language: {language}
+Regions:
+a: Alpha
+b: Bravo
+Grid:
+a b
+a b
+People:
+Ada
+Ben
+Clues:
+{kind} Ada Ben
+"""
+    assert murdoku_rules(text).count(note) == 1
+    assert note not in murdoku_rules(text.replace(f"{kind} Ada Ben", "same_region Ada Ben"))
+
+
 def test_wrapped_intro_lines_stay_one_rule():
     rules = murdoku_rules(example("samen-in-japan.txt").read_text())
     assert rules[0].startswith("Zes reizigers zijn neergestreken")
