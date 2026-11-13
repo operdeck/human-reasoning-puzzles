@@ -1178,6 +1178,16 @@ class Places:
             return None
         return self.region(self.board.region_names[next(iter(regions))])
 
+    def common_line(self, squares: set[Square]) -> str | None:
+        """A row or column shared by every square, if there is one."""
+        for kind, indices in (
+            ("row", {sq.row for sq in squares}),
+            ("col", {sq.col for sq in squares}),
+        ):
+            if len(indices) == 1:
+                return self.say("in", what=self.line(kind, next(iter(indices))))
+        return None
+
     def regions(self, ids: set[str]) -> str:
         """Name candidate areas compactly, using an area tag where it fits."""
         names: list[str] = []
@@ -1559,17 +1569,22 @@ class Story:
             (person,) = condition.people
             squares = left[person]
             region = self.places.common_region(squares) if squares else None
+            clue = _cap(self._clue(condition))
+            where: str | None
             if len(squares) == 1:
                 location = self.places.placed(person, min(squares))
                 where = f"{region}: {location}" if region else location
                 state.announce(person)
             else:
-                where = (
-                    region
-                    or self.places.where(squares, self.places.free)
-                    or self.say("squares", n=self.say.number(len(squares)))
-                )
-            said.append(f"{_cap(self._clue(condition))} ({condition.number}): {where}.")
+                where = region or self.places.common_line(squares)
+                if where is None:
+                    where = self.places.where(squares, self.places.free)
+                    if where is not None and where in clue:
+                        where = ""
+                if where is None:
+                    where = self.say("squares", n=self.say.number(len(squares)))
+            suffix = f": {where}" if where else ""
+            said.append(f"{clue} ({condition.number}){suffix}.")
         for number, (kind, args) in enumerate(self.clues, 1):
             if kind not in ("has_attribute", "not_attribute", "unique_attribute"):
                 continue

@@ -366,6 +366,18 @@ def test_story_describes_by_region_and_row_before_squares():
     assert "Luna kan alleen in kolom 1, daar kan verder niemand" in story
 
 
+def test_opening_uses_shared_columns_across_regions():
+    opening = explain(example("samen-in-de-blauwe-bladeren.txt").read_text()).split("\n\n")[0]
+    assert "Mizuki zit naast de torii (5): in kolom 1." in opening
+    assert "Goro zit naast het uithangbord met kanji (7): in kolom 6." in opening
+
+
+def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
+    opening = explain(example("murdoku_1_first_case.txt").read_text()).split("\n\n")[0]
+    assert "Ingrid is on a chair (1)." in opening
+    assert "Ingrid is on a chair (1): on a chair." not in opening
+
+
 def test_new_murdoku_clues_have_dutch_wording():
     square = murdoku.Square
     board = murdoku.Board(
