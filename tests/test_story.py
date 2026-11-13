@@ -5,6 +5,7 @@ story can be clumsy but never wrong.
 """
 
 import ast
+import dataclasses
 import re
 from pathlib import Path
 
@@ -12,7 +13,7 @@ import pytest
 
 import csp
 from csp import bruteforce, cli, murdoku
-from csp.core import Kind, Model, Solver
+from csp.core import Kind, Model, Solver, Step
 from csp.proof import Move, replay, shortest
 from csp.puzzlefile import detect, load_board
 from csp.story import (
@@ -1161,6 +1162,84 @@ left_of Mametchi Lovelitchi
     ) in explanation
     assert len(bruteforce.solutions(text)) == 1
     assert len(bruteforce.solutions(text.replace("; alone", ""))) > 1
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "**Ada cannot be on r1c1**: the square is marked friendly, so Ada would have "
+            "company in the cafe, then Ben is on r2c2, which clue 1 does not allow.",
+        ),
+        (
+            "nl",
+            "**Ada kan niet op r1k1**: het vakje heeft markering friendly, dus Ada zou "
+            "samen met iemand zijn in de cafe, dan zit Ben op r2k2, "
+            "en dat mag niet volgens aanwijzing 1.",
+        ),
+    ],
+)
+def test_hidden_mark_case_uses_its_only_possible_occupant(monkeypatch, language, expected):
+    text = """Size: 3
+Regions:
+a: cafe
+b: garden
+Grid:
+a a b
+a a b
+b b b
+Marks:
+friendly: r1c1 ; not_alone
+People:
+Ada
+Ben
+Cal
+Clues:
+adjacent_regions Ada Ben
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording(language))
+    constraint = next(
+        c
+        for c in story.model.constraints
+        if c.name == "mark friendly not_alone in cafe trigger count"
+    )
+    assert constraint.reified_by is not None
+    var = story.model.var_of(constraint.reified_by)
+    value = story.model.value_of(constraint.reified_by)
+    ada, ben = murdoku.Square(0, 0), murdoku.Square(1, 1)
+    trail = (
+        Step(var, value, True, "what_if", "assumed"),
+        Step("Ada", ada, True, "count", "", sources=(constraint.name,)),
+        Step(
+            "Ben",
+            ben,
+            True,
+            "count",
+            "",
+            sources=("mark friendly not_alone in cafe occupant count",),
+        ),
+    )
+    refutation = Step(
+        var, value, False, "what_if", "", sources=("Ada adjacent_regions Ben",), trail=trail
+    )
+    before = {person: set(board.free) - {ada} for person in board.people}
+    before["Ada"].add(ada)
+    options = {person: set(squares) - {ada} for person, squares in before.items()}
+    state = _State(
+        options, {p: set(squares) for p, squares in before.items()}, history=[refutation]
+    )
+    step = Step("Ada", ada, False, "count", "", sources=(constraint.name,))
+    monkeypatch.setattr("csp.story.essential", lambda *_args: [0, 1, 2])
+
+    assert story._mark_case_deduction(step, ["Ada"], before, state) == expected
+
+    before["Cal"].add(ada)
+    assert story._mark_case_deduction(step, ["Ada"], before, state) is None
+    before["Cal"].remove(ada)
+    state.history = [dataclasses.replace(refutation, trail=trail[:1])]
+    assert story._mark_case_deduction(step, ["Ada"], before, state) is None
 
 
 def test_story_explains_known_and_absent_roles():

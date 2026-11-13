@@ -2164,6 +2164,8 @@ class Story:
             return ""
         if (reason := self._mark_blocked_by_occupant(step, changed, before, state)) is not None:
             return f"{_cap(reason)}."
+        if (reason := self._mark_case_deduction(step, changed, before, state)) is not None:
+            return reason
         if step.sources and (
             target_condition := self._quantified_condition_for_source(step.sources[0])
         ):
@@ -2222,6 +2224,60 @@ class Story:
             )
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
+
+    def _mark_case_deduction(
+        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
+    ) -> str | None:
+        """Tell a refuted mark trigger as a case on its only possible occupant."""
+        for mark in self.board.marks:
+            if mark.occupant_condition is None:
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                name = mark_occupant_name(mark, self.board.region_names[region]) + " trigger count"
+                if name not in step.sources:
+                    continue
+                candidates = {
+                    (person, square)
+                    for person in self.board.people
+                    for square in before[person] & set(mark.cells)
+                    if self.board.region_of(square) == region
+                }
+                if len(candidates) != 1:
+                    continue
+                person, square = next(iter(candidates))
+                if changed != [person] or before[person] - state.options[person] != {square}:
+                    continue
+                constraint = next(c for c in self.model.constraints if c.name == name)
+                if constraint.reified_by is None:
+                    continue
+                var = self.model.var_of(constraint.reified_by)
+                value = self.model.value_of(constraint.reified_by)
+                for index in range(len(state.history) - 1, -1, -1):
+                    refutation = state.history[index]
+                    if (
+                        refutation.var != var
+                        or refutation.value != value
+                        or refutation.asserted
+                        or refutation.rule != "what_if"
+                        or not any(
+                            inner.asserted and inner.var == person and inner.value == square
+                            for inner in refutation.trail
+                        )
+                    ):
+                        continue
+                    options = {
+                        p: {self.model.value_of(lit) for lit in self.model.options(p)}
+                        for p in self.board.people
+                    }
+                    trial_state = _State(
+                        options, {p: set(squares) for p, squares in options.items()}
+                    )
+                    trial_state.apply(state.history[:index])
+                    hypothetical = dataclasses.replace(refutation, var=person, value=square)
+                    explanation = self._refuted([self._what_if(hypothetical, trial_state)])[0]
+                    state.told[person].discard(square)
+                    return explanation
+        return None
 
     def _mark_blocked_by_occupant(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
@@ -2698,7 +2754,12 @@ class Story:
                 )
         for j in needed:
             inner = step.trail[j]
-            if inner.asserted and j > 0 and inner.var in self.board.people:
+            if (
+                inner.asserted
+                and j > 0
+                and inner.var in self.board.people
+                and (inner.var, inner.value) != (who, square)
+            ):
                 parts.append(
                     self.say("then_on", who=inner.var, square=self.places.square(inner.value))
                 )
