@@ -392,6 +392,39 @@ def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji
     assert blue[0] < margin + CELL // 4 and blue[-1] > margin + 2 * CELL - CELL // 4
 
 
+def test_irregular_water_footprint_draws_only_on_its_own_squares(monkeypatch):
+    squares = (Square(0, 0), Square(1, 0), Square(1, 1))
+    board = Board(
+        3,
+        [["a"] * 3 for _ in range(3)],
+        {"a": "here"},
+        [BoardObject("water", "blocking", squares)],
+        ["A"],
+    )
+    calls = []
+    original = icons.draw
+
+    def capture(canvas, name, area, **kwargs):
+        if name == "water":
+            calls.append(area)
+        return original(canvas, name, area, **kwargs)
+
+    monkeypatch.setattr(icons, "draw", capture)
+    drawing.murdoku_picture(board, cell=CELL, coordinates=False, labels=False, legend=False)
+    margin = CELL // 6
+    expected = [
+        (
+            margin + square.col * CELL,
+            margin + square.row * CELL,
+            margin + (square.col + 1) * CELL,
+            margin + (square.row + 1) * CELL,
+        )
+        for square in squares
+    ]
+    assert calls == expected
+    assert drawing.unknown_object_icons(board) == []
+
+
 def test_two_square_bench_keeps_its_proportions_and_is_not_stretched(fake_emoji):
     fake_emoji("1f6cb", (0, 0, 255))  # a blue block
     board = Board(

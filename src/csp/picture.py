@@ -257,7 +257,9 @@ def murdoku_picture(
         stretch = len(piece) > 1 and not seat
         if base in WELL_NAMES:
             icons.draw(canvas, "well", (x0, y0, x1, y1), stretch=True)
-        elif base in TILED_NAMES:
+        elif base in TILED_NAMES and (
+            obj.kind == "blocking" or icons.OBJECT_ICONS[base] == "rails"
+        ):
             for square in piece:
                 icons.draw(canvas, icons.OBJECT_ICONS[base], box(square), stretch=True)
         elif obj.kind == "standable":
@@ -482,7 +484,9 @@ def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
 CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "carpet")
 WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
 # Objects drawn once per square, so a long stretch of them repeats rather than stretches.
-TILED_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "rails")
+TILED_NAMES = frozenset(
+    name for name, icon in icons.OBJECT_ICONS.items() if icon in ("rails", "water")
+)
 BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
 # Wide blocking drawings that turn on a vertical footprint instead of squashing.
 TURNED_ICONS = frozenset({"control_panel", "tunnel"})
