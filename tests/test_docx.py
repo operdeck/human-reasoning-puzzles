@@ -634,6 +634,19 @@ def test_booklet_solutions_have_no_empty_reasons_or_clue_numbers():
         assert not re.search(r"\(via [\d, en]+\)", text), name
 
 
+def test_booklet_population_explanation_includes_the_unnumbered_comparison(tmp_path):
+    source = example("samen-onderweg.txt")
+    output = tmp_path / "population.docx"
+    assert main([str(source), "--docx", str(output)]) == 0
+    rendered = _text(output)
+    assert "Keiko en Mio zijn in Osaka, dus daar zijn minstens twee mensen." in rendered
+    assert (
+        "Het gebied met de meeste mensen is Tokyo, dus zijn er in Tokyo minstens drie mensen."
+        in rendered
+    )
+    assert "Samen zijn dat alle vijf mensen, dus niemand is in Okinawa." in rendered
+
+
 def test_repeated_premises_are_merged():
     import itertools
     import re
