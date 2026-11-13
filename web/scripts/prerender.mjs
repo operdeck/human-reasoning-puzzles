@@ -3,7 +3,7 @@
 // Reads dist/puzzles/index.json (written by `csp --export`) and writes, next to the built app:
 //   - dist/index.html      the home page with a static puzzle list inside #app (the player replaces it)
 //   - dist/murdoku/        a landing page for online Murdoku puzzles
-//   - dist/p/<id>/         one static page per puzzle, linking into the player
+//   - dist/p/<id>/         one page per puzzle, opening the player with a static fallback
 //   - dist/sitemap.xml and dist/robots.txt
 //
 // No dependencies. Usage: node scripts/prerender.mjs [distDir]
@@ -126,16 +126,22 @@ function puzzleList(entries, prefix) {
 
 function sectionsHtml(puzzles, prefix) {
   return [...groupBySection(puzzles)]
-    .map(([label, entries]) => `<section><h2>${esc(label)}</h2>${puzzleList(entries, prefix)}</section>`)
+    .map(([label, entries]) => {
+      const preview = entries[0].static ?? `${entries[0].id}.svg`;
+      return `<section class="family"><div class="family-preview"><img class="family-thumbnail" src="${prefix}puzzles/${esc(preview)}" alt="${esc(`${label} puzzle preview`)}" width="180" height="180" loading="lazy"></div><div class="family-puzzles"><h2>${esc(label)}</h2>${puzzleList(entries, prefix)}</div></section>`;
+    })
     .join("\n");
 }
 
 const pageStyle = `<style>body{font:16px/1.5 system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:1rem 16px}
-img{max-width:100%;height:auto}.meta{color:#666;font-size:.9em}.credit{color:#555;font-size:.95em}.cta{display:inline-block;padding:.5rem 1rem;background:#2ea44f;color:#fff;border-radius:6px;text-decoration:none;font-weight:600}</style>`;
+img{max-width:100%;height:auto}.meta{color:#666;font-size:.9em}.credit{color:#555;font-size:.95em}.cta{display:inline-block;padding:.5rem 1rem;background:#2ea44f;color:#fff;border-radius:6px;text-decoration:none;font-weight:600}
+.family{display:grid;grid-template-columns:11rem minmax(0,1fr);gap:1rem;margin:1rem 0}.family-thumbnail{width:100%;height:11rem;object-fit:contain}
+@media(max-width:600px){.family{grid-template-columns:minmax(0,1fr)}}</style>`;
 
 /** A page of its own (the home page keeps the app's own head and assets instead). */
-function page(headHtml, body) {
-  return `<!doctype html>\n<html lang="en">\n  <head>\n    ${headHtml}\n    ${pageStyle}\n  </head>\n  <body>\n${body}\n  </body>\n</html>\n`;
+function page(headHtml, body, assets = []) {
+  const style = assets.length ? `<noscript>${pageStyle}</noscript>` : pageStyle;
+  return `<!doctype html>\n<html lang="en">\n  <head>\n    ${headHtml}\n    ${assets.join("\n    ")}\n    ${style}\n  </head>\n  <body>\n${body}\n  </body>\n</html>\n`;
 }
 
 
@@ -231,7 +237,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
     ),
   });
 
-  // 3. One static page per puzzle.
+  // 3. Open the player on each puzzle's own URL; keep real content for crawlers and no JS.
   for (const entry of puzzles) {
     const url = `${address}/p/${encodeURIComponent(entry.id)}/`;
     const image = `${address}/puzzles/${encodeURIComponent(entry.id)}.svg`;
@@ -242,7 +248,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
     files.push({
       path: `p/${entry.id}/index.html`,
       contents: page(
-        head(
+        '<base href="../../" />\n    ' + head(
           {
             title: `${entry.title} – ${what} (${sizeText(entry)}) | ${SITE_NAME}`,
             description,
@@ -258,14 +264,16 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
           },
           tags,
         ),
-        `    <p><a href="../../">← All puzzles</a>${isMurdoku(entry) ? ' · <a href="../../murdoku/">Murdoku</a>' : ""}</p>
+        `    <main id="app" data-puzzle-id="${esc(entry.id)}">
+    <p><a href="./">← All puzzles</a>${isMurdoku(entry) ? ' · <a href="murdoku/">Murdoku</a>' : ""}</p>
     <h1>${esc(entry.title)}</h1>
     <p>${esc(entry.section)} · ${sizeText(entry)} · ${esc(entry.grade)}</p>
-    <p><img src="../../puzzles/${encodeURIComponent(entry.id)}.svg" alt="${esc(`${entry.title}, ${what}`)}" width="480" height="480"></p>
-    <p><a class="cta" href="../../#${encodeURIComponent(entry.id)}">Play this puzzle</a></p>
+    <p><img src="puzzles/${encodeURIComponent(entry.id)}.svg" alt="${esc(`${entry.title}, ${what}`)}" width="480" height="480"></p>
+    <p><a class="cta" href="./#${encodeURIComponent(entry.id)}">Play this puzzle</a></p>
     <p>Part of the open-source <a href="${REPO}">human reasoning puzzles</a> collection.</p>${
       isMurdoku(entry) ? `\n    <p class="credit">${MURDOKU_CREDIT}</p>` : ""
-    }`,
+    }</main>`,
+        builtAssets,
       ),
     });
   }
