@@ -1105,12 +1105,12 @@ not_next_to Violetchi backpack
     assert (
         "then Memetchi is on r9c7, then Akumatchi is in the market, "
         "but a social square needs company, "
-        "and nobody else can be in the playground"
+        "and nobody else can be in the playground (see clue 1)"
     ) in explanation
     dutch = explain("Language: nl\n" + text)
     assert (
         "maar op een vakje met markering social moet iemand gezelschap hebben "
-        "en verder kan niemand in de playground zijn"
+        "en verder kan niemand in de playground zijn (zie aanwijzing 1)"
     ) in dutch
 
 

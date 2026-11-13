@@ -182,7 +182,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "can_only_many": "{who} can only be {where}",
         "filled_only_one": "{lines} can only be filled {where}",
         "filled_only_many": "{lines} can only be filled {where}",
-        "via": "via {refs}",
+        "clue_reference.one": "see clue {refs}",
+        "clue_reference.many": "see clues {refs}",
         "chain_if": "If {who} is not on {square}",
         "chain_on": "then {who} is on {square}",
         "chain_off": "then {who} is not on {square}",
@@ -480,7 +481,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "can_only_many": "{who} kunnen alleen {where}",
         "filled_only_one": "{lines} kan alleen nog gevuld worden {where}",
         "filled_only_many": "{lines} kunnen alleen nog gevuld worden {where}",
-        "via": "via {refs}",
+        "clue_reference.one": "zie aanwijzing {refs}",
+        "clue_reference.many": "zie aanwijzingen {refs}",
         "chain_if": "Als {who} niet op {square} zit",
         "chain_on": "dan zit {who} op {square}",
         "chain_off": "dan zit {who} niet op {square}",
@@ -2851,7 +2853,8 @@ class Story:
             or other is not None
             or (broken_global is None and source not in self.about)
         )
-        ref = self.say("via", refs=listed) if explained else listed
+        ref_key = "clue_reference.one" if len(cited) == 1 else "clue_reference.many"
+        ref = self.say(ref_key, refs=listed) if explained else listed
         return who, square, f"{', '.join(parts)} ({ref})"
 
     def _refuted(self, refuted: Sequence[tuple[str, Square, str]]) -> list[str]:
