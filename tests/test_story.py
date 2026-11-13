@@ -378,6 +378,21 @@ def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
     assert "Ingrid is on a chair (1): on a chair." not in opening
 
 
+@pytest.mark.parametrize(
+    ("name", "clue"),
+    [
+        ("zoo-murdoku-2.txt", "De makaak staat in kolom 5 (4)."),
+        ("zoo-murdoku-2.txt", "De tijger staat in rij 1 (8)."),
+        ("food-murdoku-2.txt", "Tempura is in row 4 (3)."),
+        ("food-murdoku-2.txt", "Ramen is in column 4 (8)."),
+        ("murdoku_orient_express_3.txt", "Bogdan zit naast een raam (10)."),
+    ],
+)
+def test_opening_does_not_restate_line_or_edge_clues(name, clue):
+    opening = explain(example(name).read_text()).split("\n\n")[0]
+    assert clue in opening
+
+
 def test_new_murdoku_clues_have_dutch_wording():
     square = murdoku.Square
     board = murdoku.Board(

@@ -1577,9 +1577,21 @@ class Story:
                 state.announce(person)
             else:
                 where = region or self.places.common_line(squares)
+                if (
+                    condition.kind in ("in_row", "in_column")
+                    and where is not None
+                    and where in clue
+                ):
+                    where = ""
                 if where is None:
                     where = self.places.where(squares, self.places.free)
-                    if where is not None and where in clue:
+                    same_edge = (
+                        condition.kind == "next_to"
+                        and len(condition.args) == 2
+                        and target_name(condition.args[1]) in self.board.edge_item_names
+                        and where == self.say("at", what=self.places.thing(condition.args[1]))
+                    )
+                    if where is not None and (where in clue or same_edge):
                         where = ""
                 if where is None:
                     where = self.say("squares", n=self.say.number(len(squares)))
