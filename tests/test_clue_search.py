@@ -124,6 +124,47 @@ def test_suggest_keeps_needed_clues_necessary():
     assert len(bruteforce.solutions(without)) > 1
 
 
+@pytest.mark.parametrize(
+    ("effect", "placement"),
+    [
+        ("alone", "Ada=r1c1 Ben=r2c3 Cal=r3c2"),
+        ("not_alone", "Ada=r1c1 Ben=r2c2 Cal=r3c3"),
+    ],
+)
+def test_suggest_keeps_mark_occupancy_condition_necessary(effect, placement):
+    text = f"""Size: 3
+Regions:
+a: alcove
+b: hall
+Grid:
+a b b
+b a b
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r1c1 ; {effect}
+Clues:
+count people on mark:quiet = 1
+in_row Ada 1
+"""
+    placement = clue_search.parse_solution(placement)
+    board, _ = load_board(text)
+    assert "in_corner Ada" in clue_search.candidate_clues(board, placement, ["in_corner"])
+    added = clue_search.suggest(
+        text, placement, kinds=["in_row", "in_column"], needs_marks=["quiet"], sample=100
+    )
+    final = clue_search.with_clues(text, [*clue_search.clue_lines(text), *added])
+    assert len(bruteforce.solutions(final)) == 1
+    without = clue_search.without_mark_condition(final, "quiet")
+    assert len(bruteforce.solutions(without)) > 1
+    assert "quiet: r1c1\n" in without
+    with pytest.raises(ValueError, match="no occupancy condition"):
+        clue_search.without_mark_condition(without, "quiet")
+
+
 def test_occupancy_shows_unused_decoys():
     beach = example("wie-doet-het-met-wie-3.txt").read_text()
     seen, rows = clue_search.occupancy(clue_search.with_clues(beach, []), sample=2000)

@@ -90,6 +90,7 @@ its short output, and decide:
 | a person's live squares while solving | `uv run csp FILE --track-person P` |
 | clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
 | ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` (several numbers: each stays necessary) |
+| ... while marked-cell occupancy rules stay necessary | add `--needs-mark quiet friendly` to `suggest` (one or more mark names) |
 | ... so every figure (outside `--exclude`) gets a clue | add `--cover` to `suggest` |
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |

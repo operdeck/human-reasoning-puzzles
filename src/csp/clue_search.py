@@ -12,9 +12,10 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   out the most other placements until the puzzle is unique. `--needs` names
   clue numbers that must each stay necessary, so a themed clue (or a rule
   moved into the clues while searching, role rules included) cannot be made
-  redundant. `--cover` then swaps added clues for clues about people no clue
-  names, so every figure outside `--exclude` gets a clue. `--exclude-target`
-  keeps decorative objects out of the suggestions.
+  redundant. `--needs-mark` likewise preserves the occupancy effects of
+  named marks. `--cover` then swaps added clues for clues about people no
+  clue names, so every figure outside `--exclude` gets a clue.
+  `--exclude-target` keeps decorative objects out of the suggestions.
 - `ease`: add true clues to a unique puzzle until it is within `--max-grade`,
   keeping each `--needs` clue necessary (same `--solution`/`--kinds`/`--exclude`).
 - `occupancy`: how often each object square is used across the placements the
@@ -57,7 +58,15 @@ SUGGEST_KINDS = (
     "above",
 )
 # Also available on request (`--kinds`): exact lines are fair only sparingly.
-EXTRA_KINDS = ("away_from", "not_on", "in_row", "not_in_row", "in_column", "not_in_column")
+EXTRA_KINDS = (
+    "away_from",
+    "not_on",
+    "in_corner",
+    "in_row",
+    "not_in_row",
+    "in_column",
+    "not_in_column",
+)
 
 _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
@@ -110,6 +119,24 @@ def with_clues(text: str, clues: Sequence[str]) -> str:
         out.append(raw)
     if not done:
         out += ["Clues:", *clues]
+    return "\n".join(out) + "\n"
+
+
+def without_mark_condition(text: str, name: str) -> str:
+    """Keep a mark's cells but remove its occupancy effect for an ablation."""
+    board, _ = load_board(text)
+    mark = next((mark for mark in board.marks if mark.name == name), None)
+    if mark is None or mark.occupant_condition is None:
+        raise ValueError(f"mark {name!r} has no occupancy condition")
+    inside = False
+    out = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if _SECTION.match(line):
+            inside = line == "Marks:"
+        if inside and line.partition(":")[0].strip() == name:
+            raw = raw.partition(";")[0].rstrip()
+        out.append(raw)
     return "\n".join(out) + "\n"
 
 
@@ -275,6 +302,7 @@ def candidate_clues(
         "left_of": [f"left_of {a} {b}" for a, b in pairs],
         "above": [f"above {a} {b}" for a, b in pairs],
         "not_on": [f"not_on {p} {t}" for p in people for t in standable],
+        "in_corner": [f"in_corner {p}" for p in people],
         "in_row": [f"in_row {p} {n}" for p in people for n in lines],
         "not_in_row": [f"not_in_row {p} {n}" for p in people for n in lines],
         "in_column": [f"in_column {p} {n}" for p in people for n in lines],
@@ -324,6 +352,7 @@ def suggest(
     needs: Iterable[int] = (),
     cover: bool = False,
     exclude_targets: Iterable[str] = (),
+    needs_marks: Iterable[str] = (),
 ) -> list[str]:
     """Clues to add to `text` so that `placement` becomes its only solution.
 
@@ -339,7 +368,8 @@ def suggest(
 
     Targets in `exclude_targets` are omitted from all suggested clues.
 
-    `needs` lists clue numbers that must each remain necessary. A clue's rivals
+    `needs` lists clue numbers that must each remain necessary, and `needs_marks`
+    names marks whose occupancy effects must remain necessary. Their rivals
     are the placements allowed without it but not with it (role rules are
     judged together, as one role holder must meet them all); a candidate that would rule out every
     rival of some needed clue is skipped, so removing any one of them still
@@ -353,6 +383,9 @@ def suggest(
     candidates = candidate_clues(board, placement, kinds, exclude, exclude_targets)
     lines = clue_lines(text)
     needed = sorted(set(needs))
+    marks_needed = tuple(dict.fromkeys(needs_marks))
+    for name in marks_needed:
+        without_mark_condition(text, name)
     if bad := [n for n in needed if not 1 <= n <= len(lines)]:
         raise ValueError(f"--needs names clue numbers {bad}; the puzzle has {len(lines)} clues")
     added: list[str] = []
@@ -371,10 +404,21 @@ def suggest(
                 exclude=exclude,
                 needs=[*needed, len(lines) + 1],
                 exclude_targets=exclude_targets,
+                needs_marks=marks_needed,
             )
             trial = [clue, *more]
-            if len(brute.solutions(with_clues(text, lines + trial), 2)) == 1 and named.isdisjoint(
-                _unnamed(board.people, lines + trial, ())
+            completed = with_clues(text, lines + trial)
+            if (
+                len(brute.solutions(completed, 2)) == 1
+                and named.isdisjoint(_unnamed(board.people, lines + trial, ()))
+                and all(
+                    len(brute.solutions(with_clues(text, lines[: n - 1] + lines[n:] + trial))) > 1
+                    for n in needed
+                )
+                and all(
+                    len(brute.solutions(without_mark_condition(completed, name), 2)) > 1
+                    for name in marks_needed
+                )
             ):
                 log(f"restart from {clue} so {person} has a clue")
                 return trial
@@ -385,7 +429,7 @@ def suggest(
         current = with_clues(text, lines + added)
         others = [_placement(found, board.people) for found in brute.sample(current, sample)]
         others = [other for other in others if other != placement]
-        rival_sets: list[list[dict[str, murdoku.Square]]] = []
+        rival_sets: list[tuple[murdoku.Board, list[dict[str, murdoku.Square]]]] = []
         for number in needed:
             without = with_clues(text, lines[: number - 1] + lines[number:] + added)
             found = [_placement(f, board.people) for f in brute.sample(without, sample)]
@@ -395,10 +439,22 @@ def suggest(
             if not rivals:
                 log(f"needed clue {number} is already redundant; add fewer clues first")
                 return added
-            rival_sets.append(rivals)
+            rival_sets.append((board, rivals))
+        for name in marks_needed:
+            without = without_mark_condition(current, name)
+            found = [_placement(f, board.people) for f in brute.sample(without, sample)]
+            rivals = [
+                other for other in found if other != placement and not brute.accepts(current, other)
+            ]
+            if not rivals:
+                log(f"no sampled rival found for mark {name}; try a larger sample or fewer clues")
+                return added
+            rival_sets.append((load_board(without)[0], rivals))
         if not others:
             if cover:
-                added = _cover(text, lines, added, candidates, board.people, exclude, needed, log)
+                added = _cover(
+                    text, lines, added, candidates, board.people, exclude, needed, log, marks_needed
+                )
                 for person in _unnamed(board.people, lines + added, exclude):
                     added = _reseed(person, added)
             result = outcome(with_clues(text, lines + added), timeout)
@@ -410,7 +466,8 @@ def suggest(
             if clue in lines or clue in added:
                 continue
             if any(
-                not any(_true_for(board, clue, rival) for rival in rivals) for rivals in rival_sets
+                not any(_true_for(rival_board, clue, rival) for rival in rivals)
+                for rival_board, rivals in rival_sets
             ):
                 continue
             cut = sum(not _true_for(board, clue, other) for other in others)
@@ -438,6 +495,7 @@ def _cover(
     exclude: Iterable[str],
     needed: Sequence[int],
     log: Callable[[str], None],
+    marks_needed: Sequence[str] = (),
 ) -> list[str]:
     """`added` with clues swapped so that every person outside `exclude` is named.
 
@@ -455,6 +513,11 @@ def _cover(
             named >= {p for p, n in _mentions(people, lines + added).items() if n}
             and unique(lines + trial)
             and not any(unique(lines[: n - 1] + lines[n:] + trial) for n in needed)
+            and all(
+                len(brute.solutions(without_mark_condition(with_clues(text, lines + trial), name)))
+                > 1
+                for name in marks_needed
+            )
         )
 
     skip = set(exclude)
@@ -583,6 +646,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=[],
         help="suggest, ease: clue numbers that must stay needed",
     )
+    parser.add_argument(
+        "--needs-mark",
+        nargs="*",
+        default=[],
+        help="suggest: marks whose occupancy effects must stay necessary",
+    )
     args = parser.parse_args(argv)
     text = args.puzzle.read_text()
     if args.command == "occupancy":
@@ -607,6 +676,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(f"{args.command} needs --solution")
     placement = parse_solution(args.solution)
     if args.command == "ease":
+        if args.needs_mark:
+            parser.error("--needs-mark is supported only by suggest")
         if not args.max_grade:
             parser.error("ease needs --max-grade")
         added = ease(
@@ -633,6 +704,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.needs,
         args.cover,
         args.exclude_target,
+        args.needs_mark,
     )
     print("Clues to add:")
     print("\n".join(added))
