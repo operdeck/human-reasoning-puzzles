@@ -392,17 +392,48 @@ def test_two_alternatives_read_as_either_or_not_both():
     assert any(c.startswith("Either Ada is in the study, or Ben is in the hall") for c in clues)
 
 
-def test_attribute_target_can_be_reworded():
-    text = _read("tamagotchi-murdoku-12x12").replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
+@pytest.fixture
+def companion_attribute_puzzle():
+    return """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Akumatchi
+Ichigotchi
+Hashizotchi
+Attributes:
+friend: Ichigotchi Hashizotchi
+Words:
+target.attribute: a {name}
+Clues:
+alone_with Akumatchi attribute:friend
+"""
+
+
+def test_attribute_target_can_be_reworded(companion_attribute_puzzle):
+    text = companion_attribute_puzzle.replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
     assert (
         "Akumatchi shares a region with exactly one other person, and that is a friend."
         in clue_paragraphs(text)
     )
 
 
-def test_attribute_everyone_has_is_not_named():
-    paragraphs = clue_paragraphs(_read("tamagotchi-murdoku-12x12"))
+def test_attribute_everyone_has_is_not_named(companion_attribute_puzzle):
+    paragraphs = clue_paragraphs(companion_attribute_puzzle)
     assert "Akumatchi shares a region with exactly one other person." in paragraphs
+
+
+def test_tamagotchi_count_includes_every_figure_and_question_leaves_quiet_open():
+    text = _read("tamagotchi-murdoku-12x12")
+    presentation = load_presentation(text)
+    clues = clue_paragraphs(text, presentation.clue_text)
+    assert "Exactly one figure stands on a social square." in clues
+    assert "Violetchi is on the stage." in clues
+    assert "which figures, if any, occupy quiet squares" in presentation.question
 
 
 def test_solution_without_clue_numbers():

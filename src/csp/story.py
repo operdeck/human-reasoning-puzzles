@@ -190,8 +190,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_so": "So {ends}; either way {outcome}.",
         "chain_either": "{ends}; either way {outcome}.",
         "nobody_else": "nobody else can be there",
-        "then_on": "then {who} is on {square}",
-        "then_in": "then {who} is {where}",
+        "then_on": "then {who} would be on {square}",
+        "also_on": "{who} on {square}",
+        "then_in": "then {who} would be {where}",
         "mark_case.alone": (
             "the square is marked {mark}, so {who} would be alone {where} "
             "and its other squares would be empty"
@@ -489,8 +490,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_so": "Dus {ends}; hoe dan ook {outcome}.",
         "chain_either": "{ends}; hoe dan ook {outcome}.",
         "nobody_else": "daar kan verder niemand",
-        "then_on": "dan zit {who} op {square}",
-        "then_in": "dan is {who} {where}",
+        "then_on": "dan zou {who} op {square} zitten",
+        "also_on": "{who} op {square}",
+        "then_in": "dan zou {who} {where} zijn",
         "mark_case.alone": (
             "het vakje heeft markering {mark}, dus {who} zou alleen zijn {where} "
             "en de andere vakjes daar zouden leeg zijn"
@@ -2792,6 +2794,7 @@ class Story:
         state.apply([step])
         state.told[who].discard(square)
         parts: list[str] = []
+        placements: list[str] = []
         refs: list[int] = []
         region = self.board.region_of(square)
         region_name = self.board.region_names[region]
@@ -2816,8 +2819,9 @@ class Story:
                 and inner.var in self.board.people
                 and (inner.var, inner.value) != (who, square)
             ):
-                parts.append(
-                    self.say("then_on", who=inner.var, square=self.places.square(inner.value))
+                key = "also_on" if placements else "then_on"
+                placements.append(
+                    self.say(key, who=inner.var, square=self.places.square(inner.value))
                 )
             for name in inner.sources:
                 condition = self.conditions.get(name)
@@ -2826,6 +2830,8 @@ class Story:
                 global_count = self.global_counts.get(name)
                 if global_count is not None and global_count.number is not None:
                     refs.append(global_count.number)
+        if placements:
+            parts.append(self.say.join(placements))
         parts.append(self._broken(step, first=not parts, before=before, trial=trial))
         source = step.sources[0] if step.sources else None
         broken = self.conditions.get(source) if source else None

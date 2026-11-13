@@ -1028,7 +1028,7 @@ above Eva Fay
     explanation = explain(text)
     assert (
         "the square is marked quiet, so Dee would be alone in the Hall "
-        "and its other squares would be empty, then Fay is on r2c6, "
+        "and its other squares would be empty, then Fay would be on r2c6, "
         "then nobody can fill row 6"
     ) in explanation
     assert "brute force" not in explanation
@@ -1103,7 +1103,7 @@ not_next_to Violetchi backpack
     assert "Memetchi is not next to the slide (10)." in explanation
     assert "64 squares" not in explanation
     assert (
-        "then Memetchi is on r9c7, then Akumatchi is in the market, "
+        "then Memetchi would be on r9c7, then Akumatchi would be in the market, "
         "but a social square needs company, "
         "and nobody else can be in the playground (see clue 1)"
     ) in explanation
@@ -1112,6 +1112,79 @@ not_next_to Violetchi backpack
         "maar op een vakje met markering social moet iemand gezelschap hebben "
         "en verder kan niemand in de playground zijn (zie aanwijzing 1)"
     ) in dutch
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "then Ben would be on r2c2, Cal on r3c3 and Dee on r4c4"),
+        ("nl", "dan zou Ben op r2k2 zitten, Cal op r3k3 en Dee op r4k4"),
+    ],
+)
+def test_what_if_groups_hypothetical_placements(monkeypatch, language, expected):
+    text = """Size: 4
+Regions:
+a: room
+Grid:
+a a a a
+a a a a
+a a a a
+a a a a
+People:
+Ada
+Ben
+Cal
+Dee
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording(language))
+    trail = tuple(
+        Step(person, murdoku.Square(i, i), True, "single", "")
+        for i, person in enumerate(board.people)
+    )
+    refutation = Step("Ada", murdoku.Square(0, 0), False, "what_if", "", trail=trail)
+    state = _State(
+        {person: set(board.free) for person in board.people},
+        {person: set(board.free) for person in board.people},
+    )
+    monkeypatch.setattr("csp.story.essential", lambda *_args: list(range(len(trail))))
+
+    _, _, reason = story._what_if(refutation, state)
+
+    assert reason.startswith(expected)
+
+
+def test_tamagotchi_combines_necessary_marks_and_narrates_the_case():
+    text = example("tamagotchi-murdoku-12x12.txt").read_text()
+    board, _ = load_board(text)
+    solutions = bruteforce.solutions(text, "murdoku", limit=2)
+    assert len(solutions) == 1
+    solution = solutions[0]
+    assert {
+        person for person in board.people if solution[person] in board.mark_cells(["quiet"])
+    } == {"Ichigotchi"}
+    assert {
+        person for person in board.people if solution[person] in board.mark_cells(["social"])
+    } == {"Mametchi"}
+    garden = board.region_of(solution["Ichigotchi"])
+    school = board.region_of(solution["Mametchi"])
+    assert board.region_names[garden] == "garden"
+    assert {person for person in board.people if board.region_of(solution[person]) == garden} == {
+        "Ichigotchi"
+    }
+    assert board.region_names[school] == "school"
+    assert board.region_of(solution["Masktchi"]) == school
+
+    for condition in ("alone", "not_alone"):
+        assert (
+            len(bruteforce.solutions(text.replace(f"; {condition}", ""), "murdoku", limit=2)) == 2
+        )
+
+    explanation = explain(text)
+    assert (
+        "**Gozarutchi cannot be on r8c3**: then Ichigotchi would be on r3c1, "
+        "Pianitchi on r7c4 and Violetchi on r9c7, but"
+    ) in explanation
 
 
 def test_alone_mark_excludes_squares_in_an_occupied_area():
@@ -1170,12 +1243,12 @@ left_of Mametchi Lovelitchi
         (
             "en",
             "**Ada cannot be on r1c1**: the square is marked social, so Ada would have "
-            "company in the cafe, then Ben is on r2c2, which clue 1 does not allow.",
+            "company in the cafe, then Ben would be on r2c2, which clue 1 does not allow.",
         ),
         (
             "nl",
             "**Ada kan niet op r1k1**: het vakje heeft markering social, dus Ada zou "
-            "samen met iemand zijn in de cafe, dan zit Ben op r2k2, "
+            "samen met iemand zijn in de cafe, dan zou Ben op r2k2 zitten, "
             "en dat mag niet volgens aanwijzing 1.",
         ),
     ],
