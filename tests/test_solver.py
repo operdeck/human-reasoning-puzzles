@@ -879,6 +879,45 @@ count people on object_kind:standable = 1
     )
 
 
+@pytest.mark.parametrize("comparison", ["= 1", "even", "0..2"])
+def test_brute_force_location_counts_match_direct_tallies(comparison):
+    text = f"""Size: 3
+Regions:
+a: west
+b: east
+Grid:
+a b b
+a b b
+a b b
+People:
+Ada
+Ben
+Marks:
+special: r1c1 r2c2 r3c3
+Clues:
+count people on mark:special {comparison}
+count people in area:west <= 1
+count empty areas all = 1
+"""
+    board, clues = load_board(text)
+    checks = murdoku.global_count_conditions(board, clues)
+    expected = {
+        squares
+        for squares in product(board.free, repeat=2)
+        if squares[0].row != squares[1].row
+        and squares[0].col != squares[1].col
+        and all(
+            check.count(board, dict(zip(board.people, squares, strict=True)), {})
+            in check.allowed_counts
+            for check in checks
+        )
+    }
+    found = bruteforce.murdoku.solutions(text, limit=100)
+    assert {tuple(result[p] for p in board.people) for result in found} == expected
+    sampled = bruteforce.murdoku.sample(text, limit=100)
+    assert {tuple(result[p] for p in board.people) for result in sampled} == expected
+
+
 def test_compiled_global_counts_match_direct_tallies_for_all_small_placements():
     text = """Size: 2
 Regions:
