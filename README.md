@@ -100,8 +100,15 @@ the complete syntax and supported rules, see [Model and puzzle formats](docs/mod
 <details>
 <summary>Show the worked solution</summary>
 
-Joost is at r1c1. Lotte is at r4c2, so Ingrid can only be at r3c4. Wouter is
-at r2c3. Wouter and Ingrid share the sitting room, so **Ingrid did it**.
+- **The direct clues.** Ingrid is on a chair (1). Joost is next to the tree (2):
+  **on the patio**: **Joost on r1c1**. Lotte is on the bed (3):
+  **in the guest room**.
+
+- **Lotte, Ingrid and Wouter.** Joost takes column 1, so **Lotte on r4c2**.
+  Lotte takes row 4 and Joost takes column 1, so **Ingrid on r3c4**. Only r2c3
+  is left for Wouter: **Wouter on r2c3**.
+
+**Ingrid did it**: she shares the sitting room with Wouter.
 
 <img src="docs/images/murdoku_1_first_case-solution.png" width="230" alt="Murdoku solution">
 </details>
