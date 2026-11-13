@@ -3517,8 +3517,8 @@ def mark_note(mark: CellMark, say: Wording) -> str:
 
 def board_notes(text: str) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
-    the author's `| wording` of board rules."""
-    board, _ = load_board(text)
+    board rules with author wording or global counts."""
+    board, clues = load_board(text)
     say = Wording.read(text)
 
     def name(raw: str) -> str:
@@ -3540,6 +3540,12 @@ def board_notes(text: str) -> list[str]:
         )
     notes.extend(mark_note(mark, say) for mark in board.marks)
     notes.extend(f"{wording}." for wording in say.rules.values())
+    told = Story(board, clues, say)
+    notes.extend(
+        f"{_cap(told._global_count_text(condition))}."
+        for condition in global_count_conditions(board, clues)
+        if condition.number is None and condition.description not in say.rules
+    )
     return notes
 
 

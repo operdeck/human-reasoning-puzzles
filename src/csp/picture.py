@@ -154,7 +154,7 @@ def murdoku_picture(
     language: str = "en",
     area_tags: bool = True,
     count_texts: Sequence[str] | None = None,
-    count_lines: bool = True,
+    count_lines: bool = False,
     names: Mapping[str, str] | None = None,
 ) -> Canvas:
     """The board, with `placed` people drawn on their squares if given.
@@ -168,8 +168,8 @@ def murdoku_picture(
     Without `area_tags` it leaves out the area tags (for documents that state
     them). `language` ("en" or "nl") sets the legend wording; `count_texts` gives
     the plain-language global counts (from `story`), else their clue syntax.
-    Without `count_lines` it leaves the counts themselves to the document around
-    the picture, which is what the booklet does. An interactive picture has no
+    By default the surrounding clues or rules state the counts. Set `count_lines`
+    to include them in a standalone picture. An interactive picture has no
     legend: the player panel explains the symbols.
     """
     if interactive:
@@ -2252,7 +2252,7 @@ class _Legend:
         attributes: bool = True,
         names: Mapping[str, str] | None = None,
         count_texts: Sequence[str] | None = None,
-        count_lines: bool = True,
+        count_lines: bool = False,
     ) -> None:
         self.words = LEGEND_WORDS.get(language, LEGEND_WORDS["en"])
         self.board = board

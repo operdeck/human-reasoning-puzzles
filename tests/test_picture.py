@@ -778,8 +778,12 @@ count people on object:bed = 1
 """
     board, clues = load_board(text)
     (condition,) = murdoku.global_count_conditions(board, clues)
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, global_counts=[condition])
-    tiny = picture.murdoku_picture(board, cell=12, coordinates=False, global_counts=[condition])
+    image = picture.murdoku_picture(
+        board, cell=CELL, coordinates=False, global_counts=[condition], count_lines=True
+    )
+    tiny = picture.murdoku_picture(
+        board, cell=12, coordinates=False, global_counts=[condition], count_lines=True
+    )
     plain = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
     assert image.height > plain.height
@@ -1670,10 +1674,40 @@ def test_count_legend_uses_the_given_plain_language_texts():
 
     counts = murdoku.global_count_conditions(board, clues)
     markup = drawing.murdoku_picture(
-        board, global_counts=counts, count_texts=story.global_count_texts(text), language="nl"
+        board,
+        global_counts=counts,
+        count_texts=story.global_count_texts(text),
+        count_lines=True,
+        language="nl",
     ).to_svg()
     assert "Precies twee mensen dragen een badjas" in markup
     assert "object:badjas" not in markup
+
+
+@pytest.mark.parametrize("section", ["Clues", "Rules"])
+def test_count_text_is_in_player_text_not_the_board_legend(section):
+    from csp import story
+
+    text = f"""Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Marks:
+social: r1c1 ; not_alone
+People:
+Ada
+Ben
+{section}:
+count people on mark:social = 1
+"""
+    markup = cli.make_image("murdoku", text).to_svg()
+    expected = "Exactly one person is on the squares marked social"
+    assert expected not in markup
+    assert "social: shares area with someone" in markup
+    player_text = story.clue_paragraphs(text) + story.murdoku_rules(text)
+    assert any(expected in line for line in player_text)
 
 
 def test_the_legend_does_not_explain_the_count_ring():
