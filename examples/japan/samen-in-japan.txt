@@ -1,12 +1,13 @@
 # Murdoku 6x6 -- "Samen in Japan" (area populations, togetherness)
 #
-# Six travellers spread over four places. One population clue fixes Osaka at
-# exactly two people; the placement clues lean on four objects -- a bonsai, a
-# temple, a sushi bar and a tatami mat -- instead of row and column pins, so
-# nobody starts with only one square left. Every clue is needed.
+# Six travellers spread over four places. Three population clues carry the
+# puzzle: Tokyo is the busiest area, Okinawa the quietest, and Osaka holds
+# exactly two people together. The placement clues lean on four objects -- a
+# bonsai, a temple, a sushi bar and a tatami mat -- instead of row and column
+# pins, and every clue is needed.
 #
-# Solution: Aiko r1c4, Benjiro r2c2, Chiaki r3c3, Daiki r4c5, Emi r5c1,
-# Fumiko r6c6 -- Tokyo 3, Osaka 2, Kyoto 1, Okinawa 0.
+# Solution: Benjiro r1c2, Chiaki r2c4, Daiki r3c3, Emi r4c5, Fumiko r5c6,
+# Aiko r6c1 -- Tokyo 3, Osaka 2, Kyoto 1, Okinawa 0.
 
 Size: 6
 Language: nl
@@ -16,8 +17,9 @@ Samen in Japan
 
 Intro:
 Zes reizigers zijn neergestreken in Tokyo, Osaka, Kyoto en Okinawa. Onderweg
-komen ze een bonsai, een tempel, een sushibar en een tatami mat tegen. Zet
-iedereen op een vrij vakje, met één persoon per rij en per kolom.
+komen ze een bonsai, een tempel, een sushibar en een tatami mat tegen. De
+aanwijzingen vertellen ook hoe vol elk gebied is. Zet iedereen op een vrij
+vakje, met één persoon per rij en per kolom.
 
 Words:
 Tokyo: in Tokyo
@@ -36,18 +38,18 @@ k: Kyoto #D9EAD3
 q: Okinawa #CFE8F0
 
 Grid:
-t t t t t q
-t t t t t q
-t t t q q q
-o o o o o q
-o o o o q q
-k k k k k k
+t t t t t o
+t t t t o o
+k k t t o o
+k k k q o o
+k k q q q o
+k q q q q q
 
 Objects:
-bonsai: blocking r1c5
-tempel: blocking r3c2
-sushibar: blocking r4c4
-tatami: standable r6c4 r6c5
+bonsai: blocking r1c1
+tempel: blocking r2c3
+sushibar: blocking r3c6
+tatami: standable r4c2 r4c3
 
 People:
 Aiko
@@ -58,13 +60,15 @@ Emi
 Fumiko
 
 Clues:
+busiest_area area:Tokyo
+quietest_area area:Okinawa
 count people in area:Osaka = 2
-next_to Aiko bonsai
-next_to Benjiro tempel
-next_to Chiaki tempel
-left_of Benjiro Chiaki
-left_of Emi Benjiro
-in_region Daiki Osaka
+outside Aiko Osaka
+same_region Benjiro Chiaki
+left_of Benjiro Daiki
+not_next_to Benjiro tempel
+left_of Daiki Chiaki
+left_of Emi Fumiko
 
 Question:
 Waar staat iedereen?
