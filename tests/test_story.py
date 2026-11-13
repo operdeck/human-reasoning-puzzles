@@ -1096,7 +1096,8 @@ not_next_to Violetchi backpack
 """
     explanation = explain(text)
     assert (
-        "then Memetchi is on r9c7, but a friendly square needs company, "
+        "then Memetchi is on r9c7, then Akumatchi is in the market, "
+        "but a friendly square needs company, "
         "and nobody else can be in the playground"
     ) in explanation
     dutch = explain("Language: nl\n" + text)

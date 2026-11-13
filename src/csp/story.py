@@ -187,6 +187,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_either": "{ends}; either way {outcome}.",
         "nobody_else": "nobody else can be there",
         "then_on": "then {who} is on {square}",
+        "then_in": "then {who} is {where}",
         "mark_case.alone": (
             "the square is marked {mark}, so {who} would be alone {where} "
             "and its other squares would be empty"
@@ -473,6 +474,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_either": "{ends}; hoe dan ook {outcome}.",
         "nobody_else": "daar kan verder niemand",
         "then_on": "dan zit {who} op {square}",
+        "then_in": "dan is {who} {where}",
         "mark_case.alone": (
             "het vakje heeft markering {mark}, dus {who} zou alleen zijn {where} "
             "en de andere vakjes daar zouden leeg zijn"
@@ -2648,7 +2650,8 @@ class Story:
         """Who could not be where, and the chain of events that rules it out."""
         who, square = step.var, step.value
         needed = essential(self.model, state.history, step)
-        trial = _State({p: set(options) for p, options in state.options.items()}, {})
+        before = {p: set(options) for p, options in state.options.items()}
+        trial = _State({p: set(options) for p, options in before.items()}, {})
         trial.apply(step.trail)
         state.apply([step])
         state.told[who].discard(square)
@@ -2682,7 +2685,7 @@ class Story:
                 global_count = self.global_counts.get(name)
                 if global_count is not None and global_count.number is not None:
                     refs.append(global_count.number)
-        parts.append(self._broken(step, first=not parts, trial=trial))
+        parts.append(self._broken(step, first=not parts, before=before, trial=trial))
         source = step.sources[0] if step.sources else None
         broken = self.conditions.get(source) if source else None
         broken_global = self._global_count_for_sources(step.sources)
@@ -2723,7 +2726,9 @@ class Story:
             previous = who
         return sentences
 
-    def _broken(self, step: Step, first: bool, trial: _State) -> str:
+    def _broken(
+        self, step: Step, first: bool, before: dict[str, set[Square]], trial: _State
+    ) -> str:
         """The contradiction a what_if ran into."""
         source = step.sources[0] if step.sources else None
         for mark in self.board.marks:
@@ -2751,11 +2756,31 @@ class Story:
                         for square in trial.options[person]
                     )
                 ):
-                    return self.say(
+                    contradiction = self.say(
                         "mark_breaks.not_alone",
                         mark=mark.name.replace("_", " "),
                         where=self.places.region(region_name),
                     )
+                    possible_companions = [
+                        person
+                        for person in self.board.people
+                        if person != occupants[0]
+                        and any(self.board.region_of(square) == region for square in before[person])
+                    ]
+                    if len(possible_companions) == 1:
+                        companion = possible_companions[0]
+                        elsewhere = {
+                            self.board.region_of(square) for square in trial.options[companion]
+                        }
+                        if len(elsewhere) == 1:
+                            (other_region,) = elsewhere
+                            reason = self.say(
+                                "then_in",
+                                who=companion,
+                                where=self.places.region(self.board.region_names[other_region]),
+                            )
+                            return f"{reason}, {contradiction}"
+                    return contradiction
         if (global_count := self._global_count_for_sources(step.sources)) is not None:
             return self.say("global_count.breaks", clue=self._global_count_text(global_count))
         if source in self.conditions:
