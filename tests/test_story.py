@@ -265,7 +265,11 @@ def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal(
 def test_story_says_area_capacity_the_way_a_person_does():
     """The count rule's shared-capacity step reads as the counting argument."""
     story = explain(example("samen-onderweg.txt").read_text())
+    assert "Keiko zit naast de lantaarn (3): in Osaka." in story
+    assert "Mio zit op de bank (4): in Osaka." in story
     assert "bevatten samen al alle vijf mensen" in story
+    assert "dus niemand is in Okinawa" in story
+    assert "Haru zit niet in Okinawa, Isamu zit niet in Okinawa" not in story
     assert "holds at least" not in story
     assert "minstens één mensen" not in story
 
@@ -848,8 +852,8 @@ def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():
 def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
     story = explain((example("murdoku_3_house.txt")).read_text())
     opening = story.split("\n\n")[0]
-    assert "Ben is on the carpet (4): r3c3 or r3c4." in opening
-    assert "Ben is not next to the lamp (6): **Ben on r3c4**." in opening
+    assert "Ben is on the carpet (4): in the hall." in opening
+    assert "Ben is not next to the lamp (6): in the hall: **Ben on r3c4**." in opening
 
 
 def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():

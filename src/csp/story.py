@@ -1166,6 +1166,13 @@ class Places:
     def where_regions(self, names: Iterable[str]) -> str:
         return self.say.join([self.region(n) for n in names], "or")
 
+    def common_region(self, squares: set[Square]) -> str | None:
+        """The region shared by every square, if there is exactly one."""
+        regions = {self.board.region_of(sq) for sq in squares}
+        if len(regions) != 1:
+            return None
+        return self.region(self.board.region_names[next(iter(regions))])
+
     def regions(self, ids: set[str]) -> str:
         """Name candidate areas compactly, using an area tag where it fits."""
         names: list[str] = []
@@ -1545,13 +1552,15 @@ class Story:
                 continue
             (person,) = condition.people
             squares = left[person]
+            region = self.places.common_region(squares) if squares else None
             if len(squares) == 1:
-                where = self.places.placed(person, min(squares))
+                location = self.places.placed(person, min(squares))
+                where = f"{region}: {location}" if region else location
                 state.announce(person)
-            elif len(squares) <= MAX_LISTED + 1:
-                where = self.places.squares(squares)
             else:
-                where = self.say("squares", n=self.say.number(len(squares)))
+                where = region or self.places.where(squares, self.places.free)
+                if where is None:
+                    where = self.say("squares", n=self.say.number(len(squares)))
             said.append(f"{_cap(self._clue(condition))} ({condition.number}): {where}.")
         for number, (kind, args) in enumerate(self.clues, 1):
             if kind not in ("has_attribute", "not_attribute", "unique_attribute"):
@@ -1781,8 +1790,17 @@ class Story:
             if known is False:
                 allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
         counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
+        population_full = self._population_full(step, constraint, known)
+        if population_full is not None:
+            target = _POPULATION_NAME.match(constraint.name)
+            if target is not None:
+                empty_area = self.say(
+                    "global_count.area_empty",
+                    where=self.places.region(target["area"]),
+                )
+                return f"{_cap(population_full)}, {self.say('so')} {empty_area}."
         reason = (
-            self._population_full(step, constraint, known)
+            population_full
             or self._role_area_reason(constraint, allowed)
             or self.say("count_reason", name=self._count_name(constraint), counts=counts)
         )
