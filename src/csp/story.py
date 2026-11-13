@@ -49,6 +49,7 @@ from .murdoku import (
     global_count_conditions,
     global_count_unit_prefix,
     line_indices,
+    mark_occupant_name,
     next_to_covers_own_squares,
     quantified_conditions,
     role_conditions,
@@ -186,6 +187,15 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_either": "{ends}; either way {outcome}.",
         "nobody_else": "nobody else can be there",
         "then_on": "then {who} is on {square}",
+        "mark_case.alone": (
+            "the square is marked {mark}, so {who} would be alone {where} "
+            "and its other squares would be empty"
+        ),
+        "mark_case.not_alone": "the square is marked {mark}, so {who} would have company {where}",
+        "mark_blocked.alone": (
+            "{who} is {where} but cannot stand on a {mark} square there. "
+            "Anyone on a {mark} square would be alone, so **nobody can use those squares {where}**"
+        ),
         "nowhere": "then {who} has nowhere left",
         "nobody": "then nobody can fill {line}",
         "breaks_said": "which goes against \u2018{clue}\u2019",
@@ -275,6 +285,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.even": "an even number of",
         "global_count.range": "between {low} and {high}",
         "global_count.people_on": "{quantity} {noun} {verb} on {target}",
+        "global_count.mark": "the squares marked {name}",
         "global_count.people_in": "{quantity} {noun} {verb} {where}",
         "global_count.people_with": "{quantity} {noun} {have} {target}",
         "global_count.empty_areas": "{quantity} {noun} {verb} empty{where}",
@@ -457,6 +468,17 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_either": "{ends}; hoe dan ook {outcome}.",
         "nobody_else": "daar kan verder niemand",
         "then_on": "dan zit {who} op {square}",
+        "mark_case.alone": (
+            "het vakje heeft markering {mark}, dus {who} zou alleen zijn {where} "
+            "en de andere vakjes daar zouden leeg zijn"
+        ),
+        "mark_case.not_alone": (
+            "het vakje heeft markering {mark}, dus {who} zou samen met iemand zijn {where}"
+        ),
+        "mark_blocked.alone": (
+            "{who} is {where} maar kan daar niet op een vakje met markering {mark} staan. "
+            "Wie op zo'n vakje staat is alleen, dus **niemand kan die vakjes {where} gebruiken**"
+        ),
         "nowhere": "dan kan {who} nergens meer",
         "nobody": "dan kan niemand meer in {line}",
         "breaks_said": "en dat strookt niet met \u2018{clue}\u2019",
@@ -544,6 +566,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.even": "een even aantal",
         "global_count.range": "tussen {low} en {high}",
         "global_count.people_on": "{quantity} {noun} {verb} op {target}",
+        "global_count.mark": "de vakjes met markering {name}",
         "global_count.people_in": "{quantity} {noun} {verb} {where}",
         "global_count.people_with": "{quantity} {noun} {have} {target}",
         "global_count.empty_areas": "{quantity} {noun} {verb} leeg{where}",
@@ -2070,6 +2093,8 @@ class Story:
             return self._global_empty_unit_text(step)
         if step.var in self.auxiliary_variables:
             return ""
+        if (reason := self._mark_blocked_by_occupant(step, changed, before, state)) is not None:
+            return f"{_cap(reason)}."
         if step.sources and (
             target_condition := self._quantified_condition_for_source(step.sources[0])
         ):
@@ -2128,6 +2153,43 @@ class Story:
             )
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
+
+    def _mark_blocked_by_occupant(
+        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
+    ) -> str | None:
+        """A known occupant who cannot use an alone-mark excludes the mark in their area."""
+        for mark in self.board.marks:
+            if mark.occupant_condition != "alone":
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                region_name = self.board.region_names[region]
+                source = mark_occupant_name(mark, region_name) + " trigger count"
+                if source not in step.sources:
+                    continue
+                marked = {sq for sq in mark.cells if self.board.region_of(sq) == region}
+                if not changed or any(before[p] - state.options[p] - marked for p in changed):
+                    continue
+                occupant = next(
+                    (
+                        p
+                        for p in self.board.people
+                        if state.told[p]
+                        and all(self.board.region_of(sq) == region for sq in state.told[p])
+                        and not state.told[p] & marked
+                    ),
+                    None,
+                )
+                if occupant is None:
+                    continue
+                for person in changed:
+                    state.told[person] -= before[person] - state.options[person]
+                return self.say(
+                    "mark_blocked.alone",
+                    who=occupant,
+                    where=self.places.region(region_name),
+                    mark=mark.name.replace("_", " "),
+                )
+        return None
 
     def _role_step_reason(self, steps: Sequence[Step]) -> str | None:
         """Why a role became known: the role rule or role count behind its hidden constraint."""
@@ -2210,7 +2272,12 @@ class Story:
         if selector.kind == "columns":
             lines = self.places.lines("col", line_indices(selector.name, self.board.size), "or")
             return self.say("in", what=lines)
-        return self.say("on", what=self.places.thing(selector.name))
+        return self.say("on", what=self._global_count_target(selector))
+
+    def _global_count_target(self, selector: TargetSelector) -> str:
+        if selector.kind == "mark" and selector.name not in self.say.words:
+            return self.say("global_count.mark", name=selector.name.replace("_", " "))
+        return self.places.thing(selector.name)
 
     def _global_count_text(self, condition: GlobalCountCondition) -> str:
         quantity = self._global_count_quantity(condition)
@@ -2261,7 +2328,7 @@ class Story:
                 kind_label = labels[self.say.language][condition.selector.name]
                 target = self.say("global_count.object_kind", kind=kind_label)
             else:
-                target = self.places.thing(condition.selector.name)
+                target = self._global_count_target(condition.selector)
             on_verb = verb if self.say.language == "en" else ("staat" if singular else "staan")
             return self.say(
                 "global_count.people_on",
@@ -2542,6 +2609,21 @@ class Story:
         state.told[who].discard(square)
         parts: list[str] = []
         refs: list[int] = []
+        region = self.board.region_of(square)
+        region_name = self.board.region_names[region]
+        for mark in self.board.marks:
+            if square not in mark.cells or mark.occupant_condition is None:
+                continue
+            mark_source = mark_occupant_name(mark, region_name) + " occupant count"
+            if any(mark_source in step.trail[j].sources for j in needed):
+                parts.append(
+                    self.say(
+                        f"mark_case.{mark.occupant_condition}",
+                        mark=mark.name.replace("_", " "),
+                        who=who,
+                        where=self.places.region(region_name),
+                    )
+                )
         for j in needed:
             inner = step.trail[j]
             if inner.asserted and j > 0 and inner.var in self.board.people:

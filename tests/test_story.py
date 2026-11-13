@@ -957,6 +957,133 @@ count people in mark:seats = 1
     assert "Precies één persoon is op de stoelen (11)" in dutch
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Exactly one person is on the squares marked quiet."),
+        ("nl", "Precies één persoon staat op de vakjes met markering quiet."),
+    ],
+)
+def test_global_count_names_marked_squares(language, expected):
+    text = f"""Language: {language}
+Size: 2
+Regions:
+a: hall
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Marks:
+quiet: r1c1 r2c2 ; alone
+Clues:
+count people on mark:quiet = 1
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording.read(text))
+    assert story.clue_texts() == [expected]
+
+
+def test_what_if_explains_the_alone_mark_used_in_its_contradiction():
+    text = """Language: en
+Size: 6
+Regions:
+a: Atrium
+b: Tomb
+c: Crypt
+d: Hall
+e: Workshop
+Grid:
+a a a b b b
+a a a b b b
+c c a b d d
+c c c d d d
+c c e e d d
+e e e e d d
+Marks:
+quiet: r1c2 r4c6 r5c1 r6c2 r3c5 ; alone
+People:
+Ada
+Bo
+Cal
+Dee
+Eva
+Fay
+Clues:
+count people on mark:quiet = 2
+same_region Eva Fay
+in_region Bo Tomb
+left_of Bo Dee
+in_region Cal Crypt
+left_of Eva Fay
+in_region Ada Atrium
+above Eva Fay
+"""
+    explanation = explain(text)
+    assert (
+        "the square is marked quiet, so Dee would be alone in the Hall "
+        "and its other squares would be empty, then Fay is on r2c6, "
+        "then nobody can fill row 6"
+    ) in explanation
+    assert "brute force" not in explanation
+    dutch = explain(text.replace("Language: en", "Language: nl"))
+    assert (
+        "het vakje heeft markering quiet, dus Dee zou alleen zijn in de Hall "
+        "en de andere vakjes daar zouden leeg zijn"
+    ) in dutch
+
+
+def test_alone_mark_excludes_squares_in_an_occupied_area():
+    text = """Size: 6
+Regions:
+a: garden
+b: school
+c: square
+d: library
+e: arcade
+Grid:
+a a a b b b
+a a a b b b
+a a c c b b
+d d c c e e
+d d d e e e
+d d d e e e
+Marks:
+quiet: r4c4 r1c3 r2c3 r5c6 r6c4 ; alone
+Objects:
+sakura: blocking r1c1
+fountain: blocking r3c3
+arcade: blocking r5c5
+chair: standable r2c5
+carpet: standable r5c1 r5c2
+People:
+Mametchi
+Kuchipatchi
+Memetchi
+Lovelitchi
+Masktchi
+Akumatchi
+Clues:
+count people on mark:quiet = 1
+next_to Masktchi sakura
+same_region Lovelitchi Mametchi
+in_corner Memetchi
+left_of Kuchipatchi Mametchi
+not_next_to Lovelitchi chair
+not_next_to Kuchipatchi carpet
+left_of Mametchi Lovelitchi
+"""
+    explanation = explain(text)
+    assert (
+        "Masktchi is in the garden but cannot stand on a quiet square there. "
+        "Anyone on a quiet square would be alone, so "
+        "**nobody can use those squares in the garden**."
+    ) in explanation
+    assert len(bruteforce.solutions(text)) == 1
+    assert len(bruteforce.solutions(text.replace("; alone", ""))) > 1
+
+
 def test_story_explains_known_and_absent_roles():
     text = """Size: 2
 Regions:
