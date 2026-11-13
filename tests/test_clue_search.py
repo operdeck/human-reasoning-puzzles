@@ -169,7 +169,38 @@ def test_needs_mark_is_rejected_for_commands_that_cannot_enforce_it(capsys):
     with pytest.raises(SystemExit) as error:
         clue_search.main(["thin", "unused.txt", "--needs-mark", "quiet"])
     assert error.value.code == 2
-    assert "--needs-mark is supported only by suggest" in capsys.readouterr().err
+    assert "--needs-mark is supported only by suggest and ease" in capsys.readouterr().err
+
+
+def test_ease_does_not_make_an_occupancy_condition_redundant(monkeypatch):
+    text = """Size: 3
+Regions:
+a: alcove
+b: hall
+Grid:
+a b b
+b a b
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r1c1 ; alone
+Clues:
+count people on mark:quiet = 1
+in_row Ada 1
+in_row Ben 2
+"""
+    placement = clue_search.parse_solution("Ada=r1c1 Ben=r2c3 Cal=r3c2")
+    assert len(bruteforce.solutions(text)) == 1
+    assert len(bruteforce.solutions(clue_search.without_mark_condition(text, "quiet"))) > 1
+    monkeypatch.setattr(clue_search, "candidate_clues", lambda *args: ["in_column Ben 3"])
+    monkeypatch.setattr(clue_search, "outcome", lambda *args: clue_search.Outcome(1, "what_if"))
+    assert clue_search.ease(text, placement, "relations", needs_marks=["quiet"]) == []
+    redundant = clue_search.with_clues(text, [*clue_search.clue_lines(text), "in_column Ben 3"])
+    with pytest.raises(ValueError, match="not necessary"):
+        clue_search.ease(redundant, placement, "relations", needs_marks=["quiet"])
 
 
 def test_occupancy_shows_unused_decoys():

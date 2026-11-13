@@ -17,7 +17,7 @@ Run as `uv run python -m csp.clue_search COMMAND FILE`:
   clue names, so every figure outside `--exclude` gets a clue.
   `--exclude-target` keeps decorative objects out of the suggestions.
 - `ease`: add true clues to a unique puzzle until it is within `--max-grade`,
-  keeping each `--needs` clue necessary (same `--solution`/`--kinds`/`--exclude`).
+  keeping each `--needs` clue and `--needs-mark` effect necessary.
 - `occupancy`: how often each object square is used across the placements the
   puzzle still allows (up to `--sample`). A decoy that is never used, or a
   square that is always used, cannot make a clue about that object matter.
@@ -551,19 +551,25 @@ def ease(
     log: Callable[[str], None] = lambda _line: None,
     exclude: Iterable[str] = (),
     needs: Iterable[int] = (),
+    needs_marks: Iterable[str] = (),
 ) -> list[str]:
     """Clues to add to a unique `text` until its grade is at most `max_grade`.
 
     Each round adds a true candidate clue while every clue numbered in `needs`
-    stays necessary. A clue that reaches `max_grade` or below is preferred,
-    the hardest such grade first, so the puzzle is not made easier than asked;
-    otherwise the easiest grade wins. Ties go to clues about the people named
-    least so far. Stops within `max_grade` or when nothing helps.
+    and every mark in `needs_marks` stays necessary. A clue that reaches
+    `max_grade` or below is preferred, the hardest such grade first, so the
+    puzzle is not made easier than asked; otherwise the easiest grade wins.
+    Ties go to clues about the people named least so far. Stops within
+    `max_grade` or when nothing helps.
     """
     board, _ = load_board(text)
     candidates = candidate_clues(board, placement, kinds, exclude)
     lines = clue_lines(text)
     needed = sorted(set(needs))
+    marks_needed = tuple(dict.fromkeys(needs_marks))
+    for name in marks_needed:
+        if len(brute.solutions(without_mark_condition(text, name))) < 2:
+            raise ValueError(f"mark {name!r} is not necessary in the starting puzzle")
     added: list[str] = []
     current = outcome(text, timeout)
     while not _within(current.grade, max_grade):
@@ -578,7 +584,13 @@ def ease(
                 for n in needed
             ):
                 continue
-            result = outcome(with_clues(text, [*lines, *added, clue]), timeout)
+            trial = with_clues(text, [*lines, *added, clue])
+            if any(
+                len(brute.solutions(without_mark_condition(trial, name))) == 1
+                for name in marks_needed
+            ):
+                continue
+            result = outcome(trial, timeout)
             if not result.good or result.grade is None:
                 continue
             spread = sum(mentions.get(word, 0) for word in clue.split()[1:])
@@ -650,11 +662,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--needs-mark",
         nargs="*",
         default=[],
-        help="suggest: marks whose occupancy effects must stay necessary",
+        help="suggest, ease: marks whose occupancy effects must stay necessary",
     )
     args = parser.parse_args(argv)
-    if args.needs_mark and args.command != "suggest":
-        parser.error("--needs-mark is supported only by suggest")
+    if args.needs_mark and args.command not in ("suggest", "ease"):
+        parser.error("--needs-mark is supported only by suggest and ease")
     text = args.puzzle.read_text()
     if args.command == "occupancy":
         seen, rows = occupancy(text, args.sample)
@@ -689,6 +701,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print,
             args.exclude,
             args.needs,
+            args.needs_mark,
         )
         print("Clues to add:")
         print("\n".join(added))
