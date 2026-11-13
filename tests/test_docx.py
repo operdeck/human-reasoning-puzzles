@@ -645,6 +645,30 @@ def test_booklet_population_explanation_includes_the_unnumbered_comparison(tmp_p
         in rendered
     )
     assert "Samen zijn dat alle vijf mensen, dus niemand is in Okinawa." in rendered
+    paragraph = next(p for p in Document(str(output)).paragraphs if "Keiko en Mio zijn" in p.text)
+    bold = [run.text for run in paragraph.runs if run.bold]
+    assert "daar zijn minstens twee mensen" in bold
+    assert "zijn er in Tokyo minstens drie mensen" in bold
+    assert "niemand is in Okinawa" in bold
+    assert any("Keiko en Mio zijn in Osaka" in run.text and not run.bold for run in paragraph.runs)
+    assert all("Keiko en Mio zijn in Osaka" not in run for run in bold)
+    assert "**" not in rendered
+
+
+def test_solution_board_size_ignores_bold_markers(tmp_path, monkeypatch):
+    import csp.docx_export as docx_export
+
+    source = example("murdoku_3_house.txt")
+    text = "A" * docx_export.CLUE_LINE_CHARS
+
+    def board_width(marked):
+        explanation = "\n\n".join(f"- {marked}" for _ in range(20))
+        monkeypatch.setattr(docx_export, "explain", lambda *_args, **_kwargs: explanation)
+        output = tmp_path / "sizing.docx"
+        write_docx(source.read_text(), output, source.parent, solution={})
+        return Document(str(output)).inline_shapes[-1].width
+
+    assert board_width(text) == board_width(f"**{text}**")
 
 
 def test_repeated_premises_are_merged():

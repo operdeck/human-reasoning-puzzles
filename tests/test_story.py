@@ -265,13 +265,17 @@ def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal(
 def test_story_says_area_capacity_the_way_a_person_does():
     """The count rule's shared-capacity step reads as the counting argument."""
     story = explain(example("samen-onderweg.txt").read_text())
-    assert "Keiko zit naast de lantaarn (3): in Osaka." in story
-    assert "Mio zit op de bank (4): in Osaka." in story
-    assert "Keiko en Mio zijn in Osaka, dus daar zijn minstens twee mensen." in story
+    assert "Keiko zit naast de lantaarn (3): **in Osaka**." in story
+    assert "Mio zit op de bank (4): **in Osaka**." in story
+    assert "Keiko en Mio zijn in Osaka, dus **daar zijn minstens twee mensen**." in story
     assert (
-        "Het gebied met de meeste mensen is Tokyo (1), dus zijn er in Tokyo minstens drie mensen."
+        "Het gebied met de meeste mensen is Tokyo (1), "
+        "dus **zijn er in Tokyo minstens drie mensen**."
     ) in story
-    assert "Samen zijn dat alle vijf mensen, dus niemand is in Okinawa." in story
+    assert "Samen zijn dat alle vijf mensen, dus **niemand is in Okinawa**." in story
+    assert (
+        "Haru is ergens boven Jun (5), dus **Haru zit niet in rij 5** en **Jun zit niet in rij 1**."
+    ) in story
     assert "Haru zit niet in Okinawa, Isamu zit niet in Okinawa" not in story
     assert "holds at least" not in story
     assert "minstens één mensen" not in story
@@ -280,11 +284,11 @@ def test_story_says_area_capacity_the_way_a_person_does():
 def test_story_explains_the_area_comparison_in_english():
     text = example("samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
     story = explain(text)
-    assert "Keiko and Mio are in Osaka, so at least two people are there." in story
+    assert "Keiko and Mio are in Osaka, so **at least two people are there**." in story
     assert (
-        "The area with the most people is Tokyo (1), so at least three people are in Tokyo."
+        "The area with the most people is Tokyo (1), so **at least three people are in Tokyo**."
     ) in story
-    assert "Together that accounts for all five people, so nobody is in Okinawa." in story
+    assert "Together that accounts for all five people, so **nobody is in Okinawa**." in story
 
 
 def test_story_uses_the_actual_population_clue_number():
@@ -309,9 +313,9 @@ def test_story_population_reason_uses_the_puzzles_own_areas():
         .replace("Okinawa", "East")
     )
     story = explain(text)
-    assert "Keiko en Mio zijn in West, dus daar zijn minstens twee mensen." in story
+    assert "Keiko en Mio zijn in West, dus **daar zijn minstens twee mensen**." in story
     assert "Het gebied met de meeste mensen is North (1)" in story
-    assert "dus niemand is in East" in story
+    assert "dus **niemand is in East**" in story
 
 
 def test_story_does_not_invent_population_witnesses():
@@ -321,7 +325,7 @@ def test_story_does_not_invent_population_witnesses():
         .replace("next_to Keiko lantaarn", "next_to Keiko torii")
     )
     story = explain(text)
-    assert "Keiko zit naast de torii (3): in Tokyo." in story
+    assert "Keiko zit naast de torii (3): **in Tokyo**." in story
     assert "Keiko en Mio zijn in Osaka" not in story
 
 
@@ -350,26 +354,32 @@ def test_story_can_explain_an_unnumbered_population_rule():
         )
     )
     story = explain(text)
-    assert "Het gebied met de meeste mensen is Tokyo, dus zijn er in Tokyo" in story
+    assert (
+        "Het gebied met de meeste mensen is Tokyo, dus **zijn er in Tokyo minstens drie mensen**."
+        in story
+    )
 
 
 def test_story_omits_population_clue_numbers_in_unnumbered_explanations():
     story = explain(example("samen-onderweg.txt").read_text(), numbered=False)
-    assert "Het gebied met de meeste mensen is Tokyo, dus zijn er in Tokyo" in story
+    assert (
+        "Het gebied met de meeste mensen is Tokyo, dus **zijn er in Tokyo minstens drie mensen**."
+        in story
+    )
     assert not re.search(r"\(\d+\)", story)
 
 
 def test_story_describes_by_region_and_row_before_squares():
     story = explain((example("prrrdoku3.txt")).read_text())
     assert "Luna zit in het water" in story
-    assert "Otto zit in een klimgebied, dus Pip zit in een klimgebied" in story
-    assert "Luna kan alleen in kolom 1, daar kan verder niemand" in story
+    assert "Otto zit in een klimgebied, dus **Pip zit in een klimgebied**" in story
+    assert "Luna kan alleen in kolom 1, **daar kan verder niemand**" in story
 
 
 def test_opening_uses_shared_columns_across_regions():
     opening = explain(example("samen-in-de-blauwe-bladeren.txt").read_text()).split("\n\n")[0]
-    assert "Mizuki zit naast de torii (5): in kolom 1." in opening
-    assert "Goro zit naast het uithangbord met kanji (7): in kolom 6." in opening
+    assert "Mizuki zit naast de torii (5): **in kolom 1**." in opening
+    assert "Goro zit naast het uithangbord met kanji (7): **in kolom 6**." in opening
 
 
 def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
@@ -850,8 +860,8 @@ def test_story_explains_a_reified_count_constraint():
     )
 
     assert (
-        "The allowed counts for west occupancy are zero, so the literal west_empty=yes must hold."
-        in story.tell()
+        "The allowed counts for west occupancy are zero, "
+        "so **the literal west_empty=yes must hold**." in story.tell()
     )
 
 
@@ -955,7 +965,7 @@ def test_area_tag_note_keeps_the_article_and_case_of_an_english_room_phrase():
 
 def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():
     story = explain(example("murder-hotel-3.txt").read_text())
-    reveal = "Luca is somewhere above the murderer (14), so Marcella has the murderer role."
+    reveal = "Luca is somewhere above the murderer (14), so **Marcella has the murderer role**."
 
     assert reveal in story
     assert story.index("Marcella on r10c5") < story.index(reveal)
@@ -964,14 +974,15 @@ def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():
 def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
     story = explain((example("murdoku_3_house.txt")).read_text())
     opening = story.split("\n\n")[0]
-    assert "Ben is on the carpet (4): in the hall." in opening
-    assert "Ben is not next to the lamp (6): in the hall: **Ben on r3c4**." in opening
+    assert "Ben is on the carpet (4): **in the hall**." in opening
+    assert "Ben is not next to the lamp (6): **in the hall**: **Ben on r3c4**." in opening
 
 
 def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():
     story = explain((example("murdoku_3_house.txt")).read_text())
     assert "Either Ada is in the study, or Ben is in the hall, but not both (1)." in story
-    assert "Ben is on r3c4, so Ada is not in the study" in story
+    assert "Ben is on r3c4, so **Ada is not in the study**" in story
+    assert "**Ben is on r3c4**" not in story
 
 
 def test_chains_are_told_as_if_then_with_the_reason_for_each_link():
@@ -1039,7 +1050,7 @@ def test_role_rules_are_told_without_engine_names():
     story = explain(example("murdoku_orient_express.txt").read_text())
     for leak in ("__", "role and area", "occupant count", "has role", "cardinality"):
         assert leak not in story
-    assert "De moordenaar is op de plaats delict, dus Svetlana is de moordenaar" in story
+    assert "De moordenaar is op de plaats delict, dus **Svetlana is de moordenaar**" in story
     assert "Svetlana is de moordenaar en moet in coupé 2 zijn" in story
 
 

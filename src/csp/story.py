@@ -193,8 +193,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "breaks_first_plain": "the clues do not allow that",
         "breaks_rule": "which the board does not allow",
         "breaks_rule_first": "the board does not allow that",
-        "cannot": "{who} cannot be on {squares}: {chain}.",
-        "nor": "Nor on {squares}: {chain}.",
+        "cannot": "**{who} cannot be on {squares}**: {chain}.",
+        "nor": "**Nor on {squares}**: {chain}.",
         "direct": "The direct clues",
         "the_rest": "The rest",
         "squares": "{n} squares",
@@ -253,8 +253,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count.population_reason": "the {area} area holding at least {count} people",
         "count.population_reason_one": "the {area} area holding at least one person",
         "count.population_full": "{areas} already hold all {n} people",
-        "count.population_person": "{people} is {where}, so at least one person is there",
-        "count.population_people": ("{people} are {where}, so at least {count} people are there"),
+        "count.population_person": "{people} is {where}, so **at least one person is there**",
+        "count.population_people": (
+            "{people} are {where}, so **at least {count} people are there**"
+        ),
         "count.population_minimum": "at least {count} people are {where}",
         "count.population_all": "together that accounts for all {n} people",
         "global_count.exact": "exactly {n}",
@@ -453,8 +455,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "breaks_first_plain": "dat mag niet",
         "breaks_rule": "en dat mag niet",
         "breaks_rule_first": "dat mag niet",
-        "cannot": "{who} kan niet op {squares}: {chain}.",
-        "nor": "Ook niet op {squares}: {chain}.",
+        "cannot": "**{who} kan niet op {squares}**: {chain}.",
+        "nor": "**Ook niet op {squares}**: {chain}.",
         "direct": "De directe aanwijzingen",
         "the_rest": "De rest",
         "squares": "{n} vakjes",
@@ -511,8 +513,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count.population_reason": "het gebied {area} met minstens {count} mensen",
         "count.population_reason_one": "het gebied {area} met minstens één mens",
         "count.population_full": "{areas} bevatten samen al alle {n} mensen",
-        "count.population_person": "{people} is {where}, dus daar is minstens één persoon",
-        "count.population_people": ("{people} zijn {where}, dus daar zijn minstens {count} mensen"),
+        "count.population_person": "{people} is {where}, dus **daar is minstens één persoon**",
+        "count.population_people": (
+            "{people} zijn {where}, dus **daar zijn minstens {count} mensen**"
+        ),
         "count.population_minimum": "zijn er {where} minstens {count} mensen",
         "count.population_all": "samen zijn dat alle {n} mensen",
         "global_count.exact": "precies {n}",
@@ -1494,7 +1498,7 @@ class Story:
                 None,
             )
             name = self.say.words.get(role) or role.replace("_", " ")
-            outcome = self.say("role_has", who=person, role=name)
+            outcome = _emphasize(self.say("role_has", who=person, role=name))
             if condition is None:
                 reveals.append(f"{_cap(outcome)}.")
             else:
@@ -1573,7 +1577,7 @@ class Story:
             where: str | None
             if len(squares) == 1:
                 location = self.places.placed(person, min(squares))
-                where = f"{region}: {location}" if region else location
+                where = f"{_emphasize(region)}: {location}" if region else location
                 state.announce(person)
             else:
                 where = region or self.places.common_line(squares)
@@ -1593,6 +1597,8 @@ class Story:
                     )
                     if where is not None and (where in clue or same_edge):
                         where = ""
+                if where:
+                    where = _emphasize(where)
                 if where is None:
                     where = self.say("squares", n=self.say.number(len(squares)))
             suffix = f": {where}" if where else ""
@@ -1621,6 +1627,7 @@ class Story:
             if (text := self._role_step_text(step, state))
         ]
         if role_sentences:
+            role_outcome = self.say.join([_emphasize(text) for text in role_sentences])
             global_condition = self._global_count_for_sources(
                 source for step in steps for source in step.sources
             )
@@ -1628,7 +1635,7 @@ class Story:
                 clue = self._global_count_reason(global_condition) + self._global_count_ref(
                     global_condition
                 )
-                return f"{_cap(clue)}, {self.say('so')} {self.say.join(role_sentences)}."
+                return f"{_cap(clue)}, {self.say('so')} {role_outcome}."
             quantified_condition = next(
                 (
                     target_condition
@@ -1643,17 +1650,17 @@ class Story:
                 clue = _cap(self._quantified_text(quantified_condition)) + self._quantified_ref(
                     quantified_condition
                 )
-                return f"{clue}, {self.say('so')} {self.say.join(role_sentences)}."
+                return f"{clue}, {self.say('so')} {role_outcome}."
             changed = [p for p in self.board.people if state.options[p] != before[p]]
             if not changed and (reason := self._role_step_reason(steps)):
-                return f"{_cap(reason)}, {self.say('so')} {self.say.join(role_sentences)}."
+                return f"{_cap(reason)}, {self.say('so')} {role_outcome}."
             if changed:
                 return (
-                    f"{self.say.join(role_sentences)}, {self.say('so')} "
+                    f"{role_outcome}, {self.say('so')} "
                     + self._outcome(changed, before, state)
                     + "."
                 )
-            return f"{self.say.join(role_sentences)}."
+            return f"{_cap(role_outcome)}."
         if rule == "single":
             if steps[0].var in self.auxiliary_variables:
                 if (
@@ -1710,7 +1717,7 @@ class Story:
         outcome = []
         for p in changed:
             gone = self.places.squares(before[p] - state.options[p])
-            outcome.append(self.say("is_not", who=p, where=self.say("on", what=gone)))
+            outcome.append(_emphasize(self.say("is_not", who=p, where=self.say("on", what=gone))))
             state.told[p] -= before[p] - state.options[p]
             if len(state.options[p]) == 1 and p not in state.announced:
                 state.announce(p)
@@ -1869,7 +1876,7 @@ class Story:
                         count=self.say.number(count),
                         where=self.places.region(self.board.region_names[region]),
                     )
-                    sentences.append(f"{_cap(clue)}, {self.say('so')} {minimum}.")
+                    sentences.append(f"{_cap(clue)}, {self.say('so')} {_emphasize(minimum)}.")
                     known[region] = (count, constraint)
                     pending.remove(item)
                     progress = True
@@ -1914,9 +1921,11 @@ class Story:
             or total != len(self.board.people)
         ):
             return None
-        empty = self.say(
-            "global_count.area_empty",
-            where=self.places.region(self.board.region_names[target[0]]),
+        empty = _emphasize(
+            self.say(
+                "global_count.area_empty",
+                where=self.places.region(self.board.region_names[target[0]]),
+            )
         )
         if (evidence := self._population_evidence(levels, before, state)) is not None:
             together = self.say("count.population_all", n=self.say.number(total))
@@ -2203,14 +2212,18 @@ class Story:
         is_empty = step.value if step.asserted else not step.value
         if kind == "area":
             where = self.places.region(self.board.region_names[str(unit)])
-            return self.say(
-                "global_count.area_empty" if is_empty else "global_count.area_occupied",
-                where=where,
+            return _emphasize(
+                self.say(
+                    "global_count.area_empty" if is_empty else "global_count.area_occupied",
+                    where=where,
+                )
             )
         assert isinstance(unit, Square)
-        return self.say(
-            "global_count.cell_empty" if is_empty else "global_count.cell_occupied",
-            square=self.places.square(unit),
+        return _emphasize(
+            self.say(
+                "global_count.cell_empty" if is_empty else "global_count.cell_occupied",
+                square=self.places.square(unit),
+            )
         )
 
     def _link_reason(self, source: str) -> str:
@@ -2231,7 +2244,9 @@ class Story:
             state.told[p] = set(state.options[p])
             if len(state.options[p]) == 1:
                 state.announce(p)
-        return self.say.join([self.places.describe(p, state.options[p], before[p]) for p in people])
+        return self.say.join(
+            [_emphasize(self.places.describe(p, state.options[p], before[p])) for p in people]
+        )
 
     def _relation(
         self, step: Step, before: dict[str, set[Square]], changed: list[str], outcome: str
@@ -2299,7 +2314,7 @@ class Story:
             else:
                 lines = self.places.lines(kind_in, [i for _, i in inner])
                 text = self.say("filled_only" + many, lines=lines, where=where)
-            text = f"{_cap(text)}, {self.say('nobody_else')}"
+            text = f"{_cap(text)}, {_emphasize(self.say('nobody_else'))}"
             # Being shut out of those lines goes without saying; only news is worth a word.
             news = [p for p in changed if len(state.options[p]) <= MAX_LISTED]
             if news:
@@ -2531,8 +2546,12 @@ class Story:
             person, role = self.role_variables[step.var]
             present = step.value if holds else not step.value
             name = self.say.words.get(role) or role.replace("_", " ")
-            return self.say("role_has" if present else "role_not", who=person, role=name)
-        return self.say("literal_true" if holds else "literal_false", literal=step.literal)
+            return _emphasize(
+                self.say("role_has" if present else "role_not", who=person, role=name)
+            )
+        return _emphasize(
+            self.say("literal_true" if holds else "literal_false", literal=step.literal)
+        )
 
     def _role_step_text(self, step: Step, state: _State) -> str:
         person, role = self.role_variables[step.var]
@@ -2836,7 +2855,13 @@ class Story:
         return "" if condition.number is None else f" ({condition.number})"
 
 
+def _emphasize(text: str) -> str:
+    return f"**{text.replace('**', '')}**" if text else ""
+
+
 def _cap(text: str) -> str:
+    if text.startswith("**"):
+        return "**" + _cap(text[2:])
     return text[:1].upper() + text[1:]
 
 

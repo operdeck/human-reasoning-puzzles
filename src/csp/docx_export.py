@@ -455,7 +455,7 @@ def _add_solution(document: Any, entry: Entry, title: str, bookmark: str | None 
     stream, aspect = _picture_stream(text, entry.solution, entry.role_statuses)
     blocks = [b.strip().removeprefix("- ") for b in explain(text, numbered=False).split("\n\n")]
     blocks = [b for b in blocks if b]
-    lines = sum(-(-len(b) // CLUE_LINE_CHARS) for b in blocks)
+    lines = sum(-(-len(BOLD.sub(r"\1", b)) // CLUE_LINE_CHARS) for b in blocks)
     small = lines > MANY_SOLUTION_LINES
     width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0, 6)
     if width <= max(MIN_BOARD_WIDTH_CM, SOLUTION_MIN_BOARD_CM):
