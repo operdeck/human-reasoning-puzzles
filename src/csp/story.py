@@ -318,6 +318,59 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.cell_empty": "{square} is empty",
         "global_count.cell_occupied": "{square} is occupied",
         "global_count.object_kind": "{kind} objects",
+        "sudoku.row": "row {number}",
+        "sudoku.column": "column {number}",
+        "sudoku.box": "the box containing {cell}",
+        "sudoku.extra": "the extra house {name}",
+        "sudoku.doc_how": "How to solve it",
+        "sudoku.singles": "**Singles.**",
+        "sudoku.single_cell": ("{cell} has only one digit left, so **place {digit} in {cell}**."),
+        "sudoku.single_house": (
+            "In {house}, {digit} has only one possible square, so **place {digit} in {cell}**."
+        ),
+        "sudoku.continue_singles": "Continue filling singles until none remain.",
+        "sudoku.finish_singles": "The remaining squares then follow by singles.",
+        "sudoku.locked": (
+            "**Locked candidate.** In {source}, every remaining place for {digit} is in {target}. "
+            "The {digit} in {source} must therefore also occupy {target}, so **{conclusion}**."
+        ),
+        "sudoku.cross_one": "cross {digit} out at {cell}",
+        "sudoku.cross_many": "cross {digit} out from the other candidates in {target}",
+        "sudoku.naked_set": (
+            "**Naked set.** In {house}, {cells} can only contain {digits} between them. "
+            "They use those digits, so **remove {digits} from the other cells in {house}**."
+        ),
+        "sudoku.hidden_set": (
+            "**Hidden set.** In {house}, {digits} can only go in {cells}. "
+            "Those digits fill the cells, so **remove the other candidates from them**."
+        ),
+        "sudoku.fish": (
+            "**Line pattern.** In {sources}, every remaining place for {digit} is in {targets}. "
+            "The {digit}s in those lines fill {targets}, so **remove {digit} from {targets} "
+            "outside {sources}**."
+        ),
+        "sudoku.unavailable": (
+            "**The next step needs {rule}.** A pattern-first explanation is not available for "
+            "that deduction yet; use --verbose for its detailed trace."
+        ),
+        "sudoku.stalled": (
+            "**Stopped.** The current deduction rules do not finish this grid; "
+            "use --verbose for the technical trace."
+        ),
+        "sudoku.trace_fallback": (
+            "A pattern-first explanation is not available for every deduction; "
+            "the following is the technical placement trace."
+        ),
+        "sudoku.givens_complete": "The givens already fill the grid.",
+        "sudoku.rule.single": "a single",
+        "sudoku.rule.subsumption": "a constraint interaction",
+        "sudoku.rule.cover2": "a two-set deduction",
+        "sudoku.rule.cover3": "a three-set deduction",
+        "sudoku.rule.chains": "a chain",
+        "sudoku.rule.wing": "a wing",
+        "sudoku.rule.what_if": "case analysis",
+        "sudoku.rule.relations": "a variant clue",
+        "sudoku.rule.count": "a counting deduction",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
         "role_has": "{who} has the {role} role",
@@ -626,6 +679,63 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.cell_empty": "{square} is leeg",
         "global_count.cell_occupied": "{square} is bezet",
         "global_count.object_kind": "{kind} objecten",
+        "sudoku.row": "rij {number}",
+        "sudoku.column": "kolom {number}",
+        "sudoku.box": "het blok met {cell}",
+        "sudoku.extra": "het extra gebied {name}",
+        "sudoku.doc_how": "Zo los je het op",
+        "sudoku.singles": "**Enkele kandidaten.**",
+        "sudoku.single_cell": (
+            "{cell} heeft nog maar één kandidaat, dus **zet {digit} in {cell}**."
+        ),
+        "sudoku.single_house": (
+            "In {house} kan {digit} nog maar op één vakje, dus **zet {digit} in {cell}**."
+        ),
+        "sudoku.continue_singles": "Vul de enkele kandidaten verder in tot er geen meer zijn.",
+        "sudoku.finish_singles": "De overige vakjes volgen daarna uit enkele kandidaten.",
+        "sudoku.locked": (
+            "**Gebonden kandidaat.** In {source} liggen alle overgebleven plekken voor {digit} "
+            "in {target}. De {digit} van {source} staat dus ook in {target}, dus "
+            "**{conclusion}**."
+        ),
+        "sudoku.cross_one": "streep {digit} weg op {cell}",
+        "sudoku.cross_many": "streep {digit} weg uit de andere kandidaten in {target}",
+        "sudoku.naked_set": (
+            "**Naked set.** In {house} kunnen {cells} samen alleen {digits} bevatten. "
+            "Daarmee zijn die cijfers gebruikt, dus **streep {digits} weg uit de andere vakjes "
+            "in {house}**."
+        ),
+        "sudoku.hidden_set": (
+            "**Hidden set.** In {house} kunnen {digits} alleen in {cells} staan. "
+            "Die cijfers vullen de vakjes, dus **streep de andere kandidaten daar weg**."
+        ),
+        "sudoku.fish": (
+            "**Lijnenpatroon.** In {sources} liggen alle plekken voor {digit} in {targets}. "
+            "De {digit}'s van die lijnen vullen {targets}, dus **streep {digit} in {targets} "
+            "buiten {sources} weg**."
+        ),
+        "sudoku.unavailable": (
+            "**De volgende stap gebruikt {rule}.** Hiervoor is nog geen patroonverklaring "
+            "beschikbaar; met --verbose zie je het technische spoor."
+        ),
+        "sudoku.stalled": (
+            "**Gestopt.** De huidige regels lossen dit rooster niet helemaal op; "
+            "met --verbose zie je het technische spoor."
+        ),
+        "sudoku.trace_fallback": (
+            "Niet elke stap heeft al een patroonverklaring; hieronder staat het technische "
+            "spoor van de plaatsingen."
+        ),
+        "sudoku.givens_complete": "Het rooster is al gevuld met de gegeven cijfers.",
+        "sudoku.rule.single": "een enkele kandidaat",
+        "sudoku.rule.subsumption": "een combinatie van regels",
+        "sudoku.rule.cover2": "een combinatie van twee verzamelingen",
+        "sudoku.rule.cover3": "een combinatie van drie verzamelingen",
+        "sudoku.rule.chains": "een keten",
+        "sudoku.rule.wing": "een wing",
+        "sudoku.rule.what_if": "een gevalsonderscheid",
+        "sudoku.rule.relations": "een variantregel",
+        "sudoku.rule.count": "een telredenering",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
         "role_has": "{who} heeft de rol {role}",
@@ -1517,10 +1627,12 @@ class Story:
         solved = self.model.clone()
         Solver(solved).solve(on_step=collect)
         firings: list[tuple[str, Sequence[Step]]] = []
-        necessary = {id(move) for move in shortest(start, moves)} | role_moves
+        necessary = shortest(
+            start, moves, required=(move for move in moves if id(move) in role_moves)
+        )
         replay(
             start,
-            [move for move in moves if id(move) in necessary],
+            necessary,
             lambda rule, steps: firings.append((rule, steps)),
         )
 
@@ -3041,6 +3153,17 @@ class Story:
             return ""
         state.role_told[key] = present
         if self._fixed_role(step):
+            return ""
+        spec = next((candidate for candidate in self.board.roles if candidate.name == role), None)
+        if (
+            not present
+            and spec is not None
+            and max(spec.allowed_counts) <= 1
+            and any(
+                known and other_role == role and other_person != person
+                for (other_person, other_role), known in state.role_told.items()
+            )
+        ):
             return ""
         name = self.say.words.get(role) or role.replace("_", " ")
         return self.say("role_has" if present else "role_not", who=person, role=name)

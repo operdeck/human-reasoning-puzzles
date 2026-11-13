@@ -278,6 +278,7 @@ class Entry:
     steps: tuple[str, ...] = ()
     number: int = 0
     section: str = ""
+    pattern_first: bool = False
 
     def numbered(self, title: str) -> str:
         """`title` with the puzzle's number in front, if it has one."""
@@ -309,11 +310,15 @@ def _add_generic(
     document.add_picture(stream, width=Cm(GENERIC_BOARD_WIDTH_CM))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     if solved and entry.steps:
-        document.add_heading("How to solve it", level=2)
+        heading = (
+            phrase(entry.text, "sudoku.doc_how") if entry.kind == "sudoku" else "How to solve it"
+        )
+        document.add_heading(heading, level=2)
         for line in entry.steps:
-            paragraph = document.add_paragraph(line, style="List Bullet")
+            paragraph = document.add_paragraph(style="List Bullet")
+            _runs(paragraph, line)
             for run in paragraph.runs:
-                run.font.size = Pt(8)
+                run.font.size = Pt(10 if entry.pattern_first else 8)
 
 
 def _title(

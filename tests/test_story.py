@@ -7,14 +7,15 @@ story can be clumsy but never wrong.
 import ast
 import dataclasses
 import re
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
 
 import csp
-from csp import bruteforce, cli, murdoku
-from csp.core import Kind, Model, Solver, Step
-from csp.proof import Move, replay, shortest
+from csp import bruteforce, cli, murdoku, sudoku
+from csp.core import Kind, Model, Solver, Step, rule_single
+from csp.proof import Move, episodes, replay, shortest
 from csp.puzzlefile import detect, load_board
 from csp.story import (
     Story,
@@ -65,6 +66,7 @@ ALLOWED = {
     "svg": set(),
     "icons": {"svg"},
     "proof": {"core"},
+    "sudoku_story": {"core", "proof", "story", "sudoku"},
     "murdoku": {"core"},
     "sudoku": {"core", "puzzlefile", "towers"},
     "calcudoku": {"core", "puzzlefile"},
@@ -230,6 +232,74 @@ def test_replay_reports_each_change_like_the_solver():
     replay(model, _moves(model), lambda rule, steps: fired.append(rule))
     assert fired.count("single") == len(board.people)
     assert {"relations", "subsumption"} <= set(fired)
+
+
+def test_shortest_keeps_required_evidence_without_redundant_moves():
+    model = Model()
+    options = [model.literal("x", value) for value in (1, 2)]
+    model.constrain("x", Kind.EXACTLY_ONE, options, defines="x")
+    model.relate("ordinary", ["x"], lambda x: x == 1)
+    model.relate("themed", ["x"], lambda x: x == 1)
+    ordinary = Move("relations", ("ordinary",))
+    themed = Move("relations", ("themed",))
+
+    assert shortest(model, [ordinary, themed]) == [ordinary]
+    kept = shortest(model, [ordinary, themed], required=[themed])
+    assert kept == [themed]
+    assert replay(model, kept).solution() == {"x": 1}
+    with pytest.raises(ValueError, match="required moves"):
+        shortest(model, [ordinary], required=[themed])
+    with pytest.raises(ValueError, match="cannot all fire"):
+        shortest(model, [ordinary, themed], required=[ordinary, themed])
+
+
+def test_shortest_preserves_prerequisites_for_required_moves():
+    model = Model()
+    for var in ("x", "y", "z"):
+        model.constrain(
+            var, Kind.EXACTLY_ONE, [model.literal(var, value) for value in (1, 2)], defines=var
+        )
+    model.relate("prerequisite", ["y"], lambda y: y == 1)
+    model.relate("themed", ["x", "y"], lambda x, y: x != y)
+    model.relate("later", ["x", "y", "z"], lambda x, y, z: (x, y, z) == (2, 1, 1))
+    prerequisite = Move("relations", ("prerequisite",))
+    themed = Move("relations", ("themed",))
+    later = Move("relations", ("later",))
+
+    kept = shortest(model, [prerequisite, themed, later], required=[themed])
+    assert kept == [prerequisite, themed, later]
+    _, groups = episodes(model, kept)
+    assert any(group.pattern.move is themed for group in groups)
+
+
+def test_episodes_preserve_replay_order_and_pattern_evidence():
+    model, _ = sudoku.compile_puzzle(example("sudoku_17_9x9_pointing.txt").read_text())
+    moves = shortest(model, _moves(model))
+    expected: list[tuple[str, tuple[Step, ...]]] = []
+    solved = replay(model, moves, lambda rule, steps: expected.append((rule, tuple(steps))))
+    result, groups = episodes(model, moves)
+    inferences = [
+        inference for group in groups for inference in (group.pattern, *group.consequences)
+    ]
+
+    assert [(item.rule, item.steps) for item in inferences] == expected
+    assert result.solution() == solved.solution()
+    assert any(group.pattern.rule == "subsumption" for group in groups)
+    assert any(group.consequences for group in groups)
+    for current, following in pairwise(inferences):
+        trial = current.before.clone()
+        changed = rule_single(trial) if current.move is None else current.move.apply(trial)
+        assert changed
+        assert tuple(trial.log) == current.steps
+        assert all(
+            trial.is_true(lit) == following.before.is_true(lit)
+            and trial.is_false(lit) == following.before.is_false(lit)
+            for lit in range(trial.num_literals)
+        )
+    for group in groups:
+        if group.pattern.rule == "subsumption":
+            assert group.pattern.steps[0].sources
+            assert group.pattern.steps[0].scope
 
 
 # --- story ----------------------------------------------------------------
@@ -1398,6 +1468,31 @@ bandit: Ada
     assert "__occupant" not in story
 
 
+@pytest.mark.parametrize(("holders", "expected"), [(1, ""), (2, "Ben does not have the team role")])
+def test_known_role_holder_only_makes_other_exclusions_obvious_when_unique(holders, expected):
+    text = f"""Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Ben
+Cal
+Roles:
+team: {holders}
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording())
+    state = _State({}, {}, role_told={("Ada", "team"): True})
+    step = Step(board.role_variable("Ben", "team"), False, True, "single", "test")
+
+    assert story._role_step_text(step, state) == expected
+    assert state.role_told["Ben", "team"] is False
+
+
 def test_story_explains_role_conditioned_location_rule():
     text = """Size: 2
 Regions:
@@ -1638,6 +1733,7 @@ def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():
 
     assert reveal in story
     assert story.index("Marcella on r10c5") < story.index(reveal)
+    assert "does not have the murderer role" not in story
 
 
 def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
@@ -1691,7 +1787,8 @@ def test_wording_reads_its_sections_and_rejects_unknown_languages():
 def test_cli_explain(capsys):
     assert cli.main([str(example("prrrdoku1.txt")), "--explain"]) == 0
     assert "**Tim op r1k1**" in capsys.readouterr().out
-    assert cli.main([str(example("sudoku_5_9x9.txt")), "--explain"]) == 2
+    assert cli.main([str(example("sudoku_5_9x9.txt")), "--explain"]) == 0
+    assert "**Singles.**" in capsys.readouterr().out
 
 
 def test_board_rules_are_what_the_model_is_built_from():

@@ -343,6 +343,36 @@ def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     assert len(document.inline_shapes) == 2
 
 
+def test_sudoku_booklet_uses_readable_bold_pattern_narrative(tmp_path):
+    out = tmp_path / "sudoku.docx"
+    assert main([str(example("sudoku_17_9x9_pointing.txt")), "--docx", str(out)]) == 0
+    document = Document(str(out))
+    paragraphs = [p for p in document.paragraphs if "Locked candidate." in p.text]
+    assert len(paragraphs) == 1
+    assert any("cross 4 out" in run.text and run.bold for run in paragraphs[0].runs)
+    assert all(run.font.size.pt == 10 for run in paragraphs[0].runs)
+    assert "rule single" not in _text(out)
+
+
+def test_sudoku_booklet_labels_the_technical_fallback(tmp_path):
+    out = tmp_path / "sudoku-chains.docx"
+    assert main([str(example("sudoku_33_9x9_chains.txt")), "--docx", str(out)]) == 0
+    text = _text(out)
+    assert "pattern-first explanation is not available" in text
+    assert "rule single" in text
+
+
+def test_sudoku_booklet_localizes_the_explanation_heading(tmp_path):
+    source = tmp_path / "sudoku.txt"
+    text = "Language: nl\nGivens:\n" + example("sudoku_17_9x9_pointing.txt").read_text()
+    source.write_text(text)
+    out = tmp_path / "sudoku.docx"
+    assert main([str(source), "--docx", str(out)]) == 0
+    rendered = _text(out)
+    assert "Zo los je het op" in rendered
+    assert "Gebonden kandidaat." in rendered
+
+
 def _read(name):
     return (example(f"{name}.txt")).read_text()
 

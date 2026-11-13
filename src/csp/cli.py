@@ -40,6 +40,7 @@ from . import (
     starbattle,
     story,
     sudoku,
+    sudoku_story,
     suguru,
     tents,
     thermometers,
@@ -486,6 +487,7 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True) -> int:
         except ValueError as exc:
             print(f"could not read {file.name}: {exc}", file=sys.stderr)
             return 2
+        start = model.clone() if kind == "sudoku" else None
         fired = _Fired()
         result = Solver(model).solve(on_step=fired.append_step)
         placed = None
@@ -507,11 +509,22 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True) -> int:
             section=listed.section if len(listing) > 1 else "",
         )
         if kind != "murdoku":
+            steps = solving_steps(fired.items)
+            pattern_first = False
+            if kind == "sudoku" and placed is not None:
+                assert start is not None
+                narrative = sudoku_story.explain(text, start=start, fired=fired.items)
+                if narrative.complete:
+                    steps = narrative.paragraphs
+                    pattern_first = True
+                else:
+                    steps = (story.phrase(text, "sudoku.trace_fallback"), *steps)
             entry = dataclasses.replace(
                 entry,
                 puzzle_image=make_image(kind, text),
                 solution_image=make_image(kind, text, placed) if placed is not None else None,
-                steps=solving_steps(fired.items),
+                steps=steps,
+                pattern_first=pattern_first,
             )
         entries.append(entry)
     docx_export.write_booklet(entries, out)
@@ -621,7 +634,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     instead.add_argument(
         "--explain",
         action="store_true",
-        help="write a Murdoku narrative or a Battleships solution with named deductions",
+        help="explain Murdoku, Sudoku, or Battleships deductions",
     )
     instead.add_argument(
         "--grade",
@@ -840,8 +853,14 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         if kind == "murdoku":
             print(f"\n{story.explain(text)}")
             return 0
+        if kind == "sudoku":
+            explanation = sudoku_story.explain(text)
+            print(f"\n{explanation.markdown()}")
+            return 0 if explanation.complete else 2
         if kind != "battleships":
-            print(f"--explain supports Murdoku and Battleships, not {kind}", file=sys.stderr)
+            print(
+                f"--explain supports Murdoku, Sudoku, and Battleships, not {kind}", file=sys.stderr
+            )
             return 2
         args.verbose = True
 

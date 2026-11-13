@@ -68,8 +68,8 @@ enforces the import graph.
 | progress | `on_step(rule_name, steps)` after each rule that fires |
 | CLI -> puzzle | `cli.load(text, kind) -> Puzzle(kind, model, draw)` |
 | explanation | `report.describe(model, rules) -> str`, public `Model` API only |
-| proof | `Move.of(rule, steps)`, `shortest(start, moves)`, `replay(start, moves, on_step)`, `essential(model, history, step)` |
-| worked solution | `story.explain(text) -> str`; Murdoku only, reads `proof` and `murdoku` |
+| proof | `Move.of(rule, steps)`, `shortest(start, moves, required=...)`, `replay(start, moves, on_step)`, `episodes(start, moves)`, `essential(model, history, step)` |
+| worked solution | `story.explain(text) -> str` for Murdoku; `sudoku_story.explain(text) -> Explanation` for Sudoku |
 | brute force | `bruteforce.solutions(text, kind, limit) -> list[dict]`; never imports `core` |
 
 Label every constraint with `family=` when compiling a new puzzle type;
