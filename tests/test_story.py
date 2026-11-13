@@ -535,6 +535,20 @@ def test_opening_does_not_count_blocking_objects_as_open_squares():
     ) in opening
 
 
+def test_opening_reserves_the_clue_owners_line_for_exclusive_objects():
+    text = LINE_RESERVATIONS.replace(
+        "PointObjects:", "Objects:\nbench: standable r1c1 r1c2 r1c3\nPointObjects:"
+    ).replace("next_to Ada beacon\nnext_to Ben sign", "only_on Ada bench")
+    opening = explain(text).split("\n\n")[0]
+    assert (
+        "Ada is the only person on the bench (1): **in row 1**, so "
+        "**cross out the other open square in that row**."
+    ) in opening
+    solutions = bruteforce.solutions(text, limit=1000)
+    assert solutions
+    assert all(murdoku.Square(0, 3) not in solution.values() for solution in solutions)
+
+
 def test_opening_skips_crossing_out_when_nothing_is_still_open():
     text = (
         LINE_RESERVATIONS.replace(

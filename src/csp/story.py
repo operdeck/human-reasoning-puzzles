@@ -1372,7 +1372,11 @@ class Story:
         self.say = say
         self.places = Places(board, say)
         self.about = {rule.name: rule.about for rule in board_rules(board)}
-        self.conditions = {c.label: c for c in conditions(board, self.clues)}
+        # A clue can compile to several predicates; the first names its subject.
+        primary_conditions: dict[tuple[str, int | None], Condition] = {}
+        for condition in conditions(board, self.clues):
+            primary_conditions.setdefault((condition.label, condition.number), condition)
+        self.conditions = {label: condition for (label, _), condition in primary_conditions.items()}
         self.role_conditions: dict[str, RoleCondition] = {
             rule.label: rule for rule in role_conditions(board, self.clues)
         }
