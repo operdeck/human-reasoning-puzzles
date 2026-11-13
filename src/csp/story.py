@@ -195,6 +195,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "mark_case.not_alone": "the square is marked {mark}, so {who} would have company {where}",
         "mark_placed.alone": "{who} is on a {mark} square, so **{who} is alone {where}**",
         "mark_placed.not_alone": "{who} is on a {mark} square, so **{who} has company {where}**",
+        "mark_count_filled": (
+            "That is the only occupied {mark} square, so **all other {mark} squares are empty**"
+        ),
         "mark_blocked.alone": (
             "{who} is {where} but cannot stand on a {mark} square there. "
             "Anyone on a {mark} square would be alone, so **nobody can use those squares {where}**"
@@ -487,6 +490,10 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "mark_placed.not_alone": (
             "{who} staat op een vakje met markering {mark}, dus **{who} heeft gezelschap {where}**"
+        ),
+        "mark_count_filled": (
+            "Dat is het enige bezette vakje met markering {mark}, "
+            "dus **alle andere vakjes met die markering zijn leeg**"
         ),
         "mark_blocked.alone": (
             "{who} is {where} maar kan daar niet op een vakje met markering {mark} staan. "
@@ -1565,6 +1572,18 @@ class Story:
                         )
                         + "."
                     )
+                    if len(mark.cells) > 1 and any(
+                        condition.kind == "people_on"
+                        and condition.selector is not None
+                        and condition.selector.kind == "mark"
+                        and condition.selector.name == mark.name
+                        and condition.comparison == "="
+                        and condition.operands == (1,)
+                        for condition in self.global_counts.values()
+                    ):
+                        consequences.append(
+                            self.say("mark_count_filled", mark=mark.name.replace("_", " ")) + "."
+                        )
         return consequences
 
     def _final_role_reveals(self, model: Model, state: _State) -> list[str]:

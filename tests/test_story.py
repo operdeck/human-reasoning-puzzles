@@ -1331,15 +1331,29 @@ Ada
 Ben
 Cal
 Marks:
-quiet: r2c1 ; alone
+quiet: r2c1 r3c2 ; alone
 bench: r1c2
 Clues:
 in_region Ada room
 on_mark Ben bench
+count people on mark:quiet = 1
 """
     explanation = explain(text)
     expected = "**Ada on r2c1**. Ada is on a quiet square, so **Ada is alone in the room**"
     assert expected in explanation
+    assert (
+        "That is the only occupied quiet square, so **all other quiet squares are empty**"
+        in explanation
+    )
+    dutch = explain("Language: nl\n" + text)
+    assert (
+        "Dat is het enige bezette vakje met markering quiet, "
+        "dus **alle andere vakjes met die markering zijn leeg**"
+    ) in dutch
+    no_limit = explain(
+        text.replace("count people on mark:quiet = 1", "count people on mark:quiet >= 1")
+    )
+    assert "all other quiet squares are empty" not in no_limit
 
 
 def test_story_explains_complementary_reified_counts():
