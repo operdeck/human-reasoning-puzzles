@@ -623,6 +623,10 @@ social: r1c1 ; not_alone
     assert image.getpixel((margin + pad + 5, margin + pad + 5)) == picture.MARK_FILL
     assert picture._Legend(board, CELL).mark_names == ["quiet", "social"]
     assert image.height > 2 * CELL + 2 * margin
+    english = drawing.murdoku_picture(board, cell=CELL, coordinates=False).to_svg()
+    dutch = drawing.murdoku_picture(board, cell=CELL, coordinates=False, language="nl").to_svg()
+    assert "shares area with someone" in english
+    assert "deelt het gebied met iemand" in dutch
 
 
 def test_conditioned_marks_get_a_dashed_cue_by_dash_style_and_colour():

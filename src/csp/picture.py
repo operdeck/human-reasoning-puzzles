@@ -2212,11 +2212,11 @@ def _bare_name(name: str) -> str:
 
 LEGEND_WORDS = {
     "en": {"door": "Door", "window": "Window", "point": "Point", "cells": "cells",
-           "alone": "alone in area", "not_alone": "shares area", "global": "Global",
+           "alone": "alone in area", "not_alone": "shares area with someone", "global": "Global",
            "maybe": "maybe", "apart": "at most one of these per area", "one": "a {name}",
            "of_anyone": "of anyone"},
     "nl": {"door": "Deur", "window": "Raam", "point": "Punt", "cells": "vakjes",
-           "alone": "alleen in het gebied", "not_alone": "deelt het gebied",
+           "alone": "alleen in het gebied", "not_alone": "deelt het gebied met iemand",
            "global": "Telling",
            "maybe": "misschien",
            "apart": "niet meer dan 1 hiervan per gebied", "one": "een {name}",
