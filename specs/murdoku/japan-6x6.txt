@@ -1,0 +1,26 @@
+# Spec for: uv run puzzle-lab murdoku-board specs/murdoku/japan-6x6.txt --avoid examples --suggest
+# Japan series, 6x6: six travellers over four places, carried by area
+# populations. The three population clues are the key clues, so every draft
+# needs a layout in which each of them rules something out; csp.clue_search
+# suggests the placement clues around the bonsai, temple, sushi bar and tatami.
+#
+# Reproduces the board of examples/japan/samen-in-japan.txt: seed 241,
+# candidate 22 (blobs).
+theme: japan-6x6
+size: 6
+language: nl
+areas: Tokyo Osaka Kyoto Okinawa
+# Fixed city colours across the Japan series.
+colours: Tokyo=#F6D8D8 Osaka=#FBE7C6 Kyoto=#D9EAD3 Okinawa=#CFE8F0
+people: Aiko Benjiro Chiaki Daiki Emi Fumiko
+object: bonsai blocking in Tokyo
+object: tempel blocking in Tokyo
+object: sushibar blocking in Osaka
+object: tatami standable size 2 in Kyoto
+key_clue: busiest_area area:Tokyo
+key_clue: quietest_area area:Okinawa
+key_clue: count people in area:Osaka = 2
+template: blobs
+candidates: 24
+keep: 10
+seed: 241
