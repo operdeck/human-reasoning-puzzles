@@ -267,11 +267,96 @@ def test_story_says_area_capacity_the_way_a_person_does():
     story = explain(example("samen-onderweg.txt").read_text())
     assert "Keiko zit naast de lantaarn (3): in Osaka." in story
     assert "Mio zit op de bank (4): in Osaka." in story
-    assert "bevatten samen al alle vijf mensen" in story
-    assert "dus niemand is in Okinawa" in story
+    assert "Keiko en Mio zijn in Osaka, dus daar zijn minstens twee mensen." in story
+    assert (
+        "Het gebied met de meeste mensen is Tokyo (1), dus zijn er in Tokyo minstens drie mensen."
+    ) in story
+    assert "Samen zijn dat alle vijf mensen, dus niemand is in Okinawa." in story
     assert "Haru zit niet in Okinawa, Isamu zit niet in Okinawa" not in story
     assert "holds at least" not in story
     assert "minstens één mensen" not in story
+
+
+def test_story_explains_the_area_comparison_in_english():
+    text = example("samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
+    story = explain(text)
+    assert "Keiko and Mio are in Osaka, so at least two people are there." in story
+    assert (
+        "The area with the most people is Tokyo (1), so at least three people are in Tokyo."
+    ) in story
+    assert "Together that accounts for all five people, so nobody is in Okinawa." in story
+
+
+def test_story_uses_the_actual_population_clue_number():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace(
+            "busiest_area area:Tokyo\nquietest_area area:Okinawa",
+            "quietest_area area:Okinawa\nbusiest_area area:Tokyo",
+        )
+    )
+    story = explain(text)
+    assert "Het gebied met de meeste mensen is Tokyo (2)" in story
+
+
+def test_story_population_reason_uses_the_puzzles_own_areas():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace("Tokyo", "North")
+        .replace("Osaka", "West")
+        .replace("Okinawa", "East")
+    )
+    story = explain(text)
+    assert "Keiko en Mio zijn in West, dus daar zijn minstens twee mensen." in story
+    assert "Het gebied met de meeste mensen is North (1)" in story
+    assert "dus niemand is in East" in story
+
+
+def test_story_does_not_invent_population_witnesses():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace("next_to Keiko lantaarn", "next_to Keiko torii")
+    )
+    story = explain(text)
+    assert "Keiko zit naast de torii (3): in Tokyo." in story
+    assert "Keiko en Mio zijn in Osaka" not in story
+
+
+def test_story_does_not_treat_tied_busiest_areas_as_strictly_ordered():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace("busiest_area area:Tokyo", "busiest_area area:Tokyo area:Osaka")
+    )
+    board, _ = load_board(text)
+    solutions = bruteforce.solutions(text, "murdoku", limit=2)
+    assert solutions
+    for solution in solutions:
+        areas = [board.region_of(solution[person]) for person in board.people]
+        assert areas.count(board.region_id("Tokyo")) == areas.count(board.region_id("Osaka"))
+    assert "minstens drie mensen" not in explain(text)
+
+
+def test_story_can_explain_an_unnumbered_population_rule():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace(
+            "Clues:\nbusiest_area area:Tokyo\n",
+            "Rules:\nbusiest_area area:Tokyo\n\nClues:\n",
+        )
+    )
+    story = explain(text)
+    assert "Het gebied met de meeste mensen is Tokyo, dus zijn er in Tokyo" in story
+
+
+def test_story_omits_population_clue_numbers_in_unnumbered_explanations():
+    story = explain(example("samen-onderweg.txt").read_text(), numbered=False)
+    assert "Het gebied met de meeste mensen is Tokyo, dus zijn er in Tokyo" in story
+    assert not re.search(r"\(\d+\)", story)
 
 
 def test_story_describes_by_region_and_row_before_squares():

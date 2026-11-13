@@ -31,6 +31,7 @@ from .murdoku import (
     COUNTING,
     FILTERS,
     POPULATION_FAMILY,
+    AreaPopulationCondition,
     Board,
     CellMark,
     Clue,
@@ -40,6 +41,7 @@ from .murdoku import (
     RoleCondition,
     Square,
     TargetSelector,
+    area_population_conditions,
     board_rules,
     compile_puzzle,
     conditions,
@@ -55,11 +57,6 @@ from .murdoku import (
 )
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_presentation, read_sections
-
-# The hidden "this area holds at least k people" literals behind `busiest_area` and
-# `quietest_area` are compiled with an English label; the narrator says them in the
-# puzzle's own language.
-_POPULATION_NAME = re.compile(r"^(?P<area>.+) holds at least (?P<count>\d+)$")
 
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
@@ -256,6 +253,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count.population_reason": "the {area} area holding at least {count} people",
         "count.population_reason_one": "the {area} area holding at least one person",
         "count.population_full": "{areas} already hold all {n} people",
+        "count.population_person": "{people} is {where}, so at least one person is there",
+        "count.population_people": ("{people} are {where}, so at least {count} people are there"),
+        "count.population_minimum": "at least {count} people are {where}",
+        "count.population_all": "together that accounts for all {n} people",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
         "global_count.at_least": "at least {n}",
@@ -510,6 +511,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count.population_reason": "het gebied {area} met minstens {count} mensen",
         "count.population_reason_one": "het gebied {area} met minstens één mens",
         "count.population_full": "{areas} bevatten samen al alle {n} mensen",
+        "count.population_person": "{people} is {where}, dus daar is minstens één persoon",
+        "count.population_people": ("{people} zijn {where}, dus daar zijn minstens {count} mensen"),
+        "count.population_minimum": "zijn er {where} minstens {count} mensen",
+        "count.population_all": "samen zijn dat alle {n} mensen",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
         "global_count.at_least": "minstens {n}",
@@ -1345,6 +1350,7 @@ class Story:
         self.global_counts: dict[str, GlobalCountCondition] = {
             condition.label: condition for condition in global_count_conditions(board, self.clues)
         }
+        self.population_conditions = area_population_conditions(board, self.clues)
         self.role_variables = {
             board.role_variable(person, role.name): (person, role.name)
             for role in board.roles
@@ -1558,9 +1564,11 @@ class Story:
                 where = f"{region}: {location}" if region else location
                 state.announce(person)
             else:
-                where = region or self.places.where(squares, self.places.free)
-                if where is None:
-                    where = self.say("squares", n=self.say.number(len(squares)))
+                where = (
+                    region
+                    or self.places.where(squares, self.places.free)
+                    or self.say("squares", n=self.say.number(len(squares)))
+                )
             said.append(f"{_cap(self._clue(condition))} ({condition.number}): {where}.")
         for number, (kind, args) in enumerate(self.clues, 1):
             if kind not in ("has_attribute", "not_attribute", "unique_attribute"):
@@ -1698,29 +1706,158 @@ class Story:
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return _cap(self.say("chain_so", ends=ends, outcome=outcome))
 
-    def _count_name(self, constraint: Constraint) -> str:
-        """A count constraint's name as the player reads it, not as the engine spells it.
+    def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
+        """The region and minimum represented by a reified population count."""
+        if (
+            constraint.kind is not Kind.COUNT
+            or constraint.family != POPULATION_FAMILY
+            or constraint.reified_by is None
+            or not constraint.allowed_counts
+        ):
+            return None
+        count = min(constraint.allowed_counts)
+        if count < 1 or constraint.allowed_counts != frozenset(
+            range(count, len(constraint.literals) + 1)
+        ):
+            return None
+        regions: set[str] = set()
+        for literal in constraint.literals:
+            square = self.model.value_of(literal)
+            if self.model.var_of(literal) not in self.board.people or not isinstance(
+                square, Square
+            ):
+                return None
+            regions.add(self.board.region_of(square))
+        return (next(iter(regions)), count) if len(regions) == 1 else None
 
-        The hidden "this area holds at least k people" literals behind
-        `busiest_area`/`quietest_area` are compiled with an English label; reading it
-        out would put engine words in a Dutch explanation.
-        """
-        if constraint.family == POPULATION_FAMILY:
-            found = _POPULATION_NAME.match(constraint.name)
-            if found:
-                count = int(found["count"])
-                key = "count.population_reason_one" if count == 1 else "count.population_reason"
-                return str(
-                    self.say(
-                        key,
-                        area=found["area"],
-                        count=self.say.number(count),
-                    )
-                )
+    def _count_name(self, constraint: Constraint) -> str:
+        """A count constraint's name as the player reads it, not as the engine spells it."""
+        if (level := self._population_level(constraint)) is not None:
+            region, count = level
+            key = "count.population_reason_one" if count == 1 else "count.population_reason"
+            return self.say(key, area=self.board.region_names[region], count=self.say.number(count))
         return constraint.name
 
+    def _population_comparison(
+        self, more: Constraint, fewer: Constraint, state: _State
+    ) -> AreaPopulationCondition | None:
+        """Find the clue behind an observed strict population implication."""
+        higher = self._population_level(more)
+        lower = self._population_level(fewer)
+        if (
+            higher is None
+            or lower is None
+            or higher[1] != lower[1] + 1
+            or more.reified_by is None
+            or fewer.reified_by is None
+        ):
+            return None
+        more_var = self.model.var_of(more.reified_by)
+        more_value = self.model.value_of(more.reified_by)
+        fewer_choice = (self.model.var_of(fewer.reified_by), self.model.value_of(fewer.reified_by))
+        for step in state.history:
+            if (
+                step.asserted
+                or step.var != more_var
+                or step.value == more_value
+                or step.placing != fewer_choice
+            ):
+                continue
+            eliminated = self.model.literal(step.var, step.value)
+            if any(
+                source.name in step.sources
+                and source.kind is Kind.AT_MOST_ONE
+                and set(source.literals) == {eliminated, fewer.reified_by}
+                for source in self.model.constraints
+            ):
+                break
+        else:
+            return None
+        more_region, fewer_region = higher[0], lower[0]
+        return next(
+            (
+                condition
+                for condition in self.population_conditions
+                if (
+                    condition.kind == "busiest_area"
+                    and more_region in condition.regions
+                    and fewer_region not in condition.regions
+                )
+                or (
+                    condition.kind == "quietest_area"
+                    and fewer_region in condition.regions
+                    and more_region not in condition.regions
+                )
+            ),
+            None,
+        )
+
+    def _population_evidence(
+        self,
+        levels: Sequence[tuple[str, int, Constraint]],
+        before: dict[str, set[Square]],
+        state: _State,
+    ) -> list[str] | None:
+        """Explain the area floors from known people and recorded comparisons."""
+        sentences: list[str] = []
+        known: dict[str, tuple[int, Constraint]] = {}
+        pending: list[tuple[str, int, Constraint]] = []
+        for region, count, constraint in levels:
+            people = [
+                person
+                for person in self.board.people
+                if before[person]
+                and state.told[person]
+                and all(self.board.region_of(square) == region for square in before[person])
+                and all(self.board.region_of(square) == region for square in state.told[person])
+            ]
+            if len(people) < count:
+                pending.append((region, count, constraint))
+                continue
+            key = "count.population_person" if count == 1 else "count.population_people"
+            text = self.say(
+                key,
+                people=self.say.join(people[:count]),
+                where=self.places.region(self.board.region_names[region]),
+                count=self.say.number(count),
+            )
+            sentences.append(f"{_cap(text)}.")
+            known[region] = (count, constraint)
+
+        while pending:
+            progress = False
+            for item in pending[:]:
+                region, count, constraint = item
+                for lower_count, lower_constraint in known.values():
+                    if count != lower_count + 1:
+                        continue
+                    comparison = self._population_comparison(constraint, lower_constraint, state)
+                    if comparison is None:
+                        continue
+                    clue = self._clue_text(comparison.kind, comparison.tokens, ())
+                    if comparison.number is not None and self.say.numbered:
+                        clue += f" ({comparison.number})"
+                    minimum = self.say(
+                        "count.population_minimum",
+                        count=self.say.number(count),
+                        where=self.places.region(self.board.region_names[region]),
+                    )
+                    sentences.append(f"{_cap(clue)}, {self.say('so')} {minimum}.")
+                    known[region] = (count, constraint)
+                    pending.remove(item)
+                    progress = True
+                    break
+            if not progress:
+                return None
+        return sentences
+
     def _population_full(
-        self, step: Step, constraint: Constraint, known: bool | None
+        self,
+        step: Step,
+        constraint: Constraint,
+        known: bool | None,
+        before: dict[str, set[Square]],
+        state: _State,
     ) -> str | None:
         """'Osaka and Tokyo already hold all five people' when that empties an area.
 
@@ -1728,28 +1865,47 @@ class Story:
         constraints that bounded it account for everybody, say so, which is
         the argument a person makes instead of quoting allowed totals.
         """
-        if constraint.family != POPULATION_FAMILY or known is not False:
+        target = self._population_level(constraint)
+        if known is not False or target is None or target[1] != 1:
             return None
-        target = _POPULATION_NAME.match(constraint.name)
-        if target is None or int(target["count"]) != 1:
-            return None
-        parts: list[str] = []
-        total = 0
+        levels: list[tuple[str, int, Constraint]] = []
         for name in step.sources[1:]:
-            found = _POPULATION_NAME.match(name)
-            if found is None:
-                continue
-            count = int(found["count"])
-            key = "count.population_reason_one" if count == 1 else "count.population_reason"
-            parts.append(self.say(key, area=found["area"], count=self.say.number(count)))
-            total += count
-        if len(parts) < 2 or total != len(self.board.people):
+            found = [
+                (other, level)
+                for other in self.model.constraints
+                if other.name == name and (level := self._population_level(other)) is not None
+            ]
+            if len(found) == 1:
+                other, (region, count) = found[0]
+                levels.append((region, count, other))
+        regions = [region for region, _, _ in levels]
+        total = sum(count for _, count, _ in levels)
+        if (
+            len(levels) < 2
+            or len(set(regions)) != len(regions)
+            or target[0] in regions
+            or total != len(self.board.people)
+        ):
             return None
-        return self.say(
-            "count.population_full",
-            areas=self.say.join(parts),
-            n=self.say.number(total),
+        empty = self.say(
+            "global_count.area_empty",
+            where=self.places.region(self.board.region_names[target[0]]),
         )
+        if (evidence := self._population_evidence(levels, before, state)) is not None:
+            together = self.say("count.population_all", n=self.say.number(total))
+            return " ".join([*evidence, f"{_cap(together)}, {self.say('so')} {empty}."])
+        parts = [
+            self.say(
+                "count.population_reason_one" if count == 1 else "count.population_reason",
+                area=self.board.region_names[region],
+                count=self.say.number(count),
+            )
+            for region, count, _ in levels
+        ]
+        reason = self.say(
+            "count.population_full", areas=self.say.join(parts), n=self.say.number(total)
+        )
+        return f"{_cap(reason)}, {self.say('so')} {empty}."
 
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
@@ -1790,19 +1946,11 @@ class Story:
             if known is False:
                 allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
         counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
-        population_full = self._population_full(step, constraint, known)
+        population_full = self._population_full(step, constraint, known, before, state)
         if population_full is not None:
-            target = _POPULATION_NAME.match(constraint.name)
-            if target is not None:
-                empty_area = self.say(
-                    "global_count.area_empty",
-                    where=self.places.region(target["area"]),
-                )
-                return f"{_cap(population_full)}, {self.say('so')} {empty_area}."
-        reason = (
-            population_full
-            or self._role_area_reason(constraint, allowed)
-            or self.say("count_reason", name=self._count_name(constraint), counts=counts)
+            return population_full
+        reason = self._role_area_reason(constraint, allowed) or self.say(
+            "count_reason", name=self._count_name(constraint), counts=counts
         )
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
