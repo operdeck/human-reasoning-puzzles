@@ -253,6 +253,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
             title: `${entry.title} – ${what} (${sizeText(entry)}) | ${SITE_NAME}`,
             description,
             canonical: url,
+            image,
             jsonLd: {
               "@context": "https://schema.org",
               "@type": "WebPage",

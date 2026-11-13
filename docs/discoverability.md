@@ -28,6 +28,8 @@ without running vite or the export.
 Puzzle pages load the same player assets as the home page, with a base URL
 pointing back to the site root. Their static picture and play link remain for
 crawlers and visitors without JavaScript, but players need no intermediate click.
+The rendered index and previous/next links point to the canonical puzzle pages
+as well, so those links remain crawlable after the player loads.
 The home page and Murdoku landing page retain illustrated previews, one per
 collection section.
 

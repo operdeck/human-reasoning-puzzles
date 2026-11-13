@@ -98,6 +98,17 @@ describe("renderPages", () => {
     const page = pageFor(render(), "p/first-case/index.html");
     expect(page).toContain("<title>The first case – Murdoku murder mystery (4×4) | Human reasoning puzzles</title>");
     expect(page).toContain('<link rel="canonical" href="https://operdeck.github.io/human-reasoning-puzzles/p/first-case/" />');
+    expect(page).toContain('<meta name="description" content="Play &quot;The first case&quot; online');
+    expect(page).toContain('<meta property="og:url" content="https://operdeck.github.io/human-reasoning-puzzles/p/first-case/" />');
+    expect(page).toContain('<meta property="og:image" content="https://operdeck.github.io/human-reasoning-puzzles/puzzles/first-case.svg" />');
+    expect(page).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    const jsonLd = page.match(/<script type="application\/ld\+json">([^<]+)<\/script>/)?.[1];
+    expect(jsonLd).toBeDefined();
+    expect(JSON.parse(jsonLd!)).toMatchObject({
+      "@type": "WebPage",
+      name: "The first case",
+      url: `${DEFAULT_SITE}/p/first-case/`,
+    });
     expect(page).toContain('<base href="../../" />');
     expect(page).toContain('src="./assets/index-abc.js"');
     expect(page).toContain('href="./assets/index-abc.css"');

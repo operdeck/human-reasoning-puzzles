@@ -24,7 +24,7 @@ import {
   type State,
   type Verdict,
 } from "./game";
-import type { PuzzleNavigationEntry } from "./navigation";
+import { puzzleLink, type PuzzleNavigationEntry } from "./navigation";
 import { creditLine } from "./credit";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -228,16 +228,14 @@ export class PuzzleView {
   render(root: HTMLElement): void {
     const b = this.bundle;
     document.title = `${b.title} · Human reasoning puzzles`;
-    const puzzleLink = (
+    const puzzleNavLink = (
       entry: PuzzleNavigationEntry,
       direction: "Previous" | "Next",
       text: string,
     ): HTMLAnchorElement => {
-      const link = el("a", {
-        href: `#${encodeURIComponent(entry.id)}`,
-        textContent: text,
-        title: entry.title,
-      });
+      const link = puzzleLink(entry.id);
+      link.textContent = text;
+      link.title = entry.title;
       link.setAttribute("aria-label", `${direction} puzzle: ${entry.title}`);
       return link;
     };
@@ -246,10 +244,10 @@ export class PuzzleView {
       { className: "puzzle-nav" },
       el("a", { href: "#", className: "back", textContent: "← All puzzles" }),
       ...(this.navigation.previous
-        ? [puzzleLink(this.navigation.previous, "Previous", "← Previous")]
+        ? [puzzleNavLink(this.navigation.previous, "Previous", "← Previous")]
         : []),
       ...(this.navigation.next
-        ? [puzzleLink(this.navigation.next, "Next", "Next →")]
+        ? [puzzleNavLink(this.navigation.next, "Next", "Next →")]
         : []),
       el("a", {
         href: "https://github.com/operdeck/human-reasoning-puzzles",

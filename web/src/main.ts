@@ -1,6 +1,6 @@
 import type { Bundle } from "./game";
 import { creditLine } from "./credit";
-import { adjacentPuzzles } from "./navigation";
+import { adjacentPuzzles, puzzleLink } from "./navigation";
 import { PuzzleView } from "./view";
 
 interface IndexEntry {
@@ -98,30 +98,31 @@ async function showIndex(current: () => boolean): Promise<void> {
           el(
             "ul",
             { className: "puzzle-list" },
-            ...entries.map((entry) => el(
-              "li",
-              {},
-              el("a", {
-                href: `#${encodeURIComponent(entry.id)}`,
-                textContent: `${entry.number}. ${entry.title}`,
-              }),
-              el("span", {
-                className: "meta",
-                textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
-              }),
-              ...(entry.deductive === false
-                ? [el("span", {
-                    className: "badge",
-                    textContent: "beyond deduction",
-                    title: "Only this solver's what_if case analysis closes this puzzle.",
-                  })]
-                : []),
-              ...(entry.playable
-                ? []
-                : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
-            ),
+            ...entries.map((entry) => {
+              const link = puzzleLink(entry.id);
+              link.textContent = `${entry.number}. ${entry.title}`;
+              return el(
+                "li",
+                {},
+                link,
+                el("span", {
+                  className: "meta",
+                  textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
+                }),
+                ...(entry.deductive === false
+                  ? [el("span", {
+                      className: "badge",
+                      textContent: "beyond deduction",
+                      title: "Only this solver's what_if case analysis closes this puzzle.",
+                    })]
+                  : []),
+                ...(entry.playable
+                  ? []
+                  : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
+              );
+            }),
+          ),
         ),
-          )),
       );
     });
   app.replaceChildren(
@@ -179,7 +180,7 @@ async function showPuzzle(id: string, current: () => boolean): Promise<void> {
 let routing = 0;
 
 async function route(): Promise<void> {
-  const id = decodeURIComponent(location.hash.slice(1));
+  const id = decodeURIComponent(location.hash.slice(1) || app.dataset.puzzleId || "");
   const ticket = ++routing;
   // A later hash change wins, even if this page arrives after it.
   const current = () => ticket === routing;
@@ -199,7 +200,4 @@ async function route(): Promise<void> {
 }
 
 window.addEventListener("hashchange", route);
-if (!location.hash && app.dataset.puzzleId) {
-  window.history.replaceState(null, "", `${location.pathname}#${encodeURIComponent(app.dataset.puzzleId)}`);
-}
 void route();

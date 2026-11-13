@@ -115,6 +115,19 @@ describe("palette", () => {
     document.body.replaceChildren();
   });
 
+  it("links adjacent puzzles to their canonical pages", () => {
+    const root = document.createElement("main");
+    document.body.append(root);
+    new PuzzleView(bundle(), BOARD, {
+      previous: { id: "previous", title: "Previous case" },
+      next: { id: "next", title: "Next case" },
+    }).render(root);
+    const previous = root.querySelector<HTMLAnchorElement>('a[aria-label="Previous puzzle: Previous case"]')!;
+    const next = root.querySelector<HTMLAnchorElement>('a[aria-label="Next puzzle: Next case"]')!;
+    expect(previous.href).toBe(new URL("p/previous/", document.baseURI).href);
+    expect(next.href).toBe(new URL("p/next/", document.baseURI).href);
+  });
+
   it("switches compact viewports on resize without losing moves and releases the listener", () => {
     const listeners = new Set<() => void>();
     let mobile = true;

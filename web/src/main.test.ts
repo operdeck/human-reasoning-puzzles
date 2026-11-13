@@ -79,7 +79,11 @@ describe("puzzle index", () => {
     expect([...document.querySelectorAll(".family h2")].map((node) => node.textContent))
       .toEqual(["Murdoku · Demo", "Logic grid"]);
     const links = [...document.querySelectorAll<HTMLAnchorElement>(".puzzle-list a")];
-    expect(links.map((link) => link.hash)).toEqual(["#first-case", "#logicgrid_1"]);
+    expect(links.map((link) => link.pathname)).toEqual([
+      "/human-reasoning-puzzles/p/first-case/",
+      "/human-reasoning-puzzles/p/logicgrid_1/",
+    ]);
+    expect(links.every((link) => link.hash === "")).toBe(true);
     expect(links[0].textContent).toBe("1. First case");
     expect(links[0].parentElement?.textContent).toContain("4×4 · relations");
     const images = [...document.querySelectorAll<HTMLImageElement>(".family-thumbnail")];
@@ -154,12 +158,13 @@ describe("puzzle index", () => {
     await openIndex();
     document.querySelector("img")!.dispatchEvent(new Event("error"));
     expect(document.querySelector(".preview-unavailable")?.textContent).toBe("Preview unavailable");
-    expect(document.querySelector(".puzzle-list a")?.getAttribute("href")).toBe("#first-case");
+    expect(document.querySelector<HTMLAnchorElement>(".puzzle-list a")?.pathname)
+      .toBe("/human-reasoning-puzzles/p/first-case/");
   });
 
   it("opens a puzzle's player and returns to the same index", async () => {
     await openIndex();
-    window.location.hash = "#first-case";
+    document.querySelector<HTMLAnchorElement>(".puzzle-list a")!.click();
     await vi.waitFor(() => expect(renderPuzzle).toHaveBeenCalledOnce());
     const requested = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
     expect(requested.some((url) => url.endsWith("/first-case.json"))).toBe(true);
@@ -171,7 +176,7 @@ describe("puzzle index", () => {
   });
 
   it("opens a prerendered puzzle immediately using the site's base URL", async () => {
-    window.history.replaceState(null, "", "/human-reasoning-puzzles/p/first-case/");
+    window.history.replaceState(null, "", "/human-reasoning-puzzles/p/first-case/?source=search");
     const base = document.createElement("base");
     base.href = "/human-reasoning-puzzles/";
     document.head.append(base);
@@ -179,8 +184,9 @@ describe("puzzle index", () => {
     try {
       await import("./main");
       await vi.waitFor(() => expect(renderPuzzle).toHaveBeenCalledOnce());
-      expect(window.location.hash).toBe("#first-case");
+      expect(window.location.hash).toBe("");
       expect(window.location.pathname).toBe("/human-reasoning-puzzles/p/first-case/");
+      expect(window.location.search).toBe("?source=search");
       const requested = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
       expect(requested.some((url) => url.endsWith("/human-reasoning-puzzles/puzzles/first-case.json"))).toBe(true);
       expect(document.querySelector(".puzzle-list")).toBeNull();
