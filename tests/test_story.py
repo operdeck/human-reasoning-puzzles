@@ -739,7 +739,7 @@ role_on Ada guide altar
         "Ada is in a corner, in the kitchen"
     )
     assert english._clue_text("adjacent_regions", ["Ada", "Ben"], ("Ada", "Ben")) == (
-        "Ada and Ben are in neighboring regions"
+        "Ada and Ben are in neighboring areas"
     )
     assert english._clue_text("not_on_mark", ["Cal", "quiet", "social"], ("Cal",)) == (
         "Cal is not on the quiet square or the social square"
@@ -1234,12 +1234,49 @@ adjacent_regions Ada Ben
     monkeypatch.setattr("csp.story.essential", lambda *_args: [0, 1, 2])
 
     assert story._mark_case_deduction(step, ["Ada"], before, state) == expected
-
     before["Cal"].add(ada)
     assert story._mark_case_deduction(step, ["Ada"], before, state) is None
     before["Cal"].remove(ada)
     state.history = [dataclasses.replace(refutation, trail=trail[:1])]
     assert story._mark_case_deduction(step, ["Ada"], before, state) is None
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "someone on a square marked social in the school must have company",
+        ),
+        (
+            "nl",
+            "wie op een vakje met markering social in de school staat, moet gezelschap hebben",
+        ),
+    ],
+)
+def test_mark_occupancy_count_is_explained_as_a_square_rule(language, expected):
+    text = f"""Size: 2
+Language: {language}
+Regions:
+a: school
+Grid:
+a a
+a a
+Marks:
+social: r1c1 ; not_alone
+People:
+Ada
+Ben
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording(language))
+    constraint = next(
+        c
+        for c in story.model.constraints
+        if c.name == "mark social not_alone in school occupant count"
+    )
+    assert story._mark_occupant_count_reason(constraint, True) == expected
+    assert "occupant count" not in story._count_name(constraint)
 
 
 def test_story_explains_known_and_absent_roles():

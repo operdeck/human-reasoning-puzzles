@@ -253,7 +253,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.has_attribute": "{a} has the {attribute} attribute",
         "clue.not_attribute": "{a} does not have the {attribute} attribute",
         "clue.unique_attribute": "exactly one of {people} has the {attribute} attribute",
-        "clue.adjacent_regions": "{a} and {b} are in neighboring regions",
+        "clue.adjacent_regions": "{a} and {b} are in neighboring areas",
         "clue.alone_with": (
             "{a} shares a region with exactly one other person, and that is {target}"
         ),
@@ -262,20 +262,25 @@ PHRASES: dict[str, dict[str, str]] = {
             "{a} shares a region with exactly {n} others, and they are all {target}"
         ),
         "clue.alone_with_anyone_n": "{a} shares a region with exactly {n} others",
-        "clue.same_region": "{a} and {b} are in the same region",
-        "clue.different_region": "{a} and {b} are in different regions",
-        "clue.apart": "{a} and {b} are in regions that do not touch",
+        "clue.same_region": "{a} and {b} are in the same area",
+        "clue.different_region": "{a} and {b} are in different areas",
+        "clue.apart": "{a} and {b} are in areas that do not touch",
         "clue.left_of": "{a} is somewhere left of {b}",
         "clue.left_of_one": "{a} is exactly one column left of {b}",
         "clue.left_of_n": "{a} is exactly {n} columns left of {b}",
         "clue.exactly": "exactly {n} of these is true: {list}",
         "clue.either": "either {first}, or {second}, but not both",
-        "clue.either_same_region": "{a} is in the same region as either {b} or {c}",
+        "clue.either_same_region": "{a} is in the same area as either {b} or {c}",
         "clue.busiest_area": "the area with the most people is {areas}",
         "clue.quietest_area": "the area with the fewest people is {areas}",
         "clue.busiest_area_tie": "the areas with the most people are {areas}",
         "clue.quietest_area_tie": "the areas with the fewest people are {areas}",
         "count_reason": "the allowed counts for {name} are {counts}",
+        "count.mark_occupant.alone": ("someone on a square marked {mark} {where} must be alone"),
+        "count.mark_occupant.not_alone": (
+            "someone on a square marked {mark} {where} must have company"
+        ),
+        "count.mark_occupant.name": "the number of people in {where} for the {mark} square rule",
         "count.population_reason": "the {area} area holding at least {count} people",
         "count.population_reason_one": "the {area} area holding at least one person",
         "count.population_full": "{areas} already hold all {n} people",
@@ -575,6 +580,13 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "clue.alone_with_anyone_n": "{a} deelt een gebied met precies {n} anderen",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
+        "count.mark_occupant.alone": (
+            "wie op een vakje met markering {mark} {where} staat, moet alleen zijn"
+        ),
+        "count.mark_occupant.not_alone": (
+            "wie op een vakje met markering {mark} {where} staat, moet gezelschap hebben"
+        ),
+        "count.mark_occupant.name": "het aantal mensen {where} voor de regel over {mark}-vakjes",
         "count.population_reason": "het gebied {area} met minstens {count} mensen",
         "count.population_reason_one": "het gebied {area} met minstens één mens",
         "count.population_full": "{areas} bevatten samen al alle {n} mensen",
@@ -1918,7 +1930,41 @@ class Story:
             region, count = level
             key = "count.population_reason_one" if count == 1 else "count.population_reason"
             return self.say(key, area=self.board.region_names[region], count=self.say.number(count))
+        if (scope := self._mark_occupant_count_scope(constraint)) is not None:
+            mark, region_name = scope
+            return self.say(
+                "count.mark_occupant.name",
+                mark=mark.name.replace("_", " "),
+                where=self.places.region(region_name),
+            )
         return constraint.name
+
+    def _mark_occupant_count_scope(self, constraint: Constraint) -> tuple[CellMark, str] | None:
+        for mark in self.board.marks:
+            if mark.occupant_condition is None:
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                region_name = self.board.region_names[region]
+                if constraint.name == mark_occupant_name(mark, region_name) + " occupant count":
+                    return mark, region_name
+        return None
+
+    def _mark_occupant_count_reason(
+        self, constraint: Constraint, active: bool | None
+    ) -> str | None:
+        """Explain a mark's area-occupancy count using the marked-square rule."""
+        if active is not True:
+            return None
+        if (scope := self._mark_occupant_count_scope(constraint)) is None:
+            return None
+        mark, region_name = scope
+        condition = mark.occupant_condition
+        assert condition is not None
+        return self.say(
+            f"count.mark_occupant.{condition}",
+            mark=mark.name.replace("_", " "),
+            where=self.places.region(region_name),
+        )
 
     def _population_comparison(
         self, more: Constraint, fewer: Constraint, state: _State
@@ -2224,6 +2270,8 @@ class Story:
                 where=self.places.region(self.board.region_names[region]),
                 count=self.say.number(maximum),
             )
+        elif (mark_reason := self._mark_occupant_count_reason(constraint, known)) is not None:
+            reason = mark_reason
         else:
             reason = self._role_area_reason(constraint, allowed) or self.say(
                 "count_reason", name=self._count_name(constraint), counts=counts
