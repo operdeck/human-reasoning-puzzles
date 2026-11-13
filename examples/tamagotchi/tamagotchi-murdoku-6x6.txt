@@ -39,7 +39,7 @@ Masktchi
 Akumatchi
 
 Clues:
-count people on mark:quiet = 1
+count people on mark:quiet = 1 | Exactly one figure stands on a quiet square.
 on Mametchi chair
 next_to Masktchi sakura
 in_corner Memetchi

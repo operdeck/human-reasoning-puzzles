@@ -55,7 +55,7 @@ Violetchi
 Akumatchi
 
 Clues:
-count people on mark:social = 1
+count people on mark:social = 1 | Exactly one figure stands on a social square.
 same_region Mametchi Masktchi
 on Lovelitchi bench
 next_to Gozarutchi cake

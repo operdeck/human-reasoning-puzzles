@@ -427,11 +427,18 @@ def test_attribute_everyone_has_is_not_named(companion_attribute_puzzle):
     assert "Akumatchi shares a region with exactly one other person." in paragraphs
 
 
-def test_tamagotchi_count_includes_every_figure_and_question_leaves_quiet_open():
+@pytest.mark.parametrize(("size", "mark"), [(6, "quiet"), (9, "social"), (12, "social")])
+def test_tamagotchi_count_includes_every_figure(size, mark):
+    text = _read(f"tamagotchi-murdoku-{size}x{size}")
+    presentation = load_presentation(text)
+    clues = clue_paragraphs(text, presentation.clue_text)
+    assert f"Exactly one figure stands on a {mark} square." in clues
+
+
+def test_tamagotchi_question_leaves_quiet_squares_open():
     text = _read("tamagotchi-murdoku-12x12")
     presentation = load_presentation(text)
     clues = clue_paragraphs(text, presentation.clue_text)
-    assert "Exactly one figure stands on a social square." in clues
     assert "Violetchi is on the stage." in clues
     assert "which figures, if any, occupy quiet squares" in presentation.question
 
