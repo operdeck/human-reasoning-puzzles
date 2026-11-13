@@ -653,6 +653,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="suggest: marks whose occupancy effects must stay necessary",
     )
     args = parser.parse_args(argv)
+    if args.needs_mark and args.command != "suggest":
+        parser.error("--needs-mark is supported only by suggest")
     text = args.puzzle.read_text()
     if args.command == "occupancy":
         seen, rows = occupancy(text, args.sample)
@@ -676,8 +678,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(f"{args.command} needs --solution")
     placement = parse_solution(args.solution)
     if args.command == "ease":
-        if args.needs_mark:
-            parser.error("--needs-mark is supported only by suggest")
         if not args.max_grade:
             parser.error("ease needs --max-grade")
         added = ease(

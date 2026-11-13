@@ -165,6 +165,13 @@ in_row Ada 1
         clue_search.without_mark_condition(without, "quiet")
 
 
+def test_needs_mark_is_rejected_for_commands_that_cannot_enforce_it(capsys):
+    with pytest.raises(SystemExit) as error:
+        clue_search.main(["thin", "unused.txt", "--needs-mark", "quiet"])
+    assert error.value.code == 2
+    assert "--needs-mark is supported only by suggest" in capsys.readouterr().err
+
+
 def test_occupancy_shows_unused_decoys():
     beach = example("wie-doet-het-met-wie-3.txt").read_text()
     seen, rows = clue_search.occupancy(clue_search.with_clues(beach, []), sample=2000)
