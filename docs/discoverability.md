@@ -15,7 +15,7 @@ After `vite build`, `scripts/prerender.mjs` reads `dist/puzzles/index.json` (wri
 |---|---|
 | `dist/index.html` | the built shell with a static puzzle list inside `#app`, which the player replaces on load |
 | `dist/murdoku/index.html` | a landing page for online Murdoku, listing every case |
-| `dist/p/<id>/index.html` | one page per puzzle: size, grade, board picture, and a button into the player at `#<id>` |
+| `dist/p/<id>/index.html` | one page per puzzle: metadata and a static board fallback; JavaScript opens the player immediately |
 | `dist/sitemap.xml`, `dist/robots.txt` | every prerendered URL, each dated with a `<lastmod>` |
 
 Every page gets a specific title, a meta description, a canonical URL, Open Graph
@@ -24,6 +24,12 @@ tags and JSON-LD taken from the export. `SITE_URL` overrides the public address
 pages as data (`renderPages`) and only writes them in `prerender`, so
 `web/scripts/prerender.test.ts` checks their HTML from a two-puzzle fixture at build time
 without running vite or the export.
+
+Puzzle pages load the same player assets as the home page, with a base URL
+pointing back to the site root. Their static picture and play link remain for
+crawlers and visitors without JavaScript, but players need no intermediate click.
+The home page and Murdoku landing page retain illustrated previews, one per
+collection section.
 
 `robots.txt` is written for completeness but is **inert here**: this is a GitHub Pages
 *project* site, so `robots.txt` is not served from the domain root and crawlers ignore
