@@ -115,6 +115,58 @@ describe("palette", () => {
     document.body.replaceChildren();
   });
 
+  it("links adjacent puzzles to their canonical pages", () => {
+    const root = document.createElement("main");
+    document.body.append(root);
+    new PuzzleView(bundle(), BOARD, {
+      previous: { id: "previous", title: "Previous case" },
+      next: { id: "next", title: "Next case" },
+    }).render(root);
+    const previous = root.querySelector<HTMLAnchorElement>('a[aria-label="Previous puzzle: Previous case"]')!;
+    const next = root.querySelector<HTMLAnchorElement>('a[aria-label="Next puzzle: Next case"]')!;
+    expect(previous.href).toBe(new URL("p/previous/", document.baseURI).href);
+    expect(next.href).toBe(new URL("p/next/", document.baseURI).href);
+  });
+
+  it("switches compact viewports on resize without losing moves and releases the listener", () => {
+    const listeners = new Set<() => void>();
+    let mobile = true;
+    const media = window.matchMedia("(max-width: 760px)");
+    Object.defineProperty(media, "matches", { get: () => mobile });
+    vi.spyOn(media, "addEventListener").mockImplementation((_event, listener) => {
+      if (typeof listener === "function") listeners.add(() => listener.call(media, new Event("change")));
+    });
+    vi.spyOn(media, "removeEventListener").mockImplementation(() => listeners.clear());
+    const matchMedia = vi.spyOn(window, "matchMedia").mockReturnValue(media);
+    const board = BOARD.replace('viewBox="0 0 100 100"', 'viewBox="-20 -40 140 180" data-compact-view-box="0 0 100 100"');
+    const root = document.createElement("main");
+    document.body.append(root);
+    const view = new PuzzleView(bundle(), board);
+    try {
+      view.render(root);
+      const svg = root.querySelector(".board svg")!;
+      expect(svg.getAttribute("viewBox")).toBe("0 0 100 100");
+      expect(root.querySelector(".board")?.classList.contains("compact-board")).toBe(true);
+      press(root, "ArrowRight");
+      press(root, "Enter");
+      expect(root.querySelector(".overlay")?.childElementCount).toBeGreaterThan(0);
+      const moves = root.querySelector(".overlay")!.innerHTML;
+      mobile = false;
+      listeners.forEach((listener) => listener());
+      expect(svg.getAttribute("viewBox")).toBe("-20 -40 140 180");
+      expect(root.querySelector(".board")?.classList.contains("compact-board")).toBe(false);
+      expect(root.querySelector(".overlay")!.innerHTML).toBe(moves);
+      mobile = true;
+      listeners.forEach((listener) => listener());
+      expect(svg.getAttribute("viewBox")).toBe("0 0 100 100");
+      view.destroy();
+      expect(listeners.size).toBe(0);
+    } finally {
+      view.destroy();
+      matchMedia.mockRestore();
+    }
+  });
+
   it("selects figures from their clue cards, which replace the palette's figure buttons", () => {
     const overrides: Partial<Bundle> = {
       clues: ["Bo's old clue"],
