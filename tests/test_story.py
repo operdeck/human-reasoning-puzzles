@@ -1034,6 +1034,78 @@ above Eva Fay
     ) in dutch
 
 
+def test_what_if_explains_a_missing_companion_on_a_marked_square():
+    text = """Size: 9
+Regions:
+a: garden
+b: school
+c: cafe
+d: library
+e: market
+f: playground
+w: stream
+Grid:
+a a a w b b b b b
+a a a w b b b b b
+a a a w b b b b b
+c c c w w b b b b
+c c c c w d d d d
+c c c c w d d d d
+e e e e w d d d d
+e e e e w f f f f
+e e e e w f f f f
+Marks:
+friendly: r1c5 r2c6 r4c2 r6c3 r9c7 ; not_alone
+Objects:
+sakura: blocking r1c1
+backpack: blocking r3c8
+cake: blocking r5c2
+books: blocking r6c7
+basket: blocking r8c2
+slide: blocking r9c9
+water: blocking r1c4 r2c4 r3c4 r4c4 r4c5 r5c5 r6c5
+water: blocking r8c5 r9c5
+bench: standable r1c3 r2c3
+chair: standable r2c8
+tatami: standable r6c1 r6c2
+bridge: standable r7c4 r7c5 r7c6
+carpet: standable r9c3
+People:
+Mametchi
+Kuchipatchi
+Memetchi
+Lovelitchi
+Tarakotchi
+Masktchi
+Gozarutchi
+Violetchi
+Akumatchi
+Clues:
+count people on mark:friendly = 1
+same_region Mametchi Masktchi
+on Lovelitchi bench
+next_to Gozarutchi cake
+above Mametchi Lovelitchi
+above Violetchi Masktchi
+in_region Tarakotchi library
+on Kuchipatchi bridge
+left_of Tarakotchi Memetchi
+not_next_to Memetchi slide
+not_next_to Tarakotchi books
+not_next_to Violetchi backpack
+"""
+    explanation = explain(text)
+    assert (
+        "then Memetchi is on r9c7, but a friendly square needs company, "
+        "and nobody else can be in the playground"
+    ) in explanation
+    dutch = explain("Language: nl\n" + text)
+    assert (
+        "maar op een vakje met markering friendly moet iemand gezelschap hebben "
+        "en verder kan niemand in de playground zijn"
+    ) in dutch
+
+
 def test_alone_mark_excludes_squares_in_an_occupied_area():
     text = """Size: 6
 Regions:

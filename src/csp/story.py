@@ -198,6 +198,9 @@ PHRASES: dict[str, dict[str, str]] = {
             "{who} is {where} but cannot stand on a {mark} square there. "
             "Anyone on a {mark} square would be alone, so **nobody can use those squares {where}**"
         ),
+        "mark_breaks.not_alone": (
+            "but a {mark} square needs company, and nobody else can be {where}"
+        ),
         "nowhere": "then {who} has nowhere left",
         "nobody": "then nobody can fill {line}",
         "breaks_said": "which goes against \u2018{clue}\u2019",
@@ -486,6 +489,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "mark_blocked.alone": (
             "{who} is {where} maar kan daar niet op een vakje met markering {mark} staan. "
             "Wie op zo'n vakje staat is alleen, dus **niemand kan die vakjes {where} gebruiken**"
+        ),
+        "mark_breaks.not_alone": (
+            "maar op een vakje met markering {mark} moet iemand gezelschap hebben "
+            "en verder kan niemand {where} zijn"
         ),
         "nowhere": "dan kan {who} nergens meer",
         "nobody": "dan kan niemand meer in {line}",
@@ -2641,6 +2648,8 @@ class Story:
         """Who could not be where, and the chain of events that rules it out."""
         who, square = step.var, step.value
         needed = essential(self.model, state.history, step)
+        trial = _State({p: set(options) for p, options in state.options.items()}, {})
+        trial.apply(step.trail)
         state.apply([step])
         state.told[who].discard(square)
         parts: list[str] = []
@@ -2673,7 +2682,7 @@ class Story:
                 global_count = self.global_counts.get(name)
                 if global_count is not None and global_count.number is not None:
                     refs.append(global_count.number)
-        parts.append(self._broken(step, first=not parts))
+        parts.append(self._broken(step, first=not parts, trial=trial))
         source = step.sources[0] if step.sources else None
         broken = self.conditions.get(source) if source else None
         broken_global = self._global_count_for_sources(step.sources)
@@ -2714,9 +2723,39 @@ class Story:
             previous = who
         return sentences
 
-    def _broken(self, step: Step, first: bool) -> str:
+    def _broken(self, step: Step, first: bool, trial: _State) -> str:
         """The contradiction a what_if ran into."""
         source = step.sources[0] if step.sources else None
+        for mark in self.board.marks:
+            if mark.occupant_condition != "not_alone":
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                region_name = self.board.region_names[region]
+                if source != mark_occupant_name(mark, region_name) + " occupant count":
+                    continue
+                occupants = [
+                    item.var
+                    for item in step.trail
+                    if item.asserted
+                    and item.var in self.board.people
+                    and item.value in mark.cells
+                    and self.board.region_of(item.value) == region
+                ]
+                if (
+                    occupants
+                    and all(trial.options.values())
+                    and all(
+                        self.board.region_of(square) != region
+                        for person in self.board.people
+                        if person != occupants[0]
+                        for square in trial.options[person]
+                    )
+                ):
+                    return self.say(
+                        "mark_breaks.not_alone",
+                        mark=mark.name.replace("_", " "),
+                        where=self.places.region(region_name),
+                    )
         if (global_count := self._global_count_for_sources(step.sources)) is not None:
             return self.say("global_count.breaks", clue=self._global_count_text(global_count))
         if source in self.conditions:
