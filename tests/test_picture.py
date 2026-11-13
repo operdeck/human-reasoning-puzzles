@@ -1676,6 +1676,35 @@ def test_a_backdrop_is_read_from_the_puzzle_file():
     assert load_board(text)[0].backdrop == "U+1F383"
 
 
+@pytest.mark.parametrize("name", ["prrrdoku1.txt", "halloween-museum-1.txt", "food-murdoku-2.txt"])
+def test_interactive_backdrops_export_a_compact_viewport_without_moving_cells(name):
+    from dataclasses import replace
+    from xml.etree import ElementTree
+
+    board = load_board(example(name).read_text())[0]
+    assert board.backdrop
+    plain = drawing.murdoku_picture(replace(board, backdrop=None), cell=CELL, interactive=True)
+    interactive = drawing.murdoku_picture(board, cell=CELL, interactive=True)
+    static = drawing.murdoku_picture(board, cell=CELL, legend=False)
+    assert static.compact_view_box is None
+    assert interactive.compact_view_box is not None
+    x, y, width, height = interactive.compact_view_box
+    assert (width, height) == plain.size
+    assert height < interactive.height
+    if name == "prrrdoku1.txt":
+        assert width < interactive.width
+    root = ElementTree.fromstring(interactive.to_svg())
+    assert root.get("data-compact-view-box") == f"{x} {y} {width} {height}"
+    first = root.find(".//*[@id='r1c1']")
+    assert first is not None
+    plain_first = ElementTree.fromstring(plain.to_svg()).find(".//*[@id='r1c1']")
+    assert plain_first is not None
+    assert float(first.get("x")) - x == float(plain_first.get("x"))
+    assert float(first.get("y")) - y == float(plain_first.get("y"))
+    assert root.find(".//*[@class='backdrop']") is not None
+    assert "data-compact-view-box" not in static.to_svg()
+
+
 def test_decorations_are_drawn_at_their_anchors_but_never_enter_the_puzzle(monkeypatch):
     text = example("halloween-museum-1.txt").read_text()
     board = load_board(text)[0]

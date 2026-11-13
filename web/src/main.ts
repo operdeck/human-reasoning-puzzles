@@ -1,6 +1,6 @@
 import type { Bundle } from "./game";
 import { creditLine } from "./credit";
-import { adjacentPuzzles } from "./navigation";
+import { adjacentPuzzles, puzzleLink } from "./navigation";
 import { PuzzleView } from "./view";
 
 interface IndexEntry {
@@ -26,6 +26,7 @@ interface PuzzleIndex {
 const base = new URL("puzzles/", document.baseURI);
 const app = document.getElementById("app")!;
 let indexRequest: Promise<PuzzleIndex> | undefined;
+let puzzleView: PuzzleView | undefined;
 
 async function fetchText(name: string): Promise<string> {
   const response = await fetch(new URL(name, base));
@@ -58,6 +59,8 @@ function el<K extends keyof HTMLElementTagNameMap>(
 async function showIndex(current: () => boolean): Promise<void> {
   const index = await fetchIndex();
   if (!current()) return;
+  puzzleView?.destroy();
+  puzzleView = undefined;
   document.title = "Human reasoning puzzles";
   // The index is already in reading order, as in the booklet.
   const groups = new Map<string, IndexEntry[]>();
@@ -95,30 +98,31 @@ async function showIndex(current: () => boolean): Promise<void> {
           el(
             "ul",
             { className: "puzzle-list" },
-            ...entries.map((entry) => el(
-              "li",
-              {},
-              el("a", {
-                href: `#${encodeURIComponent(entry.id)}`,
-                textContent: `${entry.number}. ${entry.title}`,
-              }),
-              el("span", {
-                className: "meta",
-                textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
-              }),
-              ...(entry.deductive === false
-                ? [el("span", {
-                    className: "badge",
-                    textContent: "beyond deduction",
-                    title: "Only this solver's what_if case analysis closes this puzzle.",
-                  })]
-                : []),
-              ...(entry.playable
-                ? []
-                : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
-            ),
+            ...entries.map((entry) => {
+              const link = puzzleLink(entry.id);
+              link.textContent = `${entry.number}. ${entry.title}`;
+              return el(
+                "li",
+                {},
+                link,
+                el("span", {
+                  className: "meta",
+                  textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
+                }),
+                ...(entry.deductive === false
+                  ? [el("span", {
+                      className: "badge",
+                      textContent: "beyond deduction",
+                      title: "Only this solver's what_if case analysis closes this puzzle.",
+                    })]
+                  : []),
+                ...(entry.playable
+                  ? []
+                  : [el("span", { className: "badge", textContent: "not yet supported", title: entry.unsupported ?? "" })]),
+              );
+            }),
+          ),
         ),
-          )),
       );
     });
   app.replaceChildren(
@@ -168,13 +172,15 @@ async function showPuzzle(id: string, current: () => boolean): Promise<void> {
   ]);
   if (!current()) return;
   const bundle = JSON.parse(bundleText) as Bundle;
-  new PuzzleView(bundle, svg, adjacentPuzzles(index.puzzles, id)).render(app);
+  puzzleView?.destroy();
+  puzzleView = new PuzzleView(bundle, svg, adjacentPuzzles(index.puzzles, id));
+  puzzleView.render(app);
 }
 
 let routing = 0;
 
 async function route(): Promise<void> {
-  const id = decodeURIComponent(location.hash.slice(1));
+  const id = decodeURIComponent(location.hash.slice(1) || app.dataset.puzzleId || "");
   const ticket = ++routing;
   // A later hash change wins, even if this page arrives after it.
   const current = () => ticket === routing;
@@ -183,6 +189,8 @@ async function route(): Promise<void> {
     else await showIndex(current);
   } catch (error) {
     if (!current()) return;
+    puzzleView?.destroy();
+    puzzleView = undefined;
     app.replaceChildren(
       el("p", { className: "error", textContent: `Could not load the puzzle: ${String(error)}` }),
       el("a", { href: "#", textContent: "← All puzzles" }),

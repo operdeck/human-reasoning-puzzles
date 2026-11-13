@@ -772,6 +772,18 @@ dd {
   .with-clue-entries .board svg {
     max-height: 36vh;
   }
+
+  .board.compact-board svg {
+    max-height: none;
+  }
+
+  .board.compact-board .backdrop {
+    display: none;
+  }
+
+  .with-clue-entries:has(.compact-board) .play {
+    position: static;
+  }
 }
 
 @media (max-width: 420px) {

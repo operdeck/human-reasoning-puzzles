@@ -155,6 +155,9 @@ puzzle family, it only reads the bundles from `--export`. The index shows one
 representative unsolved board preview per puzzle group (including each Murdoku
 series), with compact puzzle links in one or two columns beside it. Select a
 puzzle title to open its player.
+On phones, Murdoku boards omit the decorative backdrop and expand across the
+available width. Desktop boards, booklet pictures and landing-page previews
+keep their backdrops.
 Locally (Node 22.12 or later):
 
 ```sh
@@ -168,6 +171,8 @@ npm run dev      # or: npm test, npm run build
 `sitemap.xml` and `robots.txt` over the player, so search engines see real pages
 (`web/scripts/prerender.mjs`). The one-time repository topics, site verification and
 sitemap submission that go with it are in [discoverability notes](docs/discoverability.md).
+Opening a puzzle's own page starts the player directly; its static picture and
+play link remain available when JavaScript is disabled.
 
 Place a piece with a click or tap (or arrow keys and Space, or the piece's number key),
 cross off a square with right-click, long-press or the Cross tool, and undo with Ctrl+Z.

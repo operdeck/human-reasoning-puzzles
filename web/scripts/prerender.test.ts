@@ -94,13 +94,43 @@ describe("renderPages", () => {
     expect(landing).not.toContain("sudoku_1");
   });
 
-  it("gives each puzzle its own page with a picture and a link into the player", () => {
+  it("loads the player on each puzzle page and keeps a static fallback", () => {
     const page = pageFor(render(), "p/first-case/index.html");
     expect(page).toContain("<title>The first case – Murdoku murder mystery (4×4) | Human reasoning puzzles</title>");
     expect(page).toContain('<link rel="canonical" href="https://operdeck.github.io/human-reasoning-puzzles/p/first-case/" />');
-    expect(page).toContain('<img src="../../puzzles/first-case.svg"');
-    expect(page).toContain('<a class="cta" href="../../#first-case">Play this puzzle</a>');
+    expect(page).toContain('<meta name="description" content="Play &quot;The first case&quot; online');
+    expect(page).toContain('<meta property="og:url" content="https://operdeck.github.io/human-reasoning-puzzles/p/first-case/" />');
+    expect(page).toContain('<meta property="og:image" content="https://operdeck.github.io/human-reasoning-puzzles/puzzles/first-case.svg" />');
+    expect(page).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    const jsonLd = page.match(/<script type="application\/ld\+json">([^<]+)<\/script>/)?.[1];
+    expect(jsonLd).toBeDefined();
+    expect(JSON.parse(jsonLd!)).toMatchObject({
+      "@type": "WebPage",
+      name: "The first case",
+      url: `${DEFAULT_SITE}/p/first-case/`,
+    });
+    expect(page).toContain('<base href="../../" />');
+    expect(page).toContain('src="./assets/index-abc.js"');
+    expect(page).toContain('href="./assets/index-abc.css"');
+    expect(page).toContain('<main id="app" data-puzzle-id="first-case">');
+    expect(page).toContain('<img src="puzzles/first-case.svg"');
+    expect(page).toContain('<a class="cta" href="./#first-case">Play this puzzle</a>');
+    expect(page).toContain("<noscript><style>");
     expect(page).toContain(`<a href="${REPO}">human reasoning puzzles</a>`);
+  });
+
+  it("keeps one illustrated preview per section on both landing pages", () => {
+    const files = renderPages({
+      index: { ...index, puzzles: [murdoku, { ...murdoku, id: "second-case" }, sudoku] },
+      built: shell,
+    });
+    const home = pageFor(files, "index.html");
+    expect(home.match(/class="family-thumbnail"/g)).toHaveLength(2);
+    expect(home).toContain('src="puzzles/first-case.svg"');
+    expect(home).not.toContain('src="puzzles/second-case.svg"');
+    const landing = pageFor(files, "murdoku/index.html");
+    expect(landing.match(/class="family-thumbnail"/g)).toHaveLength(1);
+    expect(landing).toContain('src="../puzzles/first-case.svg"');
   });
 
   it("credits Murdoku's inventor wherever a Murdoku appears, and nowhere else", () => {
@@ -233,7 +263,7 @@ describe("hostile input", () => {
     });
     const page = pageFor(files, "p/ok/index.html");
     expect(page).not.toContain("<script>alert");
-    expect(page.match(/<script/g)).toHaveLength(1); // the ld+json block, nothing else
+    expect(page.match(/<script/g)).toHaveLength(2); // metadata and the built player
     expect(page).toContain("&lt;/script&gt;");
     expect(page).toContain("\\u003c/script>");
   });

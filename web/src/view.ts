@@ -24,7 +24,7 @@ import {
   type State,
   type Verdict,
 } from "./game";
-import type { PuzzleNavigationEntry } from "./navigation";
+import { puzzleLink, type PuzzleNavigationEntry } from "./navigation";
 import { creditLine } from "./credit";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -174,6 +174,7 @@ export function celebrate(count = 18): void {
 }
 
 export class PuzzleView {
+  private stopViewport: (() => void) | undefined;
   private history: History;
   private working: State | null = null;
   private tool: string;
@@ -219,19 +220,22 @@ export class PuzzleView {
     return this.working ?? this.history.current;
   }
 
+  destroy(): void {
+    this.stopViewport?.();
+    this.stopViewport = undefined;
+  }
+
   render(root: HTMLElement): void {
     const b = this.bundle;
     document.title = `${b.title} · Human reasoning puzzles`;
-    const puzzleLink = (
+    const puzzleNavLink = (
       entry: PuzzleNavigationEntry,
       direction: "Previous" | "Next",
       text: string,
     ): HTMLAnchorElement => {
-      const link = el("a", {
-        href: `#${encodeURIComponent(entry.id)}`,
-        textContent: text,
-        title: entry.title,
-      });
+      const link = puzzleLink(entry.id);
+      link.textContent = text;
+      link.title = entry.title;
       link.setAttribute("aria-label", `${direction} puzzle: ${entry.title}`);
       return link;
     };
@@ -240,10 +244,10 @@ export class PuzzleView {
       { className: "puzzle-nav" },
       el("a", { href: "#", className: "back", textContent: "← All puzzles" }),
       ...(this.navigation.previous
-        ? [puzzleLink(this.navigation.previous, "Previous", "← Previous")]
+        ? [puzzleNavLink(this.navigation.previous, "Previous", "← Previous")]
         : []),
       ...(this.navigation.next
-        ? [puzzleLink(this.navigation.next, "Next", "Next →")]
+        ? [puzzleNavLink(this.navigation.next, "Next", "Next →")]
         : []),
       el("a", {
         href: "https://github.com/operdeck/human-reasoning-puzzles",
@@ -621,6 +625,18 @@ export class PuzzleView {
     if (!svg) return;
     svg.removeAttribute("width");
     svg.removeAttribute("height");
+    const compact = svg.getAttribute("data-compact-view-box");
+    const full = svg.getAttribute("viewBox");
+    if (compact && full) {
+      const media = window.matchMedia("(max-width: 760px)");
+      const update = () => {
+        svg.setAttribute("viewBox", media.matches ? compact : full);
+        board.classList.toggle("compact-board", media.matches);
+      };
+      update();
+      media.addEventListener("change", update);
+      this.stopViewport = () => media.removeEventListener("change", update);
+    }
     for (const rect of svg.querySelectorAll<SVGRectElement>("rect.cell")) {
       const box = {
         x: Number(rect.getAttribute("x")),

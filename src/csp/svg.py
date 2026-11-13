@@ -132,13 +132,21 @@ class Canvas:
     """An SVG picture built with Pillow-like drawing calls."""
 
     def __init__(
-        self, width: int, height: int, background: Colour = (255, 255, 255), headroom: int = 0
+        self,
+        width: int,
+        height: int,
+        background: Colour = (255, 255, 255),
+        headroom: int = 0,
+        compact_view_box: tuple[int, int, int, int] | None = None,
     ) -> None:
         """`headroom` adds that many pixels above y = 0, for drawings that stick out at the
-        top; coordinates stay the same, so the picture's height grows by it."""
+        top; coordinates stay the same, so the picture's height grows by it.
+        `compact_view_box` exports an optional (x, y, width, height) viewport for
+        small-screen players; it does not change the default drawing."""
         self.width = width
         self.height = height + headroom
         self.headroom = headroom
+        self.compact_view_box = compact_view_box
         self._defs: dict[str, str] = {}
         self._body: list[str] = []
         self._cells: list[str] = []
@@ -409,6 +417,11 @@ class Canvas:
     # --- output -----------------------------------------------------------
 
     def to_svg(self) -> str:
+        compact = (
+            f' data-compact-view-box="{" ".join(map(str, self.compact_view_box))}"'
+            if self.compact_view_box is not None
+            else ""
+        )
         defs = "<defs>" + "".join(self._defs.values()) + "</defs>" if self._defs else ""
         cells = '<g class="cells">' + "".join(self._cells) + "</g>" if self._cells else ""
         above = (
@@ -419,7 +432,7 @@ class Canvas:
         return (
             '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
             f' width="{self.width}" height="{self.height}"'
-            f' viewBox="0 {-self.headroom} {self.width} {self.height}">\n'
+            f' viewBox="0 {-self.headroom} {self.width} {self.height}"{compact}>\n'
             + defs
             + "\n"
             + "\n".join(self._body)
