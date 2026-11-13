@@ -1364,6 +1364,12 @@ count people on mark:quiet = 1
     assert "Ada is not in the hall or in the garden (1)" in excluded
 
 
+def test_direct_area_clue_does_not_repeat_the_area_when_it_fixes_a_square():
+    explanation = explain(example("murdoku_2_point_objects.txt").read_text())
+    assert "Cal is in the greenhouse (4): **Cal on r3c5**" in explanation
+    assert "in the greenhouse (4): **in the greenhouse**" not in explanation
+
+
 def test_story_explains_complementary_reified_counts():
     square = murdoku.Square
     board = murdoku.Board(
@@ -1450,7 +1456,7 @@ def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
     story = explain((example("murdoku_3_house.txt")).read_text())
     opening = story.split("\n\n")[0]
     assert "Ben is on the carpet (4): **in the hall**." in opening
-    assert "Ben is not next to the lamp (6): **in the hall**: **Ben on r3c4**." in opening
+    assert "Ben is not next to the lamp (6): **Ben on r3c4**." in opening
 
 
 def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():

@@ -1683,6 +1683,7 @@ class Story:
             if condition.number is None:
                 continue
             (person,) = condition.people
+            previous_region = self.places.common_region(visible[person])
             visible[person] = {sq for sq in visible[person] if condition.test(sq)}
             squares = left[person]
             region = self.places.common_region(squares) if squares else None
@@ -1692,7 +1693,11 @@ class Story:
             if len(squares) == 1:
                 square = min(squares)
                 location = self.places.placed(person, square)
-                where = f"{_emphasize(region)}: {location}" if region else location
+                where = (
+                    f"{_emphasize(region)}: {location}"
+                    if region and region != previous_region and region not in clue
+                    else location
+                )
                 state.announce(person)
                 placed.add(person)
                 open_squares = {
@@ -1702,7 +1707,7 @@ class Story:
                 line = self.places.common_line(squares)
                 line_where = self.say("in", what=self.places.line(*line)) if line else None
                 where = region or line_where
-                if where and where in clue:
+                if where and (where in clue or where == previous_region):
                     where = ""
                 if (
                     condition.kind in ("in_row", "in_column")
@@ -1710,7 +1715,7 @@ class Story:
                     and where in clue
                 ):
                     where = ""
-                if where is None:
+                if where is None and condition.kind not in ("in_region", "outside"):
                     where = self.places.where(squares, self.places.free)
                     same_edge = (
                         condition.kind == "next_to"
