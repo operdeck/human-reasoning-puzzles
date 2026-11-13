@@ -174,6 +174,7 @@ export function celebrate(count = 18): void {
 }
 
 export class PuzzleView {
+  private stopViewport: (() => void) | undefined;
   private history: History;
   private working: State | null = null;
   private tool: string;
@@ -217,6 +218,11 @@ export class PuzzleView {
 
   private get state(): State {
     return this.working ?? this.history.current;
+  }
+
+  destroy(): void {
+    this.stopViewport?.();
+    this.stopViewport = undefined;
   }
 
   render(root: HTMLElement): void {
@@ -621,6 +627,18 @@ export class PuzzleView {
     if (!svg) return;
     svg.removeAttribute("width");
     svg.removeAttribute("height");
+    const compact = svg.getAttribute("data-compact-view-box");
+    const full = svg.getAttribute("viewBox");
+    if (compact && full) {
+      const media = window.matchMedia("(max-width: 760px)");
+      const update = () => {
+        svg.setAttribute("viewBox", media.matches ? compact : full);
+        board.classList.toggle("compact-board", media.matches);
+      };
+      update();
+      media.addEventListener("change", update);
+      this.stopViewport = () => media.removeEventListener("change", update);
+    }
     for (const rect of svg.querySelectorAll<SVGRectElement>("rect.cell")) {
       const box = {
         x: Number(rect.getAttribute("x")),

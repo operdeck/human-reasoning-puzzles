@@ -1,10 +1,14 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const renderPuzzle = vi.hoisted(() => vi.fn());
+const { renderPuzzle, destroyPuzzle } = vi.hoisted(() => ({
+  renderPuzzle: vi.fn(),
+  destroyPuzzle: vi.fn(),
+}));
 vi.mock("./view", () => ({
   PuzzleView: class {
     render = renderPuzzle;
+    destroy = destroyPuzzle;
   },
 }));
 
@@ -41,6 +45,7 @@ let listeners: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   vi.resetModules();
   renderPuzzle.mockReset();
+  destroyPuzzle.mockReset();
   renderPuzzle.mockImplementation((app: HTMLElement) => app.replaceChildren());
   document.body.innerHTML = '<main id="app"></main>';
   window.history.replaceState(null, "", "/human-reasoning-puzzles/");
@@ -162,5 +167,34 @@ describe("puzzle index", () => {
     window.location.hash = "";
     await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(2));
     expect(requested.filter((url) => url.endsWith("/index.json"))).toHaveLength(1);
+    expect(destroyPuzzle).toHaveBeenCalledOnce();
+  });
+
+  it("opens a prerendered puzzle immediately using the site's base URL", async () => {
+    window.history.replaceState(null, "", "/human-reasoning-puzzles/p/first-case/");
+    const base = document.createElement("base");
+    base.href = "/human-reasoning-puzzles/";
+    document.head.append(base);
+    document.getElementById("app")!.dataset.puzzleId = "first-case";
+    try {
+      await import("./main");
+      await vi.waitFor(() => expect(renderPuzzle).toHaveBeenCalledOnce());
+      expect(window.location.hash).toBe("#first-case");
+      expect(window.location.pathname).toBe("/human-reasoning-puzzles/p/first-case/");
+      const requested = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+      expect(requested.some((url) => url.endsWith("/human-reasoning-puzzles/puzzles/first-case.json"))).toBe(true);
+      expect(document.querySelector(".puzzle-list")).toBeNull();
+    } finally {
+      base.remove();
+    }
+  });
+
+  it("lets an explicit hash override a prerendered puzzle's initial id", async () => {
+    document.getElementById("app")!.dataset.puzzleId = "first-case";
+    window.history.replaceState(null, "", "/human-reasoning-puzzles/p/first-case/#logicgrid_1");
+    await import("./main");
+    await vi.waitFor(() => expect(renderPuzzle).toHaveBeenCalledOnce());
+    expect(window.location.hash).toBe("#logicgrid_1");
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith("/logicgrid_1.json"))).toBe(true);
   });
 });

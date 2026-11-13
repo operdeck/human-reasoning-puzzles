@@ -26,6 +26,7 @@ interface PuzzleIndex {
 const base = new URL("puzzles/", document.baseURI);
 const app = document.getElementById("app")!;
 let indexRequest: Promise<PuzzleIndex> | undefined;
+let puzzleView: PuzzleView | undefined;
 
 async function fetchText(name: string): Promise<string> {
   const response = await fetch(new URL(name, base));
@@ -58,6 +59,8 @@ function el<K extends keyof HTMLElementTagNameMap>(
 async function showIndex(current: () => boolean): Promise<void> {
   const index = await fetchIndex();
   if (!current()) return;
+  puzzleView?.destroy();
+  puzzleView = undefined;
   document.title = "Human reasoning puzzles";
   // The index is already in reading order, as in the booklet.
   const groups = new Map<string, IndexEntry[]>();
@@ -168,7 +171,9 @@ async function showPuzzle(id: string, current: () => boolean): Promise<void> {
   ]);
   if (!current()) return;
   const bundle = JSON.parse(bundleText) as Bundle;
-  new PuzzleView(bundle, svg, adjacentPuzzles(index.puzzles, id)).render(app);
+  puzzleView?.destroy();
+  puzzleView = new PuzzleView(bundle, svg, adjacentPuzzles(index.puzzles, id));
+  puzzleView.render(app);
 }
 
 let routing = 0;
@@ -183,6 +188,8 @@ async function route(): Promise<void> {
     else await showIndex(current);
   } catch (error) {
     if (!current()) return;
+    puzzleView?.destroy();
+    puzzleView = undefined;
     app.replaceChildren(
       el("p", { className: "error", textContent: `Could not load the puzzle: ${String(error)}` }),
       el("a", { href: "#", textContent: "← All puzzles" }),
@@ -192,4 +199,7 @@ async function route(): Promise<void> {
 }
 
 window.addEventListener("hashchange", route);
+if (!location.hash && app.dataset.puzzleId) {
+  window.history.replaceState(null, "", `${location.pathname}#${encodeURIComponent(app.dataset.puzzleId)}`);
+}
 void route();

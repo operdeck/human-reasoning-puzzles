@@ -203,7 +203,13 @@ def murdoku_picture(
     reach = int(side * BACKDROP_REACH) if board.backdrop else 0
     height = side + 2 * margin + reach + (key.height if key else 0)
     headroom = _backdrop_headroom(board.backdrop, margin, side) if board.backdrop else 0
-    canvas = Canvas(side + 2 * margin, height, headroom=headroom)
+    compact_view_box = None
+    if interactive:
+        compact_margin = _murdoku_margin(board, cell, coordinates, backdrop=False)
+        start = margin - compact_margin
+        compact_side = side + 2 * compact_margin
+        compact_view_box = (start, start, compact_side, compact_side)
+    canvas = Canvas(side + 2 * margin, height, headroom=headroom, compact_view_box=compact_view_box)
     fills = _fills(board)
 
     def box(sq: Square) -> Box:
@@ -426,7 +432,7 @@ def _backdrop(canvas: Canvas, name: str, margin: int, side: int) -> None:
     reach = int(side * BACKDROP_REACH)
     middle = margin + side // 2
     half = side // 2 + reach
-    with canvas.group(opacity=BACKDROP_OPACITY):
+    with canvas.group(opacity=BACKDROP_OPACITY, class_name="backdrop"):
         box = (middle - half, middle - half, middle + half, middle + half)
         icons.draw(canvas, icon, box, crop=True, stretch=True)
 
@@ -443,7 +449,7 @@ def _backdrop_headroom(name: str, margin: int, side: int) -> int:
     return max(0, math.ceil(above * scale) - (margin - reach))
 
 
-def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
+def _murdoku_margin(board: Board, cell: int, coordinates: bool, *, backdrop: bool = True) -> int:
     """Room around the board, widened so point objects on the outer edge are not clipped
     and a backdrop shows around the board.
 
@@ -451,7 +457,7 @@ def _murdoku_margin(board: Board, cell: int, coordinates: bool) -> int:
     Coordinate labels sit halfway into the top and left margins, so a point on
     those edges gets extra room to keep its icon off the labels.
     """
-    if board.backdrop:
+    if backdrop and board.backdrop:
         return int(board.size * cell * BACKDROP_REACH) + cell // 4
     outer = {1, 2 * board.size + 1}
     anchors = [point.anchor for point in board.point_objects]
