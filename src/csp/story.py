@@ -263,6 +263,11 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "count.population_minimum": "at least {count} people are {where}",
         "count.population_all": "together that accounts for all {n} people",
+        "count.population_blocked": "{blockers}: all other free squares {where} are unavailable",
+        "count.population_only": "only {who} is {where}",
+        "count.population_at_most_zero": "the area counts leave {where} empty",
+        "count.population_at_most_one": "the area counts allow at most one person {where}",
+        "count.population_at_most": "the area counts allow at most {count} people {where}",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
         "global_count.at_least": "at least {n}",
@@ -527,6 +532,11 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "count.population_minimum": "zijn er {where} minstens {count} mensen",
         "count.population_all": "samen zijn dat alle {n} mensen",
+        "count.population_blocked": "{blockers}: alle andere vrije vakjes {where} vallen af",
+        "count.population_only": "alleen {who} zit {where}",
+        "count.population_at_most_zero": "de gebiedstellingen laten {where} niemand toe",
+        "count.population_at_most_one": "de gebiedstellingen geven {where} hoogstens één persoon",
+        "count.population_at_most": "de gebiedstellingen geven {where} hoogstens {count} mensen",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
         "global_count.at_least": "minstens {n}",
@@ -1979,6 +1989,74 @@ class Story:
         )
         return f"{_cap(reason)}, {self.say('so')} {empty}."
 
+    def _population_tied_single(
+        self,
+        constraint: Constraint,
+        known: bool | None,
+        changed: list[str],
+        before: dict[str, set[Square]],
+        state: _State,
+    ) -> str | None:
+        """Explain a tied area's sole occupant from already announced placements."""
+        target = self._population_level(constraint)
+        if known is not False or target is None or target[1] != 2 or not changed:
+            return None
+        target_region = target[0]
+        target_cells = {sq for sq in self.board.free if self.board.region_of(sq) == target_region}
+        if any(
+            len(state.options[p]) <= 1 or not (before[p] - state.options[p]) <= target_cells
+            for p in changed
+        ):
+            return None
+        announced = {p: state.placed[p] for p in state.announced if p in state.placed}
+        occupants = [p for p, sq in announced.items() if self.board.region_of(sq) == target_region]
+        if len(occupants) != 1:
+            return None
+        (target_person,) = occupants
+        for comparison in self.population_conditions:
+            if target_region not in comparison.regions:
+                continue
+            for source_region in comparison.regions:
+                if source_region == target_region:
+                    continue
+                people = [
+                    p for p, sq in announced.items() if self.board.region_of(sq) == source_region
+                ]
+                if len(people) != 1:
+                    continue
+                (source_person,) = people
+                source_cells = {
+                    sq for sq in self.board.free if self.board.region_of(sq) == source_region
+                }
+                others = source_cells - {announced[source_person]}
+                blockers = self._blockers(None, others, state, max_people=3, announced_only=True)
+                if not blockers:
+                    continue
+                source_where = self.places.region(self.board.region_names[source_region])
+                target_where = self.places.region(self.board.region_names[target_region])
+                reason = self.say(
+                    "count.population_blocked", blockers=self.say.join(blockers), where=source_where
+                )
+                source_only = self.say(
+                    "count.population_only", who=source_person, where=source_where
+                )
+                target_only = self.say(
+                    "count.population_only", who=target_person, where=target_where
+                )
+                clue = _cap(self._clue_text(comparison.kind, comparison.tokens, ()))
+                if comparison.number is not None and self.say.numbered:
+                    clue += f" ({comparison.number})"
+                for person in self.board.people:
+                    if person != source_person:
+                        state.told[person] -= source_cells
+                    if person != target_person:
+                        state.told[person] -= target_cells
+                return (
+                    f"{_cap(reason)}, {self.say('so')} {_emphasize(source_only)}. "
+                    f"{clue}, {self.say('so')} {_emphasize(target_only)}."
+                )
+        return None
+
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
     ) -> str:
@@ -2021,9 +2099,29 @@ class Story:
         population_full = self._population_full(step, constraint, known, before, state)
         if population_full is not None:
             return population_full
-        reason = self._role_area_reason(constraint, allowed) or self.say(
-            "count_reason", name=self._count_name(constraint), counts=counts
-        )
+        tied_single = self._population_tied_single(constraint, known, changed, before, state)
+        if tied_single is not None:
+            return tied_single
+        level = self._population_level(constraint)
+        if level is not None and known is False:
+            region, minimum = level
+            maximum = minimum - 1
+            key = (
+                "count.population_at_most_zero"
+                if maximum == 0
+                else "count.population_at_most_one"
+                if maximum == 1
+                else "count.population_at_most"
+            )
+            reason = self.say(
+                key,
+                where=self.places.region(self.board.region_names[region]),
+                count=self.say.number(maximum),
+            )
+        else:
+            reason = self._role_area_reason(constraint, allowed) or self.say(
+                "count_reason", name=self._count_name(constraint), counts=counts
+            )
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
 
@@ -2385,13 +2483,25 @@ class Story:
             return f"{_cap(self.say.join(reasons))}, {self.say('so')} {placed}."
         return f"{placed}."
 
-    def _blockers(self, who: str, gone: set[Square], state: _State) -> list[str] | None:
+    def _blockers(
+        self,
+        who: str | None,
+        gone: set[Square],
+        state: _State,
+        *,
+        max_people: int = 2,
+        announced_only: bool = False,
+    ) -> list[str] | None:
         """Who took the squares the reader still had for `who`, fewest people
-        first; None if that takes more than two."""
+        first; None if that takes more than `max_people`."""
         takers: dict[str, set[Square]] = {}
         for sq in gone:
             for other, there in state.placed.items():
-                if other != who and (there.row == sq.row or there.col == sq.col):
+                if (
+                    other != who
+                    and (not announced_only or other in state.announced)
+                    and (there.row == sq.row or there.col == sq.col)
+                ):
                     takers.setdefault(other, set()).add(sq)
         chosen: list[str] = []
         left = set(gone)
@@ -2403,7 +2513,7 @@ class Story:
                 return None
             chosen.append(best)
             left -= takers[best]
-        if len(chosen) > 2:
+        if len(chosen) > max_people:
             return None
         said = []
         for other in chosen:

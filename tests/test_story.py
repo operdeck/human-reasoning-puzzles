@@ -18,6 +18,7 @@ from csp.puzzlefile import detect, load_board
 from csp.story import (
     Story,
     Wording,
+    _State,
     board_notes,
     explain,
     family_rules,
@@ -259,7 +260,101 @@ def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal(
     """
     story = explain(example("samen-in-de-blauwe-bladeren.txt").read_text())
     assert "holds at least" not in story
-    assert "het gebied Okinawa met minstens twee mensen" in story
+    assert "toegestane aantallen" not in story
+    assert (
+        "Goro bezet rij 4 en kolom 6, Tatsuya bezet kolom 7 en Renji bezet kolom 5: "
+        "alle andere vrije vakjes in Hiroshima vallen af, dus **alleen Goro zit in Hiroshima**."
+    ) in story
+    assert (
+        "De gebieden met de minste mensen zijn Hiroshima en Okinawa (2), "
+        "dus **alleen Tatsuya zit in Okinawa**."
+    ) in story
+
+
+def test_tied_population_explanation_uses_the_puzzles_own_names_and_language():
+    text = (
+        example("samen-in-de-blauwe-bladeren.txt")
+        .read_text()
+        .replace("Language: nl", "Language: en")
+        .replace("Hiroshima", "Harbor")
+        .replace("Okinawa", "Island")
+        .replace("Goro", "Alex")
+        .replace("Tatsuya", "Robin")
+    )
+    story = explain(text)
+    assert (
+        "all other free squares in Harbor are unavailable, so **only Alex is in Harbor**." in story
+    )
+    assert (
+        "The areas with the fewest people are Harbor and Island (2), "
+        "so **only Robin is in Island**."
+    ) in story
+
+
+def test_tied_population_explanation_accepts_an_unnumbered_rule():
+    text = (
+        example("samen-in-de-blauwe-bladeren.txt")
+        .read_text()
+        .replace(
+            "Clues:\nbusiest_area area:Tokyo\nquietest_area area:Okinawa area:Hiroshima\n",
+            "Rules:\nquietest_area area:Okinawa area:Hiroshima\n\n"
+            "Clues:\nbusiest_area area:Tokyo\n",
+        )
+    )
+    story = explain(text)
+    assert (
+        "De gebieden met de minste mensen zijn Hiroshima en Okinawa, "
+        "dus **alleen Tatsuya zit in Okinawa**."
+    ) in story
+
+
+@pytest.mark.parametrize("case", ["unannounced", "untied", "outside", "placement"])
+def test_tied_population_explanation_requires_established_premises(case):
+    text = example("samen-in-de-blauwe-bladeren.txt").read_text()
+    if case == "untied":
+        text = text.replace(
+            "quietest_area area:Okinawa area:Hiroshima", "quietest_area area:Okinawa"
+        )
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording.read(text))
+    target = next(
+        constraint
+        for constraint in story.model.constraints
+        if story._population_level(constraint) == (board.region_id("Okinawa"), 2)
+    )
+    square = murdoku.Square
+    positions = {
+        "Kaori": square(0, 1),
+        "Renji": square(1, 4),
+        "Goro": square(3, 5),
+        "Mizuki": square(2, 0),
+        "Tatsuya": square(8, 6),
+    }
+    before = {person: set(board.free) for person in board.people}
+    before["Yuki"] = {square(6, 7), square(7, 6), square(4, 8), square(5, 8)}
+    if case == "placement":
+        before["Yuki"].remove(square(5, 8))
+    options = {person: set(squares) for person, squares in before.items()}
+    options["Yuki"].remove(square(6, 7))
+    if case == "outside":
+        options["Yuki"].remove(square(4, 8))
+    if case == "placement":
+        options["Yuki"] = {square(4, 8)}
+    state = _State(
+        options,
+        {person: set(board.free) for person in board.people},
+        placed=positions,
+        order=list(positions),
+        announced=[person for person in positions if case != "unannounced" or person != "Renji"],
+    )
+    assert story._population_tied_single(target, False, ["Yuki"], before, state) is None
+
+
+def test_hidden_population_count_fallback_does_not_read_out_engine_labels(monkeypatch):
+    monkeypatch.setattr(Story, "_population_tied_single", lambda *_args: None)
+    story = explain(example("samen-in-de-blauwe-bladeren.txt").read_text())
+    assert "De gebiedstellingen geven in Okinawa hoogstens één persoon" in story
+    assert "toegestane aantallen" not in story
 
 
 def test_story_says_area_capacity_the_way_a_person_does():
