@@ -655,6 +655,19 @@ def test_booklet_population_explanation_includes_the_unnumbered_comparison(tmp_p
     assert "**" not in rendered
 
 
+def test_booklet_opening_highlights_the_unnumbered_cross_out(tmp_path):
+    source = example("samen-in-de-blauwe-bladeren.txt")
+    output = tmp_path / "line.docx"
+    assert main([str(source), "--docx", str(output)]) == 0
+    paragraph = next(
+        p for p in Document(str(output)).paragraphs if "Mizuki zit naast de torii" in p.text
+    )
+    instruction = "streep de zes andere nog open vakjes in die kolom weg"
+    assert f"Mizuki zit naast de torii: in kolom 1, dus {instruction}." in paragraph.text
+    assert instruction in [run.text for run in paragraph.runs if run.bold]
+    assert "**" not in paragraph.text
+
+
 def test_solution_board_size_ignores_bold_markers(tmp_path, monkeypatch):
     import csp.docx_export as docx_export
 

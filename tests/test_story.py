@@ -378,8 +378,90 @@ def test_story_describes_by_region_and_row_before_squares():
 
 def test_opening_uses_shared_columns_across_regions():
     opening = explain(example("samen-in-de-blauwe-bladeren.txt").read_text()).split("\n\n")[0]
-    assert "Mizuki zit naast de torii (5): **in kolom 1**." in opening
-    assert "Goro zit naast het uithangbord met kanji (7): **in kolom 6**." in opening
+    assert (
+        "Mizuki zit naast de torii (5): **in kolom 1**, dus "
+        "**streep de zes andere nog open vakjes in die kolom weg**."
+    ) in opening
+    assert (
+        "Goro zit naast het uithangbord met kanji (7): **in kolom 6**, dus "
+        "**streep de zes andere nog open vakjes in die kolom weg**."
+    ) in opening
+
+
+LINE_RESERVATIONS = """Size: 4
+Language: en
+Regions:
+a: west
+b: east
+Grid:
+a a b b
+a a b b
+b b a a
+b b a a
+PointObjects:
+beacon: r2.5c0.5
+sign: r0.5c2.5
+People:
+Ada
+Ben
+Cleo
+Dirk
+Clues:
+next_to Ada beacon
+next_to Ben sign
+"""
+
+
+def test_opening_crosses_out_each_open_square_only_once():
+    opening = explain(LINE_RESERVATIONS).split("\n\n")[0]
+    assert (
+        "Ada is next to the beacon (1): **in column 1**, so "
+        "**cross out the other two open squares in that column**."
+    ) in opening
+    assert (
+        "Ben is next to the sign (2): **in row 1**, so "
+        "**cross out the other open square in that row**."
+    ) in opening
+
+    solutions = bruteforce.solutions(LINE_RESERVATIONS, limit=1000)
+    assert len(solutions) == 16
+    crossed = {murdoku.Square(0, 0), murdoku.Square(3, 0), murdoku.Square(0, 3)}
+    assert all(not crossed.intersection(solution.values()) for solution in solutions)
+
+
+def test_opening_does_not_count_blocking_objects_as_open_squares():
+    text = LINE_RESERVATIONS.replace(
+        "PointObjects:", "Objects:\nrock: blocking r4c1\nPointObjects:"
+    )
+    opening = explain(text).split("\n\n")[0]
+    assert (
+        "Ada is next to the beacon (1): **in column 1**, so "
+        "**cross out the other open square in that column**."
+    ) in opening
+
+
+def test_opening_skips_crossing_out_when_nothing_is_still_open():
+    text = (
+        LINE_RESERVATIONS.replace(
+            "PointObjects:", "Objects:\nstool: standable r1c2\nchair: standable r4c4\nPointObjects:"
+        )
+        .replace("Ada\nBen\nCleo\nDirk", "Eva\nFaye\nAda\nBen")
+        .replace(
+            "next_to Ada beacon\nnext_to Ben sign",
+            "on Eva stool\non Faye chair\nnext_to Ada beacon",
+        )
+    )
+    opening = explain(text).split("\n\n")[0]
+    assert "Ada is next to the beacon (3): **in column 1**." in opening
+    assert "cross out" not in opening
+
+
+def test_opening_does_not_cross_out_from_an_unstated_line_premise():
+    text = LINE_RESERVATIONS.replace("beacon: r2.5c0.5", "beacon: r2.5c2.5").replace(
+        "Clues:", "Rules:\nnot_in_row Ada 3\nClues:"
+    )
+    opening = explain(text).split("\n\n")[0]
+    assert "Ada is next to the beacon (1): **in row 2**." in opening
 
 
 def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
@@ -394,7 +476,10 @@ def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
         ("zoo-murdoku-2.txt", "De makaak staat in kolom 5 (4)."),
         ("zoo-murdoku-2.txt", "De tijger staat in rij 1 (8)."),
         ("food-murdoku-2.txt", "Tempura is in row 4 (3)."),
-        ("food-murdoku-2.txt", "Ramen is in column 4 (8)."),
+        (
+            "food-murdoku-2.txt",
+            "Ramen is in column 4 (8), so **cross out the other two open squares in that column**.",
+        ),
         ("murdoku_orient_express_3.txt", "Bogdan zit naast een raam (10)."),
     ],
 )

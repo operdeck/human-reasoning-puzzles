@@ -165,6 +165,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count": "{who} has {n} squares left",
         "placed": "**{who} on {square}**",
         "so": "so",
+        "cross_out.one": "cross out the other open square in that {line}",
+        "cross_out.many": "cross out the other {n} open squares in that {line}",
+        "cross_out.row": "row",
+        "cross_out.col": "column",
         "takes_line": "{who} takes {line}",
         "takes_square": "{who} is already on {square}",
         "only_left": "only {square} is left for {who}",
@@ -427,6 +431,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count": "{who} kan nog op {n} vakjes",
         "placed": "**{who} op {square}**",
         "so": "dus",
+        "cross_out.one": "streep het andere nog open vakje in die {line} weg",
+        "cross_out.many": "streep de {n} andere nog open vakjes in die {line} weg",
+        "cross_out.row": "rij",
+        "cross_out.col": "kolom",
         "takes_line": "{who} bezet {line}",
         "takes_square": "{who} zit al op {square}",
         "only_left": "voor {who} blijft alleen {square} over",
@@ -1182,14 +1190,14 @@ class Places:
             return None
         return self.region(self.board.region_names[next(iter(regions))])
 
-    def common_line(self, squares: set[Square]) -> str | None:
+    def common_line(self, squares: set[Square]) -> tuple[str, int] | None:
         """A row or column shared by every square, if there is one."""
         for kind, indices in (
             ("row", {sq.row for sq in squares}),
             ("col", {sq.col for sq in squares}),
         ):
             if len(indices) == 1:
-                return self.say("in", what=self.line(kind, next(iter(indices))))
+                return kind, next(iter(indices))
         return None
 
     def regions(self, ids: set[str]) -> str:
@@ -1540,6 +1548,9 @@ class Story:
         said: list[str] = []
         seen_sources: set[str] = set()
         left = {p: set(self.places.free) for p in self.board.people}
+        visible = {p: set(self.places.free) for p in self.board.people}
+        open_squares = set(self.places.free)
+        placed: set[str] = set()
         for label, group in groupby(compiled, key=lambda s: s.sources[0]):
             seen_sources.add(label)
             steps = list(group)
@@ -1571,16 +1582,25 @@ class Story:
             if condition.number is None or condition.kind in ("in_region", "outside"):
                 continue
             (person,) = condition.people
+            visible[person] = {sq for sq in visible[person] if condition.test(sq)}
             squares = left[person]
             region = self.places.common_region(squares) if squares else None
             clue = _cap(self._clue(condition))
             where: str | None
+            line: tuple[str, int] | None = None
             if len(squares) == 1:
-                location = self.places.placed(person, min(squares))
+                square = min(squares)
+                location = self.places.placed(person, square)
                 where = f"{_emphasize(region)}: {location}" if region else location
                 state.announce(person)
+                placed.add(person)
+                open_squares = {
+                    sq for sq in open_squares if sq.row != square.row and sq.col != square.col
+                }
             else:
-                where = region or self.places.common_line(squares)
+                line = self.places.common_line(squares)
+                line_where = self.say("in", what=self.places.line(*line)) if line else None
+                where = region or line_where
                 if (
                     condition.kind in ("in_row", "in_column")
                     and where is not None
@@ -1602,6 +1622,22 @@ class Story:
                 if where is None:
                     where = self.say("squares", n=self.say.number(len(squares)))
             suffix = f": {where}" if where else ""
+            if line and person not in placed:
+                kind, index = line
+                explicit = (kind, condition.kind) in {("row", "in_row"), ("col", "in_column")}
+                line_squares = {
+                    sq for sq in open_squares if (sq.row if kind == "row" else sq.col) == index
+                }
+                candidates = visible[person] & open_squares
+                if (region is None or explicit) and candidates and candidates <= line_squares:
+                    crossed = line_squares - candidates
+                    if crossed:
+                        open_squares -= crossed
+                        key = "cross_out.one" if len(crossed) == 1 else "cross_out.many"
+                        instruction = self.say(
+                            key, n=self.say.number(len(crossed)), line=self.say(f"cross_out.{kind}")
+                        )
+                        suffix += f", {self.say('so')} {_emphasize(instruction)}"
             said.append(f"{clue} ({condition.number}){suffix}.")
         for number, (kind, args) in enumerate(self.clues, 1):
             if kind not in ("has_attribute", "not_attribute", "unique_attribute"):
