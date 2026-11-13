@@ -583,7 +583,11 @@ def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
     ("name", "clue"),
     [
         ("zoo-murdoku-2.txt", "De makaak staat in kolom 5 (4)."),
-        ("zoo-murdoku-2.txt", "De tijger staat in rij 1 (8)."),
+        (
+            "zoo-murdoku-2.txt",
+            "De tijger staat in rij 1 (8), dus "
+            "**streep het andere nog open vakje in die rij weg**.",
+        ),
         ("food-murdoku-2.txt", "Tempura is in row 4 (3)."),
         (
             "food-murdoku-2.txt",
@@ -1339,6 +1343,8 @@ on_mark Ben bench
 count people on mark:quiet = 1
 """
     explanation = explain(text)
+    assert "Ada is in the room (1)." in explanation
+    assert "Ada is in the room (1): **in the room**" not in explanation
     expected = "**Ada on r2c1**. Ada is on a quiet square, so **Ada is alone in the room**"
     assert expected in explanation
     assert (
@@ -1354,6 +1360,8 @@ count people on mark:quiet = 1
         text.replace("count people on mark:quiet = 1", "count people on mark:quiet >= 1")
     )
     assert "all other quiet squares are empty" not in no_limit
+    excluded = explain(text.replace("in_region Ada room", "outside Ada hall garden"))
+    assert "Ada is not in the hall or in the garden (1)" in excluded
 
 
 def test_story_explains_complementary_reified_counts():

@@ -1680,7 +1680,7 @@ class Story:
                         if text:
                             said.append(f"{_cap(text)}.")
                 continue
-            if condition.number is None or condition.kind in ("in_region", "outside"):
+            if condition.number is None:
                 continue
             (person,) = condition.people
             visible[person] = {sq for sq in visible[person] if condition.test(sq)}
@@ -1702,6 +1702,8 @@ class Story:
                 line = self.places.common_line(squares)
                 line_where = self.say("in", what=self.places.line(*line)) if line else None
                 where = region or line_where
+                if where and where in clue:
+                    where = ""
                 if (
                     condition.kind in ("in_row", "in_column")
                     and where is not None
