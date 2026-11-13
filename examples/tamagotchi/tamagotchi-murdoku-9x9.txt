@@ -1,8 +1,7 @@
 # Tamagotchi Murdoku - "Where is the devil?" (medium)  (9x9)
 #
 # Original puzzle made for this repo. A stream splits Tamagotchi Town in two;
-# the playful bridge is the only dry way across. Akumatchi is placed last and is
-# alone with one friend: who?
+# the playful bridge is the only dry way across.
 
 Size: 9
 
@@ -22,9 +21,12 @@ a a a w b b b b b
 c c c w w b b b b
 c c c c w d d d d
 c c c c w d d d d
-e e e e w d d d d
+e e e w w w d d d
 e e e e w f f f f
 e e e e w f f f f
+
+Marks:
+social: r1c5 r2c6 r4c2 r6c3 r9c7 ; not_alone
 
 Objects:
 sakura: blocking r1c1
@@ -33,11 +35,10 @@ cake: blocking r5c2
 books: blocking r6c7
 basket: blocking r8c2
 slide: blocking r9c9
+water: blocking r1c4 r2c4 r3c4 r4c4 r4c5 r5c5 r6c5
+water: blocking r8c5 r9c5
 bench: standable r1c3 r2c3
-chair: standable r2c8
-tatami: standable r6c1 r6c2
 bridge: standable r7c4 r7c5 r7c6
-carpet: standable r9c3
 
 Backdrop:
 tamagotchi
@@ -53,36 +54,27 @@ Gozarutchi
 Violetchi
 Akumatchi
 
-Attributes:
-friend: Mametchi Kuchipatchi Memetchi Lovelitchi Tarakotchi Masktchi Gozarutchi Violetchi
-
-# The question - where is the devil? - is not a clue. Akumatchi has no clues of
-# his own except that he ends up alone with exactly one friend; the rest pin him down.
-Words:
-target.attribute: a {name}
-
 Clues:
-within Gozarutchi Tarakotchi 5
-adjacent_regions Tarakotchi Masktchi
-within Masktchi Tarakotchi 4
-only_on Kuchipatchi bridge
-only_on Lovelitchi bench
-within Memetchi Lovelitchi 10
-left_of Violetchi Mametchi
-left_of Kuchipatchi Mametchi 1
-adjacent_regions Kuchipatchi Gozarutchi
-adjacent_regions Mametchi Tarakotchi
-within Violetchi Mametchi 7
-apart Mametchi Violetchi
-in_region Kuchipatchi market
-above Kuchipatchi Memetchi
+count people on mark:social = 1
+same_region Mametchi Masktchi
+on Lovelitchi bench
+next_to Gozarutchi cake
+above Mametchi Lovelitchi
+above Violetchi Masktchi
+in_region Tarakotchi library
+on Kuchipatchi bridge
+left_of Tarakotchi Memetchi
+not_next_to Memetchi slide
+not_next_to Tarakotchi books
+not_next_to Violetchi backpack
 
 # Booklet text for --docx (optional).
 Title:
 Tamagotchi Murdoku 9x9: The devil by the stream
 
 Intro:
-A stream splits Tamagotchi Town in two; the bridge is the only dry way across. Eight friends and the devil Akumatchi are out and about, and Akumatchi is placed last.
+A stream splits Tamagotchi Town in two. Water squares are blocked, but the three bridge squares can be occupied. The coloured regions are the areas; people on unmarked squares can also share an area.
+Eight friends and the devil Akumatchi are out and about.
 Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; standable objects can.
 
 Figures:
@@ -97,7 +89,7 @@ Violetchi: ; icon=U+1F49C
 Akumatchi: the devil ; icon=U+1F47F
 
 Question:
-Akumatchi is placed last and is alone with one friend. Which friend?
+Where is Akumatchi, and who else is in that area?
 
 Reveal:
 Akumatchi waits in the playground with Memetchi.

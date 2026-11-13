@@ -1060,7 +1060,7 @@ e e e e w d d d d
 e e e e w f f f f
 e e e e w f f f f
 Marks:
-friendly: r1c5 r2c6 r4c2 r6c3 r9c7 ; not_alone
+social: r1c5 r2c6 r4c2 r6c3 r9c7 ; not_alone
 Objects:
 sakura: blocking r1c1
 backpack: blocking r3c8
@@ -1086,7 +1086,7 @@ Gozarutchi
 Violetchi
 Akumatchi
 Clues:
-count people on mark:friendly = 1
+count people on mark:social = 1
 same_region Mametchi Masktchi
 on Lovelitchi bench
 next_to Gozarutchi cake
@@ -1104,12 +1104,12 @@ not_next_to Violetchi backpack
     assert "64 squares" not in explanation
     assert (
         "then Memetchi is on r9c7, then Akumatchi is in the market, "
-        "but a friendly square needs company, "
+        "but a social square needs company, "
         "and nobody else can be in the playground"
     ) in explanation
     dutch = explain("Language: nl\n" + text)
     assert (
-        "maar op een vakje met markering friendly moet iemand gezelschap hebben "
+        "maar op een vakje met markering social moet iemand gezelschap hebben "
         "en verder kan niemand in de playground zijn"
     ) in dutch
 
@@ -1169,12 +1169,12 @@ left_of Mametchi Lovelitchi
     [
         (
             "en",
-            "**Ada cannot be on r1c1**: the square is marked friendly, so Ada would have "
+            "**Ada cannot be on r1c1**: the square is marked social, so Ada would have "
             "company in the cafe, then Ben is on r2c2, which clue 1 does not allow.",
         ),
         (
             "nl",
-            "**Ada kan niet op r1k1**: het vakje heeft markering friendly, dus Ada zou "
+            "**Ada kan niet op r1k1**: het vakje heeft markering social, dus Ada zou "
             "samen met iemand zijn in de cafe, dan zit Ben op r2k2, "
             "en dat mag niet volgens aanwijzing 1.",
         ),
@@ -1190,7 +1190,7 @@ a a b
 a a b
 b b b
 Marks:
-friendly: r1c1 ; not_alone
+social: r1c1 ; not_alone
 People:
 Ada
 Ben
@@ -1203,7 +1203,7 @@ adjacent_regions Ada Ben
     constraint = next(
         c
         for c in story.model.constraints
-        if c.name == "mark friendly not_alone in cafe trigger count"
+        if c.name == "mark social not_alone in cafe trigger count"
     )
     assert constraint.reified_by is not None
     var = story.model.var_of(constraint.reified_by)
@@ -1218,7 +1218,7 @@ adjacent_regions Ada Ben
             True,
             "count",
             "",
-            sources=("mark friendly not_alone in cafe occupant count",),
+            sources=("mark social not_alone in cafe occupant count",),
         ),
     )
     refutation = Step(
@@ -1372,11 +1372,10 @@ outside Ben room
 @pytest.mark.parametrize(
     ("language", "expected"),
     [
-        ("en", "Ada is on a friendly square, so **Ada has company in the room**"),
+        ("en", "Ada is on a social square, so **Ada has company in the room**"),
         (
             "nl",
-            "Ada staat op een vakje met markering friendly, "
-            "dus **Ada heeft gezelschap in de room**",
+            "Ada staat op een vakje met markering social, dus **Ada heeft gezelschap in de room**",
         ),
     ],
 )
@@ -1392,9 +1391,9 @@ People:
 Ada
 Ben
 Marks:
-friendly: r1c1 ; not_alone
+social: r1c1 ; not_alone
 Clues:
-on_mark Ada friendly
+on_mark Ada social
 """
     assert expected in explain(text)
 
