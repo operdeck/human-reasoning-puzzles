@@ -154,7 +154,7 @@ def murdoku_picture(
     language: str = "en",
     area_tags: bool = True,
     count_texts: Sequence[str] | None = None,
-    count_lines: bool = True,
+    count_lines: bool = False,
     names: Mapping[str, str] | None = None,
 ) -> Canvas:
     """The board, with `placed` people drawn on their squares if given.
@@ -168,8 +168,8 @@ def murdoku_picture(
     Without `area_tags` it leaves out the area tags (for documents that state
     them). `language` ("en" or "nl") sets the legend wording; `count_texts` gives
     the plain-language global counts (from `story`), else their clue syntax.
-    Without `count_lines` it leaves the counts themselves to the document around
-    the picture, which is what the booklet does. An interactive picture has no
+    By default the surrounding clues or rules state the counts. Set `count_lines`
+    to include them in a standalone picture. An interactive picture has no
     legend: the player panel explains the symbols.
     """
     if interactive:
@@ -257,7 +257,9 @@ def murdoku_picture(
         stretch = len(piece) > 1 and not seat
         if base in WELL_NAMES:
             icons.draw(canvas, "well", (x0, y0, x1, y1), stretch=True)
-        elif base in TILED_NAMES:
+        elif base in TILED_NAMES and (
+            obj.kind == "blocking" or icons.OBJECT_ICONS[base] == "rails"
+        ):
             for square in piece:
                 icons.draw(canvas, icons.OBJECT_ICONS[base], box(square), stretch=True)
         elif obj.kind == "standable":
@@ -284,8 +286,8 @@ def murdoku_picture(
             vertical = y1 - y0 > x1 - x0
             rotate = 90 if icon is not None and icon.name in TURNED_ICONS and vertical else 0
             _icon(canvas, name, (x0, y0, x1, y1), cell, stretch=stretch, rotate=rotate)
-        if base == "tunnel":
-            _draw_tunnel_seams(canvas, board, piece, margin, cell)
+        if base in {"bridge", "brug", "tunnel"}:
+            _draw_object_seams(canvas, board, piece, margin, cell, within=base != "tunnel")
     for item in board.edge_items:
         if item.kind == "window" and item.side is not None:
             _draw_wall_window(canvas, box(item.cells[0]), item.side, cell)
@@ -482,7 +484,9 @@ def _badge(canvas: Canvas, name: str, area: Box, cell: int) -> None:
 CARPET_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "carpet")
 WELL_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "well")
 # Objects drawn once per square, so a long stretch of them repeats rather than stretches.
-TILED_NAMES = frozenset(name for name, icon in icons.OBJECT_ICONS.items() if icon == "rails")
+TILED_NAMES = frozenset(
+    name for name, icon in icons.OBJECT_ICONS.items() if icon in ("rails", "water")
+)
 BACK_TURN = {"top": 0, "left": 90, "bottom": 180, "right": 270}
 # Wide blocking drawings that turn on a vertical footprint instead of squashing.
 TURNED_ICONS = frozenset({"control_panel", "tunnel"})
@@ -2013,15 +2017,23 @@ def _walls(
     canvas.rectangle((low, low, high, high), outline=INK, width=thick)
 
 
-def _draw_tunnel_seams(
-    canvas: Canvas, board: Board, footprint: Sequence[Square], margin: int, cell: int
+def _draw_object_seams(
+    canvas: Canvas,
+    board: Board,
+    footprint: Sequence[Square],
+    margin: int,
+    cell: int,
+    *,
+    within: bool,
 ) -> None:
-    """Keep an area boundary visible where it crosses a tunnel footprint."""
+    """Keep area boundaries and bridge-square divisions visible over an object."""
     cells = set(footprint)
-    width = max(5, cell // 22) | 1
     for square in footprint:
         for neighbor in (Square(square.row + 1, square.col), Square(square.row, square.col + 1)):
-            if neighbor not in cells or board.region_of(square) == board.region_of(neighbor):
+            if neighbor not in cells:
+                continue
+            same = board.region_of(square) == board.region_of(neighbor)
+            if same and not within:
                 continue
             if neighbor.row == square.row:
                 x = margin + neighbor.col * cell
@@ -2031,7 +2043,9 @@ def _draw_tunnel_seams(
                 x = margin + square.col * cell
                 y = margin + neighbor.row * cell
                 line = (x, y, x + cell, y)
-            canvas.line(line, fill=INK, width=width)
+            colour = WHITE if same else INK
+            width = max(2, cell // 40) if same else max(5, cell // 22) | 1
+            canvas.line(line, fill=colour, width=width)
 
 
 def _draw_edge_item_doors(canvas: Canvas, board: Board, margin: int, cell: int) -> None:
@@ -2208,11 +2222,11 @@ def _bare_name(name: str) -> str:
 
 LEGEND_WORDS = {
     "en": {"door": "Door", "window": "Window", "point": "Point", "cells": "cells",
-           "alone": "alone in area", "not_alone": "shares area", "global": "Global",
+           "alone": "alone in area", "not_alone": "shares area with someone", "global": "Global",
            "maybe": "maybe", "apart": "at most one of these per area", "one": "a {name}",
            "of_anyone": "of anyone"},
     "nl": {"door": "Deur", "window": "Raam", "point": "Punt", "cells": "vakjes",
-           "alone": "alleen in het gebied", "not_alone": "deelt het gebied",
+           "alone": "alleen in het gebied", "not_alone": "deelt het gebied met iemand",
            "global": "Telling",
            "maybe": "misschien",
            "apart": "niet meer dan 1 hiervan per gebied", "one": "een {name}",
@@ -2238,7 +2252,7 @@ class _Legend:
         attributes: bool = True,
         names: Mapping[str, str] | None = None,
         count_texts: Sequence[str] | None = None,
-        count_lines: bool = True,
+        count_lines: bool = False,
     ) -> None:
         self.words = LEGEND_WORDS.get(language, LEGEND_WORDS["en"])
         self.board = board

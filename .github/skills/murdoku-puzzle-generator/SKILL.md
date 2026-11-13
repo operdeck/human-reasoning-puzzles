@@ -90,6 +90,7 @@ its short output, and decide:
 | a person's live squares while solving | `uv run csp FILE --track-person P` |
 | clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
 | ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` (several numbers: each stays necessary) |
+| ... while marked-cell occupancy rules stay necessary | add `--needs-mark quiet social` to `suggest` or `ease` (one or more mark names) |
 | ... so every figure (outside `--exclude`) gets a clue | add `--cover` to `suggest` |
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
@@ -245,8 +246,9 @@ uv run csp FILE --lint         # missing icons, unknown figures, implied/redunda
 uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
 ```
 
-- Give every trial (also in clue-thinning loops) a hard timeout of a few seconds
-  and kill it; treat a timeout as "not good enough", never wait minutes.
+- Give each uniqueness check and grading solve (also in clue-thinning loops)
+  a separate hard timeout of a few seconds; treat a timeout as "not good
+  enough", never wait minutes.
 - Uniqueness is relative to the implemented clue semantics; it proves neither a
   correct transcription nor faithful wording. Grades are this solver's ladder
   (`single` < `count` < `relations` < `subsumption` < `cover2` < `cover3` <

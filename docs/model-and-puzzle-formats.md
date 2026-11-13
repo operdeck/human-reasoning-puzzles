@@ -95,6 +95,12 @@ Kropki dots, consecutive-pair bars, and thermometers. Missing Kropki dots impose
 no restriction: only drawn dots constrain pairs. Name all active variants in the
 example's file name and `Title:` so players can identify the rules before playing.
 
+`--explain` groups singles and describes recognized locked candidates, naked
+and hidden sets, and row/column patterns in English or Dutch. It shortens and
+replays the proof before wording it. When a step such as a chain or variant
+relation has no pattern narrative, it stops explicitly with a nonzero exit
+status; `--verbose` still shows the technical trace.
+
 Optional relation/peer sections are:
 
 ```text
@@ -355,7 +361,7 @@ reminder; do not repeat it in each puzzle's `Intro:`.
 
 Pass a glob (quoted) such as `"examples/**/*.txt"` to put every matching puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own numbered page, after a clickable table of contents. The order comes from `collection.arrange`: Murdoku first, grouped by category — the folder below the matched files' common folder, so `examples/japanese-food/` is "Japanese food" and `demo` leads — then the other families; within a group files sort naturally (`6x6` before `12x12`). The web player's index uses the same numbers and sections.
 
-Puzzles of other families (sudoku, starbattle, tents, …) are included generically: title (`Title:` or the file name), the family rules (including every active Sudoku variant), the board, and on a separate solution page the solved board with the solver's placement steps. A mixed glob such as `"examples/**/*.txt"` therefore works.
+Puzzles of other families (sudoku, starbattle, tents, …) are included generically: title (`Title:` or the file name), the family rules (including every active Sudoku variant), the board, and on a separate solution page the solved board with solving steps. Sudoku uses the pattern narrative when it can explain the entire solution; otherwise it labels the capped technical placement trace as a fallback. A mixed glob such as `"examples/**/*.txt"` therefore works.
 
 Needs `uv sync --extra docx` (python-docx, plus fonttools and resvg for the pictures).
 
@@ -376,7 +382,7 @@ In the Murdoku picture, blocked squares are shaded clearly darker than their reg
 
 ## CLI and validation
 
-The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, `--svg`, and `--png` use the same generic engine for every family. `--explain`, `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific; other families have no clue narrative unless documented by that module.
+The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, `--svg`, and `--png` use the same generic engine for every family. `--explain` supports Murdoku, Sudoku and Battleships; `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific.
 
 ```bash
 uv run csp examples/<family-example>.txt --show-model
@@ -451,7 +457,7 @@ uvx ruff format --check src tests benchmark
 uv run mypy src
 ```
 
-Continuous integration runs the same gates on Python 3.12 and 3.13. The tests check brute-force uniqueness for every example, engine agreement, and every logged placement/elimination against the independent solution. The exception is a documented unsupported narrative, such as non-Murdoku `--explain`, not solver correctness.
+Continuous integration runs the same gates on Python 3.12 and 3.13. The tests check brute-force uniqueness for every example, engine agreement, and every logged placement/elimination against the independent solution. An unsupported narrative, such as a Sudoku chain explanation, does not imply the solver is incorrect.
 
 Pictures have one renderer: `picture.py` draws every family on an `svg.Canvas`, and every other format derives from it. `--svg [FILE]` writes it (needs `uv sync --extra svg` for fonttools, which turns text into paths from the bundled Noto Sans subset, so output does not depend on installed fonts); `--png [FILE]` rasterises it with resvg (`uv sync --extra png`, no system libraries); `--docx` embeds the PNG. Each has three variants: blank, solution (the `-solution` file), and with `--svg --interactive` the blank board with a transparent `<rect id="r<row>c<col>" class="cell">` over every cell (r1c1 top left) for an app to fill in; the interactive variant never writes a solution picture.
 

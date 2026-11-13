@@ -31,6 +31,7 @@ from .murdoku import (
     COUNTING,
     FILTERS,
     POPULATION_FAMILY,
+    AreaPopulationCondition,
     Board,
     CellMark,
     Clue,
@@ -40,6 +41,7 @@ from .murdoku import (
     RoleCondition,
     Square,
     TargetSelector,
+    area_population_conditions,
     board_rules,
     compile_puzzle,
     conditions,
@@ -47,6 +49,7 @@ from .murdoku import (
     global_count_conditions,
     global_count_unit_prefix,
     line_indices,
+    mark_occupant_name,
     next_to_covers_own_squares,
     quantified_conditions,
     role_conditions,
@@ -55,11 +58,6 @@ from .murdoku import (
 )
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_presentation, read_sections
-
-# The hidden "this area holds at least k people" literals behind `busiest_area` and
-# `quietest_area` are compiled with an English label; the narrator says them in the
-# puzzle's own language.
-_POPULATION_NAME = re.compile(r"^(?P<area>.+) holds at least (?P<count>\d+)$")
 
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
@@ -122,6 +120,9 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "doc.clue_at": "At a door or window means standing on a square it touches.",
         "doc.clue_distance": "Distance counts steps across sides, not diagonals.",
+        "doc.clue_neighboring_areas": (
+            "Areas are neighbors when they share a side, not just a corner."
+        ),
         "doc.clue_away_from": (
             "Away from an object means not on it and sharing neither a side nor a corner with "
             "it, in any area."
@@ -168,6 +169,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count": "{who} has {n} squares left",
         "placed": "**{who} on {square}**",
         "so": "so",
+        "cross_out.one": "cross out the other open square in that {line}",
+        "cross_out.many": "cross out the other {n} open squares in that {line}",
+        "cross_out.row": "row",
+        "cross_out.col": "column",
         "takes_line": "{who} takes {line}",
         "takes_square": "{who} is already on {square}",
         "only_left": "only {square} is left for {who}",
@@ -177,14 +182,34 @@ PHRASES: dict[str, dict[str, str]] = {
         "can_only_many": "{who} can only be {where}",
         "filled_only_one": "{lines} can only be filled {where}",
         "filled_only_many": "{lines} can only be filled {where}",
-        "via": "via {refs}",
+        "clue_reference.one": "see clue {refs}",
+        "clue_reference.many": "see clues {refs}",
         "chain_if": "If {who} is not on {square}",
         "chain_on": "then {who} is on {square}",
         "chain_off": "then {who} is not on {square}",
         "chain_so": "So {ends}; either way {outcome}.",
         "chain_either": "{ends}; either way {outcome}.",
         "nobody_else": "nobody else can be there",
-        "then_on": "then {who} is on {square}",
+        "then_on": "then {who} would be on {square}",
+        "also_on": "{who} on {square}",
+        "then_in": "then {who} would be {where}",
+        "mark_case.alone": (
+            "the square is marked {mark}, so {who} would be alone {where} "
+            "and its other squares would be empty"
+        ),
+        "mark_case.not_alone": "the square is marked {mark}, so {who} would have company {where}",
+        "mark_placed.alone": "{who} is on a {mark} square, so **{who} is alone {where}**",
+        "mark_placed.not_alone": "{who} is on a {mark} square, so **{who} has company {where}**",
+        "mark_count_filled": (
+            "That is the only occupied {mark} square, so **all other {mark} squares are empty**"
+        ),
+        "mark_blocked.alone": (
+            "{who} is {where} but cannot stand on a {mark} square there. "
+            "Anyone on a {mark} square would be alone, so **nobody can use those squares {where}**"
+        ),
+        "mark_breaks.not_alone": (
+            "but a {mark} square needs company, and nobody else can be {where}"
+        ),
         "nowhere": "then {who} has nowhere left",
         "nobody": "then nobody can fill {line}",
         "breaks_said": "which goes against \u2018{clue}\u2019",
@@ -196,8 +221,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "breaks_first_plain": "the clues do not allow that",
         "breaks_rule": "which the board does not allow",
         "breaks_rule_first": "the board does not allow that",
-        "cannot": "{who} cannot be on {squares}: {chain}.",
-        "nor": "Nor on {squares}: {chain}.",
+        "cannot": "**{who} cannot be on {squares}**: {chain}.",
+        "nor": "**Nor on {squares}**: {chain}.",
         "direct": "The direct clues",
         "the_rest": "The rest",
         "squares": "{n} squares",
@@ -230,7 +255,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.has_attribute": "{a} has the {attribute} attribute",
         "clue.not_attribute": "{a} does not have the {attribute} attribute",
         "clue.unique_attribute": "exactly one of {people} has the {attribute} attribute",
-        "clue.adjacent_regions": "{a} and {b} are in neighboring regions",
+        "clue.adjacent_regions": "{a} and {b} are in neighboring areas",
         "clue.alone_with": (
             "{a} shares a region with exactly one other person, and that is {target}"
         ),
@@ -239,23 +264,39 @@ PHRASES: dict[str, dict[str, str]] = {
             "{a} shares a region with exactly {n} others, and they are all {target}"
         ),
         "clue.alone_with_anyone_n": "{a} shares a region with exactly {n} others",
-        "clue.same_region": "{a} and {b} are in the same region",
-        "clue.different_region": "{a} and {b} are in different regions",
-        "clue.apart": "{a} and {b} are in regions that do not touch",
+        "clue.same_region": "{a} and {b} are in the same area",
+        "clue.different_region": "{a} and {b} are in different areas",
+        "clue.apart": "{a} and {b} are in areas that do not touch",
         "clue.left_of": "{a} is somewhere left of {b}",
         "clue.left_of_one": "{a} is exactly one column left of {b}",
         "clue.left_of_n": "{a} is exactly {n} columns left of {b}",
         "clue.exactly": "exactly {n} of these is true: {list}",
         "clue.either": "either {first}, or {second}, but not both",
-        "clue.either_same_region": "{a} is in the same region as either {b} or {c}",
+        "clue.either_same_region": "{a} is in the same area as either {b} or {c}",
         "clue.busiest_area": "the area with the most people is {areas}",
         "clue.quietest_area": "the area with the fewest people is {areas}",
         "clue.busiest_area_tie": "the areas with the most people are {areas}",
         "clue.quietest_area_tie": "the areas with the fewest people are {areas}",
         "count_reason": "the allowed counts for {name} are {counts}",
+        "count.mark_occupant.alone": ("someone on a square marked {mark} {where} must be alone"),
+        "count.mark_occupant.not_alone": (
+            "someone on a square marked {mark} {where} must have company"
+        ),
+        "count.mark_occupant.name": "the number of people in {where} for the {mark} square rule",
         "count.population_reason": "the {area} area holding at least {count} people",
         "count.population_reason_one": "the {area} area holding at least one person",
         "count.population_full": "{areas} already hold all {n} people",
+        "count.population_person": "{people} is {where}, so **at least one person is there**",
+        "count.population_people": (
+            "{people} are {where}, so **at least {count} people are there**"
+        ),
+        "count.population_minimum": "at least {count} people are {where}",
+        "count.population_all": "together that accounts for all {n} people",
+        "count.population_blocked": "{blockers}: all other free squares {where} are unavailable",
+        "count.population_only": "only {who} is {where}",
+        "count.population_at_most_zero": "the area counts leave {where} empty",
+        "count.population_at_most_one": "the area counts allow at most one person {where}",
+        "count.population_at_most": "the area counts allow at most {count} people {where}",
         "global_count.exact": "exactly {n}",
         "global_count.at_most": "at most {n}",
         "global_count.at_least": "at least {n}",
@@ -263,6 +304,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.even": "an even number of",
         "global_count.range": "between {low} and {high}",
         "global_count.people_on": "{quantity} {noun} {verb} on {target}",
+        "global_count.mark": "the squares marked {name}",
         "global_count.people_in": "{quantity} {noun} {verb} {where}",
         "global_count.people_with": "{quantity} {noun} {have} {target}",
         "global_count.empty_areas": "{quantity} {noun} {verb} empty{where}",
@@ -276,6 +318,59 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.cell_empty": "{square} is empty",
         "global_count.cell_occupied": "{square} is occupied",
         "global_count.object_kind": "{kind} objects",
+        "sudoku.row": "row {number}",
+        "sudoku.column": "column {number}",
+        "sudoku.box": "the box containing {cell}",
+        "sudoku.extra": "the extra house {name}",
+        "sudoku.doc_how": "How to solve it",
+        "sudoku.singles": "**Singles.**",
+        "sudoku.single_cell": ("{cell} has only one digit left, so **place {digit} in {cell}**."),
+        "sudoku.single_house": (
+            "In {house}, {digit} has only one possible square, so **place {digit} in {cell}**."
+        ),
+        "sudoku.continue_singles": "Continue filling singles until none remain.",
+        "sudoku.finish_singles": "The remaining squares then follow by singles.",
+        "sudoku.locked": (
+            "**Locked candidate.** In {source}, every remaining place for {digit} is in {target}. "
+            "The {digit} in {source} must therefore also occupy {target}, so **{conclusion}**."
+        ),
+        "sudoku.cross_one": "cross {digit} out at {cell}",
+        "sudoku.cross_many": "cross {digit} out from the other candidates in {target}",
+        "sudoku.naked_set": (
+            "**Naked set.** In {house}, {cells} can only contain {digits} between them. "
+            "They use those digits, so **remove {digits} from the other cells in {house}**."
+        ),
+        "sudoku.hidden_set": (
+            "**Hidden set.** In {house}, {digits} can only go in {cells}. "
+            "Those digits fill the cells, so **remove the other candidates from them**."
+        ),
+        "sudoku.fish": (
+            "**Line pattern.** In {sources}, every remaining place for {digit} is in {targets}. "
+            "The {digit}s in those lines fill {targets}, so **remove {digit} from {targets} "
+            "outside {sources}**."
+        ),
+        "sudoku.unavailable": (
+            "**The next step needs {rule}.** A pattern-first explanation is not available for "
+            "that deduction yet; use --verbose for its detailed trace."
+        ),
+        "sudoku.stalled": (
+            "**Stopped.** The current deduction rules do not finish this grid; "
+            "use --verbose for the technical trace."
+        ),
+        "sudoku.trace_fallback": (
+            "A pattern-first explanation is not available for every deduction; "
+            "the following is the technical placement trace."
+        ),
+        "sudoku.givens_complete": "The givens already fill the grid.",
+        "sudoku.rule.single": "a single",
+        "sudoku.rule.subsumption": "a constraint interaction",
+        "sudoku.rule.cover2": "a two-set deduction",
+        "sudoku.rule.cover3": "a three-set deduction",
+        "sudoku.rule.chains": "a chain",
+        "sudoku.rule.wing": "a wing",
+        "sudoku.rule.what_if": "case analysis",
+        "sudoku.rule.relations": "a variant clue",
+        "sudoku.rule.count": "a counting deduction",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
         "role_has": "{who} has the {role} role",
@@ -377,6 +472,9 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "doc.clue_at": "Bij een deur of raam betekent op een vakje staan dat eraan raakt.",
         "doc.clue_distance": "Afstand telt stappen over zijden, niet schuin.",
+        "doc.clue_neighboring_areas": (
+            "Gebieden grenzen aan elkaar als ze een zijde delen, niet alleen een hoek."
+        ),
         "doc.clue_away_from": (
             "Uit de buurt van een voorwerp betekent er niet op staan en er geen zijde of hoek "
             "mee delen, in welk gebied dan ook."
@@ -424,6 +522,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "count": "{who} kan nog op {n} vakjes",
         "placed": "**{who} op {square}**",
         "so": "dus",
+        "cross_out.one": "streep het andere nog open vakje in die {line} weg",
+        "cross_out.many": "streep de {n} andere nog open vakjes in die {line} weg",
+        "cross_out.row": "rij",
+        "cross_out.col": "kolom",
         "takes_line": "{who} bezet {line}",
         "takes_square": "{who} zit al op {square}",
         "only_left": "voor {who} blijft alleen {square} over",
@@ -433,14 +535,42 @@ PHRASES: dict[str, dict[str, str]] = {
         "can_only_many": "{who} kunnen alleen {where}",
         "filled_only_one": "{lines} kan alleen nog gevuld worden {where}",
         "filled_only_many": "{lines} kunnen alleen nog gevuld worden {where}",
-        "via": "via {refs}",
+        "clue_reference.one": "zie aanwijzing {refs}",
+        "clue_reference.many": "zie aanwijzingen {refs}",
         "chain_if": "Als {who} niet op {square} zit",
         "chain_on": "dan zit {who} op {square}",
         "chain_off": "dan zit {who} niet op {square}",
         "chain_so": "Dus {ends}; hoe dan ook {outcome}.",
         "chain_either": "{ends}; hoe dan ook {outcome}.",
         "nobody_else": "daar kan verder niemand",
-        "then_on": "dan zit {who} op {square}",
+        "then_on": "dan zou {who} op {square} zitten",
+        "also_on": "{who} op {square}",
+        "then_in": "dan zou {who} {where} zijn",
+        "mark_case.alone": (
+            "het vakje heeft markering {mark}, dus {who} zou alleen zijn {where} "
+            "en de andere vakjes daar zouden leeg zijn"
+        ),
+        "mark_case.not_alone": (
+            "het vakje heeft markering {mark}, dus {who} zou samen met iemand zijn {where}"
+        ),
+        "mark_placed.alone": (
+            "{who} staat op een vakje met markering {mark}, dus **{who} is alleen {where}**"
+        ),
+        "mark_placed.not_alone": (
+            "{who} staat op een vakje met markering {mark}, dus **{who} heeft gezelschap {where}**"
+        ),
+        "mark_count_filled": (
+            "Dat is het enige bezette vakje met markering {mark}, "
+            "dus **alle andere vakjes met die markering zijn leeg**"
+        ),
+        "mark_blocked.alone": (
+            "{who} is {where} maar kan daar niet op een vakje met markering {mark} staan. "
+            "Wie op zo'n vakje staat is alleen, dus **niemand kan die vakjes {where} gebruiken**"
+        ),
+        "mark_breaks.not_alone": (
+            "maar op een vakje met markering {mark} moet iemand gezelschap hebben "
+            "en verder kan niemand {where} zijn"
+        ),
         "nowhere": "dan kan {who} nergens meer",
         "nobody": "dan kan niemand meer in {line}",
         "breaks_said": "en dat strookt niet met \u2018{clue}\u2019",
@@ -452,8 +582,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "breaks_first_plain": "dat mag niet",
         "breaks_rule": "en dat mag niet",
         "breaks_rule_first": "dat mag niet",
-        "cannot": "{who} kan niet op {squares}: {chain}.",
-        "nor": "Ook niet op {squares}: {chain}.",
+        "cannot": "**{who} kan niet op {squares}**: {chain}.",
+        "nor": "**Ook niet op {squares}**: {chain}.",
         "direct": "De directe aanwijzingen",
         "the_rest": "De rest",
         "squares": "{n} vakjes",
@@ -507,9 +637,27 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
         "clue.alone_with_anyone_n": "{a} deelt een gebied met precies {n} anderen",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
+        "count.mark_occupant.alone": (
+            "wie op een vakje met markering {mark} {where} staat, moet alleen zijn"
+        ),
+        "count.mark_occupant.not_alone": (
+            "wie op een vakje met markering {mark} {where} staat, moet gezelschap hebben"
+        ),
+        "count.mark_occupant.name": "het aantal mensen {where} voor de regel over {mark}-vakjes",
         "count.population_reason": "het gebied {area} met minstens {count} mensen",
         "count.population_reason_one": "het gebied {area} met minstens één mens",
         "count.population_full": "{areas} bevatten samen al alle {n} mensen",
+        "count.population_person": "{people} is {where}, dus **daar is minstens één persoon**",
+        "count.population_people": (
+            "{people} zijn {where}, dus **daar zijn minstens {count} mensen**"
+        ),
+        "count.population_minimum": "zijn er {where} minstens {count} mensen",
+        "count.population_all": "samen zijn dat alle {n} mensen",
+        "count.population_blocked": "{blockers}: alle andere vrije vakjes {where} vallen af",
+        "count.population_only": "alleen {who} zit {where}",
+        "count.population_at_most_zero": "de gebiedstellingen laten {where} niemand toe",
+        "count.population_at_most_one": "de gebiedstellingen geven {where} hoogstens één persoon",
+        "count.population_at_most": "de gebiedstellingen geven {where} hoogstens {count} mensen",
         "global_count.exact": "precies {n}",
         "global_count.at_most": "hoogstens {n}",
         "global_count.at_least": "minstens {n}",
@@ -517,6 +665,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.even": "een even aantal",
         "global_count.range": "tussen {low} en {high}",
         "global_count.people_on": "{quantity} {noun} {verb} op {target}",
+        "global_count.mark": "de vakjes met markering {name}",
         "global_count.people_in": "{quantity} {noun} {verb} {where}",
         "global_count.people_with": "{quantity} {noun} {have} {target}",
         "global_count.empty_areas": "{quantity} {noun} {verb} leeg{where}",
@@ -530,6 +679,63 @@ PHRASES: dict[str, dict[str, str]] = {
         "global_count.cell_empty": "{square} is leeg",
         "global_count.cell_occupied": "{square} is bezet",
         "global_count.object_kind": "{kind} objecten",
+        "sudoku.row": "rij {number}",
+        "sudoku.column": "kolom {number}",
+        "sudoku.box": "het blok met {cell}",
+        "sudoku.extra": "het extra gebied {name}",
+        "sudoku.doc_how": "Zo los je het op",
+        "sudoku.singles": "**Enkele kandidaten.**",
+        "sudoku.single_cell": (
+            "{cell} heeft nog maar één kandidaat, dus **zet {digit} in {cell}**."
+        ),
+        "sudoku.single_house": (
+            "In {house} kan {digit} nog maar op één vakje, dus **zet {digit} in {cell}**."
+        ),
+        "sudoku.continue_singles": "Vul de enkele kandidaten verder in tot er geen meer zijn.",
+        "sudoku.finish_singles": "De overige vakjes volgen daarna uit enkele kandidaten.",
+        "sudoku.locked": (
+            "**Gebonden kandidaat.** In {source} liggen alle overgebleven plekken voor {digit} "
+            "in {target}. De {digit} van {source} staat dus ook in {target}, dus "
+            "**{conclusion}**."
+        ),
+        "sudoku.cross_one": "streep {digit} weg op {cell}",
+        "sudoku.cross_many": "streep {digit} weg uit de andere kandidaten in {target}",
+        "sudoku.naked_set": (
+            "**Naked set.** In {house} kunnen {cells} samen alleen {digits} bevatten. "
+            "Daarmee zijn die cijfers gebruikt, dus **streep {digits} weg uit de andere vakjes "
+            "in {house}**."
+        ),
+        "sudoku.hidden_set": (
+            "**Hidden set.** In {house} kunnen {digits} alleen in {cells} staan. "
+            "Die cijfers vullen de vakjes, dus **streep de andere kandidaten daar weg**."
+        ),
+        "sudoku.fish": (
+            "**Lijnenpatroon.** In {sources} liggen alle plekken voor {digit} in {targets}. "
+            "De {digit}'s van die lijnen vullen {targets}, dus **streep {digit} in {targets} "
+            "buiten {sources} weg**."
+        ),
+        "sudoku.unavailable": (
+            "**De volgende stap gebruikt {rule}.** Hiervoor is nog geen patroonverklaring "
+            "beschikbaar; met --verbose zie je het technische spoor."
+        ),
+        "sudoku.stalled": (
+            "**Gestopt.** De huidige regels lossen dit rooster niet helemaal op; "
+            "met --verbose zie je het technische spoor."
+        ),
+        "sudoku.trace_fallback": (
+            "Niet elke stap heeft al een patroonverklaring; hieronder staat het technische "
+            "spoor van de plaatsingen."
+        ),
+        "sudoku.givens_complete": "Het rooster is al gevuld met de gegeven cijfers.",
+        "sudoku.rule.single": "een enkele kandidaat",
+        "sudoku.rule.subsumption": "een combinatie van regels",
+        "sudoku.rule.cover2": "een combinatie van twee verzamelingen",
+        "sudoku.rule.cover3": "een combinatie van drie verzamelingen",
+        "sudoku.rule.chains": "een keten",
+        "sudoku.rule.wing": "een wing",
+        "sudoku.rule.what_if": "een gevalsonderscheid",
+        "sudoku.rule.relations": "een variantregel",
+        "sudoku.rule.count": "een telredenering",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
         "role_has": "{who} heeft de rol {role}",
@@ -1166,6 +1372,23 @@ class Places:
     def where_regions(self, names: Iterable[str]) -> str:
         return self.say.join([self.region(n) for n in names], "or")
 
+    def common_region(self, squares: set[Square]) -> str | None:
+        """The region shared by every square, if there is exactly one."""
+        regions = {self.board.region_of(sq) for sq in squares}
+        if len(regions) != 1:
+            return None
+        return self.region(self.board.region_names[next(iter(regions))])
+
+    def common_line(self, squares: set[Square]) -> tuple[str, int] | None:
+        """A row or column shared by every square, if there is one."""
+        for kind, indices in (
+            ("row", {sq.row for sq in squares}),
+            ("col", {sq.col for sq in squares}),
+        ):
+            if len(indices) == 1:
+                return kind, next(iter(indices))
+        return None
+
     def regions(self, ids: set[str]) -> str:
         """Name candidate areas compactly, using an area tag where it fits."""
         names: list[str] = []
@@ -1328,7 +1551,11 @@ class Story:
         self.say = say
         self.places = Places(board, say)
         self.about = {rule.name: rule.about for rule in board_rules(board)}
-        self.conditions = {c.label: c for c in conditions(board, self.clues)}
+        # A clue can compile to several predicates; the first names its subject.
+        primary_conditions: dict[tuple[str, int | None], Condition] = {}
+        for condition in conditions(board, self.clues):
+            primary_conditions.setdefault((condition.label, condition.number), condition)
+        self.conditions = {label: condition for (label, _), condition in primary_conditions.items()}
         self.role_conditions: dict[str, RoleCondition] = {
             rule.label: rule for rule in role_conditions(board, self.clues)
         }
@@ -1338,6 +1565,7 @@ class Story:
         self.global_counts: dict[str, GlobalCountCondition] = {
             condition.label: condition for condition in global_count_conditions(board, self.clues)
         }
+        self.population_conditions = area_population_conditions(board, self.clues)
         self.role_variables = {
             board.role_variable(person, role.name): (person, role.name)
             for role in board.roles
@@ -1399,17 +1627,21 @@ class Story:
         solved = self.model.clone()
         Solver(solved).solve(on_step=collect)
         firings: list[tuple[str, Sequence[Step]]] = []
-        necessary = {id(move) for move in shortest(start, moves)} | role_moves
+        necessary = shortest(
+            start, moves, required=(move for move in moves if id(move) in role_moves)
+        )
         replay(
             start,
-            [move for move in moves if id(move) in necessary],
+            necessary,
             lambda rule, steps: firings.append((rule, steps)),
         )
 
         options = {p: {start.value_of(lit) for lit in start.options(p)} for p in self.board.people}
         state = _State(options, {p: set(s) for p, s in options.items()})
         state.history = compiled
-        paragraphs = [self._opening(compiled, state)]
+        opening = self._opening(compiled, state)
+        consequences = self._mark_placement_consequences(state.announced, state)
+        paragraphs = [" ".join([opening, *consequences])]
         sentences: list[str] = []
         placed: list[str] = []
         mark = len(state.announced)  # who the current bullet has placed starts here
@@ -1430,9 +1662,15 @@ class Story:
             else:
                 sentences += self._refuted(refuted)
                 refuted = []
+                previously_announced = len(state.announced)
                 said = self._firing(rule, steps, state)
                 if said:
                     sentences.append(said)
+                    sentences.extend(
+                        self._mark_placement_consequences(
+                            state.announced[previously_announced:], state
+                        )
+                    )
                     if rule == "single" and steps[0].asserted and steps[0].var in self.board.people:
                         placed.append(steps[0].var)
             last = i + 1 == len(firings)
@@ -1449,6 +1687,38 @@ class Story:
             paragraphs.append(" ".join(self._merged(sentences)))
         paragraphs.extend(self._final_role_reveals(solved, state))
         return "\n\n".join(f"- {p}" for p in paragraphs)
+
+    def _mark_placement_consequences(self, people: Sequence[str], state: _State) -> list[str]:
+        consequences = []
+        for person in people:
+            if len(state.options[person]) != 1:
+                continue
+            square = next(iter(state.options[person]))
+            where = self.places.region(self.board.region_names[self.board.region_of(square)])
+            for mark in self.board.marks:
+                if square in mark.cells and mark.occupant_condition is not None:
+                    consequences.append(
+                        self.say(
+                            f"mark_placed.{mark.occupant_condition}",
+                            who=person,
+                            mark=mark.name.replace("_", " "),
+                            where=where,
+                        )
+                        + "."
+                    )
+                    if len(mark.cells) > 1 and any(
+                        condition.kind == "people_on"
+                        and condition.selector is not None
+                        and condition.selector.kind == "mark"
+                        and condition.selector.name == mark.name
+                        and condition.comparison == "="
+                        and condition.operands == (1,)
+                        for condition in self.global_counts.values()
+                    ):
+                        consequences.append(
+                            self.say("mark_count_filled", mark=mark.name.replace("_", " ")) + "."
+                        )
+        return consequences
 
     def _final_role_reveals(self, model: Model, state: _State) -> list[str]:
         """Close the explanation with a role identity inferred from solved positions."""
@@ -1471,7 +1741,7 @@ class Story:
                 None,
             )
             name = self.say.words.get(role) or role.replace("_", " ")
-            outcome = self.say("role_has", who=person, role=name)
+            outcome = _emphasize(self.say("role_has", who=person, role=name))
             if condition is None:
                 reveals.append(f"{_cap(outcome)}.")
             else:
@@ -1513,6 +1783,9 @@ class Story:
         said: list[str] = []
         seen_sources: set[str] = set()
         left = {p: set(self.places.free) for p in self.board.people}
+        visible = {p: set(self.places.free) for p in self.board.people}
+        open_squares = set(self.places.free)
+        placed: set[str] = set()
         for label, group in groupby(compiled, key=lambda s: s.sources[0]):
             seen_sources.add(label)
             steps = list(group)
@@ -1541,18 +1814,71 @@ class Story:
                         if text:
                             said.append(f"{_cap(text)}.")
                 continue
-            if condition.number is None or condition.kind in ("in_region", "outside"):
+            if condition.number is None:
                 continue
             (person,) = condition.people
+            previous_region = self.places.common_region(visible[person])
+            visible[person] = {sq for sq in visible[person] if condition.test(sq)}
             squares = left[person]
+            region = self.places.common_region(squares) if squares else None
+            clue = _cap(self._clue(condition))
+            where: str | None
+            line: tuple[str, int] | None = None
             if len(squares) == 1:
-                where = self.places.placed(person, min(squares))
+                square = min(squares)
+                location = self.places.placed(person, square)
+                where = (
+                    f"{_emphasize(region)}: {location}"
+                    if region and region != previous_region and region not in clue
+                    else location
+                )
                 state.announce(person)
-            elif len(squares) <= MAX_LISTED + 1:
-                where = self.places.squares(squares)
+                placed.add(person)
+                open_squares = {
+                    sq for sq in open_squares if sq.row != square.row and sq.col != square.col
+                }
             else:
-                where = self.say("squares", n=self.say.number(len(squares)))
-            said.append(f"{_cap(self._clue(condition))} ({condition.number}): {where}.")
+                line = self.places.common_line(squares)
+                line_where = self.say("in", what=self.places.line(*line)) if line else None
+                where = region or line_where
+                if where and (where in clue or where == previous_region):
+                    where = ""
+                if (
+                    condition.kind in ("in_row", "in_column")
+                    and where is not None
+                    and where in clue
+                ):
+                    where = ""
+                if where is None and condition.kind not in ("in_region", "outside"):
+                    where = self.places.where(squares, self.places.free)
+                    same_edge = (
+                        condition.kind == "next_to"
+                        and len(condition.args) == 2
+                        and target_name(condition.args[1]) in self.board.edge_item_names
+                        and where == self.say("at", what=self.places.thing(condition.args[1]))
+                    )
+                    if where is not None and (where in clue or same_edge):
+                        where = ""
+                if where:
+                    where = _emphasize(where)
+            suffix = f": {where}" if where else ""
+            if line and person not in placed:
+                kind, index = line
+                explicit = (kind, condition.kind) in {("row", "in_row"), ("col", "in_column")}
+                line_squares = {
+                    sq for sq in open_squares if (sq.row if kind == "row" else sq.col) == index
+                }
+                candidates = visible[person] & open_squares
+                if (region is None or explicit) and candidates and candidates <= line_squares:
+                    crossed = line_squares - candidates
+                    if crossed:
+                        open_squares -= crossed
+                        key = "cross_out.one" if len(crossed) == 1 else "cross_out.many"
+                        instruction = self.say(
+                            key, n=self.say.number(len(crossed)), line=self.say(f"cross_out.{kind}")
+                        )
+                        suffix += f", {self.say('so')} {_emphasize(instruction)}"
+            said.append(f"{clue} ({condition.number}){suffix}.")
         for number, (kind, args) in enumerate(self.clues, 1):
             if kind not in ("has_attribute", "not_attribute", "unique_attribute"):
                 continue
@@ -1577,6 +1903,7 @@ class Story:
             if (text := self._role_step_text(step, state))
         ]
         if role_sentences:
+            role_outcome = self.say.join([_emphasize(text) for text in role_sentences])
             global_condition = self._global_count_for_sources(
                 source for step in steps for source in step.sources
             )
@@ -1584,7 +1911,7 @@ class Story:
                 clue = self._global_count_reason(global_condition) + self._global_count_ref(
                     global_condition
                 )
-                return f"{_cap(clue)}, {self.say('so')} {self.say.join(role_sentences)}."
+                return f"{_cap(clue)}, {self.say('so')} {role_outcome}."
             quantified_condition = next(
                 (
                     target_condition
@@ -1599,17 +1926,17 @@ class Story:
                 clue = _cap(self._quantified_text(quantified_condition)) + self._quantified_ref(
                     quantified_condition
                 )
-                return f"{clue}, {self.say('so')} {self.say.join(role_sentences)}."
+                return f"{clue}, {self.say('so')} {role_outcome}."
             changed = [p for p in self.board.people if state.options[p] != before[p]]
             if not changed and (reason := self._role_step_reason(steps)):
-                return f"{_cap(reason)}, {self.say('so')} {self.say.join(role_sentences)}."
+                return f"{_cap(reason)}, {self.say('so')} {role_outcome}."
             if changed:
                 return (
-                    f"{self.say.join(role_sentences)}, {self.say('so')} "
+                    f"{role_outcome}, {self.say('so')} "
                     + self._outcome(changed, before, state)
                     + "."
                 )
-            return f"{self.say.join(role_sentences)}."
+            return f"{_cap(role_outcome)}."
         if rule == "single":
             if steps[0].var in self.auxiliary_variables:
                 if (
@@ -1666,7 +1993,7 @@ class Story:
         outcome = []
         for p in changed:
             gone = self.places.squares(before[p] - state.options[p])
-            outcome.append(self.say("is_not", who=p, where=self.say("on", what=gone)))
+            outcome.append(_emphasize(self.say("is_not", who=p, where=self.say("on", what=gone))))
             state.told[p] -= before[p] - state.options[p]
             if len(state.options[p]) == 1 and p not in state.announced:
                 state.announce(p)
@@ -1689,29 +2016,192 @@ class Story:
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return _cap(self.say("chain_so", ends=ends, outcome=outcome))
 
-    def _count_name(self, constraint: Constraint) -> str:
-        """A count constraint's name as the player reads it, not as the engine spells it.
+    def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
+        """The region and minimum represented by a reified population count."""
+        if (
+            constraint.kind is not Kind.COUNT
+            or constraint.family != POPULATION_FAMILY
+            or constraint.reified_by is None
+            or not constraint.allowed_counts
+        ):
+            return None
+        count = min(constraint.allowed_counts)
+        if count < 1 or constraint.allowed_counts != frozenset(
+            range(count, len(constraint.literals) + 1)
+        ):
+            return None
+        regions: set[str] = set()
+        for literal in constraint.literals:
+            square = self.model.value_of(literal)
+            if self.model.var_of(literal) not in self.board.people or not isinstance(
+                square, Square
+            ):
+                return None
+            regions.add(self.board.region_of(square))
+        return (next(iter(regions)), count) if len(regions) == 1 else None
 
-        The hidden "this area holds at least k people" literals behind
-        `busiest_area`/`quietest_area` are compiled with an English label; reading it
-        out would put engine words in a Dutch explanation.
-        """
-        if constraint.family == POPULATION_FAMILY:
-            found = _POPULATION_NAME.match(constraint.name)
-            if found:
-                count = int(found["count"])
-                key = "count.population_reason_one" if count == 1 else "count.population_reason"
-                return str(
-                    self.say(
-                        key,
-                        area=found["area"],
-                        count=self.say.number(count),
-                    )
-                )
+    def _count_name(self, constraint: Constraint) -> str:
+        """A count constraint's name as the player reads it, not as the engine spells it."""
+        if (level := self._population_level(constraint)) is not None:
+            region, count = level
+            key = "count.population_reason_one" if count == 1 else "count.population_reason"
+            return self.say(key, area=self.board.region_names[region], count=self.say.number(count))
+        if (scope := self._mark_occupant_count_scope(constraint)) is not None:
+            mark, region_name = scope
+            return self.say(
+                "count.mark_occupant.name",
+                mark=mark.name.replace("_", " "),
+                where=self.places.region(region_name),
+            )
         return constraint.name
 
+    def _mark_occupant_count_scope(self, constraint: Constraint) -> tuple[CellMark, str] | None:
+        for mark in self.board.marks:
+            if mark.occupant_condition is None:
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                region_name = self.board.region_names[region]
+                if constraint.name == mark_occupant_name(mark, region_name) + " occupant count":
+                    return mark, region_name
+        return None
+
+    def _mark_occupant_count_reason(
+        self, constraint: Constraint, active: bool | None
+    ) -> str | None:
+        """Explain a mark's area-occupancy count using the marked-square rule."""
+        if active is not True:
+            return None
+        if (scope := self._mark_occupant_count_scope(constraint)) is None:
+            return None
+        mark, region_name = scope
+        condition = mark.occupant_condition
+        assert condition is not None
+        return self.say(
+            f"count.mark_occupant.{condition}",
+            mark=mark.name.replace("_", " "),
+            where=self.places.region(region_name),
+        )
+
+    def _population_comparison(
+        self, more: Constraint, fewer: Constraint, state: _State
+    ) -> AreaPopulationCondition | None:
+        """Find the clue behind an observed strict population implication."""
+        higher = self._population_level(more)
+        lower = self._population_level(fewer)
+        if (
+            higher is None
+            or lower is None
+            or higher[1] != lower[1] + 1
+            or more.reified_by is None
+            or fewer.reified_by is None
+        ):
+            return None
+        more_var = self.model.var_of(more.reified_by)
+        more_value = self.model.value_of(more.reified_by)
+        fewer_choice = (self.model.var_of(fewer.reified_by), self.model.value_of(fewer.reified_by))
+        for step in state.history:
+            if (
+                step.asserted
+                or step.var != more_var
+                or step.value == more_value
+                or step.placing != fewer_choice
+            ):
+                continue
+            eliminated = self.model.literal(step.var, step.value)
+            if any(
+                source.name in step.sources
+                and source.kind is Kind.AT_MOST_ONE
+                and set(source.literals) == {eliminated, fewer.reified_by}
+                for source in self.model.constraints
+            ):
+                break
+        else:
+            return None
+        more_region, fewer_region = higher[0], lower[0]
+        return next(
+            (
+                condition
+                for condition in self.population_conditions
+                if (
+                    condition.kind == "busiest_area"
+                    and more_region in condition.regions
+                    and fewer_region not in condition.regions
+                )
+                or (
+                    condition.kind == "quietest_area"
+                    and fewer_region in condition.regions
+                    and more_region not in condition.regions
+                )
+            ),
+            None,
+        )
+
+    def _population_evidence(
+        self,
+        levels: Sequence[tuple[str, int, Constraint]],
+        before: dict[str, set[Square]],
+        state: _State,
+    ) -> list[str] | None:
+        """Explain the area floors from known people and recorded comparisons."""
+        sentences: list[str] = []
+        known: dict[str, tuple[int, Constraint]] = {}
+        pending: list[tuple[str, int, Constraint]] = []
+        for region, count, constraint in levels:
+            people = [
+                person
+                for person in self.board.people
+                if before[person]
+                and state.told[person]
+                and all(self.board.region_of(square) == region for square in before[person])
+                and all(self.board.region_of(square) == region for square in state.told[person])
+            ]
+            if len(people) < count:
+                pending.append((region, count, constraint))
+                continue
+            key = "count.population_person" if count == 1 else "count.population_people"
+            text = self.say(
+                key,
+                people=self.say.join(people[:count]),
+                where=self.places.region(self.board.region_names[region]),
+                count=self.say.number(count),
+            )
+            sentences.append(f"{_cap(text)}.")
+            known[region] = (count, constraint)
+
+        while pending:
+            progress = False
+            for item in pending[:]:
+                region, count, constraint = item
+                for lower_count, lower_constraint in known.values():
+                    if count != lower_count + 1:
+                        continue
+                    comparison = self._population_comparison(constraint, lower_constraint, state)
+                    if comparison is None:
+                        continue
+                    clue = self._clue_text(comparison.kind, comparison.tokens, ())
+                    if comparison.number is not None and self.say.numbered:
+                        clue += f" ({comparison.number})"
+                    minimum = self.say(
+                        "count.population_minimum",
+                        count=self.say.number(count),
+                        where=self.places.region(self.board.region_names[region]),
+                    )
+                    sentences.append(f"{_cap(clue)}, {self.say('so')} {_emphasize(minimum)}.")
+                    known[region] = (count, constraint)
+                    pending.remove(item)
+                    progress = True
+                    break
+            if not progress:
+                return None
+        return sentences
+
     def _population_full(
-        self, step: Step, constraint: Constraint, known: bool | None
+        self,
+        step: Step,
+        constraint: Constraint,
+        known: bool | None,
+        before: dict[str, set[Square]],
+        state: _State,
     ) -> str | None:
         """'Osaka and Tokyo already hold all five people' when that empties an area.
 
@@ -1719,28 +2209,117 @@ class Story:
         constraints that bounded it account for everybody, say so, which is
         the argument a person makes instead of quoting allowed totals.
         """
-        if constraint.family != POPULATION_FAMILY or known is not False:
+        target = self._population_level(constraint)
+        if known is not False or target is None or target[1] != 1:
             return None
-        target = _POPULATION_NAME.match(constraint.name)
-        if target is None or int(target["count"]) != 1:
-            return None
-        parts: list[str] = []
-        total = 0
+        levels: list[tuple[str, int, Constraint]] = []
         for name in step.sources[1:]:
-            found = _POPULATION_NAME.match(name)
-            if found is None:
-                continue
-            count = int(found["count"])
-            key = "count.population_reason_one" if count == 1 else "count.population_reason"
-            parts.append(self.say(key, area=found["area"], count=self.say.number(count)))
-            total += count
-        if len(parts) < 2 or total != len(self.board.people):
+            found = [
+                (other, level)
+                for other in self.model.constraints
+                if other.name == name and (level := self._population_level(other)) is not None
+            ]
+            if len(found) == 1:
+                other, (region, count) = found[0]
+                levels.append((region, count, other))
+        regions = [region for region, _, _ in levels]
+        total = sum(count for _, count, _ in levels)
+        if (
+            len(levels) < 2
+            or len(set(regions)) != len(regions)
+            or target[0] in regions
+            or total != len(self.board.people)
+        ):
             return None
-        return self.say(
-            "count.population_full",
-            areas=self.say.join(parts),
-            n=self.say.number(total),
+        empty = _emphasize(
+            self.say(
+                "global_count.area_empty",
+                where=self.places.region(self.board.region_names[target[0]]),
+            )
         )
+        if (evidence := self._population_evidence(levels, before, state)) is not None:
+            together = self.say("count.population_all", n=self.say.number(total))
+            return " ".join([*evidence, f"{_cap(together)}, {self.say('so')} {empty}."])
+        parts = [
+            self.say(
+                "count.population_reason_one" if count == 1 else "count.population_reason",
+                area=self.board.region_names[region],
+                count=self.say.number(count),
+            )
+            for region, count, _ in levels
+        ]
+        reason = self.say(
+            "count.population_full", areas=self.say.join(parts), n=self.say.number(total)
+        )
+        return f"{_cap(reason)}, {self.say('so')} {empty}."
+
+    def _population_tied_single(
+        self,
+        constraint: Constraint,
+        known: bool | None,
+        changed: list[str],
+        before: dict[str, set[Square]],
+        state: _State,
+    ) -> str | None:
+        """Explain a tied area's sole occupant from already announced placements."""
+        target = self._population_level(constraint)
+        if known is not False or target is None or target[1] != 2 or not changed:
+            return None
+        target_region = target[0]
+        target_cells = {sq for sq in self.board.free if self.board.region_of(sq) == target_region}
+        if any(
+            len(state.options[p]) <= 1 or not (before[p] - state.options[p]) <= target_cells
+            for p in changed
+        ):
+            return None
+        announced = {p: state.placed[p] for p in state.announced if p in state.placed}
+        occupants = [p for p, sq in announced.items() if self.board.region_of(sq) == target_region]
+        if len(occupants) != 1:
+            return None
+        (target_person,) = occupants
+        for comparison in self.population_conditions:
+            if target_region not in comparison.regions:
+                continue
+            for source_region in comparison.regions:
+                if source_region == target_region:
+                    continue
+                people = [
+                    p for p, sq in announced.items() if self.board.region_of(sq) == source_region
+                ]
+                if len(people) != 1:
+                    continue
+                (source_person,) = people
+                source_cells = {
+                    sq for sq in self.board.free if self.board.region_of(sq) == source_region
+                }
+                others = source_cells - {announced[source_person]}
+                blockers = self._blockers(None, others, state, max_people=3, announced_only=True)
+                if not blockers:
+                    continue
+                source_where = self.places.region(self.board.region_names[source_region])
+                target_where = self.places.region(self.board.region_names[target_region])
+                reason = self.say(
+                    "count.population_blocked", blockers=self.say.join(blockers), where=source_where
+                )
+                source_only = self.say(
+                    "count.population_only", who=source_person, where=source_where
+                )
+                target_only = self.say(
+                    "count.population_only", who=target_person, where=target_where
+                )
+                clue = _cap(self._clue_text(comparison.kind, comparison.tokens, ()))
+                if comparison.number is not None and self.say.numbered:
+                    clue += f" ({comparison.number})"
+                for person in self.board.people:
+                    if person != source_person:
+                        state.told[person] -= source_cells
+                    if person != target_person:
+                        state.told[person] -= target_cells
+                return (
+                    f"{_cap(reason)}, {self.say('so')} {_emphasize(source_only)}. "
+                    f"{clue}, {self.say('so')} {_emphasize(target_only)}."
+                )
+        return None
 
     def _count(
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
@@ -1751,6 +2330,10 @@ class Story:
             return self._global_empty_unit_text(step)
         if step.var in self.auxiliary_variables:
             return ""
+        if (reason := self._mark_blocked_by_occupant(step, changed, before, state)) is not None:
+            return f"{_cap(reason)}."
+        if (reason := self._mark_case_deduction(step, changed, before, state)) is not None:
+            return reason
         if step.sources and (
             target_condition := self._quantified_condition_for_source(step.sources[0])
         ):
@@ -1781,13 +2364,127 @@ class Story:
             if known is False:
                 allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
         counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
-        reason = (
-            self._population_full(step, constraint, known)
-            or self._role_area_reason(constraint, allowed)
-            or self.say("count_reason", name=self._count_name(constraint), counts=counts)
-        )
+        population_full = self._population_full(step, constraint, known, before, state)
+        if population_full is not None:
+            return population_full
+        tied_single = self._population_tied_single(constraint, known, changed, before, state)
+        if tied_single is not None:
+            return tied_single
+        level = self._population_level(constraint)
+        if level is not None and known is False:
+            region, minimum = level
+            maximum = minimum - 1
+            key = (
+                "count.population_at_most_zero"
+                if maximum == 0
+                else "count.population_at_most_one"
+                if maximum == 1
+                else "count.population_at_most"
+            )
+            reason = self.say(
+                key,
+                where=self.places.region(self.board.region_names[region]),
+                count=self.say.number(maximum),
+            )
+        elif (mark_reason := self._mark_occupant_count_reason(constraint, known)) is not None:
+            reason = mark_reason
+        else:
+            reason = self._role_area_reason(constraint, allowed) or self.say(
+                "count_reason", name=self._count_name(constraint), counts=counts
+            )
         outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
         return f"{_cap(reason)}, {self.say('so')} {outcome}."
+
+    def _mark_case_deduction(
+        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
+    ) -> str | None:
+        """Tell a refuted mark trigger as a case on its only possible occupant."""
+        for mark in self.board.marks:
+            if mark.occupant_condition is None:
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                name = mark_occupant_name(mark, self.board.region_names[region]) + " trigger count"
+                if name not in step.sources:
+                    continue
+                candidates = {
+                    (person, square)
+                    for person in self.board.people
+                    for square in before[person] & set(mark.cells)
+                    if self.board.region_of(square) == region
+                }
+                if len(candidates) != 1:
+                    continue
+                person, square = next(iter(candidates))
+                if changed != [person] or before[person] - state.options[person] != {square}:
+                    continue
+                constraint = next(c for c in self.model.constraints if c.name == name)
+                if constraint.reified_by is None:
+                    continue
+                var = self.model.var_of(constraint.reified_by)
+                value = self.model.value_of(constraint.reified_by)
+                for index in range(len(state.history) - 1, -1, -1):
+                    refutation = state.history[index]
+                    if (
+                        refutation.var != var
+                        or refutation.value != value
+                        or refutation.asserted
+                        or refutation.rule != "what_if"
+                        or not any(
+                            inner.asserted and inner.var == person and inner.value == square
+                            for inner in refutation.trail
+                        )
+                    ):
+                        continue
+                    options = {
+                        p: {self.model.value_of(lit) for lit in self.model.options(p)}
+                        for p in self.board.people
+                    }
+                    trial_state = _State(
+                        options, {p: set(squares) for p, squares in options.items()}
+                    )
+                    trial_state.apply(state.history[:index])
+                    hypothetical = dataclasses.replace(refutation, var=person, value=square)
+                    explanation = self._refuted([self._what_if(hypothetical, trial_state)])[0]
+                    state.told[person].discard(square)
+                    return explanation
+        return None
+
+    def _mark_blocked_by_occupant(
+        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
+    ) -> str | None:
+        """A known occupant who cannot use an alone-mark excludes the mark in their area."""
+        for mark in self.board.marks:
+            if mark.occupant_condition != "alone":
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                region_name = self.board.region_names[region]
+                source = mark_occupant_name(mark, region_name) + " trigger count"
+                if source not in step.sources:
+                    continue
+                marked = {sq for sq in mark.cells if self.board.region_of(sq) == region}
+                if not changed or any(before[p] - state.options[p] - marked for p in changed):
+                    continue
+                occupant = next(
+                    (
+                        p
+                        for p in self.board.people
+                        if state.told[p]
+                        and all(self.board.region_of(sq) == region for sq in state.told[p])
+                        and not state.told[p] & marked
+                    ),
+                    None,
+                )
+                if occupant is None:
+                    continue
+                for person in changed:
+                    state.told[person] -= before[person] - state.options[person]
+                return self.say(
+                    "mark_blocked.alone",
+                    who=occupant,
+                    where=self.places.region(region_name),
+                    mark=mark.name.replace("_", " "),
+                )
+        return None
 
     def _role_step_reason(self, steps: Sequence[Step]) -> str | None:
         """Why a role became known: the role rule or role count behind its hidden constraint."""
@@ -1870,7 +2567,12 @@ class Story:
         if selector.kind == "columns":
             lines = self.places.lines("col", line_indices(selector.name, self.board.size), "or")
             return self.say("in", what=lines)
-        return self.say("on", what=self.places.thing(selector.name))
+        return self.say("on", what=self._global_count_target(selector))
+
+    def _global_count_target(self, selector: TargetSelector) -> str:
+        if selector.kind == "mark" and selector.name not in self.say.words:
+            return self.say("global_count.mark", name=selector.name.replace("_", " "))
+        return self.places.thing(selector.name)
 
     def _global_count_text(self, condition: GlobalCountCondition) -> str:
         quantity = self._global_count_quantity(condition)
@@ -1921,7 +2623,7 @@ class Story:
                 kind_label = labels[self.say.language][condition.selector.name]
                 target = self.say("global_count.object_kind", kind=kind_label)
             else:
-                target = self.places.thing(condition.selector.name)
+                target = self._global_count_target(condition.selector)
             on_verb = verb if self.say.language == "en" else ("staat" if singular else "staan")
             return self.say(
                 "global_count.people_on",
@@ -2010,14 +2712,18 @@ class Story:
         is_empty = step.value if step.asserted else not step.value
         if kind == "area":
             where = self.places.region(self.board.region_names[str(unit)])
-            return self.say(
-                "global_count.area_empty" if is_empty else "global_count.area_occupied",
-                where=where,
+            return _emphasize(
+                self.say(
+                    "global_count.area_empty" if is_empty else "global_count.area_occupied",
+                    where=where,
+                )
             )
         assert isinstance(unit, Square)
-        return self.say(
-            "global_count.cell_empty" if is_empty else "global_count.cell_occupied",
-            square=self.places.square(unit),
+        return _emphasize(
+            self.say(
+                "global_count.cell_empty" if is_empty else "global_count.cell_occupied",
+                square=self.places.square(unit),
+            )
         )
 
     def _link_reason(self, source: str) -> str:
@@ -2038,7 +2744,9 @@ class Story:
             state.told[p] = set(state.options[p])
             if len(state.options[p]) == 1:
                 state.announce(p)
-        return self.say.join([self.places.describe(p, state.options[p], before[p]) for p in people])
+        return self.say.join(
+            [_emphasize(self.places.describe(p, state.options[p], before[p])) for p in people]
+        )
 
     def _relation(
         self, step: Step, before: dict[str, set[Square]], changed: list[str], outcome: str
@@ -2106,7 +2814,7 @@ class Story:
             else:
                 lines = self.places.lines(kind_in, [i for _, i in inner])
                 text = self.say("filled_only" + many, lines=lines, where=where)
-            text = f"{_cap(text)}, {self.say('nobody_else')}"
+            text = f"{_cap(text)}, {_emphasize(self.say('nobody_else'))}"
             # Being shut out of those lines goes without saying; only news is worth a word.
             news = [p for p in changed if len(state.options[p]) <= MAX_LISTED]
             if news:
@@ -2141,13 +2849,25 @@ class Story:
             return f"{_cap(self.say.join(reasons))}, {self.say('so')} {placed}."
         return f"{placed}."
 
-    def _blockers(self, who: str, gone: set[Square], state: _State) -> list[str] | None:
+    def _blockers(
+        self,
+        who: str | None,
+        gone: set[Square],
+        state: _State,
+        *,
+        max_people: int = 2,
+        announced_only: bool = False,
+    ) -> list[str] | None:
         """Who took the squares the reader still had for `who`, fewest people
-        first; None if that takes more than two."""
+        first; None if that takes more than `max_people`."""
         takers: dict[str, set[Square]] = {}
         for sq in gone:
             for other, there in state.placed.items():
-                if other != who and (there.row == sq.row or there.col == sq.col):
+                if (
+                    other != who
+                    and (not announced_only or other in state.announced)
+                    and (there.row == sq.row or there.col == sq.col)
+                ):
                     takers.setdefault(other, set()).add(sq)
         chosen: list[str] = []
         left = set(gone)
@@ -2159,7 +2879,7 @@ class Story:
                 return None
             chosen.append(best)
             left -= takers[best]
-        if len(chosen) > 2:
+        if len(chosen) > max_people:
             return None
         said = []
         for other in chosen:
@@ -2180,15 +2900,40 @@ class Story:
         """Who could not be where, and the chain of events that rules it out."""
         who, square = step.var, step.value
         needed = essential(self.model, state.history, step)
+        before = {p: set(options) for p, options in state.options.items()}
+        trial = _State({p: set(options) for p, options in before.items()}, {})
+        trial.apply(step.trail)
         state.apply([step])
         state.told[who].discard(square)
         parts: list[str] = []
+        placements: list[str] = []
         refs: list[int] = []
+        region = self.board.region_of(square)
+        region_name = self.board.region_names[region]
+        for mark in self.board.marks:
+            if square not in mark.cells or mark.occupant_condition is None:
+                continue
+            mark_source = mark_occupant_name(mark, region_name) + " occupant count"
+            if any(mark_source in step.trail[j].sources for j in needed):
+                parts.append(
+                    self.say(
+                        f"mark_case.{mark.occupant_condition}",
+                        mark=mark.name.replace("_", " "),
+                        who=who,
+                        where=self.places.region(region_name),
+                    )
+                )
         for j in needed:
             inner = step.trail[j]
-            if inner.asserted and j > 0 and inner.var in self.board.people:
-                parts.append(
-                    self.say("then_on", who=inner.var, square=self.places.square(inner.value))
+            if (
+                inner.asserted
+                and j > 0
+                and inner.var in self.board.people
+                and (inner.var, inner.value) != (who, square)
+            ):
+                key = "also_on" if placements else "then_on"
+                placements.append(
+                    self.say(key, who=inner.var, square=self.places.square(inner.value))
                 )
             for name in inner.sources:
                 condition = self.conditions.get(name)
@@ -2197,7 +2942,9 @@ class Story:
                 global_count = self.global_counts.get(name)
                 if global_count is not None and global_count.number is not None:
                     refs.append(global_count.number)
-        parts.append(self._broken(step, first=not parts))
+        if placements:
+            parts.append(self.say.join(placements))
+        parts.append(self._broken(step, first=not parts, before=before, trial=trial))
         source = step.sources[0] if step.sources else None
         broken = self.conditions.get(source) if source else None
         broken_global = self._global_count_for_sources(step.sources)
@@ -2224,7 +2971,8 @@ class Story:
             or other is not None
             or (broken_global is None and source not in self.about)
         )
-        ref = self.say("via", refs=listed) if explained else listed
+        ref_key = "clue_reference.one" if len(cited) == 1 else "clue_reference.many"
+        ref = self.say(ref_key, refs=listed) if explained else listed
         return who, square, f"{', '.join(parts)} ({ref})"
 
     def _refuted(self, refuted: Sequence[tuple[str, Square, str]]) -> list[str]:
@@ -2238,9 +2986,61 @@ class Story:
             previous = who
         return sentences
 
-    def _broken(self, step: Step, first: bool) -> str:
+    def _broken(
+        self, step: Step, first: bool, before: dict[str, set[Square]], trial: _State
+    ) -> str:
         """The contradiction a what_if ran into."""
         source = step.sources[0] if step.sources else None
+        for mark in self.board.marks:
+            if mark.occupant_condition != "not_alone":
+                continue
+            for region in {self.board.region_of(square) for square in mark.cells}:
+                region_name = self.board.region_names[region]
+                if source != mark_occupant_name(mark, region_name) + " occupant count":
+                    continue
+                occupants = [
+                    item.var
+                    for item in step.trail
+                    if item.asserted
+                    and item.var in self.board.people
+                    and item.value in mark.cells
+                    and self.board.region_of(item.value) == region
+                ]
+                if (
+                    occupants
+                    and all(trial.options.values())
+                    and all(
+                        self.board.region_of(square) != region
+                        for person in self.board.people
+                        if person != occupants[0]
+                        for square in trial.options[person]
+                    )
+                ):
+                    contradiction = self.say(
+                        "mark_breaks.not_alone",
+                        mark=mark.name.replace("_", " "),
+                        where=self.places.region(region_name),
+                    )
+                    possible_companions = [
+                        person
+                        for person in self.board.people
+                        if person != occupants[0]
+                        and any(self.board.region_of(square) == region for square in before[person])
+                    ]
+                    if len(possible_companions) == 1:
+                        companion = possible_companions[0]
+                        elsewhere = {
+                            self.board.region_of(square) for square in trial.options[companion]
+                        }
+                        if len(elsewhere) == 1:
+                            (other_region,) = elsewhere
+                            reason = self.say(
+                                "then_in",
+                                who=companion,
+                                where=self.places.region(self.board.region_names[other_region]),
+                            )
+                            return f"{reason}, {contradiction}"
+                    return contradiction
         if (global_count := self._global_count_for_sources(step.sources)) is not None:
             return self.say("global_count.breaks", clue=self._global_count_text(global_count))
         if source in self.conditions:
@@ -2338,8 +3138,12 @@ class Story:
             person, role = self.role_variables[step.var]
             present = step.value if holds else not step.value
             name = self.say.words.get(role) or role.replace("_", " ")
-            return self.say("role_has" if present else "role_not", who=person, role=name)
-        return self.say("literal_true" if holds else "literal_false", literal=step.literal)
+            return _emphasize(
+                self.say("role_has" if present else "role_not", who=person, role=name)
+            )
+        return _emphasize(
+            self.say("literal_true" if holds else "literal_false", literal=step.literal)
+        )
 
     def _role_step_text(self, step: Step, state: _State) -> str:
         person, role = self.role_variables[step.var]
@@ -2349,6 +3153,17 @@ class Story:
             return ""
         state.role_told[key] = present
         if self._fixed_role(step):
+            return ""
+        spec = next((candidate for candidate in self.board.roles if candidate.name == role), None)
+        if (
+            not present
+            and spec is not None
+            and max(spec.allowed_counts) <= 1
+            and any(
+                known and other_role == role and other_person != person
+                for (other_person, other_role), known in state.role_told.items()
+            )
+        ):
             return ""
         name = self.say.words.get(role) or role.replace("_", " ")
         return self.say("role_has" if present else "role_not", who=person, role=name)
@@ -2643,7 +3458,13 @@ class Story:
         return "" if condition.number is None else f" ({condition.number})"
 
 
+def _emphasize(text: str) -> str:
+    return f"**{text.replace('**', '')}**" if text else ""
+
+
 def _cap(text: str) -> str:
+    if text.startswith("**"):
+        return "**" + _cap(text[2:])
     return text[:1].upper() + text[1:]
 
 
@@ -2882,8 +3703,8 @@ def mark_note(mark: CellMark, say: Wording) -> str:
 
 def board_notes(text: str) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
-    the author's `| wording` of board rules."""
-    board, _ = load_board(text)
+    board rules with author wording or global counts."""
+    board, clues = load_board(text)
     say = Wording.read(text)
 
     def name(raw: str) -> str:
@@ -2905,6 +3726,12 @@ def board_notes(text: str) -> list[str]:
         )
     notes.extend(mark_note(mark, say) for mark in board.marks)
     notes.extend(f"{wording}." for wording in say.rules.values())
+    told = Story(board, clues, say)
+    notes.extend(
+        f"{_cap(told._global_count_text(condition))}."
+        for condition in global_count_conditions(board, clues)
+        if condition.number is None and condition.description not in say.rules
+    )
     return notes
 
 
@@ -2984,6 +3811,8 @@ def murdoku_rules(text: str) -> list[str]:
         clue_notes.append(phrase(text, "doc.clue_at"))
     if kinds & {"within", "at_least", "furthest"}:
         clue_notes.append(phrase(text, "doc.clue_distance"))
+    if kinds & {"adjacent_regions", "apart"}:
+        clue_notes.append(phrase(text, "doc.clue_neighboring_areas"))
     if "away_from" in kinds:
         clue_notes.append(phrase(text, "doc.clue_away_from"))
     said = [

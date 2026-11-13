@@ -37,6 +37,7 @@ Requires Python 3.12+. Run directly with `uv`:
 
 ```bash
 uv run csp examples/sudoku_1_4x4.txt
+uv run csp examples/sudoku_17_9x9_pointing.txt --explain
 uv run csp examples/demo/murdoku_1_first_case.txt --explain
 uv run csp examples/queens_6_4x4.txt --show-model
 uv run csp examples/logicgrid_1_3x3.txt --brute-force
@@ -48,7 +49,13 @@ uv run puzzle-lab fresh starbattle --size 7 --stars 1 --tier easy --output /tmp/
 uv run puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp/kakurasu.txt
 ```
 
-`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` writes Murdoku narratives or Battleships deductions with named rules and reasons; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. `--export DIR` writes everything the [web player](#play-in-the-browser) needs: per puzzle a JSON bundle and the interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails). Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network. `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/**/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`). Without puzzle files, `--docx` takes every Murdoku in `examples/` (not the test puzzles) and writes `booklet.docx`. `--pdf [FILE]` works the same way but writes a PDF (default `booklet.pdf` without puzzle files), converting that Word booklet with LibreOffice or, on macOS, Microsoft Word or Pages.
+`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` writes Murdoku and Sudoku narratives or Battleships deductions with named rules and reasons; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. `--export DIR` writes everything the [web player](#play-in-the-browser) needs: per puzzle a JSON bundle and the interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails). Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network. `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/**/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`). Without puzzle files, `--docx` takes every Murdoku in `examples/` (not the test puzzles) and writes `booklet.docx`. `--pdf [FILE]` works the same way but writes a PDF (default `booklet.pdf` without puzzle files), converting that Word booklet with LibreOffice or, on macOS, Microsoft Word or Pages.
+
+Murdoku `--explain` marks conclusions in bold and says when a row or column can
+have its other open squares crossed out; booklets render the same emphasis.
+Sudoku explanations group singles and describe locked candidates, subsets and
+row/column patterns. When another deduction is needed, `--explain` says where
+it stops; the booklet labels its technical placement trace instead.
 
 Browse the full [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/).
 For [collection and grading notes](docs/puzzle-collection.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
@@ -98,8 +105,15 @@ the complete syntax and supported rules, see [Model and puzzle formats](docs/mod
 <details>
 <summary>Show the worked solution</summary>
 
-Joost is at r1c1. Lotte is at r4c2, so Ingrid can only be at r3c4. Wouter is
-at r2c3. Wouter and Ingrid share the sitting room, so **Ingrid did it**.
+- **The direct clues.** Ingrid is on a chair (1). Joost is next to the tree (2):
+  **on the patio**: **Joost on r1c1**. Lotte is on the bed (3):
+  **in the guest room**.
+
+- **Lotte, Ingrid and Wouter.** Joost takes column 1, so **Lotte on r4c2**.
+  Lotte takes row 4 and Joost takes column 1, so **Ingrid on r3c4**. Only r2c3
+  is left for Wouter: **Wouter on r2c3**.
+
+**Ingrid did it**: she shares the sitting room with Wouter.
 
 <img src="docs/images/murdoku_1_first_case-solution.png" width="230" alt="Murdoku solution">
 </details>

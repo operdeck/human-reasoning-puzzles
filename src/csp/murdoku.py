@@ -2388,6 +2388,11 @@ def _compile_cell_pair_condition(
     )
 
 
+def mark_occupant_name(mark: CellMark, region: str) -> str:
+    """The shared source name for a mark's occupancy effect in an area."""
+    return f"mark {mark.name} {mark.occupant_condition} in {region}"
+
+
 def _compile_mark_occupant_condition(
     model: Model, board: Board, mark: CellMark, condition: OccupantCondition
 ) -> None:
@@ -2407,7 +2412,7 @@ def _compile_mark_occupant_condition(
         ]
         apply_occupant_condition(
             model,
-            f"mark {mark.name} {condition} in {board.region_names[region]}",
+            mark_occupant_name(mark, board.region_names[region]),
             triggers,
             occupants,
             _occupant_counts(condition, len(board.people)),

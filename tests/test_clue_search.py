@@ -1,6 +1,8 @@
 """The clue search helpers used to thin and complete Murdoku clue sets."""
 
+import multiprocessing
 import re
+import time
 
 import pytest
 
@@ -29,6 +31,28 @@ def test_outcome_reports_unique_solution_and_grade():
     assert result.solutions == 1
     assert result.grade == "relations"
     assert result.good
+
+
+@pytest.mark.skipif("fork" not in multiprocessing.get_all_start_methods(), reason="fork-only stubs")
+def test_outcome_times_each_solver_separately_and_preserves_a_completed_count(monkeypatch):
+    def solutions(_text, _limit):
+        time.sleep(0.6)
+        return [{}]
+
+    def grade(_text, _late_person):
+        time.sleep(0.6)
+        return "count", None
+
+    monkeypatch.setattr(clue_search.brute, "solutions", solutions)
+    monkeypatch.setattr(clue_search, "_measure", grade)
+    assert clue_search.outcome("", timeout=1) == clue_search.Outcome(1, "count")
+
+    def slow_grade(_text, _late_person):
+        time.sleep(2)
+        return "count", None
+
+    monkeypatch.setattr(clue_search, "_measure", slow_grade)
+    assert clue_search.outcome("", timeout=1) == clue_search.Outcome(1, None)
 
 
 def test_outcome_checks_that_the_late_figure_is_resolved_last():
@@ -122,6 +146,85 @@ def test_suggest_keeps_needed_clues_necessary():
     assert len(bruteforce.solutions(final)) == 1
     without = clue_search.with_clues(start, [lines[1], *added])
     assert len(bruteforce.solutions(without)) > 1
+
+
+@pytest.mark.parametrize(
+    ("effect", "placement"),
+    [
+        ("alone", "Ada=r1c1 Ben=r2c3 Cal=r3c2"),
+        ("not_alone", "Ada=r1c1 Ben=r2c2 Cal=r3c3"),
+    ],
+)
+def test_suggest_keeps_mark_occupancy_condition_necessary(effect, placement):
+    text = f"""Size: 3
+Regions:
+a: alcove
+b: hall
+Grid:
+a b b
+b a b
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r1c1 ; {effect}
+Clues:
+count people on mark:quiet = 1
+in_row Ada 1
+"""
+    placement = clue_search.parse_solution(placement)
+    board, _ = load_board(text)
+    assert "in_corner Ada" in clue_search.candidate_clues(board, placement, ["in_corner"])
+    added = clue_search.suggest(
+        text, placement, kinds=["in_row", "in_column"], needs_marks=["quiet"], sample=100
+    )
+    final = clue_search.with_clues(text, [*clue_search.clue_lines(text), *added])
+    assert len(bruteforce.solutions(final)) == 1
+    without = clue_search.without_mark_condition(final, "quiet")
+    assert len(bruteforce.solutions(without)) > 1
+    assert "quiet: r1c1\n" in without
+    with pytest.raises(ValueError, match="no occupancy condition"):
+        clue_search.without_mark_condition(without, "quiet")
+
+
+def test_needs_mark_is_rejected_for_commands_that_cannot_enforce_it(capsys):
+    with pytest.raises(SystemExit) as error:
+        clue_search.main(["thin", "unused.txt", "--needs-mark", "quiet"])
+    assert error.value.code == 2
+    assert "--needs-mark is supported only by suggest and ease" in capsys.readouterr().err
+
+
+def test_ease_does_not_make_an_occupancy_condition_redundant(monkeypatch):
+    text = """Size: 3
+Regions:
+a: alcove
+b: hall
+Grid:
+a b b
+b a b
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r1c1 ; alone
+Clues:
+count people on mark:quiet = 1
+in_row Ada 1
+in_row Ben 2
+"""
+    placement = clue_search.parse_solution("Ada=r1c1 Ben=r2c3 Cal=r3c2")
+    assert len(bruteforce.solutions(text)) == 1
+    assert len(bruteforce.solutions(clue_search.without_mark_condition(text, "quiet"))) > 1
+    monkeypatch.setattr(clue_search, "candidate_clues", lambda *args: ["in_column Ben 3"])
+    monkeypatch.setattr(clue_search, "outcome", lambda *args: clue_search.Outcome(1, "what_if"))
+    assert clue_search.ease(text, placement, "relations", needs_marks=["quiet"]) == []
+    redundant = clue_search.with_clues(text, [*clue_search.clue_lines(text), "in_column Ben 3"])
+    with pytest.raises(ValueError, match="not necessary"):
+        clue_search.ease(redundant, placement, "relations", needs_marks=["quiet"])
 
 
 def test_occupancy_shows_unused_decoys():

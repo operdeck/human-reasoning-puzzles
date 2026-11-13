@@ -879,6 +879,36 @@ count people on object_kind:standable = 1
     )
 
 
+def test_murdoku_search_matches_direct_placements_with_cross_person_clues():
+    text = """Size: 3
+Regions:
+a: town
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Ben
+Cal
+Clues:
+above Ada Ben
+left_of Ben Cal
+"""
+    board, _ = load_board(text)
+    expected = set()
+    for squares in product(board.free, repeat=len(board.people)):
+        if len({square.row for square in squares}) == len(board.people) and len(
+            {square.col for square in squares}
+        ) == len(board.people):
+            placement = dict(zip(board.people, squares, strict=True))
+            if bruteforce.murdoku.accepts(text, placement):
+                expected.add(squares)
+
+    found = bruteforce.murdoku.solutions(text, limit=100)
+    assert {tuple(solution[person] for person in board.people) for solution in found} == expected
+
+
 def test_compiled_global_counts_match_direct_tallies_for_all_small_placements():
     text = """Size: 2
 Regions:

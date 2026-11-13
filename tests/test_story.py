@@ -5,19 +5,22 @@ story can be clumsy but never wrong.
 """
 
 import ast
+import dataclasses
 import re
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
 
 import csp
-from csp import bruteforce, cli, murdoku
-from csp.core import Kind, Model, Solver
-from csp.proof import Move, replay, shortest
+from csp import bruteforce, cli, murdoku, sudoku
+from csp.core import Kind, Model, Solver, Step, rule_single
+from csp.proof import Move, episodes, replay, shortest
 from csp.puzzlefile import detect, load_board
 from csp.story import (
     Story,
     Wording,
+    _State,
     board_notes,
     explain,
     family_rules,
@@ -63,6 +66,7 @@ ALLOWED = {
     "svg": set(),
     "icons": {"svg"},
     "proof": {"core"},
+    "sudoku_story": {"core", "proof", "story", "sudoku"},
     "murdoku": {"core"},
     "sudoku": {"core", "puzzlefile", "towers"},
     "calcudoku": {"core", "puzzlefile"},
@@ -230,6 +234,74 @@ def test_replay_reports_each_change_like_the_solver():
     assert {"relations", "subsumption"} <= set(fired)
 
 
+def test_shortest_keeps_required_evidence_without_redundant_moves():
+    model = Model()
+    options = [model.literal("x", value) for value in (1, 2)]
+    model.constrain("x", Kind.EXACTLY_ONE, options, defines="x")
+    model.relate("ordinary", ["x"], lambda x: x == 1)
+    model.relate("themed", ["x"], lambda x: x == 1)
+    ordinary = Move("relations", ("ordinary",))
+    themed = Move("relations", ("themed",))
+
+    assert shortest(model, [ordinary, themed]) == [ordinary]
+    kept = shortest(model, [ordinary, themed], required=[themed])
+    assert kept == [themed]
+    assert replay(model, kept).solution() == {"x": 1}
+    with pytest.raises(ValueError, match="required moves"):
+        shortest(model, [ordinary], required=[themed])
+    with pytest.raises(ValueError, match="cannot all fire"):
+        shortest(model, [ordinary, themed], required=[ordinary, themed])
+
+
+def test_shortest_preserves_prerequisites_for_required_moves():
+    model = Model()
+    for var in ("x", "y", "z"):
+        model.constrain(
+            var, Kind.EXACTLY_ONE, [model.literal(var, value) for value in (1, 2)], defines=var
+        )
+    model.relate("prerequisite", ["y"], lambda y: y == 1)
+    model.relate("themed", ["x", "y"], lambda x, y: x != y)
+    model.relate("later", ["x", "y", "z"], lambda x, y, z: (x, y, z) == (2, 1, 1))
+    prerequisite = Move("relations", ("prerequisite",))
+    themed = Move("relations", ("themed",))
+    later = Move("relations", ("later",))
+
+    kept = shortest(model, [prerequisite, themed, later], required=[themed])
+    assert kept == [prerequisite, themed, later]
+    _, groups = episodes(model, kept)
+    assert any(group.pattern.move is themed for group in groups)
+
+
+def test_episodes_preserve_replay_order_and_pattern_evidence():
+    model, _ = sudoku.compile_puzzle(example("sudoku_17_9x9_pointing.txt").read_text())
+    moves = shortest(model, _moves(model))
+    expected: list[tuple[str, tuple[Step, ...]]] = []
+    solved = replay(model, moves, lambda rule, steps: expected.append((rule, tuple(steps))))
+    result, groups = episodes(model, moves)
+    inferences = [
+        inference for group in groups for inference in (group.pattern, *group.consequences)
+    ]
+
+    assert [(item.rule, item.steps) for item in inferences] == expected
+    assert result.solution() == solved.solution()
+    assert any(group.pattern.rule == "subsumption" for group in groups)
+    assert any(group.consequences for group in groups)
+    for current, following in pairwise(inferences):
+        trial = current.before.clone()
+        changed = rule_single(trial) if current.move is None else current.move.apply(trial)
+        assert changed
+        assert tuple(trial.log) == current.steps
+        assert all(
+            trial.is_true(lit) == following.before.is_true(lit)
+            and trial.is_false(lit) == following.before.is_false(lit)
+            for lit in range(trial.num_literals)
+        )
+    for group in groups:
+        if group.pattern.rule == "subsumption":
+            assert group.pattern.steps[0].sources
+            assert group.pattern.steps[0].scope
+
+
 # --- story ----------------------------------------------------------------
 
 
@@ -259,22 +331,345 @@ def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal(
     """
     story = explain(example("samen-in-de-blauwe-bladeren.txt").read_text())
     assert "holds at least" not in story
-    assert "het gebied Okinawa met minstens twee mensen" in story
+    assert "toegestane aantallen" not in story
+    assert (
+        "Goro bezet rij 4 en kolom 6, Tatsuya bezet kolom 7 en Renji bezet kolom 5: "
+        "alle andere vrije vakjes in Hiroshima vallen af, dus **alleen Goro zit in Hiroshima**."
+    ) in story
+    assert (
+        "De gebieden met de minste mensen zijn Hiroshima en Okinawa (2), "
+        "dus **alleen Tatsuya zit in Okinawa**."
+    ) in story
+
+
+def test_tied_population_explanation_uses_the_puzzles_own_names_and_language():
+    text = (
+        example("samen-in-de-blauwe-bladeren.txt")
+        .read_text()
+        .replace("Language: nl", "Language: en")
+        .replace("Hiroshima", "Harbor")
+        .replace("Okinawa", "Island")
+        .replace("Goro", "Alex")
+        .replace("Tatsuya", "Robin")
+    )
+    story = explain(text)
+    assert (
+        "all other free squares in Harbor are unavailable, so **only Alex is in Harbor**." in story
+    )
+    assert (
+        "The areas with the fewest people are Harbor and Island (2), "
+        "so **only Robin is in Island**."
+    ) in story
+
+
+def test_tied_population_explanation_accepts_an_unnumbered_rule():
+    text = (
+        example("samen-in-de-blauwe-bladeren.txt")
+        .read_text()
+        .replace(
+            "Clues:\nbusiest_area area:Tokyo\nquietest_area area:Okinawa area:Hiroshima\n",
+            "Rules:\nquietest_area area:Okinawa area:Hiroshima\n\n"
+            "Clues:\nbusiest_area area:Tokyo\n",
+        )
+    )
+    story = explain(text)
+    assert (
+        "De gebieden met de minste mensen zijn Hiroshima en Okinawa, "
+        "dus **alleen Tatsuya zit in Okinawa**."
+    ) in story
+
+
+@pytest.mark.parametrize("case", ["unannounced", "untied", "outside", "placement"])
+def test_tied_population_explanation_requires_established_premises(case):
+    text = example("samen-in-de-blauwe-bladeren.txt").read_text()
+    if case == "untied":
+        text = text.replace(
+            "quietest_area area:Okinawa area:Hiroshima", "quietest_area area:Okinawa"
+        )
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording.read(text))
+    target = next(
+        constraint
+        for constraint in story.model.constraints
+        if story._population_level(constraint) == (board.region_id("Okinawa"), 2)
+    )
+    square = murdoku.Square
+    positions = {
+        "Kaori": square(0, 1),
+        "Renji": square(1, 4),
+        "Goro": square(3, 5),
+        "Mizuki": square(2, 0),
+        "Tatsuya": square(8, 6),
+    }
+    before = {person: set(board.free) for person in board.people}
+    before["Yuki"] = {square(6, 7), square(7, 6), square(4, 8), square(5, 8)}
+    if case == "placement":
+        before["Yuki"].remove(square(5, 8))
+    options = {person: set(squares) for person, squares in before.items()}
+    options["Yuki"].remove(square(6, 7))
+    if case == "outside":
+        options["Yuki"].remove(square(4, 8))
+    if case == "placement":
+        options["Yuki"] = {square(4, 8)}
+    state = _State(
+        options,
+        {person: set(board.free) for person in board.people},
+        placed=positions,
+        order=list(positions),
+        announced=[person for person in positions if case != "unannounced" or person != "Renji"],
+    )
+    assert story._population_tied_single(target, False, ["Yuki"], before, state) is None
+
+
+def test_hidden_population_count_fallback_does_not_read_out_engine_labels(monkeypatch):
+    monkeypatch.setattr(Story, "_population_tied_single", lambda *_args: None)
+    story = explain(example("samen-in-de-blauwe-bladeren.txt").read_text())
+    assert "De gebiedstellingen geven in Okinawa hoogstens één persoon" in story
+    assert "toegestane aantallen" not in story
 
 
 def test_story_says_area_capacity_the_way_a_person_does():
     """The count rule's shared-capacity step reads as the counting argument."""
     story = explain(example("samen-onderweg.txt").read_text())
-    assert "bevatten samen al alle vijf mensen" in story
+    assert "Keiko zit naast de lantaarn (3): **in Osaka**." in story
+    assert "Mio zit op de bank (4): **in Osaka**." in story
+    assert "Keiko en Mio zijn in Osaka, dus **daar zijn minstens twee mensen**." in story
+    assert (
+        "Het gebied met de meeste mensen is Tokyo (1), "
+        "dus **zijn er in Tokyo minstens drie mensen**."
+    ) in story
+    assert "Samen zijn dat alle vijf mensen, dus **niemand is in Okinawa**." in story
+    assert (
+        "Haru is ergens boven Jun (5), dus **Haru zit niet in rij 5** en **Jun zit niet in rij 1**."
+    ) in story
+    assert "Haru zit niet in Okinawa, Isamu zit niet in Okinawa" not in story
     assert "holds at least" not in story
     assert "minstens één mensen" not in story
+
+
+def test_story_explains_the_area_comparison_in_english():
+    text = example("samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
+    story = explain(text)
+    assert "Keiko and Mio are in Osaka, so **at least two people are there**." in story
+    assert (
+        "The area with the most people is Tokyo (1), so **at least three people are in Tokyo**."
+    ) in story
+    assert "Together that accounts for all five people, so **nobody is in Okinawa**." in story
+
+
+def test_story_uses_the_actual_population_clue_number():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace(
+            "busiest_area area:Tokyo\nquietest_area area:Okinawa",
+            "quietest_area area:Okinawa\nbusiest_area area:Tokyo",
+        )
+    )
+    story = explain(text)
+    assert "Het gebied met de meeste mensen is Tokyo (2)" in story
+
+
+def test_story_population_reason_uses_the_puzzles_own_areas():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace("Tokyo", "North")
+        .replace("Osaka", "West")
+        .replace("Okinawa", "East")
+    )
+    story = explain(text)
+    assert "Keiko en Mio zijn in West, dus **daar zijn minstens twee mensen**." in story
+    assert "Het gebied met de meeste mensen is North (1)" in story
+    assert "dus **niemand is in East**" in story
+
+
+def test_story_does_not_invent_population_witnesses():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace("next_to Keiko lantaarn", "next_to Keiko torii")
+    )
+    story = explain(text)
+    assert "Keiko zit naast de torii (3): **in Tokyo**." in story
+    assert "Keiko en Mio zijn in Osaka" not in story
+
+
+def test_story_does_not_treat_tied_busiest_areas_as_strictly_ordered():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace("busiest_area area:Tokyo", "busiest_area area:Tokyo area:Osaka")
+    )
+    board, _ = load_board(text)
+    solutions = bruteforce.solutions(text, "murdoku", limit=2)
+    assert solutions
+    for solution in solutions:
+        areas = [board.region_of(solution[person]) for person in board.people]
+        assert areas.count(board.region_id("Tokyo")) == areas.count(board.region_id("Osaka"))
+    assert "minstens drie mensen" not in explain(text)
+
+
+def test_story_can_explain_an_unnumbered_population_rule():
+    text = (
+        example("samen-onderweg.txt")
+        .read_text()
+        .replace(
+            "Clues:\nbusiest_area area:Tokyo\n",
+            "Rules:\nbusiest_area area:Tokyo\n\nClues:\n",
+        )
+    )
+    story = explain(text)
+    assert (
+        "Het gebied met de meeste mensen is Tokyo, dus **zijn er in Tokyo minstens drie mensen**."
+        in story
+    )
+
+
+def test_story_omits_population_clue_numbers_in_unnumbered_explanations():
+    story = explain(example("samen-onderweg.txt").read_text(), numbered=False)
+    assert (
+        "Het gebied met de meeste mensen is Tokyo, dus **zijn er in Tokyo minstens drie mensen**."
+        in story
+    )
+    assert not re.search(r"\(\d+\)", story)
 
 
 def test_story_describes_by_region_and_row_before_squares():
     story = explain((example("prrrdoku3.txt")).read_text())
     assert "Luna zit in het water" in story
-    assert "Otto zit in een klimgebied, dus Pip zit in een klimgebied" in story
-    assert "Luna kan alleen in kolom 1, daar kan verder niemand" in story
+    assert "Otto zit in een klimgebied, dus **Pip zit in een klimgebied**" in story
+    assert "Luna kan alleen in kolom 1, **daar kan verder niemand**" in story
+
+
+def test_opening_uses_shared_columns_across_regions():
+    opening = explain(example("samen-in-de-blauwe-bladeren.txt").read_text()).split("\n\n")[0]
+    assert (
+        "Mizuki zit naast de torii (5): **in kolom 1**, dus "
+        "**streep de zes andere nog open vakjes in die kolom weg**."
+    ) in opening
+    assert (
+        "Goro zit naast het uithangbord met kanji (7): **in kolom 6**, dus "
+        "**streep de zes andere nog open vakjes in die kolom weg**."
+    ) in opening
+
+
+LINE_RESERVATIONS = """Size: 4
+Language: en
+Regions:
+a: west
+b: east
+Grid:
+a a b b
+a a b b
+b b a a
+b b a a
+PointObjects:
+beacon: r2.5c0.5
+sign: r0.5c2.5
+People:
+Ada
+Ben
+Cleo
+Dirk
+Clues:
+next_to Ada beacon
+next_to Ben sign
+"""
+
+
+def test_opening_crosses_out_each_open_square_only_once():
+    opening = explain(LINE_RESERVATIONS).split("\n\n")[0]
+    assert (
+        "Ada is next to the beacon (1): **in column 1**, so "
+        "**cross out the other two open squares in that column**."
+    ) in opening
+    assert (
+        "Ben is next to the sign (2): **in row 1**, so "
+        "**cross out the other open square in that row**."
+    ) in opening
+
+    solutions = bruteforce.solutions(LINE_RESERVATIONS, limit=1000)
+    assert len(solutions) == 16
+    crossed = {murdoku.Square(0, 0), murdoku.Square(3, 0), murdoku.Square(0, 3)}
+    assert all(not crossed.intersection(solution.values()) for solution in solutions)
+
+
+def test_opening_does_not_count_blocking_objects_as_open_squares():
+    text = LINE_RESERVATIONS.replace(
+        "PointObjects:", "Objects:\nrock: blocking r4c1\nPointObjects:"
+    )
+    opening = explain(text).split("\n\n")[0]
+    assert (
+        "Ada is next to the beacon (1): **in column 1**, so "
+        "**cross out the other open square in that column**."
+    ) in opening
+
+
+def test_opening_reserves_the_clue_owners_line_for_exclusive_objects():
+    text = LINE_RESERVATIONS.replace(
+        "PointObjects:", "Objects:\nbench: standable r1c1 r1c2 r1c3\nPointObjects:"
+    ).replace("next_to Ada beacon\nnext_to Ben sign", "only_on Ada bench")
+    opening = explain(text).split("\n\n")[0]
+    assert (
+        "Ada is the only person on the bench (1): **in row 1**, so "
+        "**cross out the other open square in that row**."
+    ) in opening
+    solutions = bruteforce.solutions(text, limit=1000)
+    assert solutions
+    assert all(murdoku.Square(0, 3) not in solution.values() for solution in solutions)
+
+
+def test_opening_skips_crossing_out_when_nothing_is_still_open():
+    text = (
+        LINE_RESERVATIONS.replace(
+            "PointObjects:", "Objects:\nstool: standable r1c2\nchair: standable r4c4\nPointObjects:"
+        )
+        .replace("Ada\nBen\nCleo\nDirk", "Eva\nFaye\nAda\nBen")
+        .replace(
+            "next_to Ada beacon\nnext_to Ben sign",
+            "on Eva stool\non Faye chair\nnext_to Ada beacon",
+        )
+    )
+    opening = explain(text).split("\n\n")[0]
+    assert "Ada is next to the beacon (3): **in column 1**." in opening
+    assert "cross out" not in opening
+
+
+def test_opening_does_not_cross_out_from_an_unstated_line_premise():
+    text = LINE_RESERVATIONS.replace("beacon: r2.5c0.5", "beacon: r2.5c2.5").replace(
+        "Clues:", "Rules:\nnot_in_row Ada 3\nClues:"
+    )
+    opening = explain(text).split("\n\n")[0]
+    assert "Ada is next to the beacon (1): **in row 2**." in opening
+
+
+def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
+    opening = explain(example("murdoku_1_first_case.txt").read_text()).split("\n\n")[0]
+    assert "Ingrid is on a chair (1)." in opening
+    assert "Ingrid is on a chair (1): on a chair." not in opening
+
+
+@pytest.mark.parametrize(
+    ("name", "clue"),
+    [
+        ("zoo-murdoku-2.txt", "De makaak staat in kolom 5 (4)."),
+        (
+            "zoo-murdoku-2.txt",
+            "De tijger staat in rij 1 (8), dus "
+            "**streep het andere nog open vakje in die rij weg**.",
+        ),
+        ("food-murdoku-2.txt", "Tempura is in row 4 (3)."),
+        (
+            "food-murdoku-2.txt",
+            "Ramen is in column 4 (8), so **cross out the other two open squares in that column**.",
+        ),
+        ("murdoku_orient_express_3.txt", "Bogdan zit naast een raam (10)."),
+    ],
+)
+def test_opening_does_not_restate_line_or_edge_clues(name, clue):
+    opening = explain(example(name).read_text()).split("\n\n")[0]
+    assert clue in opening
 
 
 def test_new_murdoku_clues_have_dutch_wording():
@@ -414,7 +809,7 @@ role_on Ada guide altar
         "Ada is in a corner, in the kitchen"
     )
     assert english._clue_text("adjacent_regions", ["Ada", "Ben"], ("Ada", "Ben")) == (
-        "Ada and Ben are in neighboring regions"
+        "Ada and Ben are in neighboring areas"
     )
     assert english._clue_text("not_on_mark", ["Cal", "quiet", "social"], ("Cal",)) == (
         "Cal is not on the quiet square or the social square"
@@ -637,6 +1032,396 @@ count people in mark:seats = 1
     assert "Precies één persoon is op de stoelen (11)" in dutch
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Exactly one person is on the squares marked quiet."),
+        ("nl", "Precies één persoon staat op de vakjes met markering quiet."),
+    ],
+)
+def test_global_count_names_marked_squares(language, expected):
+    text = f"""Language: {language}
+Size: 2
+Regions:
+a: hall
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Marks:
+quiet: r1c1 r2c2 ; alone
+Clues:
+count people on mark:quiet = 1
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording.read(text))
+    assert story.clue_texts() == [expected]
+
+
+def test_what_if_explains_the_alone_mark_used_in_its_contradiction():
+    text = """Language: en
+Size: 6
+Regions:
+a: Atrium
+b: Tomb
+c: Crypt
+d: Hall
+e: Workshop
+Grid:
+a a a b b b
+a a a b b b
+c c a b d d
+c c c d d d
+c c e e d d
+e e e e d d
+Marks:
+quiet: r1c2 r4c6 r5c1 r6c2 r3c5 ; alone
+People:
+Ada
+Bo
+Cal
+Dee
+Eva
+Fay
+Clues:
+count people on mark:quiet = 2
+same_region Eva Fay
+in_region Bo Tomb
+left_of Bo Dee
+in_region Cal Crypt
+left_of Eva Fay
+in_region Ada Atrium
+above Eva Fay
+"""
+    explanation = explain(text)
+    assert (
+        "the square is marked quiet, so Dee would be alone in the Hall "
+        "and its other squares would be empty, then Fay would be on r2c6, "
+        "then nobody can fill row 6"
+    ) in explanation
+    assert "brute force" not in explanation
+    dutch = explain(text.replace("Language: en", "Language: nl"))
+    assert (
+        "het vakje heeft markering quiet, dus Dee zou alleen zijn in de Hall "
+        "en de andere vakjes daar zouden leeg zijn"
+    ) in dutch
+
+
+def test_what_if_explains_a_missing_companion_on_a_marked_square():
+    text = """Size: 9
+Regions:
+a: garden
+b: school
+c: cafe
+d: library
+e: market
+f: playground
+w: stream
+Grid:
+a a a w b b b b b
+a a a w b b b b b
+a a a w b b b b b
+c c c w w b b b b
+c c c c w d d d d
+c c c c w d d d d
+e e e e w d d d d
+e e e e w f f f f
+e e e e w f f f f
+Marks:
+social: r1c5 r2c6 r4c2 r6c3 r9c7 ; not_alone
+Objects:
+sakura: blocking r1c1
+backpack: blocking r3c8
+cake: blocking r5c2
+books: blocking r6c7
+basket: blocking r8c2
+slide: blocking r9c9
+water: blocking r1c4 r2c4 r3c4 r4c4 r4c5 r5c5 r6c5
+water: blocking r8c5 r9c5
+bench: standable r1c3 r2c3
+chair: standable r2c8
+tatami: standable r6c1 r6c2
+bridge: standable r7c4 r7c5 r7c6
+carpet: standable r9c3
+People:
+Mametchi
+Kuchipatchi
+Memetchi
+Lovelitchi
+Tarakotchi
+Masktchi
+Gozarutchi
+Violetchi
+Akumatchi
+Clues:
+count people on mark:social = 1
+same_region Mametchi Masktchi
+on Lovelitchi bench
+next_to Gozarutchi cake
+above Mametchi Lovelitchi
+above Violetchi Masktchi
+in_region Tarakotchi library
+on Kuchipatchi bridge
+left_of Tarakotchi Memetchi
+not_next_to Memetchi slide
+not_next_to Tarakotchi books
+not_next_to Violetchi backpack
+"""
+    explanation = explain(text)
+    assert "Memetchi is not next to the slide (10)." in explanation
+    assert "64 squares" not in explanation
+    assert (
+        "then Memetchi would be on r9c7, then Akumatchi would be in the market, "
+        "but a social square needs company, "
+        "and nobody else can be in the playground (see clue 1)"
+    ) in explanation
+    dutch = explain("Language: nl\n" + text)
+    assert (
+        "maar op een vakje met markering social moet iemand gezelschap hebben "
+        "en verder kan niemand in de playground zijn (zie aanwijzing 1)"
+    ) in dutch
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "then Ben would be on r2c2, Cal on r3c3 and Dee on r4c4"),
+        ("nl", "dan zou Ben op r2k2 zitten, Cal op r3k3 en Dee op r4k4"),
+    ],
+)
+def test_what_if_groups_hypothetical_placements(monkeypatch, language, expected):
+    text = """Size: 4
+Regions:
+a: room
+Grid:
+a a a a
+a a a a
+a a a a
+a a a a
+People:
+Ada
+Ben
+Cal
+Dee
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording(language))
+    trail = tuple(
+        Step(person, murdoku.Square(i, i), True, "single", "")
+        for i, person in enumerate(board.people)
+    )
+    refutation = Step("Ada", murdoku.Square(0, 0), False, "what_if", "", trail=trail)
+    state = _State(
+        {person: set(board.free) for person in board.people},
+        {person: set(board.free) for person in board.people},
+    )
+    monkeypatch.setattr("csp.story.essential", lambda *_args: list(range(len(trail))))
+
+    _, _, reason = story._what_if(refutation, state)
+
+    assert reason.startswith(expected)
+
+
+def test_tamagotchi_combines_necessary_marks_and_narrates_the_case():
+    text = example("tamagotchi-murdoku-12x12.txt").read_text()
+    board, _ = load_board(text)
+    solutions = bruteforce.solutions(text, "murdoku", limit=2)
+    assert len(solutions) == 1
+    solution = solutions[0]
+    assert {
+        person for person in board.people if solution[person] in board.mark_cells(["quiet"])
+    } == {"Ichigotchi"}
+    assert {
+        person for person in board.people if solution[person] in board.mark_cells(["social"])
+    } == {"Mametchi"}
+    garden = board.region_of(solution["Ichigotchi"])
+    school = board.region_of(solution["Mametchi"])
+    assert board.region_names[garden] == "garden"
+    assert {person for person in board.people if board.region_of(solution[person]) == garden} == {
+        "Ichigotchi"
+    }
+    assert board.region_names[school] == "school"
+    assert board.region_of(solution["Masktchi"]) == school
+
+    for condition in ("alone", "not_alone"):
+        assert (
+            len(bruteforce.solutions(text.replace(f"; {condition}", ""), "murdoku", limit=2)) == 2
+        )
+
+    explanation = explain(text)
+    assert (
+        "**Gozarutchi cannot be on r8c3**: then Ichigotchi would be on r3c1, "
+        "Pianitchi on r7c4 and Violetchi on r9c7, but"
+    ) in explanation
+
+
+def test_alone_mark_excludes_squares_in_an_occupied_area():
+    text = """Size: 6
+Regions:
+a: garden
+b: school
+c: square
+d: library
+e: arcade
+Grid:
+a a a b b b
+a a a b b b
+a a c c b b
+d d c c e e
+d d d e e e
+d d d e e e
+Marks:
+quiet: r4c4 r1c3 r2c3 r5c6 r6c4 ; alone
+Objects:
+sakura: blocking r1c1
+fountain: blocking r3c3
+arcade: blocking r5c5
+chair: standable r2c5
+carpet: standable r5c1 r5c2
+People:
+Mametchi
+Kuchipatchi
+Memetchi
+Lovelitchi
+Masktchi
+Akumatchi
+Clues:
+count people on mark:quiet = 1
+next_to Masktchi sakura
+same_region Lovelitchi Mametchi
+in_corner Memetchi
+left_of Kuchipatchi Mametchi
+not_next_to Lovelitchi chair
+not_next_to Kuchipatchi carpet
+left_of Mametchi Lovelitchi
+"""
+    explanation = explain(text)
+    assert (
+        "Masktchi is in the garden but cannot stand on a quiet square there. "
+        "Anyone on a quiet square would be alone, so "
+        "**nobody can use those squares in the garden**."
+    ) in explanation
+    assert len(bruteforce.solutions(text)) == 1
+    assert len(bruteforce.solutions(text.replace("; alone", ""))) > 1
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "**Ada cannot be on r1c1**: the square is marked social, so Ada would have "
+            "company in the cafe, then Ben would be on r2c2, which clue 1 does not allow.",
+        ),
+        (
+            "nl",
+            "**Ada kan niet op r1k1**: het vakje heeft markering social, dus Ada zou "
+            "samen met iemand zijn in de cafe, dan zou Ben op r2k2 zitten, "
+            "en dat mag niet volgens aanwijzing 1.",
+        ),
+    ],
+)
+def test_hidden_mark_case_uses_its_only_possible_occupant(monkeypatch, language, expected):
+    text = """Size: 3
+Regions:
+a: cafe
+b: garden
+Grid:
+a a b
+a a b
+b b b
+Marks:
+social: r1c1 ; not_alone
+People:
+Ada
+Ben
+Cal
+Clues:
+adjacent_regions Ada Ben
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording(language))
+    constraint = next(
+        c
+        for c in story.model.constraints
+        if c.name == "mark social not_alone in cafe trigger count"
+    )
+    assert constraint.reified_by is not None
+    var = story.model.var_of(constraint.reified_by)
+    value = story.model.value_of(constraint.reified_by)
+    ada, ben = murdoku.Square(0, 0), murdoku.Square(1, 1)
+    trail = (
+        Step(var, value, True, "what_if", "assumed"),
+        Step("Ada", ada, True, "count", "", sources=(constraint.name,)),
+        Step(
+            "Ben",
+            ben,
+            True,
+            "count",
+            "",
+            sources=("mark social not_alone in cafe occupant count",),
+        ),
+    )
+    refutation = Step(
+        var, value, False, "what_if", "", sources=("Ada adjacent_regions Ben",), trail=trail
+    )
+    before = {person: set(board.free) - {ada} for person in board.people}
+    before["Ada"].add(ada)
+    options = {person: set(squares) - {ada} for person, squares in before.items()}
+    state = _State(
+        options, {p: set(squares) for p, squares in before.items()}, history=[refutation]
+    )
+    step = Step("Ada", ada, False, "count", "", sources=(constraint.name,))
+    monkeypatch.setattr("csp.story.essential", lambda *_args: [0, 1, 2])
+
+    assert story._mark_case_deduction(step, ["Ada"], before, state) == expected
+    before["Cal"].add(ada)
+    assert story._mark_case_deduction(step, ["Ada"], before, state) is None
+    before["Cal"].remove(ada)
+    state.history = [dataclasses.replace(refutation, trail=trail[:1])]
+    assert story._mark_case_deduction(step, ["Ada"], before, state) is None
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "someone on a square marked social in the school must have company",
+        ),
+        (
+            "nl",
+            "wie op een vakje met markering social in de school staat, moet gezelschap hebben",
+        ),
+    ],
+)
+def test_mark_occupancy_count_is_explained_as_a_square_rule(language, expected):
+    text = f"""Size: 2
+Language: {language}
+Regions:
+a: school
+Grid:
+a a
+a a
+Marks:
+social: r1c1 ; not_alone
+People:
+Ada
+Ben
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording(language))
+    constraint = next(
+        c
+        for c in story.model.constraints
+        if c.name == "mark social not_alone in school occupant count"
+    )
+    assert story._mark_occupant_count_reason(constraint, True) == expected
+    assert "occupant count" not in story._count_name(constraint)
+
+
 def test_story_explains_known_and_absent_roles():
     text = """Size: 2
 Regions:
@@ -681,6 +1466,31 @@ bandit: Ada
     assert "Ada has the bandit role" in story
     assert "Ben does not have the bandit role" in story
     assert "__occupant" not in story
+
+
+@pytest.mark.parametrize(("holders", "expected"), [(1, ""), (2, "Ben does not have the team role")])
+def test_known_role_holder_only_makes_other_exclusions_obvious_when_unique(holders, expected):
+    text = f"""Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Ben
+Cal
+Roles:
+team: {holders}
+"""
+    board, clues = load_board(text)
+    story = Story(board, clues, Wording())
+    state = _State({}, {}, role_told={("Ada", "team"): True})
+    step = Step(board.role_variable("Ben", "team"), False, True, "single", "test")
+
+    assert story._role_step_text(step, state) == expected
+    assert state.role_told["Ben", "team"] is False
 
 
 def test_story_explains_role_conditioned_location_rule():
@@ -734,8 +1544,8 @@ def test_story_explains_a_reified_count_constraint():
     )
 
     assert (
-        "The allowed counts for west occupancy are zero, so the literal west_empty=yes must hold."
-        in story.tell()
+        "The allowed counts for west occupancy are zero, "
+        "so **the literal west_empty=yes must hold**." in story.tell()
     )
 
 
@@ -760,7 +1570,87 @@ outside Ben room
 
     assert "Ada on r1c1" in story
     assert "Ben on r2c2" in story
+    assert "Ada is on a quiet square, so **Ada is alone in the room**" in story
     assert "__occupant_" not in story
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Ada is on a social square, so **Ada has company in the room**"),
+        (
+            "nl",
+            "Ada staat op een vakje met markering social, dus **Ada heeft gezelschap in de room**",
+        ),
+    ],
+)
+def test_story_explains_company_when_a_marked_square_is_occupied(language, expected):
+    text = f"""Language: {language}
+Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Marks:
+social: r1c1 ; not_alone
+Clues:
+on_mark Ada social
+"""
+    assert expected in explain(text)
+
+
+def test_story_explains_a_marked_square_placed_after_a_direct_clue():
+    text = """Size: 3
+Regions:
+a: room
+b: hall
+c: garden
+Grid:
+a b b
+a b b
+c c c
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r2c1 r3c2 ; alone
+bench: r1c2
+Clues:
+in_region Ada room
+on_mark Ben bench
+count people on mark:quiet = 1
+"""
+    explanation = explain(text)
+    assert "Ada is in the room (1)." in explanation
+    assert "Ada is in the room (1): **in the room**" not in explanation
+    expected = "**Ada on r2c1**. Ada is on a quiet square, so **Ada is alone in the room**"
+    assert expected in explanation
+    assert (
+        "That is the only occupied quiet square, so **all other quiet squares are empty**"
+        in explanation
+    )
+    dutch = explain("Language: nl\n" + text)
+    assert (
+        "Dat is het enige bezette vakje met markering quiet, "
+        "dus **alle andere vakjes met die markering zijn leeg**"
+    ) in dutch
+    no_limit = explain(
+        text.replace("count people on mark:quiet = 1", "count people on mark:quiet >= 1")
+    )
+    assert "all other quiet squares are empty" not in no_limit
+    excluded = explain(text.replace("in_region Ada room", "outside Ada hall garden"))
+    assert "Ada is not in the hall or in the garden (1)" in excluded
+
+
+def test_direct_area_clue_does_not_repeat_the_area_when_it_fixes_a_square():
+    explanation = explain(example("murdoku_2_point_objects.txt").read_text())
+    assert "Cal is in the greenhouse (4): **Cal on r3c5**" in explanation
+    assert "in the greenhouse (4): **in the greenhouse**" not in explanation
 
 
 def test_story_explains_complementary_reified_counts():
@@ -839,23 +1729,25 @@ def test_area_tag_note_keeps_the_article_and_case_of_an_english_room_phrase():
 
 def test_murder_hotel_role_clue_reveals_identity_after_the_last_placement():
     story = explain(example("murder-hotel-3.txt").read_text())
-    reveal = "Luca is somewhere above the murderer (14), so Marcella has the murderer role."
+    reveal = "Luca is somewhere above the murderer (14), so **Marcella has the murderer role**."
 
     assert reveal in story
     assert story.index("Marcella on r10c5") < story.index(reveal)
+    assert "does not have the murderer role" not in story
 
 
 def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
     story = explain((example("murdoku_3_house.txt")).read_text())
     opening = story.split("\n\n")[0]
-    assert "Ben is on the carpet (4): r3c3 or r3c4." in opening
+    assert "Ben is on the carpet (4): **in the hall**." in opening
     assert "Ben is not next to the lamp (6): **Ben on r3c4**." in opening
 
 
 def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():
     story = explain((example("murdoku_3_house.txt")).read_text())
     assert "Either Ada is in the study, or Ben is in the hall, but not both (1)." in story
-    assert "Ben is on r3c4, so Ada is not in the study" in story
+    assert "Ben is on r3c4, so **Ada is not in the study**" in story
+    assert "**Ben is on r3c4**" not in story
 
 
 def test_chains_are_told_as_if_then_with_the_reason_for_each_link():
@@ -895,7 +1787,8 @@ def test_wording_reads_its_sections_and_rejects_unknown_languages():
 def test_cli_explain(capsys):
     assert cli.main([str(example("prrrdoku1.txt")), "--explain"]) == 0
     assert "**Tim op r1k1**" in capsys.readouterr().out
-    assert cli.main([str(example("sudoku_5_9x9.txt")), "--explain"]) == 2
+    assert cli.main([str(example("sudoku_5_9x9.txt")), "--explain"]) == 0
+    assert "**Singles.**" in capsys.readouterr().out
 
 
 def test_board_rules_are_what_the_model_is_built_from():
@@ -923,7 +1816,7 @@ def test_role_rules_are_told_without_engine_names():
     story = explain(example("murdoku_orient_express.txt").read_text())
     for leak in ("__", "role and area", "occupant count", "has role", "cardinality"):
         assert leak not in story
-    assert "De moordenaar is op de plaats delict, dus Svetlana is de moordenaar" in story
+    assert "De moordenaar is op de plaats delict, dus **Svetlana is de moordenaar**" in story
     assert "Svetlana is de moordenaar en moet in coupé 2 zijn" in story
 
 
@@ -1358,6 +2251,33 @@ def test_dutch_player_rules_explain_object_adjacency():
         "Naast een voorwerp in een vakje betekent een zijde delen met een vakje van het "
         "voorwerp in hetzelfde gebied; schuin telt niet."
     ) in rules
+
+
+@pytest.mark.parametrize("kind", ["adjacent_regions", "apart"])
+@pytest.mark.parametrize(
+    ("language", "note"),
+    [
+        ("en", "Areas are neighbors when they share a side, not just a corner."),
+        ("nl", "Gebieden grenzen aan elkaar als ze een zijde delen, niet alleen een hoek."),
+    ],
+)
+def test_player_rules_explain_neighboring_areas(kind, language, note):
+    text = f"""Size: 2
+Language: {language}
+Regions:
+a: Alpha
+b: Bravo
+Grid:
+a b
+a b
+People:
+Ada
+Ben
+Clues:
+{kind} Ada Ben
+"""
+    assert murdoku_rules(text).count(note) == 1
+    assert note not in murdoku_rules(text.replace(f"{kind} Ada Ben", "same_region Ada Ben"))
 
 
 def test_wrapped_intro_lines_stay_one_rule():

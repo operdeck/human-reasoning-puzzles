@@ -343,6 +343,36 @@ def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     assert len(document.inline_shapes) == 2
 
 
+def test_sudoku_booklet_uses_readable_bold_pattern_narrative(tmp_path):
+    out = tmp_path / "sudoku.docx"
+    assert main([str(example("sudoku_17_9x9_pointing.txt")), "--docx", str(out)]) == 0
+    document = Document(str(out))
+    paragraphs = [p for p in document.paragraphs if "Locked candidate." in p.text]
+    assert len(paragraphs) == 1
+    assert any("cross 4 out" in run.text and run.bold for run in paragraphs[0].runs)
+    assert all(run.font.size.pt == 10 for run in paragraphs[0].runs)
+    assert "rule single" not in _text(out)
+
+
+def test_sudoku_booklet_labels_the_technical_fallback(tmp_path):
+    out = tmp_path / "sudoku-chains.docx"
+    assert main([str(example("sudoku_33_9x9_chains.txt")), "--docx", str(out)]) == 0
+    text = _text(out)
+    assert "pattern-first explanation is not available" in text
+    assert "rule single" in text
+
+
+def test_sudoku_booklet_localizes_the_explanation_heading(tmp_path):
+    source = tmp_path / "sudoku.txt"
+    text = "Language: nl\nGivens:\n" + example("sudoku_17_9x9_pointing.txt").read_text()
+    source.write_text(text)
+    out = tmp_path / "sudoku.docx"
+    assert main([str(source), "--docx", str(out)]) == 0
+    rendered = _text(out)
+    assert "Zo los je het op" in rendered
+    assert "Gebonden kandidaat." in rendered
+
+
 def _read(name):
     return (example(f"{name}.txt")).read_text()
 
@@ -384,7 +414,7 @@ def test_sudoku_booklet_includes_sandwich_rule_with_grid_size(language, tmp_path
 
 def test_exactly_one_same_region_reads_as_either_or():
     paragraphs = clue_paragraphs(_read("murdoku_sparse_mystery"))
-    assert any("same region as either Mara or Ria" in p for p in paragraphs)
+    assert any("same area as either Mara or Ria" in p for p in paragraphs)
 
 
 def test_two_alternatives_read_as_either_or_not_both():
@@ -392,17 +422,55 @@ def test_two_alternatives_read_as_either_or_not_both():
     assert any(c.startswith("Either Ada is in the study, or Ben is in the hall") for c in clues)
 
 
-def test_attribute_target_can_be_reworded():
-    text = _read("tamagotchi-murdoku-12x12").replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
+@pytest.fixture
+def companion_attribute_puzzle():
+    return """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Akumatchi
+Ichigotchi
+Hashizotchi
+Attributes:
+friend: Ichigotchi Hashizotchi
+Words:
+target.attribute: a {name}
+Clues:
+alone_with Akumatchi attribute:friend
+"""
+
+
+def test_attribute_target_can_be_reworded(companion_attribute_puzzle):
+    text = companion_attribute_puzzle.replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
     assert (
         "Akumatchi shares a region with exactly one other person, and that is a friend."
         in clue_paragraphs(text)
     )
 
 
-def test_attribute_everyone_has_is_not_named():
-    paragraphs = clue_paragraphs(_read("tamagotchi-murdoku-12x12"))
+def test_attribute_everyone_has_is_not_named(companion_attribute_puzzle):
+    paragraphs = clue_paragraphs(companion_attribute_puzzle)
     assert "Akumatchi shares a region with exactly one other person." in paragraphs
+
+
+@pytest.mark.parametrize(("size", "mark"), [(6, "quiet"), (9, "social"), (12, "social")])
+def test_tamagotchi_count_includes_every_figure(size, mark):
+    text = _read(f"tamagotchi-murdoku-{size}x{size}")
+    presentation = load_presentation(text)
+    clues = clue_paragraphs(text, presentation.clue_text)
+    assert f"Exactly one figure stands on a {mark} square." in clues
+
+
+def test_tamagotchi_question_leaves_quiet_squares_open():
+    text = _read("tamagotchi-murdoku-12x12")
+    presentation = load_presentation(text)
+    clues = clue_paragraphs(text, presentation.clue_text)
+    assert "Violetchi is on the stage." in clues
+    assert "which figures, if any, occupy quiet squares" in presentation.question
 
 
 def test_solution_without_clue_numbers():
@@ -632,6 +700,62 @@ def test_booklet_solutions_have_no_empty_reasons_or_clue_numbers():
         assert ", ." not in text and ": ." not in text, name
         assert not re.search(r"\b(clue|aanwijzing) \d", text), name
         assert not re.search(r"\(via [\d, en]+\)", text), name
+
+
+def test_booklet_population_explanation_includes_the_unnumbered_comparison(tmp_path):
+    source = example("samen-onderweg.txt")
+    output = tmp_path / "population.docx"
+    assert main([str(source), "--docx", str(output)]) == 0
+    rendered = _text(output)
+    assert "Keiko en Mio zijn in Osaka, dus daar zijn minstens twee mensen." in rendered
+    assert (
+        "Het gebied met de meeste mensen is Tokyo, dus zijn er in Tokyo minstens drie mensen."
+        in rendered
+    )
+    assert "Samen zijn dat alle vijf mensen, dus niemand is in Okinawa." in rendered
+    paragraph = next(p for p in Document(str(output)).paragraphs if "Keiko en Mio zijn" in p.text)
+    bold = [run.text for run in paragraph.runs if run.bold]
+    assert "daar zijn minstens twee mensen" in bold
+    assert "zijn er in Tokyo minstens drie mensen" in bold
+    assert "niemand is in Okinawa" in bold
+    assert any("Keiko en Mio zijn in Osaka" in run.text and not run.bold for run in paragraph.runs)
+    assert all("Keiko en Mio zijn in Osaka" not in run for run in bold)
+    assert "**" not in rendered
+
+
+def test_booklet_highlights_the_unnumbered_line_and_population_conclusions(tmp_path):
+    source = example("samen-in-de-blauwe-bladeren.txt")
+    output = tmp_path / "line.docx"
+    assert main([str(source), "--docx", str(output)]) == 0
+    document = Document(str(output))
+    paragraph = next(p for p in document.paragraphs if "Mizuki zit naast de torii" in p.text)
+    instruction = "streep de zes andere nog open vakjes in die kolom weg"
+    assert f"Mizuki zit naast de torii: in kolom 1, dus {instruction}." in paragraph.text
+    assert instruction in [run.text for run in paragraph.runs if run.bold]
+    assert "**" not in paragraph.text
+    paragraph = next(
+        p for p in document.paragraphs if "alle andere vrije vakjes in Hiroshima" in p.text
+    )
+    assert "De gebieden met de minste mensen zijn Hiroshima en Okinawa, dus" in paragraph.text
+    bold = [run.text for run in paragraph.runs if run.bold]
+    assert "alleen Goro zit in Hiroshima" in bold
+    assert "alleen Tatsuya zit in Okinawa" in bold
+
+
+def test_solution_board_size_ignores_bold_markers(tmp_path, monkeypatch):
+    import csp.docx_export as docx_export
+
+    source = example("murdoku_3_house.txt")
+    text = "A" * docx_export.CLUE_LINE_CHARS
+
+    def board_width(marked):
+        explanation = "\n\n".join(f"- {marked}" for _ in range(20))
+        monkeypatch.setattr(docx_export, "explain", lambda *_args, **_kwargs: explanation)
+        output = tmp_path / "sizing.docx"
+        write_docx(source.read_text(), output, source.parent, solution={})
+        return Document(str(output)).inline_shapes[-1].width
+
+    assert board_width(text) == board_width(f"**{text}**")
 
 
 def test_repeated_premises_are_merged():

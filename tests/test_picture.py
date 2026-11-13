@@ -392,6 +392,39 @@ def test_two_square_standable_object_is_stretched_across_both_squares(fake_emoji
     assert blue[0] < margin + CELL // 4 and blue[-1] > margin + 2 * CELL - CELL // 4
 
 
+def test_irregular_water_footprint_draws_only_on_its_own_squares(monkeypatch):
+    squares = (Square(0, 0), Square(1, 0), Square(1, 1))
+    board = Board(
+        3,
+        [["a"] * 3 for _ in range(3)],
+        {"a": "here"},
+        [BoardObject("water", "blocking", squares)],
+        ["A"],
+    )
+    calls = []
+    original = icons.draw
+
+    def capture(canvas, name, area, **kwargs):
+        if name == "water":
+            calls.append(area)
+        return original(canvas, name, area, **kwargs)
+
+    monkeypatch.setattr(icons, "draw", capture)
+    drawing.murdoku_picture(board, cell=CELL, coordinates=False, labels=False, legend=False)
+    margin = CELL // 6
+    expected = [
+        (
+            margin + square.col * CELL,
+            margin + square.row * CELL,
+            margin + (square.col + 1) * CELL,
+            margin + (square.row + 1) * CELL,
+        )
+        for square in squares
+    ]
+    assert calls == expected
+    assert drawing.unknown_object_icons(board) == []
+
+
 def test_two_square_bench_keeps_its_proportions_and_is_not_stretched(fake_emoji):
     fake_emoji("1f6cb", (0, 0, 255))  # a blue block
     board = Board(
@@ -443,6 +476,21 @@ def test_tunnel_keeps_a_crossing_area_boundary_visible():
     margin = CELL // 6
 
     assert image.getpixel((margin + CELL, margin + CELL // 4)) == drawing.INK
+
+
+@pytest.mark.parametrize(("right_region", "colour"), [("a", drawing.WHITE), ("b", drawing.INK)])
+def test_standable_object_keeps_square_and_area_boundaries_visible(right_region, colour):
+    board = Board(
+        2,
+        [["a", right_region], ["a", right_region]],
+        {"a": "west", "b": "east"},
+        [BoardObject("bridge", "standable", (Square(0, 0), Square(0, 1)))],
+        ["A", "B"],
+    )
+    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, legend=False)
+    margin = CELL // 6
+
+    assert image.getpixel((margin + CELL, margin + CELL // 4)) == colour
 
 
 def test_adjacent_chairs_render_as_separate_single_cell_icons(monkeypatch):
@@ -590,6 +638,10 @@ social: r1c1 ; not_alone
     assert image.getpixel((margin + pad + 5, margin + pad + 5)) == picture.MARK_FILL
     assert picture._Legend(board, CELL).mark_names == ["quiet", "social"]
     assert image.height > 2 * CELL + 2 * margin
+    english = drawing.murdoku_picture(board, cell=CELL, coordinates=False).to_svg()
+    dutch = drawing.murdoku_picture(board, cell=CELL, coordinates=False, language="nl").to_svg()
+    assert "shares area with someone" in english
+    assert "deelt het gebied met iemand" in dutch
 
 
 def test_conditioned_marks_get_a_dashed_cue_by_dash_style_and_colour():
@@ -726,8 +778,12 @@ count people on object:bed = 1
 """
     board, clues = load_board(text)
     (condition,) = murdoku.global_count_conditions(board, clues)
-    image = picture.murdoku_picture(board, cell=CELL, coordinates=False, global_counts=[condition])
-    tiny = picture.murdoku_picture(board, cell=12, coordinates=False, global_counts=[condition])
+    image = picture.murdoku_picture(
+        board, cell=CELL, coordinates=False, global_counts=[condition], count_lines=True
+    )
+    tiny = picture.murdoku_picture(
+        board, cell=12, coordinates=False, global_counts=[condition], count_lines=True
+    )
     plain = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
     assert image.height > plain.height
@@ -1618,10 +1674,40 @@ def test_count_legend_uses_the_given_plain_language_texts():
 
     counts = murdoku.global_count_conditions(board, clues)
     markup = drawing.murdoku_picture(
-        board, global_counts=counts, count_texts=story.global_count_texts(text), language="nl"
+        board,
+        global_counts=counts,
+        count_texts=story.global_count_texts(text),
+        count_lines=True,
+        language="nl",
     ).to_svg()
     assert "Precies twee mensen dragen een badjas" in markup
     assert "object:badjas" not in markup
+
+
+@pytest.mark.parametrize("section", ["Clues", "Rules"])
+def test_count_text_is_in_player_text_not_the_board_legend(section):
+    from csp import story
+
+    text = f"""Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+Marks:
+social: r1c1 ; not_alone
+People:
+Ada
+Ben
+{section}:
+count people on mark:social = 1
+"""
+    markup = cli.make_image("murdoku", text).to_svg()
+    expected = "Exactly one person is on the squares marked social"
+    assert expected not in markup
+    assert "social: shares area with someone" in markup
+    player_text = story.clue_paragraphs(text) + story.murdoku_rules(text)
+    assert any(expected in line for line in player_text)
 
 
 def test_the_legend_does_not_explain_the_count_ring():

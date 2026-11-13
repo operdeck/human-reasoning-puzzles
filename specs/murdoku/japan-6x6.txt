@@ -24,4 +24,3 @@ template: blobs
 candidates: 24
 keep: 10
 seed: 241
-
