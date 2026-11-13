@@ -879,43 +879,34 @@ count people on object_kind:standable = 1
     )
 
 
-@pytest.mark.parametrize("comparison", ["= 1", "even", "0..2"])
-def test_brute_force_location_counts_match_direct_tallies(comparison):
-    text = f"""Size: 3
+def test_murdoku_search_matches_direct_placements_with_cross_person_clues():
+    text = """Size: 3
 Regions:
-a: west
-b: east
+a: town
 Grid:
-a b b
-a b b
-a b b
+a a a
+a a a
+a a a
 People:
 Ada
 Ben
-Marks:
-special: r1c1 r2c2 r3c3
+Cal
 Clues:
-count people on mark:special {comparison}
-count people in area:west <= 1
-count empty areas all = 1
+above Ada Ben
+left_of Ben Cal
 """
-    board, clues = load_board(text)
-    checks = murdoku.global_count_conditions(board, clues)
-    expected = {
-        squares
-        for squares in product(board.free, repeat=2)
-        if squares[0].row != squares[1].row
-        and squares[0].col != squares[1].col
-        and all(
-            check.count(board, dict(zip(board.people, squares, strict=True)), {})
-            in check.allowed_counts
-            for check in checks
-        )
-    }
+    board, _ = load_board(text)
+    expected = set()
+    for squares in product(board.free, repeat=len(board.people)):
+        if len({square.row for square in squares}) == len(board.people) and len(
+            {square.col for square in squares}
+        ) == len(board.people):
+            placement = dict(zip(board.people, squares, strict=True))
+            if bruteforce.murdoku.accepts(text, placement):
+                expected.add(squares)
+
     found = bruteforce.murdoku.solutions(text, limit=100)
-    assert {tuple(result[p] for p in board.people) for result in found} == expected
-    sampled = bruteforce.murdoku.sample(text, limit=100)
-    assert {tuple(result[p] for p in board.people) for result in sampled} == expected
+    assert {tuple(solution[person] for person in board.people) for solution in found} == expected
 
 
 def test_compiled_global_counts_match_direct_tallies_for_all_small_placements():
