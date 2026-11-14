@@ -102,22 +102,22 @@ Katarina
 Ludmila
 
 Rules:
-role_occupant moordenaar not_alone
-min_role_in_tagged moordenaar plaats_delict 1
+for each area in all occupied by role:moordenaar, count people in that area >= 2
+for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1
 
 Clues:
-in_region Ludmila coupe_1
-in_region Vladimir coupe_2
-next_to Ludmila trein_bank
-on Anastasia perron_bank
-next_to Bogdan bedieningspaneel
-not_next_to Vladimir trein_bank
-above Ludmila Vladimir
-not_next_to Ludmila raam
-next_to Katarina koffiebar
-left_of Dragomir Ludmila
-left_of Anastasia Dragomir
-not_next_to Dragomir klok
+in Ludmila area:coupe_1
+in Vladimir area:coupe_2
+beside Ludmila object:trein_bank
+on Anastasia object:perron_bank
+beside Bogdan object:bedieningspaneel
+not beside Vladimir object:trein_bank
+dir Ludmila Vladimir up
+not on Ludmila edge_item:raam
+beside Katarina object:koffiebar
+dir Dragomir Ludmila left
+dir Anastasia Dragomir left
+not beside Dragomir object:klok
 
 # Booklet text for --docx (optional).
 Title:

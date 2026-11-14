@@ -57,14 +57,14 @@ Vladimir
 # is the question being asked, not a constraint - the puzzle states the other
 # eight already pin down a unique solution.
 Clues:
-next_to Tim klimwand
-in_region Jos keukenwinkel
-same_region Anna Jos
-in_region Pip moestuin
-above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.
-next_to Tjitske vuurtje
-within Tjitske Otto 4 | Tjitske zit hooguit vier vakjes bij Otto vandaan.
-left_of Jos Otto
+beside Tim object:klimwand
+in Jos area:keukenwinkel
+same Anna Jos
+in Pip area:moestuin
+dir Otto Tjitske up = 1 | Otto zit precies één rij boven Tjitske.
+beside Tjitske object:vuurtje
+dir Tjitske Otto manhattan <= 4 | Tjitske zit hooguit vier vakjes bij Otto vandaan.
+dir Jos Otto left
 
 # Booklet text for --docx (optional; solving and pictures ignore it).
 Title:

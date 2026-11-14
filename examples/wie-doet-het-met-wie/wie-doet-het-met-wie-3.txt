@@ -62,17 +62,17 @@ Daan
 Wouter
 
 Rules:
-alone_with Wouter
+with Wouter people:any in same area exactly 1
 count people on object:badjas = 1 | Precies één persoon draagt een badjas.
 count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
 count people on object:zonnebril = 1 | Precies één persoon heeft een zonnebril op.
 
 Clues:
-above object:zonnebril Pieter 1 | De gast met de zonnebril staat precies één rij boven Pieter.
-on Sanne badjas | Sanne draagt alleen een badjas.
-on Daan zonnebril | Daan heeft een zonnebril op.
-in_region Sanne bosjes
-in_region Femke zee
+dir people_on:object:zonnebril Pieter up = 1 | De gast met de zonnebril staat precies één rij boven Pieter.
+on Sanne object:badjas | Sanne draagt alleen een badjas.
+on Daan object:zonnebril | Daan heeft een zonnebril op.
+in Sanne area:bosjes
+in Femke area:zee
 
 Title:
 Murdoku: Op het strand

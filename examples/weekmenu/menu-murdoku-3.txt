@@ -73,19 +73,19 @@ Wortel
 Vla
 
 Rules:
-alone_with Vla 2
+with Vla people:any in same area exactly 2
 
 Clues:
-not_next_to Aardappel zonnebloem
-next_to Noedels sierui
-not_in_row Pasta 5
-above Vis Noedels 6
-above Aardappel Bonen 3
-at_least Aardappel Noedels 14
-outside Wortel zondag
-next_to Vis sierui
-at_least Aardappel Vis 5
-within Noedels Wortel 5
+not on Aardappel point_object:zonnebloem
+on Noedels point_object:sierui
+not in Pasta rows:5
+dir Vis Noedels up = 6
+dir Aardappel Bonen up = 3
+dir Aardappel Noedels manhattan >= 14
+not in Wortel area:zondag
+on Vis point_object:sierui
+dir Aardappel Vis manhattan >= 5
+dir Noedels Wortel manhattan <= 5
 
 # Booklet text for --docx (optional).
 Title:

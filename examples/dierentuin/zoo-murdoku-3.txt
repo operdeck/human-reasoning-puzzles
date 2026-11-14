@@ -70,17 +70,17 @@ Verzorger
 
 Rules:
 alone Tijger
-role_occupant aap not_alone
-alone_with Verzorger attribute:dier
+for each area in all occupied by role:aap, count people in that area >= 2
+with Verzorger attribute:dier in same area exactly 1
 
 Clues:
-in_region Gibbon moeras
-next_to Tijger boomstam
-in_row Capibara 4
-above Makaak Gibbon
-within Capibara Alpensteenbok 3
-within Capibara Makaak 3
-left_of Capibara Gibbon
+in Gibbon area:moeras
+beside Tijger object:boomstam
+in Capibara rows:4
+dir Makaak Gibbon up
+dir Capibara Alpensteenbok manhattan <= 3
+dir Capibara Makaak manhattan <= 3
+dir Capibara Gibbon left
 
 # Booklet text for --docx (optional).
 Title:

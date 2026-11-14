@@ -60,15 +60,15 @@ Emi
 Fumiko
 
 Clues:
-busiest_area area:Tokyo
-quietest_area area:Okinawa
+most_populated area:Tokyo
+least_populated area:Okinawa
 count people in area:Osaka = 2
-outside Aiko Osaka
-same_region Benjiro Chiaki
-left_of Benjiro Daiki
-not_next_to Benjiro tempel
-left_of Daiki Chiaki
-left_of Emi Fumiko
+not in Aiko area:Osaka
+same Benjiro Chiaki
+dir Benjiro Daiki left
+not beside Benjiro object:tempel
+dir Daiki Chiaki left
+dir Emi Fumiko left
 
 Question:
 Waar staat iedereen?

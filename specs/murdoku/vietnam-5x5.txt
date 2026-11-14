@@ -15,8 +15,8 @@ object: phalau blocking in Saigon
 object: tunnel blocking across
 object: kruk standable x1
 decor: tunnel
-key_clue: away_from Pippo buncha thitkho phalau
-key_clue: away_from Swena buncha thitkho phalau
+key_clue: dir Pippo object:buncha,thitkho,phalau king >= 2
+key_clue: dir Swena object:buncha,thitkho,phalau king >= 2
 candidates: 24
 keep: 12
 seed: 231

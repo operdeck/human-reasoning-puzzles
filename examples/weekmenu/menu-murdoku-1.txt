@@ -60,16 +60,16 @@ Vis
 Vla
 
 Rules:
-alone_with Vla 2
+with Vla people:any in same area exactly 2
 
 Clues:
-next_to Pasta zonnebloem
-left_of Broccoli Pasta 2
-in_column Aardappel 5
-above Vis Aardappel
-at_least Rijst Vis 7
-same_region Broccoli Rijst
-in_row Broccoli 5
+on Pasta point_object:zonnebloem
+dir Broccoli Pasta left = 2
+in Aardappel columns:5
+dir Vis Aardappel up
+dir Rijst Vis manhattan >= 7
+same Broccoli Rijst
+in Broccoli rows:5
 
 # Booklet text for --docx (optional).
 Title:

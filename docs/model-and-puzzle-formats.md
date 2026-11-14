@@ -398,6 +398,7 @@ beside Ada object:bench
 touches Ada mark:water
 dir Ada Ben left
 dir Ada Ben left = 2
+not dir Ada Ben left
 dir Ada Ben rows >= 3
 dir Ada Ben cols <= 2
 dir Ada Ben manhattan >= 4

@@ -63,19 +63,19 @@ Luna
 # Clue 2 is replaced with a relative-position clue; clue 13 keeps the late reveal.
 # Clue 14 ("only one other in Vladimir's region") is the question being asked.
 Clues:
-next_to Tim klimwand
-above Anna Mao 5
-same_region Anna Jos
-in_region Pip moestuin
-next_to Otto bank
-next_to Tjitske vuurtje
-above Tjitske Otto
-left_of Jos Otto
-next_to Luna glijbaan
+beside Tim object:klimwand
+dir Anna Mao up = 5
+same Anna Jos
+in Pip area:moestuin
+beside Otto object:bank
+beside Tjitske object:vuurtje
+dir Tjitske Otto up
+dir Jos Otto left
+beside Luna object:glijbaan
 alone Luna
-within Luna Tim 6
-apart Luna Mao
-at_least Jos Mao 13
+dir Luna Tim manhattan <= 6
+dir Luna Mao areas >= 2
+dir Jos Mao manhattan >= 13
 
 # Booklet text for --docx (optional).
 Title:

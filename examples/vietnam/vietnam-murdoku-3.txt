@@ -63,17 +63,17 @@ Attributes:
 reiziger: Pippo Swena
 
 Rules:
-alone_with RauMuong attribute:reiziger 2
+with RauMuong attribute:reiziger in same area exactly 2
 
 Clues:
-away_from Pippo buncha chaolong thitkho doi phalau
-away_from Swena buncha chaolong thitkho doi phalau
-next_to Mai thitkho
-next_to Duc doi
-next_to Quang doi
-not_next_to Pippo kruk
-in_region Hoa Đà_Lạt
-left_of Quang Duc
+not dir Pippo object:buncha,chaolong,thitkho,doi,phalau king <= 1
+not dir Swena object:buncha,chaolong,thitkho,doi,phalau king <= 1
+beside Mai object:thitkho
+beside Duc object:doi
+beside Quang object:doi
+not beside Pippo object:kruk
+in Hoa area:Đà_Lạt
+dir Quang Duc left
 
 # Booklet text for --docx (optional).
 Title:

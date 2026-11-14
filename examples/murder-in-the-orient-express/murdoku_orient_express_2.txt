@@ -138,21 +138,21 @@ Sergej
 Joeri
 
 Rules:
-role_occupant moordenaar not_alone
-min_role_in_tagged moordenaar plaats_delict 1
+for each area in all occupied by role:moordenaar, count people in that area >= 2
+for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1
 
 Clues:
-in_region Grigori noordperron
-in_region Vera noordperron
-in_region Sergej gangpad
-in_region Pjotr locomotief
-next_to Vera koffer
-next_to Fjodor koffiebar
-in_region Joeri zuidperron
-left_of Irina Grigori
-next_to Tatjana lijk
-on Grigori perron_bank
-left_of Tatjana Fjodor
+in Grigori area:noordperron
+in Vera area:noordperron
+in Sergej area:gangpad
+in Pjotr area:locomotief
+beside Vera object:koffer
+beside Fjodor object:koffiebar
+in Joeri area:zuidperron
+dir Irina Grigori left
+beside Tatjana object:lijk
+on Grigori object:perron_bank
+dir Tatjana Fjodor left
 
 Title:
 Moord in de Oriënt Express 2: Wie is de moordenaar?

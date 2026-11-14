@@ -66,17 +66,17 @@ Verzorger
 
 Rules:
 alone Leeuw
-role_occupant aap not_alone
-alone_with Verzorger attribute:dier
+for each area in all occupied by role:aap, count people in that area >= 2
+with Verzorger attribute:dier in same area exactly 1
 
 Clues:
-in_region Makaak bergen
-above Berggorilla Kameel
-in_column Berggorilla 3
-in_region Leeuw savanne
-not_next_to Makaak gras
-left_of Kameel Berggorilla
-within Berggorilla Kameel 2
+in Makaak area:bergen
+dir Berggorilla Kameel up
+in Berggorilla columns:3
+in Leeuw area:savanne
+not beside Makaak object:gras
+dir Kameel Berggorilla left
+dir Berggorilla Kameel manhattan <= 2
 
 # Booklet text for --docx (optional).
 Title:

@@ -78,19 +78,19 @@ Jeroen
 Wouter
 
 Rules:
-alone_with Wouter object:badjas | Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
+with Wouter object:badjas in same area exactly 1 | Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
 count people on object:badjas = 2 | Precies twee mensen dragen een badjas.
 count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
 count people on object:bril = 1 | Precies één persoon heeft een bril op.
 
 Clues:
-above object:sloffen object:bril 1 | De gast met sloffen staat precies één rij boven de gast met de bril.
-next_to Hanneke tapijt
-next_to Mieke bank
-in_region Jeroen speelgoedwinkel
-in_region Karin fietsenstalling
-not_next_to Ruud saunabank
-not_next_to Sven koffer
+dir people_on:object:sloffen people_on:object:bril up = 1 | De gast met sloffen staat precies één rij boven de gast met de bril.
+beside Hanneke object:tapijt
+beside Mieke object:bank
+in Jeroen area:speelgoedwinkel
+in Karin area:fietsenstalling
+not beside Ruud object:saunabank
+not beside Sven object:koffer
 
 Title:
 Murdoku: Het hotel

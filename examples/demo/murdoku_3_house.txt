@@ -42,12 +42,12 @@ Dirk
 Eva
 
 Clues:
-exactly 1 in_region Ada study ; in_region Ben hall
-left_of Ada Dirk
-in_region Eva garden
-on Ben carpet
-above Cleo Eva
-not_next_to Ben lamp
+exactly 1 in Ada area:study ; in Ben area:hall
+dir Ada Dirk left
+in Eva area:garden
+on Ben object:carpet
+dir Cleo Eva up
+not beside Ben object:lamp
 
 # Booklet text for --docx (optional).
 Title:

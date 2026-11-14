@@ -87,20 +87,20 @@ Tatsuya
 Sora
 
 Clues:
-busiest_area area:Tokyo
-quietest_area area:Okinawa area:Hiroshima
-next_to Kaori lantaarn
-next_to Renji neon
-next_to Mizuki torii
-same_region Mizuki Kaori
-next_to Goro uithangbord
-in_region Goro Hiroshima
-next_to Tatsuya sakura
-in_region Hideo Osaka
-left_of Hideo Yuki
-above Hideo Yuki
-left_of Nami Sora
-above Nami Sora
+most_populated area:Tokyo
+least_populated area:Okinawa area:Hiroshima
+on Kaori point_object:lantaarn
+on Renji point_object:neon
+on Mizuki point_object:torii
+same Mizuki Kaori
+on Goro point_object:uithangbord
+in Goro area:Hiroshima
+on Tatsuya point_object:sakura
+in Hideo area:Osaka
+dir Hideo Yuki left
+dir Hideo Yuki up
+dir Nami Sora left
+dir Nami Sora up
 
 Question:
 Wie heeft de jumpsuit aan?

@@ -118,17 +118,17 @@ Gonzalo
 Hugo
 
 Rules:
-min_role_in_tagged murderer crime_scene 1
+for each area in tag:crime_scene, count people in that area with role:murderer >= 1
 
 Clues:
-in_region Hugo El_Greco_room
-in_region Bernardo dinosaur_hall
-in_region Elena armoury
-above Carmen Elena
-left_of Bernardo Diego
-next_to Alba amphora
-above Bernardo Fernando
-next_to Diego sauropod
+in Hugo area:El_Greco_room
+in Bernardo area:dinosaur_hall
+in Elena area:armoury
+dir Carmen Elena up
+dir Bernardo Diego left
+beside Alba object:amphora
+dir Bernardo Fernando up
+beside Diego object:sauropod
 
 Title:
 Halloween at the Museum: The candlestick
