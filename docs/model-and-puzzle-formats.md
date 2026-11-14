@@ -447,8 +447,9 @@ intersection.
 `no_adjacent_occupied areas` applies to every pair of side-sharing areas in
 scope: at most one area in each pair may contain people. Any number of people
 may share one area; areas with no free cells are not occupied. `all` is the
-default scope; `in area:name` and `in tag:name` restrict the pairs to areas
-inside that scope.
+default scope; with `in area:name` or `in tag:name`, check every border that
+touches at least one scoped area, even when the neighboring area is outside
+the scope.
 
 Area-scoped occupancy has both area-wide and person-relative forms:
 
