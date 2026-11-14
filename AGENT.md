@@ -242,7 +242,9 @@ stays family-agnostic: palettes, scopes, rules and wording come from the bundle,
 so new family knowledge belongs in `web.py`, not in TypeScript. After changing
 `web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FILE]` (or a quoted glob) writes
 an editable Word booklet, puzzles first and then solutions, one page each, from
-`docx_export`; new Murdoku puzzles should carry the optional `Title:`, `Intro:`,
+`docx_export`; `--nosolution` skips the solve and writes the puzzle pages only,
+for proof-reading or for a puzzle the rules do not close. New Murdoku puzzles
+should carry the optional `Title:`, `Intro:`,
 `Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku
 skill) and never commit generated `.docx` files. After significant puzzle or
 `story.py` wording changes, do the skill's whole-booklet "Booklet review": read the
