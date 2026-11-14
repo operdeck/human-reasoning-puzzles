@@ -564,11 +564,14 @@ A relation with a selector on both sides, such as legacy
 existential over distinct matching people. Unlike the legacy compiler, a role
 selector is valid on either endpoint.
 
-Legacy `Words:` overrides for `doc.clue_next_to_door`,
-`doc.clue_next_to_point`, and `doc.clue_next_to_border` must be migrated to
-predicate-specific wording for `on`, `beside`, or `touches`. The `| wording`
-override syntax itself remains unchanged, and the final phrasebook must not
-keep aliases that blur those predicates.
+Legacy `Words:` keys `doc.clue_next_to_*` are rejected. Migrate object wording
+to `doc.clue_beside_object`, mark wording to `doc.clue_touches_mark`, and door,
+point-object, or window wording to `doc.clue_on_door`, `doc.clue_on_point`, or
+`doc.clue_on_window`. The old shared `doc.clue_next_to_border` key must be
+split according to the target. Generated wording keys `clue.alone_with*` are
+now `clue.with_same_area*`, and role-area rule wording keys `role_occupant.*`
+are now `rule.role_occupancy.*`; these are presentation keys, not clue syntax.
+The `| wording` override syntax itself remains unchanged.
 
 A window line may end with the wall it sits against, `top`, `bottom`, `left`
 or `right` (for example `raam: window r3c4 top`); the picture then draws a

@@ -15,7 +15,7 @@ chaolong: de cháo lòng
 thitkho: de thịt kho
 phalau: de phá lấu
 tunnel: de Vietcongtunnel
-clue.alone_with_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
+clue.with_same_area_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
 
 Regions:
 a: Hanoi #F4CBC3

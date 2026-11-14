@@ -79,9 +79,9 @@ Wouter
 
 Rules:
 with Wouter object:badjas in same area exactly 1 | Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet: iemand in een badjas.
-count people on object:badjas = 2 | Precies twee mensen dragen een badjas.
-count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
-count people on object:bril = 1 | Precies één persoon heeft een bril op.
+count people on object:badjas = 2
+count people on object:sloffen = 1
+count people on object:bril = 1
 
 Clues:
 dir people_on:object:sloffen people_on:object:bril up = 1 | De gast met sloffen staat precies één rij boven de gast met de bril.

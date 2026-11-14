@@ -68,9 +68,9 @@ Wouter
 
 Rules:
 with Wouter in same area exactly 1
-count people on object:badjas = 2 | Precies twee mensen dragen een badjas.
-count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
-count people on object:bril = 1 | Precies één persoon heeft een bril op.
+count people on object:badjas = 2
+count people on object:sloffen = 1
+count people on object:bril = 1
 
 Clues:
 dir Inge people_on:object:badjas up = 1 | Een gast met een badjas staat precies één rij onder Inge.

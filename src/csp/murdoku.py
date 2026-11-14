@@ -732,7 +732,7 @@ def _left_of(board: Board, columns: str | None = None) -> PairTest:
     if columns is not None:
         gap = int(columns)
         if gap < 1:
-            raise ValueError("left_of column gap must be at least 1")
+            raise ValueError("dir A B left = n requires n >= 1")
         return lambda a, b: a.col + gap == b.col
     return lambda a, b: a.col < b.col
 
@@ -2408,7 +2408,7 @@ def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
         if kind in ("role_in_tagged", "role_not_in_tagged"):
             board.tagged_region_ids([args[2]])
         if kind == "role_occupant" and args[1] not in ("alone", "not_alone"):
-            raise ValueError("role_occupant condition must be 'alone' or 'not_alone'")
+            raise ValueError("role occupancy requires the condition alone or not alone")
         if kind == "min_role_in_tagged":
             board.tagged_region_ids([args[1]])
             try:
@@ -2425,9 +2425,9 @@ def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
             try:
                 gap = int(args[3])
             except ValueError as exc:
-                raise ValueError(f"role_below needs an optional positive row gap: {args}") from exc
+                raise ValueError(f"dir P role:name down needs a positive row gap: {args}") from exc
             if gap < 1:
-                raise ValueError("role_below row gap must be at least 1")
+                raise ValueError("dir P role:name down gap must be at least 1")
         out.append(RoleCondition(label, kind, tuple(args), number))
     for role in board.roles:
         if role.eligible_people is not None:
@@ -3999,7 +3999,7 @@ def _compile_role_conditions(
                     family="role position",
                 )
             else:
-                raise ValueError(f"role_below {person} has no other people to compare")
+                raise ValueError(f"dir {person} role:{role} down has no other people to compare")
         elif kind == "sole_role_companion":
             person, role = args
             companions: list[int] = []

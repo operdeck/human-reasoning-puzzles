@@ -2136,44 +2136,42 @@ def test_only_object_counts_get_a_dashed_scope_ring():
     ("clue", "note"),
     [
         (
-            "next_to Ada tree",
-            "Next to an object in a square means sharing a side with one of its squares in the "
+            "beside Ada object:tree",
+            "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "not_next_to Ada tree",
-            "Next to an object in a square means sharing a side with one of its squares in the "
+            "not beside Ada object:tree",
+            "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "role_next_to Ada navigator tree",
-            "Next to an object in a square means sharing a side with one of its squares in the "
+            "if has Ada role:navigator then beside Ada object:tree",
+            "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "exactly 1 next_to Ada tree ; in_region Ben Bravo",
-            "Next to an object in a square means sharing a side with one of its squares in the "
+            "exactly 1 beside Ada object:tree ; in Ben area:Bravo",
+            "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "next_to Ada fountain",
-            "A point object is next to every square it touches, even if the square lies in "
-            "another area.",
+            "on Ada point_object:fountain",
+            "On a point object means standing on any square it touches, even in another area.",
         ),
         (
-            "next_to Ada archway",
-            "A door is next to both squares it touches, even across an area boundary.",
+            "on Ada edge_item:archway",
+            "On a door means standing on either square it touches, even across an area boundary.",
         ),
-        ("next_to Ada window", "A window is next to its one inside square."),
-        ("at Ada archway", "At a door or window means standing on a square it touches."),
+        ("on Ada edge_item:window", "On a window means standing on its one inside square."),
         (
-            "next_to Ada mark:meadow",
-            "A marked square is next to a square that shares a side with it, even across an "
-            "area boundary.",
+            "touches Ada mark:meadow",
+            "A square touches a marked square when they share a side, even across an area "
+            "boundary; diagonals do not count.",
         ),
     ],
 )
-def test_player_rules_explain_next_to_targets(clue, note):
+def test_player_rules_explain_location_predicate_targets(clue, note):
     text = f"""Size: 2
 Regions:
 a: Alpha
@@ -2202,15 +2200,52 @@ Clues:
     notes = {
         csp.story.phrase(text, key)
         for key in (
-            "doc.clue_next_to_object",
-            "doc.clue_next_to_door",
-            "doc.clue_next_to_point",
-            "doc.clue_next_to_window",
-            "doc.clue_next_to_mark",
-            "doc.clue_at",
+            "doc.clue_beside_object",
+            "doc.clue_on_door",
+            "doc.clue_on_point",
+            "doc.clue_on_window",
+            "doc.clue_touches_mark",
         )
     }
     assert [rule for rule in rules if rule in notes] == [note]
+
+
+@pytest.mark.parametrize(
+    ("key", "clue"),
+    [
+        ("doc.clue_beside_object", "beside Ada object:tree"),
+        ("doc.clue_touches_mark", "touches Ada mark:meadow"),
+        ("doc.clue_on_door", "on Ada edge_item:archway"),
+        ("doc.clue_on_point", "on Ada point_object:fountain"),
+        ("doc.clue_on_window", "on Ada edge_item:window"),
+    ],
+)
+def test_predicate_specific_wording_overrides_are_used(key, clue):
+    text = f"""Size: 2
+Regions:
+a: Alpha
+b: Bravo
+Grid:
+a b
+a b
+Objects:
+tree: blocking r2c1
+EdgeItems:
+archway: door r1c1 r1c2
+window: window r2c2
+PointObjects:
+fountain: r1.5c1.5
+Marks:
+meadow: r2c1
+People:
+Ada
+Ben
+Words:
+{key}: Custom semantic note.
+Clues:
+{clue}
+"""
+    assert murdoku_rules(text).count("Custom semantic note.") == 1
 
 
 @pytest.mark.parametrize(
@@ -2218,12 +2253,12 @@ Clues:
     [
         (
             "en",
-            "A square can be next to a point in another area. "
+            "A square can be on a point in another area. "
             "The distance is a mystery; take your first steps into the garden.",
         ),
         (
             "nl",
-            "Een vakje kan naast een punt in een ander gebied liggen. "
+            "Een vakje kan op een punt in een ander gebied liggen. "
             "De afstand is een raadsel; zet je eerste stap in de tuin.",
         ),
     ],
@@ -2246,13 +2281,13 @@ People:
 Ada
 Ben
 Clues:
-next_to Ada fountain
-next_to Ben gate
-within Ada Ben 1
+on Ada point_object:fountain
+on Ben edge_item:gate
+dir Ada Ben manhattan <= 1
 """
     notes = [
-        csp.story.phrase(text, "doc.clue_next_to_door"),
-        csp.story.phrase(text, "doc.clue_next_to_point"),
+        csp.story.phrase(text, "doc.clue_on_door"),
+        csp.story.phrase(text, "doc.clue_on_point"),
         csp.story.phrase(text, "doc.clue_distance"),
     ]
     rules = murdoku_rules(text)
@@ -2266,37 +2301,55 @@ within Ada Ben 1
 def test_point_intro_does_not_repeat_the_note_or_mention_a_door():
     text = example("murdoku_2_point_objects.txt").read_text()
     rules = murdoku_rules(text)
-    point = csp.story.phrase(text, "doc.clue_next_to_point")
+    point = csp.story.phrase(text, "doc.clue_on_point")
     assert sum(point in rule for rule in rules) == 1
-    assert csp.story.phrase(text, "doc.clue_next_to_door") not in rules
+    assert csp.story.phrase(text, "doc.clue_on_door") not in rules
 
     text = text.replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
-    text = text.replace("Clues:\n", "Clues:\nnext_to Ada gate\n")
+    text = text.replace("Clues:\n", "Clues:\non Ada edge_item:gate\n")
     rules = murdoku_rules(text)
     assert sum(point in rule for rule in rules) == 1
-    assert csp.story.phrase(text, "doc.clue_next_to_door") in rules
+    assert csp.story.phrase(text, "doc.clue_on_door") in rules
 
 
-def test_shared_boundary_wording_remains_a_fallback():
+@pytest.mark.parametrize(
+    ("legacy_key", "replacement"),
+    [
+        ("doc.clue_next_to_object", "doc.clue_beside_object"),
+        (
+            "doc.clue_next_to_border",
+            "doc.clue_on_door or doc.clue_on_point",
+        ),
+        ("doc.clue_next_to_door", "doc.clue_on_door"),
+        ("doc.clue_next_to_point", "doc.clue_on_point"),
+        ("doc.clue_next_to_window", "doc.clue_on_window"),
+        ("doc.clue_next_to_mark", "doc.clue_touches_mark"),
+        ("doc.clue_next_to_unknown", "doc.clue_on_<target>"),
+        (
+            "doc.clue_at",
+            "doc.clue_on_door or doc.clue_on_window",
+        ),
+        ("clue.alone_with", "clue.with_same_area"),
+        ("clue.alone_with_anyone", "clue.with_same_area_anyone"),
+        ("clue.alone_with_n", "clue.with_same_area_n"),
+        (
+            "clue.alone_with_anyone_n",
+            "clue.with_same_area_anyone_n",
+        ),
+        ("role_occupant.alone", "rule.role_occupancy.alone"),
+        ("role_occupant.not_alone", "rule.role_occupancy.not_alone"),
+    ],
+)
+def test_legacy_phrasebook_word_keys_are_rejected(legacy_key, replacement):
     text = (
         example("murdoku_2_point_objects.txt")
         .read_text()
-        .replace("Words:\n", "Words:\ndoc.clue_next_to_border: Custom boundary rule.\n")
-        .replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
-        .replace("Clues:\n", "Clues:\nnext_to Ada gate\n")
+        .replace("Words:\n", f"Words:\n{legacy_key}: Custom wording.\n")
     )
-    rules = murdoku_rules(text)
-    assert rules.count("Custom boundary rule.") == 1
-    assert csp.story.phrase(text, "doc.clue_next_to_door") not in rules
-
-    text = text.replace(
-        "doc.clue_next_to_border: Custom boundary rule.",
-        "doc.clue_next_to_border: Custom boundary rule.\n"
-        "doc.clue_next_to_point: Custom point rule.",
-    )
-    rules = murdoku_rules(text)
-    assert rules.count("Custom boundary rule.") == 1
-    assert rules.count("Custom point rule.") == 1
+    with pytest.raises(ValueError) as error:
+        murdoku_rules(text)
+    assert legacy_key in str(error.value)
+    assert replacement in str(error.value)
 
 
 def test_dutch_player_rules_explain_object_adjacency():

@@ -32,7 +32,7 @@ koffer: de koffer
 role_has: {who} is de {role}
 role_not: {who} is niet de {role}
 min_role_in_tagged_one: de {role} was {area}
-role_occupant.not_alone: de {role} was niet alleen
+rule.role_occupancy.not_alone: de {role} was niet alleen
 role_area_in: {who} is de {role} en moet {area} zijn
 
 Regions:

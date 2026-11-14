@@ -67,6 +67,22 @@ from .murdoku import (
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_presentation, read_sections
 
+LEGACY_WORD_KEYS = {
+    "doc.clue_next_to_object": "doc.clue_beside_object",
+    "doc.clue_next_to_border": "doc.clue_on_door or doc.clue_on_point, depending on the target",
+    "doc.clue_next_to_door": "doc.clue_on_door",
+    "doc.clue_next_to_point": "doc.clue_on_point",
+    "doc.clue_next_to_window": "doc.clue_on_window",
+    "doc.clue_next_to_mark": "doc.clue_touches_mark",
+    "doc.clue_at": "doc.clue_on_door or doc.clue_on_window, depending on the target",
+    "clue.alone_with": "clue.with_same_area",
+    "clue.alone_with_anyone": "clue.with_same_area_anyone",
+    "clue.alone_with_n": "clue.with_same_area_n",
+    "clue.alone_with_anyone_n": "clue.with_same_area_anyone_n",
+    "role_occupant.alone": "rule.role_occupancy.alone",
+    "role_occupant.not_alone": "rule.role_occupancy.not_alone",
+}
+
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
         "square": "r{row}c{col}",
@@ -106,28 +122,25 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.key_door": "Door",
         "doc.key_window": "Window",
         "doc.key_point": "Point",
-        "doc.clue_next_to_object": (
-            "Next to an object in a square means sharing a side with one of its squares in the "
+        "doc.clue_beside_object": (
+            "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count."
         ),
-        "doc.clue_next_to_border": (
-            "A door or point object is next to every square it touches, even across an area "
-            "boundary."
+        "doc.clue_on_door": (
+            "On a door means standing on either square it touches, even across an area boundary."
         ),
-        "doc.clue_next_to_door": (
-            "A door is next to both squares it touches, even across an area boundary."
+        "doc.clue_on_point": (
+            "On a point object means standing on any square it touches, even in another area."
         ),
-        "doc.clue_next_to_point": (
-            "A point object is next to every square it touches, even if the square lies in "
-            "another area."
+        "doc.clue_on_window": "On a window means standing on its one inside square.",
+        "doc.clue_touches_mark": (
+            "A square touches a marked square when they share a side, even across an area "
+            "boundary; diagonals do not count."
         ),
-        "doc.clue_next_to_window": "A window is next to its one inside square.",
-        "doc.clue_next_to_mark": (
-            "A marked square is next to a square that shares a side with it, even across an "
-            "area boundary."
-        ),
-        "doc.clue_at": "At a door or window means standing on a square it touches.",
         "doc.clue_distance": "Distance counts steps across sides, not diagonals.",
+        "doc.clue_euclidean_distance": (
+            "As-the-crow-flies distance is measured in a straight line between square centers."
+        ),
         "doc.clue_neighboring_areas": (
             "Areas are neighbors when they share a side, not just a corner."
         ),
@@ -265,14 +278,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_attribute": "{a} does not have the {attribute} attribute",
         "clue.unique_attribute": "exactly one of {people} has the {attribute} attribute",
         "clue.adjacent_regions": "{a} and {b} are in neighboring areas",
-        "clue.alone_with": (
-            "{a} shares a region with exactly one other person, and that is {target}"
+        "clue.with_same_area": (
+            "{a} shares an area with exactly one other person, and that is {target}"
         ),
-        "clue.alone_with_anyone": "{a} shares a region with exactly one other person",
-        "clue.alone_with_n": (
-            "{a} shares a region with exactly {n} others, and they are all {target}"
+        "clue.with_same_area_anyone": "{a} shares an area with exactly one other person",
+        "clue.with_same_area_n": (
+            "{a} shares an area with exactly {n} others, and they are all {target}"
         ),
-        "clue.alone_with_anyone_n": "{a} shares a region with exactly {n} others",
+        "clue.with_same_area_anyone_n": "{a} shares an area with exactly {n} others",
         "clue.same_region": "{a} and {b} are in the same area",
         "clue.different_region": "{a} and {b} are in different areas",
         "clue.apart": "{a} and {b} are in areas that do not touch",
@@ -435,8 +448,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_below": "{who} is below a {role} holder",
         "role_below_n": "{who} is {n} rows below a {role} holder",
         "sole_role_companion": "{possessive} sole region companion has role {role}",
-        "role_occupant.alone": "every {role} holder is alone in their area",
-        "role_occupant.not_alone": "no {role} holder is alone in their area",
+        "rule.role_occupancy.alone": "every {role} holder is alone in their area",
+        "rule.role_occupancy.not_alone": "no {role} holder is alone in their area",
         "min_role_in_tagged_one": "at least one {role} holder is {area}",
         "min_role_in_tagged_one_unique": "the {role} is {area}",
         "role_area_in": "{who} has role {role} and must be {area}",
@@ -523,28 +536,29 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.key_door": "Deur",
         "doc.key_window": "Raam",
         "doc.key_point": "Punt",
-        "doc.clue_next_to_object": (
+        "doc.clue_beside_object": (
             "Naast een voorwerp in een vakje betekent een zijde delen met een vakje van het "
             "voorwerp in hetzelfde gebied; schuin telt niet."
         ),
-        "doc.clue_next_to_border": (
-            "Een deur of puntobject is naast elk vakje dat het raakt, ook over een "
-            "gebiedsgrens heen."
+        "doc.clue_on_door": (
+            "Op een deur betekent dat je op een van de twee vakjes staat die eraan raken, "
+            "ook over een gebiedsgrens heen."
         ),
-        "doc.clue_next_to_door": (
-            "Een deur is naast beide vakjes die eraan raken, ook over een gebiedsgrens heen."
+        "doc.clue_on_point": (
+            "Op een puntobject betekent dat je op een vakje staat dat het raakt, ook in een "
+            "ander gebied."
         ),
-        "doc.clue_next_to_point": (
-            "Een puntobject is naast elk vakje dat het raakt, ook als het vakje in een ander "
-            "gebied ligt."
+        "doc.clue_on_window": (
+            "Op een raam betekent dat je op het ene vakje aan de binnenkant staat."
         ),
-        "doc.clue_next_to_window": "Een raam is naast het ene vakje aan de binnenkant.",
-        "doc.clue_next_to_mark": (
-            "Een gemarkeerd vakje is naast elk vakje dat er een zijde mee deelt, ook over "
-            "een gebiedsgrens heen."
+        "doc.clue_touches_mark": (
+            "Een vakje raakt een gemarkeerd vakje als het er een zijde mee deelt, ook over "
+            "een gebiedsgrens heen; schuin telt niet."
         ),
-        "doc.clue_at": "Bij een deur of raam betekent op een vakje staan dat eraan raakt.",
         "doc.clue_distance": "Afstand telt stappen over zijden, niet schuin.",
+        "doc.clue_euclidean_distance": (
+            "De afstand in vogelvlucht is de rechte lijn tussen de middelpunten van de vakjes."
+        ),
         "doc.clue_neighboring_areas": (
             "Gebieden grenzen aan elkaar als ze een zijde delen, niet alleen een hoek."
         ),
@@ -691,7 +705,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_attribute": "{a} heeft het kenmerk {attribute} niet",
         "clue.unique_attribute": "precies één van {people} heeft het kenmerk {attribute}",
         "clue.adjacent_regions": "{a} en {b} zijn in aangrenzende gebieden",
-        "clue.alone_with": "{a} deelt een gebied met precies één ander persoon, en dat is {target}",
+        "clue.with_same_area": (
+            "{a} deelt een gebied met precies één ander persoon, en dat is {target}"
+        ),
         "clue.same_region": "{a} en {b} zijn in hetzelfde gebied",
         "clue.different_region": "{a} en {b} zijn in verschillende gebieden",
         "clue.apart": "{a} en {b} zijn in gebieden die niet aan elkaar grenzen",
@@ -709,11 +725,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.quietest_area": "het gebied met de minste mensen is {areas}",
         "clue.busiest_area_tie": "de gebieden met de meeste mensen zijn {areas}",
         "clue.quietest_area_tie": "de gebieden met de minste mensen zijn {areas}",
-        "clue.alone_with_anyone": "{a} deelt een gebied met precies één ander persoon",
-        "clue.alone_with_n": (
+        "clue.with_same_area_anyone": "{a} deelt een gebied met precies één ander persoon",
+        "clue.with_same_area_n": (
             "{a} deelt een gebied met precies {n} anderen, en dat zijn allemaal {target}"
         ),
-        "clue.alone_with_anyone_n": "{a} deelt een gebied met precies {n} anderen",
+        "clue.with_same_area_anyone_n": "{a} deelt een gebied met precies {n} anderen",
         "count_reason": "voor {name} zijn de toegestane aantallen {counts}",
         "count.mark_occupant.alone": (
             "wie op een vakje met markering {mark} {where} staat, moet alleen zijn"
@@ -866,8 +882,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_below": "{who} staat onder een {role}-drager",
         "role_below_n": "{who} staat {n} rijen onder een {role}-drager",
         "sole_role_companion": "{possessive} enige gebiedsgenoot heeft de rol {role}",
-        "role_occupant.alone": "elke {role}-drager is alleen in zijn gebied",
-        "role_occupant.not_alone": "geen enkele {role}-drager is alleen in zijn gebied",
+        "rule.role_occupancy.alone": "elke {role}-drager is alleen in zijn gebied",
+        "rule.role_occupancy.not_alone": "geen enkele {role}-drager is alleen in zijn gebied",
         "min_role_in_tagged_one": "minstens één {role}-drager is {area}",
         "min_role_in_tagged_one_unique": "de {role} is {area}",
         "role_area_in": "{who} heeft de rol {role} en moet {area} zijn",
@@ -1423,10 +1439,19 @@ class Wording:
             name, _, phrase = line.partition(":")
             if not phrase.strip():
                 raise ValueError(f"Words: {line!r} is not like 'vuurtje: het vuurtje'")
-            if name.strip() in PHRASES[language]:
-                phrases[name.strip()] = phrase.strip()
+            key = name.strip()
+            replacement = LEGACY_WORD_KEYS.get(key)
+            if replacement is None and key.startswith("doc.clue_next_to_"):
+                replacement = (
+                    "predicate-specific keys such as doc.clue_beside_object, "
+                    "doc.clue_touches_mark, or doc.clue_on_<target>"
+                )
+            if replacement is not None:
+                raise ValueError(f"Words: key {key!r} is legacy; use {replacement}")
+            if key in PHRASES[language]:
+                phrases[key] = phrase.strip()
             else:
-                words[name.strip()] = phrase.strip()
+                words[key] = phrase.strip()
         rules = {
             " ".join(rule.split()): wording.strip().rstrip(".")
             for line in section.get("Rules", [])
@@ -3497,7 +3522,7 @@ class Story:
                 role=role(args[1]),
                 possessive=self._pronoun(args[0], "possessive"),
             )
-        return self.say(f"role_occupant.{args[1]}", role=role(args[0]))
+        return self.say(f"rule.role_occupancy.{args[1]}", role=role(args[0]))
 
     def _role_target_name(self, name: str) -> str:
         if name in ("blocking", "standable"):
@@ -3834,11 +3859,13 @@ class Story:
             if n != 1:
                 count = self.say.number(n)
                 if anyone:
-                    return self.say("clue.alone_with_anyone_n", a=condition.subject, n=count)
-                return self.say("clue.alone_with_n", a=condition.subject, n=count, target=target)
+                    return self.say("clue.with_same_area_anyone_n", a=condition.subject, n=count)
+                return self.say(
+                    "clue.with_same_area_n", a=condition.subject, n=count, target=target
+                )
             if anyone:
-                return self.say("clue.alone_with_anyone", a=condition.subject)
-            return self.say("clue.alone_with", a=condition.subject, target=target)
+                return self.say("clue.with_same_area_anyone", a=condition.subject)
+            return self.say("clue.with_same_area", a=condition.subject, target=target)
         subject = (
             condition.subject
             if condition.subject_selector is None
@@ -4200,38 +4227,44 @@ def murdoku_rules(text: str) -> list[str]:
     entries = [*board.rules, *clues]
     entries += [part for kind, args in entries if kind == COUNTING for part in counted(args)[1]]
     kinds = {kind for kind, _ in entries}
-    targets: set[str] = set()
+    targets_by_predicate: dict[str, set[str]] = {
+        "beside": set(),
+        "touches": set(),
+        "on": set(),
+    }
     for kind, args in entries:
-        if kind in ("next_to", "not_next_to"):
-            targets.update(target_name(token) for token in args[1:])
-        elif kind == "role_next_to":
-            targets.update(target_name(token) for token in args[2:])
-    marks = targets & board.mark_names
-    edges = (targets - marks) & board.edge_item_names
-    points = (targets - marks - edges) & board.point_object_names
-    objects = targets - marks - edges - points
+        predicate = kind.removeprefix("not_")
+        if predicate == "only":
+            predicate = "on"
+        if predicate in targets_by_predicate:
+            targets_by_predicate[predicate].update(token.rsplit(":", 1)[-1] for token in args[1:])
+    for condition in conditional_conditions(board, clues):
+        if condition.predicate in targets_by_predicate:
+            targets_by_predicate[condition.predicate].add(
+                condition.selector.name.rsplit(":", 1)[-1]
+            )
+    beside_targets = targets_by_predicate["beside"]
+    touches_targets = targets_by_predicate["touches"]
+    on_targets = targets_by_predicate["on"]
     clue_notes = []
     say = Wording.read(text)
     # Intro keywords may describe a different target or omit a necessary detail.
-    if objects & (board.object_names | {"blocking", "standable"}):
-        clue_notes.append(phrase(text, "doc.clue_next_to_object"))
-    for kind, used in (
-        ("door", any(board.edge_item_kind(name) == "door" for name in edges)),
-        ("point", bool(points)),
-    ):
-        if used:
-            key = f"doc.clue_next_to_{kind}"
-            if key not in say.phrases and "doc.clue_next_to_border" in say.phrases:
-                key = "doc.clue_next_to_border"
-            clue_notes.append(say(key))
-    if any(board.edge_item_kind(name) == "window" for name in edges):
-        clue_notes.append(phrase(text, "doc.clue_next_to_window"))
-    if marks:
-        clue_notes.append(phrase(text, "doc.clue_next_to_mark"))
-    if "at" in kinds:
-        clue_notes.append(phrase(text, "doc.clue_at"))
+    if beside_targets & (board.object_names | {"blocking", "standable"}):
+        clue_notes.append(say("doc.clue_beside_object"))
+    if touches_targets & board.mark_names:
+        clue_notes.append(say("doc.clue_touches_mark"))
+    if any(board.edge_item_kind(name) == "door" for name in on_targets & board.edge_item_names):
+        clue_notes.append(say("doc.clue_on_door"))
+    if on_targets & board.point_object_names:
+        clue_notes.append(say("doc.clue_on_point"))
+    if any(board.edge_item_kind(name) == "window" for name in on_targets & board.edge_item_names):
+        clue_notes.append(say("doc.clue_on_window"))
     if kinds & {"within", "at_least", "furthest"}:
         clue_notes.append(phrase(text, "doc.clue_distance"))
+    if any(kind == "dir" and len(args) > 2 and args[2] == "manhattan" for kind, args in entries):
+        clue_notes.append(say("doc.clue_distance"))
+    if any(kind == "dir" and len(args) > 2 and args[2] == "euclidean" for kind, args in entries):
+        clue_notes.append(say("doc.clue_euclidean_distance"))
     if "dir" in kinds and any(
         kind == "dir" and len(args) > 2 and args[2] == "areas" for kind, args in entries
     ):

@@ -3,7 +3,7 @@
 # Gerechten als personages, dagen van de week als gebieden, bloemen op de
 # hoekpunten van de vakjes (PointObjects:). Hoogstens één zetmeelproduct per dag
 # (rol met different_regions). Vla heeft geen eigen aanwijzingen: hij deelt zijn
-# dag met precies twee andere gerechten (alone_with Vla 2) en wordt als laatste gevonden.
+# dag met precies twee andere gerechten (with Vla in same area exactly 2) en wordt als laatste gevonden.
 #
 # Oplossing: Aardappel r5c2, Rijst r6c7, Pasta r1c3, Noedels r3c5, Kip r2c1, Spinazie r4c6, Vla r7c4.
 #

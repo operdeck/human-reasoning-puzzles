@@ -61,7 +61,7 @@ beside Tim object:klimwand
 in Jos area:keukenwinkel
 dir Anna Jos areas = 0
 in Pip area:moestuin
-dir Otto Tjitske up = 1 | Otto zit precies één rij boven Tjitske.
+dir Otto Tjitske up = 1
 beside Tjitske object:vuurtje
 dir Tjitske Otto manhattan <= 4 | Tjitske zit hooguit vier vakjes bij Otto vandaan.
 dir Jos Otto left

@@ -474,7 +474,7 @@ no weak links yet.
   Helmholtzstraat); puzzle 1's worked solution listed a cross-region square
   for Tjitske and was corrected too. The answers did not change.
 - "Only Luna may stand in the water" is a board rule, written out as one
-  `outside` line per other person in the `Rules:` section of
+  `not in <person> area:water` line per other person in the `Rules:` section of
   `prrrdoku3.txt`, so clue numbers still match the document.
 - `--explain` follows the solver's own route, shortened. Where the solver
   still needs `what_if` (Prrrdoku 3), the story says "X kan niet op ...:
