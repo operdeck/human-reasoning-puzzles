@@ -163,7 +163,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
         for col in range(size - 2):
             cells = [(row, col + offset) for offset in range(3)]
             model.constrain(
-                f"no three equal near {cell_name(cells[0])}",
+                f"no three equal in {cell_name(cells[0])}\u2013{cell_name(cells[-1])}",
                 Kind.COUNT,
                 [model.literal(cell_name(cell), True) for cell in cells],
                 allowed_counts=(1, 2),
@@ -173,7 +173,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
         for row in range(size - 2):
             cells = [(row + offset, col) for offset in range(3)]
             model.constrain(
-                f"no three equal near {cell_name(cells[0])}",
+                f"no three equal in {cell_name(cells[0])}\u2013{cell_name(cells[-1])}",
                 Kind.COUNT,
                 [model.literal(cell_name(cell), True) for cell in cells],
                 allowed_counts=(1, 2),

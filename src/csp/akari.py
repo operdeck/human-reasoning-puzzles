@@ -119,7 +119,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
         )
     for segment in puzzle.segments:
         model.constrain(
-            f"at most one bulb in sight line from {cell_name(segment[0])}",
+            f"at most one bulb in {cell_name(segment[0])}\u2013{cell_name(segment[-1])}",
             Kind.AT_MOST_ONE,
             [model.literal(cell_name(cell), True) for cell in segment],
             family=SIGHT,
