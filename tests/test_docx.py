@@ -84,6 +84,45 @@ def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
     assert text.index(heading) < text.index("Oplossing")
 
 
+def test_nosolution_booklet_skips_the_solution_page(tmp_path):
+    source = example("murdoku_2_point_objects.txt")
+    solved = tmp_path / "solved.docx"
+    plain = tmp_path / "plain.docx"
+    assert main([str(source), "--docx", str(solved)]) == 0
+    assert main([str(source), "--docx", str(plain), "--nosolution"]) == 0
+    solved_text, plain_text = _text(solved), _text(plain)
+    assert "Solution" in solved_text
+    assert "Solution" not in plain_text
+    assert "Mice in the garden" in plain_text
+    assert "Where does everyone stand?" in plain_text
+    images = [n for n in zipfile.ZipFile(plain).namelist() if n.startswith("word/media/")]
+    solved_images = [n for n in zipfile.ZipFile(solved).namelist() if n.startswith("word/media/")]
+    assert len(images) == len(solved_images) - 1  # the solved board is the one left out
+
+
+def test_nosolution_needs_a_booklet(capsys):
+    with pytest.raises(SystemExit):
+        main([str(example("murdoku_2_point_objects.txt")), "--nosolution"])
+    assert "--nosolution needs --docx or --pdf" in capsys.readouterr().err
+
+
+def test_sudoku_nosolution_skips_solving_and_narration(tmp_path, monkeypatch):
+    from csp import cli
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("a puzzle-only booklet must not solve or narrate the solution")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    monkeypatch.setattr(cli.sudoku_story, "explain", unexpected)
+    out = tmp_path / "sudoku.docx"
+    source = example("sudoku_17_9x9_pointing.txt")
+    assert main([str(source), "--docx", str(out), "--nosolution"]) == 0
+    text = _text(out)
+    assert "Fill the grid" in text
+    assert "Solution" not in text
+    assert len(Document(str(out)).inline_shapes) == 1
+
+
 def test_clue_text_override_wins():
     source = (example("prrrdoku1.txt")).read_text()
     assert load_presentation(source).clue_text[5].startswith("Otto zit")
