@@ -352,8 +352,9 @@ including within one area. Neither adjacency predicate includes diagonals.
 Because an object's selected cells form one target set, a person on one cell
 of a multi-cell object can be beside another cell of that object. `not`
 negates one predicate, as in `not in Ada area:river` or
-`not touches Ada mark:water`. `same Ada Ben` means both occupy the same
-logical area; `not same` negates it. `only Ada on object:bench` means Ada
+`not touches Ada mark:water`. Use `dir Ada Ben areas = 0` for the same
+logical area and `dir Ada Ben areas >= 1` for different areas.
+`only Ada on object:bench` means Ada
 occupies one of the selected cells and no other person occupies any of them.
 
 Pair relations use `dir A B <mode> [comparison]`. Person selectors
@@ -403,6 +404,8 @@ dir Ada Ben cols <= 2
 dir Ada Ben manhattan >= 4
 dir Ada Ben euclidean = 5
 dir Ada Ben king >= 2
+dir Ada Ben areas = 0
+dir Ada Ben areas >= 1
 dir Ada Ben areas = 1
 dir role:thief Ada up
 dir people_on:object:robe people_on:object:slippers up = 1
@@ -526,7 +529,7 @@ legacy word had different semantics for different target kinds.
 | `knight_from P target...` | `dir P target knight`. |
 | `in_corner P`, `in_area_corner P area...` | `in P corner:board`, `in P corner:area:name`. |
 | `in_row` / `not_in_row`, `in_column` / `not_in_column P n` | `in P rows:n` / `not in P rows:n`, `in P columns:n` / `not in P columns:n`. |
-| `same_region`, `different_region A B` | `same A B`, `not same A B`. |
+| `same_region`, `different_region A B` | `dir A B areas = 0`, `dir A B areas >= 1`. |
 | `adjacent_regions`, `apart A B` | `dir A B areas = 1`, `dir A B areas >= 2`. |
 | `left_of`, `above A B [n]` | `dir A B left [= n]`, `dir A B up [= n]`. |
 | `within`, `at_least A B n` | `dir A B manhattan <= n`, `dir A B manhattan >= n`. |

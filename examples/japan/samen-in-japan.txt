@@ -64,7 +64,7 @@ most_populated area:Tokyo
 least_populated area:Okinawa
 count people in area:Osaka = 2
 not in Aiko area:Osaka
-same Benjiro Chiaki
+dir Benjiro Chiaki areas = 0
 dir Benjiro Daiki left
 not beside Benjiro object:tempel
 dir Daiki Chiaki left

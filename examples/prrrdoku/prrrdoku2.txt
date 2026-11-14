@@ -65,7 +65,7 @@ Luna
 Clues:
 beside Tim object:klimwand
 dir Anna Mao up = 5
-same Anna Jos
+dir Anna Jos areas = 0
 in Pip area:moestuin
 beside Otto object:bank
 beside Tjitske object:vuurtje

@@ -74,7 +74,7 @@ count people on object:bril = 1 | Precies één persoon heeft een bril op.
 
 Clues:
 dir Inge people_on:object:badjas up = 1 | Een gast met een badjas staat precies één rij onder Inge.
-same Bas Esther
+dir Bas Esther areas = 0
 in Kees area:logeerkamer
 not beside Inge object:badjas
 on Marloes object:bril | Marloes heeft alleen een bril op.

@@ -330,7 +330,6 @@ def parse_clue_line(line: str) -> Clue:
             "on",
             "beside",
             "touches",
-            "same",
             "dir",
             "has",
         ):
@@ -356,7 +355,6 @@ def parse_clue_line(line: str) -> Clue:
         "only",
         "beside",
         "touches",
-        "same",
         "dir",
         "count",
         "alone",
@@ -371,7 +369,6 @@ def parse_clue_line(line: str) -> Clue:
         "not_on",
         "not_beside",
         "not_touches",
-        "not_same",
         "not_dir",
         "has_role",
         "not_role",

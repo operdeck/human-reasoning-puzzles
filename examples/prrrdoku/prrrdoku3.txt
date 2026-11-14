@@ -115,7 +115,7 @@ on Jos object:bankje
 beside Anna object:koffer
 in Luna area:woonboot area:water
 beside Tjitske object:vuurtje | Tjitske zit nog steeds naast het vuurtje.
-same Otto Pip
+dir Otto Pip areas = 0
 dir Anna Tim areas >= 2
 dir Otto Luna up
 dir Luna Jos up

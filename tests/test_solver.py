@@ -1530,8 +1530,8 @@ People:
 A
 B
 Clues:
-in_tagged A islands
-same_region A B
+in A tag:islands
+dir A B areas = 0
 """
     board, _ = load_board(text)
     solutions = bruteforce.solutions(text, limit=3)

@@ -709,10 +709,6 @@ def _in_area_corner(board: Board, *areas: str) -> SquareTest:
     return corners.__contains__
 
 
-def _same_region(board: Board) -> PairTest:
-    return lambda a, b: board.region_of(a) == board.region_of(b)
-
-
 def _different_region(board: Board) -> PairTest:
     return lambda a, b: board.region_of(a) != board.region_of(b)
 
@@ -783,8 +779,6 @@ FILTERS: dict[str, Callable[..., SquareTest]] = {
 
 RELATIONS: dict[str, Callable[..., PairTest]] = {
     # No "two people side by side": with one person per row and column it never holds.
-    "same_region": _same_region,  # same_region <a> <b>
-    "different_region": _different_region,  # different_region <a> <b>
     "adjacent_regions": _adjacent_regions,  # adjacent_regions <a> <b>
     "apart": _apart,  # apart <a> <b>: different regions that do not border
     "left_of": _left_of,  # left_of <a> <b> [n]: somewhere left, or exactly n columns left
@@ -1785,7 +1779,7 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
             kind == "if"
             or kind == "for_each_area"
             or kind in ROLE_CONDITION_KINDS
-            or kind in {"dir", "not_dir", "same", "not_same"}
+            or kind in {"dir", "not_dir"}
             or kind == "no_adjacent_occupied"
             or _is_quantified_target(kind, args)
         ):
@@ -1803,7 +1797,7 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
             kind == "if"
             or kind == "for_each_area"
             or kind in ROLE_CONDITION_KINDS
-            or kind in {"dir", "not_dir", "same", "not_same"}
+            or kind in {"dir", "not_dir"}
             or kind == "no_adjacent_occupied"
             or _is_quantified_target(kind, args)
         ):
@@ -2274,7 +2268,7 @@ def _direction_test(
 def directional_conditions(
     board: Board, clues: Iterable[Clue], *, include_rules: bool = True
 ) -> list[DirectionCondition]:
-    """Parse and validate canonical `dir` and `same` predicates."""
+    """Parse and validate canonical `dir` predicates."""
     rules: list[tuple[str, list[str], int | None]] = (
         [(kind, args, None) for kind, args in board.rules] if include_rules else []
     )
@@ -2287,21 +2281,7 @@ def directional_conditions(
             kind = "dir"
         comparison: str | None = None
         distance: int | None = None
-        if kind in ("same", "not_same"):
-            if len(args) != 2:
-                raise ValueError(f"{kind} expects two people selectors")
-            first, second = _target_selector(board, args[0]), _target_selector(board, args[1])
-            if not (
-                first.kind in ("person", "people", "attribute", "role", "anyone", "people_on")
-                and second.kind in ("person", "people", "attribute", "role", "anyone", "people_on")
-            ):
-                raise ValueError(f"{kind} requires person selectors")
-            mode, comparison, distance = (
-                "areas",
-                ("=" if kind == "same" else ">="),
-                (0 if kind == "same" else 1),
-            )
-        elif kind == "dir":
+        if kind == "dir":
             if len(args) < 3:
                 raise ValueError("dir expects two selectors and a mode")
             first, second = _target_selector(board, args[0]), _target_selector(board, args[1])
@@ -2833,14 +2813,6 @@ def _counting(board: Board, args: list[str], number: int | None) -> Condition:
     for kind, rest in parts:
         if _is_quantified_target(kind, rest):
             raise ValueError(f"{COUNTING} cannot count quantified target clues such as {kind!r}")
-        if kind in ("same", "not_same"):
-            if len(rest) != 2 or any(person not in board.people for person in rest):
-                raise ValueError(f"{COUNTING} same predicates require two named people")
-            pair_test = _same_region(board) if kind == "same" else _different_region(board)
-            subs.append(
-                Condition(" ".join((kind, *rest)), tuple(rest), pair_test, kind, tuple(rest), None)
-            )
-            continue
         if kind in ("dir", "not_dir"):
             if len(rest) < 2 or any(person not in board.people for person in rest[:2]):
                 raise ValueError(f"{COUNTING} dir predicates require two named people")

@@ -97,7 +97,7 @@ count people on mark:social = 1 | Exactly one figure stands on a social square.
 dir Gozarutchi Violetchi up
 dir Lovelitchi Violetchi left
 dir Ichigotchi Gozarutchi left
-same Kuchipatchi Gozarutchi
+dir Kuchipatchi Gozarutchi areas = 0
 dir Tarakotchi Kuchipatchi up
 not beside Ichigotchi object:sakura
 dir Masktchi Lovelitchi left

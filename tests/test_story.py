@@ -1088,7 +1088,7 @@ Eva
 Fay
 Clues:
 count people on mark:quiet = 2
-same_region Eva Fay
+dir Eva Fay areas = 0
 in_region Bo Tomb
 left_of Bo Dee
 in_region Cal Crypt
@@ -1158,7 +1158,7 @@ Violetchi
 Akumatchi
 Clues:
 count people on mark:social = 1
-same_region Mametchi Masktchi
+dir Mametchi Masktchi areas = 0
 on Lovelitchi bench
 next_to Gozarutchi cake
 above Mametchi Lovelitchi
@@ -1291,7 +1291,7 @@ Akumatchi
 Clues:
 count people on mark:quiet = 1
 next_to Masktchi sakura
-same_region Lovelitchi Mametchi
+dir Lovelitchi Mametchi areas = 0
 in_corner Memetchi
 left_of Kuchipatchi Mametchi
 not_next_to Lovelitchi chair
@@ -1873,10 +1873,10 @@ Cy
 Attributes:
 trained: Bea
 Clues:
-same_region Ann attribute:trained
-different_region Cy attribute:trained
-adjacent_regions Ann area:east
-apart Cy area:west
+dir Ann attribute:trained areas = 0
+dir Cy attribute:trained areas >= 1
+dir Ann area:east areas = 1
+dir Cy area:west areas >= 2
 """
 
 
@@ -1886,19 +1886,19 @@ apart Cy area:west
         (
             "en",
             [
-                "Ann is in the same area as someone with the trained attribute.",
-                "Cy is in a different area from someone with the trained attribute.",
-                "Ann is in an area that touches the area of someone in the east.",
-                "Cy is in an area that does not touch the area of someone in the west.",
+                "Ann and someone with the trained attribute are in the same area.",
+                "Cy and someone with the trained attribute are in different areas.",
+                "Ann and the east are exactly one area border apart.",
+                "Cy and the west are at least two area borders apart.",
             ],
         ),
         (
             "nl",
             [
-                "Ann is in hetzelfde gebied als iemand met het kenmerk trained.",
-                "Cy is in een ander gebied dan iemand met het kenmerk trained.",
-                "Ann is in een gebied dat aan dat van iemand in de east grenst.",
-                "Cy is in een gebied dat niet aan dat van iemand in de west grenst.",
+                "Ann en iemand met het kenmerk trained staan in hetzelfde gebied.",
+                "Cy en iemand met het kenmerk trained staan in verschillende gebieden.",
+                "Ann en de east zijn precies één gebiedsgrens van elkaar verwijderd.",
+                "Cy en de west zijn minstens twee gebiedsgrenzen van elkaar verwijderd.",
             ],
         ),
     ],
@@ -2306,7 +2306,7 @@ def test_dutch_player_rules_explain_object_adjacency():
     ) in rules
 
 
-@pytest.mark.parametrize("kind", ["adjacent_regions", "apart"])
+@pytest.mark.parametrize("clue", ["dir Ada Ben areas = 1", "dir Ada Ben areas >= 2"])
 @pytest.mark.parametrize(
     ("language", "note"),
     [
@@ -2314,7 +2314,7 @@ def test_dutch_player_rules_explain_object_adjacency():
         ("nl", "Gebieden grenzen aan elkaar als ze een zijde delen, niet alleen een hoek."),
     ],
 )
-def test_player_rules_explain_neighboring_areas(kind, language, note):
+def test_player_rules_explain_area_border_distance(clue, language, note):
     text = f"""Size: 2
 Language: {language}
 Regions:
@@ -2327,10 +2327,10 @@ People:
 Ada
 Ben
 Clues:
-{kind} Ada Ben
+{clue}
 """
     assert murdoku_rules(text).count(note) == 1
-    assert note not in murdoku_rules(text.replace(f"{kind} Ada Ben", "same_region Ada Ben"))
+    assert note not in murdoku_rules(text.replace(clue, "dir Ada Ben manhattan >= 1"))
 
 
 def test_wrapped_intro_lines_stay_one_rule():

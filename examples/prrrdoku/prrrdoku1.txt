@@ -59,7 +59,7 @@ Vladimir
 Clues:
 beside Tim object:klimwand
 in Jos area:keukenwinkel
-same Anna Jos
+dir Anna Jos areas = 0
 in Pip area:moestuin
 dir Otto Tjitske up = 1 | Otto zit precies één rij boven Tjitske.
 beside Tjitske object:vuurtje

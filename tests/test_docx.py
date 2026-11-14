@@ -475,9 +475,13 @@ def test_sudoku_booklet_includes_sandwich_rule_with_grid_size(language, tmp_path
     assert all(rule in _text(out) for rule in family_rules(text, "sudoku"))
 
 
-def test_exactly_one_same_region_reads_as_either_or():
+def test_exactly_one_same_area_distance_reads_as_either_or():
     paragraphs = clue_paragraphs(_read("murdoku_sparse_mystery"))
-    assert any("same area as either Mara or Ria" in p for p in paragraphs)
+    assert any(
+        "Either Tomas and Mara are in the same area, or Tomas and Ria are in the same area, "
+        "but not both." in p
+        for p in paragraphs
+    )
 
 
 def test_two_alternatives_read_as_either_or_not_both():

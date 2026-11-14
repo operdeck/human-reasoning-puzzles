@@ -54,7 +54,7 @@ Clues:
 beside Ramen object:plate
 dir Tempura Tonkatsu manhattan <= 2
 in Tempura rows:4
-not same Tempura Yakitori
+dir Tempura Yakitori areas >= 1
 dir Yakitori Ramen left
 in Tonkatsu area:kobe
 dir Tonkatsu Tempura up

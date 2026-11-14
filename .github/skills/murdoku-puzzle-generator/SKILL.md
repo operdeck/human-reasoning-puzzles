@@ -114,8 +114,8 @@ its short output, and decide:
 Clues should read like a detective's notes, not like arithmetic.
 
 - **Prefer areas, objects and simple relations:** `in P area:name`,
-  `beside`/`not beside` an object, `on P object:name`, `same A B`, and
-  unnumbered `dir A B left|up`.
+  `beside`/`not beside` an object, `on P object:name`, `dir A B areas = 0`,
+  and unnumbered `dir A B left|up`.
 - **Use exact numbers sparingly**: at most one or two directional distances,
   line/area counts, or other numeric clues per puzzle, and only when they read
   naturally. `dir A B manhattan ...` counts row-plus-column steps; `euclidean`

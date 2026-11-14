@@ -78,6 +78,46 @@ in_region Ada room
         load_board(text)
 
 
+@pytest.mark.parametrize("clue", ["same Ada Ben", "not same Ada Ben"])
+def test_same_area_predicates_use_dir_area_distance(clue):
+    with pytest.raises(ValueError):
+        parse_clue_line(clue)
+    assert parse_clue_line("dir Ada Ben areas = 0") == (
+        "dir",
+        ["Ada", "Ben", "areas", "=", "0"],
+    )
+    assert parse_clue_line("dir Ada Ben areas >= 1") == (
+        "dir",
+        ["Ada", "Ben", "areas", ">=", "1"],
+    )
+
+
+def test_area_distance_relations_distinguish_same_and_different_areas():
+    template = """Size: 3
+Regions:
+a: Alpha
+b: Bravo
+c: Charlie
+Grid:
+a b c
+c a b
+b c a
+People:
+Ada
+Ben
+Clues:
+{clue}
+"""
+    together = {"Ada": Square(0, 0), "Ben": Square(1, 1)}
+    apart = {"Ada": Square(0, 0), "Ben": Square(1, 2)}
+    same = template.format(clue="dir Ada Ben areas = 0")
+    different = template.format(clue="dir Ada Ben areas >= 1")
+    assert accepts(same, together)
+    assert not accepts(same, apart)
+    assert accepts(different, apart)
+    assert not accepts(different, together)
+
+
 def test_legacy_selector_aliases_are_rejected():
     text = """Size: 1
 Regions:
@@ -211,7 +251,30 @@ Ben
     parsed = [parse_clue_line(clue) for clue in candidates]
     assert ("in", ["Ada", "area:west"]) in parsed
     assert ("dir", ["Ada", "Ben", "left"]) in parsed
-    assert all(not clue.startswith(("in_region", "left_of", "same_region")) for clue in candidates)
+    assert ("dir", ["Ada", "Ben", "areas", ">=", "1"]) in parsed
+    assert all(
+        not clue.startswith(("in_region", "left_of", "same_region", "same ", "not same"))
+        for clue in candidates
+    )
+
+
+def test_clue_search_suggests_same_area_as_zero_area_distance():
+    text = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Ben
+"""
+    board, _ = load_board(text)
+    placement = {"Ada": Square(0, 0), "Ben": Square(1, 1)}
+    candidates = clue_search.candidate_clues(board, placement)
+    assert "dir Ada Ben areas = 0" in candidates
+    assert not any(clue.startswith(("same ", "not same ")) for clue in candidates)
 
 
 def test_key_metadata_resolves_clue_and_rule_text_without_wording():

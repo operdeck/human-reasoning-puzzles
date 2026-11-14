@@ -59,7 +59,7 @@ Rules:
 with Jos attribute:food in same area exactly 1
 
 Clues:
-same Okonomiyaki Onigiri
+dir Okonomiyaki Onigiri areas = 0
 not in Tonkatsu area:kobe
 dir Onigiri Tonkatsu left
 dir Okonomiyaki Tonkatsu manhattan >= 6

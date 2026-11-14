@@ -92,7 +92,7 @@ least_populated area:Okinawa area:Hiroshima
 on Kaori point_object:lantaarn
 on Renji point_object:neon
 on Mizuki point_object:torii
-same Mizuki Kaori
+dir Mizuki Kaori areas = 0
 on Goro point_object:uithangbord
 in Goro area:Hiroshima
 on Tatsuya point_object:sakura

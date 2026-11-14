@@ -68,7 +68,7 @@ dir Broccoli Pasta left = 2
 in Aardappel columns:5
 dir Vis Aardappel up
 dir Rijst Vis manhattan >= 7
-same Broccoli Rijst
+dir Broccoli Rijst areas = 0
 in Broccoli rows:5
 
 # Booklet text for --docx (optional).

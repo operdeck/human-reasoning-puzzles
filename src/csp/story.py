@@ -455,8 +455,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_beside": "{a} is not beside {things}",
         "clue.touches": "{a} shares a side with {things}",
         "clue.not_touches": "{a} does not share a side with {things}",
-        "clue.same": "{a} and {b} are in the same area",
-        "clue.not_same": "{a} and {b} are in different areas",
+        "clue.dir_same_area": "{a} and {b} are in the same area",
+        "clue.dir_different_areas": "{a} and {b} are in different areas",
         "clue.dir_not": "It is not the case that {relation}",
         "clue.dir_distance": "{a} and {b} are {comparison} {n} {unit} apart",
         "clue.dir_exact": "{a} is exactly {n} {unit} {direction} {b}",
@@ -886,8 +886,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.not_beside": "{a} staat niet naast {things}",
         "clue.touches": "{a} deelt een zijde met {things}",
         "clue.not_touches": "{a} deelt geen zijde met {things}",
-        "clue.same": "{a} en {b} zijn in hetzelfde gebied",
-        "clue.not_same": "{a} en {b} zijn in verschillende gebieden",
+        "clue.dir_same_area": "{a} en {b} staan in hetzelfde gebied",
+        "clue.dir_different_areas": "{a} en {b} staan in verschillende gebieden",
         "clue.dir_not": "Het is niet zo dat {relation}",
         "clue.dir_distance": "{a} en {b} zijn {comparison} {n} {unit} van elkaar verwijderd",
         "clue.dir_exact": "{a} staat precies {n} {unit} {direction} {b}",
@@ -3573,14 +3573,14 @@ class Story:
     def _direction_text(self, condition: DirectionCondition) -> str:
         first, second = self._target_text(condition.first), self._target_text(condition.second)
         mode = condition.mode
-        if mode == "same":
-            text = self.say("clue.same", a=first, b=second)
-        elif mode == "furthest":
+        if mode == "furthest":
             text = self.say("clue.furthest_all", a=first, b=second)
         elif mode == "knight":
             text = self.say("clue.dir_knight", a=first, b=second)
         elif mode == "areas" and condition.comparison == "=" and condition.distance == 0:
-            text = self.say("clue.same", a=first, b=second)
+            text = self.say("clue.dir_same_area", a=first, b=second)
+        elif mode == "areas" and condition.comparison == ">=" and condition.distance == 1:
+            text = self.say("clue.dir_different_areas", a=first, b=second)
         elif mode in ("left", "right", "up", "down"):
             directions = {
                 "en": {"left": "left of", "right": "right of", "up": "above", "down": "below"},
@@ -3688,7 +3688,7 @@ class Story:
         return self.say("clue.conditional", a=condition.person, role=role, predicate=predicate)
 
     def _clue_text(self, kind: str, args: Sequence[str], people: Sequence[str]) -> str:
-        if kind in ("dir", "not_dir", "same", "not_same"):
+        if kind in ("dir", "not_dir"):
             (condition,) = directional_conditions(
                 self.board, [(kind, list(args))], include_rules=False
             )
@@ -3727,8 +3727,6 @@ class Story:
             n, parts = counted(args)
             if n == 1 and len(parts) == 2:
                 (k1, a1), (k2, a2) = parts
-                if k1 == k2 == "same_region" and a1[0] == a2[0]:
-                    return self.say("clue.either_same_region", a=a1[0], b=a1[1], c=a2[1])
                 first = self._clue_text(k1, a1, a1[: 1 if k1 in FILTERS else 2])
                 second = self._clue_text(k2, a2, a2[: 1 if k2 in FILTERS else 2])
                 return self.say("clue.either", first=first, second=second)
@@ -4234,7 +4232,9 @@ def murdoku_rules(text: str) -> list[str]:
         clue_notes.append(phrase(text, "doc.clue_at"))
     if kinds & {"within", "at_least", "furthest"}:
         clue_notes.append(phrase(text, "doc.clue_distance"))
-    if kinds & {"adjacent_regions", "apart"}:
+    if "dir" in kinds and any(
+        kind == "dir" and len(args) > 2 and args[2] == "areas" for kind, args in entries
+    ):
         clue_notes.append(phrase(text, "doc.clue_neighboring_areas"))
     if "away_from" in kinds:
         clue_notes.append(phrase(text, "doc.clue_away_from"))

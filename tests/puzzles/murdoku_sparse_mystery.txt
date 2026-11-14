@@ -71,7 +71,7 @@ dir Nico Ria left = 1
 only Ria on object:carpet
 in Tomas corner:board
 on Tomas object:horse
-exactly 1 same Tomas Mara ; same Tomas Ria
+exactly 1 dir Tomas Mara areas = 0 ; dir Tomas Ria areas = 0
 
 # Booklet text for --docx (optional).
 Title:

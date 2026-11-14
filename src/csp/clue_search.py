@@ -55,8 +55,6 @@ SUGGEST_KINDS = (
     "not on",
     "touches",
     "not touches",
-    "same",
-    "not same",
     "dir",
 )
 EXTRA_KINDS = ("line",)
@@ -332,6 +330,8 @@ def candidate_clues(
             for mode in ("left", "right", "up", "down", "knight")
         ]
         + [f"dir {a} {b} furthest" for a, b in people_pairs]
+        + [f"dir {a} {b} areas = 0" for a, b in position_pairs]
+        + [f"dir {a} {b} areas >= 1" for a, b in position_pairs]
         + [
             f"dir {a} {b} {mode} {comparison} {distance}"
             for a, b in position_pairs
@@ -387,8 +387,6 @@ def candidate_clues(
             for selector in locations
             if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
         ],
-        "same": [f"same {a} {b}" for a, b in people_pairs if a < b],
-        "not same": [f"not same {a} {b}" for a, b in people_pairs if a < b],
         "dir": directional,
     }
     if unknown := [kind for kind in kinds if kind not in options]:

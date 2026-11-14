@@ -56,7 +56,7 @@ Akumatchi
 
 Clues:
 count people on mark:social = 1 | Exactly one figure stands on a social square.
-same Mametchi Masktchi
+dir Mametchi Masktchi areas = 0
 on Lovelitchi object:bench
 beside Gozarutchi object:cake
 dir Mametchi Lovelitchi up

@@ -65,7 +65,7 @@ in Tonkatsu rows:1
 in Okonomiyaki columns:1
 dir Gyoza Sushi up
 dir Sushi Yakitori manhattan >= 8
-not same Gyoza Tempura
+dir Gyoza Tempura areas >= 1
 dir Okonomiyaki Yakitori manhattan <= 3
 in Tempura rows:3
 in Sushi rows:6

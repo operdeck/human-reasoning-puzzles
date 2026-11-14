@@ -145,7 +145,7 @@ in Ludmila area:coupe_1
 on Anastasia object:perron_bank
 dir Ludmila Bogdan up
 not on Ludmila edge_item:raam
-same Dragomir Katarina
+dir Dragomir Katarina areas = 0
 beside Igor object:klok
 dir Olga Igor left
 in Vladimir area:gangpad
