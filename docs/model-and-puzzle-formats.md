@@ -234,8 +234,7 @@ ship cells on two opposite sides. An unspecified `1` is drawn as a question mark
 so it cannot be confused with a middle segment. Shaped givens require a fleet. Puzzle and
 solution images show the fleet below the board and use rounded ship ends.
 English/Dutch rules for both web and DOCX/PDF are derived from the parsed fleet.
-`--explain` prints the named deductions and their reasons, followed by the
-solved board. Brute force checks connected components independently of the compiler.
+`--explain` tells the solution by the puzzle rules that drive each step. Brute force checks connected components independently of the compiler.
 
 Files without `Fleet:` remain supported as explicitly counts-only puzzles,
 using only `.`, `0`, `1`; no ship shapes or no-touching rules are implied.
@@ -390,7 +389,7 @@ In the Murdoku picture, blocked squares are shaded clearly darker than their reg
 
 ## CLI and validation
 
-The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, `--svg`, and `--png` use the same generic engine for every family. `--explain` supports Murdoku, Sudoku and Battleships; `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific.
+The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, `--svg`, and `--png` use the same generic engine for every family. `--explain` supports every family (Murdoku and Sudoku have their own narrators, the rest use `generic_story`); `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific.
 
 ```bash
 uv run csp examples/<family-example>.txt --show-model

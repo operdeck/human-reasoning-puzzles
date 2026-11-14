@@ -49,7 +49,7 @@ uv run puzzle-lab fresh starbattle --size 7 --stars 1 --tier easy --output /tmp/
 uv run puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp/kakurasu.txt
 ```
 
-`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` writes Murdoku and Sudoku narratives or Battleships deductions with named rules and reasons; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network.
+`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` writes a worked solution for every family, told by the rules a person would use; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network.
 
 `--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/**/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`). Without puzzle files, `--docx` takes every Murdoku in `examples/` (not the test puzzles) and writes `booklet.docx`. `--pdf [FILE]` works the same way but writes a PDF (default `booklet.pdf` without puzzle files), converting that Word booklet with LibreOffice or, on macOS, Microsoft Word or Pages.
 
@@ -58,8 +58,10 @@ uv run puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp
 Murdoku `--explain` marks conclusions in bold and says when a row or column can
 have its other open squares crossed out; booklets render the same emphasis.
 Sudoku explanations group singles and describe locked candidates, subsets and
-row/column patterns. When another deduction is needed, `--explain` says where
-it stops; the booklet labels its technical placement trace instead.
+row/column patterns. Every other family, and any Sudoku step those patterns do
+not cover, gets a generic story built from the model alone: clue deductions are
+grouped per puzzle rule, cells are named in runs ("r2c4–r2c6 yes"), and chains,
+combined rules and what-ifs are told as short arguments.
 
 Browse the full [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/).
 For [collection and grading notes](docs/puzzle-collection.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
