@@ -123,15 +123,15 @@ def test_fleet_rules_describe_the_actual_model(language):
     assert "water" in rules[4]
 
 
-def test_explain_prints_named_deductions(capsys):
+def test_explain_tells_the_solution_by_puzzle_rules(capsys):
     from csp.cli import main
     from tests.examples import example
 
     assert main([str(example("battleships_1_6x6_fleet.txt")), "--explain"]) == 0
     output = capsys.readouterr().out
+    assert "*occupied cells belong to one straight ship*" in output
     assert "count" in output
-    assert "ship" in output
-    assert "Solved" in output
+    assert "Stalled" not in output
 
 
 @pytest.mark.parametrize(

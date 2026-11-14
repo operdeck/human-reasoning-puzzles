@@ -57,7 +57,7 @@ def _text(path: Path) -> str:
 
 @pytest.mark.parametrize("language", ["en", "nl"])
 def test_battleships_booklet_has_localized_fleet_rules(language, tmp_path):
-    from csp.story import family_rules
+    from csp.story import family_rules, phrase
 
     text = example("battleships_1_6x6_fleet.txt").read_text() + f"\nLanguage:\n{language}\n"
     source, output = tmp_path / "fleet.txt", tmp_path / "fleet.docx"
@@ -65,7 +65,7 @@ def test_battleships_booklet_has_localized_fleet_rules(language, tmp_path):
     assert main([str(source), "--docx", str(output)]) == 0
     rendered = _text(output)
     assert all(rule in rendered for rule in family_rules(text, "battleships"))
-    assert "How to solve it" in rendered
+    assert phrase(text, "generic.doc_how") in rendered
     assert "ship" in rendered
 
 
@@ -417,12 +417,12 @@ def test_sudoku_booklet_uses_readable_bold_pattern_narrative(tmp_path):
     assert "rule single" not in _text(out)
 
 
-def test_sudoku_booklet_labels_the_technical_fallback(tmp_path):
+def test_sudoku_booklet_falls_back_to_the_generic_story(tmp_path):
     out = tmp_path / "sudoku-chains.docx"
     assert main([str(example("sudoku_33_9x9_chains.txt")), "--docx", str(out)]) == 0
     text = _text(out)
-    assert "pattern-first explanation is not available" in text
-    assert "rule single" in text
+    assert "Chain. If r3c7 ≠ 8" in text
+    assert "rule single" not in text
 
 
 def test_sudoku_booklet_localizes_the_explanation_heading(tmp_path):

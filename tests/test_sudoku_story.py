@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from csp import bruteforce, cli, sudoku, sudoku_story
+from csp import bruteforce, sudoku, sudoku_story
 from csp.core import Solver
 from csp.proof import Move, episodes, shortest
 from csp.story import Wording
@@ -90,7 +90,7 @@ def test_dutch_explanations_use_localized_houses_and_coordinates():
     assert "streep 4 weg" in narrative.markdown()
 
 
-def test_unsupported_deductions_do_not_masquerade_as_a_complete_explanation(capsys):
+def test_unsupported_deductions_do_not_masquerade_as_a_complete_explanation():
     path = example("sudoku_33_9x9_chains.txt")
     narrative = sudoku_story.explain(path.read_text())
     assert not narrative.complete
@@ -98,8 +98,6 @@ def test_unsupported_deductions_do_not_masquerade_as_a_complete_explanation(caps
         "**The next step needs a chain.** A pattern-first explanation is not available for "
         "that deduction yet; use --verbose for its detailed trace."
     )
-    assert cli.main([str(path), "--explain"]) == 2
-    assert "The next step needs a chain" in capsys.readouterr().out
 
 
 def test_unsupported_deductions_are_localized():

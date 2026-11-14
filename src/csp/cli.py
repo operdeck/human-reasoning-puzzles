@@ -23,6 +23,7 @@ from . import (
     collection,
     dominosa,
     futoshiki,
+    generic_story,
     hidato,
     icons,
     kakurasu,
@@ -185,6 +186,28 @@ class _Fired:
 
     def append_step(self, rule: str, steps: Sequence[Step]) -> None:
         self.items.append((rule, steps))
+
+
+def pattern_story(
+    kind: str,
+    text: str,
+    start: Model,
+    fired: Sequence[tuple[str, Sequence[Step]]] | None = None,
+) -> generic_story.Explanation:
+    """A worked solution told by patterns: Sudoku's own story, else the generic one.
+
+    `start` is the compiled model before solving; it is never changed. Without
+    `fired` the puzzle is solved on a copy first.
+    """
+    if fired is None:
+        history: list[tuple[str, Sequence[Step]]] = []
+        Solver(start.clone()).solve(on_step=lambda rule, steps: history.append((rule, steps)))
+        fired = history
+    if kind == "sudoku":
+        told = sudoku_story.explain(text, start=start.clone(), fired=fired)
+        if told.complete:
+            return generic_story.Explanation(told.paragraphs, True)
+    return generic_story.explain(text, start.clone(), fired)
 
 
 def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) -> tuple[str, ...]:
@@ -489,7 +512,7 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
         except ValueError as exc:
             print(f"could not read {file.name}: {exc}", file=sys.stderr)
             return 2
-        start = model.clone() if kind == "sudoku" else None
+        start = model.clone() if kind != "murdoku" else None
         fired = _Fired()
         result = Solver(model).solve(on_step=fired.append_step) if solve else None
         placed = None
@@ -513,14 +536,14 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
         if kind != "murdoku":
             steps = solving_steps(fired.items)
             pattern_first = False
-            if kind == "sudoku" and placed is not None:
+            if placed is not None:
                 assert start is not None
-                narrative = sudoku_story.explain(text, start=start, fired=fired.items)
+                narrative = pattern_story(kind, text, start, fired.items)
                 if narrative.complete:
                     steps = narrative.paragraphs
                     pattern_first = True
                 else:
-                    steps = (story.phrase(text, "sudoku.trace_fallback"), *steps)
+                    steps = (story.phrase(text, "generic.trace_fallback"), *steps)
             entry = dataclasses.replace(
                 entry,
                 puzzle_image=make_image(kind, text),
@@ -637,7 +660,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     instead.add_argument(
         "--explain",
         action="store_true",
-        help="explain Murdoku, Sudoku, or Battleships deductions",
+        help="explain the solution step by step, by the patterns a person would spot",
     )
     instead.add_argument(
         "--grade",
@@ -884,16 +907,9 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         if kind == "murdoku":
             print(f"\n{story.explain(text)}")
             return 0
-        if kind == "sudoku":
-            explanation = sudoku_story.explain(text)
-            print(f"\n{explanation.markdown()}")
-            return 0 if explanation.complete else 2
-        if kind != "battleships":
-            print(
-                f"--explain supports Murdoku, Sudoku, and Battleships, not {kind}", file=sys.stderr
-            )
-            return 2
-        args.verbose = True
+        explanation = pattern_story(kind, text, model)
+        print(f"\n{explanation.markdown()}")
+        return 0 if explanation.complete else 2
 
     used: list[str] = []
 

@@ -69,11 +69,16 @@ enforces the import graph.
 | CLI -> puzzle | `cli.load(text, kind) -> Puzzle(kind, model, draw)` |
 | explanation | `report.describe(model, rules) -> str`, public `Model` API only |
 | proof | `Move.of(rule, steps)`, `shortest(start, moves, required=...)`, `replay(start, moves, on_step)`, `episodes(start, moves)`, `essential(model, history, step)` |
-| worked solution | `story.explain(text) -> str` for Murdoku; `sudoku_story.explain(text) -> Explanation` for Sudoku |
+| worked solution | `story.explain(text) -> str` for Murdoku; `sudoku_story.explain(text) -> Explanation` for Sudoku; `generic_story.explain(text, start, fired) -> Explanation` for any model |
 | brute force | `bruteforce.solutions(text, kind, limit) -> list[dict]`; never imports `core` |
 
 Label every constraint with `family=` when compiling a new puzzle type;
 `--show-model` groups by it and falls back to the name with digits masked.
+`generic_story` tells every non-Murdoku solve by those families ("By *each
+number once per column*") and quotes the constraint name for a single clue,
+so write names a player can read. Constraint and relation names must be unique
+within a model: proof replay looks them up by name, and
+`test_every_example_is_told_completely_with_unique_names` checks every example.
 The first paragraph of each rule's docstring is what `--show-model` prints
 as that rule's summary, so keep it to one plain sentence.
 
@@ -193,7 +198,7 @@ Candidates, roughly in order of value:
   deductions.
 
 A new rule also needs: a case in `proof.Move` so `--explain` can replay it,
-wording in `story`, and a place in `proof.HARDEST_FIRST`.
+wording in `story` and `generic_story`, and a place in `proof.HARDEST_FIRST`.
 `test_no_step_ever_contradicts_the_brute_force_solution` checks every step
 it logs on every example.
 
