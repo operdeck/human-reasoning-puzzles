@@ -95,7 +95,7 @@ its short output, and decide:
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
 | draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts; `decor: tunnel` omits an object from clue suggestions) |
-| pictures, booklet | `--png`, `--docx` |
+| pictures, booklet | `--png`, `--docx` (`--nosolution` for puzzle pages only, no solve) |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
 - Do not solve, enumerate placements or test clue subsets by hand or with
@@ -555,8 +555,9 @@ One or two lines, true for the verified solution (check against --explain).
   establishes that identity. Review the whole series for the same ambiguity
   and check the wording reaches both the web verdict and booklet solution.
 - Check `uv run csp FILE --docx /tmp/check.docx` (needs `uv sync --extra docx`):
-  one page per puzzle and solution, correct Dutch de/het, legible board. Never
-  commit `.docx` files. Format details: `docs/model-and-puzzle-formats.md`.
+  one page per puzzle and solution, correct Dutch de/het, legible board. Add
+  `--nosolution` to read only the puzzle pages of a puzzle the rules do not
+  close yet. Never commit `.docx` files. Format details: `docs/model-and-puzzle-formats.md`.
 
 ### Feeding lessons back
 
