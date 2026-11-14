@@ -326,7 +326,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.column": "column {number}",
         "sudoku.box": "the box containing {cell}",
         "sudoku.extra": "the extra house {name}",
-        "sudoku.doc_how": "How to solve it",
         "sudoku.singles": "**Singles.**",
         "sudoku.single_cell": ("{cell} has only one digit left, so **place {digit} in {cell}**."),
         "sudoku.single_house": (
@@ -361,7 +360,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "**Stopped.** The current deduction rules do not finish this grid; "
             "use --verbose for the technical trace."
         ),
-        "sudoku.trace_fallback": (
+        "generic.trace_fallback": (
             "A pattern-first explanation is not available for every deduction; "
             "the following is the technical placement trace."
         ),
@@ -375,6 +374,38 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.rule.what_if": "case analysis",
         "sudoku.rule.relations": "a variant clue",
         "sudoku.rule.count": "a counting deduction",
+        "generic.placed": "{var} = {value}",
+        "generic.not_placed": "{var} ≠ {value}",
+        "generic.yes": "{var} yes",
+        "generic.no": "{var} no",
+        "generic.cannot_be": "{where} cannot be {values}",
+        "generic.internal": "an intermediate step",
+        "generic.singles": "**Only option.** By {rules}, one option is left each time: "
+        "{placements}.",
+        "generic.singles_plain": "**Only option.** Then: {placements}.",
+        "generic.singles_more": "{placements} and {count} more",
+        "generic.singles_rest": "{placements}; the remaining {count} follow the same way",
+        "generic.clues": "**Clues.** {items}.",
+        "generic.clue": "{sources} gives {conclusion}",
+        "generic.subsumption": "**Overlap.** Every remaining option of {sources} lies within "
+        "{scope}, so {conclusion}.",
+        "generic.cover": "**Combined rules.** {sources} take up {scope} between them, "
+        "so {conclusion}.",
+        "generic.chain": "**Chain.** If {start}, then {links}. So {first} or {last}, "
+        "and either way {conclusion}.",
+        "generic.chain_link": ", so ",
+        "generic.wing": "**Wing.** One of {options} must hold, so {conclusion}.",
+        "generic.other": "**{rule}.** {conclusion}.",
+        "generic.what_if": "**Suppose {assumed}.** Then {trail} would follow, but {breaks}; "
+        "so {refuted}.",
+        "generic.what_if_direct": "**Suppose {assumed}.** Then {breaks}; so {refuted}.",
+        "generic.trail_more": "{placements} and {count} more steps",
+        "generic.breaks": "{source} fails",
+        "generic.breaks_unknown": "the puzzle gets stuck",
+        "generic.stalled": "**Stalled.** The current rules do not finish this puzzle; "
+        "use --verbose for the detailed trace.",
+        "generic.givens_complete": "The givens already solve the puzzle.",
+        "generic.doc_how": "How to solve it",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
         "role_has": "{who} has the {role} role",
@@ -691,7 +722,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.column": "kolom {number}",
         "sudoku.box": "het blok met {cell}",
         "sudoku.extra": "het extra gebied {name}",
-        "sudoku.doc_how": "Zo los je het op",
         "sudoku.singles": "**Enkele kandidaten.**",
         "sudoku.single_cell": (
             "{cell} heeft nog maar één kandidaat, dus **zet {digit} in {cell}**."
@@ -730,7 +760,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "**Gestopt.** De huidige regels lossen dit rooster niet helemaal op; "
             "met --verbose zie je het technische spoor."
         ),
-        "sudoku.trace_fallback": (
+        "generic.trace_fallback": (
             "Niet elke stap heeft al een patroonverklaring; hieronder staat het technische "
             "spoor van de plaatsingen."
         ),
@@ -744,6 +774,38 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.rule.what_if": "een gevalsonderscheid",
         "sudoku.rule.relations": "een variantregel",
         "sudoku.rule.count": "een telredenering",
+        "generic.placed": "{var} = {value}",
+        "generic.not_placed": "{var} ≠ {value}",
+        "generic.yes": "{var} wel",
+        "generic.no": "{var} niet",
+        "generic.cannot_be": "{where}: geen {values}",
+        "generic.internal": "een tussenstap",
+        "generic.singles": "**Enige mogelijkheid.** Door {rules} blijft er steeds één optie over: "
+        "{placements}.",
+        "generic.singles_plain": "**Enige mogelijkheid.** Dan: {placements}.",
+        "generic.singles_more": "{placements} en nog {count}",
+        "generic.singles_rest": "{placements}; de overige {count} volgen op dezelfde manier",
+        "generic.clues": "**Aanwijzingen.** {items}.",
+        "generic.clue": "{sources} geeft {conclusion}",
+        "generic.subsumption": "**Overlap.** Alle resterende opties van {sources} liggen binnen "
+        "{scope}, dus {conclusion}.",
+        "generic.cover": "**Combinatie.** {sources} nemen samen {scope} in beslag, "
+        "dus {conclusion}.",
+        "generic.chain": "**Keten.** Als {start}, dan {links}. Dus {first} of {last}, "
+        "en hoe dan ook {conclusion}.",
+        "generic.chain_link": ", dus ",
+        "generic.wing": "**Wing.** Een van {options} moet gelden, dus {conclusion}.",
+        "generic.other": "**{rule}.** {conclusion}.",
+        "generic.what_if": "**Stel {assumed}.** Dan volgt {trail}, maar dan {breaks}; "
+        "dus {refuted}.",
+        "generic.what_if_direct": "**Stel {assumed}.** Dan {breaks}; dus {refuted}.",
+        "generic.trail_more": "{placements} en nog {count} stappen",
+        "generic.breaks": "klopt {source} niet meer",
+        "generic.breaks_unknown": "loopt het vast",
+        "generic.stalled": "**Gestopt.** De huidige regels lossen deze puzzel niet helemaal op; "
+        "met --verbose zie je het technische spoor.",
+        "generic.givens_complete": "De puzzel is al opgelost door wat gegeven is.",
+        "generic.doc_how": "Zo los je het op",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
         "role_has": "{who} heeft de rol {role}",
