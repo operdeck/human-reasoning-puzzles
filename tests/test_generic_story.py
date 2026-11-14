@@ -42,6 +42,8 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
     assert "**Chain.** If r5c4 ≠ 4, then r2c4 = 4" in text
     assert "**Combined rules.**" in text
     assert "Stalled" not in text
+    # Hidden singles are counted as placements, not as value groups.
+    assert "the other 5 placements follow the same way" in text
 
 
 def test_yes_no_cells_are_grouped_into_runs():

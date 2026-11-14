@@ -194,10 +194,12 @@ class _Narrator:
             for value, where in together.items()
         ]
         shown = placements[:SHOWN_SINGLES]
-        more = len(placements) - len(shown)
+        more = sum(len(where) for where in list(together.values())[SHOWN_SINGLES:])
         listed = self.say.join(shown)
         if more:
             key = "generic.singles_rest" if final else "generic.singles_more"
+            if more == 1:
+                key += "_one"
             listed = self.say(key, placements=", ".join(shown), count=more)
         if not rules:
             return self.say("generic.singles_plain", placements=listed)

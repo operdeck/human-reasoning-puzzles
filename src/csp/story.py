@@ -383,8 +383,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.singles": "**Only option.** By {rules}, one option is left each time: "
         "{placements}.",
         "generic.singles_plain": "**Only option.** Then: {placements}.",
-        "generic.singles_more": "{placements} and {count} more",
-        "generic.singles_rest": "{placements}; the remaining {count} follow the same way",
+        "generic.singles_more": "{placements} and {count} more placements",
+        "generic.singles_more_one": "{placements} and one more placement",
+        "generic.singles_rest": "{placements}; the other {count} placements follow the same way",
+        "generic.singles_rest_one": "{placements}; the last placement follows the same way",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
         "generic.subsumption": "**Overlap.** Every remaining option of {sources} lies within "
@@ -783,8 +785,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.singles": "**Enige mogelijkheid.** Door {rules} blijft er steeds één optie over: "
         "{placements}.",
         "generic.singles_plain": "**Enige mogelijkheid.** Dan: {placements}.",
-        "generic.singles_more": "{placements} en nog {count}",
-        "generic.singles_rest": "{placements}; de overige {count} volgen op dezelfde manier",
+        "generic.singles_more": "{placements} en nog {count} plaatsingen",
+        "generic.singles_more_one": "{placements} en nog één plaatsing",
+        "generic.singles_rest": "{placements}; de overige {count} plaatsingen volgen "
+        "op dezelfde manier",
+        "generic.singles_rest_one": "{placements}; de laatste plaatsing volgt op dezelfde manier",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
         "generic.subsumption": "**Overlap.** Alle resterende opties van {sources} liggen binnen "
