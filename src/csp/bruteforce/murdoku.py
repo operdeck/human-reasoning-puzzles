@@ -1,4 +1,4 @@
-"""Murdoku by plain search: place people one at a time, most restricted first.
+"""Murdoku by plain search: place the most constrained person next.
 
 Each person takes a free square in an unused row and column; a clue is
 tested as soon as everyone it mentions has been placed. Role holder sets are
@@ -37,7 +37,7 @@ _Checks = tuple[
 def _prepare(
     text: str, first: str | None = None
 ) -> tuple[Board, list[str], dict[str, list[Square]], _Checks]:
-    """Board, search order (most restricted first, or `first` first), squares, checks."""
+    """Board, tie-breaking order, individual clue domains and checks."""
     board, clues = load_board(text)
     checks = conditions(board, clues)
     allowed = {
@@ -47,12 +47,11 @@ def _prepare(
         for person in board.people
     }
     order = sorted(board.people, key=lambda p: (p != first, len(allowed[p])))
-    later = {person: i for i, person in enumerate(order)}
-    # Test each multi-person condition when the last person it names is placed.
     due: dict[str, list[Condition]] = {p: [] for p in board.people}
     for check in checks:
         if len(check.people) > 1:
-            due[max(check.people, key=later.__getitem__)].append(check)
+            for person in check.people:
+                due[person].append(check)
     rest: _Checks = (
         due,
         role_conditions(board, clues),
@@ -163,16 +162,32 @@ def _search(
             if len(found) >= limit:
                 return
         return
-    person = order[len(placed)]
     rows = {sq.row for sq in placed.values()}
     cols = {sq.col for sq in placed.values()}
-    for sq in allowed[person]:
-        if sq.row in rows or sq.col in cols:
-            continue
+    unplaced = [person for person in order if person not in placed]
+    domains: dict[str, list[Square]] = {}
+    for candidate in unplaced:
+        candidates = []
+        for square in allowed[candidate]:
+            if square.row in rows or square.col in cols:
+                continue
+            if all(
+                check.test(
+                    *(square if person == candidate else placed[person] for person in check.people)
+                )
+                for check in due[candidate]
+                if all(person == candidate or person in placed for person in check.people)
+            ):
+                candidates.append(square)
+        if not candidates:
+            return
+        domains[candidate] = candidates
+
+    person = min(unplaced, key=lambda candidate: len(domains[candidate]))
+    for sq in domains[person]:
         placed[person] = sq
-        if all(
-            check.test(*(placed[p] for p in check.people)) for check in due[person]
-        ) and _global_counts_possible(board, global_checks, placed, len(order) - len(placed)):
+        remaining = len(order) - len(placed)
+        if _global_counts_possible(board, global_checks, placed, remaining):
             _search(
                 board,
                 order,

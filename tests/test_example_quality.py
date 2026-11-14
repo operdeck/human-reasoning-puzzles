@@ -10,8 +10,8 @@ import pytest
 from csp import audit, calcudoku, starbattle
 from csp.collection import arrange
 from csp.puzzle_lab import Rating, family_of, rate
-from csp.puzzlefile import detect
-from tests.examples import played_examples
+from csp.puzzlefile import detect, load_board
+from tests.examples import example, played_examples
 
 pytestmark = pytest.mark.solutions
 
@@ -21,6 +21,26 @@ QUEENS_FILES = [
     if detect(path.read_text()) == "starbattle" and family_of(path.read_text()) == "queens"
 ]
 CALCUDOKU_FILES = [path for path in played_examples() if detect(path.read_text()) == "calcudoku"]
+
+
+@pytest.mark.parametrize(
+    ("size", "marks"),
+    [
+        (6, {"quiet": "alone"}),
+        (9, {"social": "not_alone"}),
+        (12, {"quiet": "alone", "social": "not_alone"}),
+    ],
+)
+def test_tamagotchi_series_uses_its_marks_with_at_most_one_count_clue(size, marks):
+    board, clues = load_board(example(f"tamagotchi-murdoku-{size}x{size}.txt").read_text())
+    assert {mark.name: mark.occupant_condition for mark in board.marks} == marks
+    counts = [
+        (kind, args)
+        for kind, args in clues
+        if kind in {"count", "exactly", "within", "at_least"}
+        or (kind in {"left_of", "above", "alone_with"} and any(arg.isdigit() for arg in args))
+    ]
+    assert len(counts) <= 1
 
 
 @pytest.mark.parametrize("path", CALCUDOKU_FILES, ids=lambda path: path.name)

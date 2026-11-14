@@ -40,6 +40,7 @@ from . import (
     starbattle,
     story,
     sudoku,
+    sudoku_story,
     suguru,
     tents,
     thermometers,
@@ -282,7 +283,6 @@ def make_image(
         global_counts=global_counts,
         interactive=interactive,
         language=language_of(text),
-        count_texts=story.global_count_texts(text),
         names=story.Wording.read(text).words,
     )
 
@@ -489,6 +489,7 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
         except ValueError as exc:
             print(f"could not read {file.name}: {exc}", file=sys.stderr)
             return 2
+        start = model.clone() if kind == "sudoku" else None
         fired = _Fired()
         result = Solver(model).solve(on_step=fired.append_step) if solve else None
         placed = None
@@ -510,11 +511,22 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
             section=listed.section if len(listing) > 1 else "",
         )
         if kind != "murdoku":
+            steps = solving_steps(fired.items)
+            pattern_first = False
+            if kind == "sudoku" and placed is not None:
+                assert start is not None
+                narrative = sudoku_story.explain(text, start=start, fired=fired.items)
+                if narrative.complete:
+                    steps = narrative.paragraphs
+                    pattern_first = True
+                else:
+                    steps = (story.phrase(text, "sudoku.trace_fallback"), *steps)
             entry = dataclasses.replace(
                 entry,
                 puzzle_image=make_image(kind, text),
                 solution_image=make_image(kind, text, placed) if placed is not None else None,
-                steps=solving_steps(fired.items),
+                steps=steps,
+                pattern_first=pattern_first,
             )
         entries.append(entry)
     docx_export.write_booklet(entries, out)
@@ -625,7 +637,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     instead.add_argument(
         "--explain",
         action="store_true",
-        help="write a Murdoku narrative or a Battleships solution with named deductions",
+        help="explain Murdoku, Sudoku, or Battleships deductions",
     )
     instead.add_argument(
         "--grade",
@@ -705,9 +717,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--nosolution",
         action="store_true",
         help=(
-            "with --docx or --pdf: write the puzzle pages only and skip solving, so a "
-            "booklet can be proof-read (or made from a puzzle the rules do not close) "
-            "without the solution pages"
+            "show or write only the puzzle, without solving: omit solution pictures and "
+            "booklet pages; cannot be combined with --export or solving options"
         ),
     )
     parser.add_argument(
@@ -721,8 +732,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
-    if args.nosolution and not booklets:
-        parser.error("--nosolution needs --docx or --pdf")
+    if args.nosolution:
+        conflicts = (
+            ("--export", args.export is not None),
+            ("--brute-force", args.brute_force),
+            ("--explain", args.explain),
+            ("--grade", args.grade),
+            ("--require-forward", args.require_forward),
+            ("--track-person", args.track_person is not None),
+            ("--verbose", args.verbose),
+            ("--step", args.step),
+        )
+        for option, enabled in conflicts:
+            if enabled:
+                parser.error(f"--nosolution cannot be combined with {option}")
     if not args.puzzles:
         if not booklets or args.export is not None:
             parser.error("give one or more puzzle files (only --docx and --pdf need none)")
@@ -853,14 +876,22 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
     if args.show_model:
         print(f"\n{report.describe(model)}")
         return 0
+    if args.nosolution:
+        return 0
     if args.brute_force:
         return brute_force(puzzle, text)
     if args.explain:
         if kind == "murdoku":
             print(f"\n{story.explain(text)}")
             return 0
+        if kind == "sudoku":
+            explanation = sudoku_story.explain(text)
+            print(f"\n{explanation.markdown()}")
+            return 0 if explanation.complete else 2
         if kind != "battleships":
-            print(f"--explain supports Murdoku and Battleships, not {kind}", file=sys.stderr)
+            print(
+                f"--explain supports Murdoku, Sudoku, and Battleships, not {kind}", file=sys.stderr
+            )
             return 2
         args.verbose = True
 

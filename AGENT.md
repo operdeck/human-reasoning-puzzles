@@ -68,8 +68,8 @@ enforces the import graph.
 | progress | `on_step(rule_name, steps)` after each rule that fires |
 | CLI -> puzzle | `cli.load(text, kind) -> Puzzle(kind, model, draw)` |
 | explanation | `report.describe(model, rules) -> str`, public `Model` API only |
-| proof | `Move.of(rule, steps)`, `shortest(start, moves)`, `replay(start, moves, on_step)`, `essential(model, history, step)` |
-| worked solution | `story.explain(text) -> str`; Murdoku only, reads `proof` and `murdoku` |
+| proof | `Move.of(rule, steps)`, `shortest(start, moves, required=...)`, `replay(start, moves, on_step)`, `episodes(start, moves)`, `essential(model, history, step)` |
+| worked solution | `story.explain(text) -> str` for Murdoku; `sudoku_story.explain(text) -> Explanation` for Sudoku |
 | brute force | `bruteforce.solutions(text, kind, limit) -> list[dict]`; never imports `core` |
 
 Label every constraint with `family=` when compiling a new puzzle type;
@@ -232,7 +232,10 @@ unreachable areas, or unused roles as warnings. `--require-forward` also
 requires a solve without `what_if`. `--svg` or `--png` without a path writes
 `<puzzle-stem>.svg`/`.png` beside the input, and the solved image adds `-solution`;
 an explicit path overrides the default. `--interactive` (with `--svg`) adds cell
-ids for an app and writes no solution picture. `--export DIR` writes a JSON
+ids for an app and writes no solution picture. `--nosolution` skips solving and
+writes only the puzzle on the console or in PNG/SVG and DOCX/PDF output; existing
+solution files are untouched. It cannot be combined with solving options or
+`--export`. `--export DIR` writes a JSON
 bundle and interactive board per puzzle, plus `index.json`, for the web player in
 `web/` (see `src/csp/web.py`; it fails when any puzzle cannot be exported). Each
 bundle and index entry records `deductive`, whether the ladder closes the puzzle
@@ -242,8 +245,8 @@ stays family-agnostic: palettes, scopes, rules and wording come from the bundle,
 so new family knowledge belongs in `web.py`, not in TypeScript. After changing
 `web/`, run `npx tsc --noEmit` and `npm test` there. `--docx [FILE]` (or a quoted glob) writes
 an editable Word booklet, puzzles first and then solutions, one page each, from
-`docx_export`; `--nosolution` skips the solve and writes the puzzle pages only,
-for proof-reading or for a puzzle the rules do not close. New Murdoku puzzles
+`docx_export`; `--nosolution` writes just the puzzle pages for proof-reading or
+for a puzzle the rules do not close. New Murdoku puzzles
 should carry the optional `Title:`, `Intro:`,
 `Figures:`, `Question:`, `Reveal:` and `| wording` booklet text (see the Murdoku
 skill) and never commit generated `.docx` files. After significant puzzle or

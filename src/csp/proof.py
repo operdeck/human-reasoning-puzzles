@@ -7,8 +7,10 @@ to matter.
    deduction is a `Move` that can be replayed on its own; placing someone
    who has one option left (or the one person left for a row) is free.
    Moves are dropped one at a time, hardest first, as long as the rest
-   still solve the puzzle.
-2. `essential` trims a what_if: of the steps it took from its assumption,
+   still solve the puzzle and any required moves still fire.
+2. `episodes` replays the chosen moves with their earlier state and groups
+   each pattern with the single placements immediately following it.
+3. `essential` trims a what_if: of the steps it took from its assumption,
    it keeps those the contradiction needed. A step needs
 
    * a placement: every other option of its constraint ruled out;
@@ -98,19 +100,46 @@ class Move:
         return prune_relation(model, relation)
 
 
-def replay(start: Model, moves: Iterable[Move], on_step: StepCallback | None = None) -> Model:
-    """A copy of `start` after `moves`, each followed by every free placement.
+@dataclass(frozen=True)
+class Inference:
+    """A replayed deduction, its prior state, and its structured steps."""
 
-    `on_step` hears of each move that changed something and each placement,
-    as `Solver.solve` reports them.
-    """
+    rule: str
+    before: Model
+    steps: tuple[Step, ...]
+    move: Move | None
+
+
+@dataclass(frozen=True)
+class Episode:
+    """A deduction and the free placements it makes possible, in replay order."""
+
+    pattern: Inference
+    consequences: tuple[Inference, ...] = ()
+
+
+def _replay(
+    start: Model,
+    moves: Iterable[Move],
+    on_step: StepCallback | None = None,
+    on_inference: Callable[[Inference], None] | None = None,
+    on_move: Callable[[Move], None] | None = None,
+) -> Model:
     model = start.clone()
 
-    def run(rule: str, apply: Callable[[Model], bool]) -> bool:
+    def run(rule: str, apply: Callable[[Model], bool], move: Move | None = None) -> bool:
         mark = len(model.log)
+        before = model.clone() if on_inference is not None else None
         changed = apply(model)
-        if changed and on_step is not None:
-            on_step(rule, model.log[mark:])
+        if changed:
+            steps = model.log[mark:]
+            if on_step is not None:
+                on_step(rule, steps)
+            if move is not None and on_move is not None:
+                on_move(move)
+            if on_inference is not None:
+                assert before is not None
+                on_inference(Inference(rule, before, tuple(steps), move))
         return changed
 
     def settle() -> None:
@@ -119,19 +148,56 @@ def replay(start: Model, moves: Iterable[Move], on_step: StepCallback | None = N
 
     settle()
     for move in moves:
-        run(move.rule, move.apply)
+        run(move.rule, move.apply, move)
         settle()
     return model
 
 
-def shortest(start: Model, moves: Sequence[Move]) -> list[Move]:
-    """As few of `moves` as still solve the puzzle from `start`."""
+def replay(start: Model, moves: Iterable[Move], on_step: StepCallback | None = None) -> Model:
+    """A copy of `start` after `moves`, each followed by every free placement.
+
+    `on_step` hears of each move that changed something and each placement,
+    as `Solver.solve` reports them.
+    """
+    return _replay(start, moves, on_step)
+
+
+def episodes(start: Model, moves: Iterable[Move]) -> tuple[Model, list[Episode]]:
+    """Replay moves as ordered patterns and their immediately enabled placements."""
+    groups: list[tuple[Inference, list[Inference]]] = []
+
+    def collect(inference: Inference) -> None:
+        if inference.rule == "single" and groups and groups[-1][0].rule != "single":
+            groups[-1][1].append(inference)
+        else:
+            groups.append((inference, []))
+
+    model = _replay(start, moves, on_inference=collect)
+    return model, [Episode(pattern, tuple(consequences)) for pattern, consequences in groups]
+
+
+def shortest(start: Model, moves: Sequence[Move], *, required: Iterable[Move] = ()) -> list[Move]:
+    """Keep required moves firing and as few others as still solve the puzzle."""
+    protected = {id(move) for move in required}
+    if not protected <= {id(move) for move in moves}:
+        raise ValueError("required moves must belong to the proof")
+
+    def replay_with_required(candidate: Sequence[Move]) -> tuple[Model, bool]:
+        fired: set[int] = set()
+        model = _replay(start, candidate, on_move=lambda move: fired.add(id(move)))
+        return model, protected <= fired
+
     kept = list(moves)
     for rule in HARDEST_FIRST:
         for move in reversed([m for m in kept if m.rule == rule]):
+            if id(move) in protected:
+                continue
             fewer = [m for m in kept if m is not move]
-            if replay(start, fewer).solution() is not None:
+            result, fires = replay_with_required(fewer)
+            if fires and result.solution() is not None:
                 kept = fewer
+    if protected and not replay_with_required(kept)[1]:
+        raise ValueError("required moves cannot all fire in this proof")
     return kept
 
 
