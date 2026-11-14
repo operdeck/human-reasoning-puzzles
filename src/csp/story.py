@@ -31,21 +31,29 @@ from .murdoku import (
     COUNTING,
     FILTERS,
     POPULATION_FAMILY,
+    AreaIsolationCondition,
+    AreaOccupancyCondition,
     AreaPopulationCondition,
     Board,
     CellMark,
     Clue,
     Condition,
+    ConditionalCondition,
+    DirectionCondition,
     GlobalCountCondition,
     QuantifiedCondition,
     RoleCondition,
     Square,
     TargetSelector,
+    area_isolation_conditions,
+    area_occupancy_conditions,
     area_population_conditions,
     board_rules,
     compile_puzzle,
+    conditional_conditions,
     conditions,
     counted,
+    directional_conditions,
     global_count_conditions,
     global_count_unit_prefix,
     line_indices,
@@ -189,6 +197,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_off": "then {who} is not on {square}",
         "chain_so": "So {ends}; either way {outcome}.",
         "chain_either": "{ends}; either way {outcome}.",
+        "chain_hidden": "The clues together show: {outcome}.",
         "nobody_else": "nobody else can be there",
         "then_on": "then {who} would be on {square}",
         "also_on": "{who} on {square}",
@@ -407,6 +416,28 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.alone": "{a} is alone in a region",
         "clue.furthest": "{a} is further from {b} than {c} is",
         "clue.furthest_all": "{a} is the furthest from {b} of all the figures",
+        "clue.in": "{a} is {where}",
+        "clue.not_in": "{a} is not {where}",
+        "clue.beside": "{a} is beside {things}",
+        "clue.not_beside": "{a} is not beside {things}",
+        "clue.touches": "{a} shares a side with {things}",
+        "clue.not_touches": "{a} does not share a side with {things}",
+        "clue.same": "{a} and {b} are in the same area",
+        "clue.not_same": "{a} and {b} are in different areas",
+        "clue.dir_not": "It is not the case that {relation}",
+        "clue.dir_distance": "{a} and {b} are {comparison} {n} {unit} apart",
+        "clue.dir_exact": "{a} is exactly {n} {unit} {direction} {b}",
+        "clue.dir_direction": "{a} is {direction} {b}",
+        "clue.dir_knight": "{a} is a knight's move from {b}",
+        "clue.area_isolation": ("No two side-adjacent areas{scope} are both occupied"),
+        "clue.conditional": "If {a} holds role {role}, then {predicate}",
+        "clue.alone_area": "{a} is the only person in {where}",
+        "clue.alone_area_any": "exactly one person is in {where}",
+        "clue.with_area": "In {where}, at least two people are present, including {membership}",
+        "clue.with_area_person": (
+            "{a} is in {where}; exactly {n} other occupants match {membership}"
+        ),
+        "location.touched_by": "a square touching {thing}",
         "target.attribute": "someone with the {name} attribute",
         "target.role": "a {name} holder",
         "target.unique_role": "the {name}",
@@ -415,6 +446,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "target.at": "someone at {what}",
         "target.corner": "someone in the cells around {what}",
         "target.kind": "someone on {what}",
+        "target.people_on": "someone on {what}",
+        "target.people": "one of {people}",
+        "target.anyone": "anyone",
+        "location.in_line": "in {line}",
+        "area.name": "the {name} area",
     },
     "nl": {
         "square": "r{row}k{col}",
@@ -546,6 +582,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "chain_off": "dan zit {who} niet op {square}",
         "chain_so": "Dus {ends}; hoe dan ook {outcome}.",
         "chain_either": "{ends}; hoe dan ook {outcome}.",
+        "chain_hidden": "De aanwijzingen samen laten zien: {outcome}.",
         "nobody_else": "daar kan verder niemand",
         "then_on": "dan zou {who} op {square} zitten",
         "also_on": "{who} op {square}",
@@ -776,6 +813,30 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.alone": "{a} is alleen in een gebied",
         "clue.furthest": "{a} is verder van {b} dan {c}",
         "clue.furthest_all": "{a} is van alle figuren het verst van {b}",
+        "clue.in": "{a} is {where}",
+        "clue.not_in": "{a} is niet {where}",
+        "clue.beside": "{a} staat naast {things}",
+        "clue.not_beside": "{a} staat niet naast {things}",
+        "clue.touches": "{a} deelt een zijde met {things}",
+        "clue.not_touches": "{a} deelt geen zijde met {things}",
+        "clue.same": "{a} en {b} zijn in hetzelfde gebied",
+        "clue.not_same": "{a} en {b} zijn in verschillende gebieden",
+        "clue.dir_not": "Het is niet zo dat {relation}",
+        "clue.dir_distance": "{a} en {b} zijn {comparison} {n} {unit} van elkaar verwijderd",
+        "clue.dir_exact": "{a} staat precies {n} {unit} {direction} {b}",
+        "clue.dir_direction": "{a} staat {direction} {b}",
+        "clue.dir_knight": "{a} staat een paardensprong van {b}",
+        "clue.area_isolation": (
+            "Twee gebieden die aan een zijde grenzen{scope} mogen niet allebei bezet zijn"
+        ),
+        "clue.conditional": "Als {a} de rol {role} heeft, dan geldt dat {predicate}",
+        "clue.alone_area": "{a} is de enige persoon in {where}",
+        "clue.alone_area_any": "precies één persoon is in {where}",
+        "clue.with_area": "In {where} zijn minstens twee mensen aanwezig, waaronder {membership}",
+        "clue.with_area_person": (
+            "{a} is in {where}; precies {n} andere aanwezigen voldoen aan {membership}"
+        ),
+        "location.touched_by": "een vakje dat {thing} raakt",
         "target.attribute": "iemand met het kenmerk {name}",
         "target.role": "een {name}-drager",
         "target.unique_role": "de {name}",
@@ -784,6 +845,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "target.at": "iemand bij {what}",
         "target.corner": "iemand in de vakjes rond {what}",
         "target.kind": "iemand op {what}",
+        "target.people_on": "iemand op {what}",
+        "target.people": "een van {people}",
+        "target.anyone": "iedereen",
+        "location.in_line": "in {line}",
+        "area.name": "het gebied {name}",
     },
 }
 
@@ -1574,6 +1640,18 @@ class Story:
             condition.label: condition for condition in global_count_conditions(board, self.clues)
         }
         self.population_conditions = area_population_conditions(board, self.clues)
+        self.direction_conditions: dict[str, DirectionCondition] = {
+            condition.label: condition for condition in directional_conditions(board, self.clues)
+        }
+        self.area_occupancies: dict[str, AreaOccupancyCondition] = {
+            condition.label: condition for condition in area_occupancy_conditions(board, self.clues)
+        }
+        self.area_isolations: dict[str, AreaIsolationCondition] = {
+            condition.label: condition for condition in area_isolation_conditions(board, self.clues)
+        }
+        self.conditionals: dict[str, ConditionalCondition] = {
+            condition.label: condition for condition in conditional_conditions(board, self.clues)
+        }
         self.role_variables = {
             board.role_variable(person, role.name): (person, role.name)
             for role in board.roles
@@ -1983,6 +2061,21 @@ class Story:
         self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
     ) -> str:
         """'If A is not on a, then B is on b, then ... so A on a or Z on z; either way ...'"""
+        if any(
+            who not in self.board.people or not isinstance(at, Square) for who, at in step.chain
+        ):
+            if not changed:
+                return ""
+            outcome = self._outcome(changed, before, state)
+            source = step.sources[0] if step.sources else None
+            if source is not None and (
+                source in self.direction_conditions
+                or source in self.conditions
+                or self._role_condition_for_source(source) is not None
+                or self._quantified_condition_for_source(source) is not None
+            ):
+                return self._relation(step, before, changed, outcome)
+            return _cap(self.say("chain_hidden", outcome=outcome))
         square = self.places.square
         (who, at), *rest = step.chain
         parts = [self.say("chain_if", who=who, square=square(at))]
@@ -1998,17 +2091,19 @@ class Story:
             ],
             "or",
         )
-        outcome = []
+        outcome_parts = []
         for p in changed:
             gone = self.places.squares(before[p] - state.options[p])
-            outcome.append(_emphasize(self.say("is_not", who=p, where=self.say("on", what=gone))))
+            outcome_parts.append(
+                _emphasize(self.say("is_not", who=p, where=self.say("on", what=gone)))
+            )
             state.told[p] -= before[p] - state.options[p]
             if len(state.options[p]) == 1 and p not in state.announced:
                 state.announce(p)
-                outcome.append(self.places.placed(p, min(state.options[p])))
-        so = self.say("chain_so", ends=ends, outcome=self.say.join(outcome))
+                outcome_parts.append(self.places.placed(p, min(state.options[p])))
+        so = self.say("chain_so", ends=ends, outcome=self.say.join(outcome_parts))
         if len(step.chain) == 2:
-            return _cap(self.say("chain_either", ends=ends, outcome=self.say.join(outcome)))
+            return _cap(self.say("chain_either", ends=ends, outcome=self.say.join(outcome_parts)))
         return f"{', '.join(parts)}. {so}"
 
     def _wing(
@@ -2769,6 +2864,13 @@ class Story:
                 return ""
             clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
             return f"{clue}, {self.say('so')} {outcome}."
+        if (direction := self.direction_conditions.get(source)) is not None:
+            if not outcome:
+                return ""
+            clue = _cap(self._direction_text(direction))
+            if direction.number is not None:
+                clue += f" ({direction.number})"
+            return f"{clue}, {self.say('so')} {outcome}."
         if source not in self.conditions and (apart := self._role_apart(source)) is not None:
             return f"{_cap(apart)}, {self.say('so')} {outcome}." if outcome else f"{_cap(apart)}."
         condition = self.conditions[source]
@@ -2999,6 +3101,7 @@ class Story:
     ) -> str:
         """The contradiction a what_if ran into."""
         source = step.sources[0] if step.sources else None
+        suffix = "_first" if first else ""
         for mark in self.board.marks:
             if mark.occupant_condition != "not_alone":
                 continue
@@ -3051,16 +3154,37 @@ class Story:
                     return contradiction
         if (global_count := self._global_count_for_sources(step.sources)) is not None:
             return self.say("global_count.breaks", clue=self._global_count_text(global_count))
-        if source in self.conditions:
-            condition = self.conditions[source]
-            suffix = "_first" if first else ""
-            if condition.number is not None and self.say.numbered:
-                return self.say(f"breaks{suffix}", n=condition.number)
-            if quoted := self._clue(condition):
+        if source is not None and source in self.conditions:
+            clue_condition = self.conditions[source]
+            if clue_condition.number is not None and self.say.numbered:
+                return self.say(f"breaks{suffix}", n=clue_condition.number)
+            if quoted := self._clue(clue_condition):
                 return self.say(f"breaks_said{suffix}", clue=_cap(quoted))
-            if condition.number is None:
+            if clue_condition.number is None:
                 return self.say(f"breaks_rule{suffix}")
-            return self.say(f"breaks{suffix}", n=condition.number)
+            return self.say(f"breaks{suffix}", n=clue_condition.number)
+        if source is not None and source in self.direction_conditions:
+            direction_condition = self.direction_conditions[source]
+            if direction_condition.number is not None and self.say.numbered:
+                return self.say(f"breaks{suffix}", n=direction_condition.number)
+            return self.say(
+                f"breaks_said{suffix}", clue=_cap(self._direction_text(direction_condition))
+            )
+        if source is not None and source in self.area_occupancies:
+            occupancy = self.area_occupancies[source]
+            if occupancy.number is not None and self.say.numbered:
+                return self.say(f"breaks{suffix}", n=occupancy.number)
+            return self.say(f"breaks_said{suffix}", clue=_cap(self._area_occupancy_text(occupancy)))
+        if source is not None and source in self.area_isolations:
+            isolation = self.area_isolations[source]
+            if isolation.number is not None and self.say.numbered:
+                return self.say(f"breaks{suffix}", n=isolation.number)
+            return self.say(f"breaks_said{suffix}", clue=_cap(self._area_isolation_text(isolation)))
+        if source is not None and source in self.conditionals:
+            conditional = self.conditionals[source]
+            if conditional.number is not None and self.say.numbered:
+                return self.say(f"breaks{suffix}", n=conditional.number)
+            return self.say(f"breaks_said{suffix}", clue=_cap(self._conditional_text(conditional)))
         if source in self.about:
             kind, what = self.about[source]
             if kind == "person":
@@ -3104,9 +3228,9 @@ class Story:
     def clue_texts(self) -> list[str]:
         """Every numbered clue as one human-readable sentence, in clue order."""
         said: dict[int, str] = {}
-        for condition in conditions(self.board, self.clues):
-            if condition.number is not None:
-                said.setdefault(condition.number, self._clue(condition))
+        for basic_condition in conditions(self.board, self.clues):
+            if basic_condition.number is not None:
+                said.setdefault(basic_condition.number, self._clue(basic_condition))
         for quantified in self.quantified_conditions.values():
             if quantified.number is not None:
                 said.setdefault(quantified.number, self._quantified_text(quantified))
@@ -3116,6 +3240,20 @@ class Story:
         for count in self.global_counts.values():
             if count.number is not None:
                 said.setdefault(count.number, self._global_count_text(count))
+        for direction_condition in self.direction_conditions.values():
+            if direction_condition.number is not None:
+                said.setdefault(
+                    direction_condition.number, self._direction_text(direction_condition)
+                )
+        for occupancy in self.area_occupancies.values():
+            if occupancy.number is not None:
+                said.setdefault(occupancy.number, self._area_occupancy_text(occupancy))
+        for isolation in self.area_isolations.values():
+            if isolation.number is not None:
+                said.setdefault(isolation.number, self._area_isolation_text(isolation))
+        for conditional in self.conditionals.values():
+            if conditional.number is not None:
+                said.setdefault(conditional.number, self._conditional_text(conditional))
         out = []
         for number, (kind, args) in enumerate(self.clues, 1):
             text = said.get(number) or self._clue_text(kind, args, args[:1])
@@ -3307,14 +3445,216 @@ class Story:
     def _role_ref(rule: RoleCondition) -> str:
         return "" if rule.number is None else f" ({rule.number})"
 
+    def _location_noun(self, token: str) -> str:
+        kind, separator, name = token.partition(":")
+        if not separator:
+            raise ValueError(f"location selector must be typed: {token!r}")
+        if kind in ("object", "mark", "edge_item", "point_object"):
+            return self.places.thing(name)
+        if kind == "object_kind":
+            labels = {
+                "en": {"blocking": "blocking objects", "standable": "standable objects"},
+                "nl": {"blocking": "blokkerende objecten", "standable": "begaanbare objecten"},
+            }
+            return labels[self.say.language][name]
+        if kind in ("area", "tag"):
+            ids = (
+                self.board.area_ids(name.split(","))
+                if kind == "area"
+                else self.board.tagged_region_ids(name.split(","))
+            )
+            return self.places.regions(ids)
+        raise ValueError(f"selector {token!r} is not a location noun")
+
+    def _location_where(self, token: str) -> str:
+        kind, _, name = token.partition(":")
+        if kind in ("area", "tag"):
+            return self._location_noun(token)
+        if kind in ("rows", "columns"):
+            line_kind = "row" if kind == "rows" else "col"
+            line = self.places.lines(line_kind, line_indices(name, self.board.size), "or")
+            return self.say("location.in_line", line=line)
+        if kind == "corner":
+            if name == "board":
+                return (
+                    "in a corner of the grid" if self.say.language == "en" else "in een rasterhoek"
+                )
+            area = self._location_noun(name)
+            return (
+                f"in a corner of {area}" if self.say.language == "en" else f"in een hoek van {area}"
+            )
+        if kind in ("object", "object_kind", "mark"):
+            return (
+                f"on {self._location_noun(token)}"
+                if self.say.language == "en"
+                else f"op {self._location_noun(token)}"
+            )
+        raise ValueError(f"selector {token!r} is not valid with 'in'")
+
+    def _location_predicate_text(self, kind: str, person: str, token: str) -> str:
+        selector_kind = token.partition(":")[0]
+        if kind in ("in", "not_in"):
+            where = self._location_where(token)
+            return self.say(f"clue.{kind}", a=person, where=where)
+        thing = self._location_noun(token)
+        if kind in ("on", "not_on") and selector_kind in ("edge_item", "point_object"):
+            thing = self.say("location.touched_by", thing=thing)
+        if kind == "only":
+            return self.say("clue.only_on", a=person, things=thing)
+        return self.say(f"clue.{kind}", a=person, things=thing)
+
+    def _direction_text(self, condition: DirectionCondition) -> str:
+        first, second = self._target_text(condition.first), self._target_text(condition.second)
+        mode = condition.mode
+        if mode == "same":
+            text = self.say("clue.same", a=first, b=second)
+        elif mode == "furthest":
+            text = self.say("clue.furthest_all", a=first, b=second)
+        elif mode == "knight":
+            text = self.say("clue.dir_knight", a=first, b=second)
+        elif mode == "areas" and condition.comparison == "=" and condition.distance == 0:
+            text = self.say("clue.same", a=first, b=second)
+        elif mode in ("left", "right", "up", "down"):
+            directions = {
+                "en": {"left": "left of", "right": "right of", "up": "above", "down": "below"},
+                "nl": {"left": "links van", "right": "rechts van", "up": "boven", "down": "onder"},
+            }[self.say.language]
+            if condition.comparison is None:
+                text = self.say("clue.dir_direction", a=first, b=second, direction=directions[mode])
+            else:
+                unit = "column" if mode in ("left", "right") else "row"
+                if condition.distance != 1:
+                    unit += "s"
+                if self.say.language == "nl":
+                    unit = {
+                        "column": "kolom",
+                        "columns": "kolommen",
+                        "row": "rij",
+                        "rows": "rijen",
+                    }[unit]
+                text = self.say(
+                    "clue.dir_exact",
+                    a=first,
+                    b=second,
+                    n=self.say.number(condition.distance or 0),
+                    unit=unit,
+                    direction=directions[mode],
+                )
+        else:
+            comparison = {
+                "=": "exactly" if self.say.language == "en" else "precies",
+                "<=": "at most" if self.say.language == "en" else "hoogstens",
+                ">=": "at least" if self.say.language == "en" else "minstens",
+            }[condition.comparison or "="]
+            unit_key = {
+                "rows": ("row", "rows", "rij", "rijen"),
+                "cols": ("column", "columns", "kolom", "kolommen"),
+                "manhattan": (
+                    "Manhattan step",
+                    "Manhattan steps",
+                    "Manhattanstap",
+                    "Manhattanstappen",
+                ),
+                "euclidean": (
+                    "straight-line square",
+                    "straight-line squares",
+                    "vakje in vogelvlucht",
+                    "vakjes in vogelvlucht",
+                ),
+                "king": ("king move", "king moves", "koningszet", "koningszetten"),
+                "areas": ("area border", "area borders", "gebiedsgrens", "gebiedsgrenzen"),
+            }[mode]
+            singular, plural = unit_key[:2] if self.say.language == "en" else unit_key[2:]
+            unit = singular if condition.distance == 1 else plural
+            text = self.say(
+                "clue.dir_distance",
+                a=first,
+                b=second,
+                comparison=comparison,
+                n=self.say.number(condition.distance or 0),
+                unit=unit,
+            )
+        if not condition.negated:
+            return text
+        return self.say("clue.dir_not", relation=text)
+
+    def _area_occupancy_text(self, condition: AreaOccupancyCondition) -> str:
+        region_name = self.board.region_names[next(iter(self.board.area_ids([condition.area])))]
+        region = self.say("area.name", name=region_name.replace("_", " "))
+        if condition.kind == "alone":
+            if condition.person is None:
+                return self.say("clue.alone_area_any", where=region)
+            return self.say("clue.alone_area", a=condition.person, where=region)
+        assert condition.membership is not None
+        membership = self._target_text(condition.membership)
+        if condition.person is None:
+            return self.say("clue.with_area", where=region, membership=membership)
+        role_or_attribute = (
+            f"{condition.membership.kind} {condition.membership.name.replace('_', ' ')}"
+        )
+        return self.say(
+            "clue.with_area_person",
+            a=condition.person,
+            where=region,
+            n=self.say.number(condition.companions or 1),
+            membership=role_or_attribute,
+        )
+
+    def _area_isolation_text(self, condition: AreaIsolationCondition) -> str:
+        scope = ""
+        if condition.selector is not None:
+            selector = condition.selector
+            if selector.kind == "area":
+                where = self.places.regions(self.board.area_ids([selector.name]))
+            else:
+                where = self.say.words.get(selector.name, selector.name.replace("_", " "))
+            scope = f" in {where}"
+        return self.say("clue.area_isolation", scope=scope)
+
+    def _conditional_text(self, condition: ConditionalCondition) -> str:
+        predicate = self._location_predicate_text(
+            "not_" + condition.predicate if condition.negated else condition.predicate,
+            condition.person,
+            f"{condition.selector.kind}:{condition.selector.name}",
+        )
+        role = self.say.words.get(condition.role, condition.role.replace("_", " "))
+        return self.say("clue.conditional", a=condition.person, role=role, predicate=predicate)
+
     def _clue_text(self, kind: str, args: Sequence[str], people: Sequence[str]) -> str:
+        if kind in ("dir", "not_dir", "same", "not_same"):
+            (condition,) = directional_conditions(
+                self.board, [(kind, list(args))], include_rules=False
+            )
+            return self._direction_text(condition)
+        if kind in (
+            "in",
+            "not_in",
+            "on",
+            "not_on",
+            "beside",
+            "not_beside",
+            "touches",
+            "not_touches",
+        ):
+            person, *selectors = args
+            texts = [
+                self._location_predicate_text(kind, person, selector) for selector in selectors
+            ]
+            return self.say.join(texts, "or")
+        if kind == "only":
+            person, selector = args
+            return self._location_predicate_text(kind, person, selector)
         if kind in AREA_POPULATION:
             names = [token.partition(":")[2] or token for token in args]
             regions = sorted(self.board.area_ids(names))
             listed = self.say.join([self.board.region_names[region] for region in regions])
+            phrase_kind = {
+                "most_populated": "busiest_area",
+                "least_populated": "quietest_area",
+            }.get(kind, kind)
             # One named area reads as "the area with the fewest people is X"; a tie
             # names several, so the sentence has to be plural.
-            key = f"clue.{kind}" if len(regions) == 1 else f"clue.{kind}_tie"
+            key = f"clue.{phrase_kind}" if len(regions) == 1 else f"clue.{phrase_kind}_tie"
             return self.say(key, areas=listed)
         if kind == COUNTING:
             n, parts = counted(args)
@@ -3377,6 +3717,12 @@ class Story:
     def _target_text(self, selector: TargetSelector) -> str:
         if selector.kind == "person":
             return selector.name
+        if selector.kind == "union":
+            return self.say.join([self._target_text(part) for part in selector.parts], "or")
+        if selector.kind == "people":
+            return self.say("target.people", people=self.say.join(selector.name.split(",")))
+        if selector.kind == "anyone":
+            return self.say("target.anyone")
         if selector.kind == "attribute":
             name = self.say.words.get(selector.name, selector.name.replace("_", " "))
             return self.say("target.attribute", name=name)
@@ -3393,6 +3739,8 @@ class Story:
                 else self.board.tagged_region_ids([selector.name])
             )
             return self.say("target.area", where=self.places.regions(ids))
+        if selector.kind == "people_on":
+            return self.say("target.people_on", what=self._location_noun(selector.name))
         if selector.kind == "object_kind":
             names = {
                 "en": {"blocking": "blocking objects", "standable": "standable objects"},

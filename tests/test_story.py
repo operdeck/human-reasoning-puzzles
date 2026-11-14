@@ -537,8 +537,8 @@ def test_story_omits_population_clue_numbers_in_unnumbered_explanations():
 
 def test_story_describes_by_region_and_row_before_squares():
     story = explain((example("prrrdoku3.txt")).read_text())
-    assert "Luna zit in het water" in story
-    assert "Otto zit in een klimgebied, dus **Pip zit in een klimgebied**" in story
+    assert "Luna is op de woonboot of Luna is in het water" in story
+    assert "Otto en Pip zijn in hetzelfde gebied" in story
     assert "Luna kan alleen in kolom 1, **daar kan verder niemand**" in story
 
 

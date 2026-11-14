@@ -145,9 +145,11 @@ class Spec:
         if unknown := set(self.decor) - {obj.name for obj in self.objects}:
             raise ValueError(f"decor names unknown objects: {', '.join(sorted(unknown))}")
         for clue in self.key_clues:
-            if self.late is not None and self.late in clue.split():
+            tokens = clue.partition("|")[0].split()
+            if self.late is not None and self.late in tokens:
                 raise ValueError(f"key clue {clue!r} names the late figure {self.late}")
-            if set(clue.split()) & set(self.decor):
+            targets = {part for token in tokens for part in token.split(":")}
+            if targets & set(self.decor):
                 raise ValueError(f"key clue {clue!r} names decorative objects")
 
 
@@ -713,7 +715,10 @@ def draft_text(
         lines += [
             "",
             "Rules:",
-            f"alone_with {spec.late} attribute:{spec.companion_trait} {len(spec.companions)}",
+            (
+                f"with {spec.late} attribute:{spec.companion_trait} "
+                f"in same area exactly {len(spec.companions)}"
+            ),
         ]
     chosen = spec.key_clues if clues is None else clues
     if chosen:
@@ -1057,6 +1062,9 @@ def close(spec: Spec, item: Candidate, timeout: float = 5.0) -> Candidate:
         exclude_targets=spec.decor,
     )
     text = clue_search.with_clues(item.text, [*spec.key_clues, *added])
+    if spec.key_clues:
+        key_entries = [f"clue: {clue.partition('|')[0].strip()}" for clue in spec.key_clues]
+        text = f"{text.rstrip()}\n\nKey:\n" + "\n".join(key_entries) + "\n"
     outcome = clue_search.outcome(text, timeout, late_person=spec.late or None)
     state = str(outcome) if outcome.good else f"not closed ({outcome})"
     if outcome.good and spec.late:

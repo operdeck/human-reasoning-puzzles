@@ -23,7 +23,7 @@ People:
 Ada
 Ben
 Rules:
-in_row Ada 1
+in Ada rows:1
 Clues:
 count people on object:bed = 1
 count people on object_kind:standable = 1

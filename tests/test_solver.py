@@ -377,6 +377,20 @@ def test_wing_step_replays_through_its_move():
     assert replay(start, [move]).is_false(target[0])
 
 
+def test_relation_move_replays_duplicate_relation_names():
+    model = Model()
+    options = _variable(model, "x", (1, 2))
+    model.relate("same clue", ("x",), lambda _value: True)
+    model.relate("same clue", ("x",), lambda value: value == 1)
+    start = model.clone()
+
+    assert rule_relations(model) is True
+    step = next(s for s in model.log if s.rule == "relations")
+    move = Move.of("relations", [step])
+    assert move is not None
+    assert replay(start, [move]).is_false(options[1])
+
+
 def test_count_move_replays_its_propagation():
     model = Model()
     literal = model.literal("occupied", True)
@@ -525,12 +539,12 @@ seer: any
 RoleEligibility:
 captain: A
 Rules:
-has_role A seer
-not_role B seer
-some_role C
-at_most_one_role C
-roleless D
-role_subset captain seer
+has A role:seer
+not has B role:seer
+count roles of C >= 1
+count roles of C <= 1
+count roles of D = 0
+subset role:captain role:seer
 """
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
@@ -602,9 +616,9 @@ B
 Roles:
 scout: 1
 Rules:
-has_role A scout
+has A role:scout
 Clues:
-role_below B scout 1
+dir B role:scout down = 1
 """
     below_solutions = bruteforce.solutions(below_text, "murdoku", limit=10)
     assert below_solutions
@@ -626,7 +640,7 @@ B
 Roles:
 murderer: 1
 Clues:
-sole_role_companion B murderer
+with B role:murderer in same area exactly 1
 """
     companion_solutions = bruteforce.solutions(companion_text, "murdoku", limit=10)
 
@@ -692,7 +706,7 @@ B
 Roles:
 bandit: 1
 Rules:
-role_occupant bandit not_alone
+for each area in all occupied by role:bandit, count people in that area >= 2
 """
     allowed_solutions = bruteforce.solutions(permitted, "murdoku", limit=10)
     assert allowed_solutions

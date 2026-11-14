@@ -57,21 +57,21 @@ Tomas
 
 # Mara and Nico are nobles. Ria and Tomas are commoners; no knights here.
 Rules:
-only_in_tagged Mara noble_areas
-only_in_tagged Nico noble_areas
-not_in_tagged Ria noble_areas
-not_in_tagged Tomas noble_areas
+in Mara tag:noble_areas
+in Nico tag:noble_areas
+not in Ria tag:noble_areas
+not in Tomas tag:noble_areas
 
 # Tomas is the victim. Exactly one of Mara or Ria shares his region; who did it?
 Clues:
-only_on Mara bed
-next_to Mara gate
-on Nico chair
-left_of Nico Ria 1
-only_on Ria carpet
-in_corner Tomas
-on Tomas horse
-exactly 1 same_region Tomas Mara ; same_region Tomas Ria
+only Mara on object:bed
+on Mara edge_item:gate
+on Nico object:chair
+dir Nico Ria left = 1
+only Ria on object:carpet
+in Tomas corner:board
+on Tomas object:horse
+exactly 1 same Tomas Mara ; same Tomas Ria
 
 # Booklet text for --docx (optional).
 Title:

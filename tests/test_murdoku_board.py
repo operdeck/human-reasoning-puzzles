@@ -7,7 +7,7 @@ import pytest
 from csp import audit, clue_search
 from csp import murdoku_board as mb
 from csp.bruteforce import murdoku as brute
-from csp.puzzlefile import load_board
+from csp.puzzlefile import keyed_clue_numbers, load_board
 
 SPEC = """theme: test
 size: 5
@@ -18,7 +18,7 @@ late: Dee
 companions: Ann
 object: rots blocking x2
 object: kruk standable x1
-key_clue: not_next_to Ann rots
+key_clue: not beside Ann object:rots
 candidates: 2
 keep: 2
 seed: 3
@@ -47,7 +47,7 @@ def test_read_spec_accepts_only_declared_decorative_objects():
 @pytest.mark.parametrize(
     "line, problem",
     [
-        ("key_clue: next_to Dee rots", "names the late figure"),
+        ("key_clue: beside Dee object:rots", "names the late figure"),
         ("late_extra: x", "unknown spec keys"),
         ("template: spiral", "template must be"),
     ],
@@ -129,13 +129,16 @@ def test_close_adds_clues_that_leave_the_late_figure_out():
     closed = mb.close(spec, first)
     assert closed.closing.startswith(f"{len(clue_search.clue_lines(closed.text)) - 1} clues added")
     assert "# Suggested clues:" in closed.text
+    assert keyed_clue_numbers(closed.text) == {1}
     assert not any("Dee" in line.split() for line in clue_search.clue_lines(closed.text))
-    assert all("kruk" not in line.split()[1:] for line in clue_search.clue_lines(closed.text))
+    assert all("object:kruk" not in line.split() for line in clue_search.clue_lines(closed.text))
     assert brute.accepts(closed.text, closed.placement)
 
 
 def test_a_key_clue_that_rules_nothing_out_is_rejected():
-    spec = mb.read_spec(SPEC.replace("not_next_to Ann rots", "in_region Ann West East North"))
+    spec = mb.read_spec(
+        SPEC.replace("not beside Ann object:rots", "in Ann area:West area:East area:North")
+    )
     tally: dict[str, int] = {}
     assert mb.candidate(spec, 0, tally) is None
     assert tally.get("key clue rules nothing out")

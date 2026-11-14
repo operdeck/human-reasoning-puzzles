@@ -96,8 +96,10 @@ class Move:
                 [constraint_indices[n] for n in self.sources],
                 [constraint_indices[n] for n in self.scope],
             )
-        (relation,) = (r for r in model.relations if r.name == self.sources[0])
-        return prune_relation(model, relation)
+        relations = [r for r in model.relations if r.name == self.sources[0]]
+        if not relations:
+            raise ValueError(f"no relation named {self.sources[0]!r}")
+        return any(prune_relation(model, relation) for relation in relations)
 
 
 @dataclass(frozen=True)
