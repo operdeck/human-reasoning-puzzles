@@ -180,7 +180,7 @@ candidate**, deduced from board-wide rules, never told.
   `for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1`)
   and was not alone there (`for each area in all occupied by role:moordenaar,
   count people in that area >= 2`). Mention these rules in the `Intro:`.
-  For the classic victim pattern use `with P people:any in same area exactly 1`.
+  For the classic victim pattern use `with P in same area exactly 1`.
 - **Exactly one answer must follow.** Check with `--brute-force` (one
   solution, one role holder) and read `--explain`: the answer should become
   known by elimination ("De moordenaar was op de plaats delict, dus …") as late

@@ -334,7 +334,7 @@ and incompatible selector types are errors.
 
 | Selector | Selects |
 |---|---|
-| `person:name`, `people:name1,name2`, `people:any` | One named person, a named set of people, or everyone. |
+| bare person name, `people:name1,name2`, `people:any` | One named person, a named set of people, or everyone. |
 | `attribute:name`, `role:name` | People with the fixed attribute or assigned role. |
 | `people_on:location-selector` | People occupying cells selected by a location selector, e.g. `people_on:object:bench`; use this when a relation must compare occupants rather than cells. |
 | `area:name`, `tag:name` | Cells or logical areas in one named region / one area tag. |
@@ -358,7 +358,7 @@ logical area and `dir Ada Ben areas >= 1` for different areas.
 occupies one of the selected cells and no other person occupies any of them.
 
 Pair relations use `dir A B <mode> [comparison]`. Person selectors
-(`person:`, `people:`, `attribute:`, `role:`, and `people_on:`) select people;
+(`people:`, `attribute:`, `role:`, and `people_on:`) select people;
 location selectors (`area:`, `tag:`, `object:`, `object_kind:`, `edge_item:`,
 `point_object:`, `mark:`, `rows:`, `columns:`, `corner:`, and `adjacent_to:`)
 select cells. A person selector is compared by the selected people's
@@ -417,11 +417,13 @@ dir Ada Ben furthest
 
 Count comparisons are `= n`, `<= n`, `>= n`, `odd`, `even`, or inclusive
 `low..high`; integers are non-negative and a comparison with no feasible
-value for its selector is an error. `count people on` counts occupants of
-object, object-kind, edge-item, point-object, or mark cells. `count people in`
-counts people in a location selector's cells, optionally narrowed by a
-`role:` or `attribute:` selector. `count people with` counts people with one
-role or attribute, and `count people from` restricts the count to an explicit
+value for its selector is an error. Unscoped empty- and occupied-area counts
+cover all logical areas; do not add an `all` operand. `count people on` counts
+occupants of object, object-kind, edge-item, point-object, or mark cells.
+`count people in` counts people in a location selector's cells, optionally
+narrowed by a `role:` or `attribute:` selector. `count people with` counts
+people with one role or attribute, and `count people from` restricts the count
+to an explicit
 person set. Scope selectors after `in` can be intersected with `and`, for
 example a tag and an `adjacent_to:` selector. Empty-cell counts include only
 free cells. The canonical forms are:
@@ -433,8 +435,8 @@ count people with role:guard = 1
 count people in area:library with role:guard >= 1
 count people from people:Ada,Ben with attribute:trained = 1
 count roles of Ada <= 1
-count empty areas all = 2
-count occupied areas all >= 3
+count empty areas = 2
+count occupied areas >= 3
 count occupied areas in tag:villages >= 3
 count empty areas in adjacent_to:river >= 1
 count occupied areas in adjacent_to:tag:square = 2
@@ -529,16 +531,21 @@ legacy word had different semantics for different target kinds.
 | `knight_from P target...` | `dir P target knight`. |
 | `in_corner P`, `in_area_corner P area...` | `in P corner:board`, `in P corner:area:name`. |
 | `in_row` / `not_in_row`, `in_column` / `not_in_column P n` | `in P rows:n` / `not in P rows:n`, `in P columns:n` / `not in P columns:n`. |
+| `person:name` | Bare `name`. |
+| `not_in`, `not_on`, `not_beside`, `not_touches`, `not_dir` | `not in`, `not on`, `not beside`, `not touches`, `not dir`. |
+| `has_role`, `not_role`, `has_attribute`, `not_attribute` | `has PERSON role:name`, `not has PERSON role:name`, `has PERSON attribute:name`, `not has PERSON attribute:name`. |
+| `role_subset` | `subset selector-A selector-B`. |
+| `for_each_area` | `for each area ...`. |
+| `count empty areas all`, `count occupied areas all` | Omit `all`: `count empty areas = n`, `count occupied areas >= n`. |
+| `with P people:any in same area ...` | Omit `people:any`; the default is any other person: `with P in same area ...`. |
 | `same_region`, `different_region A B` | `dir A B areas = 0`, `dir A B areas >= 1`. |
 | `adjacent_regions`, `apart A B` | `dir A B areas = 1`, `dir A B areas >= 2`. |
 | `left_of`, `above A B [n]` | `dir A B left [= n]`, `dir A B up [= n]`. |
 | `within`, `at_least A B n` | `dir A B manhattan <= n`, `dir A B manhattan >= n`. |
 | `furthest A B` | `dir A B furthest`. |
 | `alone P`, `alone_with P [selector] [n]` | `alone P`; `with P selector in same area exactly n`. An omitted selector becomes `people:any`; an omitted count defaults to 1. |
-| `has_attribute` / `not_attribute P attribute`, `has_role` / `not_role P role` | `has P attribute:...` / `not has P attribute:...`; likewise for `role:`. |
 | `unique_attribute attribute P...` | `count people from people:P... with attribute:... = 1`. |
 | `some_role P`, `roleless P`, `at_most_one_role P` | `count roles of P >= 1`, `= 0`, `<= 1`. |
-| `role_subset A B` | `subset selector-A selector-B`. |
 | `role_in_tagged` / `role_not_in_tagged P role tag`; `role_on`, `role_not_on`, `role_next_to P role target...` | `if has P role:... then in` / `not in`, `on` / `not on`, or target-kind-specific `beside`, `touches`, or `on`. |
 | `role_below P role [n]` | `dir P role:... down [= n]`. |
 | `min_role_in_tagged role tag n` | `for each area in tag:..., count people in that area with role:... >= n`. |

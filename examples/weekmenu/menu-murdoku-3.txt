@@ -73,7 +73,7 @@ Wortel
 Vla
 
 Rules:
-with Vla people:any in same area exactly 2
+with Vla in same area exactly 2
 
 Clues:
 not on Aardappel point_object:zonnebloem

@@ -743,7 +743,7 @@ seats: r1c1 r2c2
 Clues:
 count people with role:guide = 1
 count people with attribute:glasses = 1
-count empty areas all = 1
+count empty areas = 1
 count empty areas in tag:inside <= 1
 count empty cells in mark:seats = 1
 """
@@ -983,7 +983,7 @@ Ada
 Ben
 Clues:
 count people in rows:1-2 = 2
-count empty areas all = 0
+count empty areas = 0
 """
     sparse = """Size: 3
 Regions:
@@ -998,7 +998,7 @@ People:
 Ada
 Ben
 Clues:
-count empty areas all = 1
+count empty areas = 1
 """
     for text in (full, sparse):
         solutions = bruteforce.solutions(text, "murdoku", limit=20)
@@ -1040,8 +1040,8 @@ scout: 1
 Marks:
 seat: r1c1
 Rules:
-has_role A captain
-has_role B scout
+has A role:captain
+has B role:scout
 role_on A captain seat
 role_next_to B scout blocking
 """
@@ -1132,8 +1132,8 @@ inside: room
 Roles:
 guide: any
 Rules:
-has_role Ada guide
-has_role Ben guide
+has Ada role:guide
+has Ben role:guide
 role_in_tagged Ada guide inside
 role_not_in_tagged Ben guide inside
 """
@@ -2008,11 +2008,11 @@ scout: 1
 RoleEligibility:
 scout: attribute:glasses
 Rules:
-role_subset attribute:glasses scout
-role_subset scout attribute:glasses
+subset attribute:glasses role:scout
+subset role:scout attribute:glasses
 Clues:
-has_attribute Ada glasses
-not_attribute Ben glasses
+has Ada attribute:glasses
+not has Ben attribute:glasses
 unique_attribute glasses Ada Ben Cal
 """
     board, clues = load_board(text)
@@ -2040,7 +2040,7 @@ unique_attribute glasses Ada Ben Cal
 @pytest.mark.parametrize(
     "selector",
     [
-        "person:Ben",
+        "Ben",
         "attribute:bearded",
         "role:bandit",
         "area:east",
@@ -2052,7 +2052,7 @@ unique_attribute glasses Ada Ben Cal
 )
 @pytest.mark.parametrize("role_is_known", [False, True])
 def test_alone_with_quantified_targets_match_brute_force(selector, role_is_known):
-    known_role = "has_role Ben bandit\n" if role_is_known else ""
+    known_role = "has Ben role:bandit\n" if role_is_known else ""
     text = f"""Size: 3
 Regions:
 a: west
@@ -2913,7 +2913,7 @@ def test_counting_clue_rejects_what_it_cannot_do(args, problem):
 
 @pytest.mark.parametrize("role_is_known", [False, True])
 def test_quantified_position_relation_can_target_a_role(role_is_known):
-    known_role = "has_role Ben guide\n" if role_is_known else ""
+    known_role = "has Ben role:guide\n" if role_is_known else ""
     text = f"""Size: 3
 Regions:
 a: room
@@ -3369,7 +3369,7 @@ B
 Roles:
 bandit: any
 Rules:
-has_role A bandit
+has A role:bandit
 """
     board, clues = load_board(text)
     text = report.describe(murdoku.compile_puzzle(board, clues))

@@ -368,9 +368,9 @@ def test_tied_population_explanation_accepts_an_unnumbered_rule():
         example("samen-in-de-blauwe-bladeren.txt")
         .read_text()
         .replace(
-            "Clues:\nbusiest_area area:Tokyo\nquietest_area area:Okinawa area:Hiroshima\n",
-            "Rules:\nquietest_area area:Okinawa area:Hiroshima\n\n"
-            "Clues:\nbusiest_area area:Tokyo\n",
+            "Clues:\nmost_populated area:Tokyo\nleast_populated area:Okinawa area:Hiroshima\n",
+            "Rules:\nleast_populated area:Okinawa area:Hiroshima\n\n"
+            "Clues:\nmost_populated area:Tokyo\n",
         )
     )
     story = explain(text)
@@ -385,7 +385,8 @@ def test_tied_population_explanation_requires_established_premises(case):
     text = example("samen-in-de-blauwe-bladeren.txt").read_text()
     if case == "untied":
         text = text.replace(
-            "quietest_area area:Okinawa area:Hiroshima", "quietest_area area:Okinawa"
+            "least_populated area:Okinawa area:Hiroshima",
+            "least_populated area:Okinawa",
         )
     board, clues = load_board(text)
     story = Story(board, clues, Wording.read(text))
@@ -463,8 +464,8 @@ def test_story_uses_the_actual_population_clue_number():
         example("samen-onderweg.txt")
         .read_text()
         .replace(
-            "busiest_area area:Tokyo\nquietest_area area:Okinawa",
-            "quietest_area area:Okinawa\nbusiest_area area:Tokyo",
+            "most_populated area:Tokyo\nleast_populated area:Okinawa",
+            "least_populated area:Okinawa\nmost_populated area:Tokyo",
         )
     )
     story = explain(text)
@@ -500,7 +501,7 @@ def test_story_does_not_treat_tied_busiest_areas_as_strictly_ordered():
     text = (
         example("samen-onderweg.txt")
         .read_text()
-        .replace("busiest_area area:Tokyo", "busiest_area area:Tokyo area:Osaka")
+        .replace("most_populated area:Tokyo", "most_populated area:Tokyo area:Osaka")
     )
     board, _ = load_board(text)
     solutions = bruteforce.solutions(text, "murdoku", limit=2)
@@ -516,8 +517,8 @@ def test_story_can_explain_an_unnumbered_population_rule():
         example("samen-onderweg.txt")
         .read_text()
         .replace(
-            "Clues:\nbusiest_area area:Tokyo\n",
-            "Rules:\nbusiest_area area:Tokyo\n\nClues:\n",
+            "Clues:\nmost_populated area:Tokyo\n",
+            "Rules:\nmost_populated area:Tokyo\n\nClues:\n",
         )
     )
     story = explain(text)
@@ -779,7 +780,7 @@ altar: the altar
 quiet: the quiet square
 social: the social square
 Rules:
-role_subset guide attribute:glasses
+subset role:guide attribute:glasses
 Clues:
 alone_with Ada role:guide
 above Ada tag:inside
@@ -876,7 +877,7 @@ guide: any
 Marks:
 altar: r1c1
 Rules:
-has_role Ada guide
+has Ada role:guide
 Clues:
 alone_with Ada role:guide
 role_on Ada guide altar
@@ -905,8 +906,8 @@ glasses: Ben
 Words:
 glasses: glasses
 Clues:
-has_attribute Ben glasses
-not_attribute Ada glasses
+has Ben attribute:glasses
+not has Ada attribute:glasses
 unique_attribute glasses Ada Ben
 """
     story = explain(text)
@@ -983,7 +984,7 @@ count people on object:bed = 1
 count people in rows:1,3 = 2
 count people with role:bandit odd
 count people with attribute:glasses = 1
-count empty areas all = 1
+count empty areas = 1
 count empty areas in tag:inside <= 1
 count empty cells in mark:seats 1..2
 count people in area:west = 1
@@ -1436,9 +1437,9 @@ Ben
 Roles:
 seer: any
 Rules:
-has_role Ada seer
+has Ada role:seer
 Clues:
-not_role Ben seer
+not has Ben role:seer
 """
     story = explain(text)
 
@@ -1509,7 +1510,7 @@ captain: 1
 Marks:
 altar: r1c1
 Rules:
-has_role Ada captain
+has Ada role:captain
 Clues:
 role_on Ada captain altar
 """

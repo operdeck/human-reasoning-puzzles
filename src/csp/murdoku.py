@@ -825,6 +825,19 @@ def counted(args: Sequence[str]) -> tuple[int, list[Clue]]:
             words.append(word)
         elif words:
             kind, *rest = words
+            if kind in {
+                "has_attribute",
+                "has_role",
+                "not_attribute",
+                "not_beside",
+                "not_dir",
+                "not_in",
+                "not_on",
+                "not_role",
+                "not_touches",
+                "role_subset",
+            }:
+                raise ValueError(f"{COUNTING} operands must use canonical syntax, not {kind!r}")
             negated = kind == "not"
             if kind == "not":
                 if not rest:
@@ -1493,22 +1506,18 @@ def _global_count_selector(
         if selector.kind != "person":
             raise ValueError("count roles of requires a person name")
         return "roles_of", selector, None, args[3:]
-    if len(args) >= 3 and args[:2] == ["empty", "areas"]:
-        if args[2] == "all":
-            return "empty_areas", None, None, args[3:]
-        if args[2] == "in":
-            selector, remainder = _count_scope(
-                board, args[3:], ("area", "tag", "adjacent_to"), "count empty areas"
-            )
-            return "empty_areas", selector, None, remainder
-    if len(args) >= 2 and args[:2] == ["occupied", "areas"]:
-        if len(args) == 2 or args[2] == "all":
-            return "occupied_areas", None, None, args[3:] if len(args) > 2 else []
-        if args[2] == "in":
-            selector, remainder = _count_scope(
-                board, args[3:], ("area", "tag", "adjacent_to"), "count occupied areas"
-            )
-            return "occupied_areas", selector, None, remainder
+    if len(args) >= 2 and args[:2] in (["empty", "areas"], ["occupied", "areas"]):
+        area_kind: GlobalCountKind = "empty_areas" if args[0] == "empty" else "occupied_areas"
+        description = f"count {args[0]} areas"
+        remainder = args[2:]
+        if not remainder or remainder[0] not in ("all", "in"):
+            return area_kind, None, None, remainder
+        if remainder[0] == "all":
+            raise ValueError(f"{description} has an implicit all-areas scope; omit 'all'")
+        selector, comparison = _count_scope(
+            board, remainder[1:], ("area", "tag", "adjacent_to"), description
+        )
+        return area_kind, selector, None, comparison
     if len(args) >= 4 and args[:3] == ["empty", "cells", "in"]:
         selector, remainder = _count_scope(
             board,
@@ -1530,7 +1539,7 @@ def _global_count_selector(
         )
         return "empty_cells", selector, None, remainder
     raise ValueError(
-        "count expects 'people on|in|with ...', 'empty|occupied areas all|in ...', "
+        "count expects 'people on|in|with ...', 'empty|occupied areas [in ...]', "
         "'empty cells in ...', 'people from ...', or 'roles of ...'"
     )
 
@@ -1845,6 +1854,8 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
             subject, *rest = args
             if not rest:
                 raise ValueError("with in same area needs a person")
+            if rest[0] == "people:any":
+                raise ValueError("omit 'people:any'; with defaults to any other person")
             selector_text = "people:any" if rest[0] == "in" else rest.pop(0)
             if rest[:2] != ["in", "same"] or rest[2:3] != ["area"]:
                 raise ValueError("with requires 'in same area' for person-relative occupancy")
@@ -1906,8 +1917,9 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
         return TargetSelector("person", token)
     if not separator or not name:
         raise ValueError(f"bad target selector {token!r}; use kind:name")
+    if kind == "person":
+        raise ValueError(f"use the bare person name instead of {token!r}")
     supported = {
-        "person",
         "people",
         "people_on",
         "anyone",

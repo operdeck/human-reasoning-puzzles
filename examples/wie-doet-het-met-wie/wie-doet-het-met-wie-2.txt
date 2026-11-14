@@ -53,7 +53,7 @@ Noor
 Wouter
 
 Rules:
-with Wouter people:any in same area exactly 1
+with Wouter in same area exactly 1
 count people on object:badjas = 1 | Precies één persoon draagt een badjas.
 count people on object:sloffen = 1 | Precies één persoon heeft sloffen aan.
 

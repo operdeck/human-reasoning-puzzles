@@ -312,6 +312,21 @@ def parse_clue_line(line: str) -> Clue:
     tokens = words(_split_clue(line)[0])
     if not tokens:
         raise ValueError("clue cannot be empty")
+    aliases = {
+        "for_each_area": "for each area",
+        "has_attribute": "has PERSON attribute:name",
+        "has_role": "has PERSON role:name",
+        "not_attribute": "not has PERSON attribute:name",
+        "not_beside": "not beside",
+        "not_dir": "not dir",
+        "not_in": "not in",
+        "not_on": "not on",
+        "not_role": "not has PERSON role:name",
+        "not_touches": "not touches",
+        "role_subset": "subset",
+    }
+    if tokens[0] in aliases:
+        raise ValueError(f"non-canonical clue syntax {tokens[0]!r}; use {aliases[tokens[0]]!r}")
     if tokens[:3] == ["for", "each", "area"]:
         kind, args = "for_each_area", tokens[3:]
     elif tokens[:1] in (["most_populated"], ["least_populated"]):

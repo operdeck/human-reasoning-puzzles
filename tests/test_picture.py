@@ -738,8 +738,8 @@ B
 Roles:
 bandit: any
 Rules:
-has_role A bandit
-not_role B bandit
+has A role:bandit
+not has B role:bandit
 """
     puzzle = tmp_path / "roles.txt"
     target = tmp_path / "roles.png"

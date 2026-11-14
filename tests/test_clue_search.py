@@ -237,7 +237,7 @@ def test_suggest_keeps_each_needed_clue_necessary():
     rule = "with Wouter object:badjas in same area exactly 1"
     work = re.sub(
         r"^with Wouter object:badjas in same area exactly 1 \|.*$",
-        "with Wouter people:any in same area exactly 1",
+        "with Wouter in same area exactly 1",
         hotel,
         flags=re.M,
     )

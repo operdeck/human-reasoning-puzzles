@@ -78,6 +78,61 @@ in_region Ada room
         load_board(text)
 
 
+@pytest.mark.parametrize(
+    "clue",
+    [
+        "for_each_area in tag:villages, count people in that area = 1",
+        "has_role Ada guard",
+        "not_role Ada guard",
+        "has_attribute Ada trained",
+        "not_attribute Ada trained",
+        "not_in Ada area:room",
+        "not_on Ada object:bench",
+        "not_beside Ada object:bench",
+        "not_touches Ada mark:water",
+        "not_dir Ada Ben left",
+        "role_subset role:guard attribute:trained",
+    ],
+)
+def test_internal_spellings_are_not_accepted_as_clue_syntax(clue):
+    with pytest.raises(ValueError, match="non-canonical clue syntax"):
+        parse_clue_line(clue)
+
+
+def test_internal_spellings_are_rejected_inside_exactly():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Clues:
+exactly 1 not_dir Ada Ben left ; dir Ada Ben right
+"""
+    board, clues = load_board(text)
+    with pytest.raises(ValueError, match="operands must use canonical syntax"):
+        compile_puzzle(board, clues)
+
+
+def test_person_selector_uses_bare_names():
+    text = """Size: 1
+Regions:
+a: room
+Grid:
+a
+People:
+Ada
+Clues:
+dir person:Ada Ada left
+"""
+    board, clues = load_board(text)
+    with pytest.raises(ValueError, match="bare person name"):
+        directional_conditions(board, clues)
+
+
 @pytest.mark.parametrize("clue", ["same Ada Ben", "not same Ada Ben"])
 def test_same_area_predicates_use_dir_area_distance(clue):
     with pytest.raises(ValueError):
@@ -528,7 +583,7 @@ wall: blocking r1c2 r2c2
 People:
 Ada
 Clues:
-count empty areas all = 1
+count empty areas = 1
 count empty areas in adjacent_to:west = 1
 count occupied areas in adjacent_to:west = 0
 """
@@ -540,6 +595,77 @@ count occupied areas in adjacent_to:west = 0
     model = compile_puzzle(board, clues)
     model.assign(model.literal("Ada", Square(0, 0)), "test", "fixed")
     assert Solver(model).solve().contradiction is None
+
+
+def test_with_same_area_defaults_to_any_companion():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Clues:
+with Ada in same area exactly 1
+"""
+    board, clues = load_board(text)
+    (condition,) = quantified_conditions(board, clues)
+    assert condition.selector.kind == "anyone"
+
+
+def test_with_same_area_rejects_explicit_any_selector():
+    text = """Size: 2
+Regions:
+a: room
+Grid:
+a a
+a a
+People:
+Ada
+Ben
+Clues:
+with Ada people:any in same area exactly 1
+"""
+    board, clues = load_board(text)
+    with pytest.raises(ValueError, match="omit 'people:any'"):
+        quantified_conditions(board, clues)
+
+
+@pytest.mark.parametrize("clue", ["count empty areas all = 1", "count occupied areas all = 1"])
+def test_area_counts_reject_redundant_all_scope(clue):
+    text = f"""Size: 1
+Regions:
+a: room
+Grid:
+a
+People:
+Ada
+Clues:
+{clue}
+"""
+    board, clues = load_board(text)
+    with pytest.raises(ValueError, match="implicit all-areas scope"):
+        global_count_conditions(board, clues)
+
+
+def test_empty_and_occupied_area_counts_default_to_all():
+    text = """Size: 1
+Regions:
+a: room
+Grid:
+a
+People:
+Ada
+Clues:
+count empty areas = 0
+count occupied areas = 1
+"""
+    board, clues = load_board(text)
+    counts = global_count_conditions(board, clues)
+    assert [condition.kind for condition in counts] == ["empty_areas", "occupied_areas"]
+    assert all(condition.selector is None for condition in counts)
 
 
 def test_scoped_area_isolation_covers_borders_leaving_the_scope():
