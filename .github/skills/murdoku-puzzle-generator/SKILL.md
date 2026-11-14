@@ -113,24 +113,20 @@ its short output, and decide:
 
 Clues should read like a detective's notes, not like arithmetic.
 
-- **Prefer areas, objects and simple relations:** `in_region`, `outside`,
-  `next_to`/`not_next_to` an object, `on` a bench, `same_region`,
-  `different_region`, and `left_of`/`above` **without** a number.
-- **Use exact numbers sparingly**: at most one or two of `left_of A B n`,
-  `above A B n`, `within`, `at_least`, `in_row`/`in_column`, `knight_from` and
-  `count` per puzzle, and only when they read naturally. `within`/`at_least`
-  count Manhattan steps (rows plus columns); say so in the wording if you use
-  them.
-- Never hand out a square outright (`in_row` + `in_column`, or a first clue
+- **Prefer areas, objects and simple relations:** `in P area:name`,
+  `beside`/`not beside` an object, `on P object:name`, `same A B`, and
+  unnumbered `dir A B left|up`.
+- **Use exact numbers sparingly**: at most one or two directional distances,
+  line/area counts, or other numeric clues per puzzle, and only when they read
+  naturally. `dir A B manhattan ...` counts row-plus-column steps; `euclidean`
+  is straight-line distance. The [grammar reference](../../../docs/model-and-puzzle-formats.md#murdoku)
+  defines every mode and comparison.
+- Never hand out a square outright (`in P rows:n` + `in P columns:n`, or a first clue
   that pins someone) unless an easy puzzle is wanted.
-- **Multi-square objects:** standing on a bench of several squares also counts
-  as `next_to` it, and `not_next_to` keeps the person off it. The generated
-  sentence says so ("zit niet op of naast een treinbank"); never override it
-  with a `| wording` that drops the "op of"/"on or". If you mean only *on* or
-  only *beside*, use `on`/`not_on`, or combine `next_to` with `not_on`; for the
-  same multi-square object, that combination means "beside it but not on it".
-  Keep explicit `| wording` overrides authoritative, and leave single-cell
-  object wording unchanged.
+- **Multi-square objects:** someone on one selected cell may also be `beside`
+  another cell of that footprint. Check generated wording against that meaning;
+  use `on` when occupancy itself is intended. Keep explicit `| wording`
+  overrides authoritative.
 - **Read every generated clue as a player would** (`clue_paragraphs`, `--docx`)
   and ask whether another reading of the sentence allows other squares. If it
   does, fix the generated text in `src/csp/story.py` with a test; do not
@@ -175,15 +171,16 @@ Clues should read like a detective's notes, not like arithmetic.
 In a mystery the answer (murderer, victim, eater, carer) is the **last
 candidate**, deduced from board-wide rules, never told.
 
-- **No direct giveaways.** No `has_role`/`not_role` clue about the answer, and
+- **No direct giveaways.** No `has P role:...` clue about the answer, and
   the answer person appears in no clue (`suggest --exclude P`). Only `Rules:`
   speak about them.
 - **Encode the story as rules**, not as a hint. For example: the murderer is a
   woman (`Attributes:` + `RoleEligibility: moordenaar: attribute:vrouw`), was at
   the crime scene (`AreaTags: plaats_delict: coupe_2` +
-  `min_role_in_tagged moordenaar plaats_delict 1`) and was not alone there
-  (`role_occupant moordenaar not_alone`). Mention these rules in the `Intro:`.
-  For the classic victim pattern use `alone_with P [selector] [n]`.
+  `for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1`)
+  and was not alone there (`for each area in all occupied by role:moordenaar,
+  count people in that area >= 2`). Mention these rules in the `Intro:`.
+  For the classic victim pattern use `with P people:any in same area exactly 1`.
 - **Exactly one answer must follow.** Check with `--brute-force` (one
   solution, one role holder) and read `--explain`: the answer should become
   known by elimination ("De moordenaar was op de plaats delict, dus …") as late
@@ -200,8 +197,8 @@ candidate**, deduced from board-wide rules, never told.
   `count people on object:<garment> = 1` rule tells the solver the square is
   occupied and pins the wearer early, so leave it out and let the `Intro:` say
   that standing on the garment means wearing it.
-- **Population clues need squares that can change area.** `busiest_area`,
-  `quietest_area` and `count people in area:…` constrain which *squares* are
+- **Population clues need squares that can change area.** `most_populated`,
+  `least_populated` and `count people in area:…` constrain which *squares* are
   used, not who stands on them, so a puzzle whose people are each anchored to a
   square implies them and `report` calls them removable. Two people swapping
   two squares never changes a count: leave a row/column whose cells straddle an
@@ -326,7 +323,8 @@ For a finished Murdoku under `examples/`, before reporting done:
   Keep the attribute line when roles are hidden or the membership is not
   provably identical.
 - **Selectors on both sides** of a relation clue say "somebody X ... somebody
-  Y": `above object:badjas object:sloffen 1` is "one bathrobe wearer is
+  Y": `dir people_on:object:badjas people_on:object:sloffen up = 1` is
+  "one bathrobe wearer is
   exactly one row above the slippers wearer". When both selectors name cells
   the engine reasons over squares, as a person would.
 - **Backdrops and decorations** are cosmetic (`Backdrop:` one icon behind the
@@ -392,114 +390,18 @@ wording fixes through `src/csp/story.py` with regression tests. If an
 independent reviewer is unavailable, state that limitation rather than
 claiming a review was completed.
 
-## Board rules
+## Canonical grammar
 
-- `Size: N`, an `N`×`N` `Grid:` of region IDs, each declared in `Regions:` as
-  `id: name #RRGGBB`; 1..`N` people, at most one per row, column and square.
-  Repeated IDs are one logical area even if disconnected. Required sections:
-  `Size`, `Regions`, `Grid`, `People`. Use one-token IDs; display text goes in
-  `Words:`.
-- `Objects:` lines are `name: blocking|standable cells...`, one connected
-  footprint per line (repeat the name for more). The kind is always explicit,
-  never inferred from the name. Usually chairs, beds, mats and benches are
-  standable; tables, trees and rocks blocking. Footprints may not overlap and
-  rarely cross region borders (note it in the header if they do). A seat or
-  bed may end with the wall its back is against (`bank: standable r3c8 r4c8
-  right`); like a window side it only turns the picture.
-- `EdgeItems:` doors (`gate: door r4c5 r4c6`, two neighbouring cells in
-  different areas) and windows (`window: window r2c3`); they occupy nothing.
-  A window may name the wall it sits against (`raam: window r3c4 top`, also
-  `bottom`, `left`, `right`): the pane is drawn along that wall. The side only
-  affects the picture; put it on a wall the window really touches (the board
-  edge or an area border without a door).
-- `PointObjects:` on grid points by half-step anchors: `fountain: r3.5c3.5`
-  touches four cells, `r0.5c4.5` two on the top edge, `r5.5c0.5` one corner,
-  `r3.5c5` a side midpoint. Names must differ from objects (`mouse1`, `mouse2`).
-- `Marks:` named cell sets, optional `; alone|not_alone` for whoever stands there.
-- `Attributes:` fixed traits (`aap: Makaak Gibbon`). `Roles:` with a count and
-  optional `different_regions`; `RoleEligibility:` with `person:`/`attribute:`
-  selectors. Never make a role only one person can hold (lint warns); state it
-  of that person instead (`alone Leeuw`).
-- `AreaTags:` tag regions (overlap allowed); `Hatched:` takes regions or tags.
-  `Pronouns:` e.g. `Ada: she her her` (default they/them/their).
-- `Rules:` are unnumbered board-wide facts (`only_in_tagged`, `alone_with`,
-  `role_occupant`, `min_role_in_tagged`); `Clues:` are the numbered clues. See
-  [Late-reveal mysteries](#late-reveal-mysteries).
-- Non-standable strips (rails, water) are blocking objects; split them into
-  connected footprints and give each line a standable crossing (a gangplank,
-  a bridge) where its person must stand. Doors must lie on an area border. An
-  area made only of blocking squares is allowed (lint warns) but nobody can be
-  there.
-
-## Is a clue expressible? (quick lookup)
-
-Check this — and the [Supported clues](#supported-clues) table just below — before
-concluding a construct is missing or reading `murdoku.py` to reverse-engineer it.
-The forms people most often assume are missing:
-
-- **"X or Y"** — one clue may list several targets and means "any of them":
-  `in_region P barn yard`, `next_to P mark:a mark:b`, `at P door1 door2`. For
-  *exactly one* of two alternatives, use `exactly 1 <clue> ; <clue>`.
-- **Special squares that impose a rule on whoever stands on them** — add a `Marks:`
-  cell set with a trailing `; alone` or `; not_alone` ("whoever stands here must /
-  must not be alone"). Clues then use `on_mark` / `not_on_mark` / `next_to` the mark,
-  and `count people on mark:<name> = n` for "exactly n people on the special squares".
-  A mark target may be written bare (`next_to P special`) or as `mark:special`;
-  `next_to` a mark means orthogonally beside **any** of its cells and, like a point
-  object, counts **across an area border** — while `on_mark` is on the square itself,
-  so they stay distinct ("beside the special square", not "on it").
-- **Counts anywhere** — `count people on|in|with <selector> <cmp>` over objects,
-  areas, lines, marks, roles or attributes; `count empty areas …` and
-  `count empty cells in rows:… / columns:… / area:…` for empty lines and areas.
-- **Victim and occupant rules** — `alone P`, `alone_with P [selector] [n]`,
-  `role_occupant <role> alone|not_alone`, and the role-relative forms
-  (`role_in_tagged`, `role_next_to`, `role_below`, `min_role_in_tagged`, …).
-- **Distances** — `left_of`/`above A B [n]` (anywhere, or exactly `n` lines) and
-  `within`/`at_least A B n` (Manhattan). Not yet expressible: a **single-axis
-  inequality** such as "more than 2 columns apart" — rewrite it with an exact
-  `left_of`/`above` or with `at_least`; if none fits, that is a genuine gap to track.
-
-## Supported clues
-
-Arguments are one-token names; `[n]` is optional.
-
-| Form | Meaning |
-|---|---|
-| `in_region` / `outside P region...` | in one of / none of the regions |
-| `in_tagged` / `not_in_tagged` / `only_in_tagged P tag...` | in / not in tagged regions; `only_` is for `Rules:` |
-| `next_to` / `not_next_to P thing...` | shares a side with an object cell **in the same area**; doors and point objects count across borders; no diagonals. On a multi-square standable object you are also next to it (text: "on or next to"). A **mark** target (bare or `mark:<name>`) counts across borders and is *beside* the marked cells, not on them |
-| `away_from P thing...` | not on and sharing neither a side nor a corner with any square of the things, in any area (doors, windows and point objects by the squares they touch) |
-| `on` / `not_on` / `only_on P standable...` | on one / none; `only_on` also keeps everyone else off them |
-| `at P edge-item...` | on a door or window cell |
-| `on_mark` / `not_on_mark P mark...` | on / off marked cells (bare or `mark:<name>`) |
-| `knight_from P thing...` | a knight's move from a thing |
-| `in_corner P`, `in_area_corner P [area...]` | board corner; right-angle corner of an area |
-| `in_row` / `not_in_row` / `in_column` / `not_in_column P k` | 1-based line |
-| `same_region` / `different_region A B` | same / different area |
-| `apart A B`, `adjacent_regions A B` | different non-touching / touching areas |
-| `left_of A B [n]`, `above A B [n]` | anywhere left/above, or exactly `n` lines |
-| `within A B n`, `at_least A B n` | Manhattan distance ≤ / ≥ `n` |
-| `furthest A B` | A strictly farthest of all from B |
-| `alone P`, `alone_with P [selector] [n]` | nobody else in P's area; exactly `n` (default 1) others, all matching |
-| `has_attribute` / `not_attribute P attr`, `unique_attribute attr P...` | fixed traits |
-| `has_role` / `not_role P role`, `some_role P`, `roleless P`, `at_most_one_role P` | role membership |
-| `role_subset selA selB` | everyone matching A matches B |
-| `role_in_tagged` / `role_not_in_tagged P role tag` | if P has the role, inside/outside the tag |
-| `min_role_in_tagged role tag n` | ≥ `n` holders in each tagged area |
-| `role_on` / `role_not_on` / `role_next_to P role target...`, `role_below P role [n]` | conditions that apply only if P has the role |
-| `sole_role_companion P role`, `role_occupant role alone\|not_alone` | companion/occupancy conditions on role holders |
-| `<relation> P selector [args]` | quantified pair clue, e.g. `above Ada role:bandit` |
-| `exactly n clue ; clue ...` | exactly `n` of the simple clues hold (≤ 3 people; no quantified targets, `only_on`, `alone_with`) |
-| `count people on\|in\|with selector cmp` | occupants of objects, areas/lines/marks, or holders of a role/attribute |
-| `busiest_area area:A [area:B ...]`, `quietest_area area:A [area:B ...]` | the area(s) holding the most (fewest) people: named areas tie with each other and every other area is strictly below (above) them; areas nobody can stand in are ignored and cannot be named |
-| `count empty areas all\|in area cmp`, `count empty cells in selector cmp` | empty logical areas or free cells |
-
-`cmp` is `= n`, `<= n`, `>= n`, `odd`, `even` or `lo..hi`. Selectors:
-`person:`, `attribute:`, `role:`, `area:` (region or tag), `tag:`, `object:`,
-`object_kind:blocking|standable`, `mark:`, `edge_item:`, `point_object:`,
-`rows:1,3`, `columns:2-4`. Attribute counts check but never locate; `people`
-counts everyone in `People:`. People cannot be adjacent (one per row and column),
-so there is no person-to-person `next_to`.
+The [Murdoku section of the format guide](../../../docs/model-and-puzzle-formats.md#murdoku)
+is the single reference for file sections, selectors, clue and rule syntax,
+semantics, and migration history. The reader accepts canonical forms only;
+do not use legacy examples from old puzzles or add a second syntax summary here.
+Before treating a clue as unsupported, check the guide's predicate and selector
+tables. If no canonical form expresses it, report the gap rather than
+approximating the clue.
+Object, edge, point, mark, role, attribute, and area-tag semantics are defined
+there as well. Use the parser and `--lint`; never infer behavior from names or
+pictures.
 
 ## Booklet text
 

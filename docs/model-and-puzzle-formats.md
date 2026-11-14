@@ -320,10 +320,10 @@ Every object footprint must be declared `blocking` or `standable`; its name/icon
 
 ### Clue grammar specification for #238
 
-This section records the target grammar for #238's implementation. The reader
-still accepts the legacy forms in the migration table below until that work
-lands; new examples and generated output must use the canonical forms once
-migration is complete. `Rules:` and `Clues:` use the same predicates.
+This section specifies the canonical grammar. The reader accepts canonical
+forms only; the migration table below documents how legacy forms were mapped
+and is not an alternate accepted syntax. `Rules:` and `Clues:` use the same
+predicates.
 
 #### Selectors and predicate shape
 
