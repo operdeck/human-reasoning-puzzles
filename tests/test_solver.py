@@ -879,6 +879,36 @@ count people on object_kind:standable = 1
     )
 
 
+def test_murdoku_search_matches_direct_placements_with_cross_person_clues():
+    text = """Size: 3
+Regions:
+a: town
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+Ben
+Cal
+Clues:
+above Ada Ben
+left_of Ben Cal
+"""
+    board, _ = load_board(text)
+    expected = set()
+    for squares in product(board.free, repeat=len(board.people)):
+        if len({square.row for square in squares}) == len(board.people) and len(
+            {square.col for square in squares}
+        ) == len(board.people):
+            placement = dict(zip(board.people, squares, strict=True))
+            if bruteforce.murdoku.accepts(text, placement):
+                expected.add(squares)
+
+    found = bruteforce.murdoku.solutions(text, limit=100)
+    assert {tuple(solution[person] for person in board.people) for solution in found} == expected
+
+
 def test_compiled_global_counts_match_direct_tallies_for_all_small_placements():
     text = """Size: 2
 Regions:
@@ -3086,6 +3116,69 @@ def test_bruteforce_reports_non_unique_and_impossible_puzzles(kind, text, count)
 def test_bruteforce_sudoku_stops_at_the_limit():
     empty = "\n".join([". " * 9] * 9)
     assert len(bruteforce.solutions(empty, "sudoku", limit=3)) == 3
+
+
+@pytest.mark.parametrize("name", ["murdoku_1_first_case.txt", "sudoku_1_4x4.txt"])
+@pytest.mark.parametrize("show_model", [False, True])
+def test_cli_nosolution_prints_only_the_start(name, show_model, monkeypatch, capsys):
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only output must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    options = ["--show-model"] if show_model else []
+    assert cli.main([str(example(name)), "--nosolution", *options]) == 0
+    output = capsys.readouterr().out
+    assert "Start" in output
+    assert "Solved" not in output
+    assert ("The model" in output) == show_model
+
+
+def test_cli_nosolution_accepts_a_puzzle_the_rules_cannot_solve(tmp_path, monkeypatch, capsys):
+    puzzle = tmp_path / "empty.txt"
+    puzzle.write_text("Givens:\n" + ". . . .\n" * 4)
+    assert cli.main([str(puzzle)]) == 1
+    assert "needs a rule beyond" in capsys.readouterr().out
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only output must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    assert cli.main([str(puzzle), "--nosolution"]) == 0
+    assert "Start" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--brute-force",
+        "--explain",
+        "--grade",
+        "--require-forward",
+        "--track-person",
+        "--verbose",
+        "--step",
+        "--export",
+    ],
+)
+def test_cli_nosolution_rejects_solving_options(option, tmp_path, capsys):
+    extra = {
+        "--track-person": ["Vladimir"],
+        "--export": [str(tmp_path / "site")],
+    }.get(option, [])
+    with pytest.raises(SystemExit) as error:
+        cli.main([str(example("prrrdoku1.txt")), "--nosolution", option, *extra])
+    assert error.value.code == 2
+    assert f"--nosolution cannot be combined with {option}" in capsys.readouterr().err
+    assert not (tmp_path / "site").exists()
+
+
+def test_cli_nosolution_allows_lint(monkeypatch, capsys):
+    def unexpected(*args, **kwargs):
+        pytest.fail("lint must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    assert cli.main([str(example("murdoku_1_first_case.txt")), "--lint", "--nosolution"]) == 0
+    assert capsys.readouterr().out
 
 
 def test_cli_brute_force_exit_codes(tmp_path, capsys):

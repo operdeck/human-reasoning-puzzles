@@ -1,8 +1,7 @@
-# Tamagotchi Murdoku - "Where is the devil?" (hard)  (12x12)
+# Tamagotchi Murdoku - "Quiet and social" (hard)  (12x12)
 #
 # Original puzzle made for this repo. Eleven friends and the devil Akumatchi
-# fill Tamagotchi Town, one per row and column. Akumatchi is placed last
-# and is alone with one friend: who?
+# fill Tamagotchi Town, one per row and column. Who stands on the marked squares?
 
 Size: 12
 
@@ -31,12 +30,37 @@ f f f f h h h h i i i i
 f f f f h h h h i i i i
 f f f f h h h h i i i i
 
+Marks:
+quiet: r2c3 r4c4 r6c6 r10c5 r10c6 ; alone
+social: r3c8 r1c11 r5c4 r9c7 r11c9 ; not_alone
+
 Objects:
 sakura: blocking r1c1
+bush: blocking r1c2
+bush: blocking r1c3
+bush: blocking r1c4
+bush: blocking r2c2
+bush: blocking r3c2
 backpack: blocking r2c7
+books: blocking r1c7
+books: blocking r1c8
+books: blocking r1c9
+books: blocking r2c8
+books: blocking r2c9
+books: blocking r3c9
 books: blocking r4c3
+table: blocking r2c11 r2c12 r3c11 r3c12
 basket: blocking r5c10
+basket: blocking r5c6
+basket: blocking r5c7
+basket: blocking r6c7
 microphone: blocking r8c6
+piano: blocking r7c8 r7c9
+guitar: blocking r7c10
+guitar: blocking r8c8
+microphone: blocking r8c9
+guitar: blocking r8c10
+piano: blocking r9c8 r9c9
 taiko: blocking r7c11
 teddy: blocking r11c6
 slide: blocking r10c2
@@ -46,6 +70,7 @@ carpet: standable r6c8 r6c9
 carpet: standable r9c10
 chair: standable r12c10
 chair: standable r4c7
+rug: standable r10c7 r10c8
 
 Backdrop:
 tamagotchi
@@ -64,45 +89,39 @@ Ichigotchi
 Hashizotchi
 Akumatchi
 
-Attributes:
-friend: Mametchi Kuchipatchi Memetchi Lovelitchi Tarakotchi Masktchi Gozarutchi Violetchi Pianitchi Ichigotchi Hashizotchi
-
-# The question - where is the devil? - is not a clue. Akumatchi has no clues of
-# his own except that he ends up alone with exactly one friend; the rest pin him down.
 Words:
-target.attribute: a {name}
+stage: on the stage
 
 Clues:
-alone_with Akumatchi attribute:friend
-left_of Kuchipatchi Memetchi 8
-left_of Tarakotchi Mametchi 1
+count people on mark:social = 1 | Exactly one figure stands on a social square.
 above Gozarutchi Violetchi
-above Masktchi Pianitchi 6
 left_of Lovelitchi Violetchi
-left_of Masktchi Memetchi 4
 left_of Ichigotchi Gozarutchi
-left_of Tarakotchi Hashizotchi
-in_row Mametchi 3
 same_region Kuchipatchi Gozarutchi
 above Tarakotchi Kuchipatchi
-outside Tarakotchi library
 not_next_to Ichigotchi sakura
 left_of Masktchi Lovelitchi
 next_to Kuchipatchi slide
 above Masktchi Ichigotchi
-apart Memetchi Tarakotchi
-outside Tarakotchi market
-above Masktchi Lovelitchi 3
 in_region Ichigotchi garden
 adjacent_regions Lovelitchi Masktchi
+in_region Mametchi school
+in_region Memetchi market
+in_region Pianitchi playground
+in_region Hashizotchi market
+not_next_to Lovelitchi chair
+left_of Hashizotchi Memetchi
+above Pianitchi Gozarutchi
+in_region Violetchi stage
 
 # Booklet text for --docx (optional).
 Title:
-Tamagotchi Murdoku 12x12: The devil in Tamagotchi Town
+Tamagotchi Murdoku 12x12: Quiet and social
 
 Intro:
-Eleven friends and the devil Akumatchi fill Tamagotchi Town. Akumatchi is placed last.
-Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; standable objects can.
+Eleven friends and the devil Akumatchi fill Tamagotchi Town.
+Place every figure on a free square, one per row and one per column. Squares with a blocking object cannot be used; figures may stand on standable objects.
+Quiet and social squares have special rules; unmarked squares have neither restriction.
 
 Figures:
 Mametchi: ; icon=U+1F423
@@ -119,7 +138,7 @@ Hashizotchi: ; icon=U+1F426
 Akumatchi: the devil ; icon=U+1F47F
 
 Question:
-Akumatchi is placed last and is alone with one friend. Which friend?
+Which figure occupies a social square, and which figures, if any, occupy quiet squares?
 
 Reveal:
-Akumatchi lurks in the toy shop with Tarakotchi.
+Ichigotchi stands on a quiet square and is alone in the garden. Mametchi stands on a social square, sharing the school with Masktchi.

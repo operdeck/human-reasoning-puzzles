@@ -90,12 +90,13 @@ its short output, and decide:
 | a person's live squares while solving | `uv run csp FILE --track-person P` |
 | clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
 | ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` (several numbers: each stays necessary) |
+| ... while marked-cell occupancy rules stay necessary | add `--needs-mark quiet social` to `suggest` or `ease` (one or more mark names) |
 | ... so every figure (outside `--exclude`) gets a clue | add `--cover` to `suggest` |
 | which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
 | draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts; `decor: tunnel` omits an object from clue suggestions) |
-| pictures, booklet | `--png`, `--docx` (`--nosolution` for puzzle pages only, no solve) |
+| pictures, booklet | `--png`, `--docx` (`--nosolution` for the puzzle only, no solve) |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
 - Do not solve, enumerate placements or test clue subsets by hand or with
@@ -245,8 +246,9 @@ uv run csp FILE --lint         # missing icons, unknown figures, implied/redunda
 uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
 ```
 
-- Give every trial (also in clue-thinning loops) a hard timeout of a few seconds
-  and kill it; treat a timeout as "not good enough", never wait minutes.
+- Give each uniqueness check and grading solve (also in clue-thinning loops)
+  a separate hard timeout of a few seconds; treat a timeout as "not good
+  enough", never wait minutes.
 - Uniqueness is relative to the implemented clue semantics; it proves neither a
   correct transcription nor faithful wording. Grades are this solver's ladder
   (`single` < `count` < `relations` < `subsumption` < `cover2` < `cover3` <
