@@ -96,7 +96,7 @@ its short output, and decide:
 | drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
 | draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts; `decor: tunnel` omits an object from clue suggestions) |
-| pictures, booklet | `--png`, `--docx` (`--nosolution` for puzzle pages only, no solve) |
+| pictures, booklet | `--png`, `--docx` (`--nosolution` for the puzzle only, no solve) |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
 - Do not solve, enumerate placements or test clue subsets by hand or with

@@ -367,7 +367,11 @@ Needs `uv sync --extra docx` (python-docx, plus fonttools and resvg for the pict
 
 `--nosolution` with `--docx` or `--pdf` writes the puzzle pages only: it skips the
 solver, so a booklet can be proof-read quickly, or made from a puzzle whose rules
-do not close, without the solutions section and without the solved board.
+do not close, without the solutions section and without the solved board. The
+same flag skips solving for console, PNG and SVG output, including interactive
+SVGs. It does not delete any previously written solution file. `--show-model`
+and `--lint` remain available; solving options and `--export` cannot be combined
+with `--nosolution`, because web bundles contain the answer for checking.
 
 In the Murdoku picture, blocked squares are shaded clearly darker than their region (standable objects keep the region colour), and area tags (for example `noble_areas`) are named in the legend. Objects that a global `count` clue counts get one faded blue dashed ring each; the ring is drawn only for object counts, not for whole-area, line or empty-area counts, and it is not repeated in a static key.
 

@@ -25,7 +25,7 @@ uv run csp examples/logicgrid_1_3x3.txt --brute-force
 uv run csp examples/akari_1_6x6.txt --png
 ```
 
-For each family example below, add `--png FILE.png` to write the puzzle image and a solved image named `FILE-solution.png`.
+For each family example below, add `--png FILE.png` to write the puzzle image and a solved image named `FILE-solution.png`. Add `--nosolution` to skip solving and write only the puzzle image.
 
 ## First Murdoku case
 

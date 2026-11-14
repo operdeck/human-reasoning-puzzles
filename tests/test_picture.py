@@ -1139,6 +1139,84 @@ def test_cli_svg_writes_board_and_solution_beside_the_puzzle(tmp_path):
     assert not (tmp_path / "tents.png").exists()
 
 
+@pytest.mark.parametrize(("option", "suffix"), [("--png", ".png"), ("--svg", ".svg")])
+@pytest.mark.parametrize("explicit", [False, True])
+@pytest.mark.parametrize("name", ["murdoku_1_first_case.txt", "sudoku_1_4x4.txt"])
+def test_cli_nosolution_writes_only_the_puzzle_picture(
+    option, suffix, explicit, name, tmp_path, monkeypatch
+):
+    source = tmp_path / "puzzle.txt"
+    source.write_text(example(name).read_text())
+    target = tmp_path / f"{'chosen' if explicit else 'puzzle'}{suffix}"
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only pictures must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    path = [str(target)] if explicit else []
+    assert cli.main([str(source), option, *path, "--nosolution"]) == 0
+    if suffix == ".png":
+        with Image.open(target) as image:
+            image.verify()
+    else:
+        assert target.read_text().startswith("<svg")
+    assert not target.with_stem(f"{target.stem}-solution").exists()
+
+
+@pytest.mark.parametrize(("option", "suffix"), [("--png", ".png"), ("--svg", ".svg")])
+def test_cli_nosolution_keeps_the_normal_start_picture(option, suffix, tmp_path):
+    source = example("murdoku_1_first_case.txt")
+    normal, plain = tmp_path / f"normal{suffix}", tmp_path / f"plain{suffix}"
+    assert cli.main([str(source), option, str(normal)]) == 0
+    assert cli.main([str(source), option, str(plain), "--nosolution"]) == 0
+    assert normal.read_bytes() == plain.read_bytes()
+    assert normal.with_stem("normal-solution").exists()
+    assert not plain.with_stem("plain-solution").exists()
+
+
+def test_cli_nosolution_writes_all_requested_puzzles(tmp_path, monkeypatch):
+    sources = []
+    for name in ("murdoku_1_first_case", "sudoku_1_4x4"):
+        source = tmp_path / f"{name}.txt"
+        source.write_text(example(f"{name}.txt").read_text())
+        sources.append(source)
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only pictures must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    assert cli.main([*(str(source) for source in sources), "--png", "--svg", "--nosolution"]) == 0
+    for source in sources:
+        for suffix in (".png", ".svg"):
+            picture = source.with_suffix(suffix)
+            assert picture.exists()
+            assert not picture.with_stem(f"{picture.stem}-solution").exists()
+
+
+def test_cli_nosolution_writes_png_and_interactive_svg_without_solving(tmp_path, monkeypatch):
+    puzzle = tmp_path / "empty.txt"
+    puzzle.write_text("Givens:\n" + ". . . .\n" * 4)
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only pictures must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    assert cli.main([str(puzzle), "--png", "--svg", "--interactive", "--nosolution"]) == 0
+    assert (tmp_path / "empty.png").exists()
+    assert "r1c1" in svg.ids((tmp_path / "empty.svg").read_text())
+    assert not (tmp_path / "empty-solution.png").exists()
+    assert not (tmp_path / "empty-solution.svg").exists()
+
+
+def test_cli_nosolution_preserves_a_preexisting_solution_picture(tmp_path):
+    target = tmp_path / "board.svg"
+    existing = tmp_path / "board-solution.svg"
+    existing.write_text("keep this file")
+    assert cli.main([str(example("sudoku_1_4x4.txt")), "--svg", str(target), "--nosolution"]) == 0
+    assert target.exists()
+    assert existing.read_text() == "keep this file"
+
+
 def test_cli_interactive_svg_has_cell_ids_and_no_solution(tmp_path):
     target = tmp_path / "game.svg"
     assert cli.main([str(example("prrrdoku1.txt")), "--svg", str(target), "--interactive"]) == 0

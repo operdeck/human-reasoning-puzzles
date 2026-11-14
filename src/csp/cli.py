@@ -717,9 +717,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--nosolution",
         action="store_true",
         help=(
-            "with --docx or --pdf: write the puzzle pages only and skip solving, so a "
-            "booklet can be proof-read (or made from a puzzle the rules do not close) "
-            "without the solution pages"
+            "show or write only the puzzle, without solving: omit solution pictures and "
+            "booklet pages; cannot be combined with --export or solving options"
         ),
     )
     parser.add_argument(
@@ -733,8 +732,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
-    if args.nosolution and not booklets:
-        parser.error("--nosolution needs --docx or --pdf")
+    if args.nosolution:
+        conflicts = (
+            ("--export", args.export is not None),
+            ("--brute-force", args.brute_force),
+            ("--explain", args.explain),
+            ("--grade", args.grade),
+            ("--require-forward", args.require_forward),
+            ("--track-person", args.track_person is not None),
+            ("--verbose", args.verbose),
+            ("--step", args.step),
+        )
+        for option, enabled in conflicts:
+            if enabled:
+                parser.error(f"--nosolution cannot be combined with {option}")
     if not args.puzzles:
         if not booklets or args.export is not None:
             parser.error("give one or more puzzle files (only --docx and --pdf need none)")
@@ -864,6 +875,8 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
 
     if args.show_model:
         print(f"\n{report.describe(model)}")
+        return 0
+    if args.nosolution:
         return 0
     if args.brute_force:
         return brute_force(puzzle, text)

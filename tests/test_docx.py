@@ -84,11 +84,19 @@ def test_prrrdoku_booklet_has_text_and_diagram(name, tmp_path):
     assert text.index(heading) < text.index("Oplossing")
 
 
-def test_nosolution_booklet_skips_the_solution_page(tmp_path):
+def test_nosolution_booklet_skips_the_solution_page(tmp_path, monkeypatch):
+    from csp import cli, docx_export
+
     source = example("murdoku_2_point_objects.txt")
     solved = tmp_path / "solved.docx"
     plain = tmp_path / "plain.docx"
     assert main([str(source), "--docx", str(solved)]) == 0
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("a puzzle-only booklet must not solve or narrate the solution")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    monkeypatch.setattr(docx_export, "explain", unexpected)
     assert main([str(source), "--docx", str(plain), "--nosolution"]) == 0
     solved_text, plain_text = _text(solved), _text(plain)
     assert "Solution" in solved_text
@@ -100,10 +108,26 @@ def test_nosolution_booklet_skips_the_solution_page(tmp_path):
     assert len(images) == len(solved_images) - 1  # the solved board is the one left out
 
 
-def test_nosolution_needs_a_booklet(capsys):
-    with pytest.raises(SystemExit):
-        main([str(example("murdoku_2_point_objects.txt")), "--nosolution"])
-    assert "--nosolution needs --docx or --pdf" in capsys.readouterr().err
+def test_nosolution_applies_to_docx_and_pdf_together(tmp_path, monkeypatch, capsys):
+    from csp import cli, pdf_convert
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only booklets must not run the solver")
+
+    def convert(source, target):
+        assert "Solution" not in _text(source)
+        assert len(Document(str(source)).inline_shapes) == 1
+        target.write_bytes(b"%PDF-1.4 mock\n")
+        return "test converter"
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    monkeypatch.setattr(pdf_convert, "docx_to_pdf", convert)
+    docx, pdf = tmp_path / "puzzle.docx", tmp_path / "puzzle.pdf"
+    source = example("sudoku_1_4x4.txt")
+    assert main([str(source), "--docx", str(docx), "--pdf", str(pdf), "--nosolution"]) == 0
+    assert "Solution" not in _text(docx)
+    assert pdf.read_bytes().startswith(b"%PDF-")
+    assert "without solutions" in capsys.readouterr().out
 
 
 def test_sudoku_nosolution_skips_solving_and_narration(tmp_path, monkeypatch):

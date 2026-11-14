@@ -3118,6 +3118,69 @@ def test_bruteforce_sudoku_stops_at_the_limit():
     assert len(bruteforce.solutions(empty, "sudoku", limit=3)) == 3
 
 
+@pytest.mark.parametrize("name", ["murdoku_1_first_case.txt", "sudoku_1_4x4.txt"])
+@pytest.mark.parametrize("show_model", [False, True])
+def test_cli_nosolution_prints_only_the_start(name, show_model, monkeypatch, capsys):
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only output must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    options = ["--show-model"] if show_model else []
+    assert cli.main([str(example(name)), "--nosolution", *options]) == 0
+    output = capsys.readouterr().out
+    assert "Start" in output
+    assert "Solved" not in output
+    assert ("The model" in output) == show_model
+
+
+def test_cli_nosolution_accepts_a_puzzle_the_rules_cannot_solve(tmp_path, monkeypatch, capsys):
+    puzzle = tmp_path / "empty.txt"
+    puzzle.write_text("Givens:\n" + ". . . .\n" * 4)
+    assert cli.main([str(puzzle)]) == 1
+    assert "needs a rule beyond" in capsys.readouterr().out
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("puzzle-only output must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    assert cli.main([str(puzzle), "--nosolution"]) == 0
+    assert "Start" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--brute-force",
+        "--explain",
+        "--grade",
+        "--require-forward",
+        "--track-person",
+        "--verbose",
+        "--step",
+        "--export",
+    ],
+)
+def test_cli_nosolution_rejects_solving_options(option, tmp_path, capsys):
+    extra = {
+        "--track-person": ["Vladimir"],
+        "--export": [str(tmp_path / "site")],
+    }.get(option, [])
+    with pytest.raises(SystemExit) as error:
+        cli.main([str(example("prrrdoku1.txt")), "--nosolution", option, *extra])
+    assert error.value.code == 2
+    assert f"--nosolution cannot be combined with {option}" in capsys.readouterr().err
+    assert not (tmp_path / "site").exists()
+
+
+def test_cli_nosolution_allows_lint(monkeypatch, capsys):
+    def unexpected(*args, **kwargs):
+        pytest.fail("lint must not run the solver")
+
+    monkeypatch.setattr(cli.Solver, "solve", unexpected)
+    assert cli.main([str(example("murdoku_1_first_case.txt")), "--lint", "--nosolution"]) == 0
+    assert capsys.readouterr().out
+
+
 def test_cli_brute_force_exit_codes(tmp_path, capsys):
     assert cli.main([str(example("prrrdoku2.txt")), "--brute-force"]) == 0
     assert "unique solution" in capsys.readouterr().out
