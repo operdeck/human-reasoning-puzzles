@@ -310,10 +310,7 @@ def _add_generic(
     document.add_picture(stream, width=Cm(GENERIC_BOARD_WIDTH_CM))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     if solved and entry.steps:
-        heading = (
-            phrase(entry.text, "sudoku.doc_how") if entry.kind == "sudoku" else "How to solve it"
-        )
-        document.add_heading(heading, level=2)
+        document.add_heading(phrase(entry.text, "generic.doc_how"), level=2)
         for line in entry.steps:
             paragraph = document.add_paragraph(style="List Bullet")
             _runs(paragraph, line)
