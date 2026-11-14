@@ -962,6 +962,58 @@ next_to Di stool
 """
 
 
+REGION_TARGETS = """Size: 3
+Language: {lang}
+Regions:
+a: west
+b: middle
+c: east
+Grid:
+a a b
+a b b
+c c c
+People:
+Ann
+Bea
+Cy
+Attributes:
+trained: Bea
+Clues:
+same_region Ann attribute:trained
+different_region Cy attribute:trained
+adjacent_regions Ann area:east
+apart Cy area:west
+"""
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            [
+                "Ann is in the same region as someone with the trained attribute.",
+                "Cy is in a different region from someone with the trained attribute.",
+                "Ann is in a region that touches the region of someone in the east.",
+                "Cy is in a region that does not touch the region of someone in the west.",
+            ],
+        ),
+        (
+            "nl",
+            [
+                "Ann is in hetzelfde gebied als iemand met het kenmerk trained.",
+                "Cy is in een ander gebied dan iemand met het kenmerk trained.",
+                "Ann is in een gebied dat aan dat van iemand in de east grenst.",
+                "Cy is in een gebied dat niet aan dat van iemand in de west grenst.",
+            ],
+        ),
+    ],
+)
+def test_region_relation_with_a_target_names_the_target(language, expected):
+    text = REGION_TARGETS.format(lang=language)
+    assert Story(*load_board(text), Wording.read(text)).clue_texts() == expected
+
+
 def test_next_to_a_multi_square_object_says_on_or_next_to():
     board, _ = load_board(ON_OR_NEXT_TO.format(lang="en"))
     assert murdoku.next_to_covers_own_squares(board, "bench")
