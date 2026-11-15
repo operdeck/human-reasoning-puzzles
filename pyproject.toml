@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "Generic constraint satisfaction solver with human-readable reasoning"
 authors = [{name = "Otto Perdeck"}]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "numpy>=2.1",
+]
 
 [project.scripts]
 csp = "csp.cli:main"
@@ -27,6 +29,11 @@ docx = [
     "resvg-py>=0.5",
     "python-docx>=1.1",
 ]
+scan = [
+    "opencv-python-headless>=4.10",
+    "pytesseract>=0.3.13 ; sys_platform != 'darwin'",
+    "pyobjc-framework-Vision>=10.3 ; sys_platform == 'darwin'",
+]
 
 [dependency-groups]
 dev = [
@@ -37,6 +44,7 @@ dev = [
     "python-docx>=1.1",
     "fonttools>=4.50",
     "resvg-py>=0.5",
+    "opencv-python-headless>=4.10",
 ]
 
 [tool.setuptools.package-data]
@@ -54,7 +62,7 @@ python_version = "3.12"
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["fontTools.*", "resvg_py"]
+module = ["fontTools.*", "resvg_py", "Vision", "Foundation", "pytesseract", "cv2"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

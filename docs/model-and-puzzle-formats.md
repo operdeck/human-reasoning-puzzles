@@ -703,6 +703,8 @@ src/csp/
 	picture.py     SVG pictures for every family
 	assets/        vendored Noto Emoji SVGs and Noto Sans subset (NOTICE.md)
 	docx_export.py Word booklet pages for Murdoku (optional python-docx)
+	scan.py        reading a scan back: grid lines, cell tiles, icon matching, OCR
+	scan_vision.py macOS Vision OCR for scan.py (optional pyobjc-framework-Vision)
 	cli.py         family dispatch and shared solver options
 tests/           engine, family, soundness, layering, and picture tests
 examples/        small and larger unique examples for each family
