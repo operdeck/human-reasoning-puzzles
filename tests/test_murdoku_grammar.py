@@ -492,8 +492,8 @@ not dir Ada object:tree,rock king <= 1
     safe_model.assign(safe_model.literal("Ada", safe["Ada"]), "test", "fixed")
     assert Solver(safe_model).solve().contradiction is None
     unsafe_model = compile_puzzle(board, clues)
-    unsafe_model.assign(unsafe_model.literal("Ada", near_one_target["Ada"]), "test", "fixed")
-    assert Solver(unsafe_model).solve().contradiction is not None
+    with pytest.raises(Contradiction, match="already ruled out"):
+        unsafe_model.assign(unsafe_model.literal("Ada", near_one_target["Ada"]), "test", "fixed")
 
 
 def test_adjacent_to_selectors_use_distinct_side_neighbor_areas():

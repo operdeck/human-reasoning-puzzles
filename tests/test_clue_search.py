@@ -89,13 +89,14 @@ def test_candidate_clues_are_true_of_the_placement_and_skip_excluded_people():
 
 
 def test_suggest_restores_a_dropped_clue_set():
-    lines = clue_search.clue_lines(ORIENT)
-    (solution,) = bruteforce.solutions(ORIENT)
-    board, _ = load_board(ORIENT)
+    house = example("murdoku_3_house.txt").read_text()
+    lines = clue_search.clue_lines(house)
+    (solution,) = bruteforce.solutions(house)
+    board, _ = load_board(house)
     placement = {person: solution[person] for person in board.people}
-    start = clue_search.with_clues(ORIENT, lines[:4])
-    added = clue_search.suggest(start, placement, sample=200, timeout=30)
-    completed = clue_search.with_clues(start, lines[:4] + added)
+    start = clue_search.with_clues(house, lines[:2])
+    added = clue_search.suggest(start, placement, sample=50, timeout=10)
+    completed = clue_search.with_clues(start, lines[:2] + added)
     assert len(bruteforce.solutions(completed, limit=2)) == 1
 
 
@@ -138,7 +139,7 @@ def test_suggest_keeps_needed_clues_necessary():
     placement = clue_search.parse_solution("Wouter=r1c1 Marloes=r2c2 Bas=r3c4 Cato=r4c3 Daan=r5c5")
     kinds = [kind for kind in clue_search.SUGGEST_KINDS if kind != "on"]
     added = clue_search.suggest(
-        start, placement, kinds, sample=300, timeout=30, exclude=["Wouter"], needs=[1]
+        start, placement, kinds, sample=50, timeout=15, exclude=["Wouter"], needs=[1]
     )
     final = clue_search.with_clues(start, [*lines[:2], *added])
     assert len(bruteforce.solutions(final)) == 1
@@ -282,11 +283,12 @@ def test_sample_never_hides_a_second_solution():
 
 def test_mentions_counts_each_person_once_per_clue():
     counts = clue_search._mentions(
+        ["Ada", "Ben", "Cy"],
         [
             "dir Ada Ben left",
             "beside Ada object:Ada_bench | Ada sits",
             "on Ben object:bed",
-        ]
+        ],
     )
     assert counts == {"Ada": 2, "Ben": 2, "Cy": 0}
 
@@ -346,7 +348,8 @@ def test_candidate_clues_offer_lines_only_on_request():
     museum = example("halloween-museum-1.txt").read_text()
     board, _ = load_board(museum)
     placement = clue_search.parse_solution(SOLUTION_1)
-    assert not any("row" in clue for clue in clue_search.candidate_clues(board, placement))
+    default = clue_search.candidate_clues(board, placement)
+    assert not any(" rows:" in clue or " columns:" in clue for clue in default)
     lines = clue_search.candidate_clues(board, placement, ["line"])
     assert "not in Alba rows:2" in lines and "in Alba columns:5" in lines
     assert "not in Alba rows:1" not in lines

@@ -1720,6 +1720,8 @@ class Story:
         # A clue can compile to several predicates; the first names its subject.
         primary_conditions: dict[tuple[str, int | None], Condition] = {}
         for condition in conditions(board, self.clues):
+            if condition.kind == "only" and condition.people[0] != condition.args[0]:
+                continue
             primary_conditions.setdefault((condition.label, condition.number), condition)
         self.conditions = {label: condition for (label, _), condition in primary_conditions.items()}
         self.role_conditions: dict[str, RoleCondition] = {
@@ -1920,11 +1922,11 @@ class Story:
             )
             name = self.say.words.get(role) or role.replace("_", " ")
             outcome = _emphasize(self.say("role_has", who=person, role=name))
-            if condition is None:
-                reveals.append(f"{_cap(outcome)}.")
-            else:
+            if condition is not None:
                 clue = _cap(self._quantified_text(condition)) + self._quantified_ref(condition)
                 reveals.append(f"{clue}, {self.say('so')} {outcome}.")
+            else:
+                reveals.append(f"{_cap(outcome)}.")
             state.role_told[person, role] = True
         return reveals
 
@@ -2161,10 +2163,11 @@ class Story:
             outcome = self._outcome(changed, before, state)
             source = step.sources[0] if step.sources else None
             if source is not None and (
-                source in self.direction_conditions
+                self._direction_condition_for_source(source) is not None
                 or source in self.conditions
                 or self._role_condition_for_source(source) is not None
                 or self._quantified_condition_for_source(source) is not None
+                or source in self.conditionals
             ):
                 return self._relation(step, before, changed, outcome)
             return _cap(self.say("chain_hidden", outcome=outcome))
@@ -2682,12 +2685,23 @@ class Story:
         return None
 
     def _role_step_reason(self, steps: Sequence[Step]) -> str | None:
-        """Why a role became known: the role rule or role count behind its hidden constraint."""
+        """Why a role became known: its source clue or the role count behind its constraint."""
         by_name = {c.name: c for c in self.model.constraints}
         for step in steps:
             for source in step.sources:
                 if (rule := self._role_condition_for_source(source)) is not None:
                     return self._role_condition_text(rule) + self._role_ref(rule)
+                if step.var in self.role_variables:
+                    _, role = self.role_variables[step.var]
+                    direction = self._direction_condition_for_source(source)
+                    if direction is not None and any(
+                        selector.kind == "role" and selector.name == role
+                        for selector in (direction.first, direction.second)
+                    ):
+                        text = self._direction_text(direction)
+                        if direction.number is not None:
+                            text += f" ({direction.number})"
+                        return text
                 constraint = by_name.get(source)
                 if constraint is None or step.var not in self.role_variables:
                     continue
@@ -2754,8 +2768,38 @@ class Story:
         selector = condition.selector
         if selector is None:
             return ""
+        if selector.kind in ("union", "intersection"):
+            if (
+                selector.kind == "union"
+                and selector.parts
+                and all(
+                    part.kind in ("rows", "columns") and part.kind == selector.parts[0].kind
+                    for part in selector.parts
+                )
+            ):
+                kind = selector.parts[0].kind
+                line_kind = "row" if kind == "rows" else "col"
+                indices = [
+                    index
+                    for part in selector.parts
+                    for index in line_indices(part.name, self.board.size)
+                ]
+                lines = self.places.lines(line_kind, indices, "or")
+                return self.say("in", what=lines)
+            conjunction = "or" if selector.kind == "union" else "and"
+            return self.say.join(
+                [self._global_count_where_selector(part) for part in selector.parts], conjunction
+            )
+        return self._global_count_where_selector(selector)
+
+    def _global_count_where_selector(self, selector: TargetSelector) -> str:
         if selector.kind in ("area", "tag"):
-            return self.places.regions(condition.regions(self.board))
+            regions = (
+                self.board.area_ids([selector.name])
+                if selector.kind == "area"
+                else self.board.tagged_region_ids([selector.name])
+            )
+            return self.places.regions(regions)
         if selector.kind == "rows":
             lines = self.places.lines("row", line_indices(selector.name, self.board.size), "or")
             return self.say("in", what=lines)
@@ -2765,8 +2809,10 @@ class Story:
         return self.say("on", what=self._global_count_target(selector))
 
     def _global_count_target(self, selector: TargetSelector) -> str:
-        if selector.kind == "mark" and selector.name not in self.say.words:
-            return self.say("global_count.mark", name=selector.name.replace("_", " "))
+        if selector.kind == "mark":
+            return self.say.words.get(selector.name) or self.say(
+                "global_count.mark", name=selector.name.replace("_", " ")
+            )
         return self.places.thing(selector.name)
 
     def _global_count_text(self, condition: GlobalCountCondition) -> str:
@@ -2956,12 +3002,19 @@ class Story:
                 return ""
             clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
             return f"{clue}, {self.say('so')} {outcome}."
-        if (direction := self.direction_conditions.get(source)) is not None:
+        if (direction := self._direction_condition_for_source(source)) is not None:
             if not outcome:
                 return ""
             clue = _cap(self._direction_text(direction))
             if direction.number is not None:
                 clue += f" ({direction.number})"
+            return f"{clue}, {self.say('so')} {outcome}."
+        if (conditional := self.conditionals.get(source)) is not None:
+            if not outcome:
+                return ""
+            clue = _cap(self._conditional_text(conditional))
+            if conditional.number is not None:
+                clue += f" ({conditional.number})"
             return f"{clue}, {self.say('so')} {outcome}."
         if source not in self.conditions and (apart := self._role_apart(source)) is not None:
             return f"{_cap(apart)}, {self.say('so')} {outcome}." if outcome else f"{_cap(apart)}."
@@ -3255,8 +3308,10 @@ class Story:
             if clue_condition.number is None:
                 return self.say(f"breaks_rule{suffix}")
             return self.say(f"breaks{suffix}", n=clue_condition.number)
-        if source is not None and source in self.direction_conditions:
-            direction_condition = self.direction_conditions[source]
+        if (
+            source is not None
+            and (direction_condition := self._direction_condition_for_source(source)) is not None
+        ):
             if direction_condition.number is not None and self.say.numbered:
                 return self.say(f"breaks{suffix}", n=direction_condition.number)
             return self.say(
@@ -3892,6 +3947,18 @@ class Story:
                 condition
                 for label, condition in sorted(
                     self.quantified_conditions.items(), key=lambda pair: len(pair[0]), reverse=True
+                )
+                if source == label or source.startswith(label + " ")
+            ),
+            None,
+        )
+
+    def _direction_condition_for_source(self, source: str) -> DirectionCondition | None:
+        return next(
+            (
+                condition
+                for label, condition in sorted(
+                    self.direction_conditions.items(), key=lambda pair: len(pair[0]), reverse=True
                 )
                 if source == label or source.startswith(label + " ")
             ),

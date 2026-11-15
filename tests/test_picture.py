@@ -1117,10 +1117,10 @@ People:
 Ada
 Ben
 Clues:
-in_row Ada 1
-in_column Ada 1
-in_row Ben 2
-in_column Ben 2
+in Ada rows:1
+in Ada columns:1
+in Ben rows:2
+in Ben columns:2
 """
     )
     target = tmp_path / "default.png"
@@ -1758,7 +1758,7 @@ def test_count_legend_uses_the_given_plain_language_texts():
         count_lines=True,
         language="nl",
     ).to_svg()
-    assert "Precies twee mensen dragen een badjas" in markup
+    assert "Precies twee mensen staan op een badjas" in markup
     assert "object:badjas" not in markup
 
 

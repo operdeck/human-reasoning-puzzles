@@ -3072,6 +3072,33 @@ def _compile_direction_condition(model: Model, board: Board, condition: Directio
         )
         return
 
+    if condition.first.kind == "person" and not condition.second_is_people:
+        person = condition.first.name
+        targets = _selector_cells(board, condition.second)
+        for square in board.free:
+            supported = any(condition.test(square, target) for target in targets)
+            if supported == condition.negated:
+                model.eliminate(
+                    model.literal(person, square),
+                    "clue",
+                    condition.label,
+                    sources=(condition.label,),
+                )
+        return
+    if condition.second.kind == "person" and not condition.first_is_people:
+        person = condition.second.name
+        targets = _selector_cells(board, condition.first)
+        for square in board.free:
+            supported = any(condition.test(target, square) for target in targets)
+            if supported == condition.negated:
+                model.eliminate(
+                    model.literal(person, square),
+                    "clue",
+                    condition.label,
+                    sources=(condition.label,),
+                )
+        return
+
     person_selectors = {"person", "people", "attribute", "anyone", "people_on"}
     if (
         not condition.negated

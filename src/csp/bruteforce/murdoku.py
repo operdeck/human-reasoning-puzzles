@@ -212,6 +212,14 @@ def _search(
                 )
                 for check in due[candidate]
                 if all(person == candidate or person in placed for person in check.people)
+            ) and all(
+                _person_direction_holds(check, candidate, square, placed)
+                for check in direction_checks
+                if (
+                    check.mode != "furthest"
+                    and check.first.kind == check.second.kind == "person"
+                    and candidate in (check.first.name, check.second.name)
+                )
             ):
                 candidates.append(square)
         if not candidates:
@@ -244,6 +252,20 @@ def _search(
         del placed[person]
         if len(found) >= limit or (budget is not None and budget[0] < 0):
             return
+
+
+def _person_direction_holds(
+    condition: DirectionCondition,
+    candidate: str,
+    square: Square,
+    placed: dict[str, Square],
+) -> bool:
+    """Check a named-person direction as soon as both of its people are placed."""
+    first = square if condition.first.name == candidate else placed.get(condition.first.name)
+    second = square if condition.second.name == candidate else placed.get(condition.second.name)
+    if first is None or second is None:
+        return True
+    return condition.test(first, second) != condition.negated
 
 
 def _global_counts_possible(

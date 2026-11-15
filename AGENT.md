@@ -90,13 +90,17 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   single-purpose commits, and push them to the pull request as soon as the
   branch is worth reading instead of holding a long change on your disk until
   it feels finished.
-- **Keep normal local test runs under two minutes; CI runs every suite.** The
-  default `uv run pytest -q` skips the `solutions` and `booklet` suites. Run
+- **Keep CI under 20 minutes and relevant local test runs usually under two
+  minutes.** CI must still cover every puzzle and suite; optimize or split
+  expensive tests rather than dropping coverage or letting CI run indefinitely.
+  The default `uv run pytest -q` skips the `solutions` and `booklet` suites. Run
   puzzle-family solver tests and the published-puzzle solution/uniqueness checks with
   `uv run pytest -q --override-ini=addopts= -m solutions`, or the full booklet
   generation with `uv run pytest -q --override-ini=addopts= -m booklet`.
   `.github/workflows/tests.yml` overrides the local default and runs every
   Python test on 3.12 and 3.13, plus all web checks, on every pull request.
+  Local LLM-based checks that cannot run in CI, such as independent review of
+  booklet or web output, may take longer but must be split into reviewable pieces.
   Run an exhaustive suite locally when an enhancement could affect puzzle
   solving, solution soundness, booklet generation, or booklet presentation;
   for changes isolated from those areas, run the default suite and the tests

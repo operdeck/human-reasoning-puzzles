@@ -122,7 +122,7 @@ def test_murdoku_bundle_has_everything_to_play(exported):
         "r3c4": "Noor",
         "r4c2": "Wouter",
     }
-    assert bundle["clues"][0] == "Eva zit naast de tafel."
+    assert bundle["clues"][0] == "Eva staat naast de tafel."
     assert bundle["question"]
     assert bundle["reveal"].startswith("Wouter doet het met Noor")
     assert bundle["rules"]
@@ -175,7 +175,7 @@ def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
     text = (
         example("murdoku_3_house.txt")
         .read_text()
-        .replace("Clues:\n", "Clues:\nin_region Ada study | Ben remembers Ada in the study.\n")
+        .replace("Clues:\n", "Clues:\nin Ada area:study | Ben remembers Ada in the study.\n")
     )
     bundle = web._murdoku(text, {})
     entry = next(entry for entry in bundle["clueEntries"] if "clue:1" in entry["sources"])
@@ -225,9 +225,9 @@ def test_murdoku_cell_details_use_dutch_and_author_wording():
 def test_murdoku_cell_details_include_object_count_rules_on_each_matching_object():
     text = example("wie-doet-het-met-wie-4.txt").read_text()
     details = web._murdoku(text, {})["cellDetails"]
-    robe = "Precies twee mensen dragen een badjas."
-    slippers = "Precies één persoon heeft sloffen aan."
-    glasses = "Precies één persoon heeft een bril op."
+    robe = "Precies twee mensen staan op een badjas."
+    slippers = "Precies één persoon staat op een paar sloffen."
+    glasses = "Precies één persoon staat op een bril."
 
     assert all(robe in details[cell] for cell in ("r2c3", "r3c6", "r4c3"))
     assert all(slippers in details[cell] for cell in ("r3c5", "r5c4"))
@@ -293,12 +293,12 @@ def test_murdoku_point_hovers_include_outer_edges_and_corners():
     assert edge["lines"][0] == "Sierui"
     assert corner["lines"][0] == "Zonnebloem"
     assert edge["radius"] > 0 and corner["radius"] > 0
-    assert "elk vakje dat het raakt" in edge["lines"][1]
+    assert "op een vakje staat dat het raakt" in edge["lines"][1]
 
     text = example("murdoku_2_point_objects.txt").read_text()
     targets = web._murdoku(text, {})["detailTargets"]
     assert any(target["lines"][0] == "The mouse on the top edge" for target in targets)
-    assert all("every square it touches" in target["lines"][1] for target in targets)
+    assert all("any square it touches" in target["lines"][1] for target in targets)
 
 
 def test_murdoku_text_names_keep_ids_and_authored_forms():
@@ -528,7 +528,7 @@ def test_murdoku_web_key_keeps_text_fallbacks_for_unknown_symbols():
         .read_text()
         .replace("fountain", "unlisted_thing")
         .replace("window: window", "mystery_window: window")
-        .replace("at Cal window", "at Cal mystery_window")
+        .replace("on Cal edge_item:window", "on Cal edge_item:mystery_window")
     )
     key = web._murdoku(text, {})["key"]
     point = next(item for item in key if item["name"] == "Unlisted thing")
@@ -677,8 +677,8 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
 
 def test_author_wordings_reach_the_web_player(exported):
     bundle = _bundle(exported, "wie-doet-het-met-wie-1")
-    assert "Precies twee mensen dragen een badjas." in bundle["rules"]
-    assert "Precies één persoon heeft sloffen aan." in bundle["rules"]
+    assert "Precies twee mensen staan op een badjas." in bundle["rules"]
+    assert "Precies één persoon staat op een paar sloffen." in bundle["rules"]
     assert "Marloes heeft alleen een badjas aan." in bundle["clues"]
 
 
