@@ -13,6 +13,7 @@ hard dependency because the tiles are numpy arrays.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -95,10 +96,10 @@ def find_grid(image: Image, size: int = 10, kernel: int = 90) -> Grid:
     )
 
     def axis_lines(profile: NDArray[np.float64], axis: str) -> tuple[int, ...]:
-        strength = float(profile.max())
-        if strength <= 0:
+        best = float(profile.max())
+        if best <= 0:
             raise ScanError(f"no {axis} lines found; is this a board scan?")
-        candidates = [index for index, value in enumerate(profile) if value > strength * 0.18]
+        candidates = [index for index, value in enumerate(profile) if value > best * 0.18]
         if len(candidates) < size + 1:
             raise ScanError(f"found {len(candidates)} {axis} line pixels, need {size + 1} lines")
         groups: list[list[int]] = []
@@ -108,19 +109,49 @@ def find_grid(image: Image, size: int = 10, kernel: int = 90) -> Grid:
             else:
                 groups.append([position])
         centres = [round(float(np.mean(group))) for group in groups]
-        first, last = centres[0], centres[-1]
+        if len(centres) == size + 1:
+            return tuple(centres)
+
+        # A spread carries other long lines: the frame of a sketchpad, a page rule.
+        # Follow the board's own rhythm instead of spanning everything: the typical
+        # gap between detected lines is the cell pitch, and only a run whose gaps
+        # all match it belongs to one grid.
+        gaps = [b - a for a, b in pairwise(centres)]
+        pitch = float(np.median(gaps))
+        runs: list[list[int]] = [[centres[0]]]
+        for previous, centre in pairwise(centres):
+            if abs((centre - previous) - pitch) <= pitch * 0.35:
+                runs[-1].append(centre)
+            else:
+                runs.append([centre])
+        usable = [run for run in runs if len(run) >= size + 1]
+        if not usable:
+            return tuple(centres[: size + 1])
+        chosen_run = max(
+            usable,
+            key=lambda run: (sum(float(profile[value]) for value in run), len(run)),
+        )
+        first, last = chosen_run[0], chosen_run[-1]
         pitch = (last - first) / size
         chosen: list[int] = []
         for step in range(size + 1):
             expected = first + step * pitch
-            near = [value for value in centres if abs(value - expected) <= pitch * 0.45]
+            near = [value for value in chosen_run if abs(value - expected) <= pitch * 0.35]
             chosen.append(
                 min(near, key=lambda value: abs(value - expected)) if near else round(expected)
             )
+        gaps = [b - a for a, b in pairwise(chosen)]
+        if min(gaps) <= 0 or max(gaps) > min(gaps) * 1.6:
+            raise ScanError(
+                f"the {axis} lines are not evenly spaced ({gaps}); crop the board out of the "
+                "page and scan the board alone, then try again"
+            )
         return tuple(chosen)
 
-    x = axis_lines(np.asarray(vertical.sum(axis=0) / 255, dtype=np.float64), "vertical")
-    y = axis_lines(np.asarray(horizontal.sum(axis=1) / 255, dtype=np.float64), "horizontal")
+    x_profile = np.asarray(vertical.sum(axis=0) / 255, dtype=np.float64)
+    y_profile = np.asarray(horizontal.sum(axis=1) / 255, dtype=np.float64)
+    x = axis_lines(x_profile, "vertical")
+    y = axis_lines(y_profile, "horizontal")
     return Grid(x, y)
 
 

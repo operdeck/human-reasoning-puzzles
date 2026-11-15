@@ -56,7 +56,24 @@ def test_find_grid_reads_every_line_of_a_drawn_board(tmp_path):
     )
 
 
-def test_tiles_are_square_and_one_per_cell(tmp_path):
+def test_find_grid_follows_the_board_when_a_decoy_line_sits_below(tmp_path):
+    """A spread carries more long lines than the board's: a sketchpad frame, a page rule."""
+    source = tmp_path / "spread.png"
+    draw_board(source)
+    image = scan.load(source)
+    side = MARGIN * 2 + PITCH * SIZE
+    taller = np.full((side + 2 * PITCH, side, 3), 250, np.uint8)
+    taller[:side] = image
+    # One and a half pitches below the board, so it cannot belong to the rhythm.
+    decoy = side + PITCH + PITCH // 2
+    cv2.line(taller, (0, decoy), (side, decoy), (60, 60, 60), 2)
+    spread = tmp_path / "spread.png"
+    cv2.imwrite(str(spread), taller)
+
+    grid = scan.find_grid(scan.load(spread), size=SIZE)
+    expected = [MARGIN + index * PITCH for index in range(SIZE + 1)]
+    assert all(abs(found - want) <= 6 for found, want in zip(grid.y, expected, strict=True))
+
     source = tmp_path / "board.png"
     draw_board(source)
     tiles = scan.tiles(scan.load(source), scan.find_grid(scan.load(source), size=SIZE))
@@ -110,3 +127,22 @@ def test_ocr_explains_which_backend_is_missing(tmp_path, monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "csp.scan_vision", None)
     with pytest.raises(scan.ScanError, match="macOS Vision"):
         scan.ocr(tmp_path / "nothing.png")
+
+
+def test_find_grid_refuses_a_page_whose_lines_are_not_evenly_spaced(tmp_path):
+    """A dense spread gives long runs everywhere; refusing beats returning a guess."""
+    path = tmp_path / "busy.png"
+    image = np.full((600, 600, 3), 250, np.uint8)
+    rng = np.random.default_rng(7)
+    for _ in range(60):
+        x0, y0 = rng.integers(0, 560, 2)
+        cv2.rectangle(
+            image,
+            (int(x0), int(y0)),
+            (int(x0) + int(rng.integers(10, 60)), int(y0) + int(rng.integers(10, 60))),
+            (30, 30, 30),
+            -1,
+        )
+    cv2.imwrite(str(path), image)
+    with pytest.raises(scan.ScanError, match=r"not evenly spaced|line pixels|no vertical"):
+        scan.find_grid(scan.load(path), size=8)
