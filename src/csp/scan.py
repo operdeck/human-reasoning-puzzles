@@ -6,8 +6,8 @@ half of the job: OCR reads the cards and legends, and grid detection plus
 template matching find the cells. What measurement cannot do is *name* an icon —
 see the "Reading a scan" section of the Murdoku authoring skill.
 
-Needs the `scan` extra for the image work (`uv sync --extra scan`); `numpy` is a
-hard dependency because the tiles are numpy arrays.
+Neither numpy nor opencv is a dependency of the solver: both are imported on
+first use and the error says which extra installs them (`uv sync --extra scan`).
 """
 
 from __future__ import annotations
@@ -16,11 +16,10 @@ from dataclasses import dataclass
 from itertools import pairwise
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
-
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import numpy as np
     from numpy.typing import NDArray
 
     Image = NDArray[np.uint8]
@@ -29,9 +28,38 @@ if TYPE_CHECKING:
 CELL_TILE = 280
 """Side of a normalised cell tile: resizing is what makes cells comparable."""
 
+_MAX_SKEW_DEGREES = 2.0
+"""Past this the lines are no longer horizontal or vertical, and a grid would drift."""
+
 
 class ScanError(RuntimeError):
     """A scan cannot be read, or the library that would read it is missing."""
+
+
+_NUMPY: Any = None
+_CV2: Any = None
+
+
+def _np() -> Any:
+    global _NUMPY
+    if _NUMPY is None:
+        try:
+            import numpy
+        except ModuleNotFoundError as exc:  # pragma: no cover - depends on the install
+            raise ScanError("reading scans needs numpy: uv sync --extra scan") from exc
+        _NUMPY = numpy
+    return _NUMPY
+
+
+def _cv2() -> Any:
+    global _CV2
+    if _CV2 is None:
+        try:
+            import cv2
+        except ModuleNotFoundError as exc:  # pragma: no cover - depends on the install
+            raise ScanError("reading scans needs opencv: uv sync --extra scan") from exc
+        _CV2 = cv2
+    return _CV2
 
 
 @dataclass(frozen=True)
@@ -56,33 +84,123 @@ class Grid:
         return ((self.x[col - 1] + self.x[col]) / 2, (self.y[row - 1] + self.y[row]) / 2)
 
 
-def _cv2() -> Any:
-    try:
-        import cv2
-    except ModuleNotFoundError as exc:  # pragma: no cover - depends on the install
-        raise ScanError("reading scans needs opencv: uv sync --extra scan") from exc
-    return cv2
-
-
 def load(path: Path | str) -> Image:
     """The scan as a BGR colour array."""
+    np = _np()
     cv2 = _cv2()
     image = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if image is None:
         raise ScanError(f"cannot read an image from {path}")
-    return np.asarray(image, dtype=np.uint8)
+    return np.asarray(image, dtype=np.uint8)  # type: ignore[no-any-return]
+
+
+def _clusters(
+    profile: NDArray[np.float64], share: float = 0.18, gap: int = 25
+) -> list[tuple[int, float]]:
+    """Line candidates as (position, strength), one per cluster of dark pixels."""
+    np = _np()
+    best = float(profile.max())
+    if best <= 0:
+        raise ScanError("no grid lines found; is this a board scan?")
+    candidates = [index for index, value in enumerate(profile) if value > best * share]
+    groups: list[list[int]] = []
+    for position in candidates:
+        if groups and position - groups[-1][-1] <= gap:
+            groups[-1].append(position)
+        else:
+            groups.append([position])
+    return [
+        (round(float(np.mean(group))), float(profile[group[len(group) // 2]])) for group in groups
+    ]
+
+
+def _fit_grid(candidates: list[tuple[int, float]], size: int, axis: str) -> tuple[int, ...]:
+    """The `size + 1` lines that fit one regular grid best.
+
+    A page carries other long dark runs — a frame, a card border, a sketchpad, the
+    spine shadow — and a busy board adds its own (area walls, furniture edges), so
+    neither the first and last candidate nor any run of consecutive candidates is
+    necessarily the board's grid. Instead every pair of candidates proposes a pitch,
+    and the pitch whose `size + 1` expected positions are all matched by a real
+    candidate, with the evenest gaps and the strongest lines, wins. Nothing is
+    invented: if no pitch fits, this raises instead of returning a shifted grid.
+    """
+    np = _np()
+    if len(candidates) < size + 1:
+        raise ScanError(
+            f"found {len(candidates)} {axis} line clusters, need {size + 1}; "
+            "crop the board out of the page and try again"
+        )
+    positions = [position for position, _ in candidates]
+    strengths = {position: strength for position, strength in candidates}
+    best: tuple[float, float, tuple[int, ...]] | None = None
+    for first_index, start in enumerate(positions):
+        for last_index in range(first_index + size, len(positions)):
+            pitch = (positions[last_index] - start) / size
+            if pitch <= 0:
+                continue
+            chosen: list[int] = []
+            for step in range(size + 1):
+                expected = start + step * pitch
+                near = [
+                    position
+                    for position in positions
+                    if abs(position - expected) <= pitch * 0.30
+                ]
+                if not near:
+                    chosen = []
+                    break
+                chosen.append(min(near, key=lambda position: abs(position - expected)))
+            if not chosen:
+                continue
+            gaps = [b - a for a, b in pairwise(chosen)]
+            spread = float(np.std(gaps)) / float(np.mean(gaps))
+            strength = sum(strengths[position] for position in chosen)
+            key = (round(spread, 4), -strength)
+            if best is None or key < best[:2]:
+                best = (spread, -strength, tuple(chosen))
+    if best is None:
+        raise ScanError(
+            f"no set of {size + 1} {axis} lines fits one grid; crop the board out of the "
+            "page, scan it alone, and try again"
+        )
+    spread, _, chosen = best
+    gaps = [b - a for a, b in pairwise(chosen)]
+    if min(gaps) <= 0 or spread > 0.18:
+        raise ScanError(
+            f"the {axis} lines are not evenly spaced ({gaps}); crop the board out of the "
+            "page, scan it alone, and try again"
+        )
+    return chosen
+
+
+
+def _skew_degrees(vertical: NDArray[np.uint8], horizontal: NDArray[np.uint8]) -> float:
+    """How far the detected lines sit off the axes, in degrees."""
+    np = _np()
+    cv2 = _cv2()
+    lines = np.asarray(vertical, dtype=np.uint8) * 255
+    lines = np.maximum(lines, np.asarray(horizontal, dtype=np.uint8) * 255)
+    points = cv2.findNonZero(lines)
+    if points is None or len(points) < 100:
+        return 0.0
+    angle = float(cv2.minAreaRect(points)[-1])
+    return min(angle % 90.0, 90.0 - angle % 90.0)
 
 
 def find_grid(image: Image, size: int = 10, kernel: int = 90) -> Grid:
     """The `size + 1` cell boundaries on each axis.
 
     A photographed page is not uniform: rows near the spine can be ten per cent
-    wider than rows near the edge, so one assumed pitch drifts by a whole cell
-    over ten columns. The lines are detected instead of assumed: long dark runs
-    are isolated by morphology, clustered, and then the candidate nearest each
-    expected position is kept, which stops a wall or an icon from standing in for
-    a grid line.
+    wider than rows near the edge, so one assumed pitch drifts by a whole cell over
+    ten columns. The lines are detected instead of assumed — long dark runs are
+    isolated by morphology and clustered — and the window of `size + 1` consecutive
+    candidates that behaves most like one grid is taken, so a frame or a sketchpad
+    outside the board cannot become a grid line. `kernel` is the shortest run
+    (in raw scan pixels) that counts as a line: around 90 suits a board of a few
+    hundred pixels per cell, which is what a page scan gives.
     """
+    np = _np()
     cv2 = _cv2()
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     binary = cv2.adaptiveThreshold(
@@ -95,68 +213,23 @@ def find_grid(image: Image, size: int = 10, kernel: int = 90) -> Grid:
         binary, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (kernel, 1))
     )
 
-    def axis_lines(profile: NDArray[np.float64], axis: str) -> tuple[int, ...]:
-        best = float(profile.max())
-        if best <= 0:
-            raise ScanError(f"no {axis} lines found; is this a board scan?")
-        candidates = [index for index, value in enumerate(profile) if value > best * 0.18]
-        if len(candidates) < size + 1:
-            raise ScanError(f"found {len(candidates)} {axis} line pixels, need {size + 1} lines")
-        groups: list[list[int]] = []
-        for position in candidates:
-            if groups and position - groups[-1][-1] <= 25:
-                groups[-1].append(position)
-            else:
-                groups.append([position])
-        centres = [round(float(np.mean(group))) for group in groups]
-        if len(centres) == size + 1:
-            return tuple(centres)
-
-        # A spread carries other long lines: the frame of a sketchpad, a page rule.
-        # Follow the board's own rhythm instead of spanning everything: the typical
-        # gap between detected lines is the cell pitch, and only a run whose gaps
-        # all match it belongs to one grid.
-        gaps = [b - a for a, b in pairwise(centres)]
-        pitch = float(np.median(gaps))
-        runs: list[list[int]] = [[centres[0]]]
-        for previous, centre in pairwise(centres):
-            if abs((centre - previous) - pitch) <= pitch * 0.35:
-                runs[-1].append(centre)
-            else:
-                runs.append([centre])
-        usable = [run for run in runs if len(run) >= size + 1]
-        if not usable:
-            return tuple(centres[: size + 1])
-        chosen_run = max(
-            usable,
-            key=lambda run: (sum(float(profile[value]) for value in run), len(run)),
+    skew = _skew_degrees(vertical, horizontal)
+    if skew > _MAX_SKEW_DEGREES:
+        raise ScanError(
+            f"the board is tilted by about {skew:.1f} degrees; rotate the crop until the "
+            "lines are upright (find_grid does not deskew), then try again"
         )
-        first, last = chosen_run[0], chosen_run[-1]
-        pitch = (last - first) / size
-        chosen: list[int] = []
-        for step in range(size + 1):
-            expected = first + step * pitch
-            near = [value for value in chosen_run if abs(value - expected) <= pitch * 0.35]
-            chosen.append(
-                min(near, key=lambda value: abs(value - expected)) if near else round(expected)
-            )
-        gaps = [b - a for a, b in pairwise(chosen)]
-        if min(gaps) <= 0 or max(gaps) > min(gaps) * 1.6:
-            raise ScanError(
-                f"the {axis} lines are not evenly spaced ({gaps}); crop the board out of the "
-                "page and scan the board alone, then try again"
-            )
-        return tuple(chosen)
 
     x_profile = np.asarray(vertical.sum(axis=0) / 255, dtype=np.float64)
     y_profile = np.asarray(horizontal.sum(axis=1) / 255, dtype=np.float64)
-    x = axis_lines(x_profile, "vertical")
-    y = axis_lines(y_profile, "horizontal")
+    x = _fit_grid(_clusters(x_profile), size, "vertical")
+    y = _fit_grid(_clusters(y_profile), size, "horizontal")
     return Grid(x, y)
 
 
 def tiles(image: Image, grid: Grid, side: int = CELL_TILE) -> dict[Cell, Image]:
     """One square tile per cell, resized to `side` pixels."""
+    np = _np()
     cv2 = _cv2()
     out: dict[Cell, Image] = {}
     for cell in grid.cells():
@@ -171,6 +244,7 @@ def tiles(image: Image, grid: Grid, side: int = CELL_TILE) -> dict[Cell, Image]:
 
 def floor_colour(tile: Image) -> NDArray[np.int32]:
     """The cell's background colour: the commonest quantised colour of its edge."""
+    np = _np()
     ring = np.concatenate(
         [
             tile[0:6].reshape(-1, 3),
@@ -180,7 +254,7 @@ def floor_colour(tile: Image) -> NDArray[np.int32]:
         ]
     )
     codes, counts = np.unique((ring // 12).astype(np.int32), axis=0, return_counts=True)
-    return np.asarray(codes[int(counts.argmax())] * 12 + 6, dtype=np.int32)
+    return codes[int(counts.argmax())] * 12 + 6  # type: ignore[no-any-return]
 
 
 def icon_mask(template: Image, distance: float = 70.0) -> NDArray[np.bool_]:
@@ -189,6 +263,7 @@ def icon_mask(template: Image, distance: float = 70.0) -> NDArray[np.bool_]:
     Matching whole tiles would rank cells by their floor: two tables on different
     floors would score worse than a table and a chair on the same floor.
     """
+    np = _np()
     cv2 = _cv2()
     floor = floor_colour(template)
     mask = np.linalg.norm(template.astype(np.float64) - floor, axis=2) > distance
@@ -197,7 +272,7 @@ def icon_mask(template: Image, distance: float = 70.0) -> NDArray[np.bool_]:
     )
     if grown.sum() < 40:
         raise ScanError("the seed cell looks empty: pick a cell that holds the icon")
-    return grown
+    return grown  # type: ignore[no-any-return]
 
 
 def rank_cells(
@@ -213,6 +288,9 @@ def rank_cells(
     printed icons are the same artwork each time, but a scan shifts them by a few
     pixels, so a rigid comparison at one offset reports near-misses as misses.
     """
+    np = _np()
+    if seed not in tiles_by_cell:
+        raise ScanError(f"the seed cell r{seed[0]}c{seed[1]} is not on this board")
     template = tiles_by_cell[seed]
     edge = int(template.shape[0] * inset)
     patch = template[edge:-edge, edge:-edge]
@@ -240,6 +318,7 @@ def rank_cells(
 
 def contact_sheet(tiles_by_cell: dict[Cell, Image], path: Path | str, thumb: int = 110) -> None:
     """Write every tile with its cell name: the sheet a person reads and corrects."""
+    np = _np()
     cv2 = _cv2()
     rows = max(row for row, _ in tiles_by_cell)
     cols = max(col for _, col in tiles_by_cell)
@@ -265,8 +344,10 @@ def ocr(path: Path | str) -> list[tuple[str, tuple[float, float, float, float]]]
     """Text lines of a page with normalised boxes, origin at the bottom left.
 
     macOS Vision is used where its pyobjc bindings are installed; elsewhere
-    `pytesseract` needs the tesseract binary. Both read printed cards and legends
-    -- neither can describe a picture, which is why icons still need a person.
+    `pytesseract` needs the tesseract binary, and its words are grouped back into
+    lines so both backends return the same thing. Both read printed cards and
+    legends — neither can describe a picture, which is why icons still need a
+    person.
     """
     try:  # pragma: no cover - depends on the platform
         from .scan_vision import recognise
@@ -285,13 +366,89 @@ def ocr(path: Path | str) -> list[tuple[str, tuple[float, float, float, float]]]
     image = PILImage.open(path)
     width, height = image.size
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
-    lines: list[tuple[str, tuple[float, float, float, float]]] = []
+    grouped: dict[tuple[int, int, int], list[int]] = {}
     for index, text in enumerate(data["text"]):
         if not str(text).strip():
             continue
-        left, top = data["left"][index], data["top"][index]
-        right = left + data["width"][index]
-        bottom = top + data["height"][index]
+        block, paragraph, line = (
+            data["block_num"][index],
+            data["par_num"][index],
+            data["line_num"][index],
+        )
+        grouped.setdefault((block, paragraph, line), []).append(index)
+    lines: list[tuple[str, tuple[float, float, float, float]]] = []
+    for indices in grouped.values():
+        words = [str(data["text"][index]).strip() for index in indices]
+        left = min(data["left"][index] for index in indices)
+        top = min(data["top"][index] for index in indices)
+        right = max(data["left"][index] + data["width"][index] for index in indices)
+        bottom = max(data["top"][index] + data["height"][index] for index in indices)
         box = (left / width, 1 - bottom / height, right / width, 1 - top / height)
-        lines.append((str(text), box))
+        lines.append((" ".join(words), box))
     return lines
+
+
+def _cell(text: str) -> Cell:
+    """`r3c5` -> (3, 5)."""
+    row, _, col = text.partition("c")
+    if not (row.startswith("r") and row[1:].isdigit() and col.isdigit()):
+        raise ScanError(f"bad cell {text!r}; use r3c5")
+    return int(row[1:]), int(col)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """`python -m csp.scan PAGE.png` — the measuring a transcription starts with.
+
+    Prints the grid, optionally writes the cell tiles and the contact sheet, ranks
+    cells against a seed and prints the OCR lines, so an agent does not have to
+    assemble all that from one-off code, which is what this module replaces.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Read a puzzle scan: grid, tiles, matches, text.")
+    parser.add_argument("image", metavar="PAGE", help="the scan or photo")
+    parser.add_argument("--size", type=int, default=10, help="cells per side (default 10)")
+    parser.add_argument("--tiles", metavar="DIR", help="write one PNG per cell to DIR")
+    parser.add_argument("--sheet", metavar="FILE", help="write a labelled contact sheet")
+    parser.add_argument("--seed", metavar="CELL", help="rank cells against this one, e.g. r3c5")
+    parser.add_argument("--top", type=int, default=10, help="how many ranked cells to print")
+    parser.add_argument("--ocr", action="store_true", help="print the page's text lines and boxes")
+    arguments = parser.parse_args(argv)
+
+    try:
+        image = load(arguments.image)
+        grid = find_grid(image, size=arguments.size)
+        print("x lines:", grid.x)
+        print("y lines:", grid.y)
+        print(
+            "pitches:",
+            [b - a for a, b in pairwise(grid.x)],
+            [b - a for a, b in pairwise(grid.y)],
+        )
+        board = tiles(image, grid)
+        if arguments.tiles:
+            import pathlib
+
+            folder = pathlib.Path(arguments.tiles)
+            folder.mkdir(parents=True, exist_ok=True)
+            cv2 = _cv2()
+            for (row, col), tile in board.items():
+                cv2.imwrite(str(folder / f"r{row:02d}c{col:02d}.png"), tile)
+            print(f"wrote {len(board)} tiles to {folder}")
+        if arguments.sheet:
+            contact_sheet(board, arguments.sheet)
+            print("wrote", arguments.sheet)
+        if arguments.seed:
+            for cell, score in rank_cells(board, _cell(arguments.seed))[: arguments.top]:
+                print(f"  r{cell[0]:2d}c{cell[1]:2d}  {score:12.0f}")
+        if arguments.ocr:
+            for text, box in ocr(arguments.image):
+                print(f"  {box[0]:.3f} {box[1]:.3f}  {text}")
+    except ScanError as error:
+        print(f"scan error: {error}")
+        return 2
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover - exercised by hand
+    raise SystemExit(main())

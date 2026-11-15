@@ -119,12 +119,59 @@ def test_contact_sheet_names_every_cell(tmp_path):
     assert written.shape[0] >= SIZE * 110 and written.shape[1] >= SIZE * 110
 
 
-def test_ocr_explains_which_backend_is_missing(tmp_path, monkeypatch):
-    def unavailable(name: str, *args, **kwargs):
-        raise ModuleNotFoundError(name)
+def test_find_grid_ignores_a_frame_around_the_board(tmp_path):
+    """A page frame or card border outside the board must not become a grid line."""
+    image = np.full((MARGIN * 2 + PITCH * SIZE, MARGIN * 2 + PITCH * SIZE, 3), 250, np.uint8)
+    for index in range(SIZE + 1):
+        position = MARGIN + index * PITCH
+        cv2.line(image, (position, MARGIN), (position, MARGIN + PITCH * SIZE), (60, 60, 60), 2)
+        cv2.line(image, (MARGIN, position), (MARGIN + PITCH * SIZE, position), (60, 60, 60), 2)
+    cv2.rectangle(image, (10, 10), (image.shape[1] - 10, image.shape[0] - 10), (30, 30, 30), 4)
+    path = tmp_path / "framed.png"
+    cv2.imwrite(str(path), image)
 
-    monkeypatch.setattr("importlib.import_module", unavailable)
-    monkeypatch.setitem(__import__("sys").modules, "csp.scan_vision", None)
+    grid = scan.find_grid(scan.load(path), size=SIZE)
+    expected = [MARGIN + index * PITCH for index in range(SIZE + 1)]
+    assert all(abs(found - want) <= 6 for found, want in zip(grid.x, expected, strict=True))
+    assert all(abs(found - want) <= 6 for found, want in zip(grid.y, expected, strict=True))
+
+
+def test_rank_cells_rejects_a_seed_that_is_not_on_the_board(tmp_path):
+    source = tmp_path / "board.png"
+    draw_board(source)
+    board = scan.tiles(scan.load(source), scan.find_grid(scan.load(source), size=SIZE))
+    with pytest.raises(scan.ScanError, match="not on this board"):
+        scan.rank_cells(board, seed=(99, 99))
+
+
+def test_cli_reports_the_grid_and_can_write_tiles(tmp_path, capsys):
+    source = tmp_path / "board.png"
+    draw_board(source)
+    tiles_dir = tmp_path / "cells"
+    assert scan.main([str(source), "--size", str(SIZE), "--tiles", str(tiles_dir)]) == 0
+    output = capsys.readouterr().out
+    assert "x lines:" in output and "pitches:" in output
+    assert len(list(tiles_dir.glob("r*c*.png"))) == SIZE * SIZE
+
+
+def test_the_solver_does_not_need_numpy_but_the_scan_reader_says_how_to_get_it(
+    tmp_path, monkeypatch
+):
+    """numpy stays out of the solver's dependencies; only `csp.scan` needs it."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "numpy", None)
+    monkeypatch.setattr(scan, "_NUMPY", None)
+    with pytest.raises(scan.ScanError, match="uv sync --extra scan"):
+        scan.load(tmp_path / "anything.png")
+
+
+def test_ocr_explains_which_backend_is_missing(tmp_path, monkeypatch):
+    """Both backends are blocked, so this cannot pass by accident on one platform."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "csp.scan_vision", None)
+    monkeypatch.setitem(sys.modules, "pytesseract", None)
     with pytest.raises(scan.ScanError, match="macOS Vision"):
         scan.ocr(tmp_path / "nothing.png")
 
@@ -144,5 +191,7 @@ def test_find_grid_refuses_a_page_whose_lines_are_not_evenly_spaced(tmp_path):
             -1,
         )
     cv2.imwrite(str(path), image)
-    with pytest.raises(scan.ScanError, match=r"not evenly spaced|line pixels|no vertical"):
+    with pytest.raises(
+        scan.ScanError, match=r"tilted|not evenly spaced|line clusters|no grid lines"
+    ):
         scan.find_grid(scan.load(path), size=8)

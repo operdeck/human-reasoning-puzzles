@@ -83,9 +83,6 @@ wheels = [
 name = "csp-solver"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
-    { name = "numpy" },
-]
 
 [package.optional-dependencies]
 docx = [
@@ -98,6 +95,7 @@ png = [
     { name = "resvg-py" },
 ]
 scan = [
+    { name = "numpy" },
     { name = "opencv-python-headless" },
     { name = "pyobjc-framework-vision", marker = "sys_platform == 'darwin'" },
     { name = "pytesseract", marker = "sys_platform != 'darwin'" },
@@ -110,6 +108,7 @@ svg = [
 dev = [
     { name = "fonttools" },
     { name = "mypy" },
+    { name = "numpy" },
     { name = "opencv-python-headless" },
     { name = "pillow" },
     { name = "pytest" },
@@ -123,7 +122,7 @@ requires-dist = [
     { name = "fonttools", marker = "extra == 'docx'", specifier = ">=4.50" },
     { name = "fonttools", marker = "extra == 'png'", specifier = ">=4.50" },
     { name = "fonttools", marker = "extra == 'svg'", specifier = ">=4.50" },
-    { name = "numpy", specifier = ">=2.1" },
+    { name = "numpy", marker = "extra == 'scan'", specifier = ">=2.1" },
     { name = "opencv-python-headless", marker = "extra == 'scan'", specifier = ">=4.10" },
     { name = "pyobjc-framework-vision", marker = "sys_platform == 'darwin' and extra == 'scan'", specifier = ">=10.3" },
     { name = "pytesseract", marker = "sys_platform != 'darwin' and extra == 'scan'", specifier = ">=0.3.13" },
@@ -137,6 +136,7 @@ provides-extras = ["svg", "png", "docx", "scan"]
 dev = [
     { name = "fonttools", specifier = ">=4.50" },
     { name = "mypy", specifier = ">=1.11" },
+    { name = "numpy", specifier = ">=2.1" },
     { name = "opencv-python-headless", specifier = ">=4.10" },
     { name = "pillow", specifier = ">=10.1" },
     { name = "pytest", specifier = ">=8.0" },

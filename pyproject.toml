@@ -8,9 +8,7 @@ version = "0.1.0"
 description = "Generic constraint satisfaction solver with human-readable reasoning"
 authors = [{name = "Otto Perdeck"}]
 requires-python = ">=3.12"
-dependencies = [
-    "numpy>=2.1",
-]
+dependencies = []
 
 [project.scripts]
 csp = "csp.cli:main"
@@ -30,6 +28,7 @@ docx = [
     "python-docx>=1.1",
 ]
 scan = [
+    "numpy>=2.1",
     "opencv-python-headless>=4.10",
     "pytesseract>=0.3.13 ; sys_platform != 'darwin'",
     "pyobjc-framework-Vision>=10.3 ; sys_platform == 'darwin'",
@@ -44,6 +43,7 @@ dev = [
     "python-docx>=1.1",
     "fonttools>=4.50",
     "resvg-py>=0.5",
+    "numpy>=2.1",
     "opencv-python-headless>=4.10",
 ]
 

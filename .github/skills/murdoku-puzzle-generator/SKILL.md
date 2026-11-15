@@ -81,21 +81,37 @@ When both are given, transcribe first, then build a separate derived puzzle.
 ## Reading a scan
 
 Transcribing starts with pixels, and the pixels are the hard part. `csp.scan`
-(`uv sync --extra scan`) does the measuring; this is the order to do it in, and the
-traps that each cost a day when you meet them alone.
+(`uv sync --extra scan`; the solver itself needs neither numpy nor opencv) does
+the measuring; this is the order to do it in, and the traps that each cost a day
+when you meet them alone.
+
+Start with the CLI rather than with code:
+
+```bash
+# grid, pitches, tiles and a labelled contact sheet
+uv run python -m csp.scan PAGE.png --size 10 --tiles /tmp/cells --sheet /tmp/sheet.png
+# which cells repeat one example, and what the page says
+uv run python -m csp.scan PAGE.png --seed r3c5 --top 12
+uv run python -m csp.scan PAGE.png --ocr
+```
 
 1. **Text first, and OCR is not optional.** `scan.ocr(path)` returns `(text, box)`
    lines with normalised boxes (origin bottom-left) through macOS Vision (pyobjc)
-   or pytesseract elsewhere. Whole-page OCR reads the big labels; the small hand
-   script on the figure cards needs a **2–5x zoom crop per band or per column**, or
-   it hands back fragments ("as nog een" for "Was nog een"). Crop with a rectangle
-   in the same normalised coordinates and OCR the crop.
-2. **A photographed page is not a uniform grid.** Pitch varies by ten per cent
-   across one spread (260 px to 320 px measured), so an assumed pitch drifts a
-   whole cell over ten columns and every far cell then matches badly. Detect the
-   lines instead: `scan.find_grid` thresholds, isolates long dark runs by
-   morphology and clusters them into the 11 boundaries. Print `Grid.x`/`Grid.y`
-   and their differences before trusting anything downstream.
+   or pytesseract elsewhere (its words are grouped back into lines, so both
+   backends answer the same thing). Whole-page OCR reads the big labels; the small
+   hand script on the figure cards needs a **2–5x zoom crop per band or per
+   column**, or it hands back fragments ("as nog een" for "Was nog een"). Crop with
+   a rectangle in the same normalised coordinates and OCR the crop.
+2. **A photographed page is not a uniform grid, and it is not axis-aligned.** Pitch
+   varies by ten per cent across one spread (260 px to 320 px measured), so an
+   assumed pitch drifts a whole cell over ten columns. Detect the lines instead:
+   `scan.find_grid` thresholds, isolates long dark runs by morphology, clusters
+   them, and keeps the window of `size + 1` consecutive candidates that behaves most
+   like one grid — so a frame, a card border or a sketchpad outside the board cannot
+   become a grid line. It **refuses** (with advice) when the lines are not evenly
+   spaced or the page is tilted by more than two degrees: it does not deskew, so
+   crop and rotate the board upright first. Print `Grid.x`/`Grid.y` and their
+   differences before trusting anything downstream.
 3. **Normalise before comparing.** `scan.tiles` resizes each cell to
    `scan.CELL_TILE`; the printed icon scales with its cell, so raw crops never
    compare across the board.
@@ -141,7 +157,7 @@ its short output, and decide:
 | which clues are redundant | `uv run python -m csp.clue_search report FILE` |
 | draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts; `decor: tunnel` omits an object from clue suggestions) |
 | pictures, booklet | `--png`, `--docx` (`--nosolution` for the puzzle only, no solve) |
-| read a scan: text, grid, cell tiles, which cells repeat an icon | `uv run python -c "from csp import scan; …"` — `scan.ocr`, `scan.find_grid`, `scan.tiles`, `scan.rank_cells`, `scan.contact_sheet` (`uv sync --extra scan`; see [Reading a scan](#reading-a-scan)) |
+| read a scan: text, grid, cell tiles, which cells repeat an icon | `uv run python -m csp.scan PAGE --size N --tiles DIR --sheet FILE --seed r3c5 --ocr` (`uv sync --extra scan`; see [Reading a scan](#reading-a-scan)) |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
 - Do not solve, enumerate placements or test clue subsets by hand or with
