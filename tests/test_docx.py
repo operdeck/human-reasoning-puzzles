@@ -148,8 +148,8 @@ def test_sudoku_nosolution_skips_solving_and_narration(tmp_path, monkeypatch):
 
 
 def test_clue_text_override_wins():
-    source = (example("prrrdoku1.txt")).read_text()
-    assert load_presentation(source).clue_text[5].startswith("Otto zit")
+    source = example("wie-doet-het-met-wie-3.txt").read_text()
+    assert load_presentation(source).clue_text[2].startswith("Sanne draagt alleen een badjas")
 
 
 def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
@@ -163,7 +163,7 @@ def test_puzzle_without_presentation_still_gets_a_booklet(tmp_path):
     groups = figure_clues(plain)
     assert all(figure.name in text for figure in groups.figures)
     assert all(clue.text in text for clue in groups.other)
-    assert "Ben is on the carpet and is not next to the lamp." in text
+    assert "Ben is on the carpet and is not beside the lamp." in text
 
 
 @pytest.mark.parametrize(
@@ -191,7 +191,7 @@ def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_point
     text = (
         source.read_text()
         .replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
-        .replace("Clues:\n", "Clues:\nnext_to Ada gate\nwithin Ada Bo 2\n")
+        .replace("Clues:\n", "Clues:\non Ada edge_item:gate\ndir Ada Bo manhattan <= 2\n")
         .replace(
             "\n\nQuestion:",
             "\nThe distance is a mystery; take your first steps into the garden.\n\nQuestion:",
@@ -200,10 +200,13 @@ def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_point
     out = tmp_path / "mixed-targets.docx"
     write_docx(text, out, source.parent)
     rendered = _text(out)
-    assert "A door is next to both squares it touches, even across an area boundary." in rendered
     assert (
-        "A point object is next to every square it touches, even if the square lies in "
-        "another area." in rendered
+        "On a door means standing on either square it touches, even across an area boundary."
+        in rendered
+    )
+    assert (
+        "On a point object means standing on any square it touches, even in another area."
+        in rendered
     )
     assert "Distance counts steps across sides, not diagonals." in rendered
 
@@ -268,7 +271,7 @@ def test_bad_presentation_is_rejected_and_linted():
 def test_human_readable_clues():
     got = clue_texts((example("food-murdoku-3.txt")).read_text())
     assert "Okonomiyaki is in column 1." in got
-    assert any("somewhere above" in clue for clue in got)
+    assert "Gyoza is above Sushi." in got
 
 
 def test_glob_makes_one_multi_puzzle_booklet(tmp_path):
@@ -443,7 +446,7 @@ def _read(name):
 def test_clues_are_grouped_per_person():
     paragraphs = clue_paragraphs(_read("zoo-murdoku-1"))
     makaak = next(p for p in paragraphs if p.startswith("De makaak"))
-    assert makaak == "De makaak is in de bergen en zit niet op of naast het gras."
+    assert makaak == "De makaak is in de bergen en staat niet naast het gras."
     assert sum(p.startswith("De kameel") for p in paragraphs) == 1
 
 
@@ -475,9 +478,13 @@ def test_sudoku_booklet_includes_sandwich_rule_with_grid_size(language, tmp_path
     assert all(rule in _text(out) for rule in family_rules(text, "sudoku"))
 
 
-def test_exactly_one_same_region_reads_as_either_or():
+def test_exactly_one_same_area_distance_reads_as_either_or():
     paragraphs = clue_paragraphs(_read("murdoku_sparse_mystery"))
-    assert any("same area as either Mara or Ria" in p for p in paragraphs)
+    assert any(
+        "Either Tomas and Mara are in the same area, or Tomas and Ria are in the same area, "
+        "but not both." in p
+        for p in paragraphs
+    )
 
 
 def test_two_alternatives_read_as_either_or_not_both():
@@ -503,21 +510,21 @@ friend: Ichigotchi Hashizotchi
 Words:
 target.attribute: a {name}
 Clues:
-alone_with Akumatchi attribute:friend
+with Akumatchi attribute:friend in same area exactly 1
 """
 
 
 def test_attribute_target_can_be_reworded(companion_attribute_puzzle):
     text = companion_attribute_puzzle.replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
     assert (
-        "Akumatchi shares a region with exactly one other person, and that is a friend."
+        "Akumatchi shares an area with exactly one other person, and that is a friend."
         in clue_paragraphs(text)
     )
 
 
 def test_attribute_everyone_has_is_not_named(companion_attribute_puzzle):
     paragraphs = clue_paragraphs(companion_attribute_puzzle)
-    assert "Akumatchi shares a region with exactly one other person." in paragraphs
+    assert "Akumatchi shares an area with exactly one other person." in paragraphs
 
 
 @pytest.mark.parametrize(("size", "mark"), [(6, "quiet"), (9, "social"), (12, "social")])
@@ -634,17 +641,17 @@ def test_booklet_combines_each_figure_description_and_clues_without_numbers(tmp_
     assert len(document.tables) == 1
     rows = document.tables[0].rows
     assert len(rows) == 7
-    assert rows[0].cells[1].text == "Tim zit naast de klimwand."
+    assert rows[0].cells[1].text == "Tim staat naast de klimwand."
     assert rows[-1].cells[1].text == "Vladimir (de poes die iemand op schoot zoekt)"
     assert rows[-1].cells[1].paragraphs[0].runs[0].bold
     # Joint subjects retain both names without repeating the heading.
-    assert rows[3].cells[1].text == "Anna en Jos zijn in hetzelfde gebied."
+    assert rows[3].cells[1].text == "Anna en Jos staan in hetzelfde gebied."
 
 
 def test_booklet_keeps_semantic_custom_clues_with_their_figure(tmp_path):
     source = example("murdoku_3_house.txt")
     text = source.read_text().replace(
-        "left_of Ada Dirk", "left_of Ada Dirk | The person to Dirk's left is Ada."
+        "dir Ada Dirk left", "dir Ada Dirk left | The person to Dirk's left is Ada."
     )
     out = tmp_path / "custom.docx"
     write_docx(text, out, source.parent)
@@ -662,7 +669,7 @@ def test_booklet_uses_display_names_and_keeps_late_reveal_descriptions(tmp_path)
     rows = Document(str(out)).tables[0].rows
     assert rows[0].cells[1].text == "De leeuw (altijd alleen in zijn verblijf) is in de savanne."
     assert rows[-1].cells[1].text == "De verzorger (wordt als laatste geplaatst)"
-    assert rows[3].cells[1].text == "De kameel is ergens links van de berggorilla."
+    assert rows[3].cells[1].text == "De kameel staat links van de berggorilla."
 
 
 def test_booklet_global_clues_are_separate_and_each_shown_once(tmp_path):
@@ -791,9 +798,14 @@ def test_booklet_highlights_the_unnumbered_line_and_population_conclusions(tmp_p
     output = tmp_path / "line.docx"
     assert main([str(source), "--docx", str(output)]) == 0
     document = Document(str(output))
-    paragraph = next(p for p in document.paragraphs if "Mizuki zit naast de torii" in p.text)
+    paragraph = next(
+        p for p in document.paragraphs if "Mizuki zit op een vakje dat de torii raakt" in p.text
+    )
     instruction = "streep de zes andere nog open vakjes in die kolom weg"
-    assert f"Mizuki zit naast de torii: in kolom 1, dus {instruction}." in paragraph.text
+    assert (
+        f"Mizuki zit op een vakje dat de torii raakt: in kolom 1, dus {instruction}."
+        in paragraph.text
+    )
     assert instruction in [run.text for run in paragraph.runs if run.bold]
     assert "**" not in paragraph.text
     paragraph = next(
@@ -898,7 +910,7 @@ def test_docx_without_puzzle_files_takes_the_example_murdoku(tmp_path, monkeypat
 def test_an_object_with_several_pieces_is_named_indefinitely_despite_its_words():
     clues = clue_texts(_read("murdoku_orient_express"))
     assert "Anastasia zit op een perronbankje." in clues
-    assert "Vladimir zit niet op of naast een treinbank." in clues
+    assert "Vladimir staat niet naast een treinbank." in clues
     assert not any("het perronbankje" in clue for clue in clues)
 
 
@@ -931,7 +943,7 @@ bench: the bench
 
 def test_one_of_several_windows_is_named_indefinitely():
     clues = clue_texts(_read("murdoku_orient_express_3"))
-    assert "Bogdan zit naast een raam." in clues
+    assert "Bogdan zit op een vakje dat een raam raakt." in clues
     assert not any("het raam" in clue for clue in clues)
 
 

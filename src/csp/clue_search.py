@@ -40,34 +40,24 @@ from typing import Any
 from . import murdoku, report
 from .bruteforce import murdoku as brute
 from .core import DEFAULT_RULES, Solver
-from .puzzlefile import load_board, parse_square
+from .puzzlefile import keyed_clue_numbers, load_board, parse_clue_line, parse_square
 
 GRADES = tuple(rule.name for rule in DEFAULT_RULES)
 
 # Clue kinds `suggest` may propose, most preferred first: area and object clues
 # read better for people than exact distances.
 SUGGEST_KINDS = (
-    "in_region",
-    "next_to",
+    "in",
+    "beside",
     "on",
-    "at",
-    "not_next_to",
-    "outside",
-    "same_region",
-    "different_region",
-    "left_of",
-    "above",
+    "not in",
+    "not beside",
+    "not on",
+    "touches",
+    "not touches",
+    "dir",
 )
-# Also available on request (`--kinds`): exact lines are fair only sparingly.
-EXTRA_KINDS = (
-    "away_from",
-    "not_on",
-    "in_corner",
-    "in_row",
-    "not_in_row",
-    "in_column",
-    "not_in_column",
-)
+EXTRA_KINDS = ("line",)
 
 _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
@@ -228,10 +218,18 @@ def outcome(text: str, timeout: float = 5.0, late_person: str | None = None) -> 
 
 
 def removal_report(text: str, timeout: float = 5.0) -> list[tuple[int, str, Outcome]]:
-    """For each clue number: the clue and the puzzle's outcome without it."""
+    """For each clue: the outcome without it, or the current outcome if Key requires it."""
     lines = clue_lines(text)
+    keyed = keyed_clue_numbers(text)
+    current = outcome(text, timeout) if keyed else None
     return [
-        (number, line, outcome(with_clues(text, lines[: number - 1] + lines[number:]), timeout))
+        (
+            number,
+            line,
+            current
+            if number in keyed and current is not None
+            else outcome(with_clues(text, lines[: number - 1] + lines[number:]), timeout),
+        )
         for number, line in enumerate(lines, 1)
     ]
 
@@ -252,10 +250,10 @@ def thin(
     """Clue lines left after greedily dropping each removable clue, last clue first.
 
     A clue is dropped when the puzzle stays unique, solved and within
-    `max_grade` without it. Clue numbers in `keep` are never dropped.
+    `max_grade` without it. Clue numbers in `keep` and `Key:` are never dropped.
     """
     lines = clue_lines(text)
-    kept = set(keep)
+    kept = set(keep) | keyed_clue_numbers(text)
     alive = list(range(1, len(lines) + 1))
     for number in reversed(alive[:]):
         if number in kept:
@@ -278,13 +276,18 @@ def parse_solution(spec: str) -> dict[str, murdoku.Square]:
 
 
 def _true_for(board: murdoku.Board, clue: str, placement: dict[str, murdoku.Square]) -> bool:
-    kind, *args = clue.split()
     try:
-        checks = murdoku.conditions(board, [(kind, args)])
+        parsed = [parse_clue_line(clue)]
+        checks = murdoku.conditions(board, parsed) + murdoku.directional_conditions(
+            board, parsed, include_rules=False
+        )
     except ValueError:
         return False
     return bool(checks) and all(
-        check.test(*(placement[p] for p in check.people)) for check in checks
+        check.holds(board, placement, {})
+        if isinstance(check, murdoku.DirectionCondition)
+        else check.test(*(placement[p] for p in check.people))
+        for check in checks
     )
 
 
@@ -302,39 +305,105 @@ def candidate_clues(
     """
     people = [person for person in placement if person not in set(exclude)]
     regions = sorted(set(board.region_names.values()))
-    things = sorted(board.object_names | board.edge_item_names | board.point_object_names)
-    standable = sorted({o.name for o in board.objects if o.kind == "standable"})
-    edges = sorted(board.edge_item_names)
-    pairs = [(a, b) for a in people for b in people if a != b]
+    tags = sorted(board.area_tags)
+    locations = (
+        [*(f"area:{name}" for name in regions), *(f"tag:{name}" for name in tags)]
+        + [f"object:{name}" for name in sorted(board.object_names)]
+        + [f"mark:{mark.name}" for mark in board.marks]
+        + [f"edge_item:{name}" for name in sorted(board.edge_item_names)]
+        + [f"point_object:{name}" for name in sorted(board.point_object_names)]
+        + ["corner:board"]
+        + [f"corner:area:{name}" for name in regions]
+    )
+    adjacent_locations = [f"object:{name}" for name in sorted(board.object_names)] + [
+        f"object_kind:{kind}" for kind in ("blocking", "standable")
+    ]
+    people_pairs = [(a, b) for a in people for b in people if a != b]
+    attribute_selectors = sorted(f"attribute:{name}" for name in board.attributes)
+    position_selectors = people + attribute_selectors
+    position_pairs = [(a, b) for a in position_selectors for b in position_selectors if a != b]
     lines = range(1, board.size + 1)
+    directional = (
+        [
+            f"dir {a} {b} {mode}"
+            for a, b in position_pairs
+            for mode in ("left", "right", "up", "down", "knight")
+        ]
+        + [f"dir {a} {b} furthest" for a, b in people_pairs]
+        + [f"dir {a} {b} areas = 0" for a, b in position_pairs]
+        + [f"dir {a} {b} areas >= 1" for a, b in position_pairs]
+        + [
+            f"dir {a} {b} {mode} {comparison} {distance}"
+            for a, b in position_pairs
+            for mode, comparisons in (
+                ("rows", ("<=", ">=")),
+                ("cols", ("<=", ">=")),
+                ("manhattan", ("<=", ">=")),
+                ("euclidean", ("=",)),
+                ("king", (">=",)),
+                ("areas", ("=",)),
+            )
+            for comparison in comparisons
+            for distance in (1, 2, 3)
+        ]
+    )
     options: dict[str, list[str]] = {
-        "in_region": [f"in_region {p} {r}" for p in people for r in regions],
-        "outside": [f"outside {p} {r}" for p in people for r in regions],
-        "next_to": [f"next_to {p} {t}" for p in people for t in things],
-        "not_next_to": [f"not_next_to {p} {t}" for p in people for t in things],
-        "away_from": [f"away_from {p} {t}" for p in people for t in things],
-        "on": [f"on {p} {t}" for p in people for t in standable],
-        "at": [f"at {p} {t}" for p in people for t in edges],
-        "same_region": [f"same_region {a} {b}" for a, b in pairs if a < b],
-        "different_region": [f"different_region {a} {b}" for a, b in pairs if a < b],
-        "left_of": [f"left_of {a} {b}" for a, b in pairs],
-        "above": [f"above {a} {b}" for a, b in pairs],
-        "not_on": [f"not_on {p} {t}" for p in people for t in standable],
-        "in_corner": [f"in_corner {p}" for p in people],
-        "in_row": [f"in_row {p} {n}" for p in people for n in lines],
-        "not_in_row": [f"not_in_row {p} {n}" for p in people for n in lines],
-        "in_column": [f"in_column {p} {n}" for p in people for n in lines],
-        "not_in_column": [f"not_in_column {p} {n}" for p in people for n in lines],
+        "in": [f"in {p} {location}" for p in people for location in locations],
+        "not in": [f"not in {p} {location}" for p in people for location in locations],
+        "line": [
+            f"{predicate} {person} {selector}"
+            for predicate in ("in", "not in")
+            for person in people
+            for selector in (
+                *(f"rows:{n}" for n in lines),
+                *(f"columns:{n}" for n in lines),
+            )
+        ],
+        "on": [
+            f"on {p} {selector}"
+            for p in people
+            for selector in locations
+            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
+        ],
+        "not on": [
+            f"not on {p} {selector}"
+            for p in people
+            for selector in locations
+            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
+        ],
+        "beside": [f"beside {p} {selector}" for p in people for selector in adjacent_locations],
+        "not beside": [
+            f"not beside {p} {selector}" for p in people for selector in adjacent_locations
+        ],
+        "touches": [
+            f"touches {p} {selector}"
+            for p in people
+            for selector in locations
+            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
+        ],
+        "not touches": [
+            f"not touches {p} {selector}"
+            for p in people
+            for selector in locations
+            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
+        ],
+        "dir": directional,
     }
     if unknown := [kind for kind in kinds if kind not in options]:
         raise ValueError(f"unknown clue kinds {unknown}; choose from {sorted(options)}")
     targets = set(exclude_targets)
-    target_kinds = {"next_to", "not_next_to", "away_from", "on", "at", "not_on"}
     found = (clue for kind in kinds for clue in options.get(kind, []))
     return [
         clue
         for clue in found
-        if not (clue.split()[0] in target_kinds and set(clue.split()[2:]) & targets)
+        if not (
+            targets
+            and any(
+                targets.intersection(token.split(":"))
+                for token in clue.split("|")[0].split()
+                if ":" in token
+            )
+        )
         and _true_for(board, clue, placement)
     ]
 
@@ -652,7 +721,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--kinds",
         nargs="*",
         default=list(SUGGEST_KINDS),
-        help=f"suggest: clue kinds to try (default: all but {' '.join(EXTRA_KINDS)})",
+        help=f"suggest, ease: clue kinds to try (also available: {' '.join(EXTRA_KINDS)})",
     )
     parser.add_argument(
         "--exclude", nargs="*", default=[], help="suggest, ease: people no clue may mention"
@@ -695,9 +764,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     print(f"start: {outcome(text, args.timeout)}")
     if args.command == "report":
+        keyed = keyed_clue_numbers(text)
         for number, line, result in removal_report(text, args.timeout):
-            note = "  <- removable" if result.good else ""
-            print(f"{number:3}. {line}\n     without it: {result}{note}")
+            if number in keyed:
+                print(f"{number:3}. {line}\n     required by Key; current puzzle: {result}")
+            else:
+                note = "  <- removable" if result.good else ""
+                print(f"{number:3}. {line}\n     without it: {result}{note}")
         return 0
     if args.command == "thin":
         kept = thin(text, args.keep, args.max_grade, args.timeout, print)

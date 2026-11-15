@@ -3,7 +3,7 @@
 # Gerechten als personages, dagen van de week als gebieden, bloemen op de
 # hoekpunten van de vakjes (PointObjects:). Hoogstens één zetmeelproduct per dag
 # (rol met different_regions). Vla heeft geen eigen aanwijzingen: hij deelt zijn
-# dag met precies twee andere gerechten (alone_with Vla 2) en wordt als laatste gevonden.
+# dag met precies twee andere gerechten (with Vla in same area exactly 2) en wordt als laatste gevonden.
 #
 # Oplossing: Aardappel r5c2, Rijst r6c7, Pasta r1c3, Noedels r3c5, Kip r2c1, Spinazie r4c6, Vla r7c4.
 #
@@ -67,17 +67,17 @@ Spinazie
 Vla
 
 Rules:
-alone_with Vla 2
+with Vla in same area exactly 2
 
 Clues:
-next_to Pasta zonnebloem
-next_to Pasta sierui
-not_in_row Aardappel 6
-at_least Pasta Rijst 9
-above Kip Spinazie 2
-left_of Aardappel Noedels 3
-above Aardappel Rijst 1
-different_region Kip Noedels
+on Pasta point_object:zonnebloem
+on Pasta point_object:sierui
+not in Aardappel rows:6
+dir Pasta Rijst manhattan >= 9
+dir Kip Spinazie up = 2
+dir Aardappel Noedels left = 3
+dir Aardappel Rijst up = 1
+dir Kip Noedels areas >= 1
 
 # Booklet text for --docx (optional).
 Title:

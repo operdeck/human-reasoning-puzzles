@@ -404,7 +404,7 @@ def _murdoku_point_details(board: Board, text: str) -> list[dict[str, Any]]:
                 "x": (col2 - 1) / 2,
                 "y": (row2 - 1) / 2,
                 "radius": 1 / 3,
-                "lines": [name[:1].upper() + name[1:], say("doc.clue_next_to_point")],
+                "lines": [name[:1].upper() + name[1:], say("doc.clue_on_point")],
             }
         )
     return targets

@@ -57,18 +57,18 @@ Sushi
 Jos
 
 Rules:
-alone_with Jos attribute:food
+with Jos attribute:food in same area exactly 1
 
 Clues:
-at_least Gyoza Okonomiyaki 5
-in_row Tonkatsu 1
-in_column Okonomiyaki 1
-above Gyoza Sushi
-at_least Sushi Yakitori 8
-different_region Gyoza Tempura
-within Okonomiyaki Yakitori 3
-in_row Tempura 3
-in_row Sushi 6
+dir Gyoza Okonomiyaki manhattan >= 5
+in Tonkatsu rows:1
+in Okonomiyaki columns:1
+dir Gyoza Sushi up
+dir Sushi Yakitori manhattan >= 8
+dir Gyoza Tempura areas >= 1
+dir Okonomiyaki Yakitori manhattan <= 3
+in Tempura rows:3
+in Sushi rows:6
 
 # Booklet text for --docx (optional).
 Title:

@@ -10,15 +10,23 @@ from itertools import combinations
 from typing import Any
 
 from ..murdoku import (
+    AreaIsolationCondition,
+    AreaOccupancyCondition,
     AreaPopulationCondition,
     Board,
     Condition,
+    ConditionalCondition,
+    DirectionCondition,
     GlobalCountCondition,
     QuantifiedCondition,
     RoleCondition,
     Square,
+    area_isolation_conditions,
+    area_occupancy_conditions,
     area_population_conditions,
+    conditional_conditions,
     conditions,
+    directional_conditions,
     global_count_conditions,
     quantified_conditions,
     role_conditions,
@@ -31,6 +39,10 @@ _Checks = tuple[
     list[QuantifiedCondition],
     list[GlobalCountCondition],
     list[AreaPopulationCondition],
+    list[DirectionCondition],
+    list[AreaIsolationCondition],
+    list[AreaOccupancyCondition],
+    list[ConditionalCondition],
 ]
 
 
@@ -58,6 +70,10 @@ def _prepare(
         quantified_conditions(board, clues),
         global_count_conditions(board, clues),
         area_population_conditions(board, clues),
+        directional_conditions(board, clues),
+        area_isolation_conditions(board, clues),
+        area_occupancy_conditions(board, clues),
+        conditional_conditions(board, clues),
     )
     return board, order, allowed, rest
 
@@ -79,14 +95,19 @@ def accepts(text: str, placement: dict[str, Square]) -> bool:
         return False
     if any(not check.holds(board, placement) for check in area_population_conditions(board, clues)):
         return False
+    if any(not check.holds(board, placement) for check in area_isolation_conditions(board, clues)):
+        return False
     return bool(
         _role_assignments(
             board,
             role_conditions(board, clues),
             quantified_conditions(board, clues),
             global_count_conditions(board, clues),
+            directional_conditions(board, clues),
             placement,
             1,
+            area_occupancy_conditions(board, clues),
+            conditional_conditions(board, clues),
         )
     )
 
@@ -143,6 +164,10 @@ def _search(
     target_checks: list[QuantifiedCondition],
     global_checks: list[GlobalCountCondition],
     population_checks: list[AreaPopulationCondition],
+    direction_checks: list[DirectionCondition],
+    isolation_checks: list[AreaIsolationCondition],
+    occupancy_checks: list[AreaOccupancyCondition],
+    conditional_checks: list[ConditionalCondition],
     placed: dict[str, Square],
     found: list[dict[str, Any]],
     limit: int,
@@ -155,8 +180,18 @@ def _search(
     if len(placed) == len(order):
         if not all(check.holds(board, placed) for check in population_checks):
             return
+        if not all(check.holds(board, placed) for check in isolation_checks):
+            return
         for roles in _role_assignments(
-            board, role_checks, target_checks, global_checks, placed, limit - len(found)
+            board,
+            role_checks,
+            target_checks,
+            global_checks,
+            direction_checks,
+            placed,
+            limit - len(found),
+            occupancy_checks,
+            conditional_checks,
         ):
             found.append({**placed, **roles})
             if len(found) >= limit:
@@ -177,6 +212,14 @@ def _search(
                 )
                 for check in due[candidate]
                 if all(person == candidate or person in placed for person in check.people)
+            ) and all(
+                _person_direction_holds(check, candidate, square, placed)
+                for check in direction_checks
+                if (
+                    check.mode != "furthest"
+                    and check.first.kind == check.second.kind == "person"
+                    and candidate in (check.first.name, check.second.name)
+                )
             ):
                 candidates.append(square)
         if not candidates:
@@ -197,6 +240,10 @@ def _search(
                 target_checks,
                 global_checks,
                 population_checks,
+                direction_checks,
+                isolation_checks,
+                occupancy_checks,
+                conditional_checks,
                 placed,
                 found,
                 limit,
@@ -207,6 +254,20 @@ def _search(
             return
 
 
+def _person_direction_holds(
+    condition: DirectionCondition,
+    candidate: str,
+    square: Square,
+    placed: dict[str, Square],
+) -> bool:
+    """Check a named-person direction as soon as both of its people are placed."""
+    first = square if condition.first.name == candidate else placed.get(condition.first.name)
+    second = square if condition.second.name == candidate else placed.get(condition.second.name)
+    if first is None or second is None:
+        return True
+    return condition.test(first, second) != condition.negated
+
+
 def _global_counts_possible(
     board: Board,
     conditions: Sequence[GlobalCountCondition],
@@ -215,13 +276,17 @@ def _global_counts_possible(
 ) -> bool:
     for condition in conditions:
         if (
-            condition.kind == "people_with"
-            and condition.selector is not None
-            and condition.selector.kind == "role"
+            (
+                condition.kind == "people_with"
+                and condition.selector is not None
+                and condition.selector.kind == "role"
+            )
+            or (condition.qualifier is not None and condition.qualifier.kind == "role")
+            or (condition.kind == "roles_of")
         ):
             continue
         current = condition.count(board, placed, {})
-        if condition.kind in ("people_on", "people_in"):
+        if condition.kind in ("people_on", "people_in", "occupied_areas"):
             minimum, maximum = current, min(condition.maximum(board), current + remaining)
         elif condition.kind in ("empty_areas", "empty_cells"):
             minimum, maximum = max(0, current - remaining), current
@@ -237,8 +302,11 @@ def _role_assignments(
     rules: Sequence[RoleCondition],
     target_checks: Sequence[QuantifiedCondition],
     global_checks: Sequence[GlobalCountCondition],
+    direction_checks: Sequence[DirectionCondition],
     placed: dict[str, Square],
     limit: int,
+    occupancy_checks: Sequence[AreaOccupancyCondition] = (),
+    conditional_checks: Sequence[ConditionalCondition] = (),
 ) -> list[dict[str, bool]]:
     """Enumerate role holder sets independently of the deduction model."""
     selected: dict[tuple[str, str], bool] = {}
@@ -255,6 +323,9 @@ def _role_assignments(
                     check.count(board, placed, selected) in check.allowed_counts
                     for check in global_checks
                 )
+                and all(check.holds(board, placed, selected) for check in direction_checks)
+                and all(check.holds(board, placed, selected) for check in occupancy_checks)
+                and all(check.holds(board, placed, selected) for check in conditional_checks)
             ):
                 found.append(
                     {

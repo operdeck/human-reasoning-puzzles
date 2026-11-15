@@ -15,7 +15,7 @@ chaolong: de cháo lòng
 thitkho: de thịt kho
 phalau: de phá lấu
 tunnel: de Vietcongtunnel
-clue.alone_with_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
+clue.with_same_area_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
 
 Regions:
 a: Hanoi #F4CBC3
@@ -53,15 +53,15 @@ Attributes:
 reiziger: Pippo Swena
 
 Rules:
-alone_with Loempia attribute:reiziger 2
+with Loempia attribute:reiziger in same area exactly 2
 
 Clues:
-away_from Pippo buncha chaolong thitkho phalau
-away_from Swena buncha chaolong thitkho phalau
-next_to Minh thitkho
-next_to Tuan buncha
-in_region Linh Hanoi
-above Pippo Swena
+not dir Pippo object:buncha,chaolong,thitkho,phalau king <= 1
+not dir Swena object:buncha,chaolong,thitkho,phalau king <= 1
+beside Minh object:thitkho
+beside Tuan object:buncha
+in Linh area:Hanoi
+dir Pippo Swena up
 
 # Booklet text for --docx (optional).
 Title:

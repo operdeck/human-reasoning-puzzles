@@ -70,18 +70,18 @@ Verzorger
 
 Rules:
 alone Tijger
-role_occupant aap not_alone
-alone_with Verzorger attribute:dier
+for each area in all occupied by role:aap, count people in that area >= 2
+with Verzorger attribute:dier in same area exactly 1
 
 Clues:
-at_least Makaak Neushoorn 5
-left_of Tijger Gibbon
-next_to Nijlpaard waterlelie
-in_column Makaak 5
-outside Tijger moeras
-outside Gibbon rivier
-in_column Neushoorn 3
-in_row Tijger 1
+dir Makaak Neushoorn manhattan >= 5
+dir Tijger Gibbon left
+beside Nijlpaard object:waterlelie
+in Makaak columns:5
+not in Tijger area:moeras
+not in Gibbon area:rivier
+in Neushoorn columns:3
+in Tijger rows:1
 
 # Booklet text for --docx (optional).
 Title:

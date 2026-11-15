@@ -90,13 +90,17 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   single-purpose commits, and push them to the pull request as soon as the
   branch is worth reading instead of holding a long change on your disk until
   it feels finished.
-- **Keep normal local test runs under two minutes; CI runs every suite.** The
-  default `uv run pytest -q` skips the `solutions` and `booklet` suites. Run
+- **Keep CI under 20 minutes and relevant local test runs usually under two
+  minutes.** CI must still cover every puzzle and suite; optimize or split
+  expensive tests rather than dropping coverage or letting CI run indefinitely.
+  The default `uv run pytest -q` skips the `solutions` and `booklet` suites. Run
   puzzle-family solver tests and the published-puzzle solution/uniqueness checks with
   `uv run pytest -q --override-ini=addopts= -m solutions`, or the full booklet
   generation with `uv run pytest -q --override-ini=addopts= -m booklet`.
   `.github/workflows/tests.yml` overrides the local default and runs every
   Python test on 3.12 and 3.13, plus all web checks, on every pull request.
+  Local LLM-based checks that cannot run in CI, such as independent review of
+  booklet or web output, may take longer but must be split into reviewable pieces.
   Run an exhaustive suite locally when an enhancement could affect puzzle
   solving, solution soundness, booklet generation, or booklet presentation;
   for changes isolated from those areas, run the default suite and the tests
@@ -207,30 +211,20 @@ than listing it as working.
 
 ## Murdoku format and occupancy
 
-The reader accepts the final sectioned format only. `Regions:` defines logical
-areas; repeated IDs may be disconnected. `AreaTags:` defines separate,
-overlapping sets of areas. Legacy `Groups:`, `Furniture:`, and `Doors:`
-sections, and object declarations without an explicit kind, are rejected.
+Use the [canonical Murdoku grammar](docs/model-and-puzzle-formats.md#murdoku)
+for file syntax and semantics, and
+[the Murdoku authoring skill](.github/skills/murdoku-puzzle-generator/SKILL.md)
+for puzzle workflows. Keep vocabulary in the format guide; do not duplicate it
+here or accept legacy spellings.
 
-Every object footprint declares `blocking` or `standable`, is connected, and
-does not overlap another footprint. Blocking cells are unavailable; standable
-cells remain occupiable. A person occupies exactly one free square, with at
-most one person in any square, row, or column. On an `N` by `N` board with `N`
-people, every row and column is occupied; otherwise, lines and free squares
-may remain empty. Edge items and corner objects touch cells without occupying
-them. Marks may overlap and do not change cell occupancy. Roles overlap unless
-the puzzle explicitly constrains them; attributes are fixed person facts.
-
-Names must match appearance: an area called "Blue hall" is drawn blue, and
-icons and other visuals fit their object's name. A test checks colour words in
-region names against `Regions:` colours; review other names by eye.
-
-Every object and figure needs a vendored icon, never a text fallback: add the
-name to `icons.CATALOGUE` (or reuse an entry), vendor a missing picture with
-`uv run python scripts/vendor_emoji.py U+<code>` (the only step that uses the
-network; rendering never does) and commit the SVG and `bounds.json`. A test
-fails when any object or figure in `examples/` lacks one; the Murdoku skill's
-"Icons and Pictures" section has the full checklist.
+Repeated `Regions:` IDs form one logical area, even when disconnected;
+`AreaTags:` are separate, overlapping sets. Every object footprint explicitly
+declares `blocking` or `standable`, is connected, and does not overlap another
+footprint. Only free cells are occupiable. Edge items, point objects, and marks
+do not occupy cells. People occupy distinct squares, rows, and columns; roles
+may overlap unless constrained, while attributes are fixed facts. Names,
+colours, and pictures must match what they depict. Every example object and
+figure needs a registered icon; the authoring skill has the checklist.
 
 `--lint` reports malformed declarations as errors and missing icons,
 unreachable areas, or unused roles as warnings. `--require-forward` also
@@ -266,16 +260,9 @@ same semantic tally from the independent brute-force solver. Reified empty
 areas/cells must be true exactly when their occupant count is zero; reuse one
 empty Boolean per logical area or cell even when tagged selectors overlap.
 Count every entry in `People:`; no subset is implicit. Count only unblocked
-free cells for empty-cell selectors.
-Attributes are fixed puzzle facts: a count over an attribute can reject an
-inconsistent clue but cannot force a person's location. Benchmark changes with
-`benchmark/murdoku_global_counts.py`; it compares `single`/`count` with
-`single`/`count`/`chains` on 12x12 and 16x16 boards. Three-run Python 3.12
-medians (parse/compile/count/count+chains, ms): 12x12
-0.23/3.62/2.12/15,336.98 (211 constraints, 904 literals); 16x16
-0.31/8.19/4.58/187,982.30 (337 constraints, 2096 literals). The synthetic
-16x16 chain run takes about 3.1 minutes; keep that cost visible when changing
-the chain rule or this workload.
+free cells for empty-cell selectors. Attributes are fixed facts: an attribute
+count may reject an inconsistent model but cannot locate a person. See
+`benchmark/murdoku_global_counts.py` before changing the count/chain workload.
 The text board and `--step` show true/open totals, additional demand, and
 feasible totals; active location scopes are highlighted without adding
 puzzle-specific behavior to `core.py`.
@@ -464,11 +451,12 @@ unlock a whole puzzle, so the counts are small.
 The late-reveal Prrrdokus preserve their original assignments while changing
 the board or clues so Vladimir is the final placement and her companion stays
 ambiguous until then. Puzzle 1 moves r4c2 from kampeerplek to speeltuin.
-Puzzle 2 replaces `in_region Jos keukenwinkel` with `above Anna Mao 5` and
-retains `at_least Jos Mao 13`; it needs `what_if` and keeps Vladimir last.
+Puzzle 2 replaces Jos's kitchen-shop location clue with
+`dir Anna Mao up = 5` and retains `dir Jos Mao manhattan >= 13`; it needs
+`what_if` and keeps Vladimir last.
 Puzzle 3 moves r2c5 from Bankastraat to Helmholtzstraat, moves r1c6 and r2c6
 from Bankastraat to Klimgebied Noord to keep Bankastraat connected, and adds
-`within Mao Otto 6`. `--track-person Vladimir` traces the live square and
+`dir Mao Otto manhattan <= 6`. `--track-person Vladimir` traces the live square and
 region-overlap companion candidates; regression tests check the final
 placement, ambiguity and connected region.
 
@@ -490,7 +478,7 @@ no weak links yet.
   Helmholtzstraat); puzzle 1's worked solution listed a cross-region square
   for Tjitske and was corrected too. The answers did not change.
 - "Only Luna may stand in the water" is a board rule, written out as one
-  `outside` line per other person in the `Rules:` section of
+  `not in <person> area:water` line per other person in the `Rules:` section of
   `prrrdoku3.txt`, so clue numbers still match the document.
 - `--explain` follows the solver's own route, shortened. Where the solver
   still needs `what_if` (Prrrdoku 3), the story says "X kan niet op ...:

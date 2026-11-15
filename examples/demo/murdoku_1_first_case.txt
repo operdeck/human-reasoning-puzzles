@@ -49,9 +49,9 @@ Lotte
 Wouter
 
 Clues:
-on Ingrid chair
-next_to Joost tree
-on Lotte bed
+on Ingrid object:chair
+beside Joost object:tree
+on Lotte object:bed
 
 # Booklet text for --docx (optional).
 Title:

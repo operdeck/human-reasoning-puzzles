@@ -40,24 +40,24 @@ recorder: 3 different_regions
 RoleEligibility:
 navigator: attribute:trained
 Clues:
-at Bo archway
-at Cal window
-next_to Dee fountain
-on Dee bench
-on_mark Ada quiet
-above Bo attribute:trained
-has_role Cal navigator
-has_role Ada recorder
-has_role Bo recorder
-has_role Cal recorder
-role_subset role:navigator role:recorder
-role_in_tagged Cal navigator daylight
+on Bo edge_item:archway
+on Cal edge_item:window
+on Dee point_object:fountain
+on Dee object:bench
+on Ada mark:quiet
+dir Bo attribute:trained up
+has Cal role:navigator
+has Ada role:recorder
+has Bo role:recorder
+has Cal role:recorder
+subset role:navigator role:recorder
+if has Cal role:navigator then in Cal tag:daylight
 count people on object:bench = 1
 count people in tag:north = 2
 count people with role:navigator = 1
 count people with role:recorder = 3
 count people with attribute:trained = 2
-count empty areas all = 1
+count empty areas = 1
 count empty areas in tag:west = 1
 count empty cells in mark:quiet = 1
 count empty cells in rows:1-4 = 10

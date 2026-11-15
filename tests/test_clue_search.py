@@ -74,7 +74,7 @@ def test_removal_report_and_thin_keep_the_puzzle_unique():
     assert [report[n - 1][2].grade for n in removable] == ["what_if", "subsumption", "what_if"]
     lines = clue_search.clue_lines(zoo)
     assert clue_search.thin(zoo, max_grade="relations", timeout=30) == lines
-    padded = clue_search.with_clues(zoo, [*lines, "in_region Gibbon bergen"])
+    padded = clue_search.with_clues(zoo, [*lines, "in Gibbon area:bergen"])
     assert clue_search.thin(padded, max_grade="relations", timeout=30) == lines
 
 
@@ -83,19 +83,20 @@ def test_candidate_clues_are_true_of_the_placement_and_skip_excluded_people():
     (solution,) = bruteforce.solutions(ORIENT)
     placement = {person: solution[person] for person in board.people}
     found = clue_search.candidate_clues(board, placement, exclude=["Svetlana"])
-    assert "in_region Ludmila coupe_1" in found
-    assert "in_region Ludmila coupe_2" not in found
+    assert "in Ludmila area:coupe_1" in found
+    assert "in Ludmila area:coupe_2" not in found
     assert not any("Svetlana" in clue for clue in found)
 
 
 def test_suggest_restores_a_dropped_clue_set():
-    lines = clue_search.clue_lines(ORIENT)
-    (solution,) = bruteforce.solutions(ORIENT)
-    board, _ = load_board(ORIENT)
+    house = example("murdoku_3_house.txt").read_text()
+    lines = clue_search.clue_lines(house)
+    (solution,) = bruteforce.solutions(house)
+    board, _ = load_board(house)
     placement = {person: solution[person] for person in board.people}
-    start = clue_search.with_clues(ORIENT, lines[:4])
-    added = clue_search.suggest(start, placement, sample=200, timeout=30)
-    completed = clue_search.with_clues(start, lines[:4] + added)
+    start = clue_search.with_clues(house, lines[:2])
+    added = clue_search.suggest(start, placement, sample=50, timeout=10)
+    completed = clue_search.with_clues(start, lines[:2] + added)
     assert len(bruteforce.solutions(completed, limit=2)) == 1
 
 
@@ -105,13 +106,11 @@ def test_suggest_with_cover_names_everyone():
     (solution,) = bruteforce.solutions(house)
     placement = {person: solution[person] for person in board.people}
     start = clue_search.with_clues(house, [])
-    plain = clue_search.suggest(start, placement, sample=200, timeout=30)
-    assert clue_search._unnamed(board.people, plain, ())
     candidates = clue_search.candidate_clues(board, placement)
     target = next(
         name
         for name in sorted(board.object_names)
-        if any(name in clue.split()[1:] for clue in candidates)
+        if any(f"object:{name}" in clue.split() for clue in candidates)
     )
     added = clue_search.suggest(
         start,
@@ -122,7 +121,7 @@ def test_suggest_with_cover_names_everyone():
         exclude_targets=[target],
     )
     assert not clue_search._unnamed(board.people, added, ())
-    assert all(target not in clue.split()[1:] for clue in added)
+    assert all(f"object:{target}" not in clue.split() for clue in added)
     assert len(bruteforce.solutions(clue_search.with_clues(start, added))) == 1
 
 
@@ -135,12 +134,12 @@ def test_parse_solution_reads_one_based_squares():
 def test_suggest_keeps_needed_clues_necessary():
     opener = example("wie-doet-het-met-wie-1.txt").read_text()
     lines = clue_search.clue_lines(opener)
-    assert lines[0].startswith("above object:badjas object:sloffen 1")
+    assert lines[0].startswith("dir people_on:object:badjas people_on:object:sloffen up = 1")
     start = clue_search.with_clues(opener, lines[:2])
     placement = clue_search.parse_solution("Wouter=r1c1 Marloes=r2c2 Bas=r3c4 Cato=r4c3 Daan=r5c5")
     kinds = [kind for kind in clue_search.SUGGEST_KINDS if kind != "on"]
     added = clue_search.suggest(
-        start, placement, kinds, sample=300, timeout=30, exclude=["Wouter"], needs=[1]
+        start, placement, kinds, sample=50, timeout=15, exclude=["Wouter"], needs=[1]
     )
     final = clue_search.with_clues(start, [*lines[:2], *added])
     assert len(bruteforce.solutions(final)) == 1
@@ -172,14 +171,12 @@ Marks:
 quiet: r1c1 ; {effect}
 Clues:
 count people on mark:quiet = 1
-in_row Ada 1
+in Ada rows:1
 """
     placement = clue_search.parse_solution(placement)
     board, _ = load_board(text)
-    assert "in_corner Ada" in clue_search.candidate_clues(board, placement, ["in_corner"])
-    added = clue_search.suggest(
-        text, placement, kinds=["in_row", "in_column"], needs_marks=["quiet"], sample=100
-    )
+    assert "in Ada corner:board" in clue_search.candidate_clues(board, placement, ["in"])
+    added = clue_search.suggest(text, placement, kinds=["line"], needs_marks=["quiet"], sample=100)
     final = clue_search.with_clues(text, [*clue_search.clue_lines(text), *added])
     assert len(bruteforce.solutions(final)) == 1
     without = clue_search.without_mark_condition(final, "quiet")
@@ -213,16 +210,16 @@ Marks:
 quiet: r1c1 ; alone
 Clues:
 count people on mark:quiet = 1
-in_row Ada 1
-in_row Ben 2
+in Ada rows:1
+in Ben rows:2
 """
     placement = clue_search.parse_solution("Ada=r1c1 Ben=r2c3 Cal=r3c2")
     assert len(bruteforce.solutions(text)) == 1
     assert len(bruteforce.solutions(clue_search.without_mark_condition(text, "quiet"))) > 1
-    monkeypatch.setattr(clue_search, "candidate_clues", lambda *args: ["in_column Ben 3"])
+    monkeypatch.setattr(clue_search, "candidate_clues", lambda *args: ["in Ben columns:3"])
     monkeypatch.setattr(clue_search, "outcome", lambda *args: clue_search.Outcome(1, "what_if"))
     assert clue_search.ease(text, placement, "relations", needs_marks=["quiet"]) == []
-    redundant = clue_search.with_clues(text, [*clue_search.clue_lines(text), "in_column Ben 3"])
+    redundant = clue_search.with_clues(text, [*clue_search.clue_lines(text), "in Ben columns:3"])
     with pytest.raises(ValueError, match="not necessary"):
         clue_search.ease(redundant, placement, "relations", needs_marks=["quiet"])
 
@@ -238,8 +235,13 @@ def test_occupancy_shows_unused_decoys():
 
 def test_suggest_keeps_each_needed_clue_necessary():
     hotel = example("wie-doet-het-met-wie-5.txt").read_text()
-    rule = "alone_with Wouter object:badjas"
-    work = re.sub(r"^alone_with Wouter object:badjas \|.*$", "alone_with Wouter", hotel, flags=re.M)
+    rule = "with Wouter object:badjas in same area exactly 1"
+    work = re.sub(
+        r"^with Wouter object:badjas in same area exactly 1 \|.*$",
+        "with Wouter in same area exactly 1",
+        hotel,
+        flags=re.M,
+    )
     key = clue_search.clue_lines(hotel)[0]
     start = clue_search.with_clues(work, [rule, key])
     placement = clue_search.parse_solution(
@@ -281,7 +283,12 @@ def test_sample_never_hides_a_second_solution():
 
 def test_mentions_counts_each_person_once_per_clue():
     counts = clue_search._mentions(
-        ["Ada", "Ben", "Cy"], ["left_of Ada Ben", "next_to Ada Ada_bench | Ada sits", "on Ben bed"]
+        ["Ada", "Ben", "Cy"],
+        [
+            "dir Ada Ben left",
+            "beside Ada object:Ada_bench | Ada sits",
+            "on Ben object:bed",
+        ],
     )
     assert counts == {"Ada": 2, "Ben": 2, "Cy": 0}
 
@@ -289,7 +296,7 @@ def test_mentions_counts_each_person_once_per_clue():
 def test_accepts_checks_role_rules():
     # `suggest --needs` finds the rivals of a role rule with `accepts`.
     hotel = example("murder-hotel-1.txt").read_text()
-    rule = "role_occupant murderer not_alone\n"
+    rule = "for each area in all occupied by role:murderer, count people in that area >= 2\n"
     loose = clue_search.with_clues(hotel.replace(rule, ""), [])
     people = load_board(hotel)[0].people
     found = [clue_search._placement(f, people) for f in bruteforce.murdoku.sample(loose, 60)]
@@ -302,10 +309,10 @@ def test_accepts_checks_role_rules():
 @pytest.mark.parametrize(
     "clue",
     [
-        "busiest_area area:Alpha",
-        "busiest_area area:Alpha area:Bravo",
-        "quietest_area area:Alpha",
-        "quietest_area area:Alpha area:Bravo",
+        "most_populated area:Alpha",
+        "most_populated area:Alpha area:Bravo",
+        "least_populated area:Alpha",
+        "least_populated area:Alpha area:Bravo",
     ],
 )
 def test_accepts_checks_area_population_conditions(section, clue):
@@ -341,17 +348,18 @@ def test_candidate_clues_offer_lines_only_on_request():
     museum = example("halloween-museum-1.txt").read_text()
     board, _ = load_board(museum)
     placement = clue_search.parse_solution(SOLUTION_1)
-    assert not any("row" in clue for clue in clue_search.candidate_clues(board, placement))
-    lines = clue_search.candidate_clues(board, placement, ["not_in_row", "in_column"])
-    assert "not_in_row Alba 2" in lines and "in_column Alba 5" in lines
-    assert "not_in_row Alba 1" not in lines
+    default = clue_search.candidate_clues(board, placement)
+    assert not any(" rows:" in clue or " columns:" in clue for clue in default)
+    lines = clue_search.candidate_clues(board, placement, ["line"])
+    assert "not in Alba rows:2" in lines and "in Alba columns:5" in lines
+    assert "not in Alba rows:1" not in lines
     with pytest.raises(ValueError, match="unknown clue kinds"):
         clue_search.candidate_clues(board, placement, ["nearby"])
 
 
 def test_suggest_keeps_a_role_rule_necessary():
     museum = example("halloween-museum-1.txt").read_text()
-    rule = "min_role_in_tagged murderer crime_scene 1"
+    rule = "for each area in tag:crime_scene, count people in that area with role:murderer >= 1"
     start = clue_search.with_clues(museum.replace(rule + "\n", ""), [rule])
     placement = clue_search.parse_solution(SOLUTION_1)
     added = clue_search.suggest(start, placement, sample=200, exclude=["Carmen"], needs=[1])

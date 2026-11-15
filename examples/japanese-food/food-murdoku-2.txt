@@ -48,17 +48,17 @@ Tempura
 Jos
 
 Rules:
-alone_with Jos attribute:food
+with Jos attribute:food in same area exactly 1
 
 Clues:
-next_to Ramen plate
-within Tempura Tonkatsu 2
-in_row Tempura 4
-different_region Tempura Yakitori
-left_of Yakitori Ramen
-in_region Tonkatsu kobe
-above Tonkatsu Tempura
-in_column Ramen 4
+beside Ramen object:plate
+dir Tempura Tonkatsu manhattan <= 2
+in Tempura rows:4
+dir Tempura Yakitori areas >= 1
+dir Yakitori Ramen left
+in Tonkatsu area:kobe
+dir Tonkatsu Tempura up
+in Ramen columns:4
 
 # Booklet text for --docx (optional).
 Title:

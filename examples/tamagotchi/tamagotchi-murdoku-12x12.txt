@@ -94,25 +94,25 @@ stage: on the stage
 
 Clues:
 count people on mark:social = 1 | Exactly one figure stands on a social square.
-above Gozarutchi Violetchi
-left_of Lovelitchi Violetchi
-left_of Ichigotchi Gozarutchi
-same_region Kuchipatchi Gozarutchi
-above Tarakotchi Kuchipatchi
-not_next_to Ichigotchi sakura
-left_of Masktchi Lovelitchi
-next_to Kuchipatchi slide
-above Masktchi Ichigotchi
-in_region Ichigotchi garden
-adjacent_regions Lovelitchi Masktchi
-in_region Mametchi school
-in_region Memetchi market
-in_region Pianitchi playground
-in_region Hashizotchi market
-not_next_to Lovelitchi chair
-left_of Hashizotchi Memetchi
-above Pianitchi Gozarutchi
-in_region Violetchi stage
+dir Gozarutchi Violetchi up
+dir Lovelitchi Violetchi left
+dir Ichigotchi Gozarutchi left
+dir Kuchipatchi Gozarutchi areas = 0
+dir Tarakotchi Kuchipatchi up
+not beside Ichigotchi object:sakura
+dir Masktchi Lovelitchi left
+beside Kuchipatchi object:slide
+dir Masktchi Ichigotchi up
+in Ichigotchi area:garden
+dir Lovelitchi Masktchi areas = 1
+in Mametchi area:school
+in Memetchi area:market
+in Pianitchi area:playground
+in Hashizotchi area:market
+not beside Lovelitchi object:chair
+dir Hashizotchi Memetchi left
+dir Pianitchi Gozarutchi up
+in Violetchi area:stage
 
 # Booklet text for --docx (optional).
 Title:

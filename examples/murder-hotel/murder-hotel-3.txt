@@ -110,20 +110,20 @@ Luca
 Marcella
 
 Clues:
-in_region Edoardo room_west
-in_region Francesca room_west
-next_to Antonio tree
-next_to Carlo table
-in_region Beatrice roof
-on Marcella staircase
-next_to Daniela chair
-on Giorgio bed
-next_to Francesca door
-next_to Luca sofa
-next_to Luca door
-next_to Edoardo bed
-in_region Isabella room_east
-above Luca role:murderer
+in Edoardo area:room_west
+in Francesca area:room_west
+beside Antonio object:tree
+beside Carlo object:table
+in Beatrice area:roof
+on Marcella object:staircase
+beside Daniela object:chair
+on Giorgio object:bed
+on Francesca edge_item:door
+beside Luca object:sofa
+on Luca edge_item:door
+beside Edoardo object:bed
+in Isabella area:room_east
+dir Luca role:murderer up
 
 Title:
 The Murder Hotel: The last lift ride

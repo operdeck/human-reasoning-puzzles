@@ -3,7 +3,7 @@
 # Gerechten als personages, dagen van de week als gebieden, bloemen op de
 # hoekpunten van de vakjes (PointObjects:). Hoogstens één zetmeelproduct per dag
 # (rol met different_regions). Vla heeft geen eigen aanwijzingen: hij deelt zijn
-# dag met precies twee andere gerechten (alone_with Vla 2) en wordt als laatste gevonden.
+# dag met precies twee andere gerechten (with Vla in same area exactly 2) en wordt als laatste gevonden.
 #
 # Oplossing: Aardappel r1c1, Rijst r5c2, Pasta r3c6, Noedels r8c8, Vis r2c5, Bonen r4c7, Wortel r7c4, Vla r6c3.
 #
@@ -73,19 +73,19 @@ Wortel
 Vla
 
 Rules:
-alone_with Vla 2
+with Vla in same area exactly 2
 
 Clues:
-not_next_to Aardappel zonnebloem
-next_to Noedels sierui
-not_in_row Pasta 5
-above Vis Noedels 6
-above Aardappel Bonen 3
-at_least Aardappel Noedels 14
-outside Wortel zondag
-next_to Vis sierui
-at_least Aardappel Vis 5
-within Noedels Wortel 5
+not on Aardappel point_object:zonnebloem
+on Noedels point_object:sierui
+not in Pasta rows:5
+dir Vis Noedels up = 6
+dir Aardappel Bonen up = 3
+dir Aardappel Noedels manhattan >= 14
+not in Wortel area:zondag
+on Vis point_object:sierui
+dir Aardappel Vis manhattan >= 5
+dir Noedels Wortel manhattan <= 5
 
 # Booklet text for --docx (optional).
 Title:

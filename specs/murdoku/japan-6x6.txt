@@ -17,8 +17,8 @@ object: bonsai blocking in Tokyo
 object: tempel blocking in Tokyo
 object: sushibar blocking in Osaka
 object: tatami standable size 2 in Kyoto
-key_clue: busiest_area area:Tokyo
-key_clue: quietest_area area:Okinawa
+key_clue: most_populated area:Tokyo
+key_clue: least_populated area:Okinawa
 key_clue: count people in area:Osaka = 2
 template: blobs
 candidates: 24

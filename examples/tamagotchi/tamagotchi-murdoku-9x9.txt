@@ -56,17 +56,17 @@ Akumatchi
 
 Clues:
 count people on mark:social = 1 | Exactly one figure stands on a social square.
-same_region Mametchi Masktchi
-on Lovelitchi bench
-next_to Gozarutchi cake
-above Mametchi Lovelitchi
-above Violetchi Masktchi
-in_region Tarakotchi library
-on Kuchipatchi bridge
-left_of Tarakotchi Memetchi
-not_next_to Memetchi slide
-not_next_to Tarakotchi books
-not_next_to Violetchi backpack
+dir Mametchi Masktchi areas = 0
+on Lovelitchi object:bench
+beside Gozarutchi object:cake
+dir Mametchi Lovelitchi up
+dir Violetchi Masktchi up
+in Tarakotchi area:library
+on Kuchipatchi object:bridge
+dir Tarakotchi Memetchi left
+not beside Memetchi object:slide
+not beside Tarakotchi object:books
+not beside Violetchi object:backpack
 
 # Booklet text for --docx (optional).
 Title:

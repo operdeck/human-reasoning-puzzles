@@ -45,12 +45,12 @@ Cal
 Dee
 Eli
 Clues:
-next_to Ada mouse1
-next_to Bo fountain
-next_to Cal cheese
-in_region Cal Greenhouse
-next_to Eli cat
-not_next_to Dee mouse2
+on Ada point_object:mouse1
+on Bo point_object:fountain
+on Cal point_object:cheese
+in Cal area:Greenhouse
+on Eli point_object:cat
+not on Dee point_object:mouse2
 
 # Booklet text for --docx (optional).
 Title:

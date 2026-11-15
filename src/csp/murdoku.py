@@ -16,7 +16,7 @@ kitchen") or become relations between two or three people ("Jos is left of
 Otto", "Luna is furthest from Mao").
 """
 
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from itertools import combinations
@@ -709,10 +709,6 @@ def _in_area_corner(board: Board, *areas: str) -> SquareTest:
     return corners.__contains__
 
 
-def _same_region(board: Board) -> PairTest:
-    return lambda a, b: board.region_of(a) == board.region_of(b)
-
-
 def _different_region(board: Board) -> PairTest:
     return lambda a, b: board.region_of(a) != board.region_of(b)
 
@@ -736,7 +732,7 @@ def _left_of(board: Board, columns: str | None = None) -> PairTest:
     if columns is not None:
         gap = int(columns)
         if gap < 1:
-            raise ValueError("left_of column gap must be at least 1")
+            raise ValueError("dir A B left = n requires n >= 1")
         return lambda a, b: a.col + gap == b.col
     return lambda a, b: a.col < b.col
 
@@ -783,8 +779,6 @@ FILTERS: dict[str, Callable[..., SquareTest]] = {
 
 RELATIONS: dict[str, Callable[..., PairTest]] = {
     # No "two people side by side": with one person per row and column it never holds.
-    "same_region": _same_region,  # same_region <a> <b>
-    "different_region": _different_region,  # different_region <a> <b>
     "adjacent_regions": _adjacent_regions,  # adjacent_regions <a> <b>
     "apart": _apart,  # apart <a> <b>: different regions that do not border
     "left_of": _left_of,  # left_of <a> <b> [n]: somewhere left, or exactly n columns left
@@ -807,7 +801,12 @@ GLOBAL_COUNTING = "count"
 # The area(s) with the most (or the fewest) people:
 # `busiest_area area:Tokyo area:Kyoto`, `quietest_area area:Okinawa area:Osaka`.
 # Named areas tie with each other.
-AREA_POPULATION = {"busiest_area": "most", "quietest_area": "fewest"}
+AREA_POPULATION = {
+    "busiest_area": "most",
+    "quietest_area": "fewest",
+    "most_populated": "most",
+    "least_populated": "fewest",
+}
 POPULATION_PREFIX = "area_population"
 POPULATION_FAMILY = "area population"
 COUNTED_PEOPLE = 3
@@ -826,6 +825,35 @@ def counted(args: Sequence[str]) -> tuple[int, list[Clue]]:
             words.append(word)
         elif words:
             kind, *rest = words
+            if kind in {
+                "has_attribute",
+                "has_role",
+                "not_attribute",
+                "not_beside",
+                "not_dir",
+                "not_in",
+                "not_on",
+                "not_role",
+                "not_touches",
+                "role_subset",
+            }:
+                raise ValueError(f"{COUNTING} operands must use canonical syntax, not {kind!r}")
+            negated = kind == "not"
+            if kind == "not":
+                if not rest:
+                    raise ValueError(f"{COUNTING} has an incomplete negated predicate")
+                kind = f"not_{rest[0]}"
+                rest = rest[1:]
+            if kind in ("has", "not_has"):
+                if len(rest) != 2:
+                    raise ValueError(f"{COUNTING} {kind} expects a person and typed selector")
+                person, selector = rest
+                selector_kind, separator, name = selector.partition(":")
+                if not separator or selector_kind not in ("role", "attribute") or not name:
+                    raise ValueError(f"{COUNTING} {kind} requires role:name or attribute:name")
+                prefix = "not_" if negated or kind == "not_has" else "has_"
+                kind = f"{prefix}{selector_kind}"
+                rest = [person, name]
             parts.append((kind, rest))
             words = []
     return int(args[0]), parts
@@ -861,10 +889,17 @@ class RoleCondition:
 
 type TargetKind = Literal[
     "person",
+    "people",
+    "people_on",
+    "anyone",
     "attribute",
     "role",
     "area",
     "tag",
+    "adjacent_to",
+    "intersection",
+    "union",
+    "corner",
     "object_kind",
     "object",
     "mark",
@@ -880,10 +915,18 @@ type TargetKind = Literal[
 class TargetSelector:
     kind: TargetKind
     name: str
+    parts: tuple["TargetSelector", ...] = ()
 
 
 type GlobalCountKind = Literal[
-    "people_on", "people_in", "people_with", "empty_areas", "empty_cells"
+    "people_on",
+    "people_in",
+    "people_with",
+    "roles_of",
+    "people_from",
+    "empty_areas",
+    "occupied_areas",
+    "empty_cells",
 ]
 
 
@@ -900,6 +943,7 @@ class GlobalCountCondition:
     number: int | None
     index: int
     tokens: tuple[str, ...]
+    qualifier: TargetSelector | None = None
     # Cells, areas and maximum for the board last asked about. Brute force asks
     # at every search node, so they are worked out once, not each time.
     _cache: dict[str, Any] = field(default_factory=dict, compare=False, hash=False, repr=False)
@@ -930,7 +974,7 @@ class GlobalCountCondition:
         )
 
     def scope_cells(self, board: Board) -> set[Square]:
-        if self.kind == "empty_areas":
+        if self.kind in ("empty_areas", "occupied_areas"):
             regions = self.regions(board)
             return {square for square in board.free if board.region_of(square) in regions}
         if self.kind == "people_with":
@@ -958,24 +1002,72 @@ class GlobalCountCondition:
     def _regions(self, board: Board) -> set[str]:
         if self.selector is None:
             return set(board.region_names)
-        if self.selector.kind == "area":
-            return board.area_ids([self.selector.name])
-        if self.selector.kind == "tag":
-            return board.tagged_region_ids([self.selector.name])
-        raise ValueError(f"selector {self.selector.kind!r} does not identify areas")
+        if self.selector.kind == "intersection":
+            regions = [self._selector_regions(board, part) for part in self.selector.parts]
+            return set.intersection(*regions) if regions else set()
+        if self.selector.kind == "union":
+            regions = [self._selector_regions(board, part) for part in self.selector.parts]
+            return set.union(*regions) if regions else set()
+        return self._selector_regions(board, self.selector)
+
+    def _selector_regions(self, board: Board, selector: TargetSelector) -> set[str]:
+        if selector.kind in ("intersection", "union"):
+            regions = [self._selector_regions(board, part) for part in selector.parts]
+            if not regions:
+                return set()
+            return (
+                set.intersection(*regions)
+                if selector.kind == "intersection"
+                else set.union(*regions)
+            )
+        if selector.kind == "area":
+            return board.area_ids([selector.name])
+        if selector.kind == "tag":
+            return board.tagged_region_ids([selector.name])
+        if selector.kind == "adjacent_to":
+            return _adjacent_region_ids(board, selector)
+        raise ValueError(f"selector {selector.kind!r} does not identify areas")
 
     def maximum(self, board: Board) -> int:
         return cast(int, self._cached(board, "maximum", lambda: self._maximum(board)))
 
     def _maximum(self, board: Board) -> int:
         if self.kind in ("people_on", "people_in"):
-            return min(len(board.people), len(self.cells(board)))
+            if self.qualifier is None:
+                return min(len(board.people), len(self.cells(board)))
+            if self.qualifier.kind == "attribute":
+                return min(
+                    len(self.cells(board)),
+                    sum(
+                        board.has_attribute(person, self.qualifier.name) for person in board.people
+                    ),
+                )
+            if self.qualifier.kind == "role":
+                role = next(role for role in board.roles if role.name == self.qualifier.name)
+                eligible = board.people if role.eligible_people is None else role.eligible_people
+                return min(len(self.cells(board)), len(eligible))
+            raise ValueError(f"unsupported count qualifier {self.qualifier.kind!r}")
+        if self.kind == "people_from":
+            assert self.selector is not None and self.qualifier is not None
+            people = self.selector.name.split(",")
+            if self.qualifier.kind == "role":
+                role = next(role for role in board.roles if role.name == self.qualifier.name)
+                eligible_set = set(
+                    board.people if role.eligible_people is None else role.eligible_people
+                )
+                return len(set(people) & eligible_set)
+            return sum(board.has_attribute(person, self.qualifier.name) for person in people)
+        if self.kind == "roles_of":
+            return len(board.roles)
         if self.kind == "people_with":
             assert self.selector is not None
             if self.selector.kind == "attribute":
                 return len(board.attributes[self.selector.name])
             role = next(role for role in board.roles if role.name == self.selector.name)
             return len(board.people) if role.eligible_people is None else len(role.eligible_people)
+        if self.kind == "occupied_areas":
+            free_regions = {board.region_of(square) for square in board.free}
+            return len(self.regions(board) & free_regions)
         if self.kind == "empty_areas":
             return len(self.regions(board))
         return len(self.cells(board))
@@ -988,7 +1080,19 @@ class GlobalCountCondition:
     ) -> int:
         if self.kind in ("people_on", "people_in"):
             cells = self.cells(board)
-            return sum(square in cells for square in placed.values())
+            if self.qualifier is None:
+                return sum(square in cells for square in placed.values())
+            if self.qualifier.kind == "attribute":
+                return sum(
+                    square in cells and board.has_attribute(person, self.qualifier.name)
+                    for person, square in placed.items()
+                )
+            if self.qualifier.kind == "role":
+                return sum(
+                    square in cells and roles.get((person, self.qualifier.name), False)
+                    for person, square in placed.items()
+                )
+            raise ValueError(f"unsupported count qualifier {self.qualifier.kind!r}")
         if self.kind == "people_with":
             assert self.selector is not None
             if self.selector.kind == "role":
@@ -996,6 +1100,19 @@ class GlobalCountCondition:
                     roles.get((person, self.selector.name), False) for person in board.people
                 )
             return sum(board.has_attribute(person, self.selector.name) for person in board.people)
+        if self.kind == "people_from":
+            assert self.selector is not None and self.qualifier is not None
+            people = self.selector.name.split(",")
+            if self.qualifier.kind == "role":
+                return sum(roles.get((person, self.qualifier.name), False) for person in people)
+            return sum(board.has_attribute(person, self.qualifier.name) for person in people)
+        if self.kind == "roles_of":
+            assert self.selector is not None
+            return sum(roles.get((self.selector.name, role.name), False) for role in board.roles)
+        if self.kind == "occupied_areas":
+            occupied = {board.region_of(square) for square in placed.values()}
+            free_regions = {board.region_of(square) for square in board.free}
+            return len(occupied & self.regions(board) & free_regions)
         if self.kind == "empty_areas":
             occupied = {board.region_of(square) for square in placed.values()}
             regions = self._cached(board, "regions", lambda: frozenset(self._regions(board)))
@@ -1051,6 +1168,252 @@ class AreaPopulationCondition:
         return all(count > only for count in rest)
 
 
+@dataclass(frozen=True)
+class AreaIsolationCondition:
+    """At most one of each side-sharing area pair in scope may be occupied."""
+
+    label: str
+    selector: TargetSelector | None
+    number: int | None
+
+    def regions(self, board: Board) -> set[str]:
+        if self.selector is None:
+            return set(board.region_names)
+        if self.selector.kind == "area":
+            return board.area_ids([self.selector.name])
+        assert self.selector.kind == "tag"
+        return board.tagged_region_ids([self.selector.name])
+
+    def borders(self, board: Board) -> list[tuple[str, str]]:
+        scoped = self.regions(board)
+        pairs = []
+        for border in board.borders:
+            first, second = sorted(border)
+            if first in scoped or second in scoped:
+                pairs.append((first, second))
+        return sorted(pairs)
+
+    def holds(self, board: Board, placed: dict[str, Square]) -> bool:
+        occupied = {board.region_of(square) for square in placed.values()}
+        return all(
+            first not in occupied or second not in occupied for first, second in self.borders(board)
+        )
+
+
+@dataclass(frozen=True)
+class AreaOccupancyCondition:
+    """Area-wide or person-relative occupancy requirements."""
+
+    label: str
+    kind: Literal["alone", "with"]
+    area: str
+    person: str | None
+    membership: TargetSelector | None
+    companions: int | None
+    number: int | None
+
+    def holds(
+        self,
+        board: Board,
+        placed: dict[str, Square],
+        roles: dict[tuple[str, str], bool],
+    ) -> bool:
+        region = board.area_ids([self.area]).pop()
+        occupants = [
+            person for person, square in placed.items() if board.region_of(square) == region
+        ]
+        if self.kind == "alone":
+            return len(occupants) == 1 and (self.person is None or occupants[0] == self.person)
+        assert self.membership is not None
+        if self.person is None:
+            return len(occupants) >= 2 and any(
+                self._matches(board, roles, person) for person in occupants
+            )
+        companions = [person for person in occupants if person != self.person]
+        return (
+            self.person in occupants
+            and len(companions) == self.companions
+            and all(self._matches(board, roles, person) for person in companions)
+        )
+
+    def _matches(self, board: Board, roles: dict[tuple[str, str], bool], person: str) -> bool:
+        assert self.membership is not None
+        if self.membership.kind == "role":
+            return roles.get((person, self.membership.name), False)
+        return board.has_attribute(person, self.membership.name)
+
+
+@dataclass(frozen=True)
+class ConditionalCondition:
+    """A role-gated location predicate on one named person."""
+
+    label: str
+    person: str
+    role: str
+    predicate: str
+    selector: TargetSelector
+    negated: bool
+    number: int | None
+
+    def holds(
+        self,
+        board: Board,
+        placed: dict[str, Square],
+        roles: dict[tuple[str, str], bool],
+    ) -> bool:
+        if not roles.get((self.person, self.role), False):
+            return True
+        square = placed[self.person]
+        targets = _selector_cells(board, self.selector)
+        if self.predicate in ("in", "on"):
+            result = square in targets
+        else:
+            result = any(
+                steps_between(square, target) == 1
+                and (
+                    self.predicate == "touches"
+                    or board.region_of(square) == board.region_of(target)
+                )
+                for target in targets
+            )
+        return not result if self.negated else result
+
+
+def conditional_conditions(board: Board, clues: Iterable[Clue]) -> list[ConditionalCondition]:
+    """Parse role-conditional atomic location predicates."""
+    rules: list[tuple[str, list[str], int | None]] = [
+        (kind, args, None) for kind, args in board.rules
+    ]
+    rules.extend((kind, args, number) for number, (kind, args) in enumerate(clues, 1))
+    out: list[ConditionalCondition] = []
+    for kind, args, number in rules:
+        if kind != "if":
+            continue
+        if len(args) < 7:
+            raise ValueError("if expects 'has PERSON role:name then PREDICATE PERSON SELECTOR'")
+        has, person, role_token, then = args[:4]
+        consequent = args[4:]
+        if has != "has" or then != "then":
+            raise ValueError("if expects 'has PERSON role:name then PREDICATE PERSON SELECTOR'")
+        if person not in board.people:
+            raise ValueError(f"if names unknown person {person!r}")
+        role = _target_selector(board, role_token)
+        if role.kind != "role":
+            raise ValueError("if currently requires has PERSON role:name")
+        negated = consequent[0] == "not"
+        if negated:
+            consequent = consequent[1:]
+        if len(consequent) != 3:
+            raise ValueError("if requires one atomic location predicate")
+        predicate, subject, target_token = consequent
+        if subject != person:
+            raise ValueError("if condition and result must name the same known person")
+        if predicate not in ("in", "on", "beside", "touches"):
+            raise ValueError("if supports in, on, beside, or touches with one location selector")
+        selector = _target_selector(board, target_token)
+        if not _is_location_selector(selector):
+            raise ValueError(f"if requires a location selector, not {target_token!r}")
+        out.append(
+            ConditionalCondition(
+                " ".join((kind, *args)),
+                person,
+                role.name,
+                predicate,
+                selector,
+                negated,
+                number,
+            )
+        )
+    return out
+
+
+def area_occupancy_conditions(board: Board, clues: Iterable[Clue]) -> list[AreaOccupancyCondition]:
+    """Parse canonical area-wide and person-relative occupancy predicates."""
+    rules: list[tuple[str, list[str], int | None]] = [
+        (kind, args, None) for kind, args in board.rules
+    ]
+    rules.extend((kind, args, number) for number, (kind, args) in enumerate(clues, 1))
+    out: list[AreaOccupancyCondition] = []
+    for kind, args, number in rules:
+        if not _is_area_occupancy(kind, args):
+            continue
+        if kind == "alone":
+            if len(args) == 2 and args[0] == "in":
+                person = None
+                area_token = args[1]
+            elif len(args) == 3 and args[1] == "in":
+                person, area_token = args[0], args[2]
+                if person not in board.people:
+                    raise ValueError(f"alone names unknown person {person!r}")
+            else:
+                raise ValueError("alone expects 'in area:name' or 'PERSON in area:name'")
+            selector = _target_selector(board, area_token)
+            if selector.kind != "area":
+                raise ValueError("area occupancy predicates require area:name")
+            out.append(
+                AreaOccupancyCondition(
+                    " ".join((kind, *args)), "alone", selector.name, person, None, None, number
+                )
+            )
+            continue
+        if len(args) == 3 and args[1] == "in":
+            membership_token, area_token = args[0], args[2]
+            person = None
+            companions = None
+        elif len(args) == 6 and args[2] == "in" and args[4] == "exactly":
+            person, membership_token, area_token = args[0], args[1], args[3]
+            if person not in board.people:
+                raise ValueError(f"with names unknown person {person!r}")
+            if not args[5].isdigit() or int(args[5]) < 1:
+                raise ValueError("with companion count must be a positive integer")
+            companions = int(args[5])
+        else:
+            raise ValueError(
+                "with expects 'role:name in area:name' or 'PERSON role:name in area:name exactly n'"
+            )
+        membership = _target_selector(board, membership_token)
+        if membership.kind not in ("role", "attribute"):
+            raise ValueError("with requires role:name or attribute:name")
+        selector = _target_selector(board, area_token)
+        if selector.kind != "area":
+            raise ValueError("area occupancy predicates require area:name")
+        out.append(
+            AreaOccupancyCondition(
+                " ".join((kind, *args)),
+                "with",
+                selector.name,
+                person,
+                membership,
+                companions,
+                number,
+            )
+        )
+    return out
+
+
+def area_isolation_conditions(board: Board, clues: Iterable[Clue]) -> list[AreaIsolationCondition]:
+    """Parse global or area/tag-scoped `no_adjacent_occupied` predicates."""
+    rules: list[tuple[str, list[str], int | None]] = [
+        (kind, args, None) for kind, args in board.rules
+    ]
+    rules.extend((kind, args, number) for number, (kind, args) in enumerate(clues, 1))
+    out: list[AreaIsolationCondition] = []
+    for kind, args, number in rules:
+        if kind != "no_adjacent_occupied":
+            continue
+        if not args:
+            selector = None
+        elif len(args) == 2 and args[0] == "in":
+            selector = _target_selector(board, args[1])
+            if selector.kind not in ("area", "tag"):
+                raise ValueError("no_adjacent_occupied scope must be area:name or tag:name")
+        else:
+            raise ValueError("no_adjacent_occupied accepts no scope or 'in area|tag:name'")
+        label = "no_adjacent_occupied areas" + (f" in {args[1]}" if args else "")
+        out.append(AreaIsolationCondition(label, selector, number))
+    return out
+
+
 def global_count_conditions(board: Board, clues: Iterable[Clue]) -> list[GlobalCountCondition]:
     """Parse and validate whole-board count clues in rules and numbered clues."""
     rules: list[tuple[str, list[str], int | None]] = [
@@ -1061,8 +1424,8 @@ def global_count_conditions(board: Board, clues: Iterable[Clue]) -> list[GlobalC
     for kind, args, number in rules:
         if kind != GLOBAL_COUNTING:
             continue
-        selector_kind, selector, comparison_tokens = _global_count_selector(board, args)
-        maximum = _global_count_maximum(board, selector_kind, selector)
+        selector_kind, selector, qualifier, comparison_tokens = _global_count_selector(board, args)
+        maximum = _global_count_maximum(board, selector_kind, selector, qualifier)
         comparison, operands, allowed = _parse_count_comparison(comparison_tokens, maximum)
         source = f"rule {len(out) + 1}" if number is None else f"clue {number}"
         label = f"{source} global count: {' '.join(args)}"
@@ -1077,9 +1440,152 @@ def global_count_conditions(board: Board, clues: Iterable[Clue]) -> list[GlobalC
                 number,
                 len(out),
                 tuple(args),
+                qualifier,
             )
         )
     return out
+
+
+def _global_count_selector(
+    board: Board, args: list[str]
+) -> tuple[
+    GlobalCountKind,
+    TargetSelector | None,
+    TargetSelector | None,
+    list[str],
+]:
+    if len(args) >= 3 and args[0:2] in (["people", "on"], ["people", "in"]):
+        kind: GlobalCountKind = "people_on" if args[1] == "on" else "people_in"
+        allowed = (
+            ("object", "object_kind", "mark", "edge_item", "point_object")
+            if kind == "people_on"
+            else (
+                "area",
+                "tag",
+                "rows",
+                "columns",
+                "adjacent_to",
+                "object",
+                "object_kind",
+                "mark",
+                "edge_item",
+                "point_object",
+                "corner",
+            )
+        )
+        selector, remainder = _count_scope(board, args[2:], allowed, f"count people {args[1]}")
+        qualifier = None
+        if remainder and remainder[0] == "with":
+            if kind != "people_in" or len(remainder) < 2:
+                raise ValueError("only count people in supports a with role/attribute qualifier")
+            qualifier = _target_selector(board, remainder[1])
+            if qualifier.kind not in ("role", "attribute"):
+                raise ValueError("count people in with requires role:name or attribute:name")
+            remainder = remainder[2:]
+        return kind, selector, qualifier, remainder
+    if len(args) >= 3 and args[:2] == ["people", "with"]:
+        selector = _target_selector(board, args[2])
+        if selector.kind not in ("role", "attribute"):
+            raise ValueError("count people with requires a role:name or attribute:name selector")
+        return "people_with", selector, None, args[3:]
+    if len(args) >= 3 and args[:2] == ["people", "from"]:
+        selector = _target_selector(board, args[2])
+        if selector.kind != "people":
+            raise ValueError("count people from requires people:name1,name2")
+        people = selector.name.split(",")
+        if len(people) < 1:
+            raise ValueError("count people from needs at least one person")
+        if len(args) < 5 or args[3] != "with":
+            raise ValueError("count people from requires 'with role:name|attribute:name'")
+        qualifier = _target_selector(board, args[4])
+        if qualifier.kind not in ("role", "attribute"):
+            raise ValueError("count people from with requires role:name or attribute:name")
+        return "people_from", selector, qualifier, args[5:]
+    if len(args) >= 3 and args[:2] == ["roles", "of"]:
+        selector = _target_selector(board, args[2])
+        if selector.kind != "person":
+            raise ValueError("count roles of requires a person name")
+        return "roles_of", selector, None, args[3:]
+    if len(args) >= 2 and args[:2] in (["empty", "areas"], ["occupied", "areas"]):
+        area_kind: GlobalCountKind = "empty_areas" if args[0] == "empty" else "occupied_areas"
+        description = f"count {args[0]} areas"
+        remainder = args[2:]
+        if not remainder or remainder[0] not in ("all", "in"):
+            return area_kind, None, None, remainder
+        if remainder[0] == "all":
+            raise ValueError(f"{description} has an implicit all-areas scope; omit 'all'")
+        selector, comparison = _count_scope(
+            board, remainder[1:], ("area", "tag", "adjacent_to"), description
+        )
+        return area_kind, selector, None, comparison
+    if len(args) >= 4 and args[:3] == ["empty", "cells", "in"]:
+        selector, remainder = _count_scope(
+            board,
+            args[3:],
+            (
+                "area",
+                "tag",
+                "rows",
+                "columns",
+                "object",
+                "object_kind",
+                "mark",
+                "edge_item",
+                "point_object",
+                "adjacent_to",
+                "corner",
+            ),
+            "count empty cells",
+        )
+        return "empty_cells", selector, None, remainder
+    raise ValueError(
+        "count expects 'people on|in|with ...', 'empty|occupied areas [in ...]', "
+        "'empty cells in ...', 'people from ...', or 'roles of ...'"
+    )
+
+
+def _count_scope(
+    board: Board,
+    tokens: list[str],
+    allowed: Sequence[str],
+    description: str,
+) -> tuple[TargetSelector, list[str]]:
+    stop = next(
+        (
+            index
+            for index, token in enumerate(tokens)
+            if token == "with" or token in ("=", "<=", ">=", "odd", "even") or ".." in token
+        ),
+        len(tokens),
+    )
+    scope_tokens, remainder = tokens[:stop], tokens[stop:]
+    parts: list[TargetSelector] = []
+    expecting_selector = True
+    for token in scope_tokens:
+        if token == "and":
+            if expecting_selector:
+                raise ValueError(f"{description} has an empty selector before 'and'")
+            expecting_selector = True
+            continue
+        if not expecting_selector:
+            raise ValueError(f"{description} selectors must be separated by 'and'")
+        selector = _target_selector(board, token)
+        if not _selector_matches_kinds(selector, allowed):
+            raise ValueError(f"{description} does not accept selector {token!r}")
+        parts.append(selector)
+        expecting_selector = False
+    if expecting_selector or not parts:
+        raise ValueError(f"{description} requires a typed selector")
+    selector = parts[0] if len(parts) == 1 else TargetSelector("intersection", "", tuple(parts))
+    return selector, remainder
+
+
+def _selector_matches_kinds(selector: TargetSelector, allowed: Sequence[str]) -> bool:
+    if selector.kind == "union":
+        return bool(selector.parts) and all(
+            _selector_matches_kinds(part, allowed) for part in selector.parts
+        )
+    return selector.kind in allowed
 
 
 def area_population_conditions(
@@ -1095,6 +1601,10 @@ def area_population_conditions(
     for kind, args, number in rules:
         if kind not in AREA_POPULATION:
             continue
+        internal_kind = {
+            "most_populated": "busiest_area",
+            "least_populated": "quietest_area",
+        }.get(kind, kind)
         if not args:
             raise ValueError(f"{kind} needs at least one area:name")
         regions: list[str] = []
@@ -1112,72 +1622,22 @@ def area_population_conditions(
         source = f"rule {len(out) + 1}" if number is None else f"clue {number}"
         label = f"{source} area population: {' '.join(args)}"
         out.append(
-            AreaPopulationCondition(label, kind, tuple(regions), tuple(args), number, len(out))
+            AreaPopulationCondition(
+                label, internal_kind, tuple(regions), tuple(args), number, len(out)
+            )
         )
     return out
 
 
-def _global_count_selector(
-    board: Board, args: list[str]
-) -> tuple[GlobalCountKind, TargetSelector | None, list[str]]:
-    if len(args) >= 3 and args[0:2] in (["people", "on"], ["people", "in"]):
-        kind: GlobalCountKind = "people_on" if args[1] == "on" else "people_in"
-        selector = _target_selector(board, args[2])
-        allowed = (
-            ("object", "object_kind", "mark", "edge_item", "point_object")
-            if kind == "people_on"
-            else (
-                "area",
-                "tag",
-                "rows",
-                "columns",
-                "object",
-                "object_kind",
-                "mark",
-                "edge_item",
-                "point_object",
-            )
-        )
-        if selector.kind not in allowed:
-            raise ValueError(f"count people {args[1]} needs a cell, area, row, or column selector")
-        return kind, selector, args[3:]
-    if len(args) >= 3 and args[:2] == ["people", "with"]:
-        selector = _target_selector(board, args[2])
-        if selector.kind not in ("role", "attribute"):
-            raise ValueError("count people with requires a role:name or attribute:name selector")
-        return "people_with", selector, args[3:]
-    if len(args) >= 3 and args[:2] == ["empty", "areas"]:
-        if args[2] == "all":
-            return "empty_areas", None, args[3:]
-        if len(args) >= 4 and args[2] == "in":
-            selector = _target_selector(board, args[3])
-            if selector.kind not in ("area", "tag"):
-                raise ValueError("count empty areas in requires area:name or tag:name")
-            return "empty_areas", selector, args[4:]
-    if len(args) >= 4 and args[:3] == ["empty", "cells", "in"]:
-        selector = _target_selector(board, args[3])
-        if selector.kind not in (
-            "area",
-            "tag",
-            "rows",
-            "columns",
-            "object",
-            "object_kind",
-            "mark",
-            "edge_item",
-            "point_object",
-        ):
-            raise ValueError("count empty cells in requires a cell-set selector")
-        return "empty_cells", selector, args[4:]
-    raise ValueError(
-        "count expects 'people on|in|with ...', 'empty areas all|in ...', or 'empty cells in ...'"
-    )
-
-
 def _global_count_maximum(
-    board: Board, kind: GlobalCountKind, selector: TargetSelector | None
+    board: Board,
+    kind: GlobalCountKind,
+    selector: TargetSelector | None,
+    qualifier: TargetSelector | None = None,
 ) -> int:
-    condition = GlobalCountCondition("", kind, selector, "=", (0,), frozenset({0}), None, 0, ())
+    condition = GlobalCountCondition(
+        "", kind, selector, "=", (0,), frozenset({0}), None, 0, (), qualifier
+    )
     return condition.maximum(board)
 
 
@@ -1322,7 +1782,16 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
     """Board rules, mark effects, and clues as predicates over their people."""
     out: list[Condition] = []
     for kind, args in board.rules:
-        if kind in ROLE_CONDITION_KINDS or _is_quantified_target(kind, args):
+        if _is_area_occupancy(kind, args):
+            continue
+        if (
+            kind == "if"
+            or kind == "for_each_area"
+            or kind in ROLE_CONDITION_KINDS
+            or kind in {"dir", "not_dir"}
+            or kind == "no_adjacent_occupied"
+            or _is_quantified_target(kind, args)
+        ):
             continue
         if kind == GLOBAL_COUNTING or kind in AREA_POPULATION:
             continue
@@ -1331,7 +1800,16 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
         _mark_occupant_condition(board, mark) for mark in board.marks if mark.occupant_condition
     )
     for number, (kind, args) in enumerate(clues, 1):
-        if kind in ROLE_CONDITION_KINDS or _is_quantified_target(kind, args):
+        if _is_area_occupancy(kind, args):
+            continue
+        if (
+            kind == "if"
+            or kind == "for_each_area"
+            or kind in ROLE_CONDITION_KINDS
+            or kind in {"dir", "not_dir"}
+            or kind == "no_adjacent_occupied"
+            or _is_quantified_target(kind, args)
+        ):
             continue
         if kind == GLOBAL_COUNTING or kind in AREA_POPULATION:
             continue
@@ -1339,9 +1817,21 @@ def conditions(board: Board, clues: Iterable[Clue]) -> list[Condition]:
     return out
 
 
+def _is_area_occupancy(kind: str, args: Sequence[str]) -> bool:
+    return (
+        kind == "with"
+        and (
+            (len(args) >= 3 and args[1] == "in" and args[2].startswith("area:"))
+            or (len(args) >= 4 and args[2] == "in" and args[3].startswith("area:"))
+        )
+    ) or (kind == "alone" and (args[:1] == ["in"] or (len(args) == 3 and args[1] == "in")))
+
+
 def _is_quantified_target(kind: str, args: Sequence[str]) -> bool:
-    return kind == "alone_with" or (
-        kind in RELATIONS and len(args) > 1 and (":" in args[0] or ":" in args[1])
+    return (
+        kind == "alone_with"
+        or (kind == "with" and "same" in args and "area" in args)
+        or (kind in RELATIONS and len(args) > 1 and (":" in args[0] or ":" in args[1]))
     )
 
 
@@ -1359,6 +1849,24 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
     for kind, args, number in rules:
         if not _is_quantified_target(kind, args):
             continue
+        label = " ".join((kind, *args))
+        if kind == "with":
+            subject, *rest = args
+            if not rest:
+                raise ValueError("with in same area needs a person")
+            if rest[0] == "people:any":
+                raise ValueError("omit 'people:any'; with defaults to any other person")
+            selector_text = "people:any" if rest[0] == "in" else rest.pop(0)
+            if rest[:2] != ["in", "same"] or rest[2:3] != ["area"]:
+                raise ValueError("with requires 'in same area' for person-relative occupancy")
+            rest = rest[3:]
+            if rest:
+                if len(rest) != 2 or rest[0] != "exactly" or not rest[1].isdigit():
+                    raise ValueError("with accepts an optional 'exactly n' companion count")
+                args = [subject, selector_text, rest[1]]
+            else:
+                args = [subject, selector_text]
+            kind = "alone_with"
         if kind == "alone_with":
             subject, *rest = args
             count = rest.pop() if rest and rest[-1].isdigit() else None
@@ -1389,7 +1897,7 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
         )
         out.append(
             QuantifiedCondition(
-                " ".join((kind, *args)),
+                label,
                 kind,
                 subject,
                 selector,
@@ -1403,19 +1911,24 @@ def quantified_conditions(board: Board, clues: Iterable[Clue]) -> list[Quantifie
 
 
 def _target_selector(board: Board, token: str) -> TargetSelector:
-    """Parse `kind:name`; a bare known person is accepted as a person target."""
+    """Parse a typed selector; a bare known person is accepted as a person target."""
     kind, separator, name = token.partition(":")
     if not separator and token in board.people:
         return TargetSelector("person", token)
-    if not separator or not name or any(char.isspace() for char in name):
+    if not separator or not name:
         raise ValueError(f"bad target selector {token!r}; use kind:name")
-    kind = {"cells": "mark", "cellset": "mark", "row": "rows", "column": "columns"}.get(kind, kind)
+    if kind == "person":
+        raise ValueError(f"use the bare person name instead of {token!r}")
     supported = {
-        "person",
+        "people",
+        "people_on",
+        "anyone",
         "attribute",
         "role",
         "area",
         "tag",
+        "adjacent_to",
+        "corner",
         "object_kind",
         "object",
         "mark",
@@ -1426,9 +1939,38 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
     }
     if kind not in supported:
         raise ValueError(f"unknown target kind {kind!r}; have {sorted(supported)}")
+    if "," in name and kind in {
+        "area",
+        "tag",
+        "object",
+        "mark",
+        "edge_item",
+        "point_object",
+        "rows",
+        "columns",
+    }:
+        names = name.split(",")
+        if any(not item for item in names):
+            raise ValueError(f"selector {token!r} contains an empty name")
+        return TargetSelector(
+            "union", "", tuple(_target_selector(board, f"{kind}:{item}") for item in names)
+        )
     selector = TargetSelector(cast(TargetKind, kind), name)
     if kind == "person" and name not in board.people:
         raise ValueError(f"unknown target person {name!r}")
+    if kind == "people":
+        if name == "any":
+            return TargetSelector("anyone", "")
+        people = name.split(",")
+        if any(not person or person not in board.people for person in people):
+            unknown = sorted(set(people) - set(board.people))
+            raise ValueError(f"unknown people in selector {token!r}: {unknown}")
+        if len(set(people)) != len(people):
+            raise ValueError(f"people selector {token!r} repeats a person")
+    if kind == "people_on":
+        nested = _target_selector(board, name)
+        if nested.kind in ("person", "people", "people_on", "anyone", "attribute", "role"):
+            raise ValueError(f"people_on requires a location selector, not {name!r}")
     if kind == "attribute" and name not in board.attribute_names:
         raise ValueError(f"unknown target attribute {name!r}; have {sorted(board.attribute_names)}")
     if kind == "role" and name not in board.role_names:
@@ -1437,6 +1979,15 @@ def _target_selector(board: Board, token: str) -> TargetSelector:
         board.area_ids([name])
     if kind == "tag":
         board.tagged_region_ids([name])
+    if kind == "adjacent_to":
+        if name.startswith("tag:"):
+            _target_selector(board, name)
+        else:
+            board.area_ids([name])
+    if kind == "corner" and name != "board":
+        nested = _target_selector(board, name)
+        if nested.kind != "area":
+            raise ValueError(f"corner requires 'board' or 'area:name', not {name!r}")
     if kind == "object_kind" and name not in ("blocking", "standable"):
         raise ValueError("object_kind target must be 'blocking' or 'standable'")
     if kind == "object":
@@ -1494,6 +2045,21 @@ def _membership_literals(
     return present, not present
 
 
+def _adjacent_region_ids(board: Board, selector: TargetSelector) -> set[str]:
+    if selector.kind != "adjacent_to":
+        raise ValueError(f"selector {selector.kind!r} is not adjacent_to")
+    if selector.name.startswith("tag:"):
+        source_regions = board.tagged_region_ids([selector.name.partition(":")[2]])
+    else:
+        source_regions = board.area_ids([selector.name])
+    return {
+        region
+        for border in board.borders
+        for region in border
+        if any(other in source_regions for other in border)
+    } - source_regions
+
+
 def _selector_cells(board: Board, selector: TargetSelector) -> set[Square]:
     if selector.kind == "rows":
         rows = line_indices(selector.name, board.size)
@@ -1507,6 +2073,26 @@ def _selector_cells(board: Board, selector: TargetSelector) -> set[Square]:
     if selector.kind == "tag":
         ids = board.tagged_region_ids([selector.name])
         return {square for square in board.free if board.region_of(square) in ids}
+    if selector.kind == "adjacent_to":
+        adjacent = _adjacent_region_ids(board, selector)
+        return {square for square in board.free if board.region_of(square) in adjacent}
+    if selector.kind == "intersection":
+        if not selector.parts:
+            return set()
+        return set.intersection(*(_selector_cells(board, part) for part in selector.parts))
+    if selector.kind == "union":
+        return set().union(*(_selector_cells(board, part) for part in selector.parts))
+    if selector.kind == "corner":
+        if selector.name == "board":
+            corners = {
+                Square(0, 0),
+                Square(0, board.size - 1),
+                Square(board.size - 1, 0),
+                Square(board.size - 1, board.size - 1),
+            }
+            return corners & set(board.free)
+        area = _target_selector(board, selector.name)
+        return {square for square in board.free if _in_area_corner(board, area.name)(square)}
     if selector.kind == "object_kind":
         return {
             square for obj in board.objects if obj.kind == selector.name for square in obj.squares
@@ -1533,11 +2119,219 @@ def _target_matches(
         return True
     if selector.kind == "person":
         return person == selector.name
+    if selector.kind == "people":
+        return person in selector.name.split(",")
     if selector.kind == "attribute":
         return board.has_attribute(person, selector.name)
     if selector.kind == "role":
         return roles.get((person, selector.name), False)
+    if selector.kind == "people_on":
+        location = _target_selector(board, selector.name)
+        return square in _selector_cells(board, location)
     return square in _selector_cells(board, selector)
+
+
+@dataclass(frozen=True)
+class DirectionCondition:
+    """An existential spatial relation between typed person or cell selectors."""
+
+    label: str
+    first: TargetSelector
+    second: TargetSelector
+    mode: str
+    comparison: str | None
+    distance: int | None
+    number: int | None
+    negated: bool
+    test: PairTest
+
+    @property
+    def first_is_people(self) -> bool:
+        return self.first.kind in {
+            "person",
+            "people",
+            "people_on",
+            "anyone",
+            "attribute",
+            "role",
+        }
+
+    @property
+    def second_is_people(self) -> bool:
+        return self.second.kind in {
+            "person",
+            "people",
+            "people_on",
+            "anyone",
+            "attribute",
+            "role",
+        }
+
+    def holds(
+        self,
+        board: Board,
+        placed: dict[str, Square],
+        roles: dict[tuple[str, str], bool],
+    ) -> bool:
+        if self.mode == "furthest":
+            furthest_subject, furthest_reference = self.first.name, self.second.name
+            result = all(
+                _further(placed[furthest_subject], placed[furthest_reference], placed[other])
+                for other in board.people
+                if other not in (furthest_subject, furthest_reference)
+            )
+            return not result if self.negated else result
+        first_options = (
+            [
+                (person, placed[person])
+                for person in board.people
+                if _target_matches(board, self.first, person, placed[person], roles)
+            ]
+            if self.first_is_people
+            else [(None, square) for square in _selector_cells(board, self.first)]
+        )
+        second_options = (
+            [
+                (person, placed[person])
+                for person in board.people
+                if _target_matches(board, self.second, person, placed[person], roles)
+            ]
+            if self.second_is_people
+            else [(None, square) for square in _selector_cells(board, self.second)]
+        )
+        for first_person, first_square in first_options:
+            for second_person, second_square in second_options:
+                if first_person is not None and first_person == second_person:
+                    continue
+                if self.test(first_square, second_square):
+                    return not self.negated
+        return self.negated
+
+
+def _area_distances(board: Board) -> dict[tuple[str, str], int]:
+    """Shortest side-sharing border distance between every pair of logical areas."""
+    neighbors: dict[str, set[str]] = {region: set() for region in board.region_names}
+    for border in board.borders:
+        first, second = border
+        neighbors[first].add(second)
+        neighbors[second].add(first)
+    distances: dict[tuple[str, str], int] = {}
+    for start in neighbors:
+        distances[start, start] = 0
+        pending = deque([start])
+        while pending:
+            current = pending.popleft()
+            for neighbor in neighbors[current]:
+                if (start, neighbor) not in distances:
+                    distances[start, neighbor] = distances[start, current] + 1
+                    pending.append(neighbor)
+    return distances
+
+
+def _direction_test(
+    board: Board, mode: str, comparison: str | None, distance: int | None
+) -> PairTest:
+    if mode in ("left", "right", "up", "down"):
+        sign = 1 if mode in ("left", "up") else -1
+
+        def directional(first: Square, second: Square) -> bool:
+            gap = second.col - first.col if mode in ("left", "right") else second.row - first.row
+            delta = gap * sign
+            return delta > 0 if comparison is None else delta == distance
+
+        return directional
+    if mode in ("rows", "cols", "manhattan", "euclidean", "king", "areas"):
+        distances = _area_distances(board) if mode == "areas" else {}
+
+        def value(first: Square, second: Square) -> int:
+            row_gap, col_gap = abs(first.row - second.row), abs(first.col - second.col)
+            if mode == "rows":
+                return row_gap
+            if mode == "cols":
+                return col_gap
+            if mode == "manhattan":
+                return row_gap + col_gap
+            if mode == "euclidean":
+                return row_gap * row_gap + col_gap * col_gap
+            if mode == "king":
+                return max(row_gap, col_gap)
+            return distances[board.region_of(first), board.region_of(second)]
+
+        assert distance is not None
+        threshold = distance * distance if mode == "euclidean" else distance
+
+        def compared(first: Square, second: Square) -> bool:
+            actual = value(first, second)
+            if comparison == "=":
+                return actual == threshold
+            if comparison == "<=":
+                return actual <= threshold
+            assert comparison == ">="
+            return actual >= threshold
+
+        return compared
+    if mode == "knight":
+        return knight_move
+    if mode == "furthest":
+        return lambda first, second: first != second
+    raise ValueError(f"unknown dir mode {mode!r}")
+
+
+def directional_conditions(
+    board: Board, clues: Iterable[Clue], *, include_rules: bool = True
+) -> list[DirectionCondition]:
+    """Parse and validate canonical `dir` predicates."""
+    rules: list[tuple[str, list[str], int | None]] = (
+        [(kind, args, None) for kind, args in board.rules] if include_rules else []
+    )
+    rules.extend((kind, args, number) for number, (kind, args) in enumerate(clues, 1))
+    out: list[DirectionCondition] = []
+    for kind, args, number in rules:
+        original_kind = kind
+        negated = kind == "not_dir"
+        if negated:
+            kind = "dir"
+        comparison: str | None = None
+        distance: int | None = None
+        if kind == "dir":
+            if len(args) < 3:
+                raise ValueError("dir expects two selectors and a mode")
+            first, second = _target_selector(board, args[0]), _target_selector(board, args[1])
+            mode = args[2]
+            tail = args[3:]
+            if mode in ("left", "right", "up", "down"):
+                if tail:
+                    if len(tail) != 2 or tail[0] != "=" or not tail[1].isdigit():
+                        raise ValueError(f"dir {mode} accepts only an optional '= positive-gap'")
+                    comparison, distance = "=", int(tail[1])
+                    if distance < 1:
+                        raise ValueError(f"dir {mode} gap must be at least 1")
+            elif mode in ("rows", "cols", "manhattan", "euclidean", "king", "areas"):
+                if len(tail) != 2 or tail[0] not in ("=", "<=", ">=") or not tail[1].isdigit():
+                    raise ValueError(f"dir {mode} requires one of '= n', '<= n', or '>= n'")
+                comparison, distance = tail[0], int(tail[1])
+                if mode in ("rows", "cols") and distance < 1:
+                    raise ValueError(f"dir {mode} distance must be at least 1")
+            elif mode in ("knight", "furthest"):
+                if tail:
+                    raise ValueError(f"dir {mode} does not accept a comparison")
+                if mode == "furthest" and (first.kind != "person" or second.kind != "person"):
+                    raise ValueError("dir furthest requires two named people")
+            else:
+                raise ValueError(
+                    "unknown dir mode; use left, right, up, down, rows, cols, manhattan, "
+                    "euclidean, king, areas, knight, or furthest"
+                )
+        else:
+            continue
+        test = _direction_test(board, mode, comparison, distance)
+        label = " ".join((original_kind, *args))
+        out.append(
+            DirectionCondition(
+                label, first, second, mode, comparison, distance, number, negated, test
+            )
+        )
+    return out
 
 
 def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
@@ -1578,7 +2372,11 @@ def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
         "sole_role_companion": 2,
     }
     out: list[RoleCondition] = []
-    for kind, args, number in rules:
+    for source_kind, source_args, number in rules:
+        label = " ".join((source_kind, *source_args))
+        kind, args = source_kind, source_args
+        if kind == "for_each_area":
+            kind, args = _normalize_for_each_area(board, args)
         if kind not in ROLE_CONDITION_KINDS:
             continue
         if len(args) < minimum_arity[kind] or (kind == "role_below" and len(args) > 4):
@@ -1610,7 +2408,7 @@ def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
         if kind in ("role_in_tagged", "role_not_in_tagged"):
             board.tagged_region_ids([args[2]])
         if kind == "role_occupant" and args[1] not in ("alone", "not_alone"):
-            raise ValueError("role_occupant condition must be 'alone' or 'not_alone'")
+            raise ValueError("role occupancy requires the condition alone or not alone")
         if kind == "min_role_in_tagged":
             board.tagged_region_ids([args[1]])
             try:
@@ -1627,10 +2425,10 @@ def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
             try:
                 gap = int(args[3])
             except ValueError as exc:
-                raise ValueError(f"role_below needs an optional positive row gap: {args}") from exc
+                raise ValueError(f"dir P role:name down needs a positive row gap: {args}") from exc
             if gap < 1:
-                raise ValueError("role_below row gap must be at least 1")
-        out.append(RoleCondition(" ".join((kind, *args)), kind, tuple(args), number))
+                raise ValueError("dir P role:name down gap must be at least 1")
+        out.append(RoleCondition(label, kind, tuple(args), number))
     for role in board.roles:
         if role.eligible_people is not None:
             out.extend(
@@ -1643,6 +2441,42 @@ def role_conditions(board: Board, clues: Iterable[Clue]) -> list[RoleCondition]:
                 if person not in role.eligible_people
             )
     return out
+
+
+def _normalize_for_each_area(board: Board, args: list[str]) -> tuple[str, list[str]]:
+    """Map the two supported per-area role counts to shared role primitives."""
+    if len(args) < 2 or args[0] != "in":
+        raise ValueError("for each area expects 'in tag:name' or 'in all occupied by role:name'")
+    scope = args[1].removesuffix(",")
+    if len(args) == 11 and scope.startswith("tag:"):
+        if args[2:8] != ["count", "people", "in", "that", "area", "with"]:
+            raise ValueError(
+                "tag-scoped for each area expects 'count people in that area with role:name >= n'"
+            )
+        membership = _target_selector(board, args[8])
+        selector = _target_selector(board, scope)
+        if membership.kind != "role" or selector.kind != "tag":
+            raise ValueError("for each area count requires role:name")
+        if args[9] != ">=" or not args[10].isdigit():
+            raise ValueError("for each area role count requires '>= n'")
+        minimum = int(args[10])
+        return "min_role_in_tagged", [membership.name, selector.name, str(minimum)]
+    if (
+        len(args) == 12
+        and scope == "all"
+        and args[2:4] == ["occupied", "by"]
+        and args[5:10] == ["count", "people", "in", "that", "area"]
+    ):
+        role = _target_selector(board, args[4].removesuffix(","))
+        if role.kind != "role" or not args[11].isdigit():
+            raise ValueError("occupied-by scope requires role:name and a non-negative count")
+        count = int(args[11])
+        if args[10] == "=" and count == 1:
+            return "role_occupant", [role.name, "alone"]
+        if args[10] == ">=" and count == 2:
+            return "role_occupant", [role.name, "not_alone"]
+        raise ValueError("occupied-by role counts support '= 1' or '>= 2'")
+    raise ValueError(f"unsupported for each area form: {' '.join(args)}")
 
 
 def _role_target_cells(board: Board, names: Iterable[str]) -> set[Square]:
@@ -1784,6 +2618,64 @@ def apply_occupant_condition(
 def _conditions(board: Board, kind: str, args: list[str], number: int | None) -> list[Condition]:
     if kind == COUNTING:
         return [_counting(board, args, number)]
+    if kind in {"in", "not_in", "on", "not_on", "beside", "not_beside", "touches", "not_touches"}:
+        if len(args) < 2:
+            raise ValueError(f"{kind} expects a person and at least one location selector")
+        person, *selector_tokens = args
+        if person not in board.people:
+            raise ValueError(f"{kind} names unknown person {person!r}")
+        selectors = [_target_selector(board, token) for token in selector_tokens]
+        if any(not _is_location_selector(selector) for selector in selectors):
+            raise ValueError(f"{kind} requires location selectors")
+        targets = set().union(*(_selector_cells(board, selector) for selector in selectors))
+        negated = kind.startswith("not_")
+        predicate = kind.removeprefix("not_")
+
+        def test(square: Square) -> bool:
+            if predicate in ("in", "on"):
+                result = square in targets
+            else:
+                result = any(
+                    steps_between(square, target) == 1
+                    and (
+                        predicate == "touches" or board.region_of(square) == board.region_of(target)
+                    )
+                    for target in targets
+                )
+            return not result if negated else result
+
+        return [
+            Condition(
+                " ".join((kind, *args)),
+                (person,),
+                test,
+                kind,
+                tuple(args),
+                number,
+            )
+        ]
+    if kind == "only":
+        if len(args) < 2:
+            raise ValueError("only expects a person and at least one location selector")
+        person, *selector_tokens = args
+        if person not in board.people:
+            raise ValueError(f"only names unknown person {person!r}")
+        selectors = [_target_selector(board, token) for token in selector_tokens]
+        if any(not _is_location_selector(selector) for selector in selectors):
+            raise ValueError("only requires location selectors")
+        targets = set().union(*(_selector_cells(board, selector) for selector in selectors))
+        label = " ".join(("only", person, "on", *selector_tokens))
+        return [
+            Condition(
+                label,
+                (selected,),
+                lambda square, selected=selected: (square in targets) == (selected == person),
+                "only",
+                tuple(args),
+                number,
+            )
+            for selected in board.people
+        ]
     if kind in ATTRIBUTE_FILTERS:
         if len(args) != 2:
             raise ValueError(f"clue {kind!r} expects a person and one attribute")
@@ -1902,6 +2794,24 @@ def _validate_standable_objects(board: Board, clue: str, names: Sequence[str]) -
         raise ValueError(f"clue {clue!r} needs standable objects; {sorted(blocking)} are blocking")
 
 
+def _is_location_selector(selector: TargetSelector) -> bool:
+    if selector.kind in ("union", "intersection"):
+        return bool(selector.parts) and all(_is_location_selector(part) for part in selector.parts)
+    return selector.kind in {
+        "area",
+        "tag",
+        "adjacent_to",
+        "corner",
+        "object_kind",
+        "object",
+        "mark",
+        "edge_item",
+        "point_object",
+        "rows",
+        "columns",
+    }
+
+
 def _further(a: Square, b: Square, other: Square) -> bool:
     return steps_between(a, b) > steps_between(other, b)
 
@@ -1915,7 +2825,40 @@ def _counting(board: Board, args: list[str], number: int | None) -> Condition:
     for kind, rest in parts:
         if _is_quantified_target(kind, rest):
             raise ValueError(f"{COUNTING} cannot count quantified target clues such as {kind!r}")
-        if kind not in FILTERS and kind not in RELATIONS and kind not in ATTRIBUTE_FILTERS:
+        if kind in ("dir", "not_dir"):
+            if len(rest) < 2 or any(person not in board.people for person in rest[:2]):
+                raise ValueError(f"{COUNTING} dir predicates require two named people")
+            (direction,) = directional_conditions(board, [(kind, rest)], include_rules=False)
+            if direction.mode == "furthest":
+                raise ValueError(f"{COUNTING} cannot count the quantified furthest predicate")
+            first, second = rest[:2]
+            subs.append(
+                Condition(
+                    " ".join((kind, *rest)),
+                    (first, second),
+                    lambda a, b, direction=direction: direction.negated != direction.test(a, b),
+                    kind,
+                    tuple(rest),
+                    None,
+                )
+            )
+            continue
+        if (
+            kind not in FILTERS
+            and kind not in RELATIONS
+            and kind not in ATTRIBUTE_FILTERS
+            and kind
+            not in {
+                "in",
+                "not_in",
+                "on",
+                "not_on",
+                "beside",
+                "not_beside",
+                "touches",
+                "not_touches",
+            }
+        ):
             raise ValueError(f"{COUNTING} can count simple clues only, not {kind!r}")
         (sub,) = _conditions(board, kind, rest, None)
         subs.append(sub)
@@ -1947,9 +2890,33 @@ def compile_puzzle(board: Board, clues: Iterable[Clue]) -> Model:
     role_rules = role_conditions(board, clues)
     _compile_role_conditions(model, board, role_literals, role_rules)
     count_conditions = global_count_conditions(board, clues)
+    occupancy_conditions = area_occupancy_conditions(board, clues)
+    isolation_conditions = area_isolation_conditions(board, clues)
+    role_conditionals = conditional_conditions(board, clues)
     attribute_membership = _global_attribute_membership(model, board, count_conditions)
-    _compile_global_counts(model, board, count_conditions, role_literals, attribute_membership)
+    _compile_global_counts(
+        model,
+        board,
+        count_conditions,
+        role_literals,
+        attribute_membership,
+        isolation_conditions,
+    )
+    _compile_area_occupancy(model, board, occupancy_conditions, role_literals)
+    for condition in role_conditionals:
+        role = board.role_variable(condition.person, condition.role)
+        model.relate(
+            condition.label,
+            (condition.person, role),
+            lambda square, has_role, condition=condition: condition.holds(
+                board,
+                {condition.person: square},
+                {(condition.person, condition.role): has_role},
+            ),
+        )
     _compile_area_population(model, board, area_population_conditions(board, clues))
+    for direction_condition in directional_conditions(board, clues):
+        _compile_direction_condition(model, board, direction_condition)
     for target_condition in quantified_conditions(board, clues):
         _compile_quantified_condition(model, board, target_condition)
     for location_condition in conditions(board, clues):
@@ -1976,6 +2943,299 @@ def compile_puzzle(board: Board, clues: Iterable[Clue]) -> Model:
     return model
 
 
+def _compile_area_occupancy(
+    model: Model,
+    board: Board,
+    conditions: Sequence[AreaOccupancyCondition],
+    roles: dict[tuple[str, str], tuple[int, int]],
+) -> None:
+    for condition in conditions:
+        region = board.area_ids([condition.area]).pop()
+        cells = {square for square in board.free if board.region_of(square) == region}
+        occupants = [
+            model.literal(person, square) for person in board.people for square in sorted(cells)
+        ]
+        if condition.person is not None:
+            for square in board.free:
+                if square not in cells:
+                    model.eliminate(
+                        model.literal(condition.person, square),
+                        condition.label,
+                        f"{condition.person} must be in {condition.area}",
+                        sources=(condition.label,),
+                    )
+
+        if condition.kind == "alone":
+            allowed = {1}
+        elif condition.person is None:
+            allowed = set(range(2, len(board.people) + 1))
+        else:
+            companions = condition.companions
+            assert companions is not None
+            allowed = {companions + 1}
+        model.constrain(
+            condition.label,
+            Kind.COUNT,
+            occupants,
+            allowed_counts=allowed,
+            family="area occupancy",
+        )
+
+        if condition.kind != "with":
+            continue
+        assert condition.membership is not None
+        if condition.person is not None:
+            assert condition.companions is not None
+        qualified: list[int] = []
+        for person in board.people:
+            if condition.membership.kind == "attribute":
+                if board.has_attribute(person, condition.membership.name):
+                    qualified.extend(model.literal(person, square) for square in sorted(cells))
+                continue
+            role = board.role_variable(person, condition.membership.name)
+            for square in sorted(cells):
+                qualified_variable, is_qualified, _ = _hidden_boolean(
+                    model,
+                    f"area_occupant_{condition.number or condition.label}",
+                    f"{condition.label} {person} at {square}",
+                    "area occupancy",
+                )
+                model.relate(
+                    condition.label,
+                    (person, role, qualified_variable),
+                    lambda position, has_role, value, square=square: (
+                        value == (position == square and has_role)
+                    ),
+                )
+                qualified.append(is_qualified)
+        if condition.person is None:
+            qualified_counts = set(range(1, len(board.people) + 1))
+        else:
+            companions = condition.companions
+            assert companions is not None
+            qualified_counts = {companions + 1}
+        model.constrain(
+            condition.label,
+            Kind.COUNT,
+            qualified,
+            allowed_counts=qualified_counts,
+            family="area occupancy",
+        )
+
+
+def _compile_direction_condition(model: Model, board: Board, condition: DirectionCondition) -> None:
+    if condition.mode == "furthest":
+        first, second = condition.first.name, condition.second.name
+        witnesses: list[int] = []
+        for other in board.people:
+            if other not in (first, second):
+                if not condition.negated:
+                    model.relate(condition.label, (first, second, other), _further)
+                    continue
+                witness, is_true, _ = _hidden_boolean(
+                    model,
+                    "direction_witness",
+                    f"{condition.label} witness {other}",
+                    "direction relation",
+                )
+                model.relate(
+                    condition.label,
+                    (first, second, other, witness),
+                    lambda a, b, candidate, value: value == _further(a, b, candidate),
+                )
+                witnesses.append(is_true)
+        if condition.negated:
+            if not witnesses:
+                model.relate(condition.label, (first,), lambda _square: False)
+            else:
+                model.constrain(
+                    condition.label,
+                    Kind.COUNT,
+                    witnesses,
+                    allowed_counts=set(range(len(witnesses))),
+                    family="direction relation",
+                )
+        return
+
+    if (
+        condition.first.kind == condition.second.kind == "person"
+        and condition.first.name != condition.second.name
+    ):
+
+        def test(first: Square, second: Square) -> bool:
+            return condition.test(first, second) != condition.negated
+
+        model.relate(
+            condition.label,
+            (condition.first.name, condition.second.name),
+            test,
+        )
+        return
+
+    if condition.first.kind == "person" and not condition.second_is_people:
+        person = condition.first.name
+        targets = _selector_cells(board, condition.second)
+        for square in board.free:
+            supported = any(condition.test(square, target) for target in targets)
+            if supported == condition.negated:
+                model.eliminate(
+                    model.literal(person, square),
+                    "clue",
+                    condition.label,
+                    sources=(condition.label,),
+                )
+        return
+    if condition.second.kind == "person" and not condition.first_is_people:
+        person = condition.second.name
+        targets = _selector_cells(board, condition.first)
+        for square in board.free:
+            supported = any(condition.test(target, square) for target in targets)
+            if supported == condition.negated:
+                model.eliminate(
+                    model.literal(person, square),
+                    "clue",
+                    condition.label,
+                    sources=(condition.label,),
+                )
+        return
+
+    person_selectors = {"person", "people", "attribute", "anyone", "people_on"}
+    if (
+        not condition.negated
+        and condition.first.kind in person_selectors
+        and condition.first.kind != "role"
+        and condition.second.kind in person_selectors | {"role"}
+    ):
+        if condition.first.kind == condition.second.kind == "people_on":
+            quantified = QuantifiedCondition(
+                condition.label,
+                "dir",
+                condition.first.name,
+                _target_selector(board, condition.second.name),
+                condition.test,
+                condition.number,
+                subject_selector=_target_selector(board, condition.first.name),
+            )
+        else:
+            quantified = QuantifiedCondition(
+                condition.label,
+                "dir",
+                condition.first.name,
+                condition.second,
+                condition.test,
+                condition.number,
+                subject_selector=(None if condition.first.kind == "person" else condition.first),
+            )
+        _compile_quantified_condition(model, board, quantified)
+        return
+
+    def options(selector: TargetSelector) -> list[tuple[str | None, Square | None]]:
+        if selector.kind == "person":
+            return [(selector.name, None)]
+        if selector.kind == "people":
+            return [(person, None) for person in selector.name.split(",")]
+        if selector.kind == "anyone":
+            return [(person, None) for person in board.people]
+        if selector.kind in ("attribute", "role", "people_on"):
+            return [(person, None) for person in board.people]
+        return [(None, square) for square in sorted(_selector_cells(board, selector))]
+
+    witness_literals: list[int] = []
+    for first_person, first_cell in options(condition.first):
+        for second_person, second_cell in options(condition.second):
+            if first_person is not None and first_person == second_person:
+                continue
+            person_vars = tuple(
+                dict.fromkeys(
+                    person for person in (first_person, second_person) if person is not None
+                )
+            )
+            role_keys = tuple(
+                dict.fromkeys(
+                    (person, selector.name)
+                    for person, selector in (
+                        (first_person, condition.first),
+                        (second_person, condition.second),
+                    )
+                    if person is not None and selector.kind == "role"
+                )
+            )
+            witness, is_true, _ = _hidden_boolean(
+                model,
+                "direction_witness",
+                f"{condition.label} witness",
+                "direction relation",
+            )
+            variables = tuple(
+                [person for person in person_vars]
+                + [board.role_variable(person, role) for person, role in role_keys]
+                + [witness]
+            )
+
+            def relation(
+                *values: Square | bool,
+                first_person: str | None = first_person,
+                first_cell: Square | None = first_cell,
+                second_person: str | None = second_person,
+                second_cell: Square | None = second_cell,
+                person_vars: tuple[str, ...] = person_vars,
+                role_keys: tuple[tuple[str, str], ...] = role_keys,
+            ) -> bool:
+                squares = cast(
+                    dict[str, Square],
+                    dict(zip(person_vars, values[: len(person_vars)], strict=True)),
+                )
+                role_values = values[len(person_vars) : len(person_vars) + len(role_keys)]
+                roles = cast(
+                    dict[tuple[str, str], bool], dict(zip(role_keys, role_values, strict=True))
+                )
+                first_square = first_cell if first_person is None else squares[first_person]
+                second_square = second_cell if second_person is None else squares[second_person]
+                assert isinstance(first_square, Square) and isinstance(second_square, Square)
+                first_selected = (
+                    True
+                    if first_person is None
+                    else _target_matches(board, condition.first, first_person, first_square, roles)
+                )
+                second_selected = (
+                    True
+                    if second_person is None
+                    else _target_matches(
+                        board, condition.second, second_person, second_square, roles
+                    )
+                )
+                expected = (
+                    first_selected
+                    and second_selected
+                    and condition.test(first_square, second_square)
+                )
+                return values[-1] == expected
+
+            model.relate(
+                condition.label,
+                variables,
+                relation,
+            )
+            witness_literals.append(is_true)
+
+    if not witness_literals:
+        if condition.negated:
+            return
+        model.relate(
+            condition.label,
+            (board.people[0],),
+            lambda _square: False,
+        )
+        return
+    model.constrain(
+        condition.label,
+        Kind.COUNT,
+        witness_literals,
+        allowed_counts=({0} if condition.negated else set(range(1, len(witness_literals) + 1))),
+        family="direction relation",
+    )
+
+
 def _hidden_boolean(model: Model, prefix: str, name: str, family: str) -> tuple[str, int, int]:
     variable = _auxiliary_variable(model, prefix)
     is_true = model.literal(variable, True)
@@ -1996,11 +3256,10 @@ def _global_attribute_membership(
 ) -> dict[tuple[str, str], tuple[int, int]]:
     """Expose fixed attributes as hidden Booleans for generic count constraints."""
     attributes = {
-        condition.selector.name
+        selector.name
         for condition in conditions
-        if condition.kind == "people_with"
-        and condition.selector is not None
-        and condition.selector.kind == "attribute"
+        for selector in (condition.selector, condition.qualifier)
+        if selector is not None and selector.kind == "attribute"
     }
     membership: dict[tuple[str, str], tuple[int, int]] = {}
     for attribute in sorted(attributes):
@@ -2029,15 +3288,73 @@ def _compile_global_counts(
     conditions: Sequence[GlobalCountCondition],
     roles: dict[tuple[str, str], tuple[int, int]],
     attributes: dict[tuple[str, str], tuple[int, int]],
+    isolations: Sequence[AreaIsolationCondition],
 ) -> None:
     empty_areas: dict[str, int] = {}
+    occupied_areas: dict[str, int] = {}
     empty_cells: dict[Square, int] = {}
+
+    def area_occupancy(region: str) -> tuple[int, int]:
+        if region not in empty_areas:
+            _, is_empty, is_occupied = _hidden_boolean(
+                model,
+                global_count_unit_prefix("area", region),
+                f"area {board.region_names[region]} is empty",
+                "global empty area",
+            )
+            occupants = [
+                model.literal(person, square)
+                for person in board.people
+                for square in board.free
+                if board.region_of(square) == region
+            ]
+            model.constrain(
+                f"area {board.region_names[region]} empty state",
+                Kind.COUNT,
+                occupants,
+                allowed_counts={0},
+                reified_by=is_empty,
+                family="global empty area",
+            )
+            empty_areas[region] = is_empty
+            occupied_areas[region] = is_occupied
+        return empty_areas[region], occupied_areas[region]
+
     for condition in conditions:
-        if condition.kind in ("people_on", "people_in"):
+        if condition.kind in ("people_on", "people_in") and condition.qualifier is None:
             cells = condition.cells(board)
             literals = [
                 model.literal(person, square) for person in board.people for square in sorted(cells)
             ]
+        elif condition.kind in ("people_on", "people_in"):
+            assert condition.qualifier is not None
+            cells = condition.cells(board)
+            if condition.qualifier.kind == "attribute":
+                literals = [
+                    model.literal(person, square)
+                    for person in board.people
+                    if board.has_attribute(person, condition.qualifier.name)
+                    for square in sorted(cells)
+                ]
+            else:
+                literals = []
+                for person in board.people:
+                    role = board.role_variable(person, condition.qualifier.name)
+                    for square in sorted(cells):
+                        witness, is_true, _ = _hidden_boolean(
+                            model,
+                            "global_count_qualifier",
+                            f"{condition.label} {person} at {square}",
+                            "global count qualifier",
+                        )
+                        model.relate(
+                            condition.label,
+                            (person, role, witness),
+                            lambda position, has_role, value, square=square: (
+                                value == (position == square and has_role)
+                            ),
+                        )
+                        literals.append(is_true)
         elif condition.kind == "people_with":
             assert condition.selector is not None
             name = condition.selector.name
@@ -2045,32 +3362,28 @@ def _compile_global_counts(
                 (roles if condition.selector.kind == "role" else attributes)[person, name][0]
                 for person in board.people
             ]
+        elif condition.kind == "people_from":
+            assert condition.selector is not None and condition.qualifier is not None
+            people = condition.selector.name.split(",")
+            name = condition.qualifier.name
+            literals = [
+                (roles if condition.qualifier.kind == "role" else attributes)[person, name][0]
+                for person in people
+            ]
+        elif condition.kind == "roles_of":
+            assert condition.selector is not None
+            literals = [roles[condition.selector.name, role.name][0] for role in board.roles]
         elif condition.kind == "empty_areas":
             literals = []
             for region in sorted(condition.regions(board)):
-                if region not in empty_areas:
-                    _, is_empty, _ = _hidden_boolean(
-                        model,
-                        global_count_unit_prefix("area", region),
-                        f"area {board.region_names[region]} is empty",
-                        "global empty area",
-                    )
-                    occupants = [
-                        model.literal(person, square)
-                        for person in board.people
-                        for square in board.free
-                        if board.region_of(square) == region
-                    ]
-                    model.constrain(
-                        f"area {board.region_names[region]} empty state",
-                        Kind.COUNT,
-                        occupants,
-                        allowed_counts={0},
-                        reified_by=is_empty,
-                        family="global empty area",
-                    )
-                    empty_areas[region] = is_empty
-                literals.append(empty_areas[region])
+                is_empty, _ = area_occupancy(region)
+                literals.append(is_empty)
+        elif condition.kind == "occupied_areas":
+            free_regions = {board.region_of(square) for square in board.free}
+            literals = []
+            for region in sorted(condition.regions(board) & free_regions):
+                _, is_occupied = area_occupancy(region)
+                literals.append(is_occupied)
         else:
             literals = []
             for square in sorted(condition.cells(board)):
@@ -2099,6 +3412,16 @@ def _compile_global_counts(
             allowed_counts=condition.allowed_counts,
             family=f"global count clue {condition.number or condition.index + 1}: {condition.kind}",
         )
+    for isolation in isolations:
+        for first, second in isolation.borders(board):
+            _, first_occupied = area_occupancy(first)
+            _, second_occupied = area_occupancy(second)
+            model.constrain(
+                isolation.label,
+                Kind.AT_MOST_ONE,
+                [first_occupied, second_occupied],
+                family="area isolation",
+            )
 
 
 def _compile_area_population(
@@ -2703,7 +4026,7 @@ def _compile_role_conditions(
                     family="role position",
                 )
             else:
-                raise ValueError(f"role_below {person} has no other people to compare")
+                raise ValueError(f"dir {person} role:{role} down has no other people to compare")
         elif kind == "sole_role_companion":
             person, role = args
             companions: list[int] = []

@@ -23,7 +23,7 @@ People:
 Ada
 Ben
 Rules:
-in_row Ada 1
+in Ada rows:1
 Clues:
 count people on object:bed = 1
 count people on object_kind:standable = 1
@@ -33,7 +33,7 @@ count people in columns:1-2 = 2
 count people in mark:seats = 2
 count people with role:engineer = 1
 count people with attribute:glasses = 1
-count empty areas all = 1
+count empty areas = 1
 count empty areas in tag:inside = 1
 count empty cells in mark:seats = 0
 

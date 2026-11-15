@@ -377,6 +377,20 @@ def test_wing_step_replays_through_its_move():
     assert replay(start, [move]).is_false(target[0])
 
 
+def test_relation_move_replays_duplicate_relation_names():
+    model = Model()
+    options = _variable(model, "x", (1, 2))
+    model.relate("same clue", ("x",), lambda _value: True)
+    model.relate("same clue", ("x",), lambda value: value == 1)
+    start = model.clone()
+
+    assert rule_relations(model) is True
+    step = next(s for s in model.log if s.rule == "relations")
+    move = Move.of("relations", [step])
+    assert move is not None
+    assert replay(start, [move]).is_false(options[1])
+
+
 def test_count_move_replays_its_propagation():
     model = Model()
     literal = model.literal("occupied", True)
@@ -525,12 +539,12 @@ seer: any
 RoleEligibility:
 captain: A
 Rules:
-has_role A seer
-not_role B seer
-some_role C
-at_most_one_role C
-roleless D
-role_subset captain seer
+has A role:seer
+not has B role:seer
+count roles of C >= 1
+count roles of C <= 1
+count roles of D = 0
+subset role:captain role:seer
 """
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
@@ -602,9 +616,9 @@ B
 Roles:
 scout: 1
 Rules:
-has_role A scout
+has A role:scout
 Clues:
-role_below B scout 1
+dir B role:scout down = 1
 """
     below_solutions = bruteforce.solutions(below_text, "murdoku", limit=10)
     assert below_solutions
@@ -626,7 +640,7 @@ B
 Roles:
 murderer: 1
 Clues:
-sole_role_companion B murderer
+with B role:murderer in same area exactly 1
 """
     companion_solutions = bruteforce.solutions(companion_text, "murdoku", limit=10)
 
@@ -692,7 +706,7 @@ B
 Roles:
 bandit: 1
 Rules:
-role_occupant bandit not_alone
+for each area in all occupied by role:bandit, count people in that area >= 2
 """
     allowed_solutions = bruteforce.solutions(permitted, "murdoku", limit=10)
     assert allowed_solutions
@@ -701,7 +715,9 @@ role_occupant bandit not_alone
     Solver(model).solve()
     _assert_logged_steps_preserve_solutions(model, allowed_solutions)
 
-    impossible = permitted.replace("not_alone", "alone")
+    impossible = permitted.replace(
+        "count people in that area >= 2", "count people in that area = 1"
+    )
     assert bruteforce.solutions(impossible, "murdoku", limit=2) == []
 
 
@@ -729,7 +745,7 @@ seats: r1c1 r2c2
 Clues:
 count people with role:guide = 1
 count people with attribute:glasses = 1
-count empty areas all = 1
+count empty areas = 1
 count empty areas in tag:inside <= 1
 count empty cells in mark:seats = 1
 """
@@ -892,8 +908,8 @@ Ada
 Ben
 Cal
 Clues:
-above Ada Ben
-left_of Ben Cal
+dir Ada Ben up
+dir Ben Cal left
 """
     board, _ = load_board(text)
     expected = set()
@@ -969,7 +985,7 @@ Ada
 Ben
 Clues:
 count people in rows:1-2 = 2
-count empty areas all = 0
+count empty areas = 0
 """
     sparse = """Size: 3
 Regions:
@@ -984,7 +1000,7 @@ People:
 Ada
 Ben
 Clues:
-count empty areas all = 1
+count empty areas = 1
 """
     for text in (full, sparse):
         solutions = bruteforce.solutions(text, "murdoku", limit=20)
@@ -1026,10 +1042,10 @@ scout: 1
 Marks:
 seat: r1c1
 Rules:
-has_role A captain
-has_role B scout
-role_on A captain seat
-role_next_to B scout blocking
+has A role:captain
+has B role:scout
+if has A role:captain then on A mark:seat
+if has B role:scout then beside B object_kind:blocking
 """
     solutions = bruteforce.solutions(text, "murdoku", limit=10)
     board, clues = load_board(text)
@@ -1068,7 +1084,7 @@ outside: room garden
 Roles:
 scout: any
 Rules:
-min_role_in_tagged scout outside 1
+for each area in tag:outside, count people in that area with role:scout >= 1
 """
     solutions = bruteforce.solutions(minimum_text, "murdoku", limit=10)
     assert solutions
@@ -1118,10 +1134,10 @@ inside: room
 Roles:
 guide: any
 Rules:
-has_role Ada guide
-has_role Ben guide
-role_in_tagged Ada guide inside
-role_not_in_tagged Ben guide inside
+has Ada role:guide
+has Ben role:guide
+if has Ada role:guide then in Ada tag:inside
+if has Ben role:guide then not in Ben tag:inside
 """
     solutions = bruteforce.solutions(text, "murdoku", limit=50)
     assert solutions
@@ -1410,11 +1426,11 @@ B
 
     assert board.blocked == {murdoku.Square(0, 0)}
     assert board.squares_of(["chair"]) == {murdoku.Square(2, 0), murdoku.Square(2, 2)}
-    model = murdoku.compile_puzzle(board, [("on", ["A", "rug"])])
+    model = murdoku.compile_puzzle(board, [("on", ["A", "object:rug"])])
     assert {model.value_of(lit) for lit in model.options("A")} == rug_squares
 
-    with pytest.raises(ValueError, match="standable"):
-        murdoku.compile_puzzle(board, [("on", ["A", "wall"])])
+    blocked_target = murdoku.compile_puzzle(board, [("on", ["A", "object:wall"])])
+    assert blocked_target.options("A") == []
 
 
 def test_object_kind_is_required_and_each_footprint_is_connected():
@@ -1516,8 +1532,8 @@ People:
 A
 B
 Clues:
-in_tagged A islands
-same_region A B
+in A tag:islands
+dir A B areas = 0
 """
     board, _ = load_board(text)
     solutions = bruteforce.solutions(text, limit=3)
@@ -1531,7 +1547,7 @@ same_region A B
     )
 
 
-def test_next_to_does_not_cross_an_overlay_area_boundary_with_shared_tag():
+def test_beside_does_not_cross_an_overlay_area_boundary_with_shared_tag():
     text = """Size: 3
 Regions:
 a: water
@@ -1548,7 +1564,7 @@ People:
 A
 B
 Clues:
-next_to A post
+beside A object:post
 """
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
@@ -1573,8 +1589,8 @@ People:
 A
 B
 Rules:
-only_in_tagged A water
-not_in_tagged B water
+in A tag:water
+not in B tag:water
 """
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
@@ -1625,8 +1641,8 @@ def test_area_tags_and_board_rules_restrict_people():
             "AreaTags:",
             "noble_areas: noble",
             "Rules:",
-            "only_in_tagged Anna noble_areas",
-            "not_in_tagged Betsy noble_areas",
+            "in Anna tag:noble_areas",
+            "not in Betsy tag:noble_areas",
             "",
         ]
     )
@@ -1871,7 +1887,7 @@ def test_standable_objects_can_be_stood_on_and_blocking_objects_cannot():
         ],
     )
     assert board.free == [sq(0, 1), sq(1, 0), sq(1, 1)]
-    model = murdoku.compile_puzzle(board, [("on", ["A", "bank"])])
+    model = murdoku.compile_puzzle(board, [("on", ["A", "object:bank"])])
     assert sorted(model.value_of(lit) for lit in model.options("A")) == [sq(1, 0), sq(1, 1)]
 
 
@@ -1895,11 +1911,9 @@ window: window r3c3
 PointObjects:
 critter: r2.5c2.5
 Clues:
-next_to A gate
-at A gate
-at B window
-next_to B window
-next_to C critter
+on A edge_item:gate
+on B edge_item:window
+on C point_object:critter
 """
     board, clues = load_board(text)
     square = murdoku.Square
@@ -1920,24 +1934,18 @@ next_to C critter
     }
     assert len(board.free) == 9
     conditions = murdoku.conditions(board, clues)
-    at_gate = next(condition for condition in conditions if condition.label == "at A gate")
-    at_window = next(condition for condition in conditions if condition.label == "at B window")
-    next_to_window = next(
-        condition for condition in conditions if condition.label == "next_to B window"
+    on_window = next(
+        condition for condition in conditions if condition.label == "on B edge_item:window"
     )
-    next_to_gate = next(
-        condition for condition in conditions if condition.label == "next_to A gate"
+    on_gate = next(
+        condition for condition in conditions if condition.label == "on A edge_item:gate"
     )
-    next_to_corner = next(
-        condition for condition in conditions if condition.label == "next_to C critter"
+    on_corner = next(
+        condition for condition in conditions if condition.label == "on C point_object:critter"
     )
-    assert {sq for sq in board.free if at_window.test(sq)} == {square(2, 2)}
-    assert {sq for sq in board.free if at_gate.test(sq)} == board.edge_item_cells(["gate"])
-    assert {sq for sq in board.free if next_to_window.test(sq)} == {square(2, 2)}
-    assert {sq for sq in board.free if next_to_gate.test(sq)} == board.edge_item_cells(["gate"])
-    assert {sq for sq in board.free if next_to_corner.test(sq)} == board.point_object_cells(
-        ["critter"]
-    )
+    assert {sq for sq in board.free if on_window.test(sq)} == {square(2, 2)}
+    assert {sq for sq in board.free if on_gate.test(sq)} == board.edge_item_cells(["gate"])
+    assert {sq for sq in board.free if on_corner.test(sq)} == board.point_object_cells(["critter"])
     rendered = _plain(murdoku.render(board, murdoku.compile_puzzle(board, clues), "t"))
     assert "edge items: gate door r1c1 r1c2, gate door r2c1 r2c2, window window r3c3" in rendered
     assert "point objects: critter r2.5c2.5 r2c2 r2c3 r3c2 r3c3" in rendered
@@ -1957,8 +1965,8 @@ Marks:
 quiet: r1c1 r1c2
 social: r1c2
 Clues:
-on_mark A quiet
-not_on_mark B social
+on A mark:quiet
+not on B mark:social
 """
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
@@ -1994,12 +2002,12 @@ scout: 1
 RoleEligibility:
 scout: attribute:glasses
 Rules:
-role_subset attribute:glasses scout
-role_subset scout attribute:glasses
+subset attribute:glasses role:scout
+subset role:scout attribute:glasses
 Clues:
-has_attribute Ada glasses
-not_attribute Ben glasses
-unique_attribute glasses Ada Ben Cal
+has Ada attribute:glasses
+not has Ben attribute:glasses
+count people from people:Ada,Ben,Cal with attribute:glasses = 1
 """
     board, clues = load_board(text)
     assert board.attributes["glasses"] == frozenset({"Ada"})
@@ -2026,7 +2034,7 @@ unique_attribute glasses Ada Ben Cal
 @pytest.mark.parametrize(
     "selector",
     [
-        "person:Ben",
+        "Ben",
         "attribute:bearded",
         "role:bandit",
         "area:east",
@@ -2038,7 +2046,7 @@ unique_attribute glasses Ada Ben Cal
 )
 @pytest.mark.parametrize("role_is_known", [False, True])
 def test_alone_with_quantified_targets_match_brute_force(selector, role_is_known):
-    known_role = "has_role Ben bandit\n" if role_is_known else ""
+    known_role = "has Ben role:bandit\n" if role_is_known else ""
     text = f"""Size: 3
 Regions:
 a: west
@@ -2062,7 +2070,7 @@ Marks:
 seat: r1c2
 Rules:
 {known_role}Clues:
-alone_with Ada {selector}
+with Ada {selector} in same area exactly 1
 """
     solutions = bruteforce.solutions(text, "murdoku", limit=20)
     assert solutions
@@ -2102,21 +2110,21 @@ Marks:
 quiet: r2c3
 social: r3c3
 Clues:
-in_row Ada 2
-in_area_corner Ada kitchen
-not_in_row Ben 1
-not_in_column Ben 1
-in_column Cal 3
-not_on_mark Cal quiet social
-adjacent_regions Ada Ben
+in Ada rows:2
+in Ada corner:area:kitchen
+not in Ben rows:1
+not in Ben columns:1
+in Cal columns:3
+not on Cal mark:quiet,social
+dir Ada Ben areas = 1
 """
     board, clues = load_board(text)
     checks = murdoku.conditions(board, clues)
+    (adjacent,) = murdoku.directional_conditions(board, clues)
     square = murdoku.Square
-    in_row = next(check for check in checks if check.kind == "in_row")
-    in_area_corner = next(check for check in checks if check.kind == "in_area_corner")
-    adjacent = next(check for check in checks if check.kind == "adjacent_regions")
-    not_on_marks = next(check for check in checks if check.kind == "not_on_mark")
+    in_row = next(check for check in checks if check.label == "in Ada rows:2")
+    in_area_corner = next(check for check in checks if check.label == "in Ada corner:area:kitchen")
+    not_on_marks = next(check for check in checks if check.kind == "not_on")
     assert in_row.test(square(1, 0)) and not in_row.test(square(0, 0))
     assert in_area_corner.test(square(1, 0)) and not in_area_corner.test(square(1, 1))
     assert adjacent.test(square(1, 0), square(2, 1))
@@ -2136,8 +2144,8 @@ adjacent_regions Ada Ben
     _assert_logged_steps_preserve_solutions(model, solutions)
 
 
-def test_next_to_accepts_a_mark_target_and_stays_distinct_from_on_the_mark():
-    """`next_to X mark:<name>` is beside any cell of the mark, in any area.
+def test_touches_accepts_a_mark_target_and_stays_distinct_from_on_the_mark():
+    """`touches X mark:<name>` is beside any cell of the mark, in any area.
 
     A mark is a property of its squares rather than furniture in one area, so it
     counts across an area border; standing on a marked square is not "next to" it.
@@ -2157,27 +2165,27 @@ Cal
 Marks:
 special: r2c2
 Clues:
-next_to Ada mark:special
-not_next_to Ben mark:special
-on_mark Cal mark:special
+touches Ada mark:special
+not touches Ben mark:special
+on Cal mark:special
 """
     board, clues = load_board(text)
     checks = {check.kind: check for check in murdoku.conditions(board, clues)}
     square = murdoku.Square
-    beside = checks["next_to"]
-    assert beside.test(square(0, 1))  # r1c2
-    assert beside.test(square(1, 0))  # r2c1
-    assert beside.test(square(1, 2))  # r2c3
-    assert beside.test(square(2, 1))  # r3c2 lies in the other area
-    assert not beside.test(square(1, 1))  # on the mark, not beside it
-    assert not beside.test(square(0, 0))  # diagonal
-    assert checks["not_next_to"].test(square(1, 1))
-    assert not checks["not_next_to"].test(square(0, 1))
-    on_mark = checks["on_mark"]
+    touches = checks["touches"]
+    assert touches.test(square(0, 1))  # r1c2
+    assert touches.test(square(1, 0))  # r2c1
+    assert touches.test(square(1, 2))  # r2c3
+    assert touches.test(square(2, 1))  # r3c2 lies in the other area
+    assert not touches.test(square(1, 1))  # on the mark, not touching it
+    assert not touches.test(square(0, 0))  # diagonal
+    assert checks["not_touches"].test(square(1, 1))
+    assert not checks["not_touches"].test(square(0, 1))
+    on_mark = checks["on"]
     assert on_mark.test(square(1, 1)) and not on_mark.test(square(0, 1))
 
 
-def test_next_to_a_mark_agrees_with_the_independent_brute_force():
+def test_touches_a_mark_agrees_with_the_independent_brute_force():
     text = """Size: 3
 Regions:
 a: room
@@ -2193,16 +2201,16 @@ Cal
 Marks:
 special: r2c2
 Clues:
-next_to Ada mark:special
-in_row Ben 1
-in_column Cal 1
+touches Ada mark:special
+in Ben rows:1
+in Cal columns:1
 """
     board, clues = load_board(text)
-    beside = next(check for check in murdoku.conditions(board, clues) if check.kind == "next_to")
+    touches = next(check for check in murdoku.conditions(board, clues) if check.kind == "touches")
     solutions = bruteforce.solutions(text, "murdoku", limit=10)
     assert solutions
     for solution in solutions:
-        assert beside.test(solution["Ada"])
+        assert touches.test(solution["Ada"])
     model = murdoku.compile_puzzle(board, clues)
     Solver(model).solve()
     _assert_logged_steps_preserve_solutions(model, solutions)
@@ -2227,8 +2235,8 @@ Cal
 Dot
 Eve
 Clues:
-busiest_area area:Bravo
-quietest_area area:Alpha
+most_populated area:Bravo
+least_populated area:Alpha
 """
     board, clues = load_board(text)
     checks = murdoku.area_population_conditions(board, clues)
@@ -2245,7 +2253,7 @@ quietest_area area:Alpha
         counts = checks[0].counts(board, placement)
         assert (counts[bravo], counts[charlie], counts[alpha]) == (3, 2, 0)
     # Bravo holding three people cannot also be the quietest area.
-    contradiction = text.replace("busiest_area area:Bravo", "quietest_area area:Bravo")
+    contradiction = text.replace("most_populated area:Bravo", "least_populated area:Bravo")
     assert not bruteforce.solutions(contradiction, "murdoku", limit=1)
     model = murdoku.compile_puzzle(board, clues)
     Solver(model).solve()
@@ -2272,10 +2280,10 @@ def test_area_population_capacity_solves_samen_onderweg_without_what_if():
 @pytest.mark.parametrize(
     "clue",
     [
-        "busiest_area area:Alpha",
-        "busiest_area area:Alpha area:Bravo",
-        "quietest_area area:Alpha",
-        "quietest_area area:Alpha area:Bravo",
+        "most_populated area:Alpha",
+        "most_populated area:Alpha area:Bravo",
+        "least_populated area:Alpha",
+        "least_populated area:Alpha area:Bravo",
     ],
 )
 def test_area_population_compilation_matches_every_brute_force_placement(clue):
@@ -2335,8 +2343,8 @@ Cal
 Dot
 Eve
 Clues:
-busiest_area area:Bravo
-quietest_area area:Alpha
+most_populated area:Bravo
+least_populated area:Alpha
 """
     square = murdoku.Square
     bravo_tie = {
@@ -2355,13 +2363,13 @@ quietest_area area:Alpha
     }
     for old, new, placement in (
         (
-            "busiest_area area:Bravo",
-            "busiest_area area:Bravo area:Charlie",
+            "most_populated area:Bravo",
+            "most_populated area:Bravo area:Charlie",
             bravo_tie,
         ),
         (
-            "quietest_area area:Alpha",
-            "quietest_area area:Alpha area:Charlie",
+            "least_populated area:Alpha",
+            "least_populated area:Alpha area:Charlie",
             quiet_tie,
         ),
     ):
@@ -2370,14 +2378,17 @@ quietest_area area:Alpha
         (check,) = [
             item
             for item in murdoku.area_population_conditions(board, clues)
-            if old.split()[0] == item.kind
+            if {"most_populated": "busiest_area", "least_populated": "quietest_area"}[
+                old.split()[0]
+            ]
+            == item.kind
         ]
         assert check.tokens == tuple(new.split()[1:])
         assert check.holds(board, placement)
 
 
 @pytest.mark.parametrize("section", ["Rules", "Clues"])
-@pytest.mark.parametrize("kind", ["busiest_area", "quietest_area"])
+@pytest.mark.parametrize("kind", ["most_populated", "least_populated"])
 @pytest.mark.parametrize("targets", ["area:Blocked", "area:Alpha area:Blocked"])
 def test_area_population_rejects_named_areas_without_free_squares(section, kind, targets):
     text = f"""Size: 2
@@ -2403,7 +2414,7 @@ Ada
         bruteforce.murdoku.accepts(text, {"Ada": murdoku.Square(0, 0)})
 
 
-@pytest.mark.parametrize("kind", ["busiest_area", "quietest_area"])
+@pytest.mark.parametrize("kind", ["most_populated", "least_populated"])
 def test_area_population_ignores_unnamed_areas_without_free_squares(kind):
     text = f"""Size: 2
 Regions:
@@ -2442,14 +2453,14 @@ People:
 Ada
 Ben
 Clues:
-quietest_area area:Alpha
+least_populated area:Alpha
 """
-    tie = one.replace("quietest_area area:Alpha", "quietest_area area:Alpha area:Bravo")
+    tie = one.replace("least_populated area:Alpha", "least_populated area:Alpha area:Bravo")
     assert clue_texts(one) == ["Het gebied met de minste mensen is Alpha."]
     assert clue_texts(tie) == ["De gebieden met de minste mensen zijn Alpha en Bravo."]
 
 
-def test_next_to_a_mark_wording_names_the_marked_set():
+def test_touching_a_mark_wording_names_the_marked_set():
     from csp.story import clue_texts
 
     text = """Size: 2
@@ -2467,9 +2478,9 @@ vak: het vak
 Marks:
 vak: r1c1
 Clues:
-next_to Ada mark:vak
+touches Ada mark:vak
 """
-    assert clue_texts(text) == ["Ada zit naast het vak."]
+    assert clue_texts(text) == ["Ada deelt een zijde met het vak."]
 
 
 def test_mark_names_cells_and_conditions_are_validated():
@@ -2509,8 +2520,8 @@ Marks:
 quiet: r1c1 ; alone
 social: r1c2 ; not_alone
 Clues:
-on_mark A social
-not_on_mark B quiet
+on A mark:social
+not on B mark:quiet
 """
     (expected,) = bruteforce.solutions(text, "murdoku", limit=10)
     board, clues = load_board(text)
@@ -2545,8 +2556,8 @@ Marks:
 quiet: r1c1 ; alone
 plain: r2c2
 Clues:
-on_mark A quiet
-outside B room
+on A mark:quiet
+not in B area:room
 """
     (expected,) = bruteforce.solutions(text, "murdoku", limit=5)
     board, clues = load_board(text)
@@ -2656,7 +2667,7 @@ A
 PointObjects:
 critter: {anchor}
 Clues:
-next_to A critter
+on A point_object:critter
 """
     board, clues = load_board(text)
     touched = {murdoku.Square(row, col) for row, col in cells}
@@ -2664,11 +2675,11 @@ next_to A critter
     assert board.point_object_cells(["critter"]) == touched
     (condition,) = murdoku.conditions(board, clues)
     assert {sq for sq in board.free if condition.test(sq)} == touched
-    not_next = murdoku.conditions(board, [("not_next_to", ["A", "critter"])])[0]
-    assert {sq for sq in board.free if not not_next.test(sq)} == touched
+    not_on = murdoku.conditions(board, [("not_on", ["A", "point_object:critter"])])[0]
+    assert {sq for sq in board.free if not not_on.test(sq)} == touched
 
 
-def test_away_from_keeps_off_sides_and_corners_across_areas():
+def test_king_distance_excludes_sides_and_corners_across_areas():
     text = """Size: 4
 Language: nl
 Regions:
@@ -2684,19 +2695,21 @@ pot: blocking r2c2
 People:
 A
 Clues:
-away_from A pot
+dir A object:pot king >= 2
 """
     board, clues = load_board(text)
-    (condition,) = murdoku.conditions(board, clues)
-    near = {(r, c) for r in range(3) for c in range(3)}
+    (condition,) = murdoku.directional_conditions(board, clues)
+    pot = murdoku.Square(1, 1)
+    far = {(sq.row, sq.col) for sq in board.free if max(abs(sq.row - 1), abs(sq.col - 1)) >= 2}
 
     assert board.region_of(murdoku.Square(0, 2)) != board.region_of(murdoku.Square(1, 1))
-    assert {(sq.row, sq.col) for sq in board.free if not condition.test(sq)} == near - {(1, 1)}
-    assert story.clue_texts(text) == ["A zit niet op of naast de pot, ook niet schuin."]
-    assert any("geen zijde of hoek" in note for note in story.murdoku_rules(text))
+    assert {(sq.row, sq.col) for sq in board.free if condition.test(sq, pot)} == far
+    assert story.clue_texts(text) == [
+        "A en iemand op de pot zijn minstens twee koningszetten van elkaar verwijderd."
+    ]
 
 
-def test_point_object_next_to_crosses_area_boundaries():
+def test_on_point_object_crosses_area_boundaries():
     text = """Size: 3
 Regions:
 a: west
@@ -2752,7 +2765,7 @@ lamp: blocking r2c2
 People:
 A
 Clues:
-next_to A lamp
+beside A object:lamp
 """
     board, clues = load_board(text)
     condition = murdoku.conditions(board, clues)[0]
@@ -2772,7 +2785,7 @@ def test_not_on_excludes_a_standable_object_set():
         ["A", "B", "C"],
         [murdoku.BoardObject("chair", "standable", (sq(0, 0), sq(0, 1)))],
     )
-    model = murdoku.compile_puzzle(board, [("not_on", ["A", "chair"])])
+    model = murdoku.compile_puzzle(board, [("not_on", ["A", "object:chair"])])
     chair = board.squares_of(["chair"])
     assert all(model.value_of(lit) not in chair for lit in model.options("A"))
 
@@ -2846,12 +2859,12 @@ def test_unknown_region_name_is_rejected():
         murdoku.compile_puzzle(board, [("in_region", ["A", "nowhere"])])
 
 
-def test_not_next_to_rules_out_the_squares_beside_a_thing():
+def test_not_beside_rules_out_the_squares_beside_a_thing():
     sq = murdoku.Square
     board = _one_region_board(
         3, ["A", "B", "C"], [murdoku.BoardObject("vaas", "blocking", (sq(1, 1),))]
     )
-    model = murdoku.compile_puzzle(board, [("not_next_to", ["A", "vaas"])])
+    model = murdoku.compile_puzzle(board, [("not_beside", ["A", "object:vaas"])])
     left = sorted(model.value_of(lit) for lit in model.options("A"))
     assert left == [sq(0, 0), sq(0, 2), sq(2, 0), sq(2, 2)]
 
@@ -2899,7 +2912,7 @@ def test_counting_clue_rejects_what_it_cannot_do(args, problem):
 
 @pytest.mark.parametrize("role_is_known", [False, True])
 def test_quantified_position_relation_can_target_a_role(role_is_known):
-    known_role = "has_role Ben guide\n" if role_is_known else ""
+    known_role = "has Ben role:guide\n" if role_is_known else ""
     text = f"""Size: 3
 Regions:
 a: room
@@ -2914,7 +2927,7 @@ Roles:
 guide: any
 Rules:
 {known_role}Clues:
-above Ada role:guide
+dir Ada role:guide up
 """
     solutions = bruteforce.solutions(text, "murdoku", limit=10)
     assert solutions
@@ -3313,8 +3326,8 @@ def test_report_describes_prrrdoku1_as_the_engine_sees_it():
     assert "7 variables, 301 literals, 64 constraints, 4 relations." in text
     assert re.search(r"each square holds at most one person\s+AT_MOST_ONE\s+43\s+7", text)
     assert "Every literal sits in exactly 4 constraints." in text
-    assert re.search(r"next_to Tim klimwand\s+40 ruled out", text)
-    assert re.search(r"Otto above Tjitske 1\s+12 of 86", text)
+    assert re.search(r"beside Tim object:klimwand\s+40 ruled out", text)
+    assert re.search(r"dir Otto Tjitske up = 1\s+12 of 86", text)
     assert all(re.search(rf"\d\. {rule.name}\s", text) for rule in DEFAULT_RULES)
     assert re.search(
         r"cover2\s+Find covers whose inner constraints guarantee `2` additional\s+truths", text
@@ -3355,7 +3368,7 @@ B
 Roles:
 bandit: any
 Rules:
-has_role A bandit
+has A role:bandit
 """
     board, clues = load_board(text)
     text = report.describe(murdoku.compile_puzzle(board, clues))
@@ -3430,7 +3443,7 @@ def test_show_model_reports_empty_domain(tmp_path, capsys):
     puzzle = tmp_path / "repro.txt"
     puzzle.write_text(
         "Size: 2\nRegions:\na: room\nGrid:\na a\na a\nPeople:\nAda\nBen\n"
-        "Clues:\nin_row Ada 1\nnot_in_row Ada 1\n"
+        "Clues:\nin Ada rows:1\nnot in Ada rows:1\n"
     )
     assert cli.main([str(puzzle), "--show-model"]) == 0
     out = capsys.readouterr().out
@@ -3482,8 +3495,11 @@ def test_colour_words_in_region_names_match_their_background():
     assert checked >= 1
 
 
-@pytest.mark.parametrize("rule", ["alone_with V 2", "alone_with V attribute:food 2"])
-def test_alone_with_takes_an_optional_selector_and_companion_count(rule):
+@pytest.mark.parametrize(
+    "rule",
+    ["with V in same area exactly 2", "with V attribute:food in same area exactly 2"],
+)
+def test_with_takes_an_optional_selector_and_companion_count(rule):
     text = f"""Size: 3
 Regions:
 a: west
@@ -3520,7 +3536,7 @@ Rules:
 def test_alone_with_rejects_a_bad_count():
     base = "Size: 2\nRegions:\na: room\nGrid:\na a\na a\nPeople:\nA\nB\nRules:\n"
     with pytest.raises(ValueError, match="optional positive count"):
-        murdoku.quantified_conditions(*load_board(base + "alone_with A 0\n"))
+        murdoku.quantified_conditions(*load_board(base + "with A in same area exactly 0\n"))
 
 
 def test_a_window_may_name_the_wall_it_sits_against():
@@ -3538,7 +3554,7 @@ EdgeItems:
 raam: window r1c1 top
 deur: door r1c1 r1c2
 Clues:
-next_to A raam
+on A edge_item:raam
 """
     board, _ = load_board(text)
     sides = {item.name: item.side for item in board.edge_items}
@@ -3570,7 +3586,7 @@ kast: blocking r1c1
 
 
 def test_a_fully_blocked_area_does_not_break_area_occupancy_rules():
-    """`role_occupant` makes a count per area; an area with no free square must not crash it."""
+    """A role-based area count must not crash when another area has no free square."""
     base = """Size: 4
 Regions:
 a: west
@@ -3591,9 +3607,9 @@ B
 C
 D
 Rules:
-role_occupant dader not_alone
+for each area in all occupied by role:dader, count people in that area >= 2
 Clues:
-above A B
+dir A B up
 """
     merged = base.replace("c: rocks\n", "").replace("a c c b", "a a a b")
     assert len(bruteforce.solutions(base, limit=500)) == len(
@@ -3628,12 +3644,18 @@ Clues:
 @pytest.mark.parametrize(
     ("clue", "subject_holds"),
     [
-        ("above object:robe object:slippers 1", lambda person, square: square.row == 0),
-        ("above attribute:tall object:slippers 1", lambda person, square: person == "B"),
+        (
+            "dir people_on:object:robe people_on:object:slippers up = 1",
+            lambda person, square: square.row == 0,
+        ),
+        (
+            "dir attribute:tall people_on:object:slippers up = 1",
+            lambda person, square: person == "B",
+        ),
     ],
 )
 def test_selector_subject_clue_matches_an_independent_count(clue, subject_holds):
-    """`above X Y 1` with selectors on both sides: somebody X is one row above somebody Y."""
+    """Cell and attribute selectors can constrain both sides of a direction relation."""
     from itertools import permutations
 
     text = SELECTOR_SUBJECT.format(clue=clue)
@@ -3669,7 +3691,9 @@ def test_selector_subject_clue_matches_an_independent_count(clue, subject_holds)
 
 
 def test_cell_selectors_on_both_sides_compile_to_square_pairs():
-    board, clues = load_board(SELECTOR_SUBJECT.format(clue="above object:robe object:slippers 1"))
+    board, clues = load_board(
+        SELECTOR_SUBJECT.format(clue="dir people_on:object:robe people_on:object:slippers up = 1")
+    )
     model = murdoku.compile_puzzle(board, clues)
     witnesses = [c for c in model.constraints if "witness r" in c.name and c.kind is Kind.COUNT]
     # Only robe r1c1 / r1c3 above slippers r2c2 fits one row apart.
@@ -3677,13 +3701,16 @@ def test_cell_selectors_on_both_sides_compile_to_square_pairs():
     assert all(c.reified_by is not None and c.allowed_counts == {2} for c in witnesses)
 
 
-def test_selector_subject_rejects_a_role():
-    text = SELECTOR_SUBJECT.format(clue="above role:spy object:slippers 1").replace(
+def test_selector_subject_accepts_a_role():
+    text = SELECTOR_SUBJECT.format(clue="dir role:spy people_on:object:slippers up = 1").replace(
         "Clues:", "Roles:\nspy: 1\nClues:"
     )
     board, clues = load_board(text)
-    with pytest.raises(ValueError, match="role as its subject"):
-        murdoku.compile_puzzle(board, clues)
+    solutions = bruteforce.solutions(text, "murdoku", limit=1000)
+    assert solutions
+    model = murdoku.compile_puzzle(board, clues)
+    Solver(model).solve()
+    _assert_logged_steps_preserve_solutions(model, solutions)
 
 
 def test_incremental_relation_scan_matches_a_full_scan():
@@ -3729,8 +3756,8 @@ People:
 Ada
 Ben
 Clues:
-in_region Ada "Graanschuur A"
+in Ada area:"Graanschuur A"
 """
     board, clues = load_board(text)
     assert board.region_names["a"] == "Graanschuur A"
-    assert clues == [("in_region", ["Ada", "Graanschuur A"])]
+    assert clues == [("in", ["Ada", "area:Graanschuur A"])]

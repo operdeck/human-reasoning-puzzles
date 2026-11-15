@@ -53,13 +53,13 @@ Keiko
 Mio
 
 Clues:
-busiest_area area:Tokyo
-quietest_area area:Okinawa
-next_to Keiko lantaarn
-on Mio bank
-above Haru Jun
-left_of Haru Isamu
-not_next_to Haru torii
+most_populated area:Tokyo
+least_populated area:Okinawa
+beside Keiko object:lantaarn
+on Mio object:bank
+dir Haru Jun up
+dir Haru Isamu left
+not beside Haru object:torii
 
 Question:
 Waar staat iedereen?

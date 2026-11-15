@@ -56,17 +56,17 @@ Tonkatsu
 Jos
 
 Rules:
-alone_with Jos attribute:food
+with Jos attribute:food in same area exactly 1
 
 Clues:
-same_region Okonomiyaki Onigiri
-outside Tonkatsu kobe
-left_of Onigiri Tonkatsu
-at_least Okonomiyaki Tonkatsu 6
-at_least Onigiri Tonkatsu 8
-in_row Sushi 4
-above Mochi Tonkatsu
-left_of Mochi Okonomiyaki
+dir Okonomiyaki Onigiri areas = 0
+not in Tonkatsu area:kobe
+dir Onigiri Tonkatsu left
+dir Okonomiyaki Tonkatsu manhattan >= 6
+dir Onigiri Tonkatsu manhattan >= 8
+in Sushi rows:4
+dir Mochi Tonkatsu up
+dir Mochi Okonomiyaki left
 
 # Booklet text for --docx (optional).
 Title:
