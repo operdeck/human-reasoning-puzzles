@@ -2809,6 +2809,11 @@ class Story:
         return self.say("on", what=self._global_count_target(selector))
 
     def _global_count_target(self, selector: TargetSelector) -> str:
+        if selector.kind in ("union", "intersection"):
+            conjunction = "or" if selector.kind == "union" else "and"
+            return self.say.join(
+                [self._global_count_target(part) for part in selector.parts], conjunction
+            )
         if selector.kind == "mark":
             return self.say.words.get(selector.name) or self.say(
                 "global_count.mark", name=selector.name.replace("_", " ")

@@ -945,3 +945,41 @@ dir Ada Ben areas = 2
             )
             is expected
         )
+
+
+def _scope_board(clue: str) -> str:
+    """A 3x3 board with two marks and two people, for counting selectors."""
+    return f"""Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+Marks:
+left: r1c1
+right: r3c3
+People:
+Ada
+Ben
+Cal
+Clues:
+{clue}
+"""
+
+
+def test_count_on_several_marks_counts_their_union():
+    """`count people on mark:a and mark:b` counts both marks' cells, not their overlap."""
+    placements = {"Ada": Square(0, 0), "Ben": Square(2, 2), "Cal": Square(1, 1)}
+    text = _scope_board("count people on mark:left and mark:right = 2")
+    assert accepts(text, placements)
+    stricter = _scope_board("count people on mark:left and mark:right = 1")
+    assert not accepts(stricter, placements)
+
+
+def test_count_on_several_marks_reads_as_a_choice_in_the_story():
+    from csp.story import Story, Wording
+
+    text = _scope_board("count people on mark:left and mark:right = 2")
+    board, clues = load_board(text)
+    assert " or " in Story(board, clues, Wording.read(text)).clue_texts()[-1]

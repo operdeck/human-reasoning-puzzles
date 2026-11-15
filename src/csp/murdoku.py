@@ -1576,7 +1576,14 @@ def _count_scope(
         expecting_selector = False
     if expecting_selector or not parts:
         raise ValueError(f"{description} requires a typed selector")
-    selector = parts[0] if len(parts) == 1 else TargetSelector("intersection", "", tuple(parts))
+    if len(parts) == 1:
+        selector = parts[0]
+    else:
+        # A list of same-kind selectors is a union ("the Ra *or* Anubis cells");
+        # mixing kinds with `and` narrows ("in tag:villages and adjacent_to:river").
+        kinds = {part.kind for part in parts}
+        combined: str = "union" if len(kinds) == 1 else "intersection"
+        selector = TargetSelector(cast("Any", combined), "", tuple(parts))
     return selector, remainder
 
 
