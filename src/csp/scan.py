@@ -143,9 +143,7 @@ def _fit_grid(candidates: list[tuple[int, float]], size: int, axis: str) -> tupl
             for step in range(size + 1):
                 expected = start + step * pitch
                 near = [
-                    position
-                    for position in positions
-                    if abs(position - expected) <= pitch * 0.30
+                    position for position in positions if abs(position - expected) <= pitch * 0.30
                 ]
                 if not near:
                     chosen = []
@@ -164,15 +162,14 @@ def _fit_grid(candidates: list[tuple[int, float]], size: int, axis: str) -> tupl
             f"no set of {size + 1} {axis} lines fits one grid; crop the board out of the "
             "page, scan it alone, and try again"
         )
-    spread, _, chosen = best
-    gaps = [b - a for a, b in pairwise(chosen)]
+    spread, _, best_lines = best
+    gaps = [b - a for a, b in pairwise(best_lines)]
     if min(gaps) <= 0 or spread > 0.18:
         raise ScanError(
             f"the {axis} lines are not evenly spaced ({gaps}); crop the board out of the "
             "page, scan it alone, and try again"
         )
-    return chosen
-
+    return best_lines
 
 
 def _skew_degrees(vertical: NDArray[np.uint8], horizontal: NDArray[np.uint8]) -> float:
