@@ -609,6 +609,18 @@ def _legacy_hint(source: str) -> str | None:
     return next((hint for pattern, hint in patterns if re.search(pattern, source)), None)
 
 
+def _operand_connective_hint(source: str) -> str | None:
+    identifier = r"(?:[^\W\d]|_)[\w:-]*"
+    subject_union = (
+        rf"^\s*(?:(?:some|every|no)\s+)?{identifier}\s+(?:and|or)\s+"
+        rf"{identifier}\s+(?:in|on|beside|touches|is|dir:[\w:+-]+)\b"
+    )
+    dangling_operand = rf"\b(?:and|or)\s+{identifier}\s*$"
+    if re.search(subject_union, source) or re.search(dangling_operand, source):
+        return "and/or connect formulas; use a comma for set union and add a determiner if needed"
+    return None
+
+
 def _parse(parser: Lark, source: str, line: int) -> object:
     try:
         tree = parser.parse(source)
@@ -627,7 +639,10 @@ def _parse(parser: Lark, source: str, line: int) -> object:
         else:
             found = "input"
         hint = _legacy_hint(source) if parser is _FORMULA_PARSER else None
+        connective = _operand_connective_hint(source) if parser is _FORMULA_PARSER else None
         suffix = f"; this legacy form is removed; use {hint}" if hint else ""
+        if connective:
+            suffix += f"; {connective}"
         raise ValueError(f"line {error_line}, column {column}: unexpected {found}{suffix}") from exc
     return _FormulaTransformer(line - 1).transform(_resolve_ambiguity(tree, line))
 

@@ -319,6 +319,22 @@ def test_removed_legacy_forms_suggest_replacements(source, replacement):
     assert replacement in str(error.value)
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Ada and Ben in area:hall",
+        "some Ada or Ben in area:hall",
+        "Ada in area:hall and garden",
+        "Ada in area:hall or garden",
+    ],
+)
+def test_boolean_connectives_between_operands_suggest_set_union(source):
+    with pytest.raises(ValueError) as error:
+        parse_formula(source, line=7)
+    assert "line 7, column " in str(error.value)
+    assert "and/or connect formulas; use a comma for set union" in str(error.value)
+
+
 def test_statement_keeps_optional_wording_separate_from_formula():
     statement = parse_statement("Ada in area:hall | Ada is in the hall.")
     assert isinstance(statement.formula, Atom)
