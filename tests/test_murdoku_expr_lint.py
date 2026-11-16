@@ -3,7 +3,7 @@ from itertools import permutations
 
 import pytest
 
-from csp.murdoku import Board, RoleSpec, Square
+from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square
 from csp.murdoku_expr_lint import role_negation_warnings, size_budget_warnings, vacuous_errors
 from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import compile_statements_with_origins
@@ -130,6 +130,50 @@ def test_person_adjacency_is_impossible_for_every_valid_placement(board, operato
         placed = {person: Square(row, columns[row]) for row, person in enumerate(board.people)}
         roles = {(person, "guard"): False for person in board.people}
         assert not holds(statement, board, placed, roles)
+
+
+def test_impossible_occupied_scope_direction_is_an_error(board):
+    board = replace(
+        board,
+        marks=[
+            CellMark("left", (Square(0, 0),)),
+            CellMark("right", (Square(0, 1),)),
+            CellMark("lower", (Square(1, 1),)),
+        ],
+    )
+    same_row = parse_statement(
+        "some (people on mark:left) dir:right (people on mark:right)", line=6
+    )
+    assert "line 6, column " in vacuous_errors(board, [same_row])[0]
+    for columns in permutations(range(board.size), len(board.people)):
+        placed = {person: Square(row, columns[row]) for row, person in enumerate(board.people)}
+        roles = {(person, "guard"): False for person in board.people}
+        assert not holds(same_row, board, placed, roles)
+
+    possible = parse_statement("some (people on mark:left) dir:up (people on mark:lower)")
+    assert not vacuous_errors(board, [possible])
+    blocked = replace(board, objects=[BoardObject("cabinet", "blocking", (Square(1, 1),))])
+    assert vacuous_errors(blocked, [possible])
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "no (people on mark:left) dir:right (people on mark:right)",
+        "not some (people on mark:left) dir:right (people on mark:right)",
+        "some (people on mark:left) dir:right (people on mark:right) or Ada in area:hall",
+        "if some (people on mark:left) dir:right (people on mark:right) then Ada in area:hall",
+    ],
+)
+def test_impossible_occupied_scope_not_required_is_not_an_error(board, source):
+    board = replace(
+        board,
+        marks=[
+            CellMark("left", (Square(0, 0),)),
+            CellMark("right", (Square(0, 1),)),
+        ],
+    )
+    assert not vacuous_errors(board, [parse_statement(source)])
 
 
 @pytest.mark.parametrize(

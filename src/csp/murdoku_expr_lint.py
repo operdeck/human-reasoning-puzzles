@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from . import murdoku_lang as lang
 from .murdoku import Board
+from .murdoku_lower import occupied_cell_pair_scopes
 
 if TYPE_CHECKING:
     from .murdoku_lower import ExpressionCompilation
@@ -85,10 +86,25 @@ def _required_atoms(formula: lang.Formula) -> Iterator[lang.Atom]:
 
 
 def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[str]:
-    """Report required named-person relations forbidden by the board rules."""
+    """Report required relations forbidden by the board rules."""
     errors = []
     for statement in statements:
         for atom in _required_atoms(statement.formula):
+            scopes = occupied_cell_pair_scopes(board, atom)
+            if scopes is not None:
+                first, second, direction = scopes
+                free = set(board.free)
+                if not any(
+                    left.row != right.row and left.col != right.col and direction(left, right)
+                    for left in first & free
+                    for right in second & free
+                ):
+                    token = atom.operator
+                    errors.append(
+                        f"line {token.line}, column {token.column}: no two people can satisfy "
+                        f"{token.text} in these occupancy scopes"
+                    )
+                continue
             if (
                 atom.operator.text.startswith("dir:")
                 and (atom.determiner is None or atom.determiner.text != "no")

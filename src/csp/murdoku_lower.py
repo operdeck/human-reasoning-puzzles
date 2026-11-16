@@ -538,11 +538,10 @@ def try_lower_area_companions(
     return False
 
 
-def try_lower_occupied_cell_pair(
-    model: Model, board: Board, statement: lang.Statement, name: str
-) -> bool:
-    """Lower an existential direction between static occupancy scopes."""
-    atom = statement.formula
+def occupied_cell_pair_scopes(
+    board: Board, atom: lang.Formula
+) -> tuple[set[Square], set[Square], Callable[[Square, Square], bool]] | None:
+    """Recognize existential direction between static occupancy scopes."""
     if not (
         isinstance(atom, lang.Atom)
         and atom.determiner is not None
@@ -551,7 +550,7 @@ def try_lower_occupied_cell_pair(
         and isinstance(atom.subject, lang.Filter)
         and isinstance(atom.target, lang.Filter)
     ):
-        return False
+        return None
     filters = (atom.subject, atom.target)
     if any(
         not isinstance(item.source, lang.Name)
@@ -560,11 +559,23 @@ def try_lower_occupied_cell_pair(
         or item.measure is not None
         for item in filters
     ):
-        return False
+        return None
     first, second = (_static_cells(board, item.target) for item in filters)
     direction = _direction(board, atom.operator.text, atom.measure)
     if first is None or second is None or direction is None:
+        return None
+    return first, second, direction
+
+
+def try_lower_occupied_cell_pair(
+    model: Model, board: Board, statement: lang.Statement, name: str
+) -> bool:
+    """Lower an existential direction between static occupancy scopes."""
+    atom = statement.formula
+    scopes = occupied_cell_pair_scopes(board, atom)
+    if scopes is None:
         return False
+    first, second, direction = scopes
     free = set(board.free)
     if not any(
         left != right and direction(left, right) for left in first & free for right in second & free
