@@ -1953,6 +1953,7 @@ def _number_variable(
             ]
             values = set(range(len(selections) + 1))
         else:
+            sort = _operand_sort(board, number.operand, bindings)
             operand = _bind_operand(number.operand, bindings)
             entities = _static_spatial_entities(board, operand)
             if entities is not None:
@@ -1960,7 +1961,7 @@ def _number_variable(
             else:
                 selections = _occupancy_literals(model, board, operand, name, empty_scopes)
                 if selections is None:
-                    if _operand_sort(board, operand, bindings) == Sort.PERSON:
+                    if sort == Sort.PERSON:
                         selections = [
                             _person_selected(
                                 model,

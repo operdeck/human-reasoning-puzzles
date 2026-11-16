@@ -486,6 +486,20 @@ def test_issue_243_clues_match_reference_for_every_placement(board, formula):
 @pytest.mark.parametrize(
     "formula",
     [
+        "every ?b in areas except area:hall: count (people in ?b) < count (people in area:hall)",
+        "no ?r in empty rows: some occupied rows dir:up ?r and some occupied rows dir:down ?r",
+        "some ?p in people: every ?c in (cells in area:hall): ?p dir:left ?c",
+        "(people in area of role:guard) = Ada, role:guard",
+        "every ?p, ?q in people: ?p dir:areas ?q >= 1",
+    ],
+)
+def test_composed_glossary_clues_match_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
         "some ?r in roles: Ada is ?r",
         "some ?r in roles: not Ada is ?r",
         "exactly 1 ?r in roles: Ada is ?r",
@@ -624,6 +638,7 @@ def test_overlapping_area_tags_share_one_empty_literal(board):
         "every ?a in empty areas: ?a is empty",
         "every ?a in area of people: ?a is occupied",
         "every ?a in areas: count (?p in people where ?p in ?a) >= 0",
+        "every ?a in areas: count (people in ?a) <= count people",
     ],
 )
 def test_area_quantifier_preserves_region_identity_with_duplicate_names(board, formula):
