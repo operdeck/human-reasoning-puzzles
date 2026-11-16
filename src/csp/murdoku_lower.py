@@ -8,7 +8,7 @@ from itertools import permutations
 from typing import Literal
 
 from . import murdoku_lang as lang
-from .core import Kind, Model
+from .core import Kind, Model, Step
 from .murdoku import (
     AreaPopulationCondition,
     Board,
@@ -65,9 +65,44 @@ class ExpressionCompilation:
     """A compiled model and origins indexed by constraint, relation and initial log entry."""
 
     model: Model
+    origins: tuple[StatementOrigin, ...]
     constraint_origins: dict[int, tuple[StatementOrigin, ...]]
     relation_origins: dict[int, tuple[StatementOrigin, ...]]
     initial_step_origins: dict[int, tuple[StatementOrigin, ...]]
+
+    def origins_for_step(self, step: Step) -> tuple[StatementOrigin, ...]:
+        """Find structured clue origins for a step's named sources and trail."""
+        selected: list[StatementOrigin] = []
+
+        def include(origins: Sequence[StatementOrigin]) -> None:
+            for origin in origins:
+                if origin not in selected:
+                    selected.append(origin)
+
+        def follow(current: Step) -> None:
+            for index, origins in self.initial_step_origins.items():
+                if index < len(self.model.log) and self.model.log[index] is current:
+                    include(origins)
+            for source in current.sources:
+                matches = [
+                    self.constraint_origins.get(index, ())
+                    for index, constraint in enumerate(self.model.constraints)
+                    if constraint.name == source
+                ] + [
+                    self.relation_origins.get(index, ())
+                    for index, relation in enumerate(self.model.relations)
+                    if relation.name == source
+                ]
+                if len(matches) > 1:
+                    raise ValueError(f"ambiguous model source {source!r}")
+                if matches:
+                    include(matches[0])
+                include([origin for origin in self.origins if origin.label == source])
+            for child in current.trail:
+                follow(child)
+
+        follow(step)
+        return tuple(origin for origin in self.origins if origin in selected)
 
 
 class _EmptyScopes(dict[Square | str, int]):
@@ -2973,4 +3008,6 @@ def compile_statements_with_origins(
                 previous = initial_step_origins.get(index, ())
                 if origin not in previous:
                     initial_step_origins[index] = (*previous, origin)
-    return ExpressionCompilation(model, constraint_origins, relation_origins, initial_step_origins)
+    return ExpressionCompilation(
+        model, tuple(origins), constraint_origins, relation_origins, initial_step_origins
+    )

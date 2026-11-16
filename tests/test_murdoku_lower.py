@@ -4,7 +4,7 @@ from random import Random
 import pytest
 
 from csp.bruteforce.murdoku_expr import solutions
-from csp.core import Contradiction, Solver, rule_relations
+from csp.core import Contradiction, Solver, Step, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
 from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lang import holds, parse_statement
@@ -392,6 +392,29 @@ def test_shared_empty_scopes_keep_each_using_statement(board):
         tuple(origin.statement for origin in origins) == (second,)
         for origins in compiled.constraint_origins.values()
     )
+
+
+def test_origins_for_step_resolves_solver_sources_and_nested_trails(board):
+    clue = parse_statement("count role:guard = 1")
+    compiled = compile_statements_with_origins(board, [clue])
+    model = compiled.model
+    model.assign(model.literal(board.role_variable("Ada", "guard"), False), "test", "given")
+    Solver(model).solve()
+    step = next(step for step in model.log if step.sources == ("clue 1",))
+    assert tuple(origin.statement for origin in compiled.origins_for_step(step)) == (clue,)
+    hypothetical = Step("Ada", True, False, "what_if", "refuted", trail=(step,))
+    assert tuple(origin.statement for origin in compiled.origins_for_step(hypothetical)) == (clue,)
+
+
+def test_origins_for_initial_expression_assignment(board):
+    clue = parse_statement("area:hall is empty")
+    compiled = compile_statements_with_origins(board, [clue])
+    index = next(
+        index for index in compiled.initial_step_origins if not compiled.model.log[index].sources
+    )
+    assert tuple(
+        origin.statement for origin in compiled.origins_for_step(compiled.model.log[index])
+    ) == (clue,)
 
 
 @pytest.mark.parametrize(
