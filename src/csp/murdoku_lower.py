@@ -859,10 +859,13 @@ def _reify_formula(
         operand = _bind_operand(operand, bindings)
         role_scope = _role_scope(board, operand)
         keys = _counted_keys(board, operand) if role_scope is None else None
-        if keys is None and role_scope is None:
-            raise NotImplementedError(f"{name}: expression lowering is not implemented")
+        dynamic = keys is None and role_scope is None
+        if dynamic and infer_operand(board, operand).sort != Sort.PERSON:
+            raise NotImplementedError(f"{name}: count lowering is not implemented")
         maximum = (
-            len(board.people) if role_scope is not None else min(len(keys or []), len(board.people))
+            len(board.people)
+            if role_scope is not None or dynamic
+            else min(len(keys or []), len(board.people))
         )
         permitted = {value for value in range(maximum + 1) if predicate(value)}
         if not permitted:
@@ -870,6 +873,11 @@ def _reify_formula(
         if role_scope is not None:
             role, squares = role_scope
             literals = _role_selection_literals(model, board, role, squares, name)
+        elif dynamic:
+            literals = [
+                _person_selected(model, board, person, operand, f"{name} {person} member")
+                for person in board.people
+            ]
         else:
             assert keys is not None
             literals = [model.literal(variable, value) for variable, value in keys]

@@ -370,6 +370,10 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "every ?p in (people in area:hall): ?p is role:guard",
         "some ?p in (role:guard except Ada): ?p on mark:red",
         "exactly 1 ?p in role:guard,attribute:trained: ?p on mark:blue",
+        "count (people except role:guard) = 1",
+        "count role:guard,attribute:trained = 1",
+        "count ((people except role:guard) in area:hall) odd",
+        "count ((role:guard,attribute:trained) on mark:red) >= 1 or Ben in rows:3",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
