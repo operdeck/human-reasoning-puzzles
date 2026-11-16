@@ -92,6 +92,32 @@ def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square
     return None
 
 
+def try_lower_location(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Lower a named person's static containment or overlap as domain eliminations."""
+    formula = statement.formula
+    negated = isinstance(formula, lang.Negation)
+    atom = formula.formula if isinstance(formula, lang.Negation) else formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and isinstance(atom.subject, lang.Name)
+        and atom.subject.token.text in board.people
+        and atom.operator.text in {"in", "on"}
+    ):
+        return False
+    check_formula(board, formula)
+    cells = _static_cells(board, atom.target)
+    if cells is None:
+        return False
+    person = atom.subject.token.text
+    if person not in model.all_variables:
+        raise ValueError(f"model lacks declared variable: {person}")
+    exclude = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
+    for square in board.free:
+        if (square in cells) == exclude:
+            model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
+    return True
+
+
 def try_lower_count(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower supported top-level counts; return false without changes for other shapes."""
     formula = statement.formula
