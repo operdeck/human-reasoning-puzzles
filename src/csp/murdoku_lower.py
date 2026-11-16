@@ -738,6 +738,56 @@ def _static_roles(board: Board, operand: lang.Operand, bindings: _Bindings) -> s
     return None
 
 
+def _role_selected(
+    model: Model,
+    board: Board,
+    role: str,
+    operand: lang.Operand,
+    name: str,
+    empty_scopes: dict[Square | str, int],
+    bindings: _Bindings,
+) -> int:
+    static = _static_roles(board, operand, bindings)
+    if static is not None:
+        return _constant_boolean(model, role in static, name)
+    if isinstance(operand, lang.Union):
+        members = [
+            _role_selected(model, board, role, item, f"{name} {index}", empty_scopes, bindings)
+            for index, item in enumerate(operand.items, 1)
+        ]
+        return _reify_cardinality(model, members, set(range(1, len(members) + 1)), name)
+    if isinstance(operand, lang.Difference):
+        left = _role_selected(
+            model, board, role, operand.left, f"{name} left", empty_scopes, bindings
+        )
+        right = _role_selected(
+            model, board, role, operand.right, f"{name} right", empty_scopes, bindings
+        )
+        return _reify_cardinality(model, [left, _opposite(model, right)], {2}, name)
+    if isinstance(operand, lang.Filter) and operand.operator.text == "is":
+        source = _role_selected(
+            model, board, role, operand.source, f"{name} source", empty_scopes, bindings
+        )
+        target = _role_selected(
+            model, board, role, operand.target, f"{name} target", empty_scopes, bindings
+        )
+        return _reify_cardinality(model, [source, target], {2}, name)
+    if isinstance(operand, lang.Comprehension):
+        selected = _role_selected(
+            model, board, role, operand.source, f"{name} source", empty_scopes, bindings
+        )
+        matches = _reify_formula(
+            model,
+            board,
+            operand.condition,
+            f"{name} condition",
+            bindings | {operand.variable.text: _RoleBinding(role)},
+            empty_scopes,
+        )
+        return _reify_cardinality(model, [selected, matches], {2}, name)
+    raise NotImplementedError(f"{name}: role set lowering is not implemented")
+
+
 def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
     if isinstance(operand, lang.Name):
         value = bindings.get(operand.token.text)
@@ -1890,6 +1940,20 @@ def _number_variable(
         roles = _static_roles(board, number.operand, bindings)
         if roles is not None:
             values = {len(roles)}
+        elif _operand_sort(board, number.operand, bindings) == Sort.ROLE:
+            selections = [
+                _role_selected(
+                    model,
+                    board,
+                    role.name,
+                    number.operand,
+                    f"{name} {role.name}",
+                    empty_scopes,
+                    bindings,
+                )
+                for role in board.roles
+            ]
+            values = set(range(len(selections) + 1))
         else:
             operand = _bind_operand(number.operand, bindings)
             entities = _static_spatial_entities(board, operand)
@@ -2086,6 +2150,83 @@ def _reify_formula(
                     "no": not selected_roles,
                 }[determiner]
                 return _constant_boolean(model, matched, name)
+            if _operand_sort(board, formula.subject, bindings) == Sort.ROLE:
+                determiner = formula.determiner.text if formula.determiner else "some"
+                matches = []
+                for role_spec in board.roles:
+                    subject = _role_selected(
+                        model,
+                        board,
+                        role_spec.name,
+                        formula.subject,
+                        f"{name} {role_spec.name} subject",
+                        empty_scopes,
+                        bindings,
+                    )
+                    target = _role_selected(
+                        model,
+                        board,
+                        role_spec.name,
+                        formula.target,
+                        f"{name} {role_spec.name} target",
+                        empty_scopes,
+                        bindings,
+                    )
+                    matches.append(
+                        _reify_cardinality(
+                            model,
+                            [
+                                subject,
+                                _opposite(model, target) if determiner == "every" else target,
+                            ],
+                            {2},
+                            f"{name} {role_spec.name} match",
+                        )
+                    )
+                allowed = {0} if determiner in {"every", "no"} else set(range(1, len(matches) + 1))
+                return _reify_cardinality(model, matches, allowed, name)
+            if _operand_sort(board, formula.target, bindings) == Sort.ROLE:
+                bound_subject = _bind_operand(formula.subject, bindings)
+                if (
+                    not isinstance(bound_subject, lang.Name)
+                    or bound_subject.token.text not in board.people
+                ):
+                    variable_name = "?_expression"
+                    while variable_name in bindings:
+                        variable_name += "_"
+                    variable = replace(formula.operator, text=variable_name)
+                    quantified = lang.Quantified(
+                        formula.determiner or replace(formula.operator, text="some"),
+                        None,
+                        (variable,),
+                        bound_subject,
+                        replace(formula, subject=lang.Name(variable), determiner=None),
+                    )
+                    return _reify_formula(model, board, quantified, name, bindings, empty_scopes)
+                person = bound_subject.token.text
+                matches = []
+                for role_spec in board.roles:
+                    role_selection = _role_selected(
+                        model,
+                        board,
+                        role_spec.name,
+                        formula.target,
+                        f"{name} {role_spec.name}",
+                        empty_scopes,
+                        bindings,
+                    )
+                    member = model.literal(board.role_variable(person, role_spec.name), True)
+                    matches.append(
+                        _reify_cardinality(
+                            model, [role_selection, member], {2}, f"{name} {role_spec.name} match"
+                        )
+                    )
+                result = _reify_cardinality(model, matches, set(range(1, len(matches) + 1)), name)
+                return (
+                    _opposite(model, result)
+                    if formula.determiner is not None and formula.determiner.text == "no"
+                    else result
+                )
         target_operand = formula.target
         if isinstance(target_operand, lang.Name):
             bound = bindings.get(target_operand.token.text)
@@ -2207,6 +2348,34 @@ def _reify_formula(
             return _constant_boolean(
                 model, same_roles if formula.operator.text == "=" else not same_roles, name
             )
+        if _operand_sort(board, formula.left, bindings) == Sort.ROLE:
+            equalities = []
+            for role_spec in board.roles:
+                left = _role_selected(
+                    model,
+                    board,
+                    role_spec.name,
+                    formula.left,
+                    f"{name} {role_spec.name} left",
+                    empty_scopes,
+                    bindings,
+                )
+                right = _role_selected(
+                    model,
+                    board,
+                    role_spec.name,
+                    formula.right,
+                    f"{name} {role_spec.name} right",
+                    empty_scopes,
+                    bindings,
+                )
+                equalities.append(
+                    _reify_cardinality(
+                        model, [left, right], {0, 2}, f"{name} {role_spec.name} equal"
+                    )
+                )
+            result = _reify_cardinality(model, equalities, {len(equalities)}, name)
+            return _opposite(model, result) if formula.operator.text == "!=" else result
         left_set = _bind_operand(formula.left, bindings)
         right_set = _bind_operand(formula.right, bindings)
         left_entities = _static_spatial_entities(board, left_set)
@@ -2264,6 +2433,15 @@ def _reify_formula(
         roles = _static_roles(board, operand, bindings)
         if roles is not None:
             return _constant_boolean(model, predicate(len(roles)), name)
+        if _operand_sort(board, operand, bindings) == Sort.ROLE:
+            literals = [
+                _role_selected(
+                    model, board, role.name, operand, f"{name} {role.name}", empty_scopes, bindings
+                )
+                for role in board.roles
+            ]
+            allowed = {value for value in range(len(literals) + 1) if predicate(value)}
+            return _reify_cardinality(model, literals, allowed, name)
         operand = _bind_operand(operand, bindings)
         entities = _static_spatial_entities(board, operand)
         if entities is not None:
@@ -2373,12 +2551,19 @@ def _reify_formula(
         area_adjective: str | None = None
         cell_adjective: str | None = None
         spatial_domain = False
+        role_dynamic = (
+            role_domain is None and _operand_sort(board, formula.source, bindings) == Sort.ROLE
+        )
         if role_domain is not None:
             source = formula.source
             dynamic = False
             domain: list[str | _RoleBinding | _AreaBinding | _LineBinding | _SpatialBinding] = [
                 _RoleBinding(role.name) for role in board.roles if role.name in role_domain
             ]
+        elif role_dynamic:
+            source = formula.source
+            dynamic = True
+            domain = [_RoleBinding(role.name) for role in board.roles]
         else:
             source = _bind_operand(formula.source, bindings)
             area_domain = _static_area_ids(board, source)
@@ -2460,7 +2645,19 @@ def _reify_formula(
             if dynamic:
                 selected = []
                 for binding_value in values:
-                    if isinstance(binding_value, _AreaBinding) and area_adjective is not None:
+                    if isinstance(binding_value, _RoleBinding) and role_dynamic:
+                        selected.append(
+                            _role_selected(
+                                model,
+                                board,
+                                binding_value.name,
+                                source,
+                                binding_name,
+                                empty_scopes,
+                                bindings,
+                            )
+                        )
+                    elif isinstance(binding_value, _AreaBinding) and area_adjective is not None:
                         region = board.region_id(binding_value.name)
                         empty = _area_empty_literal(
                             model,

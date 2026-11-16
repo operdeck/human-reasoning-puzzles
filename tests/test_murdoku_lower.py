@@ -869,3 +869,32 @@ def test_set_target_superlatives_match_reference(board, formula):
         roles=[RoleSpec("guard", frozenset({0, 1, 2, 3}))],
     )
     _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "count (?r in roles where Ada is ?r) = 1",
+        "count (?r in roles where Ada is ?r) + count (?r in roles where Ben is ?r) >= 1",
+        "(?r in roles where Ada is ?r) = (?r in roles where Ben is ?r)",
+        "some (?r in roles where Ada is ?r) is roles",
+        "every (?r in roles where Ada is ?r) is roles",
+        "every ?r in (?s in roles where Ada is ?s): Ada is ?r",
+        "some ?r in roles: count (?s in (roles except ?r) where Ben is ?s) >= 1",
+        "count (roles is (?r in roles where Ada is ?r)) = 1",
+        "Ada is (?r in roles where Ben is ?r)",
+        "not Ada is (?r in roles where Ben is ?r)",
+        "every people is (?r in roles where Ada is ?r)",
+    ],
+)
+def test_role_comprehensions_match_reference(board, formula):
+    board = replace(board, roles=[*board.roles, RoleSpec("guest", frozenset({0, 1, 2}))])
+    _assert_compilation_matches_reference(board, formula)
+
+
+def test_role_comprehensions_with_no_roles(board):
+    board = replace(board, roles=[])
+    _assert_compilation_matches_reference(
+        board, "every ?r in (?s in roles where Ada is ?s): Ada is ?r"
+    )
+    _assert_compilation_matches_reference(board, "not Ada is roles")
