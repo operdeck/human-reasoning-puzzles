@@ -71,28 +71,10 @@ def _static_cells(
     return None
 
 
-def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square | bool]] | None:
-    if isinstance(operand, lang.Name) and operand.token.text.startswith("role:"):
-        role = operand.token.text.removeprefix("role:")
-        return [(board.role_variable(person, role), True) for person in board.people]
-    if (
-        isinstance(operand, lang.Filter)
-        and isinstance(operand.source, lang.Name)
-        and operand.source.token.text == "people"
-        and operand.operator.text in {"in", "on"}
-    ):
-        cells = _static_cells(board, operand.target)
-        if cells is not None:
-            return [
-                (person, square)
-                for person in board.people
-                for square in sorted(cells & set(board.free))
-            ]
-    return None
-
-
-def _direction(board: Board, atom: lang.Atom) -> Callable[[Square, Square], bool] | None:
-    mode = atom.operator.text.removeprefix("dir:")
+def _direction(
+    board: Board, operator: str, measure: lang.Measure | None
+) -> Callable[[Square, Square], bool] | None:
+    mode = operator.removeprefix("dir:")
     simple = {"up", "down", "left", "right"}
     metrics = {"rows", "cols", "manhattan", "king", "euclidean", "areas", "knight"}
     directions = mode.split("+")
@@ -100,8 +82,8 @@ def _direction(board: Board, atom: lang.Atom) -> Callable[[Square, Square], bool
         direction in simple for direction in directions
     ):
         return None
-    comparison = atom.measure.comparison.text if atom.measure else None
-    distance = int(atom.measure.value.text) if atom.measure else None
+    comparison = measure.comparison.text if measure else None
+    distance = int(measure.value.text) if measure else None
     if mode in metrics:
         return _direction_test(board, mode, comparison, distance)
 
@@ -129,6 +111,53 @@ def _direction(board: Board, atom: lang.Atom) -> Callable[[Square, Square], bool
     return directed
 
 
+def _position_matches(
+    board: Board,
+    square: Square,
+    operator: str,
+    cells: set[Square],
+    direction: Callable[[Square, Square], bool] | None,
+) -> bool:
+    if operator in {"in", "on"}:
+        return square in cells
+    if direction is not None:
+        return any(direction(square, cell) for cell in cells)
+    return any(
+        abs(square.row - cell.row) + abs(square.col - cell.col) == 1
+        and (operator == "touches" or board.region_of(square) == board.region_of(cell))
+        for cell in cells
+    )
+
+
+def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square | bool]] | None:
+    if isinstance(operand, lang.Name) and operand.token.text.startswith("role:"):
+        role = operand.token.text.removeprefix("role:")
+        return [(board.role_variable(person, role), True) for person in board.people]
+    if (
+        isinstance(operand, lang.Filter)
+        and isinstance(operand.source, lang.Name)
+        and operand.source.token.text == "people"
+    ):
+        operator = operand.operator.text
+        if operator not in {"in", "on", "beside", "touches"} and not operator.startswith("dir:"):
+            return None
+        cells = _static_cells(board, operand.target)
+        if cells is None:
+            return None
+        direction = (
+            _direction(board, operator, operand.measure) if operator.startswith("dir:") else None
+        )
+        if operator.startswith("dir:") and direction is None:
+            return None
+        squares = [
+            square
+            for square in board.free
+            if _position_matches(board, square, operator, cells, direction)
+        ]
+        return [(person, square) for person in board.people for square in squares]
+    return None
+
+
 def try_lower_location(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower a named person's static spatial relation as domain eliminations."""
     formula = statement.formula
@@ -148,7 +177,11 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
     cells = _static_cells(board, atom.target)
     if cells is None:
         return False
-    direction = _direction(board, atom) if atom.operator.text.startswith("dir:") else None
+    direction = (
+        _direction(board, atom.operator.text, atom.measure)
+        if atom.operator.text.startswith("dir:")
+        else None
+    )
     if atom.operator.text.startswith("dir:") and direction is None:
         return False
     person = atom.subject.token.text
@@ -156,19 +189,7 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
         raise ValueError(f"model lacks declared variable: {person}")
     exclude = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
     for square in board.free:
-        if atom.operator.text in {"in", "on"}:
-            matches = square in cells
-        elif direction is not None:
-            matches = any(direction(square, cell) for cell in cells)
-        else:
-            matches = any(
-                abs(square.row - cell.row) + abs(square.col - cell.col) == 1
-                and (
-                    atom.operator.text == "touches"
-                    or board.region_of(square) == board.region_of(cell)
-                )
-                for cell in cells
-            )
+        matches = _position_matches(board, square, atom.operator.text, cells, direction)
         if matches == exclude:
             model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
     return True
@@ -218,7 +239,7 @@ def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement,
 
         test = touching
     elif op.startswith("dir:"):
-        direction = _direction(board, atom)
+        direction = _direction(board, op, atom.measure)
         if direction is None:
             return False
 

@@ -77,6 +77,10 @@ def _assert_matches_reference(board, formula, lower):
         "count people in tag:outside = 1",
         "count people in rows:1,3 = 1",
         "count people on object:bed = 1",
+        "count people beside object:bed = 1",
+        "count people touches mark:red >= 1",
+        "count (people dir:up object:bed = 1) = 1",
+        "count (people dir:rows mark:red = 0) odd",
         "count role:guard = 1",
         "count role:guard != 1",
     ],
@@ -165,6 +169,7 @@ def test_blocked_feature_footprints_still_support_adjacency(board):
     _assert_matches_reference(board, "Ada touches object:rock", try_lower_location)
     _assert_matches_reference(board, "Ada dir:king object:rock = 1", try_lower_location)
     _assert_matches_reference(board, "count people on object:rock = 0", try_lower_count)
+    _assert_matches_reference(board, "count people beside object:rock = 1", try_lower_count)
 
 
 def test_compiled_statement_conjunction_matches_reference_search(board):
