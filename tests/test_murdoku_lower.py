@@ -601,6 +601,34 @@ def test_area_quantifier_rejects_ambiguous_names(board):
         compile_statements(board, [parse_statement("every ?a in areas: ?a in ?a")])
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "(count cells = 9) iff Ada is role:guard",
+        "(count free cells = 8) iff Ada is role:guard",
+        "(count corner:board = 4) iff Ada is role:guard",
+        "(count cell of mark:red = 2) iff Ada is role:guard",
+        "(count row of mark:red = 2) iff Ada is role:guard",
+        "(count area of mark:red = 2) iff Ada is role:guard",
+        "(count objects + count mark:red = 3) iff Ada is role:guard",
+        "(object_kind:standable = object:bed) iff Ada is role:guard",
+        "(mark:red = mark:copy) iff Ada is role:guard",
+        "(mark:red on mark:copy) iff Ada is role:guard",
+        "(mark:red touches mark:copy) iff Ada is role:guard",
+        "(count (objects except object:bed) = 1) iff Ada is role:guard",
+        "(cell of mark:red = cell of mark:copy) iff Ada is role:guard",
+        "(count cell of (mark:red,copy) = 2) iff Ada is role:guard",
+    ],
+)
+def test_static_spatial_sets_preserve_entity_identity(board, formula):
+    board = replace(
+        board,
+        objects=[*board.objects, BoardObject("rock", "blocking", (Square(0, 2),))],
+        marks=[*board.marks, CellMark("copy", board.marks[0].cells)],
+    )
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])

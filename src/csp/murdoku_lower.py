@@ -1003,6 +1003,66 @@ def _static_line_ids(board: Board, operand: lang.Operand) -> tuple[Sort, set[int
 def _static_spatial_entities(
     board: Board, operand: lang.Operand
 ) -> dict[tuple[Sort, str], set[Square]] | None:
+    if isinstance(operand, lang.Union):
+        first = operand.items[0]
+        namespace = (
+            first.token.text.partition(":")[0]
+            if isinstance(first, lang.Name) and ":" in first.token.text
+            else None
+        )
+        result: dict[tuple[Sort, str], set[Square]] = {}
+        for item in operand.items:
+            if (
+                namespace
+                and isinstance(item, lang.Name)
+                and ":" not in item.token.text
+                and item.token.text not in {"areas", "rows", "columns", "cells", "objects"}
+            ):
+                item = replace(
+                    item, token=replace(item.token, text=f"{namespace}:{item.token.text}")
+                )
+            part = _static_spatial_entities(board, item)
+            if part is None:
+                return None
+            result.update(part)
+        return result
+    if isinstance(operand, lang.Difference):
+        left = _static_spatial_entities(board, operand.left)
+        right = _static_spatial_entities(board, operand.right)
+        if left is None or right is None:
+            return None
+        return {key: footprint for key, footprint in left.items() if key not in right}
+    if isinstance(operand, lang.Projection):
+        source = _static_spatial_entities(board, operand.operand)
+        if source is None:
+            return None
+        cells = {square for footprint in source.values() for square in footprint}
+        if operand.kind.text == "cell":
+            return {(Sort.CELL, f"{sq.row},{sq.col}"): {sq} for sq in cells}
+        if operand.kind.text == "area":
+            regions = {board.region_of(square) for square in cells}
+            universe = _static_spatial_entities(
+                board, lang.Name(replace(operand.kind, text="areas"))
+            )
+            assert universe is not None
+            return {key: value for key, value in universe.items() if key[1] in regions}
+        sort = Sort.ROW if operand.kind.text == "row" else Sort.COLUMN
+        indices = {sq.row if sort == Sort.ROW else sq.col for sq in cells}
+        return {
+            (sort, str(index)): {
+                Square(index, other) if sort == Sort.ROW else Square(other, index)
+                for other in range(board.size)
+            }
+            for index in indices
+        }
+    if isinstance(operand, (lang.Qualified, lang.AdjectiveFilter)):
+        if operand.adjective.text != "free":
+            return None
+        inner = operand.operand if isinstance(operand, lang.Qualified) else operand.source
+        entities = _static_spatial_entities(board, inner)
+        if entities is None:
+            return None
+        return {key: cells for key, cells in entities.items() if cells.isdisjoint(board.blocked)}
     areas = _static_area_ids(board, operand)
     if areas is not None:
         return {
@@ -1015,16 +1075,48 @@ def _static_spatial_entities(
             for area in areas
         }
     lines = _static_line_ids(board, operand)
-    if lines is None:
-        return None
-    sort, indices = lines
-    return {
-        (sort, str(index)): {
-            Square(index, other) if sort == Sort.ROW else Square(other, index)
-            for other in range(board.size)
+    if lines is not None:
+        sort, indices = lines
+        return {
+            (sort, str(index)): {
+                Square(index, other) if sort == Sort.ROW else Square(other, index)
+                for other in range(board.size)
+            }
+            for index in indices
         }
-        for index in indices
+    if not isinstance(operand, lang.Name):
+        return None
+    text = operand.token.text
+    if text in {"cells", "corner:board"}:
+        squares = {
+            Square(row, col)
+            for row in range(board.size)
+            for col in range(board.size)
+            if text == "cells" or (row in {0, board.size - 1} and col in {0, board.size - 1})
+        }
+        return {(Sort.CELL, f"{sq.row},{sq.col}"): {sq} for sq in squares}
+    kind, separator, value = text.partition(":")
+    if text == "objects":
+        kind, separator, value = "object", ":", ""
+    entries = {
+        "object": [(item.name, item.squares) for item in board.objects],
+        "edge_item": [(item.name, item.cells) for item in board.edge_items],
+        "point_object": [(item.name, item.cells) for item in board.point_objects],
+        "mark": [(item.name, item.cells) for item in board.marks],
     }
+    if kind == "object_kind" and separator:
+        return {
+            (Sort.FEATURE, f"object:{index}"): set(item.squares)
+            for index, item in enumerate(board.objects)
+            if item.kind == value
+        }
+    if separator and kind in entries:
+        return {
+            (Sort.FEATURE, f"{kind}:{index}"): set(cells)
+            for index, (name, cells) in enumerate(entries[kind])
+            if not value or name == value
+        }
+    return None
 
 
 def _static_spatial_atom(board: Board, atom: lang.Atom) -> bool | None:
@@ -1233,17 +1325,23 @@ def _number_variable(
             values = {len(roles)}
         else:
             operand = _bind_operand(number.operand, bindings)
-            selections = _occupancy_literals(model, board, operand, name, empty_scopes)
-            if selections is None:
-                if infer_operand(board, operand).sort != Sort.PERSON:
-                    raise NotImplementedError(f"{name}: numeric count lowering is not implemented")
-                selections = [
-                    _person_selected(
-                        model, board, person, operand, f"{name} {person} member", empty_scopes
-                    )
-                    for person in board.people
-                ]
-            values = set(range(len(selections) + 1))
+            entities = _static_spatial_entities(board, operand)
+            if entities is not None:
+                values = {len(entities)}
+            else:
+                selections = _occupancy_literals(model, board, operand, name, empty_scopes)
+                if selections is None:
+                    if infer_operand(board, operand).sort != Sort.PERSON:
+                        raise NotImplementedError(
+                            f"{name}: numeric count lowering is not implemented"
+                        )
+                    selections = [
+                        _person_selected(
+                            model, board, person, operand, f"{name} {person} member", empty_scopes
+                        )
+                        for person in board.people
+                    ]
+                values = set(range(len(selections) + 1))
     else:
         left, left_values = _number_variable(
             model, board, number.left, f"{name} left", bindings, empty_scopes
@@ -1396,19 +1494,12 @@ def _reify_formula(
             )
         left_set = _bind_operand(formula.left, bindings)
         right_set = _bind_operand(formula.right, bindings)
-        left_areas = _static_area_ids(board, left_set)
-        right_areas = _static_area_ids(board, right_set)
-        if left_areas is not None and right_areas is not None:
-            same_areas = left_areas == right_areas
+        left_entities = _static_spatial_entities(board, left_set)
+        right_entities = _static_spatial_entities(board, right_set)
+        if left_entities is not None and right_entities is not None:
+            same_entities = left_entities.keys() == right_entities.keys()
             return _constant_boolean(
-                model, same_areas if formula.operator.text == "=" else not same_areas, name
-            )
-        left_lines = _static_line_ids(board, left_set)
-        right_lines = _static_line_ids(board, right_set)
-        if left_lines is not None and right_lines is not None:
-            same_lines = left_lines == right_lines
-            return _constant_boolean(
-                model, same_lines if formula.operator.text == "=" else not same_lines, name
+                model, same_entities if formula.operator.text == "=" else not same_entities, name
             )
         if infer_operand(board, left_set).sort != Sort.PERSON:
             raise NotImplementedError(f"{name}: set comparison lowering is not implemented")
@@ -1434,6 +1525,9 @@ def _reify_formula(
         if roles is not None:
             return _constant_boolean(model, predicate(len(roles)), name)
         operand = _bind_operand(operand, bindings)
+        entities = _static_spatial_entities(board, operand)
+        if entities is not None:
+            return _constant_boolean(model, predicate(len(entities)), name)
         occupancy = _occupancy_literals(model, board, operand, name, empty_scopes)
         if occupancy is not None:
             permitted = {value for value in range(len(occupancy) + 1) if predicate(value)}
