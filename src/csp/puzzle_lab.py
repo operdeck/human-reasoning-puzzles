@@ -863,7 +863,7 @@ def _murdoku_board_command(args: argparse.Namespace) -> int:
 
     from csp import murdoku_board
 
-    spec = murdoku_board.read_spec(Path(args.spec).read_text())
+    spec = murdoku_board.read_spec(Path(args.spec).read_text(), expressions=args.expressions)
     overrides = {
         key: value
         for key, value in (
@@ -1112,6 +1112,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     board_parser.add_argument("--candidates", type=int, help="how many candidates to build")
     board_parser.add_argument("--keep", type=int, help="how many of the best to write")
     board_parser.add_argument("--template", help="auto, bands, blobs, staircase or free")
+    board_parser.add_argument(
+        "--expressions",
+        action="store_true",
+        help="preview expression-language key clues, rules and suggestions",
+    )
     board_parser.add_argument(
         "--key-clue",
         action="append",

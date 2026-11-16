@@ -7,6 +7,8 @@ import pytest
 from csp import audit, clue_search
 from csp import murdoku_board as mb
 from csp.bruteforce import murdoku as brute
+from csp.bruteforce import murdoku_expr as expression_brute
+from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
 from csp.puzzlefile import keyed_clue_numbers, load_board
 
 SPEC = """theme: test
@@ -42,6 +44,53 @@ def test_read_spec_accepts_only_declared_decorative_objects():
         mb.read_spec(SPEC + "decor: lantern\n")
     with pytest.raises(ValueError, match=r"key clue .* decorative objects"):
         mb.read_spec(SPEC + "decor: rots\n")
+
+
+def test_expression_spec_uses_ast_for_late_and_decor_exclusions():
+    text = SPEC.replace("not beside Ann object:rots", "not Ann beside object:rots")
+    spec = mb.read_spec(text + "decor: kruk\n", expressions=True)
+    assert spec.expressions
+    with pytest.raises(ValueError, match="names the late figure"):
+        mb.read_spec(text + "key_clue: (Dee in rows:1) or (Ann in rows:1)\n", expressions=True)
+    with pytest.raises(ValueError, match="decorative objects"):
+        mb.read_spec(
+            text + "decor: kruk\nkey_clue: (Ann on object:kruk) or (Bob in rows:1)\n",
+            expressions=True,
+        )
+
+
+def test_expression_late_rule_matches_legacy_placement_semantics():
+    spec = mb.read_spec(SPEC.replace("key_clue: not beside Ann object:rots\n", ""))
+    expression_spec = mb.read_spec(
+        SPEC.replace("key_clue: not beside Ann object:rots\n", ""), expressions=True
+    )
+    layout = ((0, 0, 0, 1, 1),) * 2 + ((0, 0, 2, 1, 1),) * 3
+    colours = ["#F4CBC3", "#CBE6B9", "#C4DCF2"]
+    legacy = mb.draft_text(spec, layout, colours, [])
+    expression = mb.draft_text(expression_spec, layout, colours, [])
+    base = mb.draft_text(spec, layout, colours, [], rules=False)
+    for placement in brute.solutions(base, 1000):
+        assert mb._accepts(legacy, placement, False) == mb._accepts(expression, placement, True)
+
+
+def test_expression_board_candidate_and_close():
+    text = SPEC.replace("not beside Ann object:rots", "not Ann beside object:rots")
+    spec = mb.read_spec(text + "decor: kruk\n", expressions=True)
+    item = mb.candidate(spec, 0)
+    assert item is not None
+    assert mb._accepts(item.text, item.placement, True)
+    closed = mb.close(spec, item)
+    board, rules, clues = load_expression_board(closed.text)
+    assert keyed_expression_clue_numbers(closed.text) == {1}
+    found = expression_brute.solutions(board, clues, 2, rules=rules)
+    assert item.placement in found
+    assert len(found) == 2
+    assert "not closed (several" in closed.closing
+    assert mb._accepts(closed.text, item.placement, True)
+    assert not clue_search._unnamed(
+        board.people, clue_search.clue_lines(closed.text), ("Dee",), expressions=True
+    )
+    assert rules and clues
 
 
 @pytest.mark.parametrize(

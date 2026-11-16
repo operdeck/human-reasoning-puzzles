@@ -347,6 +347,9 @@ adjective-qualified and projected sets, filters and comprehensions; occupancy
 assertions and set comparisons; compound Boolean formulas; numeric, parity and
 range comparisons; quantifiers and choices. Its AST inventory is guarded
 against additions to the language.
+For a draft board with expression `key_clue:` entries, use
+`puzzle-lab murdoku-board SPEC --expressions --suggest`; it uses the same
+limited suggestion templates and reports drafts it cannot close.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their
