@@ -403,6 +403,21 @@ def test_compilation_retains_statement_origins_without_changing_model(board):
     )
 
 
+def test_tuned_occupant_and_choice_lowering_preserve_origins(board):
+    occupant = parse_statement("(people on object:bed) = Ada")
+    choice = parse_statement("exactly 1 of (Ada dir:left Ben; Ben on mark:red)")
+    compiled = compile_statements_with_origins(board, [occupant, choice])
+    assert any(
+        tuple(origin.statement for origin in origins) == (occupant,)
+        for origins in compiled.initial_step_origins.values()
+    )
+    assert any(
+        compiled.model.relations[index].name == "clue 2"
+        and tuple(origin.statement for origin in origins) == (choice,)
+        for index, origins in compiled.relation_origins.items()
+    )
+
+
 def test_shared_population_primitives_keep_only_using_statements():
     board = Board(
         size=3,
