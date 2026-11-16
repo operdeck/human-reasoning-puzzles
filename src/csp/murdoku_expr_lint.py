@@ -86,10 +86,32 @@ def _required_atoms(formula: lang.Formula) -> Iterator[lang.Atom]:
         yield from _required_atoms(formula.right)
 
 
+def _required_adjectives(formula: lang.Formula) -> Iterator[lang.AdjectiveAtom]:
+    if isinstance(formula, lang.AdjectiveAtom):
+        yield formula
+    elif isinstance(formula, lang.Binary) and formula.operator.text == "and":
+        yield from _required_adjectives(formula.left)
+        yield from _required_adjectives(formula.right)
+
+
 def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[str]:
     """Report required relations forbidden by the board rules."""
     errors = []
     for statement in statements:
+        for adjective_atom in _required_adjectives(statement.formula):
+            determiner = adjective_atom.determiner.text if adjective_atom.determiner else ""
+            if adjective_atom.adjective.text != "occupied" or determiner == "no":
+                continue
+            subject_shape = infer_operand(board, adjective_atom.subject)
+            if determiner == "every" and subject_shape.minimum == 0:
+                continue
+            cells = _static_cells(board, adjective_atom.subject)
+            if cells is not None and not cells.intersection(board.free):
+                token = adjective_atom.adjective
+                errors.append(
+                    f"line {token.line}, column {token.column}: "
+                    "this target cannot be occupied; its footprint contains no free cells"
+                )
         for atom in _required_atoms(statement.formula):
             scopes = occupied_cell_pair_scopes(board, atom)
             if scopes is not None:

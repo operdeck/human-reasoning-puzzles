@@ -173,6 +173,32 @@ def test_required_person_set_location_respects_vacuous_quantification(board):
     assert not holds(statement, required, placed, {("Ada", "guard"): True, ("Ben", "guard"): False})
 
 
+def test_required_occupancy_without_free_cells_is_an_error(board):
+    board = replace(
+        board,
+        objects=[
+            BoardObject("table", "blocking", (Square(0, 0),)),
+            BoardObject("chair", "standable", (Square(1, 1),)),
+        ],
+    )
+    statement = parse_statement("object:table is occupied", line=8)
+    assert "line 8, column " in vacuous_errors(board, [statement])[0]
+    assert "no free cells" in vacuous_errors(board, [statement])[0]
+    placed = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    roles = {(person, "guard"): False for person in board.people}
+    assert not holds(statement, board, placed, roles)
+    assert vacuous_errors(board, [parse_statement("every object_kind:blocking is occupied")])
+    assert not vacuous_errors(board, [parse_statement("object:table is empty")])
+    assert not vacuous_errors(board, [parse_statement("no object:table is occupied")])
+    assert not vacuous_errors(board, [parse_statement("some object:table,chair is occupied")])
+    assert not vacuous_errors(
+        board, [parse_statement("object:table is occupied or Ada in area:hall")]
+    )
+    empty = replace(board, objects=[BoardObject("chair", "standable", (Square(1, 1),))])
+    assert not vacuous_errors(empty, [parse_statement("every object_kind:blocking is occupied")])
+    assert holds(parse_statement("every object_kind:blocking is occupied"), empty, placed, roles)
+
+
 def test_impossible_occupied_scope_direction_is_an_error(board):
     board = replace(
         board,
