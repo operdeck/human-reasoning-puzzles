@@ -1294,6 +1294,111 @@ def _static_spatial_atom(board: Board, atom: lang.Atom) -> bool | None:
     }[determiner]
 
 
+def _spatial_universe(board: Board, sort: Sort) -> dict[tuple[Sort, str], set[Square]]:
+    names = {Sort.AREA: "areas", Sort.ROW: "rows", Sort.COLUMN: "columns", Sort.CELL: "cells"}
+    entities = _static_spatial_entities(board, lang.Name(lang.Token(names[sort], 1, 1)))
+    assert entities is not None
+    return entities
+
+
+def _spatial_selected(
+    model: Model,
+    board: Board,
+    entity: tuple[Sort, str],
+    footprint: set[Square],
+    operand: lang.Operand,
+    name: str,
+    empty_scopes: dict[Square | str, int],
+    bindings: _Bindings,
+) -> int:
+    static = _static_spatial_entities(board, operand)
+    if static is not None:
+        return _constant_boolean(model, entity in static, name)
+    if isinstance(operand, lang.Projection):
+        members = []
+        for person in board.people:
+            selected = _person_selected(
+                model,
+                board,
+                person,
+                operand.operand,
+                f"{name} {person} member",
+                empty_scopes,
+                bindings,
+            )
+            variable, yes, _ = _hidden_boolean(
+                model, "expression", f"{name} {person} projection", "Murdoku expression"
+            )
+            model.relate(
+                f"{name} {person} projection",
+                (person, model.var_of(selected), variable),
+                lambda square, member, result, footprint=footprint: (
+                    result == (member and square in footprint)
+                ),
+            )
+            members.append(yes)
+        return _reify_cardinality(model, members, set(range(1, len(members) + 1)), name)
+    if isinstance(operand, lang.Difference):
+        left = _spatial_selected(
+            model, board, entity, footprint, operand.left, f"{name} left", empty_scopes, bindings
+        )
+        right = _spatial_selected(
+            model, board, entity, footprint, operand.right, f"{name} right", empty_scopes, bindings
+        )
+        return _reify_cardinality(model, [left, _opposite(model, right)], {2}, name)
+    if isinstance(operand, lang.Union):
+        first = operand.items[0]
+        namespace = (
+            first.token.text.partition(":")[0]
+            if isinstance(first, lang.Name) and ":" in first.token.text
+            else None
+        )
+        members = []
+        for index, item in enumerate(operand.items, 1):
+            if (
+                namespace
+                and isinstance(item, lang.Name)
+                and ":" not in item.token.text
+                and item.token.text not in {"areas", "rows", "columns", "cells", "objects"}
+            ):
+                item = replace(
+                    item, token=replace(item.token, text=f"{namespace}:{item.token.text}")
+                )
+            members.append(
+                _spatial_selected(
+                    model,
+                    board,
+                    entity,
+                    footprint,
+                    item,
+                    f"{name} item {index}",
+                    empty_scopes,
+                    bindings,
+                )
+            )
+        return _reify_cardinality(model, members, set(range(1, len(members) + 1)), name)
+    raise NotImplementedError(f"{name}: spatial set lowering is not implemented")
+
+
+def _spatial_selection_literals(
+    model: Model,
+    board: Board,
+    operand: lang.Operand,
+    name: str,
+    empty_scopes: dict[Square | str, int],
+    bindings: _Bindings,
+) -> list[int]:
+    sort = _operand_sort(board, operand, bindings)
+    if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+        raise NotImplementedError(f"{name}: spatial set lowering is not implemented")
+    return [
+        _spatial_selected(
+            model, board, entity, footprint, operand, f"{name} {entity[1]}", empty_scopes, bindings
+        )
+        for entity, footprint in _spatial_universe(board, sort).items()
+    ]
+
+
 def _area_empty_literal(
     model: Model, board: Board, region: str, name: str, empty_scopes: dict[Square | str, int]
 ) -> int:
@@ -1472,22 +1577,23 @@ def _number_variable(
             else:
                 selections = _occupancy_literals(model, board, operand, name, empty_scopes)
                 if selections is None:
-                    if _operand_sort(board, operand, bindings) != Sort.PERSON:
-                        raise NotImplementedError(
-                            f"{name}: numeric count lowering is not implemented"
+                    if _operand_sort(board, operand, bindings) == Sort.PERSON:
+                        selections = [
+                            _person_selected(
+                                model,
+                                board,
+                                person,
+                                operand,
+                                f"{name} {person} member",
+                                empty_scopes,
+                                bindings,
+                            )
+                            for person in board.people
+                        ]
+                    else:
+                        selections = _spatial_selection_literals(
+                            model, board, operand, name, empty_scopes, bindings
                         )
-                    selections = [
-                        _person_selected(
-                            model,
-                            board,
-                            person,
-                            operand,
-                            f"{name} {person} member",
-                            empty_scopes,
-                            bindings,
-                        )
-                        for person in board.people
-                    ]
                 values = set(range(len(selections) + 1))
     else:
         left, left_values = _number_variable(
@@ -1650,19 +1756,44 @@ def _reify_formula(
             return _constant_boolean(
                 model, same_entities if formula.operator.text == "=" else not same_entities, name
             )
-        if _operand_sort(board, left_set, bindings) != Sort.PERSON:
-            raise NotImplementedError(f"{name}: set comparison lowering is not implemented")
+        sort = _operand_sort(board, left_set, bindings)
         equalities = []
-        for person in board.people:
-            left_member = _person_selected(
-                model, board, person, left_set, f"{name} {person} left", empty_scopes, bindings
+        if sort == Sort.PERSON:
+            pairs = [
+                (
+                    _person_selected(
+                        model,
+                        board,
+                        person,
+                        left_set,
+                        f"{name} {person} left",
+                        empty_scopes,
+                        bindings,
+                    ),
+                    _person_selected(
+                        model,
+                        board,
+                        person,
+                        right_set,
+                        f"{name} {person} right",
+                        empty_scopes,
+                        bindings,
+                    ),
+                )
+                for person in board.people
+            ]
+        else:
+            left_members = _spatial_selection_literals(
+                model, board, left_set, f"{name} left", empty_scopes, bindings
             )
-            right_member = _person_selected(
-                model, board, person, right_set, f"{name} {person} right", empty_scopes, bindings
+            right_members = _spatial_selection_literals(
+                model, board, right_set, f"{name} right", empty_scopes, bindings
             )
+            pairs = list(zip(left_members, right_members, strict=True))
+        for index, (left_member, right_member) in enumerate(pairs, 1):
             equalities.append(
                 _reify_cardinality(
-                    model, [left_member, right_member], {0, 2}, f"{name} {person} equal"
+                    model, [left_member, right_member], {0, 2}, f"{name} {index} equal"
                 )
             )
         result = _reify_cardinality(model, equalities, {len(equalities)}, name)
@@ -1685,7 +1816,11 @@ def _reify_formula(
         keys = _counted_keys(board, operand) if role_scope is None else None
         dynamic = keys is None and role_scope is None
         if dynamic and _operand_sort(board, operand, bindings) != Sort.PERSON:
-            raise NotImplementedError(f"{name}: count lowering is not implemented")
+            literals = _spatial_selection_literals(
+                model, board, operand, name, empty_scopes, bindings
+            )
+            permitted = {value for value in range(len(literals) + 1) if predicate(value)}
+            return _reify_cardinality(model, literals, permitted, name)
         maximum = (
             len(board.people)
             if role_scope is not None or dynamic

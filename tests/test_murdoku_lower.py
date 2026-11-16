@@ -725,6 +725,27 @@ def test_repeated_boolean_operands_retain_multiplicity(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "area of Ada = area of Ben",
+        "area of Ada != area of Ben",
+        "row of Ada = row of Ben",
+        "cell of Ada != cell of Ben",
+        "count area of people = 1",
+        "count area of role:guard = 0",
+        "count row of people = 2",
+        "count cell of people = 2",
+        "count area of role:guard + count role:guard >= 1",
+        "count (area of people except area:hall) = 1",
+        "count (area:hall, area of role:guard) >= 1",
+        "every ?p in people: count area of ?p = 1",
+    ],
+)
+def test_person_projection_sets_match_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
