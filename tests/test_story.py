@@ -71,7 +71,7 @@ ALLOWED = {
     "murdoku": {"core"},
     "murdoku_lang": {"murdoku", "murdoku_eval"},
     "murdoku_declarations": {"murdoku", "murdoku_lang"},
-    "murdoku_expr_lint": {"murdoku", "murdoku_lang", "murdoku_lower"},
+    "murdoku_expr_lint": {"murdoku", "murdoku_lang", "murdoku_lower", "murdoku_typecheck"},
     "murdoku_expression_file": {"murdoku", "murdoku_lang", "murdoku_typecheck", "puzzlefile"},
     "murdoku_expression_report": {"core", "murdoku_lang", "murdoku_lower", "report"},
     "murdoku_expression_words": {"murdoku", "murdoku_lang", "murdoku_typecheck", "puzzlefile"},

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from . import murdoku_lang as lang
 from .murdoku import Board
 from .murdoku_lower import _static_cells, occupied_cell_pair_scopes
+from .murdoku_typecheck import Sort, infer_operand
 
 if TYPE_CHECKING:
     from .murdoku_lower import ExpressionCompilation
@@ -105,18 +106,39 @@ def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[s
                         f"{token.text} in these occupancy scopes"
                     )
                 continue
-            if (
-                atom.operator.text in {"in", "on"}
-                and (atom.determiner is None or atom.determiner.text != "no")
-                and isinstance(atom.subject, lang.Name)
-                and atom.subject.token.text in board.people
+            if atom.operator.text in {"in", "on"} and (
+                atom.determiner is None or atom.determiner.text != "no"
             ):
-                cells = _static_cells(board, atom.target)
+                named_person = isinstance(atom.subject, lang.Name) and (
+                    atom.subject.token.text in board.people
+                )
+                some_people = (
+                    atom.determiner is not None
+                    and atom.determiner.text == "some"
+                    and infer_operand(board, atom.subject).sort == Sort.PERSON
+                )
+                all_people = (
+                    atom.determiner is not None
+                    and atom.determiner.text == "every"
+                    and isinstance(atom.subject, lang.Name)
+                    and atom.subject.token.text == "people"
+                    and bool(board.people)
+                )
+                cells = (
+                    _static_cells(board, atom.target)
+                    if named_person or some_people or all_people
+                    else None
+                )
                 if cells is not None and not cells.intersection(board.free):
                     token = atom.operator
+                    subject = (
+                        atom.subject.token.text
+                        if isinstance(atom.subject, lang.Name) and named_person
+                        else "a person"
+                    )
                     errors.append(
-                        f"line {token.line}, column {token.column}: "
-                        f"{atom.subject.token.text} cannot be {token.text} this target; "
+                        f"line {token.line}, column {token.column}: {subject} cannot be "
+                        f"{token.text} this target; "
                         "its footprint contains no free cells"
                     )
                     continue

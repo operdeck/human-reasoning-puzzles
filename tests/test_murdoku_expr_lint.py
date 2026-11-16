@@ -155,6 +155,15 @@ def test_required_person_location_without_free_cells_is_an_error(board, operator
     )
 
 
+def test_required_person_set_location_respects_vacuous_quantification(board):
+    board = replace(board, objects=[BoardObject("table", "blocking", (Square(0, 0),))])
+    assert vacuous_errors(board, [parse_statement("some people on object:table")])
+    assert vacuous_errors(board, [parse_statement("some role:guard on object:table")])
+    assert vacuous_errors(board, [parse_statement("every people on object:table")])
+    assert not vacuous_errors(board, [parse_statement("every role:guard on object:table")])
+    assert not vacuous_errors(board, [parse_statement("no people on object:table")])
+
+
 def test_impossible_occupied_scope_direction_is_an_error(board):
     board = replace(
         board,
