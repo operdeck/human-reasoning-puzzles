@@ -169,6 +169,21 @@ def test_person_choice_leaves_role_dependent_options_to_general_lowering(board):
     _assert_compilation_matches_reference(board, formula)
 
 
+def test_person_choice_leaves_larger_relations_to_general_lowering():
+    board = Board(
+        size=4,
+        regions=[["a"] * 4 for _ in range(4)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben", "Cy", "Dee"],
+    )
+    statement = parse_statement("exactly 1 of (Ada dir:left Ben; Cy dir:left Dee)")
+    model = compile_puzzle(board, [])
+    before = len(model.constraints), len(model.relations), len(model.log)
+    assert not try_lower_person_choice(model, board, statement, "clue 1")
+    assert (len(model.constraints), len(model.relations), len(model.log)) == before
+
+
 @pytest.mark.parametrize(
     "formula",
     [
