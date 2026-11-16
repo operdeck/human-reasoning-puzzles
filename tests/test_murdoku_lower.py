@@ -393,9 +393,17 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "count role:guard - count (people on mark:red) = 0",
         "(count role:guard + 1) odd",
         "if count role:guard > count (people on mark:red) then Ada is role:guard",
+        "some ?r in roles: Ada is ?r",
+        "every ?r in roles: not Ada is ?r",
+        "some ?r in roles: not Ada is ?r",
+        "exactly 1 ?r in roles: Ada is ?r",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
+def _assert_compilation_matches_reference(board, formula):
     statement = parse_statement(formula)
     model = compile_statements(board, [statement])
     for candidate in solutions(board, [], limit=1000):
@@ -403,17 +411,39 @@ def test_boolean_compilation_matches_reference(board, formula):
         try:
             for person in board.people:
                 trial.assign(trial.literal(person, candidate[person]), "test", "fixed placement")
-                role = board.role_variable(person, "guard")
-                trial.assign(trial.literal(role, candidate[role]), "test", "fixed role")
+                for role in board.roles:
+                    variable = board.role_variable(person, role.name)
+                    trial.assign(trial.literal(variable, candidate[variable]), "test", "fixed role")
             accepted = Solver(trial).solve().contradiction is None
         except Contradiction:
             accepted = False
         placed = {person: candidate[person] for person in board.people}
         roles = {
-            (person, "guard"): candidate[board.role_variable(person, "guard")]
+            (person, role.name): candidate[board.role_variable(person, role.name)]
             for person in board.people
+            for role in board.roles
         }
         assert accepted == holds(statement, board, placed, roles), candidate
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "some ?r in roles: Ada is ?r",
+        "some ?r in roles: not Ada is ?r",
+        "exactly 1 ?r in roles: Ada is ?r",
+        "every ?r in roles: Ada is ?r",
+    ],
+)
+def test_bound_role_membership_with_multiple_roles(board, formula):
+    board = replace(board, roles=[*board.roles, RoleSpec("guest", frozenset({0, 1, 2}))])
+    _assert_compilation_matches_reference(board, formula)
+
+
+def test_bound_role_membership_with_no_roles(board):
+    board = replace(board, roles=[])
+    _assert_compilation_matches_reference(board, "every ?r in roles: Ada is ?r")
+    _assert_compilation_matches_reference(board, "not (some ?r in roles: Ada is ?r)")
 
 
 def test_blocked_footprint_is_empty(board):

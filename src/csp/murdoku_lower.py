@@ -638,6 +638,8 @@ def _opposite(model: Model, literal: int) -> int:
 def _bind_operand(operand: lang.Operand, bindings: dict[str, str]) -> lang.Operand:
     if isinstance(operand, lang.Name):
         value = bindings.get(operand.token.text)
+        if value is not None and value.startswith("\0role:"):
+            raise NotImplementedError("bound role entity is supported only as the target of is")
         return replace(operand, token=replace(operand.token, text=value)) if value else operand
     if isinstance(operand, lang.Union):
         return replace(
@@ -1058,10 +1060,19 @@ def _reify_formula(
     bindings = {} if bindings is None else bindings
     empty_scopes = {} if empty_scopes is None else empty_scopes
     if isinstance(formula, lang.Atom):
+        target_operand = formula.target
+        if isinstance(target_operand, lang.Name):
+            bound = bindings.get(target_operand.token.text)
+            if bound is not None and bound.startswith("\0role:"):
+                if formula.operator.text != "is":
+                    raise NotImplementedError(f"{name}: bound role relation is not implemented")
+                target_operand = replace(
+                    target_operand, token=replace(target_operand.token, text=bound[1:])
+                )
         atom = replace(
             formula,
             subject=_bind_operand(formula.subject, bindings),
-            target=_bind_operand(formula.target, bindings),
+            target=_bind_operand(target_operand, bindings),
         )
         variable_name = "?_expression"
         while variable_name in bindings:
@@ -1242,13 +1253,19 @@ def _reify_formula(
         return _reify_cardinality(model, literals, allowed, name)
     if isinstance(formula, lang.Quantified):
         source = _bind_operand(formula.source, bindings)
-        people = _static_people(board, source)
-        dynamic = people is None
-        if people is None:
-            if infer_operand(board, source).sort != Sort.PERSON:
-                raise NotImplementedError(f"{name}: quantifier source lowering is not implemented")
-            people = set(board.people)
-        domain = [person for person in board.people if person in people]
+        role_entities = isinstance(source, lang.Name) and source.token.text == "roles"
+        people = _static_people(board, source) if not role_entities else None
+        dynamic = people is None and not role_entities
+        if role_entities:
+            domain = [f"\0role:{role.name}" for role in board.roles]
+        else:
+            if people is None:
+                if infer_operand(board, source).sort != Sort.PERSON:
+                    raise NotImplementedError(
+                        f"{name}: quantifier source lowering is not implemented"
+                    )
+                people = set(board.people)
+            domain = [person for person in board.people if person in people]
         quantifier = " ".join(formula.quantifier.text.split())
         literals = []
         for index, values in enumerate(permutations(domain, len(formula.variables)), 1):
