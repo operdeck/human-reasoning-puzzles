@@ -2705,7 +2705,7 @@ dir A object:pot king >= 2
     assert board.region_of(murdoku.Square(0, 2)) != board.region_of(murdoku.Square(1, 1))
     assert {(sq.row, sq.col) for sq in board.free if condition.test(sq, pot)} == far
     assert story.clue_texts(text) == [
-        "A en iemand op de pot zijn minstens twee koningszetten van elkaar verwijderd."
+        "A en een vakje van de pot zijn minstens twee koningszetten van elkaar verwijderd."
     ]
 
 
