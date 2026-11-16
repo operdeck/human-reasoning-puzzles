@@ -584,6 +584,10 @@ def _legacy_hint(source: str) -> str | None:
             r"\bhas\s+\S+\s+(?:role|attribute):",
             "P is role:x (or P is attribute:x)",
         ),
+        (
+            r"\b(?:if|then)\s+(?:not\s+)?(?:in|on|beside|touches|dir)\s+\S+",
+            "if P in X then Q on Y (use not for negative predicates)",
+        ),
         (r"^\s*subset\s+", "every role:a is role:b"),
         (r"^\s*alone\s+", "count people in area:x = 1 or count (people in area of P) = 1"),
         (r"^\s*only\s+", "(people on X) = P"),

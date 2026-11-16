@@ -297,6 +297,8 @@ def test_formula_source_error_uses_requested_line():
         ("not has Ada attribute:trained", "not P is attribute:x"),
         ("has Ada attribute:trained", "P is attribute:x"),
         ("if has Ada role:guard then in Ada area:hall", "P is role:x"),
+        ("if in Ada area:hall then on Ben object:bed", "if P in X then Q on Y"),
+        ("if Ada in area:hall then not dir Ada Ben up", "if P in X then Q on Y"),
         ("subset role:guard role:chef", "every role:a is role:b"),
         ("count roles of Ada <= 1", "at most N"),
         ("count people with role:guard = 1", "count role:x"),
