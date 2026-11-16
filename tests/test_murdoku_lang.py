@@ -1,5 +1,6 @@
 import pytest
 
+from csp.murdoku_expression_file import _ast_key
 from csp.murdoku_lang import (
     AdjectiveAtom,
     AdjectiveFilter,
@@ -23,10 +24,40 @@ from csp.murdoku_lang import (
     SetComparison,
     Token,
     Union,
+    format_statement,
     parse_formula,
     parse_operand,
     parse_statement,
 )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Ada in area:hall | Ada is in the hall.",
+        "no (people except Ada) in area:water",
+        "Ada dir:up+right object:plant <= 2",
+        "Ada in rows:1,3-5",
+        "some (people beside object:chest) dir:up Ada = 1",
+        "every ?p, ?q in role:guard: ?p dir:areas ?q >= 1",
+        "count (people in area of Ada) = count (people in area:hall) + 1",
+        "count empty free cells odd",
+        "count (occupied areas touches area:hall) 1..2",
+        "(people on object:carpet) = Ada, Ben",
+        "count (?p in people where ?p on object:bed) >= 1",
+        "(people is role:guard) != (people is role:chef)",
+        "exactly 1 of (Ada on object:bed; not Ben in area:hall)",
+        "if Ada in area:hall then (Ben in rows:1 or Ben in rows:3)",
+        "every ?r in rows: ?r is empty or ?r is occupied",
+        "(every ?r in rows: ?r is empty) and Ada in area:hall",
+        "exactly 1 of (every ?r in rows: ?r is empty; Ada in area:hall)",
+    ],
+)
+def test_format_statement_round_trips_structure_and_wording(source):
+    statement = parse_statement(source)
+    parsed = parse_statement(format_statement(statement))
+    assert _ast_key(parsed.formula) == _ast_key(statement.formula)
+    assert parsed.wording == statement.wording
 
 
 def test_parse_set_operations_preserves_structure_and_positions():

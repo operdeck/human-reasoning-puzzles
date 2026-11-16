@@ -686,6 +686,79 @@ def parse_statement(source: str, *, line: int = 1) -> Statement:
     return Statement(parse_formula(formula, line=line), wording.strip() if separator else None)
 
 
+def format_statement(statement: Statement) -> str:
+    """Render a statement as parseable expression-language source."""
+
+    def operand(value: Operand) -> str:
+        match value:
+            case Name(token=token):
+                return token.text
+            case Union(items=items):
+                return f"({', '.join(operand(item) for item in items)})"
+            case Difference(left=left, right=right):
+                return f"({operand(left)} except {operand(right)})"
+            case Qualified(adjective=adjective, operand=inner):
+                return f"{adjective.text} {operand(inner)}"
+            case Projection(kind=kind, operand=inner):
+                return f"{kind.text} of {operand(inner)}"
+            case Filter(source=source, operator=operator, target=target, measure=measure):
+                suffix = f" {measure.comparison.text} {measure.value.text}" if measure else ""
+                return f"({operand(source)} {operator.text} {operand(target)}{suffix})"
+            case AdjectiveFilter(source=source, operator=operator, adjective=adjective):
+                return f"({operand(source)} {operator.text} {adjective.text})"
+            case Comprehension(variable=variable, source=source, condition=condition):
+                return f"({variable.text} in {operand(source)} where {formula(condition)})"
+
+    def number(value: Number) -> str:
+        match value:
+            case Integer(value=token):
+                return token.text
+            case Count(operand=inner):
+                return f"count {operand(inner)}"
+            case Arithmetic(left=left, operator=operator, right=right):
+                return f"({number(left)} {operator.text} {number(right)})"
+
+    def formula(value: Formula) -> str:
+        match value:
+            case Atom(
+                subject=subject, operator=operator, target=target, determiner=det, measure=measure
+            ):
+                prefix = f"{det.text} " if det else ""
+                suffix = f" {measure.comparison.text} {measure.value.text}" if measure else ""
+                return f"{prefix}{operand(subject)} {operator.text} {operand(target)}{suffix}"
+            case AdjectiveAtom(
+                subject=subject, operator=operator, adjective=adjective, determiner=det
+            ):
+                prefix = f"{det.text} " if det else ""
+                return f"{prefix}{operand(subject)} {operator.text} {adjective.text}"
+            case SetComparison(left=left, operator=operator, right=right):
+                return f"{operand(left)} {operator.text} {operand(right)}"
+            case Negation(formula=inner):
+                return f"not ({formula(inner)})"
+            case Binary(left=left, operator=operator, right=right):
+                if operator.text == "if":
+                    return f"(if ({formula(left)}) then ({formula(right)}))"
+                return f"(({formula(left)}) {operator.text} ({formula(right)}))"
+            case NumberComparison(left=left, operator=operator, right=right):
+                return f"{number(left)} {operator.text} {number(right)}"
+            case Parity(number=numeric, parity=parity):
+                return f"{number(numeric)} {parity.text}"
+            case NumberRange(number=numeric, lower=lower, upper=upper):
+                return f"{number(numeric)} {lower.text}..{upper.text}"
+            case Quantified(
+                quantifier=quantifier, count=count, variables=variables, source=source, body=body
+            ):
+                bound = f" {count.text}" if count else ""
+                names = ", ".join(variable.text for variable in variables)
+                return f"{quantifier.text}{bound} {names} in {operand(source)}: {formula(body)}"
+            case Choice(quantifier=quantifier, count=count, choices=choices):
+                rendered = "; ".join(f"({formula(choice)})" for choice in choices)
+                return f"{quantifier.text} {count.text} of ({rendered})"
+
+    text = formula(statement.formula)
+    return text if statement.wording is None else f"{text} | {statement.wording}"
+
+
 def holds(
     statement: Statement,
     board: Board,
