@@ -629,6 +629,24 @@ def test_static_spatial_sets_preserve_entity_identity(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "(count (areas in tag:outside) = 1) iff Ada is role:guard",
+        "(count (areas on area:hall) = 1) iff Ada is role:guard",
+        "(count (areas touches area:hall) = 1) iff Ada is role:guard",
+        "(count (rows on mark:red) = 2) iff Ada is role:guard",
+        "(count (cells in area:hall) = 3) iff Ada is role:guard",
+        "(count (objects on mark:red) = 0) iff Ada is role:guard",
+        "(Ada in (rows on mark:red)) iff Ben is role:guard",
+        "(Ada on cell of object:bed) iff Ben is role:guard",
+        "(Ada in (areas except area:hall)) iff Ben is role:guard",
+    ],
+)
+def test_static_spatial_filters_match_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])

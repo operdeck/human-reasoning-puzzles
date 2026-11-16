@@ -55,7 +55,10 @@ def _static_cells(
             cells.update(part)
         return cells
     if not isinstance(target, lang.Name):
-        return None
+        entities = _static_spatial_entities(board, target)
+        if entities is None:
+            return None
+        return {square for footprint in entities.values() for square in footprint}
     text = target.token.text
     all_cells = {Square(row, col) for row in range(board.size) for col in range(board.size)}
     if text in {"areas", "rows", "columns", "cells"}:
@@ -1032,6 +1035,22 @@ def _static_spatial_entities(
         if left is None or right is None:
             return None
         return {key: footprint for key, footprint in left.items() if key not in right}
+    if isinstance(operand, lang.Filter):
+        source = _static_spatial_entities(board, operand.source)
+        targets = _static_spatial_entities(board, operand.target)
+        if source is None or targets is None:
+            return None
+        relation = _static_spatial_relation(board, operand.operator.text, operand.measure)
+        if relation is None:
+            return None
+        return {
+            subject: footprint
+            for subject, footprint in source.items()
+            if any(
+                relation(subject, footprint, target, target_footprint)
+                for target, target_footprint in targets.items()
+            )
+        }
     if isinstance(operand, lang.Projection):
         source = _static_spatial_entities(board, operand.operand)
         if source is None:
@@ -1119,18 +1138,16 @@ def _static_spatial_entities(
     return None
 
 
-def _static_spatial_atom(board: Board, atom: lang.Atom) -> bool | None:
-    subjects = _static_spatial_entities(board, atom.subject)
-    targets = _static_spatial_entities(board, atom.target)
-    if subjects is None or targets is None:
-        return None
-    operator = atom.operator.text
-    direction = _direction(board, operator, atom.measure) if operator.startswith("dir:") else None
+def _static_spatial_relation(
+    board: Board, operator: str, measure: lang.Measure | None
+) -> Callable[[tuple[Sort, str], set[Square], tuple[Sort, str], set[Square]], bool] | None:
+    direction = _direction(board, operator, measure) if operator.startswith("dir:") else None
     if operator not in {"is", "in", "on", "beside", "touches"} and direction is None:
         return None
 
-    def related(subject: tuple[Sort, str], target: tuple[Sort, str]) -> bool:
-        first, second = subjects[subject], targets[target]
+    def related(
+        subject: tuple[Sort, str], first: set[Square], target: tuple[Sort, str], second: set[Square]
+    ) -> bool:
         if operator == "is":
             return subject == target
         if operator == "in":
@@ -1148,8 +1165,21 @@ def _static_spatial_atom(board: Board, atom: lang.Atom) -> bool | None:
             for b in second
         )
 
+    return related
+
+
+def _static_spatial_atom(board: Board, atom: lang.Atom) -> bool | None:
+    subjects = _static_spatial_entities(board, atom.subject)
+    targets = _static_spatial_entities(board, atom.target)
+    if subjects is None or targets is None:
+        return None
+    related = _static_spatial_relation(board, atom.operator.text, atom.measure)
+    if related is None:
+        return None
     matching = {
-        subject for subject in subjects if any(related(subject, target) for target in targets)
+        subject
+        for subject, footprint in subjects.items()
+        if any(related(subject, footprint, target, cells) for target, cells in targets.items())
     }
     determiner = atom.determiner.text if atom.determiner else "some"
     return {
