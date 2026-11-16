@@ -2860,8 +2860,8 @@ def compile_statements_with_origins(
 ) -> ExpressionCompilation:
     """Compile expressions and retain their structured origins outside the engine.
 
-    Shared population primitives conservatively cite all population statements
-    in the batch; other primitives cite the statement that emitted them.
+    Shared population primitives retain every statement that uses them; other
+    primitives cite the statement that emitted them.
     """
     if board.rules:
         raise ValueError("board rules must be migrated to expression statements first")
@@ -2900,9 +2900,23 @@ def compile_statements_with_origins(
             (index, emitted_by) for index in range(step_start, len(model.log))
         )
 
-    before_population = snapshot()
-    _compile_area_population(model, board, [condition for _, condition in populations])
-    record(before_population, tuple(origin for origin, _ in populations))
+    population_origins = {origin.label: origin for origin, _ in populations}
+
+    def population_provenance(
+        condition: AreaPopulationCondition, constraints: set[int], steps: set[int]
+    ) -> None:
+        origin = population_origins[condition.label]
+        for index in constraints:
+            constraint_origins[index] = (*constraint_origins.get(index, ()), origin)
+        for index in steps:
+            initial_step_origins[index] = (*initial_step_origins.get(index, ()), origin)
+
+    _compile_area_population(
+        model,
+        board,
+        [condition for _, condition in populations],
+        provenance=population_provenance,
+    )
     population_labels = {origin.label for origin, _ in populations}
     for origin in origins:
         label, statement = origin.label, origin.statement

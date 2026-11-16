@@ -3425,7 +3425,11 @@ def _compile_global_counts(
 
 
 def _compile_area_population(
-    model: Model, board: Board, conditions: Sequence[AreaPopulationCondition]
+    model: Model,
+    board: Board,
+    conditions: Sequence[AreaPopulationCondition],
+    *,
+    provenance: Callable[[AreaPopulationCondition, set[int], set[int]], None] | None = None,
 ) -> None:
     """Compare area populations for `busiest_area` and `quietest_area` clues.
 
@@ -3447,8 +3451,9 @@ def _compile_area_population(
     }
     usable = [region for region in sorted(board.region_names) if occupants[region]]
     levels: dict[tuple[str, int], tuple[int, int]] = {}
-    comparisons: set[tuple[str, str]] = set()
-    equalities: set[frozenset[str]] = set()
+    level_origins: dict[tuple[str, int], tuple[set[int], set[int]]] = {}
+    comparisons: dict[tuple[str, str], tuple[set[int], set[int]]] = {}
+    equalities: dict[frozenset[str], tuple[set[int], set[int]]] = {}
 
     def area_name(region: str) -> str:
         name = board.region_names[region]
@@ -3456,9 +3461,10 @@ def _compile_area_population(
             return f"{name} ({region})"
         return name
 
-    def level(region: str, k: int) -> tuple[int, int]:
+    def level(region: str, k: int, constraints: set[int], steps: set[int]) -> tuple[int, int]:
         """(the area holds at least k people, the area holds fewer than k)."""
         if (region, k) not in levels:
+            constraint_start, step_start = len(model.constraints), len(model.log)
             name = area_name(region)
             _variable, is_at_least, is_below = _hidden_boolean(
                 model,
@@ -3483,16 +3489,25 @@ def _compile_area_population(
                     family=POPULATION_FAMILY,
                 )
             levels[region, k] = (is_at_least, is_below)
+            level_origins[region, k] = (
+                set(range(constraint_start, len(model.constraints))),
+                set(range(step_start, len(model.log))),
+            )
+        source_constraints, source_steps = level_origins[region, k]
+        constraints.update(source_constraints)
+        steps.update(source_steps)
         return levels[region, k]
 
-    def above(more: str, fewer: str) -> None:
+    def above(more: str, fewer: str) -> tuple[set[int], set[int]]:
         """`more` holds strictly more people than `fewer`."""
         if (more, fewer) in comparisons:
-            return
-        comparisons.add((more, fewer))
+            return comparisons[more, fewer]
+        constraint_start, step_start = len(model.constraints), len(model.log)
+        constraints: set[int] = set()
+        steps: set[int] = set()
         more_name, fewer_name = area_name(more), area_name(fewer)
         # A nonnegative population is at least zero, so the greater one is nonempty.
-        at_least_one, _ = level(more, 1)
+        at_least_one, _ = level(more, 1, constraints, steps)
         model.constrain(
             f"{more_name} outnumbers {fewer_name}: nonempty",
             Kind.EXACTLY_ONE,
@@ -3500,7 +3515,7 @@ def _compile_area_population(
             family=POPULATION_FAMILY,
         )
         for k in range(1, maximum + 1):
-            at_least, below = level(fewer, k)
+            at_least, below = level(fewer, k, constraints, steps)
             if k == maximum:
                 model.assign(
                     below,
@@ -3509,49 +3524,69 @@ def _compile_area_population(
                     sources=(f"{more_name} holds more",),
                 )
                 continue
-            _, short = level(more, k + 1)
+            _, short = level(more, k + 1, constraints, steps)
             model.constrain(
                 f"{more_name} outnumbers {fewer_name} at level {k}",
                 Kind.AT_MOST_ONE,
                 [at_least, short],
                 family=POPULATION_FAMILY,
             )
+        constraints.update(range(constraint_start, len(model.constraints)))
+        steps.update(range(step_start, len(model.log)))
+        comparisons[more, fewer] = constraints, steps
+        return constraints, steps
 
-    def same(first: str, second: str) -> None:
+    def same(first: str, second: str) -> tuple[set[int], set[int]]:
         """`first` and `second` hold the same number of people."""
         pair = frozenset((first, second))
         if pair in equalities:
-            return
-        equalities.add(pair)
+            return equalities[pair]
+        constraint_start, step_start = len(model.constraints), len(model.log)
+        constraints: set[int] = set()
+        steps: set[int] = set()
         for k in range(1, maximum + 1):
-            up, _ = level(first, k)
-            _, short = level(second, k)
+            up, _ = level(first, k, constraints, steps)
+            _, short = level(second, k, constraints, steps)
             model.constrain(
                 f"{area_name(first)} and {area_name(second)} agree on {k}",
                 Kind.AT_MOST_ONE,
                 [up, short],
                 family=POPULATION_FAMILY,
             )
-            up, _ = level(second, k)
-            _, short = level(first, k)
+            up, _ = level(second, k, constraints, steps)
+            _, short = level(first, k, constraints, steps)
             model.constrain(
                 f"{area_name(second)} and {area_name(first)} agree on {k}",
                 Kind.AT_MOST_ONE,
                 [up, short],
                 family=POPULATION_FAMILY,
             )
+        constraints.update(range(constraint_start, len(model.constraints)))
+        steps.update(range(step_start, len(model.log)))
+        equalities[pair] = constraints, steps
+        return constraints, steps
+
+    def include(
+        dependencies: tuple[set[int], set[int]], constraints: set[int], steps: set[int]
+    ) -> None:
+        constraints.update(dependencies[0])
+        steps.update(dependencies[1])
 
     for condition in conditions:
+        condition_constraints: set[int] = set()
+        condition_steps: set[int] = set()
         named = condition.regions
         others = [region for region in usable if region not in named]
         for first, second in combinations(named, 2):
-            same(first, second)
+            include(same(first, second), condition_constraints, condition_steps)
         for region in named:
             for other in others:
                 if AREA_POPULATION[condition.kind] == "most":
-                    above(region, other)
+                    include(above(region, other), condition_constraints, condition_steps)
                 else:
-                    above(other, region)
+                    include(above(other, region), condition_constraints, condition_steps)
+        if provenance is not None:
+            provenance(condition, condition_constraints, condition_steps)
 
 
 def _compile_quantified_condition(

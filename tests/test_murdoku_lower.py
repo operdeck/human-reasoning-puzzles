@@ -348,7 +348,7 @@ def test_compilation_retains_statement_origins_without_changing_model(board):
     )
 
 
-def test_shared_population_primitives_keep_all_origin_statements():
+def test_shared_population_primitives_keep_only_using_statements():
     board = Board(
         size=3,
         regions=[["a", "a", "b"], ["a", "b", "b"], ["c", "c", "c"]],
@@ -364,11 +364,20 @@ def test_shared_population_primitives_keep_all_origin_statements():
         "count (people in ?b) > count (people in area:shed)"
     )
     compiled = compile_statements_with_origins(board, [first, second])
-    assert compiled.constraint_origins
-    assert all(
-        tuple(origin.statement for origin in origins) == (first, second)
-        for origins in compiled.constraint_origins.values()
+    baseline = compile_puzzle(board, [])
+    assert set(compiled.constraint_origins) == set(
+        range(len(baseline.constraints), len(compiled.model.constraints))
     )
+    assert set(compiled.initial_step_origins) == set(
+        range(len(baseline.log), len(compiled.model.log))
+    )
+    by_name = {
+        compiled.model.constraints[index].name: tuple(origin.statement for origin in origins)
+        for index, origins in compiled.constraint_origins.items()
+    }
+    assert by_name["hall outnumbers garden: nonempty"] == (first,)
+    assert by_name["garden outnumbers shed: nonempty"] == (second,)
+    assert by_name["hall outnumbers shed: nonempty"] == (first, second)
 
 
 @pytest.mark.parametrize(
