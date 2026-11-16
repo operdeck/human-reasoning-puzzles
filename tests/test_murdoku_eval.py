@@ -97,6 +97,41 @@ def test_multiple_roles_are_counted_independently(case):
 @pytest.mark.parametrize(
     ("formula", "expected"),
     [
+        ("(people in area:hall) = Ada", True),
+        ("(people in area:hall) != Ada, Ben", True),
+        ("(people except Ada) = Ben", True),
+        ("(people on mark:red,blue) = Ada, Ben", True),
+        ("(?p in people where ?p on mark:red) = Ada", True),
+        ("(?p in people where ?p on mark:red) = Ben", False),
+        ("count (occupied areas) = 2", True),
+        ("count (empty areas) = 1", False),
+        ("count people - count role:guard = 1", True),
+        ("count (people in area:hall) = count (people in area:garden)", True),
+        ("count people even", True),
+        ("count (people on mark:red,blue) odd", False),
+        ("count people 1..2", True),
+        ("every ?p in people: ?p on mark:red,blue", True),
+        ("no ?p in people: ?p on mark:rock", True),
+        ("exactly 1 ?p in people: ?p on mark:red", True),
+        ("at least 2 ?p in people: ?p on mark:red", False),
+        ("at most 1 ?p in people: ?p on mark:red", True),
+        ("exactly 1 of (Ada on mark:red; Ben on mark:red)", True),
+        ("at least 2 of (Ada on mark:red; Ben on mark:red)", False),
+        ("if Ada on mark:red then Ben on mark:blue", True),
+        ("if Ada on mark:red then Ben on mark:red", False),
+        ("Ada on mark:red iff Ben on mark:blue", True),
+        ("Ada on mark:red or Ben on mark:red and Ben on mark:blue", True),
+        ("not Ada on mark:red or Ben on mark:red and Ben on mark:blue", False),
+    ],
+)
+def test_composed_reference_statements(case, formula, expected):
+    board, placed, roles = case
+    assert holds(parse_statement(formula), board, placed, roles) is expected
+
+
+@pytest.mark.parametrize(
+    ("formula", "expected"),
+    [
         ("Ada dir:furthest mark:centre", True),
         ("Ben dir:nearest mark:centre", False),
         ("Ben dir:nearest:rows mark:centre", True),
