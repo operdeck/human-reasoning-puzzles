@@ -667,6 +667,30 @@ def test_person_comprehensions_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "every ?c in cells: ?c in ?c",
+        "every ?c in corner:board: ?c is free",
+        "exactly 1 ?c in cells: ?c is occupied",
+        "every ?c in (cells on mark:red): ?c on mark:red",
+        "some ?c in cells: Ada on ?c",
+        "every ?c in cells: ?c in row of ?c",
+        "every ?c in cells: count (cells except ?c) = 8",
+        "every ?o in objects: ?o on ?o",
+        "every ?o in objects: count cell of ?o >= 1",
+        "some ?a, ?b in mark:red,copy: ?a != ?b",
+        "some ?a, ?b in mark:red,copy: ?a on ?b",
+        "every ?a in mark:red,copy: ?a is empty iff count (people on ?a) = 0",
+        "every ?a in (areas on mark:red): ?a on mark:red",
+        "every ?r in (rows on mark:red): ?r on mark:red",
+    ],
+)
+def test_static_spatial_quantifiers_match_reference(board, formula):
+    board = replace(board, marks=[*board.marks, CellMark("copy", board.marks[0].cells)])
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])

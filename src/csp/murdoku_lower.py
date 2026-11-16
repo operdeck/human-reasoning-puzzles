@@ -34,10 +34,35 @@ class _LineBinding:
     selector: str
 
 
-type _Bindings = dict[str, str | _RoleBinding | _AreaBinding | _LineBinding]
+@dataclass(frozen=True)
+class _SpatialBinding:
+    sort: Sort
+    key: str
+
+
+type _Bindings = dict[str, str | _RoleBinding | _AreaBinding | _LineBinding | _SpatialBinding]
 
 
 def _operand_sort(board: Board, operand: lang.Operand, bindings: _Bindings) -> Sort:
+    entities = _static_spatial_entities(board, operand)
+    if entities:
+        return next(iter(entities))[0]
+    if entities is not None:
+        if isinstance(operand, lang.Difference):
+            return _operand_sort(board, operand.left, bindings)
+        if isinstance(operand, lang.Union):
+            return _operand_sort(board, operand.items[0], bindings)
+        if isinstance(operand, (lang.Filter, lang.AdjectiveFilter)):
+            return _operand_sort(board, operand.source, bindings)
+        if isinstance(operand, lang.Qualified):
+            return _operand_sort(board, operand.operand, bindings)
+        if isinstance(operand, lang.Projection):
+            return {
+                "area": Sort.AREA,
+                "row": Sort.ROW,
+                "column": Sort.COLUMN,
+                "cell": Sort.CELL,
+            }[operand.kind.text]
     shapes = {
         variable: Shape(
             Sort.ROLE
@@ -48,6 +73,8 @@ def _operand_sort(board: Board, operand: lang.Operand, bindings: _Bindings) -> S
             if isinstance(value, _LineBinding) and value.selector.startswith("rows:")
             else Sort.COLUMN
             if isinstance(value, _LineBinding)
+            else value.sort
+            if isinstance(value, _SpatialBinding)
             else Sort.PERSON,
             1,
             1,
@@ -80,6 +107,10 @@ def _static_cells(
             return None
         return {square for footprint in entities.values() for square in footprint}
     text = target.token.text
+    if text.startswith("__entity:"):
+        entities = _static_spatial_entities(board, target)
+        assert entities is not None
+        return {square for footprint in entities.values() for square in footprint}
     all_cells = {Square(row, col) for row in range(board.size) for col in range(board.size)}
     if text in {"areas", "rows", "columns", "cells"}:
         return all_cells
@@ -715,6 +746,8 @@ def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
             value = f"area:{value.name}"
         if isinstance(value, _LineBinding):
             value = value.selector
+        if isinstance(value, _SpatialBinding):
+            value = f"__entity:{value.sort.value}:{value.key}"
         return replace(operand, token=replace(operand.token, text=value)) if value else operand
     if isinstance(operand, lang.Union):
         return replace(
@@ -1148,6 +1181,19 @@ def _static_spatial_entities(
     if not isinstance(operand, lang.Name):
         return None
     text = operand.token.text
+    if text.startswith("__entity:"):
+        _, synthetic_sort, key = text.split(":", 2)
+        if synthetic_sort == "cell":
+            row, col = (int(index) for index in key.split(","))
+            return {(Sort.CELL, key): {Square(row, col)}}
+        kind, index = key.split(":")
+        footprints = {
+            "object": [item.squares for item in board.objects],
+            "edge_item": [item.cells for item in board.edge_items],
+            "point_object": [item.cells for item in board.point_objects],
+            "mark": [item.cells for item in board.marks],
+        }
+        return {(Sort.FEATURE, key): set(footprints[kind][int(index)])}
     if text in {"cells", "corner:board"}:
         squares = {
             Square(row, col)
@@ -1253,9 +1299,15 @@ def _reify_adjective_atom(
     name: str,
     empty_scopes: dict[Square | str, int],
 ) -> int:
-    shape = infer_operand(board, atom.subject)
+    entities = _static_spatial_entities(board, atom.subject)
+    if entities is not None and len(entities) == 1:
+        sort = next(iter(entities))[0]
+        minimum = maximum = 1
+    else:
+        shape = infer_operand(board, atom.subject)
+        sort, minimum, maximum = shape.sort, shape.minimum, shape.maximum
     cells = _static_cells(board, atom.subject)
-    if shape.minimum != 1 or shape.maximum != 1 or cells is None:
+    if minimum != 1 or maximum != 1 or cells is None:
         raise NotImplementedError(f"{name}: adjective lowering is not implemented")
     if atom.adjective.text == "free":
         _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
@@ -1266,10 +1318,10 @@ def _reify_adjective_atom(
             sources=(f"{name} state",),
         )
         result = yes
-    elif shape.sort == Sort.CELL and len(cells) == 1:
+    elif sort == Sort.CELL and len(cells) == 1:
         empty = _cell_empty_literal(model, board, next(iter(cells)), name, empty_scopes)
         result = empty if atom.adjective.text == "empty" else _opposite(model, empty)
-    elif shape.sort == Sort.AREA and (regions := _static_area_ids(board, atom.subject)) is not None:
+    elif sort == Sort.AREA and (regions := _static_area_ids(board, atom.subject)) is not None:
         if len(regions) != 1:
             raise NotImplementedError(f"{name}: adjective lowering is not implemented")
         empty = _area_empty_literal(model, board, next(iter(regions)), name, empty_scopes)
@@ -1710,7 +1762,7 @@ def _reify_formula(
         if role_domain is not None:
             source = formula.source
             dynamic = False
-            domain: list[str | _RoleBinding | _AreaBinding | _LineBinding] = [
+            domain: list[str | _RoleBinding | _AreaBinding | _LineBinding | _SpatialBinding] = [
                 _RoleBinding(role.name) for role in board.roles if role.name in role_domain
             ]
         else:
@@ -1740,15 +1792,33 @@ def _reify_formula(
                         _LineBinding(f"{prefix}:{index + 1}") for index in sorted(line_indices)
                     ]
                 else:
-                    people = _static_people(board, source)
-                    dynamic = people is None
-                    if people is None:
-                        if _operand_sort(board, source, bindings) != Sort.PERSON:
-                            raise NotImplementedError(
-                                f"{name}: quantifier source lowering is not implemented"
-                            )
-                        people = set(board.people)
-                    domain = [person for person in board.people if person in people]
+                    entities = _static_spatial_entities(board, source)
+                    if entities is not None:
+                        dynamic = False
+                        domain = []
+                        ordered = sorted(entities, key=lambda item: (item[0].value, item[1]))
+                        for sort, key in ordered:
+                            if sort == Sort.AREA:
+                                if len(set(board.region_names.values())) != len(board.region_names):
+                                    raise NotImplementedError(
+                                        f"{name}: area quantifiers require distinct area names"
+                                    )
+                                domain.append(_AreaBinding(board.region_names[key]))
+                            elif sort in {Sort.ROW, Sort.COLUMN}:
+                                prefix = "rows" if sort == Sort.ROW else "columns"
+                                domain.append(_LineBinding(f"{prefix}:{int(key) + 1}"))
+                            else:
+                                domain.append(_SpatialBinding(sort, key))
+                    else:
+                        people = _static_people(board, source)
+                        dynamic = people is None
+                        if people is None:
+                            if _operand_sort(board, source, bindings) != Sort.PERSON:
+                                raise NotImplementedError(
+                                    f"{name}: quantifier source lowering is not implemented"
+                                )
+                            people = set(board.people)
+                        domain = [person for person in board.people if person in people]
         quantifier = " ".join(formula.quantifier.text.split())
         literals = []
         for index, values in enumerate(permutations(domain, len(formula.variables)), 1):
