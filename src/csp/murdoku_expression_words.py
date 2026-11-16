@@ -254,6 +254,9 @@ LEGACY_CLUE_PHRASES = {
     "clue.dir_exact": "rel.dir.<direction>.exact",
     "target.attribute": "name.attribute",
 }
+EXPRESSION_PHRASE_PREFIXES = tuple(
+    f"{namespace}." for namespace in {key.partition(".")[0] for key in PHRASES["en"]}
+)
 
 
 @dataclass
@@ -306,6 +309,8 @@ class ExpressionWords:
             if key in LEGACY_CLUE_PHRASES or key.startswith("clue."):
                 replacement = LEGACY_CLUE_PHRASES.get(key, "an expression phrase key or | wording")
                 raise ValueError(f"Words: key {key!r} is legacy; use {replacement}")
+            if key.startswith(EXPRESSION_PHRASE_PREFIXES) and key not in PHRASES[language]:
+                raise ValueError(f"Words: unknown expression phrase key {key!r}")
             (phrases if key in PHRASES[language] else names)[key] = phrase.strip()
         return cls(board, language, names, phrases)
 

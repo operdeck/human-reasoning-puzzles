@@ -113,6 +113,11 @@ def test_read_language_display_names_and_compositional_overrides(board):
     )
 
 
+def test_read_rejects_misspelled_expression_phrase_keys(board):
+    with pytest.raises(ValueError, match="unknown expression phrase key"):
+        ExpressionWords.read(board, "Words:\nrel.besid: next to\n")
+
+
 @pytest.mark.parametrize("line", ["unseparated", ": missing name"])
 def test_read_rejects_malformed_words(board, line):
     with pytest.raises(ValueError, match="Words:"):
