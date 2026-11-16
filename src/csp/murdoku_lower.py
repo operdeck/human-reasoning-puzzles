@@ -76,7 +76,7 @@ class ExpressionCompilation:
     initial_step_origins: dict[int, tuple[StatementOrigin, ...]]
 
     def origins_for_step(self, step: Step) -> tuple[StatementOrigin, ...]:
-        """Find structured clue origins for a step's named sources and trail."""
+        """Find structured origins for a step's sources, scope and trail."""
         selected: list[StatementOrigin] = []
 
         def include(origins: Sequence[StatementOrigin]) -> None:
@@ -88,7 +88,7 @@ class ExpressionCompilation:
             for index, origins in self.initial_step_origins.items():
                 if index < len(self.model.log) and self.model.log[index] is current:
                     include(origins)
-            for source in current.sources:
+            for source in (*current.sources, *current.scope):
                 matches = [
                     self.constraint_origins.get(index, ())
                     for index, constraint in enumerate(self.model.constraints)

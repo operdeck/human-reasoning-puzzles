@@ -569,6 +569,32 @@ def test_origins_for_step_resolves_solver_sources_and_nested_trails(board):
     assert tuple(origin.statement for origin in compiled.origins_for_step(hypothetical)) == (clue,)
 
 
+def test_origins_for_step_includes_cover_scope_and_deduplicates(board):
+    first = parse_statement("count role:guard = 1")
+    second = parse_statement("count people in area:hall = 1")
+    compiled = compile_statements_with_origins(board, [first, second])
+    first_name = next(
+        compiled.model.constraints[index].name
+        for index, origins in compiled.constraint_origins.items()
+        if any(origin.statement is first for origin in origins)
+    )
+    second_name = next(
+        compiled.model.constraints[index].name
+        for index, origins in compiled.constraint_origins.items()
+        if any(origin.statement is second for origin in origins)
+    )
+    step = Step(
+        "Ada",
+        Square(0, 0),
+        False,
+        "cover2",
+        "cover",
+        sources=(first_name,),
+        scope=(second_name, first_name),
+    )
+    assert tuple(origin.statement for origin in compiled.origins_for_step(step)) == (first, second)
+
+
 def test_origins_for_initial_expression_assignment(board):
     clue = parse_statement("area:hall is empty")
     compiled = compile_statements_with_origins(board, [clue])
