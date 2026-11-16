@@ -3726,24 +3726,42 @@ def _compile_cell_pair_condition(
     model: Model, board: Board, condition: QuantifiedCondition
 ) -> None:
     assert condition.subject_selector is not None and condition.pair_test is not None
+    _compile_cell_pair_scopes(
+        model,
+        board,
+        condition.label,
+        set(_selector_cells(board, condition.subject_selector)),
+        set(_selector_cells(board, condition.selector)),
+        condition.pair_test,
+    )
+
+
+def _compile_cell_pair_scopes(
+    model: Model,
+    board: Board,
+    label: str,
+    first_scope: set[Square],
+    second_scope: set[Square],
+    pair_test: PairTest,
+) -> None:
     free = set(board.free)
-    firsts = sorted(set(_selector_cells(board, condition.subject_selector)) & free)
-    seconds = sorted(set(_selector_cells(board, condition.selector)) & free)
+    firsts = sorted(first_scope & free)
+    seconds = sorted(second_scope & free)
     witnesses: list[int] = []
     for first in firsts:
         for second in seconds:
-            if first == second or not condition.pair_test(first, second):
+            if first == second or not pair_test(first, second):
                 continue
             _, is_match, _ = _hidden_boolean(
                 model,
                 "target_witness",
-                f"{condition.label} witness {first} {second}",
+                f"{label} witness {first} {second}",
                 "target witness",
             )
             occupants = [model.literal(person, square) for person in board.people
                          for square in (first, second)]  # fmt: skip
             model.constrain(
-                f"{condition.label} witness {first} {second}",
+                f"{label} witness {first} {second}",
                 Kind.COUNT,
                 occupants,
                 allowed_counts={2},
@@ -3752,9 +3770,9 @@ def _compile_cell_pair_condition(
             )
             witnesses.append(is_match)
     if not witnesses:
-        raise ValueError(f"clue {condition.label!r} can never hold on this board")
+        raise ValueError(f"clue {label!r} can never hold on this board")
     model.constrain(
-        condition.label,
+        label,
         Kind.COUNT,
         witnesses,
         allowed_counts=range(1, len(witnesses) + 1),

@@ -12,10 +12,14 @@ from .core import Kind, Model, Step
 from .murdoku import (
     AreaPopulationCondition,
     Board,
+    QuantifiedCondition,
     Square,
+    TargetSelector,
     _area_distances,
     _auxiliary_variable,
     _compile_area_population,
+    _compile_cell_pair_scopes,
+    _compile_quantified_condition,
     _direction_test,
     _hidden_boolean,
     compile_puzzle,
@@ -486,6 +490,87 @@ def try_lower_occupant_equality(
                     model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
         return True
     return False
+
+
+def _literal_integer(number: lang.Number) -> int | None:
+    if isinstance(number, lang.Integer):
+        return int(number.value.text)
+    if isinstance(number, lang.Arithmetic):
+        left, right = _literal_integer(number.left), _literal_integer(number.right)
+        if left is not None and right is not None:
+            return left + right if number.operator.text == "+" else left - right
+    return None
+
+
+def try_lower_area_companions(
+    model: Model, board: Board, statement: lang.Statement, name: str
+) -> bool:
+    """Lower a person's fixed area population to pairwise companion witnesses."""
+    formula = statement.formula
+    if not isinstance(formula, lang.NumberComparison) or formula.operator.text != "=":
+        return False
+    for counted, target in ((formula.left, formula.right), (formula.right, formula.left)):
+        if not (
+            isinstance(counted, lang.Count)
+            and isinstance(counted.operand, lang.Filter)
+            and isinstance(counted.operand.source, lang.Name)
+            and counted.operand.source.token.text == "people"
+            and counted.operand.operator.text == "in"
+            and isinstance(counted.operand.target, lang.Projection)
+            and counted.operand.target.kind.text == "area"
+            and isinstance(counted.operand.target.operand, lang.Name)
+            and counted.operand.target.operand.token.text in board.people
+        ):
+            continue
+        total = _literal_integer(target)
+        if total is None or total < 1 or len(board.people) < 2:
+            continue
+        check_formula(board, formula)
+        missing = set(board.people) - set(model.all_variables)
+        if missing:
+            raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+        person = counted.operand.target.operand.token.text
+        condition = QuantifiedCondition(
+            name, "alone_with", person, TargetSelector("anyone", ""), rest=(str(total - 1),)
+        )
+        _compile_quantified_condition(model, board, condition)
+        return True
+    return False
+
+
+def try_lower_occupied_cell_pair(
+    model: Model, board: Board, statement: lang.Statement, name: str
+) -> bool:
+    """Lower an existential direction between static occupancy scopes."""
+    atom = statement.formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and atom.determiner is not None
+        and atom.determiner.text == "some"
+        and atom.operator.text.startswith("dir:")
+        and isinstance(atom.subject, lang.Filter)
+        and isinstance(atom.target, lang.Filter)
+    ):
+        return False
+    filters = (atom.subject, atom.target)
+    if any(
+        not isinstance(item.source, lang.Name)
+        or item.source.token.text != "people"
+        or item.operator.text not in {"on", "in"}
+        or item.measure is not None
+        for item in filters
+    ):
+        return False
+    first, second = (_static_cells(board, item.target) for item in filters)
+    direction = _direction(board, atom.operator.text, atom.measure)
+    if first is None or second is None or direction is None:
+        return False
+    check_formula(board, atom)
+    missing = set(board.people) - set(model.all_variables)
+    if missing:
+        raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+    _compile_cell_pair_scopes(model, board, name, first, second, direction)
+    return True
 
 
 def try_lower_membership(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
@@ -3127,6 +3212,8 @@ def compile_statements_with_origins(
                 try_lower_person_pair,
                 try_lower_person_choice,
                 try_lower_role_target,
+                try_lower_area_companions,
+                try_lower_occupied_cell_pair,
                 try_lower_count,
             )
         ):

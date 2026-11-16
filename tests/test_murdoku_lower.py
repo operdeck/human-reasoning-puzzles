@@ -12,10 +12,12 @@ from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import (
     compile_statements,
     compile_statements_with_origins,
+    try_lower_area_companions,
     try_lower_count,
     try_lower_location,
     try_lower_membership,
     try_lower_occupant_equality,
+    try_lower_occupied_cell_pair,
     try_lower_person_choice,
     try_lower_person_pair,
     try_lower_role_atom,
@@ -182,6 +184,32 @@ def test_person_choice_leaves_larger_relations_to_general_lowering():
     before = len(model.constraints), len(model.relations), len(model.log)
     assert not try_lower_person_choice(model, board, statement, "clue 1")
     assert (len(model.constraints), len(model.relations), len(model.log)) == before
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "count (people in area of Ada) = 1",
+        "count (people in area of Ada) = 1 + 1",
+        "2 = count (people in area of Ben)",
+    ],
+)
+def test_person_area_population_matches_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_area_companions, solve=True)
+    _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "some (people on mark:red) dir:up (people on mark:blue)",
+        "some (people on mark:red,blue) dir:rows (people on mark:red) = 0",
+        "some (people in area:garden) dir:king (people on mark:red) <= 2",
+    ],
+)
+def test_occupied_cell_pair_matches_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_occupied_cell_pair, solve=True)
+    _assert_compilation_matches_reference(board, formula)
 
 
 @pytest.mark.parametrize(
@@ -415,6 +443,29 @@ def test_tuned_occupant_and_choice_lowering_preserve_origins(board):
         compiled.model.relations[index].name == "clue 2"
         and tuple(origin.statement for origin in origins) == (choice,)
         for index, origins in compiled.relation_origins.items()
+    )
+
+
+def test_tuned_companions_and_cell_pairs_preserve_origins(board):
+    companions = parse_statement("count (people in area of Ada) = 2")
+    pair = parse_statement("some (people on mark:red) dir:up (people on mark:blue)")
+    compiled = compile_statements_with_origins(board, [companions, pair])
+    for index, origins in compiled.relation_origins.items():
+        if compiled.model.relations[index].name.startswith("clue 1"):
+            assert tuple(origin.statement for origin in origins) == (companions,)
+    for index, origins in compiled.constraint_origins.items():
+        name = compiled.model.constraints[index].name
+        if name.startswith("clue 1"):
+            assert tuple(origin.statement for origin in origins) == (companions,)
+        if name.startswith("clue 2"):
+            assert tuple(origin.statement for origin in origins) == (pair,)
+    assert any(
+        compiled.model.relations[index].name.startswith("clue 1")
+        for index in compiled.relation_origins
+    )
+    assert any(
+        compiled.model.constraints[index].name.startswith("clue 2")
+        for index in compiled.constraint_origins
     )
 
 
@@ -1013,6 +1064,25 @@ def test_composition_fixture_preserves_migrated_grade_and_unique_solution():
         "count people with role:recorder": "count role:recorder",
         "count people with attribute:trained": "count attribute:trained",
         "count empty cells": "count empty free cells",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
+def test_logeeravond_preserves_migrated_grade_and_unique_solution():
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    replacements = {
+        "with Wouter in same area exactly 1": "count (people in area of Wouter) = 2",
+        "dir people_on:object:badjas people_on:object:sloffen up = 1": (
+            "some (people on object:badjas) dir:up (people on object:sloffen) = 1"
+        ),
+        "on Marloes object:badjas": "Marloes on object:badjas",
+        "beside Bas object:toilet": "Bas beside object:toilet",
+        "dir Cato Daan left": "Cato dir:left Daan",
+        "in Cato area:gang": "Cato in area:gang",
     }
     migrated = text
     for old, new in replacements.items():
