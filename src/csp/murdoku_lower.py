@@ -30,10 +30,11 @@ def _static_cells(
     if not isinstance(target, lang.Name):
         return None
     text = target.token.text
+    all_cells = {Square(row, col) for row in range(board.size) for col in range(board.size)}
     if text in {"areas", "rows", "columns", "cells"}:
-        return set(board.free)
+        return all_cells
     if text == "objects":
-        return {square for obj in board.objects for square in obj.squares} & set(board.free)
+        return {square for obj in board.objects for square in obj.squares}
     if ":" not in text and namespace:
         text = f"{namespace}:{text}"
     kind, separator, value = text.partition(":")
@@ -41,38 +42,32 @@ def _static_cells(
         return None
     if kind == "area":
         region = board.region_id(value)
-        return {square for square in board.free if board.region_of(square) == region}
+        return {square for square in all_cells if board.region_of(square) == region}
     if kind == "tag":
         regions = board.tagged_region_ids([value])
-        return {square for square in board.free if board.region_of(square) in regions}
+        return {square for square in all_cells if board.region_of(square) in regions}
     if kind == "mark":
-        return board.mark_cells([value]) & set(board.free)
+        return board.mark_cells([value])
     if kind == "object":
-        return board.squares_of([value]) & set(board.free)
+        return board.squares_of([value])
     if kind == "edge_item":
-        return board.edge_item_cells([value]) & set(board.free)
+        return board.edge_item_cells([value])
     if kind == "point_object":
-        return board.point_object_cells([value]) & set(board.free)
+        return board.point_object_cells([value])
     if kind == "object_kind":
-        return {
-            square
-            for obj in board.objects
-            if obj.kind == value
-            for square in obj.squares
-            if square in board.free
-        }
+        return {square for obj in board.objects if obj.kind == value for square in obj.squares}
     if kind in {"rows", "columns"}:
         first, has_end, last = value.partition("-")
         start = board.size if first == "last" else int(first)
         end = (board.size if last == "last" else int(last)) if has_end else start
         return {
             square
-            for square in board.free
+            for square in all_cells
             if start <= (square.row if kind == "rows" else square.col) + 1 <= end
         }
     if kind == "corner" and value == "board":
         edge = {0, board.size - 1}
-        return {square for square in board.free if square.row in edge and square.col in edge}
+        return {Square(row, col) for row in edge for col in edge}
     return None
 
 
@@ -88,12 +83,16 @@ def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square
     ):
         cells = _static_cells(board, operand.target)
         if cells is not None:
-            return [(person, square) for person in board.people for square in sorted(cells)]
+            return [
+                (person, square)
+                for person in board.people
+                for square in sorted(cells & set(board.free))
+            ]
     return None
 
 
 def try_lower_location(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
-    """Lower a named person's static containment or overlap as domain eliminations."""
+    """Lower a named person's static spatial relation as domain eliminations."""
     formula = statement.formula
     negated = isinstance(formula, lang.Negation)
     atom = formula.formula if isinstance(formula, lang.Negation) else formula
@@ -101,7 +100,7 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
         isinstance(atom, lang.Atom)
         and isinstance(atom.subject, lang.Name)
         and atom.subject.token.text in board.people
-        and atom.operator.text in {"in", "on"}
+        and atom.operator.text in {"in", "on", "beside", "touches"}
     ):
         return False
     check_formula(board, formula)
@@ -113,7 +112,18 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
         raise ValueError(f"model lacks declared variable: {person}")
     exclude = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
     for square in board.free:
-        if (square in cells) == exclude:
+        if atom.operator.text in {"in", "on"}:
+            matches = square in cells
+        else:
+            matches = any(
+                abs(square.row - cell.row) + abs(square.col - cell.col) == 1
+                and (
+                    atom.operator.text == "touches"
+                    or board.region_of(square) == board.region_of(cell)
+                )
+                for cell in cells
+            )
+        if matches == exclude:
             model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
     return True
 

@@ -91,6 +91,9 @@ def test_lowered_count_matches_reference_for_every_placement_and_role(board, for
         "Ada in tag:outside",
         "not Ada on mark:red,blue",
         "some Ada on object:bed",
+        "Ada beside object:bed",
+        "Ada touches mark:red",
+        "not Ada beside mark:blue",
         "no Ada in rows:1,3",
         "not no Ada in rows:1,3",
     ],
@@ -145,6 +148,17 @@ def test_static_empty_scope_reports_infeasible_count(board):
     assert try_lower_count(model, board, parse_statement("count people on mark:blocked = 0"), "ok")
     with pytest.raises(ValueError, match="no feasible value on this board"):
         try_lower_count(model, board, parse_statement("count people on mark:blocked = 1"), "bad")
+
+
+def test_blocked_feature_footprints_still_support_adjacency(board):
+    blocked = Square(0, 2)
+    board = replace(
+        board,
+        objects=[*board.objects, BoardObject("rock", "blocking", (blocked,))],
+    )
+    _assert_matches_reference(board, "Ada beside object:rock", try_lower_location)
+    _assert_matches_reference(board, "Ada touches object:rock", try_lower_location)
+    _assert_matches_reference(board, "count people on object:rock = 0", try_lower_count)
 
 
 def test_compiled_statement_conjunction_matches_reference_search(board):
