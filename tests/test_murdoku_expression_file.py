@@ -156,6 +156,28 @@ def test_expression_board_notes_include_generated_and_authored_rules():
     ]
 
 
+def test_expression_player_presentation_uses_dutch_wording():
+    text = "Language: nl\n" + TEXT.replace(" | Ada stays in the first row.", "").replace(
+        " | Ben is in the first column.", ""
+    )
+    _, rules, clues = load_expression_board(text)
+    entries = figure_clues(text, expressions=clues)
+    assert entries.figures[1].clues[0].text == "Ben is in kolommen 1."
+    assert "Ada is in rijen 1." in murdoku_rules(
+        text, expression_rules=rules, expression_clues=clues
+    )
+
+
+def test_expression_figure_name_override_preserves_person_identity():
+    text = TEXT.replace(" | Ben is in the first column.", "") + "Words:\nBen: the detective\n"
+    _, _, clues = load_expression_board(text)
+    entries = figure_clues(text, expressions=clues)
+    assert entries.figures[1].person == "Ben"
+    assert entries.figures[1].name == "The detective"
+    assert entries.figures[1].clues[0].text == "The detective is in columns 1."
+    assert entries.figures[1].clues[0].id == "clue:1"
+
+
 def test_expression_player_rules_use_ast_for_notes_and_deduplicate_intro():
     text = (
         "Intro: Ada stays in the first row.\n"
