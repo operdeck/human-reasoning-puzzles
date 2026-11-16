@@ -86,7 +86,7 @@ def test_wording_overrides_and_names_are_used(board):
         phrases={"rel.beside": "next to"},
     )
     assert words.statement(parse_statement("Ada beside object:bed")) == (
-        "the keeper is next to at least one of objects named bed"
+        "the keeper is next to an object named bed"
     )
     assert words.statement(parse_statement("Ada in area:hall | A custom clue.")) == "A custom clue."
 
@@ -109,8 +109,20 @@ def test_read_language_display_names_and_compositional_overrides(board):
         "Language: nl\nWords:\nAda: de bewaker\nrel.beside: vlak naast\n",
     )
     assert words.statement(parse_statement("Ada beside object:bed")) == (
-        "de bewaker is vlak naast minstens een van voorwerpen met de naam bed"
+        "de bewaker is vlak naast een voorwerp met de naam bed"
     )
+
+
+def test_object_target_wording_uses_names_without_changing_set_wording(board):
+    words = ExpressionWords(board, names={"bed": "a bed"})
+    assert words.statement(parse_statement("Ada on object:bed")) == "Ada is on a bed"
+    assert "the number of objects named a bed" in words.statement(
+        parse_statement("count object:bed = 2")
+    )
+    overridden = ExpressionWords(
+        board, names={"bed": "a bed"}, phrases={"target.object": "exactly {name}"}
+    )
+    assert overridden.statement(parse_statement("Ada on object:bed")) == "Ada is on exactly a bed"
 
 
 def test_read_rejects_misspelled_expression_phrase_keys(board):

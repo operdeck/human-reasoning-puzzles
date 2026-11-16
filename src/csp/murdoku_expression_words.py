@@ -88,6 +88,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.measure.axes": "{target} (each axis distance {comparison} {value})",
         "rel.any_target": "at least one of {target}",
         "rel.distinct_target": "{target} (distinct from the subject)",
+        "target.object": "{name}",
+        "target.object.named": "an object named {name}",
         "cmp.=": "equal to",
         "cmp.!=": "not equal to",
         "cmp.<": "less than",
@@ -204,6 +206,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.measure.axes": "{target} (afstand op elke as {comparison} {value})",
         "rel.any_target": "minstens een van {target}",
         "rel.distinct_target": "{target} (verschillend van het onderwerp)",
+        "target.object": "{name}",
+        "target.object.named": "een voorwerp met de naam {name}",
         "cmp.=": "gelijk aan",
         "cmp.!=": "niet gelijk aan",
         "cmp.<": "kleiner dan",
@@ -387,9 +391,14 @@ class ExpressionWords:
         bindings: dict[str, Shape],
         operator: lang.Token | None = None,
     ) -> str:
-        rendered = self._operand(target, bindings)
-        if infer_operand(self.board, target, bindings).maximum > 1:
-            rendered = self._phrase("rel.any_target", target=rendered)
+        if isinstance(target, lang.Name) and target.token.text.startswith("object:"):
+            name = target.token.text.partition(":")[2]
+            key = "target.object" if name in self.names else "target.object.named"
+            rendered = self._phrase(key, name=self.names.get(name, name))
+        else:
+            rendered = self._operand(target, bindings)
+            if infer_operand(self.board, target, bindings).maximum > 1:
+                rendered = self._phrase("rel.any_target", target=rendered)
         if operator and operator.text == "dir:areas":
             rendered = self._phrase("rel.distinct_target", target=rendered)
         if measure and not (operator and operator.text == "dir:areas" and self._same_area(measure)):
