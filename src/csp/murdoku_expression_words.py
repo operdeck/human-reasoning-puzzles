@@ -322,6 +322,11 @@ class ExpressionWords:
                 raise ValueError(
                     f"Words: phrase {key!r} has unknown placeholders: {', '.join(sorted(invalid))}"
                 )
+            missing = allowed - supplied
+            if missing:
+                raise ValueError(
+                    f"Words: phrase {key!r} is missing placeholders: {', '.join(sorted(missing))}"
+                )
 
     @classmethod
     def read(cls, board: Board, text: str) -> "ExpressionWords":

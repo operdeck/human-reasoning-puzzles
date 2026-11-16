@@ -152,6 +152,8 @@ def test_invalid_language_and_phrase_key_fail_explicitly(board):
         ExpressionWords(board, phrases={"rel.unknown": "???"})
     with pytest.raises(ValueError, match=r"unknown placeholders.*subject"):
         ExpressionWords(board, phrases={"rel.beside": "near {subject}"})
+    with pytest.raises(ValueError, match=r"missing placeholders.*relation.*target"):
+        ExpressionWords(board, phrases={"atom.one": "{subject} is somewhere"})
     for template in ("{}", "{subject:{width}}"):
         with pytest.raises(ValueError, match="unsupported placeholder"):
             ExpressionWords(board, phrases={"det.every": template})
