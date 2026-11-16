@@ -460,6 +460,23 @@ def test_cell_occupancy_counts_include_blocked_cells(board, formula):
         assert accepted == holds(statement, board, placed, roles), candidate
 
 
+def test_overlapping_cell_counts_share_empty_literals(board):
+    board = replace(
+        board,
+        objects=[*board.objects, BoardObject("rock", "blocking", (Square(0, 2),))],
+    )
+    model = compile_statements(
+        board,
+        [
+            parse_statement("count empty cells = 7"),
+            parse_statement("count empty free cells = 6"),
+        ],
+    )
+    counts = {constraint.name: constraint for constraint in model.constraints}
+    assert set(counts["clue 2"].literals) < set(counts["clue 1"].literals)
+    assert len(set(counts["clue 2"].literals)) == len(board.free)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
