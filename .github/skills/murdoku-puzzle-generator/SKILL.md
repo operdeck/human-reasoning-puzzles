@@ -92,13 +92,17 @@ Start with the CLI rather than with code:
 uv run python -m csp.scan PAGE.png --size 10 --tiles /tmp/cells --sheet /tmp/sheet.png
 # which cells repeat one example, and what the page says
 uv run python -m csp.scan PAGE.png --seed r3c5 --top 12
-uv run python -m csp.scan PAGE.png --ocr
+uv run python -m csp.scan PAGE.png --ocr --ocr-language nl+en
 ```
 
 1. **Text first, and OCR is not optional.** `scan.ocr(path)` returns `(text, box)`
    lines with normalised boxes (origin bottom-left) through macOS Vision (pyobjc)
    or pytesseract elsewhere (its words are grouped back into lines, so both
-   backends answer the same thing). Whole-page OCR reads the big labels; the small
+   backends answer the same thing). Pass `language="nl+en"` to `ocr` or
+   `--ocr-language nl+en` to the CLI to select Dutch and English; tesseract needs
+   the corresponding `nld` and `eng` language data installed. Without a language,
+   Vision uses both while tesseract uses its default (typically English).
+   Whole-page OCR reads the big labels; the small
    hand script on the figure cards needs a **2–5x zoom crop per band or per
    column**, or it hands back fragments ("as nog een" for "Was nog een"). Crop with
    a rectangle in the same normalised coordinates and OCR the crop.
@@ -106,12 +110,11 @@ uv run python -m csp.scan PAGE.png --ocr
    varies by ten per cent across one spread (260 px to 320 px measured), so an
    assumed pitch drifts a whole cell over ten columns. Detect the lines instead:
    `scan.find_grid` thresholds, isolates long dark runs by morphology, clusters
-   them, and keeps the window of `size + 1` consecutive candidates that behaves most
-   like one grid — so a frame, a card border or a sketchpad outside the board cannot
-   become a grid line. It **refuses** (with advice) when the lines are not evenly
-   spaced or the page is tilted by more than two degrees: it does not deskew, so
-   crop and rotate the board upright first. Print `Grid.x`/`Grid.y` and their
-   differences before trusting anything downstream.
+   them, and fits `size + 1` candidates to each axis. It **refuses** (with advice)
+   when no grid fits, several grids fit, or the page is tilted by more than two
+   degrees. It does not deskew, so crop and rotate the board upright first. The
+   detection is heuristic: compare `Grid.x`/`Grid.y` and their differences against
+   the original image before trusting anything downstream.
 3. **Normalise before comparing.** `scan.tiles` resizes each cell to
    `scan.CELL_TILE`; the printed icon scales with its cell, so raw crops never
    compare across the board.

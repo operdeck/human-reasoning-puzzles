@@ -87,9 +87,6 @@ def test_rank_cells_finds_every_copy_of_the_seed_icon(tmp_path):
     image = scan.load(source)
     tiles = scan.tiles(image, scan.find_grid(image, size=SIZE))
     ranked = scan.rank_cells(tiles, seed=ICON_CELLS[0])
-    assert [cell for cell, _ in ranked[: len(ICON_CELLS)]] == sorted(
-        ICON_CELLS, key=lambda cell: ranked.index(next(pair for pair in ranked if pair[0] == cell))
-    )
     found = {cell for cell, _ in ranked[: len(ICON_CELLS)]}
     assert found == set(ICON_CELLS)
     scores = [score for _, score in ranked[: len(ICON_CELLS)]]
@@ -136,6 +133,30 @@ def test_find_grid_ignores_a_frame_around_the_board(tmp_path):
     assert all(abs(found - want) <= 6 for found, want in zip(grid.y, expected, strict=True))
 
 
+def test_find_grid_refuses_an_ambiguous_frame_on_a_perspective_board():
+    positions = [100]
+    for index in range(SIZE):
+        positions.append(positions[-1] + 160 + 4 * index)
+    end = positions[-1]
+    image = np.full((end + 100, end + 100, 3), 255, np.uint8)
+    for position in positions:
+        cv2.line(image, (position, 100), (position, end), (50, 50, 50), 2)
+        cv2.line(image, (100, position), (end, position), (50, 50, 50), 2)
+    grid = scan.find_grid(image, size=SIZE)
+    assert grid.x == tuple(positions)
+    assert grid.y == tuple(positions)
+
+    cv2.rectangle(image, (60, 60), (end + 40, end + 40), (50, 50, 50), 2)
+    with pytest.raises(scan.ScanError, match="multiple grids fit"):
+        scan.find_grid(image, size=SIZE)
+
+
+def test_contact_sheet_reports_failed_image_writes(tmp_path):
+    tile = np.full((40, 40, 3), 255, np.uint8)
+    with pytest.raises(scan.ScanError, match="cannot write image"):
+        scan.contact_sheet({(1, 1): tile}, tmp_path / "missing" / "sheet.png")
+
+
 def test_rank_cells_rejects_a_seed_that_is_not_on_the_board(tmp_path):
     source = tmp_path / "board.png"
     draw_board(source)
@@ -152,6 +173,16 @@ def test_cli_reports_the_grid_and_can_write_tiles(tmp_path, capsys):
     output = capsys.readouterr().out
     assert "x lines:" in output and "pitches:" in output
     assert len(list(tiles_dir.glob("r*c*.png"))) == SIZE * SIZE
+
+
+def test_cli_reports_tile_write_failure(tmp_path, capsys, monkeypatch):
+    source = tmp_path / "board.png"
+    draw_board(source)
+    monkeypatch.setattr(cv2, "imwrite", lambda *_args: False)
+    assert scan.main([str(source), "--size", str(SIZE), "--tiles", str(tmp_path / "cells")]) == 2
+    output = capsys.readouterr().out
+    assert "cannot write image" in output
+    assert "wrote" not in output
 
 
 def test_the_solver_does_not_need_numpy_but_the_scan_reader_says_how_to_get_it(
@@ -174,6 +205,54 @@ def test_ocr_explains_which_backend_is_missing(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "pytesseract", None)
     with pytest.raises(scan.ScanError, match="macOS Vision"):
         scan.ocr(tmp_path / "nothing.png")
+
+
+def test_ocr_groups_tesseract_words_and_passes_languages(tmp_path, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    calls = []
+
+    def image_to_data(_image, **kwargs):
+        calls.append(kwargs)
+        return {
+            "text": ["Hoi", "wereld", "Hallo"],
+            "block_num": [1, 1, 1],
+            "par_num": [1, 1, 1],
+            "line_num": [1, 1, 2],
+            "left": [10, 30, 20],
+            "top": [10, 10, 40],
+            "width": [10, 20, 15],
+            "height": [10, 10, 10],
+        }
+
+    monkeypatch.setitem(sys.modules, "csp.scan_vision", None)
+    monkeypatch.setitem(
+        sys.modules,
+        "pytesseract",
+        SimpleNamespace(Output=SimpleNamespace(DICT="dict"), image_to_data=image_to_data),
+    )
+    path = tmp_path / "text.png"
+    cv2.imwrite(str(path), np.full((100, 100, 3), 255, np.uint8))
+    lines = scan.ocr(path, language="nl+en")
+    assert lines == [("Hoi wereld", (0.1, 0.8, 0.5, 0.9)), ("Hallo", (0.2, 0.5, 0.35, 0.6))]
+    assert calls == [{"output_type": "dict", "lang": "nld+eng"}]
+
+
+def test_ocr_passes_languages_to_vision(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    calls = []
+    monkeypatch.setitem(
+        sys.modules,
+        "csp.scan_vision",
+        SimpleNamespace(recognise=lambda path, languages: calls.append((path, languages)) or []),
+    )
+    assert scan.ocr("page.png", language="nl+en") == []
+    assert calls == [("page.png", ["nl-NL", "en-US"])]
+    with pytest.raises(scan.ScanError, match="unknown OCR language"):
+        scan.ocr("page.png", language="fr")
 
 
 def test_find_grid_refuses_a_page_whose_lines_are_not_evenly_spaced(tmp_path):

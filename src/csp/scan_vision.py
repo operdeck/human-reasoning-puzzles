@@ -9,7 +9,9 @@ from __future__ import annotations
 from typing import Any
 
 
-def recognise(path: str) -> list[tuple[str, tuple[float, float, float, float]]]:
+def recognise(
+    path: str, languages: list[str] | None = None
+) -> list[tuple[str, tuple[float, float, float, float]]]:
     """Text lines with normalised boxes, origin at the bottom left (Vision's own)."""
     import Foundation
     import Vision
@@ -19,7 +21,7 @@ def recognise(path: str) -> list[tuple[str, tuple[float, float, float, float]]]:
     request = Vision.VNRecognizeTextRequest.alloc().init()
     request.setRecognitionLevel_(0)  # accurate
     request.setUsesLanguageCorrection_(True)
-    request.setRecognitionLanguages_(["nl-NL", "en-US"])
+    request.setRecognitionLanguages_(languages if languages is not None else ["nl-NL", "en-US"])
     ok, error = handler.performRequests_error_([request], None)
     if not ok:
         raise RuntimeError(f"Vision could not read {path}: {error}")

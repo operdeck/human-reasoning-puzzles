@@ -213,15 +213,15 @@ than listing it as working.
 
 A transcription starts from a photo or scan. `csp.scan` does the measuring —
 `ocr` (macOS Vision through pyobjc, or pytesseract), `find_grid` (lines detected,
-not assumed, and the window that behaves like one grid, so a frame outside the
-board cannot become a line; it refuses an uneven grid or a tilted page instead of
-returning a shifted one), `tiles` (normalised square cells), `icon_mask` +
+not assumed; it refuses ambiguous or uneven fits and tilted pages, but its results
+still need visual checking), `tiles` (normalised square cells), `icon_mask` +
 `rank_cells` (which cells repeat one example icon) and `contact_sheet` (a labelled
 sheet for the owner to correct). `uv run python -m csp.scan PAGE --size N --tiles
 DIR --sheet FILE --seed r3c5 --ocr` runs the whole pipeline.
 
 It needs `uv sync --extra scan`; numpy and opencv are imported on first use, so the
-solver itself keeps its zero-dependency install.
+solver itself keeps its zero-dependency install. Use `--ocr-language nl+en` to
+select Dutch and English; tesseract also needs those language data installed.
 
 What it cannot do is *name* a shape: matching says which cells repeat, never what
 an icon depicts. Ask for one example cell per kind or for the lists, and never

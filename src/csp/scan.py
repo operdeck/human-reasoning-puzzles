@@ -121,9 +121,9 @@ def _fit_grid(candidates: list[tuple[int, float]], size: int, axis: str) -> tupl
     spine shadow — and a busy board adds its own (area walls, furniture edges), so
     neither the first and last candidate nor any run of consecutive candidates is
     necessarily the board's grid. Instead every pair of candidates proposes a pitch,
-    and the pitch whose `size + 1` expected positions are all matched by a real
-    candidate, with the evenest gaps and the strongest lines, wins. Nothing is
-    invented: if no pitch fits, this raises instead of returning a shifted grid.
+    and each pitch whose `size + 1` expected positions match real candidates is
+    checked for even spacing. If several grids fit, their lines alone do not say
+    which one is the board, so refuse rather than silently choose the wrong one.
     """
     np = _np()
     if len(candidates) < size + 1:
@@ -132,8 +132,7 @@ def _fit_grid(candidates: list[tuple[int, float]], size: int, axis: str) -> tupl
             "crop the board out of the page and try again"
         )
     positions = [position for position, _ in candidates]
-    strengths = {position: strength for position, strength in candidates}
-    best: tuple[float, float, tuple[int, ...]] | None = None
+    fits: set[tuple[int, ...]] = set()
     for first_index, start in enumerate(positions):
         for last_index in range(first_index + size, len(positions)):
             pitch = (positions[last_index] - start) / size
@@ -153,23 +152,19 @@ def _fit_grid(candidates: list[tuple[int, float]], size: int, axis: str) -> tupl
                 continue
             gaps = [b - a for a, b in pairwise(chosen)]
             spread = float(np.std(gaps)) / float(np.mean(gaps))
-            strength = sum(strengths[position] for position in chosen)
-            key = (round(spread, 4), -strength)
-            if best is None or key < best[:2]:
-                best = (spread, -strength, tuple(chosen))
-    if best is None:
+            if min(gaps) > 0 and spread <= 0.18:
+                fits.add(tuple(chosen))
+    if not fits:
         raise ScanError(
             f"no set of {size + 1} {axis} lines fits one grid; crop the board out of the "
             "page, scan it alone, and try again"
         )
-    spread, _, best_lines = best
-    gaps = [b - a for a, b in pairwise(best_lines)]
-    if min(gaps) <= 0 or spread > 0.18:
+    if len(fits) > 1:
         raise ScanError(
-            f"the {axis} lines are not evenly spaced ({gaps}); crop the board out of the "
-            "page, scan it alone, and try again"
+            f"multiple grids fit the {axis} lines; crop the board out of the page, "
+            "scan it alone, and try again"
         )
-    return best_lines
+    return next(iter(fits))
 
 
 def _skew_degrees(vertical: NDArray[np.uint8], horizontal: NDArray[np.uint8]) -> float:
@@ -191,9 +186,8 @@ def find_grid(image: Image, size: int = 10, kernel: int = 90) -> Grid:
     A photographed page is not uniform: rows near the spine can be ten per cent
     wider than rows near the edge, so one assumed pitch drifts by a whole cell over
     ten columns. The lines are detected instead of assumed — long dark runs are
-    isolated by morphology and clustered — and the window of `size + 1` consecutive
-    candidates that behaves most like one grid is taken, so a frame or a sketchpad
-    outside the board cannot become a grid line. `kernel` is the shortest run
+    isolated by morphology and clustered. Competing plausible grids are refused;
+    inspect the detected lines before using them. `kernel` is the shortest run
     (in raw scan pixels) that counts as a line: around 90 suits a board of a few
     hundred pixels per cell, which is what a page scan gives.
     """
@@ -313,6 +307,16 @@ def rank_cells(
     return ranked
 
 
+def _write_image(path: Path | str, image: Image) -> None:
+    cv2 = _cv2()
+    try:
+        written = cv2.imwrite(str(path), image)
+    except cv2.error as exc:
+        raise ScanError(f"cannot write image to {path}: {exc}") from exc
+    if not written:
+        raise ScanError(f"cannot write image to {path}")
+
+
 def contact_sheet(tiles_by_cell: dict[Cell, Image], path: Path | str, thumb: int = 110) -> None:
     """Write every tile with its cell name: the sheet a person reads and corrects."""
     np = _np()
@@ -334,22 +338,29 @@ def contact_sheet(tiles_by_cell: dict[Cell, Image], path: Path | str, thumb: int
             1,
             cv2.LINE_AA,
         )
-    cv2.imwrite(str(path), sheet)
+    _write_image(path, sheet)
 
 
-def ocr(path: Path | str) -> list[tuple[str, tuple[float, float, float, float]]]:
+def ocr(
+    path: Path | str, *, language: str | None = None
+) -> list[tuple[str, tuple[float, float, float, float]]]:
     """Text lines of a page with normalised boxes, origin at the bottom left.
 
     macOS Vision is used where its pyobjc bindings are installed; elsewhere
     `pytesseract` needs the tesseract binary, and its words are grouped back into
-    lines so both backends return the same thing. Both read printed cards and
-    legends — neither can describe a picture, which is why icons still need a
-    person.
+    lines so both backends return the same thing. `language` may be "nl", "en",
+    or "nl+en" (the matching tesseract language data must be installed). Without
+    it, Vision uses Dutch and English and tesseract uses its default language.
+    Neither backend can describe a picture, so icons still need a person.
     """
+    supported = {"nl": ("nl-NL", "nld"), "en": ("en-US", "eng")}
+    codes = language.split("+") if language is not None else []
+    if any(code not in supported for code in codes):
+        raise ScanError(f"unknown OCR language {language!r}; use nl, en, or nl+en")
     try:  # pragma: no cover - depends on the platform
         from .scan_vision import recognise
 
-        return recognise(str(path))
+        return recognise(str(path), languages=[supported[code][0] for code in codes] or None)
     except ImportError:
         pass
     try:  # pragma: no cover - depends on the platform
@@ -362,7 +373,8 @@ def ocr(path: Path | str) -> list[tuple[str, tuple[float, float, float, float]]]
         ) from exc
     image = PILImage.open(path)
     width, height = image.size
-    data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
+    options = {"lang": "+".join(supported[code][1] for code in codes)} if codes else {}
+    data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT, **options)
     grouped: dict[tuple[int, int, int], list[int]] = {}
     for index, text in enumerate(data["text"]):
         if not str(text).strip():
@@ -410,7 +422,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", metavar="CELL", help="rank cells against this one, e.g. r3c5")
     parser.add_argument("--top", type=int, default=10, help="how many ranked cells to print")
     parser.add_argument("--ocr", action="store_true", help="print the page's text lines and boxes")
+    parser.add_argument("--ocr-language", metavar="LANG", help="OCR language: nl, en, or nl+en")
     arguments = parser.parse_args(argv)
+    if arguments.ocr_language and not arguments.ocr:
+        parser.error("--ocr-language requires --ocr")
 
     try:
         image = load(arguments.image)
@@ -428,9 +443,8 @@ def main(argv: list[str] | None = None) -> int:
 
             folder = pathlib.Path(arguments.tiles)
             folder.mkdir(parents=True, exist_ok=True)
-            cv2 = _cv2()
             for (row, col), tile in board.items():
-                cv2.imwrite(str(folder / f"r{row:02d}c{col:02d}.png"), tile)
+                _write_image(folder / f"r{row:02d}c{col:02d}.png", tile)
             print(f"wrote {len(board)} tiles to {folder}")
         if arguments.sheet:
             contact_sheet(board, arguments.sheet)
@@ -439,7 +453,7 @@ def main(argv: list[str] | None = None) -> int:
             for cell, score in rank_cells(board, _cell(arguments.seed))[: arguments.top]:
                 print(f"  r{cell[0]:2d}c{cell[1]:2d}  {score:12.0f}")
         if arguments.ocr:
-            for text, box in ocr(arguments.image):
+            for text, box in ocr(arguments.image, language=arguments.ocr_language):
                 print(f"  {box[0]:.3f} {box[1]:.3f}  {text}")
     except ScanError as error:
         print(f"scan error: {error}")
