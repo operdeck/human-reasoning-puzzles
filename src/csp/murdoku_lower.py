@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from dataclasses import replace
+from itertools import permutations
 
 from . import murdoku_lang as lang
 from .core import Kind, Model
@@ -626,6 +628,49 @@ def _opposite(model: Model, literal: int) -> int:
     return model.literal(model.var_of(literal), not value)
 
 
+def _bind_operand(operand: lang.Operand, bindings: dict[str, str]) -> lang.Operand:
+    if isinstance(operand, lang.Name):
+        value = bindings.get(operand.token.text)
+        return replace(operand, token=replace(operand.token, text=value)) if value else operand
+    if isinstance(operand, lang.Union):
+        return replace(
+            operand, items=tuple(_bind_operand(item, bindings) for item in operand.items)
+        )
+    if isinstance(operand, lang.Difference):
+        return replace(
+            operand,
+            left=_bind_operand(operand.left, bindings),
+            right=_bind_operand(operand.right, bindings),
+        )
+    if isinstance(operand, lang.Filter):
+        return replace(
+            operand,
+            source=_bind_operand(operand.source, bindings),
+            target=_bind_operand(operand.target, bindings),
+        )
+    if isinstance(operand, (lang.Qualified, lang.Projection)):
+        return replace(operand, operand=_bind_operand(operand.operand, bindings))
+    if isinstance(operand, lang.AdjectiveFilter):
+        return replace(operand, source=_bind_operand(operand.source, bindings))
+    raise NotImplementedError("comprehension binding is not implemented")
+
+
+def _reify_cardinality(model: Model, literals: list[int], allowed: set[int], name: str) -> int:
+    _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
+    if not allowed:
+        model.assign(no, "clue", name, sources=(f"{name} state",))
+    else:
+        model.constrain(
+            name,
+            Kind.COUNT,
+            literals,
+            allowed_counts=allowed,
+            reified_by=yes,
+            family="Murdoku expression",
+        )
+    return yes
+
+
 def _reify_atom(model: Model, board: Board, atom: lang.Atom, name: str) -> int:
     if not isinstance(atom.subject, lang.Name) or atom.subject.token.text not in board.people:
         raise NotImplementedError(f"{name}: expression lowering is not implemented")
@@ -685,14 +730,33 @@ def _reify_atom(model: Model, board: Board, atom: lang.Atom, name: str) -> int:
     return no if invert else yes
 
 
-def _reify_formula(model: Model, board: Board, formula: lang.Formula, name: str) -> int:
+def _reify_formula(
+    model: Model,
+    board: Board,
+    formula: lang.Formula,
+    name: str,
+    bindings: dict[str, str] | None = None,
+) -> int:
+    bindings = {} if bindings is None else bindings
     if isinstance(formula, lang.Atom):
-        return _reify_atom(model, board, formula, name)
+        return _reify_atom(
+            model,
+            board,
+            replace(
+                formula,
+                subject=_bind_operand(formula.subject, bindings),
+                target=_bind_operand(formula.target, bindings),
+            ),
+            name,
+        )
     if isinstance(formula, lang.Negation):
-        return _opposite(model, _reify_formula(model, board, formula.formula, f"{name} not"))
+        return _opposite(
+            model, _reify_formula(model, board, formula.formula, f"{name} not", bindings)
+        )
     count = _count_predicate(formula)
     if count is not None:
         operand, predicate, _ = count
+        operand = _bind_operand(operand, bindings)
         role_scope = _role_scope(board, operand)
         keys = _counted_keys(board, operand) if role_scope is None else None
         if keys is None and role_scope is None:
@@ -701,46 +765,27 @@ def _reify_formula(model: Model, board: Board, formula: lang.Formula, name: str)
             len(board.people) if role_scope is not None else min(len(keys or []), len(board.people))
         )
         permitted = {value for value in range(maximum + 1) if predicate(value)}
-        _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
         if not permitted:
-            model.assign(no, "clue", name, sources=(f"{name} state",))
-            return yes
+            return _reify_cardinality(model, [], set(), name)
         if role_scope is not None:
             role, squares = role_scope
             literals = _role_selection_literals(model, board, role, squares, name)
         else:
             assert keys is not None
             literals = [model.literal(variable, value) for variable, value in keys]
-        model.constrain(
-            name,
-            Kind.COUNT,
-            literals,
-            allowed_counts=permitted,
-            reified_by=yes,
-            family="Murdoku expression",
-        )
-        return yes
+        return _reify_cardinality(model, literals, permitted, name)
     if isinstance(formula, lang.Binary):
-        left = _reify_formula(model, board, formula.left, f"{name} left")
-        right = _reify_formula(model, board, formula.right, f"{name} right")
+        left = _reify_formula(model, board, formula.left, f"{name} left", bindings)
+        right = _reify_formula(model, board, formula.right, f"{name} right", bindings)
         operator = formula.operator.text
         if operator == "if":
             left = _opposite(model, left)
             operator = "or"
         allowed = {"and": {2}, "or": {1, 2}, "iff": {0, 2}}[operator]
-        _, yes, _ = _hidden_boolean(model, "expression", name, "Murdoku expression")
-        model.constrain(
-            name,
-            Kind.COUNT,
-            (left, right),
-            allowed_counts=allowed,
-            reified_by=yes,
-            family="Murdoku expression",
-        )
-        return yes
+        return _reify_cardinality(model, [left, right], allowed, name)
     if isinstance(formula, lang.Choice):
         literals = [
-            _reify_formula(model, board, choice, f"{name} option {index}")
+            _reify_formula(model, board, choice, f"{name} option {index}", bindings)
             for index, choice in enumerate(formula.choices, 1)
         ]
         target = int(formula.count.text)
@@ -750,19 +795,35 @@ def _reify_formula(model: Model, board: Board, formula: lang.Formula, name: str)
             "at least": set(range(target, len(literals) + 1)),
             "at most": set(range(min(target, len(literals)) + 1)),
         }[kind]
-        _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
-        if not allowed:
-            model.assign(no, "clue", name, sources=(f"{name} state",))
-            return yes
-        model.constrain(
-            name,
-            Kind.COUNT,
-            literals,
-            allowed_counts=allowed,
-            reified_by=yes,
-            family="Murdoku expression",
-        )
-        return yes
+        return _reify_cardinality(model, literals, allowed, name)
+    if isinstance(formula, lang.Quantified):
+        people = _static_people(board, _bind_operand(formula.source, bindings))
+        if people is None:
+            raise NotImplementedError(f"{name}: quantifier source lowering is not implemented")
+        domain = [person for person in board.people if person in people]
+        literals = [
+            _reify_formula(
+                model,
+                board,
+                formula.body,
+                f"{name} binding {index}",
+                bindings
+                | dict(zip((variable.text for variable in formula.variables), values, strict=True)),
+            )
+            for index, values in enumerate(permutations(domain, len(formula.variables)), 1)
+        ]
+        maximum = len(literals)
+        quantifier = " ".join(formula.quantifier.text.split())
+        target = int(formula.count.text) if formula.count is not None else 0
+        allowed = {
+            "some": set(range(1, maximum + 1)),
+            "every": {maximum},
+            "no": {0},
+            "exactly": {target} if target <= maximum else set(),
+            "at least": set(range(target, maximum + 1)),
+            "at most": set(range(min(target, maximum) + 1)),
+        }[quantifier]
+        return _reify_cardinality(model, literals, allowed, name)
     raise NotImplementedError(f"{name}: expression lowering is not implemented")
 
 

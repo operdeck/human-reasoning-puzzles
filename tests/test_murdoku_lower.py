@@ -333,6 +333,17 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "not (count people on mark:red odd or count people in area:hall = 0)",
         "exactly 1 of (count role:guard = 1; count people on mark:blue = 0)",
         "count people on object:bed = 2 or Ada is role:guard",
+        "some ?p in people: ?p on mark:red",
+        "every ?p in people: ?p is role:guard",
+        "no ?p in attribute:trained: ?p in area:hall",
+        "exactly 1 ?p in people: ?p is role:guard",
+        "at least 1 ?p in people: ?p touches Ben",
+        "at most 1 ?p in people: ?p in area:hall",
+        "every ?p, ?q in people: ?p dir:areas ?q = 0",
+        "some ?p in people: every ?q in people: ?p on ?q",
+        "every ?p in (attribute:trained except Ada): ?p on mark:red",
+        "(some ?p in (attribute:trained except Ada): ?p on mark:red) or Ada in area:hall",
+        "if Ada is role:guard then some ?p in people: ?p on mark:blue",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
