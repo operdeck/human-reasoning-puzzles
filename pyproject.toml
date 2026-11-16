@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "Generic constraint satisfaction solver with human-readable reasoning"
 authors = [{name = "Otto Perdeck"}]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "lark>=1.2,<2",
+]
 
 [project.scripts]
 csp = "csp.cli:main"

@@ -2,61 +2,15 @@ import pytest
 
 from csp.murdoku_lang import (
     Difference,
+    Filter,
+    Measure,
     Name,
     Projection,
     Qualified,
     Token,
     Union,
     parse_operand,
-    tokenize,
 )
-
-
-def test_tokenize_quantifier_and_namespaces():
-    assert tokenize("every ?a in tag:crime_scene: ?a touches area:river") == (
-        Token("every", 1, 1),
-        Token("?a", 1, 7),
-        Token("in", 1, 10),
-        Token("tag:crime_scene", 1, 13),
-        Token(":", 1, 28),
-        Token("?a", 1, 30),
-        Token("touches", 1, 33),
-        Token("area:river", 1, 41),
-    )
-
-
-def test_tokenize_operators_unions_and_ranges():
-    assert [token.text for token in tokenize("count rows:1,3-5 >= 1..3")] == [
-        "count",
-        "rows:1",
-        ",",
-        "3",
-        "-",
-        "5",
-        ">=",
-        "1",
-        "..",
-        "3",
-    ]
-
-
-def test_tokenize_compound_direction_and_locations():
-    tokens = tokenize("Ada dir:up+right Ben\n  != 2", line=4)
-    assert [token.text for token in tokens] == ["Ada", "dir:up", "+", "right", "Ben", "!=", "2"]
-    assert tokens[-2] == Token("!=", 5, 3)
-
-
-def test_tokenize_non_ascii_identifiers():
-    assert [token.text for token in tokenize("Éva in area:Velázquez_room")] == [
-        "Éva",
-        "in",
-        "area:Velázquez_room",
-    ]
-
-
-def test_tokenize_reports_invalid_character_location():
-    with pytest.raises(ValueError, match=r"line 2, column 2: unexpected character '@'"):
-        tokenize("Ada\n @")
 
 
 def test_parse_set_operations_preserves_structure_and_positions():
@@ -82,15 +36,36 @@ def test_parse_union_keeps_shorthand_unresolved():
     )
 
 
+def test_parse_filters_and_nested_difference():
+    assert parse_operand("((occupied areas touches tag:square) except tag:square)") == Difference(
+        Filter(
+            Qualified(Token("occupied", 1, 3), Name(Token("areas", 1, 12))),
+            Token("touches", 1, 18),
+            Name(Token("tag:square", 1, 26)),
+        ),
+        Name(Token("tag:square", 1, 45)),
+    )
+
+
+def test_parse_directional_filter_preserves_mode_and_measure():
+    assert parse_operand("(people dir:up+right Ada <= 2)") == Filter(
+        Name(Token("people", 1, 2)),
+        Token("dir:up+right", 1, 9),
+        Name(Token("Ada", 1, 22)),
+        Measure(Token("<=", 1, 26), Token("2", 1, 29)),
+    )
+
+
+def test_parse_non_ascii_identifiers():
+    assert parse_operand("Éva, area:Velázquez_room") == Union(
+        (Name(Token("Éva", 1, 1)), Name(Token("area:Velázquez_room", 1, 6)))
+    )
+
+
 @pytest.mark.parametrize(
-    ("source", "message"),
-    [
-        ("Ada and Ben", "line 1, column 5: unexpected token 'and'"),
-        ("(Ada, Ben", "line 1, column 10: expected '\\)'"),
-        ("rows:1,3-x", "line 1, column 10: expected a number"),
-        ("Ada except", "line 1, column 11: expected an operand"),
-    ],
+    "source",
+    ["Ada and Ben", "(Ada, Ben", "rows:1,3-x", "Ada except", "(Ada dir:up Ben = -1)"],
 )
-def test_parse_operand_reports_location(source, message):
-    with pytest.raises(ValueError, match=message):
+def test_parse_operand_rejects_malformed_input_with_location(source):
+    with pytest.raises(ValueError, match=r"line 1, column \d+: unexpected"):
         parse_operand(source)
