@@ -245,6 +245,16 @@ PHRASES: dict[str, dict[str, str]] = {
     },
 }
 
+LEGACY_CLUE_PHRASES = {
+    "clue.alone": "idiom.alone",
+    "clue.only_on": "idiom.only_on",
+    "clue.in": "rel.in",
+    "clue.on": "rel.on",
+    "clue.beside": "rel.beside",
+    "clue.dir_exact": "rel.dir.<direction>.exact",
+    "target.attribute": "name.attribute",
+}
+
 
 @dataclass
 class ExpressionWords:
@@ -293,6 +303,9 @@ class ExpressionWords:
             if not separator or not name.strip() or not phrase.strip():
                 raise ValueError(f"Words: {line!r} is not like 'name: wording'")
             key = name.strip()
+            if key in LEGACY_CLUE_PHRASES or key.startswith("clue."):
+                replacement = LEGACY_CLUE_PHRASES.get(key, "an expression phrase key or | wording")
+                raise ValueError(f"Words: key {key!r} is legacy; use {replacement}")
             (phrases if key in PHRASES[language] else names)[key] = phrase.strip()
         return cls(board, language, names, phrases)
 

@@ -119,6 +119,20 @@ def test_read_rejects_malformed_words(board, line):
         ExpressionWords.read(board, f"Words:\n{line}\n")
 
 
+@pytest.mark.parametrize(
+    ("legacy", "replacement"),
+    [
+        ("clue.alone", "idiom.alone"),
+        ("clue.only_on", "idiom.only_on"),
+        ("target.attribute", "name.attribute"),
+        ("clue.with_same_area_n", r"\| wording"),
+    ],
+)
+def test_read_suggests_replacements_for_legacy_clue_phrases(board, legacy, replacement):
+    with pytest.raises(ValueError, match=replacement):
+        ExpressionWords.read(board, f"Words:\n{legacy}: old wording\n")
+
+
 def test_role_binding_and_spatial_identity_are_worded_differently(board):
     words = ExpressionWords(board)
     role = words.statement(parse_statement("some ?r in roles: Ada is ?r"))
