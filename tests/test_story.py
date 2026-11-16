@@ -1927,8 +1927,8 @@ dir Cy area:west areas >= 2
             [
                 "Ann and someone with the trained attribute are in the same area.",
                 "Cy and someone with the trained attribute are in different areas.",
-                "Ann and someone in the east are exactly one area border apart.",
-                "Cy and someone in the west are at least two area borders apart.",
+                "Ann and a square in the east are exactly one area border apart.",
+                "Cy and a square in the west are at least two area borders apart.",
             ],
         ),
         (
@@ -1936,8 +1936,9 @@ dir Cy area:west areas >= 2
             [
                 "Ann en iemand met het kenmerk trained staan in hetzelfde gebied.",
                 "Cy en iemand met het kenmerk trained staan in verschillende gebieden.",
-                "Ann en iemand in de east zijn precies één gebiedsgrens van elkaar verwijderd.",
-                "Cy en iemand in de west zijn minstens twee gebiedsgrenzen van elkaar verwijderd.",
+                "Ann en een vakje in de east zijn precies één gebiedsgrens van elkaar verwijderd.",
+                "Cy en een vakje in de west zijn minstens twee gebiedsgrenzen "
+                "van elkaar verwijderd.",
             ],
         ),
     ],

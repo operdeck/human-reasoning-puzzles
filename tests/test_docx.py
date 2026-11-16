@@ -662,6 +662,21 @@ def test_booklet_keeps_semantic_custom_clues_with_their_figure(tmp_path):
     assert "Other clues" in _text(out)  # The either/or clue has no single owner.
 
 
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_vietnam_booklet_keeps_clear_avoidance_clues_with_each_traveler(number, tmp_path):
+    source = example(f"vietnam-murdoku-{number}.txt")
+    out = tmp_path / "vietnam.docx"
+    write_docx(source.read_text(), out, source.parent)
+    rows = Document(str(out)).tables[0].rows
+    for row, person in zip(rows[:2], ("Pippo", "Swena"), strict=True):
+        clue = row.cells[1].text
+        assert person in clue
+        assert "staat niet op of direct naast een vakje van de bún chả" in clue
+        assert "(ook niet schuin of over een gebiedsgrens)" in clue
+        assert "iemand op" not in clue
+        assert "koningszet" not in clue
+
+
 def test_booklet_uses_display_names_and_keeps_late_reveal_descriptions(tmp_path):
     source = example("zoo-murdoku-1.txt")
     out = tmp_path / "zoo.docx"
