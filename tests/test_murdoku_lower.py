@@ -831,6 +831,25 @@ def test_dynamic_spatial_projections_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "Ada dir:nearest Ben",
+        "Ada dir:furthest Ben",
+        "not Ada dir:furthest Ben",
+        "Ada dir:nearest:rows Ben",
+        "Ada dir:furthest:cols Ben",
+        "Ada dir:nearest:king Ben",
+        "Ada dir:furthest:euclidean Ben",
+        "Ada dir:nearest:areas Ben",
+        "not Ada dir:furthest Ada",
+    ],
+)
+def test_named_person_superlatives_match_reference(board, formula):
+    board = replace(board, people=["Ada", "Ben", "Cy"], roles=[])
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
-    with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
-        compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
+    with pytest.raises(NotImplementedError):
+        compile_statements(board, [parse_statement("Ada dir:nearest object:bed")])

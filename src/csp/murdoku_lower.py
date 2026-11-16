@@ -11,6 +11,7 @@ from .core import Kind, Model
 from .murdoku import (
     Board,
     Square,
+    _area_distances,
     _auxiliary_variable,
     _direction_test,
     _hidden_boolean,
@@ -826,6 +827,59 @@ def _reify_atom(model: Model, board: Board, atom: lang.Atom, name: str) -> int:
             if people is None:
                 raise NotImplementedError(f"{name}: expression lowering is not implemented")
             model.assign(yes if person in people else no, "clue", name, sources=(f"{name} state",))
+    elif (
+        atom.operator.text.startswith(("dir:nearest", "dir:furthest"))
+        and isinstance(atom.target, lang.Name)
+        and atom.target.token.text in board.people
+    ):
+        other = atom.target.token.text
+        if person == other:
+            model.assign(no, "clue", name, sources=(f"{name} state",))
+        else:
+            mode = atom.operator.text.removeprefix("dir:")
+            order, separator, metric = mode.partition(":")
+            metric = metric if separator else "manhattan"
+            areas = _area_distances(board) if metric == "areas" else {}
+
+            def distance(a: Square, b: Square) -> int:
+                rows, cols = abs(a.row - b.row), abs(a.col - b.col)
+                return {
+                    "rows": lambda: rows,
+                    "cols": lambda: cols,
+                    "manhattan": lambda: rows + cols,
+                    "king": lambda: max(rows, cols),
+                    "euclidean": lambda: rows * rows + cols * cols,
+                    "areas": lambda: areas[board.region_of(a), board.region_of(b)],
+                }[metric]()
+
+            witnesses = []
+            for rival in board.people:
+                if rival in {person, other}:
+                    continue
+                witness_var, witness, _ = _hidden_boolean(
+                    model, "expression", f"{name} {rival} comparison", "Murdoku expression"
+                )
+                model.relate(
+                    f"{name} {rival} comparison",
+                    (person, other, rival, witness_var),
+                    lambda first, target, candidate, result: (
+                        result
+                        == (
+                            distance(first, target) < distance(candidate, target)
+                            if order == "nearest"
+                            else distance(first, target) > distance(candidate, target)
+                        )
+                    ),
+                )
+                witnesses.append(witness)
+            model.constrain(
+                f"{name} comparisons",
+                Kind.COUNT,
+                witnesses,
+                allowed_counts={len(witnesses)},
+                reified_by=yes,
+                family="Murdoku expression",
+            )
     elif (
         isinstance(atom.target, lang.Projection)
         and isinstance(atom.target.operand, lang.Name)
