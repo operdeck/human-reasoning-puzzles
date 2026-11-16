@@ -1563,6 +1563,26 @@ def test_area_quantifier_preserves_region_identity_with_duplicate_names(board, f
 @pytest.mark.parametrize(
     "formula",
     [
+        "every ?a in occupied areas: count (occupied areas touches ?a) = 0",
+        "every ?a in (occupied areas in tag:outside): count (occupied areas touches ?a) = 0",
+    ],
+)
+def test_occupied_area_isolation_rewrites_match_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
+def test_scoped_area_isolation_checks_neighbors_outside_the_tag(board):
+    clue = parse_statement(
+        "every ?a in (occupied areas in tag:outside): count (occupied areas touches ?a) = 0"
+    )
+    roles = {(person, "guard"): False for person in board.people}
+    assert not holds(clue, board, {"Ada": Square(0, 0), "Ben": Square(1, 1)}, roles)
+    assert holds(clue, board, {"Ada": Square(1, 0), "Ben": Square(2, 1)}, roles)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
         "(count cells = 9) iff Ada is role:guard",
         "(count free cells = 8) iff Ada is role:guard",
         "(count corner:board = 4) iff Ada is role:guard",

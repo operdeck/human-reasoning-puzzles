@@ -408,6 +408,12 @@ area:hall`; multiple variables bind ordered, distinct entities. Choices use
 `exactly 1 of (formula; formula)` or `at least` / `at most`. Union uses
 commas, never Boolean `and` or `or`.
 
+Area isolation can be written
+`every ?a in occupied areas: count (occupied areas touches ?a) = 0`.
+To scope the rule, replace the domain with
+`(occupied areas in tag:villages)`; occupied neighbors outside the tag still
+count. `touches` excludes an area from touching itself.
+
 The reference evaluator defines clue meaning. Expression lowering emits
 generic constraints outside `core.py`; it must agree with the evaluator and
 preserve the existing tuned patterns and grades. `Key:` entries in the new
