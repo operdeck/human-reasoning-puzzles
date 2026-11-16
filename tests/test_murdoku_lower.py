@@ -4,7 +4,7 @@ from random import Random
 import pytest
 
 from csp.bruteforce.murdoku_expr import solutions
-from csp.core import Contradiction, Solver, Step, rule_relations
+from csp.core import Contradiction, Kind, Model, Solver, Step, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
 from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lang import holds, parse_statement
@@ -559,6 +559,18 @@ def _has_compiled_completion(model):
         if _has_compiled_completion(trial):
             return True
     return False
+
+
+def test_compiled_completion_search_checks_hidden_variables():
+    model = Model()
+    for variable in ("a", "b", "c"):
+        options = [model.literal(variable, value) for value in (False, True)]
+        model.constrain(variable, Kind.EXACTLY_ONE, options, defines=variable, hidden=True)
+    model.relate("even", ("a", "b", "c"), lambda a, b, c: (a + b + c) % 2 == 0)
+    model.relate("odd", ("a", "b", "c"), lambda a, b, c: (a + b + c) % 2 == 1)
+
+    assert Solver(model.clone()).solve().contradiction is None
+    assert not _has_compiled_completion(model)
 
 
 def _assert_compilation_matches_reference(board, formula):
