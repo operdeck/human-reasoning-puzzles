@@ -1185,6 +1185,29 @@ def test_zoo_role_occupancy_preserves_migrated_grade_and_unique_solution():
     _assert_migration_preserves_unique_solution(text, migrated)
 
 
+def test_food_attribute_companion_preserves_migrated_grade_and_unique_solution():
+    text = example("food-murdoku-1.txt").read_text()
+    replacements = {
+        "with Jos attribute:food in same area exactly 1": (
+            "count (people in area of Jos) = 1 + 1 and "
+            "every ((people except Jos) in area of Jos) is attribute:food"
+        ),
+        "dir Okonomiyaki Onigiri areas = 0": "Okonomiyaki dir:areas Onigiri = 0",
+        "not in Tonkatsu area:kobe": "not (Tonkatsu in area:kobe)",
+        "dir Onigiri Tonkatsu left": "Onigiri dir:left Tonkatsu",
+        "dir Okonomiyaki Tonkatsu manhattan >= 6": "Okonomiyaki dir:manhattan Tonkatsu >= 6",
+        "dir Onigiri Tonkatsu manhattan >= 8": "Onigiri dir:manhattan Tonkatsu >= 8",
+        "in Sushi rows:4": "Sushi in rows:4",
+        "dir Mochi Tonkatsu up": "Mochi dir:up Tonkatsu",
+        "dir Mochi Okonomiyaki left": "Mochi dir:left Okonomiyaki",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
 @pytest.mark.parametrize(
     ("filename", "replacements"),
     [
