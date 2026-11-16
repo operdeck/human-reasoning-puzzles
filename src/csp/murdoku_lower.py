@@ -268,6 +268,38 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
     return True
 
 
+def try_lower_membership(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Lower a named person's role or fixed-set membership."""
+    formula = statement.formula
+    negated = isinstance(formula, lang.Negation)
+    atom = formula.formula if isinstance(formula, lang.Negation) else formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and isinstance(atom.subject, lang.Name)
+        and atom.subject.token.text in board.people
+        and atom.operator.text == "is"
+    ):
+        return False
+    check_formula(board, formula)
+    person = atom.subject.token.text
+    invert = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
+    if isinstance(atom.target, lang.Name) and atom.target.token.text.startswith("role:"):
+        role = atom.target.token.text.removeprefix("role:")
+        variable = board.role_variable(person, role)
+        if variable not in model.all_variables:
+            raise ValueError(f"model lacks declared variable: {variable}")
+        model.assign(model.literal(variable, not invert), "clue", name, sources=(name,))
+        return True
+    people = _static_people(board, atom.target)
+    if people is None:
+        return False
+    if person not in model.all_variables:
+        raise ValueError(f"model lacks declared variable: {person}")
+    accepted = (person in people) != invert
+    model.relate(name, (person,), lambda _square: accepted)
+    return True
+
+
 def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower a supported relation between named people to a binary relation."""
     formula = statement.formula
@@ -429,7 +461,12 @@ def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Mo
         label = f"clue {index}"
         if not any(
             lower(model, board, statement, label)
-            for lower in (try_lower_location, try_lower_person_pair, try_lower_count)
+            for lower in (
+                try_lower_location,
+                try_lower_membership,
+                try_lower_person_pair,
+                try_lower_count,
+            )
         ):
             raise NotImplementedError(f"{label}: expression lowering is not implemented")
     return model

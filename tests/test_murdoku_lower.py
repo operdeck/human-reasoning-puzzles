@@ -10,6 +10,7 @@ from csp.murdoku_lower import (
     compile_statements,
     try_lower_count,
     try_lower_location,
+    try_lower_membership,
     try_lower_person_pair,
 )
 
@@ -131,6 +132,22 @@ def test_lowered_location_matches_reference_for_every_placement_and_role(board, 
 )
 def test_lowered_role_spatial_counts_match_reference(board, formula):
     _assert_matches_reference(board, formula, try_lower_count, solve=True)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "Ada is role:guard",
+        "not Ada is role:guard",
+        "no Ada is role:guard",
+        "Ada is attribute:trained",
+        "Ben is attribute:trained",
+        "Ben is attribute:trained,staff",
+        "not Ada is Ben",
+    ],
+)
+def test_lowered_membership_matches_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_membership)
 
 
 @pytest.mark.parametrize(
