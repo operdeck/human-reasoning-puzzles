@@ -23,7 +23,7 @@ from pathlib import Path
 from . import svg
 from .bruteforce import murdoku as brute
 from .murdoku import Square
-from .puzzlefile import load_board
+from .puzzlefile import load_board_layout
 
 Cell = tuple[int, int]
 Layout = tuple[tuple[int, ...], ...]
@@ -1135,7 +1135,7 @@ def write(report: Report, spec: Spec, folder: Path, pictures: bool = True) -> li
         for sheet, solved in zip(sheets, (False, True), strict=True):
             images = []
             for item in kept:
-                board, _ = load_board(item.text)
+                board = load_board_layout(item.text)
                 image = murdoku_picture(
                     board, item.placement if solved else None, language=spec.language
                 )

@@ -7,6 +7,7 @@ from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expr
 from csp.murdoku_lang import Atom, Name
 from csp.murdoku_lower import compile_statements
 from csp.puzzlefile import load_board
+from csp.story import attribute_list, murdoku_key_items, object_list, role_list
 
 TEXT = """\
 Size: 2
@@ -98,6 +99,19 @@ def test_legacy_reader_still_interprets_legacy_rules_and_clues():
     assert len(board.rules) == len(clues) == 1
     assert board.rules[0] == ("in", ["Ada", "rows:1"])
     assert clues[0] == ("in", ["Ben", "columns:1"])
+
+
+def test_layout_presentation_does_not_parse_expression_clues_as_legacy():
+    text = (
+        TEXT
+        + "Objects:\nchair: standable r1c1\n"
+        + "Roles:\nguard: 1\n"
+        + "Attributes:\nstaff: Ada\n"
+    )
+    assert object_list(text) == [("chair", "Chair", True)]
+    assert [name for name, _ in role_list(text)] == ["guard"]
+    assert [name for name, _ in attribute_list(text)] == ["staff"]
+    assert murdoku_key_items(text) == []
 
 
 def test_expression_keys_match_ast_after_reordering_or_rewording():

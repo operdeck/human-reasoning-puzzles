@@ -65,7 +65,7 @@ from .murdoku import (
     target_name,
 )
 from .proof import Move, essential, replay, shortest
-from .puzzlefile import load_board, load_presentation, read_sections
+from .puzzlefile import load_board, load_board_layout, load_presentation, read_sections
 
 LEGACY_WORD_KEYS = {
     "doc.clue_next_to_object": "doc.clue_beside_object",
@@ -4293,7 +4293,7 @@ def murdoku_key_items(text: str) -> list[tuple[str, str, str]]:
     text; regions are labelled on the board, and marks, roles and attributes are
     stated in the rules or listed beside it.
     """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     say = Wording.read(text)
     out: list[tuple[str, str, str]] = []
     for name in sorted(board.edge_item_names | board.point_object_names):
@@ -4394,7 +4394,7 @@ def murdoku_rules(text: str) -> list[str]:
 
 def role_list(text: str) -> list[tuple[str, str]]:
     """(role name, plain description) for each role, for a list beside the board."""
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     say = Wording.read(text)
     if "role_has" in say.phrases:
         return []
@@ -4420,7 +4420,7 @@ def role_list(text: str) -> list[tuple[str, str]]:
 
 def attribute_list(text: str) -> list[tuple[str, str]]:
     """(attribute name, the people who have it) for a list beside the board."""
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     say = Wording.read(text)
     if "target.attribute" in say.phrases:
         return []
@@ -4437,7 +4437,7 @@ def object_list(text: str) -> list[tuple[str, str, bool]]:
 
     `boom1` and `boom2` are one type, `boom`; the type is what `icons.object_icon` finds.
     """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     words = Wording.read(text).words
     out: dict[str, tuple[str, str, bool]] = {}
     for obj in board.objects:

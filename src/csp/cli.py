@@ -56,6 +56,7 @@ from .puzzlefile import (
     display_family,
     language_of,
     load_board,
+    load_board_layout,
     load_presentation,
 )
 
@@ -521,7 +522,7 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
             placed = dict(result.assignment)
             if kind == "murdoku":
                 placed = {k: v for k, v in placed.items() if not isinstance(v, bool)}
-                roles = murdoku.role_statuses(load_board(text)[0], model)
+                roles = murdoku.role_statuses(load_board_layout(text), model)
         elif result is not None:
             print(f"warning: {file.name} is not solved by the rules; solution page omitted")
         entry = docx_export.Entry(
@@ -844,7 +845,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             or args.require_forward
         ):
             parser.error("--track-person requires a normal solve")
-        track_board, _ = load_board(text)
+        track_board = load_board_layout(text)
         if args.track_person not in track_board.people:
             parser.error(
                 f"unknown person {args.track_person!r}; have {', '.join(track_board.people)}"
@@ -887,7 +888,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         if kind == "murdoku":
             role_board = track_board
             if role_board is None:
-                role_board, _ = load_board(text)
+                role_board = load_board_layout(text)
             role_statuses = murdoku.role_statuses(role_board, model)
         for picture_path in picture_paths:
             interactive = args.interactive and picture_path.suffix.lower() == ".svg"
@@ -935,7 +936,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         if picture_paths and not args.interactive:
             roles = None
             if kind == "murdoku":
-                board, _ = load_board(text)
+                board = load_board_layout(text)
                 roles = murdoku.role_statuses(board, model)
             for picture_path in picture_paths:
                 solved = picture_path.with_stem(f"{picture_path.stem}-solution")
