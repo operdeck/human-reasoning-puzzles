@@ -444,6 +444,9 @@ def test_blocked_footprint_is_empty(board):
         "count (empty cells on mark:blocked) = 1",
         "count (empty free cells on mark:blocked) = 0",
         "count (empty cells in area:hall) >= 1",
+        "count empty cells - count empty free cells = 1",
+        "count occupied cells = count role:guard",
+        "count empty areas + count occupied areas = 2",
     ],
 )
 def test_cell_occupancy_counts_include_blocked_cells(board, formula):

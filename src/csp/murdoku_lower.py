@@ -946,6 +946,36 @@ def _area_occupancy_scope(board: Board, operand: lang.Operand) -> tuple[str, set
     return adjective, selected_regions
 
 
+def _occupancy_literals(
+    model: Model,
+    board: Board,
+    operand: lang.Operand,
+    name: str,
+    empty_scopes: dict[Square | str, int],
+) -> list[int] | None:
+    cell_scope = _cell_occupancy_scope(board, operand)
+    if cell_scope is not None:
+        adjective, squares = cell_scope
+        empty_literals = [
+            _cell_empty_literal(model, board, square, f"{name} {square} empty", empty_scopes)
+            for square in squares
+        ]
+    else:
+        area_scope = _area_occupancy_scope(board, operand)
+        if area_scope is None:
+            return None
+        adjective, regions = area_scope
+        empty_literals = [
+            _area_empty_literal(model, board, region, f"{name} {region} empty", empty_scopes)
+            for region in sorted(regions)
+        ]
+    return (
+        empty_literals
+        if adjective == "empty"
+        else [_opposite(model, literal) for literal in empty_literals]
+    )
+
+
 def _number_variable(
     model: Model,
     board: Board,
@@ -961,12 +991,16 @@ def _number_variable(
         values = {int(number.value.text)}
     elif isinstance(number, lang.Count):
         operand = _bind_operand(number.operand, bindings)
-        if infer_operand(board, operand).sort != Sort.PERSON:
-            raise NotImplementedError(f"{name}: numeric count lowering is not implemented")
-        selections = [
-            _person_selected(model, board, person, operand, f"{name} {person} member", empty_scopes)
-            for person in board.people
-        ]
+        selections = _occupancy_literals(model, board, operand, name, empty_scopes)
+        if selections is None:
+            if infer_operand(board, operand).sort != Sort.PERSON:
+                raise NotImplementedError(f"{name}: numeric count lowering is not implemented")
+            selections = [
+                _person_selected(
+                    model, board, person, operand, f"{name} {person} member", empty_scopes
+                )
+                for person in board.people
+            ]
         values = set(range(len(selections) + 1))
     else:
         left, left_values = _number_variable(
@@ -1110,28 +1144,10 @@ def _reify_formula(
     if count is not None:
         operand, predicate, _ = count
         operand = _bind_operand(operand, bindings)
-        cell_scope = _cell_occupancy_scope(board, operand)
-        if cell_scope is not None:
-            adjective, cell_squares = cell_scope
-            literals = []
-            for square in cell_squares:
-                empty = _cell_empty_literal(
-                    model, board, square, f"{name} {square} empty", empty_scopes
-                )
-                literals.append(empty if adjective == "empty" else _opposite(model, empty))
-            permitted = {value for value in range(len(cell_squares) + 1) if predicate(value)}
-            return _reify_cardinality(model, literals, permitted, name)
-        area_scope = _area_occupancy_scope(board, operand)
-        if area_scope is not None:
-            adjective, regions = area_scope
-            literals = []
-            for region in sorted(regions):
-                empty = _area_empty_literal(
-                    model, board, region, f"{name} {region} empty", empty_scopes
-                )
-                literals.append(empty if adjective == "empty" else _opposite(model, empty))
-            permitted = {value for value in range(len(regions) + 1) if predicate(value)}
-            return _reify_cardinality(model, literals, permitted, name)
+        occupancy = _occupancy_literals(model, board, operand, name, empty_scopes)
+        if occupancy is not None:
+            permitted = {value for value in range(len(occupancy) + 1) if predicate(value)}
+            return _reify_cardinality(model, occupancy, permitted, name)
         role_scope = _role_scope(board, operand)
         keys = _counted_keys(board, operand) if role_scope is None else None
         dynamic = keys is None and role_scope is None
