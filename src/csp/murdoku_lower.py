@@ -744,6 +744,56 @@ def _reify_atom(model: Model, board: Board, atom: lang.Atom, name: str) -> int:
             if people is None:
                 raise NotImplementedError(f"{name}: expression lowering is not implemented")
             model.assign(yes if person in people else no, "clue", name, sources=(f"{name} state",))
+    elif (
+        isinstance(atom.target, lang.Projection)
+        and isinstance(atom.target.operand, lang.Name)
+        and atom.target.operand.token.text in board.people
+    ):
+        other = atom.target.operand.token.text
+        kind = atom.target.kind.text
+        direction = (
+            _direction(board, atom.operator.text, atom.measure)
+            if atom.operator.text.startswith("dir:")
+            else None
+        )
+        if (
+            atom.operator.text not in {"in", "on", "beside", "touches"} and direction is None
+        ) or kind not in {"area", "row", "column", "cell"}:
+            raise NotImplementedError(f"{name}: expression lowering is not implemented")
+        all_cells = {Square(row, col) for row in range(board.size) for col in range(board.size)}
+
+        def footprint(reference: Square) -> set[Square]:
+            if kind == "area":
+                return {
+                    cell
+                    for cell in all_cells
+                    if board.region_of(cell) == board.region_of(reference)
+                }
+            if kind == "row":
+                return {cell for cell in all_cells if cell.row == reference.row}
+            if kind == "column":
+                return {cell for cell in all_cells if cell.col == reference.col}
+            return {reference}
+
+        footprints = {reference: footprint(reference) for reference in board.free}
+
+        def matches(square: Square, reference: Square) -> bool:
+            return _position_matches(
+                board, square, atom.operator.text, footprints[reference], direction
+            )
+
+        if person == other:
+            model.relate(
+                name,
+                (person, variable),
+                lambda square, result: result == matches(square, square),
+            )
+        else:
+            model.relate(
+                name,
+                (person, other, variable),
+                lambda square, reference, result: result == matches(square, reference),
+            )
     elif isinstance(atom.target, lang.Name) and atom.target.token.text in board.people:
         other = atom.target.token.text
         same = person == other
