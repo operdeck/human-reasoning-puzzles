@@ -14,10 +14,17 @@ def _negated_relations(formula: lang.Formula, negated: bool = False) -> Iterator
         if negated != no and formula.operator.text != "is":
             yield formula
     elif isinstance(formula, lang.Binary):
-        yield from _negated_relations(formula.left)
-        yield from _negated_relations(formula.right)
+        if formula.operator.text in {"and", "or"}:
+            yield from _negated_relations(formula.left, negated)
+            yield from _negated_relations(formula.right, negated)
+        else:
+            yield from _negated_relations(formula.left)
+            yield from _negated_relations(formula.right)
     elif isinstance(formula, lang.Quantified):
-        yield from _negated_relations(formula.body)
+        if formula.quantifier.text in {"every", "some"}:
+            yield from _negated_relations(formula.body, negated)
+        else:
+            yield from _negated_relations(formula.body)
     elif isinstance(formula, lang.Choice):
         for choice in formula.choices:
             yield from _negated_relations(choice)

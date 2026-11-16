@@ -46,6 +46,23 @@ def test_warning_reflects_reference_semantics(board):
     assert role_negation_warnings(board, [statement])
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "not (Ada dir:areas role:guard = 0 and Ben in area:hall)",
+        "not (Ada dir:areas role:guard = 0 or Ben in area:hall)",
+        "not (every ?p in people: Ada dir:areas role:guard = 0 and ?p in area:hall)",
+    ],
+)
+def test_warns_when_negation_wraps_a_compound_formula(board, source):
+    assert role_negation_warnings(board, [parse_statement(source)])
+
+
+def test_double_negation_inside_compound_formula_does_not_warn(board):
+    statement = parse_statement("not (not Ada dir:areas role:guard = 0 or Ben in area:hall)")
+    assert not role_negation_warnings(board, [statement])
+
+
 def test_warns_for_each_eligible_role_in_a_union(board):
     board = replace(
         board,
