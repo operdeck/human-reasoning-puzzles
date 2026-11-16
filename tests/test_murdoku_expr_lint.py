@@ -1,4 +1,5 @@
 from dataclasses import replace
+from itertools import permutations
 
 import pytest
 
@@ -107,7 +108,13 @@ def test_does_not_warn_for_an_ineligible_subject(board, role):
 
 @pytest.mark.parametrize(
     "source",
-    ["Ada beside Ben", "Ada in area:hall and Ada beside Ben", "Ada beside Ada"],
+    [
+        "Ada beside Ben",
+        "Ada in area:hall and Ada beside Ben",
+        "Ada beside Ada",
+        "Ada touches Ben",
+        "Ada touches Ada",
+    ],
 )
 def test_impossible_required_people_adjacency_is_an_error(board, source):
     errors = vacuous_errors(board, [parse_statement(source, line=4)])
@@ -116,11 +123,22 @@ def test_impossible_required_people_adjacency_is_an_error(board, source):
     assert "different rows and columns" in errors[0]
 
 
+@pytest.mark.parametrize("operator", ["beside", "touches"])
+def test_person_adjacency_is_impossible_for_every_valid_placement(board, operator):
+    statement = parse_statement(f"Ada {operator} Ben")
+    for columns in permutations(range(board.size), len(board.people)):
+        placed = {person: Square(row, columns[row]) for row, person in enumerate(board.people)}
+        roles = {(person, "guard"): False for person in board.people}
+        assert not holds(statement, board, placed, roles)
+
+
 @pytest.mark.parametrize(
     "source",
     [
         "not Ada beside Ben",
+        "not Ada touches Ben",
         "no Ada beside Ben",
+        "no Ada touches Ben",
         "Ada beside Ben or Ada in area:hall",
         "if Ada beside Ben then Ada in area:hall",
         "Ada beside object:bed",

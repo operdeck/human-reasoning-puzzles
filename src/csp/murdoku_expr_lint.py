@@ -90,7 +90,7 @@ def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[s
     for statement in statements:
         for atom in _required_atoms(statement.formula):
             if (
-                atom.operator.text != "beside"
+                atom.operator.text not in {"beside", "touches"}
                 or (atom.determiner is not None and atom.determiner.text == "no")
                 or not isinstance(atom.subject, lang.Name)
                 or not isinstance(atom.target, lang.Name)
@@ -100,7 +100,8 @@ def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[s
                 continue
             token = atom.operator
             errors.append(
-                f"line {token.line}, column {token.column}: people cannot be beside each other; "
+                f"line {token.line}, column {token.column}: people cannot "
+                f"{token.text} each other; "
                 "they occupy different rows and columns"
             )
     return errors
