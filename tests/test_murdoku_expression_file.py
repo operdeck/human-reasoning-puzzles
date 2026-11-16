@@ -1,5 +1,6 @@
 import pytest
 
+from csp import clue_search
 from csp.bruteforce.murdoku_expr import solutions
 from csp.core import Solver
 from csp.murdoku import Square
@@ -272,3 +273,44 @@ def test_expression_key_normalizes_whitespace_inside_quantifier():
     text += "Key:\nclue: at least 1 ?p in people: ?p in columns:1\n"
     assert keyed_expression_clue_numbers(text) == {1}
     load_expression_board(text)
+
+
+def test_expression_authoring_outcome_thinning_and_key_protection():
+    text = TEXT.replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  Ben in columns:1 | Ben is in the first column.\n  Ben in rows:2",
+    )
+    text += "Key:\nclue: Ben in columns:1\n"
+    result = clue_search.outcome(text, expressions=True)
+    assert result.good
+    kept = clue_search.thin(text, expressions=True)
+    assert kept == ["Ben in columns:1 | Ben is in the first column."]
+    report = clue_search.removal_report(text, expressions=True)
+    assert report[0][2] == result
+    assert report[1][2].good
+
+
+def test_expression_authoring_cli_thin(tmp_path, capsys):
+    text = TEXT.replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  Ben in columns:1 | Ben is in the first column.\n  Ben in rows:2",
+    )
+    text += "Key:\nclue: Ben in columns:1\n"
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(text)
+    assert clue_search.main(["thin", str(puzzle), "--expressions"]) == 0
+    result = capsys.readouterr().out
+    assert "dropped 2: Ben in rows:2" in result
+    assert "result: unique, grade single" in result
+    assert "Ben in columns:1 | Ben is in the first column." in result
+    assert clue_search.main(["report", str(puzzle), "--expressions"]) == 0
+    assert "required by Key; current puzzle: unique" in capsys.readouterr().out
+
+
+def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    with pytest.raises(SystemExit) as error:
+        clue_search.main(["suggest", str(puzzle), "--expressions"])
+    assert error.value.code == 2
+    assert "--expressions is supported only by report and thin" in capsys.readouterr().err

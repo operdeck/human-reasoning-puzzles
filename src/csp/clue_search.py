@@ -39,7 +39,10 @@ from typing import Any
 
 from . import murdoku, report
 from .bruteforce import murdoku as brute
-from .core import DEFAULT_RULES, Solver
+from .bruteforce import murdoku_expr as expression_brute
+from .core import DEFAULT_RULES, Model, Solver
+from .murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
+from .murdoku_lower import compile_statements
 from .puzzlefile import keyed_clue_numbers, load_board, parse_clue_line, parse_square
 
 GRADES = tuple(rule.name for rule in DEFAULT_RULES)
@@ -134,6 +137,17 @@ def without_mark_condition(text: str, name: str) -> str:
 def _measure(text: str, late_person: str | None) -> tuple[str, bool | None]:
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
+    return _measure_model(board, model, late_person)
+
+
+def _measure_expression(text: str, late_person: str | None) -> tuple[str, bool | None]:
+    board, rules, clues = load_expression_board(text)
+    return _measure_model(board, compile_statements(board, clues, rules=rules), late_person)
+
+
+def _measure_model(
+    board: murdoku.Board, model: Model, late_person: str | None
+) -> tuple[str, bool | None]:
     domains = (
         {
             person: {model.value_of(literal) for literal in model.options(person)}
@@ -171,20 +185,39 @@ def _measure(text: str, late_person: str | None) -> tuple[str, bool | None]:
     return report.grade(fired) if result.solved else "unsolved", late_last
 
 
-def _child(text: str, late_person: str | None, queue: Any, *, grading: bool) -> None:
+def _child(
+    text: str, late_person: str | None, queue: Any, *, grading: bool, expressions: bool
+) -> None:
     try:
-        queue.put(_measure(text, late_person) if grading else len(brute.solutions(text, 2)))
+        result: int | tuple[str, bool | None]
+        if grading:
+            result = (
+                _measure_expression(text, late_person)
+                if expressions
+                else _measure(text, late_person)
+            )
+        elif expressions:
+            board, rules, clues = load_expression_board(text)
+            result = len(expression_brute.solutions(board, clues, 2, rules=rules))
+        else:
+            result = len(brute.solutions(text, 2))
+        queue.put(result)
     except ValueError as error:
         queue.put(error)
 
 
-def _timed(text: str, timeout: float, late_person: str | None, *, grading: bool) -> Any:
+def _timed(
+    text: str, timeout: float, late_person: str | None, *, grading: bool, expressions: bool = False
+) -> Any:
     context: Any = multiprocessing.get_context(
         "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
     )
     queue = context.Queue()
     process = context.Process(
-        target=_child, args=(text, late_person, queue), kwargs={"grading": grading}, daemon=True
+        target=_child,
+        args=(text, late_person, queue),
+        kwargs={"grading": grading, "expressions": expressions},
+        daemon=True,
     )
     process.start()
     process.join(timeout)
@@ -206,29 +239,37 @@ def _timed(text: str, timeout: float, late_person: str | None, *, grading: bool)
     return result
 
 
-def outcome(text: str, timeout: float = 5.0, late_person: str | None = None) -> Outcome:
+def outcome(
+    text: str, timeout: float = 5.0, late_person: str | None = None, *, expressions: bool = False
+) -> Outcome:
     """Measure solutions and grade with separate timeouts for the two solvers."""
-    count = _timed(text, timeout, late_person, grading=False)
+    count = _timed(text, timeout, late_person, grading=False, expressions=expressions)
     if count is None:
         return Outcome(None, None)
-    grade = _timed(text, timeout, late_person, grading=True)
+    grade = _timed(text, timeout, late_person, grading=True, expressions=expressions)
     if grade is None:
         return Outcome(count, None)
     return Outcome(count, *grade)
 
 
-def removal_report(text: str, timeout: float = 5.0) -> list[tuple[int, str, Outcome]]:
+def removal_report(
+    text: str, timeout: float = 5.0, *, expressions: bool = False
+) -> list[tuple[int, str, Outcome]]:
     """For each clue: the outcome without it, or the current outcome if Key requires it."""
     lines = clue_lines(text)
-    keyed = keyed_clue_numbers(text)
-    current = outcome(text, timeout) if keyed else None
+    keyed = (keyed_expression_clue_numbers if expressions else keyed_clue_numbers)(text)
+    current = outcome(text, timeout, expressions=expressions) if keyed else None
     return [
         (
             number,
             line,
             current
             if number in keyed and current is not None
-            else outcome(with_clues(text, lines[: number - 1] + lines[number:]), timeout),
+            else outcome(
+                with_clues(text, lines[: number - 1] + lines[number:]),
+                timeout,
+                expressions=expressions,
+            ),
         )
         for number, line in enumerate(lines, 1)
     ]
@@ -246,6 +287,8 @@ def thin(
     max_grade: str | None = None,
     timeout: float = 5.0,
     log: Callable[[str], None] = lambda _line: None,
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """Clue lines left after greedily dropping each removable clue, last clue first.
 
@@ -253,13 +296,13 @@ def thin(
     `max_grade` without it. Clue numbers in `keep` and `Key:` are never dropped.
     """
     lines = clue_lines(text)
-    kept = set(keep) | keyed_clue_numbers(text)
+    kept = set(keep) | (keyed_expression_clue_numbers if expressions else keyed_clue_numbers)(text)
     alive = list(range(1, len(lines) + 1))
     for number in reversed(alive[:]):
         if number in kept:
             continue
         trial = [lines[n - 1] for n in alive if n != number]
-        result = outcome(with_clues(text, trial), timeout)
+        result = outcome(with_clues(text, trial), timeout, expressions=expressions)
         if result.good and _within(result.grade, max_grade):
             alive.remove(number)
             log(f"dropped {number}: {lines[number - 1]} ({result})")
@@ -714,6 +757,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("command", choices=("report", "thin", "suggest", "ease", "occupancy"))
     parser.add_argument("puzzle", type=Path)
     parser.add_argument("--timeout", type=float, default=5.0, help="seconds per trial")
+    parser.add_argument(
+        "--expressions",
+        action="store_true",
+        help="report, thin: read the developing expression language",
+    )
     parser.add_argument("--keep", type=int, nargs="*", default=[], help="thin: clue numbers")
     parser.add_argument("--max-grade", choices=GRADES, help="thin, ease: hardest grade allowed")
     parser.add_argument("--solution", help='suggest: intended placement, "Ada=r1c2 Ben=r3c4"')
@@ -752,6 +800,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="suggest, ease: marks whose occupancy effects must stay necessary",
     )
     args = parser.parse_args(argv)
+    if args.expressions and args.command not in ("report", "thin"):
+        parser.error("--expressions is supported only by report and thin")
     if args.needs_mark and args.command not in ("suggest", "ease"):
         parser.error("--needs-mark is supported only by suggest and ease")
     text = args.puzzle.read_text()
@@ -762,10 +812,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             note = "  <- never" if times == 0 else "  <- always" if times == seen else ""
             print(f"{name:20} {square:6} {times:5}{note}")
         return 0
-    print(f"start: {outcome(text, args.timeout)}")
+    print(f"start: {outcome(text, args.timeout, expressions=args.expressions)}")
     if args.command == "report":
-        keyed = keyed_clue_numbers(text)
-        for number, line, result in removal_report(text, args.timeout):
+        keyed = (keyed_expression_clue_numbers if args.expressions else keyed_clue_numbers)(text)
+        for number, line, result in removal_report(
+            text, args.timeout, expressions=args.expressions
+        ):
             if number in keyed:
                 print(f"{number:3}. {line}\n     required by Key; current puzzle: {result}")
             else:
@@ -773,8 +825,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"{number:3}. {line}\n     without it: {result}{note}")
         return 0
     if args.command == "thin":
-        kept = thin(text, args.keep, args.max_grade, args.timeout, print)
-        print(f"result: {outcome(with_clues(text, kept), args.timeout)}\nClues:")
+        kept = thin(
+            text, args.keep, args.max_grade, args.timeout, print, expressions=args.expressions
+        )
+        print(
+            f"result: {outcome(with_clues(text, kept), args.timeout, expressions=args.expressions)}"
+            "\nClues:"
+        )
         print("\n".join(kept))
         return 0
     if not args.solution:
