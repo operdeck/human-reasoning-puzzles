@@ -445,8 +445,9 @@ def test_boolean_compilation_matches_reference(board, formula):
 
 
 def _assert_compilation_matches_reference(board, formula):
-    statement = parse_statement(formula)
-    model = compile_statements(board, [statement])
+    sources = [formula] if isinstance(formula, str) else formula
+    statements = [parse_statement(source) for source in sources]
+    model = compile_statements(board, statements)
     for candidate in solutions(board, [], limit=1000):
         trial = model.clone()
         try:
@@ -464,7 +465,9 @@ def _assert_compilation_matches_reference(board, formula):
             for person in board.people
             for role in board.roles
         }
-        assert accepted == holds(statement, board, placed, roles), candidate
+        assert accepted == all(
+            holds(statement, board, placed, roles) for statement in statements
+        ), candidate
 
 
 @pytest.mark.parametrize(
@@ -571,6 +574,35 @@ def test_population_patterns_match_reference_with_blocked_area(board, formula):
         objects=[BoardObject("wall", "blocking", tuple(Square(0, col) for col in range(3)))],
     )
     _assert_compilation_matches_reference(blocked, formula)
+
+
+def test_population_pattern_keeps_distinct_areas_with_shared_names(board):
+    board = replace(board, region_names={"a": "hall", "b": "hall"}, area_tags={})
+    comparison = "count (people in ?b) < count (people in area:hall)"
+    formula = f"every ?b in areas except area:hall: {comparison}"
+    _assert_compilation_matches_reference(board, formula)
+    model = compile_statements(board, [parse_statement(formula)])
+    names = [constraint.name for constraint in model.constraints]
+    assert len(names) == len(set(names))
+
+
+def test_overlapping_population_patterns_match_reference():
+    board = Board(
+        size=3,
+        regions=[["a", "a", "b"], ["a", "b", "b"], ["c", "c", "c"]],
+        region_names={"a": "hall", "b": "garden", "c": "shed"},
+        objects=[],
+        people=["Ada", "Ben", "Cy"],
+    )
+    _assert_compilation_matches_reference(
+        board,
+        [
+            "every ?b in areas except area:hall: "
+            "count (people in ?b) < count (people in area:hall)",
+            "every ?b in (area of free cells except area:shed): "
+            "count (people in ?b) > count (people in area:shed)",
+        ],
+    )
 
 
 def test_tuned_population_patterns_preserve_migrated_example_grade():
