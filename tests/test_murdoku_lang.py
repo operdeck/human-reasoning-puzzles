@@ -4,6 +4,8 @@ from csp.murdoku_lang import (
     Arithmetic,
     Atom,
     Binary,
+    Choice,
+    Comprehension,
     Count,
     Difference,
     Filter,
@@ -15,6 +17,7 @@ from csp.murdoku_lang import (
     Parity,
     Projection,
     Qualified,
+    Quantified,
     SetComparison,
     Token,
     Union,
@@ -132,6 +135,59 @@ def test_count_direction_filter_keeps_its_measure():
     result = parse_formula("count (people dir:up Ada = 1) = 2")
     assert isinstance(result, NumberComparison) and isinstance(result.left, Count)
     assert isinstance(result.left.operand, Filter) and result.left.operand.measure is not None
+
+
+def test_quantifier_body_extends_over_conjunction():
+    result = parse_formula(
+        "no ?r in empty rows: some occupied rows dir:up ?r and some occupied rows dir:down ?r"
+    )
+    assert isinstance(result, Quantified)
+    assert [variable.text for variable in result.variables] == ["?r"]
+    assert isinstance(result.body, Binary) and result.body.operator.text == "and"
+
+
+def test_quantified_distinct_variable_declarations_are_preserved():
+    result = parse_formula("every ?p, ?q in role:guard: ?p dir:areas ?q >= 1")
+    assert isinstance(result, Quantified)
+    assert [variable.text for variable in result.variables] == ["?p", "?q"]
+    assert isinstance(result.body, Atom)
+
+
+def test_quantifier_on_right_of_conjunction():
+    result = parse_formula("Ada in area:x and every ?p in people: ?p in area:y")
+    assert isinstance(result, Binary)
+    assert isinstance(result.right, Quantified)
+
+
+def test_quantifier_body_extends_over_lower_precedence_operators():
+    result = parse_formula(
+        "P on object:bed and every ?b in object:bed: P on ?b or ?b in empty rows"
+    )
+    assert isinstance(result, Binary) and result.operator.text == "and"
+    assert isinstance(result.right, Quantified)
+    assert isinstance(result.right.body, Binary) and result.right.body.operator.text == "or"
+
+
+def test_parentheses_end_quantifier_scope():
+    result = parse_formula("(every ?b in object:bed: P on ?b) or P in area:x")
+    assert isinstance(result, Binary) and result.operator.text == "or"
+    assert isinstance(result.left, Quantified)
+    assert isinstance(result.left.body, Atom)
+
+
+def test_choice_and_bounded_quantifier():
+    choice = parse_formula("exactly 1 of (Ada in area:x; Ben in area:y)")
+    assert isinstance(choice, Choice) and len(choice.choices) == 2
+    result = parse_formula("at most 1 ?r in roles: Ada is ?r")
+    assert isinstance(result, Quantified)
+    assert result.quantifier.text == "at most" and result.count is not None
+    assert result.count.text == "1"
+
+
+def test_comprehension_carries_variable_and_condition():
+    result = parse_operand("(?p in people where ?p on object:chair)")
+    assert isinstance(result, Comprehension)
+    assert result.variable.text == "?p" and isinstance(result.condition, Atom)
 
 
 def test_formula_source_error_uses_requested_line():
