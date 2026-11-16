@@ -342,7 +342,11 @@ measure expression puzzles with the new independent search and compiler.
 using named-person location, line and direction templates. This is not yet a
 complete suggestion vocabulary: it does not generate arbitrary expressions or
 distinguish solutions differing only in roles. Other authoring commands still
-use the production grammar.
+use the production grammar. The preview excludes unions, differences,
+adjective-qualified and projected sets, filters and comprehensions; occupancy
+assertions and set comparisons; compound Boolean formulas; numeric, parity and
+range comparisons; quantifiers and choices. Its AST inventory is guarded
+against additions to the language.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their

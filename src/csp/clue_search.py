@@ -69,6 +69,30 @@ SUGGEST_KINDS = (
 )
 EXTRA_KINDS = ("line",)
 
+# This preview intentionally proposes only simple placement clues. Keep this
+# inventory in step with the public expression AST and its guard test.
+EXPRESSION_SUGGESTED_NODES = frozenset({"Name", "Atom", "Measure", "Negation"})
+EXPRESSION_EXCLUDED_NODES = {
+    "Union": "multi-target clues are not generated",
+    "Difference": "set differences are not generated",
+    "Qualified": "adjective-qualified sets are not generated",
+    "Projection": "projected sets are not generated",
+    "Filter": "filtered sets are not generated",
+    "AdjectiveFilter": "adjective-filtered sets are not generated",
+    "Comprehension": "comprehensions are not generated",
+    "AdjectiveAtom": "occupancy assertions are not generated",
+    "SetComparison": "set comparisons are not generated",
+    "Binary": "compound Boolean clues are not generated",
+    "Integer": "arithmetic comparisons are not generated",
+    "Count": "count comparisons are not generated",
+    "Arithmetic": "arithmetic comparisons are not generated",
+    "NumberComparison": "count and arithmetic comparisons are not generated",
+    "Parity": "parity clues are not generated",
+    "NumberRange": "range clues are not generated",
+    "Quantified": "quantified clues are not generated",
+    "Choice": "choice clues are not generated",
+}
+
 _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
 

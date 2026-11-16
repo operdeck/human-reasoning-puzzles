@@ -1,3 +1,6 @@
+from dataclasses import fields, is_dataclass
+from typing import get_args
+
 import pytest
 
 from csp import clue_search
@@ -5,7 +8,7 @@ from csp.bruteforce.murdoku_expr import accepts, sample, solutions
 from csp.core import Solver
 from csp.murdoku import Square
 from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
-from csp.murdoku_lang import Atom, Name, format_statement, holds
+from csp.murdoku_lang import Atom, Formula, Measure, Name, Number, Operand, format_statement, holds
 from csp.murdoku_lower import compile_statements
 from csp.puzzlefile import load_board
 from csp.story import (
@@ -485,3 +488,32 @@ def test_expression_direction_candidates_use_expression_syntax():
     assert "Ada dir:up Ben" in rendered
     assert "Ben dir:down Ada" in rendered
     assert all(holds(clue, board, placement, {}) for clue in candidates)
+
+
+def test_expression_suggestion_construct_inventory_tracks_public_ast():
+    types = {
+        *get_args(Operand.__value__),
+        *get_args(Number.__value__),
+        *get_args(Formula.__value__),
+        Measure,
+    }
+    offered = clue_search.EXPRESSION_SUGGESTED_NODES
+    excluded = clue_search.EXPRESSION_EXCLUDED_NODES
+    assert not offered & excluded.keys()
+    assert offered | excluded.keys() == {node.__name__ for node in types}
+    assert all(excluded.values())
+
+    def node_names(value):
+        if isinstance(value, tuple):
+            return set().union(*(node_names(item) for item in value))
+        if is_dataclass(value):
+            return {type(value).__name__} | set().union(
+                *(node_names(getattr(value, item.name)) for item in fields(value))
+            )
+        return set()
+
+    board, _, _ = load_expression_board(TEXT)
+    placement = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    candidates = clue_search.expression_candidate_clues(board, placement, kinds=["line", "dir"])
+    emitted = set().union(*(node_names(clue.formula) for clue in candidates))
+    assert offered <= emitted
