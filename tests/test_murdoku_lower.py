@@ -798,6 +798,25 @@ def test_dynamic_spatial_relations_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "count (?a in areas where ?a is empty) = count empty areas",
+        "count (?r in rows where ?r on Ada) = 1",
+        "every ?c in (?x in cells where ?x on people): ?c is occupied",
+        "count (?a in area of people where ?a on role:guard) = 1",
+        "every ?p in people: count (?a in areas where ?p in ?a) = 1",
+        "Ada in (?a in areas where ?a is occupied)",
+        "count (?o in objects where ?o is occupied) <= 1",
+        "every ?o in (?x in objects where ?x on people): ?o is occupied",
+        "Ada on (?o in objects where ?o is occupied)",
+        "(?o in objects where ?o is occupied) = object:bed",
+    ],
+)
+def test_spatial_comprehensions_match_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])

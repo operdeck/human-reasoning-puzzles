@@ -1295,6 +1295,18 @@ def _static_spatial_atom(board: Board, atom: lang.Atom) -> bool | None:
 
 
 def _spatial_universe(board: Board, sort: Sort) -> dict[tuple[Sort, str], set[Square]]:
+    if sort == Sort.FEATURE:
+        features = {
+            "object": [item.squares for item in board.objects],
+            "edge_item": [item.cells for item in board.edge_items],
+            "point_object": [item.cells for item in board.point_objects],
+            "mark": [item.cells for item in board.marks],
+        }
+        return {
+            (Sort.FEATURE, f"{kind}:{index}"): set(cells)
+            for kind, entries in features.items()
+            for index, cells in enumerate(entries)
+        }
     names = {Sort.AREA: "areas", Sort.ROW: "rows", Sort.COLUMN: "columns", Sort.CELL: "cells"}
     entities = _static_spatial_entities(board, lang.Name(lang.Token(names[sort], 1, 1)))
     assert entities is not None
@@ -1390,6 +1402,26 @@ def _spatial_selected(
             model, board, entity, footprint, operand.right, f"{name} right", empty_scopes, bindings
         )
         return _reify_cardinality(model, [left, _opposite(model, right)], {2}, name)
+    if isinstance(operand, lang.Comprehension):
+        selected = _spatial_selected(
+            model,
+            board,
+            entity,
+            footprint,
+            operand.source,
+            f"{name} source",
+            empty_scopes,
+            bindings,
+        )
+        matches = _reify_formula(
+            model,
+            board,
+            operand.condition,
+            f"{name} condition",
+            bindings | {operand.variable.text: _spatial_binding(board, entity, name)},
+            empty_scopes,
+        )
+        return _reify_cardinality(model, [selected, matches], {2}, name)
     if isinstance(operand, (lang.Qualified, lang.AdjectiveFilter)):
         inner = operand.operand if isinstance(operand, lang.Qualified) else operand.source
         selected = _spatial_selected(
@@ -1452,7 +1484,7 @@ def _spatial_selected(
                     bindings,
                 )
                 return _reify_cardinality(model, [source, matches], {2}, name)
-            if target_sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+            if target_sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL, Sort.FEATURE}:
                 raise NotImplementedError(f"{name}: spatial filter target is not implemented")
             possible = _spatial_universe(board, target_sort)
             target_members = [
@@ -1516,7 +1548,7 @@ def _spatial_selection_literals(
     bindings: _Bindings,
 ) -> list[int]:
     sort = _operand_sort(board, operand, bindings)
-    if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+    if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL, Sort.FEATURE}:
         raise NotImplementedError(f"{name}: spatial set lowering is not implemented")
     return [
         _spatial_selected(
@@ -1540,7 +1572,7 @@ def _reify_spatial_atom(
     subjects = _static_spatial_entities(board, atom.subject)
     if subjects is None:
         sort = _operand_sort(board, atom.subject, bindings)
-        if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+        if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL, Sort.FEATURE}:
             raise NotImplementedError(f"{name}: spatial subject is not implemented")
         subjects = _spatial_universe(board, sort)
     targets = _static_spatial_entities(board, atom.target)
@@ -1550,7 +1582,7 @@ def _reify_spatial_atom(
         if sort == Sort.PERSON:
             target_people = True
             targets = {}
-        elif sort in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+        elif sort in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL, Sort.FEATURE}:
             targets = _spatial_universe(board, sort)
         else:
             raise NotImplementedError(f"{name}: spatial target is not implemented")
@@ -1623,7 +1655,7 @@ def _reify_person_spatial_target(
     bindings: _Bindings,
 ) -> int:
     sort = _operand_sort(board, atom.target, bindings)
-    if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+    if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL, Sort.FEATURE}:
         raise NotImplementedError(f"{name}: spatial target is not implemented")
     direction = (
         _direction(board, atom.operator.text, atom.measure)
@@ -2265,7 +2297,13 @@ def _reify_formula(
                             sort = _operand_sort(board, source, bindings)
                             if sort == Sort.PERSON:
                                 people = set(board.people)
-                            elif sort in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+                            elif sort in {
+                                Sort.AREA,
+                                Sort.ROW,
+                                Sort.COLUMN,
+                                Sort.CELL,
+                                Sort.FEATURE,
+                            }:
                                 spatial_domain = True
                                 universe = _spatial_universe(board, sort)
                                 domain = [
