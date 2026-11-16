@@ -25,6 +25,7 @@ from csp.murdoku_lang import (
     Union,
     parse_formula,
     parse_operand,
+    parse_statement,
 )
 
 
@@ -252,6 +253,13 @@ def test_previously_inexpressible_clue_shapes_parse(formula):
 def test_formula_source_error_uses_requested_line():
     with pytest.raises(ValueError, match=r"line 7, column \d+: unexpected"):
         parse_formula("Ada in @", line=7)
+
+
+def test_statement_keeps_optional_wording_separate_from_formula():
+    statement = parse_statement("Ada in area:hall | Ada is in the hall.")
+    assert isinstance(statement.formula, Atom)
+    assert statement.wording == "Ada is in the hall."
+    assert parse_statement("Ada in area:hall").wording is None
 
 
 @pytest.mark.parametrize(

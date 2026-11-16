@@ -294,6 +294,12 @@ _FORMULA_PARSER = Lark(
 )
 
 
+@dataclass(frozen=True)
+class Statement:
+    formula: Formula
+    wording: str | None = None
+
+
 def _token(token: LarkToken, line_offset: int) -> Token:
     assert token.line is not None and token.column is not None
     return Token(str(token), token.line + line_offset, token.column)
@@ -666,3 +672,9 @@ def parse_formula(source: str, *, line: int = 1) -> Formula:
     )
     _references(result, frozenset())
     return result
+
+
+def parse_statement(source: str, *, line: int = 1) -> Statement:
+    """Parse a formula and preserve its optional author-supplied wording."""
+    formula, separator, wording = source.partition("|")
+    return Statement(parse_formula(formula, line=line), wording.strip() if separator else None)
