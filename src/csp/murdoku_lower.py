@@ -819,6 +819,29 @@ def _reify_adjective_atom(model: Model, board: Board, atom: lang.AdjectiveAtom, 
     )
 
 
+def _cell_occupancy_scope(board: Board, operand: lang.Operand) -> tuple[str, list[Square]] | None:
+    if not isinstance(operand, (lang.Qualified, lang.AdjectiveFilter)):
+        return None
+    adjective = operand.adjective.text
+    source = operand.operand if isinstance(operand, lang.Qualified) else operand.source
+    if adjective not in {"empty", "occupied"}:
+        return None
+    free_only = False
+    if isinstance(source, (lang.Qualified, lang.AdjectiveFilter)):
+        if source.adjective.text != "free":
+            return None
+        free_only = True
+        source = source.operand if isinstance(source, lang.Qualified) else source.source
+    if not isinstance(source, lang.Name) or source.token.text != "cells":
+        return None
+    squares = (
+        list(board.free)
+        if free_only
+        else [Square(row, col) for row in range(board.size) for col in range(board.size)]
+    )
+    return adjective, squares
+
+
 def _reify_formula(
     model: Model,
     board: Board,
@@ -911,6 +934,22 @@ def _reify_formula(
     if count is not None:
         operand, predicate, _ = count
         operand = _bind_operand(operand, bindings)
+        cell_scope = _cell_occupancy_scope(board, operand)
+        if cell_scope is not None:
+            adjective, cell_squares = cell_scope
+            literals = []
+            for square in cell_squares:
+                occupants = (
+                    [model.literal(person, square) for person in board.people]
+                    if square in board.free
+                    else []
+                )
+                allowed = {0} if adjective == "empty" else set(range(1, len(occupants) + 1))
+                literals.append(
+                    _reify_cardinality(model, occupants, allowed, f"{name} {square} {adjective}")
+                )
+            permitted = {value for value in range(len(cell_squares) + 1) if predicate(value)}
+            return _reify_cardinality(model, literals, permitted, name)
         role_scope = _role_scope(board, operand)
         keys = _counted_keys(board, operand) if role_scope is None else None
         dynamic = keys is None and role_scope is None

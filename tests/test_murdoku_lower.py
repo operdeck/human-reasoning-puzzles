@@ -425,6 +425,41 @@ def test_blocked_footprint_is_empty(board):
         assert holds(statement, board, placed, roles)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "count empty cells = 7",
+        "count empty free cells = 6",
+        "count occupied cells = 2",
+        "count empty cells odd iff Ada is role:guard",
+    ],
+)
+def test_cell_occupancy_counts_include_blocked_cells(board, formula):
+    blocked = Square(0, 2)
+    board = replace(
+        board,
+        objects=[*board.objects, BoardObject("rock", "blocking", (blocked,))],
+    )
+    statement = parse_statement(formula)
+    model = compile_statements(board, [statement])
+    for candidate in solutions(board, [], limit=1000):
+        trial = model.clone()
+        try:
+            for person in board.people:
+                trial.assign(trial.literal(person, candidate[person]), "test", "fixed placement")
+                role = board.role_variable(person, "guard")
+                trial.assign(trial.literal(role, candidate[role]), "test", "fixed role")
+            accepted = Solver(trial).solve().contradiction is None
+        except Contradiction:
+            accepted = False
+        placed = {person: candidate[person] for person in board.people}
+        roles = {
+            (person, "guard"): candidate[board.role_variable(person, "guard")]
+            for person in board.people
+        }
+        assert accepted == holds(statement, board, placed, roles), candidate
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
