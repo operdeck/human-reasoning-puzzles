@@ -129,15 +129,60 @@ def _position_matches(
     )
 
 
+def _static_people(
+    board: Board, operand: lang.Operand, namespace: str | None = None
+) -> set[str] | None:
+    if isinstance(operand, lang.Union):
+        first = operand.items[0]
+        inherited = (
+            first.token.text.partition(":")[0]
+            if isinstance(first, lang.Name) and ":" in first.token.text
+            else None
+        )
+        people: set[str] = set()
+        for item in operand.items:
+            part = _static_people(board, item, inherited)
+            if part is None:
+                return None
+            people.update(part)
+        return people
+    if isinstance(operand, lang.Difference):
+        left, right = _static_people(board, operand.left), _static_people(board, operand.right)
+        return left - right if left is not None and right is not None else None
+    if isinstance(operand, lang.Filter) and operand.operator.text == "is":
+        source, target = (
+            _static_people(board, operand.source),
+            _static_people(board, operand.target),
+        )
+        return source & target if source is not None and target is not None else None
+    if not isinstance(operand, lang.Name):
+        return None
+    text = operand.token.text
+    if text in board.people:
+        return {text}
+    if text == "people":
+        return set(board.people)
+    if ":" not in text and namespace:
+        text = f"{namespace}:{text}"
+    kind, separator, value = text.partition(":")
+    if separator and kind == "attribute":
+        return set(board.attributes[value])
+    return None
+
+
 def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square | bool]] | None:
     if isinstance(operand, lang.Name) and operand.token.text.startswith("role:"):
         role = operand.token.text.removeprefix("role:")
         return [(board.role_variable(person, role), True) for person in board.people]
-    if (
-        isinstance(operand, lang.Filter)
-        and isinstance(operand.source, lang.Name)
-        and operand.source.token.text == "people"
-    ):
+    people = _static_people(board, operand)
+    if people is not None:
+        return [
+            (person, square) for person in board.people if person in people for square in board.free
+        ]
+    if isinstance(operand, lang.Filter):
+        people = _static_people(board, operand.source)
+        if people is None:
+            return None
         operator = operand.operator.text
         if operator not in {"in", "on", "beside", "touches"} and not operator.startswith("dir:"):
             return None
@@ -154,7 +199,9 @@ def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square
             for square in board.free
             if _position_matches(board, square, operator, cells, direction)
         ]
-        return [(person, square) for person in board.people for square in squares]
+        return [
+            (person, square) for person in board.people if person in people for square in squares
+        ]
     return None
 
 

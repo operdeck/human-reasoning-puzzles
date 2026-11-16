@@ -23,6 +23,7 @@ def board():
         objects=[BoardObject("bed", "standable", (Square(2, 0),))],
         people=["Ada", "Ben"],
         area_tags={"outside": ["garden"]},
+        attributes={"trained": frozenset({"Ada"}), "staff": frozenset({"Ben"})},
         marks=[
             CellMark("red", (Square(0, 0), Square(1, 1))),
             CellMark("blue", (Square(1, 2), Square(2, 0))),
@@ -83,6 +84,11 @@ def _assert_matches_reference(board, formula, lower):
         "count (people dir:rows mark:red = 0) odd",
         "count role:guard = 1",
         "count role:guard != 1",
+        "count people = 2",
+        "count (people except Ada) in area:garden = 1",
+        "count (attribute:trained on mark:red) = 1",
+        "count (Ada, Ben is attribute:trained) = 1",
+        "count attribute:trained,staff = 2",
     ],
 )
 def test_lowered_count_matches_reference_for_every_placement_and_role(board, formula):
