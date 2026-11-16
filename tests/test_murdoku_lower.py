@@ -3,6 +3,7 @@ from random import Random
 
 import pytest
 
+from csp.bruteforce.murdoku import solutions as legacy_solutions
 from csp.bruteforce.murdoku_expr import solutions
 from csp.core import Contradiction, Kind, Model, Solver, Step, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
@@ -839,6 +840,13 @@ def _assert_migration_preserves_assignment_grade(text, migrated):
     assert rewritten_grade == original_grade
 
 
+def _assert_migration_preserves_unique_solution(text, migrated):
+    board, rules, clues = load_expression_board(migrated)
+    expected = legacy_solutions(text, limit=3)
+    assert len(expected) == 1
+    assert solutions(board, clues, limit=3, rules=rules) == expected
+
+
 def test_choice_pattern_preserves_migrated_house_example_grade():
     text = example("murdoku_3_house.txt").read_text()
     replacements = {
@@ -855,6 +863,39 @@ def test_choice_pattern_preserves_migrated_house_example_grade():
     for old, new in replacements.items():
         migrated = migrated.replace(old, new)
     _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
+def test_global_count_fixture_preserves_migrated_grade():
+    text = example("murdoku_global_counts.txt").read_text()
+    replacements = {
+        "in Ada rows:1": "Ada in rows:1",
+        "count people with role:engineer": "count role:engineer",
+        "count people with attribute:glasses": "count attribute:glasses",
+        "count empty cells in mark:seats": "count empty free cells in mark:seats",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
+def test_point_object_example_preserves_migrated_grade_and_unique_solution():
+    text = example("murdoku_2_point_objects.txt").read_text()
+    replacements = {
+        "on Ada point_object:mouse1": "Ada on point_object:mouse1",
+        "on Bo point_object:fountain": "Bo on point_object:fountain",
+        "on Cal point_object:cheese": "Cal on point_object:cheese",
+        "in Cal area:Greenhouse": "Cal in area:Greenhouse",
+        "on Eli point_object:cat": "Eli on point_object:cat",
+        "not on Dee point_object:mouse2": "not Dee on point_object:mouse2",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
 
 
 def test_random_small_well_typed_statements_match_reference():
