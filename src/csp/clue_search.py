@@ -43,7 +43,13 @@ from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Model, Solver
 from .murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
 from .murdoku_lower import compile_statements
-from .puzzlefile import keyed_clue_numbers, load_board, parse_clue_line, parse_square
+from .puzzlefile import (
+    keyed_clue_numbers,
+    load_board,
+    load_board_layout,
+    parse_clue_line,
+    parse_square,
+)
 
 GRADES = tuple(rule.name for rule in DEFAULT_RULES)
 
@@ -118,7 +124,7 @@ def with_clues(text: str, clues: Sequence[str]) -> str:
 
 def without_mark_condition(text: str, name: str) -> str:
     """Keep a mark's cells but remove its occupancy effect for an ablation."""
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     mark = next((mark for mark in board.marks if mark.name == name), None)
     if mark is None or mark.occupant_condition is None:
         raise ValueError(f"mark {name!r} has no occupancy condition")

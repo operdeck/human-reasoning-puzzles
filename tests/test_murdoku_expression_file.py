@@ -314,3 +314,11 @@ def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsy
         clue_search.main(["suggest", str(puzzle), "--expressions"])
     assert error.value.code == 2
     assert "--expressions is supported only by report and thin" in capsys.readouterr().err
+
+
+def test_mark_ablation_reads_layout_without_parsing_clues():
+    text = TEXT + "Marks:\nred: r1c1 ; alone\n"
+    without = clue_search.without_mark_condition(text, "red")
+    board, rules, clues = load_expression_board(without)
+    assert len(rules) == len(clues) == 1
+    assert board.marks[0].occupant_condition is None
