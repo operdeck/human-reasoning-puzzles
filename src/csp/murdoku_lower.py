@@ -1406,6 +1406,7 @@ def _reify_formula(
         return _reify_cardinality(model, literals, allowed, name)
     if isinstance(formula, lang.Quantified):
         role_domain = _static_roles(board, formula.source, bindings)
+        area_adjective: str | None = None
         if role_domain is not None:
             source = formula.source
             dynamic = False
@@ -1415,12 +1416,15 @@ def _reify_formula(
         else:
             source = _bind_operand(formula.source, bindings)
             area_domain = _static_area_ids(board, source)
+            area_scope = _area_occupancy_scope(board, source)
+            if area_domain is None and area_scope is not None:
+                area_adjective, area_domain = area_scope
             if area_domain is not None:
                 if len(set(board.region_names.values())) != len(board.region_names):
                     raise NotImplementedError(
                         f"{name}: area quantifiers require distinct area names"
                     )
-                dynamic = False
+                dynamic = area_adjective is not None
                 domain = [
                     _AreaBinding(board.region_names[region])
                     for region in board.region_names
@@ -1452,18 +1456,31 @@ def _reify_formula(
             if dynamic:
                 selected = []
                 for binding_value in values:
-                    if not isinstance(binding_value, str):
-                        raise ValueError(f"{name}: dynamic person set contains a non-person entity")
-                    selected.append(
-                        _person_selected(
+                    if isinstance(binding_value, _AreaBinding) and area_adjective is not None:
+                        region = board.region_id(binding_value.name)
+                        empty = _area_empty_literal(
                             model,
                             board,
-                            binding_value,
-                            source,
-                            f"{binding_name} {binding_value} member",
+                            region,
+                            f"{binding_name} {region} empty",
                             empty_scopes,
                         )
-                    )
+                        selected.append(
+                            empty if area_adjective == "empty" else _opposite(model, empty)
+                        )
+                    elif isinstance(binding_value, str):
+                        selected.append(
+                            _person_selected(
+                                model,
+                                board,
+                                binding_value,
+                                source,
+                                f"{binding_name} {binding_value} member",
+                                empty_scopes,
+                            )
+                        )
+                    else:
+                        raise ValueError(f"{name}: dynamic domain contains an unsupported entity")
                 selected.append(_opposite(model, body) if quantifier == "every" else body)
                 body = _reify_cardinality(model, selected, {len(selected)}, binding_name)
             literals.append(body)
