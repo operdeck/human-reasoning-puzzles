@@ -15,9 +15,13 @@ def board():
         size=3,
         regions=[["a", "a", "a"], ["b", "b", "b"], ["b", "b", "b"]],
         region_names={"a": "hall", "b": "garden"},
-        objects=[],
+        objects=[BoardObject("bed", "standable", (Square(2, 0),))],
         people=["Ada", "Ben"],
-        marks=[CellMark("red", (Square(0, 0), Square(1, 1)))],
+        area_tags={"outside": ["garden"]},
+        marks=[
+            CellMark("red", (Square(0, 0), Square(1, 1))),
+            CellMark("blue", (Square(1, 2), Square(2, 0))),
+        ],
         roles=[RoleSpec("guard", frozenset({0, 1, 2}))],
     )
 
@@ -31,6 +35,11 @@ def board():
         "count people on mark:red < 1",
         "count people on mark:red <= 1",
         "count people on mark:red > 0",
+        "count people on mark:red,blue = 0",
+        "count people on mark:red,objects >= 1",
+        "count people in tag:outside = 1",
+        "count people in rows:1,3 = 1",
+        "count people on object:bed = 1",
         "count role:guard = 1",
         "count role:guard != 1",
     ],

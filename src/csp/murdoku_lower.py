@@ -8,17 +8,69 @@ from .murdoku import Board, Square
 from .murdoku_typecheck import check_formula
 
 
-def _static_cells(board: Board, target: lang.Operand) -> set[Square] | None:
+def _static_cells(
+    board: Board, target: lang.Operand, namespace: str | None = None
+) -> set[Square] | None:
+    if isinstance(target, lang.Union):
+        first_item = target.items[0]
+        inherited = (
+            first_item.token.text.partition(":")[0]
+            if isinstance(first_item, lang.Name) and ":" in first_item.token.text
+            else None
+        )
+        cells: set[Square] = set()
+        for item in target.items:
+            part = _static_cells(board, item, inherited)
+            if part is None:
+                return None
+            cells.update(part)
+        return cells
     if not isinstance(target, lang.Name):
         return None
-    kind, separator, value = target.token.text.partition(":")
+    text = target.token.text
+    if text in {"areas", "rows", "columns", "cells"}:
+        return set(board.free)
+    if text == "objects":
+        return {square for obj in board.objects for square in obj.squares} & set(board.free)
+    if ":" not in text and namespace:
+        text = f"{namespace}:{text}"
+    kind, separator, value = text.partition(":")
     if not separator:
         return None
     if kind == "area":
         region = board.region_id(value)
         return {square for square in board.free if board.region_of(square) == region}
+    if kind == "tag":
+        regions = board.tagged_region_ids([value])
+        return {square for square in board.free if board.region_of(square) in regions}
     if kind == "mark":
         return board.mark_cells([value]) & set(board.free)
+    if kind == "object":
+        return board.squares_of([value]) & set(board.free)
+    if kind == "edge_item":
+        return board.edge_item_cells([value]) & set(board.free)
+    if kind == "point_object":
+        return board.point_object_cells([value]) & set(board.free)
+    if kind == "object_kind":
+        return {
+            square
+            for obj in board.objects
+            if obj.kind == value
+            for square in obj.squares
+            if square in board.free
+        }
+    if kind in {"rows", "columns"}:
+        first, has_end, last = value.partition("-")
+        start = board.size if first == "last" else int(first)
+        end = (board.size if last == "last" else int(last)) if has_end else start
+        return {
+            square
+            for square in board.free
+            if start <= (square.row if kind == "rows" else square.col) + 1 <= end
+        }
+    if kind == "corner" and value == "board":
+        edge = {0, board.size - 1}
+        return {square for square in board.free if square.row in edge and square.col in edge}
     return None
 
 
