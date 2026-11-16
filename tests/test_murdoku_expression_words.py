@@ -1,0 +1,124 @@
+from string import Formatter
+
+import pytest
+
+from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square
+from csp.murdoku_expression_words import PHRASES, ExpressionWords
+from csp.murdoku_lang import parse_statement
+
+
+@pytest.fixture
+def board():
+    return Board(
+        size=3,
+        regions=[["a", "a", "a"], ["b", "b", "b"], ["b", "b", "b"]],
+        region_names={"a": "hall", "b": "garden"},
+        objects=[
+            BoardObject("bed", "standable", (Square(0, 0),)),
+            BoardObject("bed", "standable", (Square(1, 1),)),
+        ],
+        people=["Ada", "Ben"],
+        marks=[CellMark("red", (Square(0, 0),)), CellMark("blue", (Square(1, 1),))],
+        roles=[RoleSpec("guard", frozenset({0, 1, 2}))],
+        attributes={"trained": frozenset({"Ada"})},
+    )
+
+
+def test_languages_offer_the_same_keys_and_placeholders():
+    assert PHRASES["en"].keys() == PHRASES["nl"].keys()
+
+    def fields(template):
+        return {name for _, name, _, _ in Formatter().parse(template) if name}
+
+    for key in PHRASES["en"]:
+        assert fields(PHRASES["en"][key]) == fields(PHRASES["nl"][key]), key
+
+
+@pytest.mark.parametrize("language", ["en", "nl"])
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Ada in area:hall",
+        "some role:guard on object:bed",
+        "every Ada, Ben is attribute:trained",
+        "no (people on mark:red) dir:up Ben = 1",
+        "Ada dir:up+right Ben >= 1",
+        "Ada dir:nearest:king Ben",
+        "count (people on mark:red,blue) 0..2",
+        "count (people in area:hall) odd",
+        "count people - count role:guard >= 0",
+        "area:hall is empty",
+        "some empty areas touches area:hall",
+        "(people on object:bed) != Ada",
+        "if Ada in area:hall then Ben in area:garden",
+        "not (Ada in area:hall or Ben in area:garden)",
+        "exactly 1 of (Ada in area:hall; Ben in area:garden)",
+        "every ?p in people: ?p is role:guard",
+        "at most 1 ?r in roles: Ada is ?r",
+        "every ?a, ?b in areas: ?a on ?b",
+        "count (?p in people where ?p on object:bed) >= 1",
+        "count (area of object:bed) >= 1",
+        "count (areas is empty) >= 1",
+    ],
+)
+def test_every_construct_has_compositional_wording(board, language, source):
+    assert ExpressionWords(board, language).statement(parse_statement(source))
+
+
+@pytest.mark.parametrize(
+    ("language", "alone", "only"),
+    [
+        ("en", "Ada is alone in their area", "Ada is the only person on"),
+        ("nl", "Ada is alleen in het eigen gebied", "Ada is de enige persoon op"),
+    ],
+)
+def test_common_shapes_have_idiomatic_wording(board, language, alone, only):
+    words = ExpressionWords(board, language)
+    assert words.statement(parse_statement("count (people in area of Ada) = 1")) == alone
+    assert words.statement(parse_statement("(people on object:bed) = Ada")).startswith(only)
+
+
+def test_wording_overrides_and_names_are_used(board):
+    words = ExpressionWords(
+        board,
+        "en",
+        names={"Ada": "the keeper"},
+        phrases={"rel.beside": "next to"},
+    )
+    assert words.statement(parse_statement("Ada beside object:bed")) == (
+        "the keeper is next to at least one of objects named bed"
+    )
+    assert words.statement(parse_statement("Ada in area:hall | A custom clue.")) == "A custom clue."
+
+
+def test_invalid_language_and_phrase_key_fail_explicitly(board):
+    with pytest.raises(ValueError, match="unknown expression language"):
+        ExpressionWords(board, "fr")
+    with pytest.raises(ValueError, match="unknown expression phrase keys"):
+        ExpressionWords(board, phrases={"rel.unknown": "???"})
+
+
+def test_role_binding_and_spatial_identity_are_worded_differently(board):
+    words = ExpressionWords(board)
+    role = words.statement(parse_statement("some ?r in roles: Ada is ?r"))
+    identity = words.statement(parse_statement("area:hall is area:garden"))
+    assert "Ada is a member of ?r" in role
+    assert "the same entity as" in identity
+
+
+def test_spatial_containment_overlap_and_projection_are_distinct(board):
+    words = ExpressionWords(board)
+    assert "entirely contained in" in words.statement(
+        parse_statement("some object:bed in area:hall")
+    )
+    assert "overlapping" in words.statement(parse_statement("some object:bed on area:hall"))
+    assert "overlapping" in words.statement(parse_statement("count (area of object:bed) >= 1"))
+
+
+def test_direction_wording_retains_axis_measure_and_superlative_exclusions(board):
+    words = ExpressionWords(board)
+    compound = words.statement(parse_statement("Ada dir:up+right Ben = 1"))
+    nearest = words.statement(parse_statement("Ada dir:nearest:king Ben"))
+    assert "each axis distance equal to 1" in compound
+    assert "every other person outside the target set" in nearest
+    assert "king-step distance" in nearest
