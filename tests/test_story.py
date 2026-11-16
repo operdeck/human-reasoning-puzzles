@@ -838,7 +838,7 @@ if has Ada role:guide then on Ada mark:altar
         english.quantified_conditions["with Ada role:guide in same area exactly 1"]
     ) == ("Ada shares an area with exactly one other person, and that is a guide holder")
     assert english._direction_text(english.direction_conditions["dir Ada tag:inside up"]) == (
-        "Ada is above someone in the kitchen"
+        "Ada is above a square in the kitchen"
     )
     assert english._target_text(murdoku.TargetSelector("object_kind", "standable")) == (
         "someone on standable objects"
@@ -860,12 +860,56 @@ if has Ada role:guide then on Ada mark:altar
     assert dutch._quantified_text(
         dutch.quantified_conditions["with Ada role:guide in same area exactly 1"]
     ) == ("Ada deelt een gebied met precies één ander persoon, en dat is een gids-drager")
-    assert "iemand in de keuken" in dutch._direction_text(
+    assert "een vakje in de keuken" in dutch._direction_text(
         dutch.direction_conditions["dir Ada tag:inside up"]
     )
     assert "Als Ada de rol gids heeft" in dutch._conditional_text(
         next(iter(dutch.conditionals.values()))
     )
+
+
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_vietnam_avoidance_clues_name_dish_cells_not_occupants(number):
+    from csp.story import clue_texts, figure_clues
+
+    text = example(f"vietnam-murdoku-{number}.txt").read_text()
+    clues = clue_texts(text)
+    for person, clue in zip(("Pippo", "Swena"), clues[:2], strict=True):
+        assert clue.startswith(f"{person} staat niet op of direct naast een vakje van de bún chả")
+        assert "een vakje van de thịt kho" in clue
+        assert "een vakje van de phá lấu" in clue
+        assert "(ook niet schuin of over een gebiedsgrens)" in clue
+        assert "iemand" not in clue
+        assert "koningszet" not in clue
+        assert "Het is niet zo" not in clue
+    figures = figure_clues(text).figures
+    for figure, clue_number in zip(figures[:2], (1, 2), strict=True):
+        assert any(clue_number in paragraph.sources for paragraph in figure.clues)
+        assert "staat niet op of direct naast" in figure.clues[0].text
+
+
+@pytest.mark.parametrize("language", ["en", "nl"])
+@pytest.mark.parametrize("negated", [False, True])
+def test_king_adjacency_wording_distinguishes_cells_from_people(language, negated):
+    from csp.story import clue_texts
+
+    text = (
+        example("vietnam-murdoku-1.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    prefix = "not " if negated else ""
+    text = text[: text.index("Clues:")] + (
+        f"Clues:\n{prefix}dir Pippo object:buncha king <= 1\n"
+        f"{prefix}dir Pippo people_on:object:buncha king <= 1\n"
+        f"{prefix}dir Pippo object:buncha king = 1\n"
+    )
+    cell, person, exact = clue_texts(text)
+    assert ("directly next to" if language == "en" else "direct naast") in cell
+    assert (("not on" if language == "en" else "niet op") in cell) == negated
+    assert ("someone on" if language == "en" else "iemand op") in person
+    assert ("king move" if language == "en" else "koningszet") in exact
+    assert ("a square of" if language == "en" else "een vakje van") in exact
 
 
 def test_explain_names_quantified_clue_that_determines_a_role():
