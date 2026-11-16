@@ -3,8 +3,9 @@ from dataclasses import replace
 import pytest
 
 from csp.murdoku import Board, RoleSpec, Square
-from csp.murdoku_expr_lint import role_negation_warnings, vacuous_errors
+from csp.murdoku_expr_lint import role_negation_warnings, size_budget_warnings, vacuous_errors
 from csp.murdoku_lang import holds, parse_statement
+from csp.murdoku_lower import compile_statements_with_origins
 
 
 @pytest.fixture
@@ -127,3 +128,41 @@ def test_impossible_required_people_adjacency_is_an_error(board, source):
 )
 def test_adjacency_error_does_not_reject_nonrequired_or_other_relations(board, source):
     assert not vacuous_errors(board, [parse_statement(source)])
+
+
+def test_size_budget_warns_for_emitted_position_and_role_variables(board):
+    clue = parse_statement("Ada dir:left role:guard", line=6)
+    compiled = compile_statements_with_origins(board, [clue])
+    assert not size_budget_warnings(board, compiled)
+    warnings = size_budget_warnings(board, compiled, budget=2)
+    assert len(warnings) == 1
+    assert warnings[0].startswith("line 6, column 1: clue 1")
+    assert "3 position/role variables (budget 2)" in warnings[0]
+    assert "splitting" in warnings[0]
+
+
+def test_default_budget_warns_at_four_ground_variables():
+    board = Board(
+        size=3,
+        regions=[["a"] * 3 for _ in range(3)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben", "Cy"],
+        roles=[RoleSpec("guard", frozenset({0, 1, 2, 3}))],
+    )
+    compiled = compile_statements_with_origins(board, [parse_statement("Ada is role:guard")])
+    compiled.model.relate(
+        "large clue",
+        ("Ada", "Ben", "Cy", board.role_variable("Cy", "guard")),
+        lambda *_values: True,
+    )
+    compiled.relation_origins[len(compiled.model.relations) - 1] = (compiled.origins[0],)
+    warnings = size_budget_warnings(board, compiled)
+    assert len(warnings) == 1
+    assert "4 position/role variables (budget 3)" in warnings[0]
+
+
+def test_size_budget_must_be_positive(board):
+    compiled = compile_statements_with_origins(board, [])
+    with pytest.raises(ValueError, match="positive"):
+        size_budget_warnings(board, compiled, budget=0)

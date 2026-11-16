@@ -1,9 +1,16 @@
 """Lint checks for expression-language Murdoku clues."""
 
+from __future__ import annotations
+
 from collections.abc import Iterator, Sequence
+from dataclasses import fields, is_dataclass
+from typing import TYPE_CHECKING
 
 from . import murdoku_lang as lang
 from .murdoku import Board
+
+if TYPE_CHECKING:
+    from .murdoku_lower import ExpressionCompilation
 
 
 def _negated_relations(formula: lang.Formula, negated: bool = False) -> Iterator[lang.Atom]:
@@ -97,3 +104,43 @@ def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[s
                 "they occupy different rows and columns"
             )
     return errors
+
+
+def _tokens(value: object) -> Iterator[lang.Token]:
+    if isinstance(value, lang.Token):
+        yield value
+    elif isinstance(value, tuple):
+        for item in value:
+            yield from _tokens(item)
+    elif is_dataclass(value):
+        for item in fields(value):
+            yield from _tokens(getattr(value, item.name))
+
+
+def size_budget_warnings(
+    board: Board, compilation: ExpressionCompilation, *, budget: int = 3
+) -> list[str]:
+    """Warn when an emitted relation exceeds the position/role variable budget."""
+    if budget < 1:
+        raise ValueError("relation size budget must be positive")
+    variables = set(board.people) | {
+        board.role_variable(person, role.name) for person in board.people for role in board.roles
+    }
+    sizes: dict[int, int] = {}
+    for index, sources in compilation.relation_origins.items():
+        relation = compilation.model.relations[index]
+        size = len(set(relation.variables) & variables)
+        if size > budget:
+            for origin in sources:
+                position = compilation.origins.index(origin)
+                sizes[position] = max(size, sizes.get(position, 0))
+    warnings = []
+    for index, size in sorted(sizes.items()):
+        origin = compilation.origins[index]
+        token = min(_tokens(origin.statement.formula), key=lambda token: (token.line, token.column))
+        warnings.append(
+            f"line {token.line}, column {token.column}: {origin.label} grounds to "
+            f"a relation over {size} position/role variables (budget {budget}); "
+            "consider splitting the statement"
+        )
+    return warnings
