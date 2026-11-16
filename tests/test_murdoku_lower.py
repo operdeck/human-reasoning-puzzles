@@ -379,6 +379,11 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "Ada is (people in area:hall) iff Ben is role:guard",
         "no Ada touches (people except role:guard)",
         "some (role:guard,attribute:trained) touches role:guard",
+        "area:hall is empty",
+        "object:bed is occupied",
+        "rows:3 is empty iff Ada is role:guard",
+        "if object:bed is occupied then Ada on object:bed",
+        "no area:hall is empty",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
@@ -400,6 +405,24 @@ def test_boolean_compilation_matches_reference(board, formula):
             for person in board.people
         }
         assert accepted == holds(statement, board, placed, roles), candidate
+
+
+def test_blocked_footprint_is_empty(board):
+    blocked = Square(0, 2)
+    board = replace(
+        board,
+        objects=[*board.objects, BoardObject("rock", "blocking", (blocked,))],
+    )
+    statement = parse_statement("object:rock is empty")
+    model = compile_statements(board, [statement])
+    assert Solver(model).solve().contradiction is None
+    for candidate in solutions(board, [], limit=1000):
+        placed = {person: candidate[person] for person in board.people}
+        roles = {
+            (person, "guard"): candidate[board.role_variable(person, "guard")]
+            for person in board.people
+        }
+        assert holds(statement, board, placed, roles)
 
 
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):

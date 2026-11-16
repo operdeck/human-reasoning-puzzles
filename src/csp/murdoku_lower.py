@@ -785,6 +785,40 @@ def _person_selected(
     raise NotImplementedError(f"{name}: person set lowering is not implemented")
 
 
+def _reify_adjective_atom(model: Model, board: Board, atom: lang.AdjectiveAtom, name: str) -> int:
+    shape = infer_operand(board, atom.subject)
+    cells = _static_cells(board, atom.subject)
+    if shape.minimum != 1 or shape.maximum != 1 or cells is None:
+        raise NotImplementedError(f"{name}: adjective lowering is not implemented")
+    if atom.adjective.text == "free":
+        _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
+        model.assign(
+            yes if cells.isdisjoint(board.blocked) else no,
+            "clue",
+            name,
+            sources=(f"{name} state",),
+        )
+        result = yes
+    else:
+        literals = [
+            model.literal(person, square)
+            for person in board.people
+            for square in board.free
+            if square in cells
+        ]
+        allowed = (
+            {0}
+            if atom.adjective.text == "empty"
+            else set(range(1, min(len(literals), len(board.people)) + 1))
+        )
+        result = _reify_cardinality(model, literals, allowed, name)
+    return (
+        _opposite(model, result)
+        if atom.determiner is not None and atom.determiner.text == "no"
+        else result
+    )
+
+
 def _reify_formula(
     model: Model,
     board: Board,
@@ -848,6 +882,9 @@ def _reify_formula(
                 else result
             )
         return _reify_atom(model, board, atom, name)
+    if isinstance(formula, lang.AdjectiveAtom):
+        adjective_atom = replace(formula, subject=_bind_operand(formula.subject, bindings))
+        return _reify_adjective_atom(model, board, adjective_atom, name)
     if isinstance(formula, lang.Negation):
         return _opposite(
             model, _reify_formula(model, board, formula.formula, f"{name} not", bindings)
