@@ -605,8 +605,46 @@ def test_overlapping_population_patterns_match_reference():
     )
 
 
-def test_tuned_population_patterns_preserve_migrated_example_grade():
-    text = example("samen-onderweg.txt").read_text()
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "count (people in area:hall) = count (people in area:garden) and "
+        "every ?b in (areas except area:hall,garden): "
+        "count (people in ?b) < count (people in area:hall)",
+        "count (people in area:garden) = count (people in area:hall) and "
+        "every ?b in (area of free cells except area:hall,garden): "
+        "count (people in ?b) > count (people in area:hall)",
+    ],
+)
+def test_tied_population_patterns_match_reference(formula):
+    board = Board(
+        size=3,
+        regions=[["c", "a", "b"], ["c", "c", "c"], ["c", "c", "c"]],
+        region_names={"a": "hall", "b": "garden", "c": "shed"},
+        objects=[],
+        people=["Ada", "Ben"],
+    )
+    _assert_compilation_matches_reference(board, formula)
+
+
+def test_population_pattern_does_not_infer_missing_ties():
+    board = Board(
+        size=3,
+        regions=[["c", "a", "b"], ["c", "c", "c"], ["c", "c", "c"]],
+        region_names={"a": "hall", "b": "garden", "c": "shed"},
+        objects=[],
+        people=["Ada", "Ben"],
+    )
+    _assert_compilation_matches_reference(
+        board,
+        "every ?b in (areas except area:hall,garden): "
+        "count (people in ?b) < count (people in area:hall)",
+    )
+
+
+@pytest.mark.parametrize("filename", ["samen-onderweg.txt", "samen-in-de-blauwe-bladeren.txt"])
+def test_tuned_population_patterns_preserve_migrated_example_grade(filename):
+    text = example(filename).read_text()
     replacements = {
         "most_populated area:Tokyo": (
             "every ?b in (areas except area:Tokyo): "
@@ -616,14 +654,31 @@ def test_tuned_population_patterns_preserve_migrated_example_grade():
             "every ?b in (area of free cells except area:Okinawa): "
             "count (people in ?b) > count (people in area:Okinawa)"
         ),
+        "least_populated area:Okinawa area:Hiroshima": (
+            "count (people in area:Hiroshima) = count (people in area:Okinawa) and "
+            "every ?b in (area of free cells except area:Okinawa,area:Hiroshima): "
+            "count (people in ?b) > count (people in area:Okinawa)"
+        ),
         "beside Keiko object:lantaarn": "Keiko beside object:lantaarn",
         "on Mio object:bank": "Mio on object:bank",
         "dir Haru Jun up": "Haru dir:up Jun",
         "dir Haru Isamu left": "Haru dir:left Isamu",
         "not beside Haru object:torii": "not Haru beside object:torii",
+        "on Kaori point_object:lantaarn": "Kaori on point_object:lantaarn",
+        "on Renji point_object:neon": "Renji on point_object:neon",
+        "on Mizuki point_object:torii": "Mizuki on point_object:torii",
+        "dir Mizuki Kaori areas = 0": "Mizuki dir:areas Kaori = 0",
+        "on Goro point_object:uithangbord": "Goro on point_object:uithangbord",
+        "in Goro area:Hiroshima": "Goro in area:Hiroshima",
+        "on Tatsuya point_object:sakura": "Tatsuya on point_object:sakura",
+        "in Hideo area:Osaka": "Hideo in area:Osaka",
+        "dir Hideo Yuki left": "Hideo dir:left Yuki",
+        "dir Hideo Yuki up": "Hideo dir:up Yuki",
+        "dir Nami Sora left": "Nami dir:left Sora",
+        "dir Nami Sora up": "Nami dir:up Sora",
     }
     migrated = text
-    for old, new in replacements.items():
+    for old, new in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
         migrated = migrated.replace(old, new)
     legacy_board, legacy_clues = load_board(text)
     board, rules, clues = load_expression_board(migrated)

@@ -2728,18 +2728,40 @@ def _reify_formula(
     raise NotImplementedError(f"{name}: expression lowering is not implemented")
 
 
+def _population_count_area(board: Board, number: lang.Number) -> set[str] | None:
+    if not (
+        isinstance(number, lang.Count)
+        and isinstance(number.operand, lang.Filter)
+        and isinstance(number.operand.source, lang.Name)
+        and number.operand.source.token.text == "people"
+        and number.operand.operator.text == "in"
+    ):
+        return None
+    return _static_area_ids(board, number.operand.target)
+
+
 def _population_pattern(
     board: Board, statement: lang.Statement, label: str
 ) -> AreaPopulationCondition | None:
-    """Recognize strict single-area extremes without changing their meaning."""
-    formula = statement.formula
+    """Recognize strict extremes and explicit ties without changing their meaning."""
+    parts: list[lang.Formula] = []
+
+    def conjuncts(formula: lang.Formula) -> None:
+        if isinstance(formula, lang.Binary) and formula.operator.text == "and":
+            conjuncts(formula.left)
+            conjuncts(formula.right)
+        else:
+            parts.append(formula)
+
+    conjuncts(statement.formula)
+    quantified = [part for part in parts if isinstance(part, lang.Quantified)]
+    if len(quantified) != 1:
+        return None
+    formula = quantified[0]
     if not (
-        isinstance(formula, lang.Quantified)
-        and formula.quantifier.text == "every"
+        formula.quantifier.text == "every"
         and len(formula.variables) == 1
         and isinstance(formula.source, lang.Difference)
-        and isinstance(formula.source.right, lang.Name)
-        and formula.source.right.token.text.startswith("area:")
         and isinstance(formula.body, lang.NumberComparison)
         and formula.body.operator.text in {"<", ">"}
     ):
@@ -2770,21 +2792,36 @@ def _population_pattern(
         and left.operand.operator.text == "in"
         and isinstance(left.operand.target, lang.Name)
         and left.operand.target.token.text == formula.variables[0].text
-        and isinstance(right, lang.Count)
-        and isinstance(right.operand, lang.Filter)
-        and isinstance(right.operand.source, lang.Name)
-        and right.operand.source.token.text == "people"
-        and right.operand.operator.text == "in"
     ):
         return None
     excluded = _static_area_ids(board, formula.source.right)
-    target = _static_area_ids(board, right.operand.target)
-    if excluded is None or len(excluded) != 1 or target != excluded:
+    target = _population_count_area(board, right)
+    if excluded is None or target is None or len(target) != 1 or not target <= excluded:
         return None
-    (region,) = excluded
-    if not any(board.region_of(square) == region for square in board.free):
+    (anchor,) = target
+    ties = set()
+    for part in parts:
+        if part is formula:
+            continue
+        if not isinstance(part, lang.NumberComparison) or part.operator.text != "=":
+            return None
+        first = _population_count_area(board, part.left)
+        second = _population_count_area(board, part.right)
+        if first is None or second is None or len(first) != 1 or len(second) != 1:
+            return None
+        if first == target:
+            ties.update(second)
+        elif second == target:
+            ties.update(first)
+        else:
+            return None
+    if ties != excluded - target:
         return None
-    return AreaPopulationCondition(label, kind, (region,), (), None, 0)
+    free_regions = {board.region_of(square) for square in board.free}
+    if not excluded <= free_regions:
+        return None
+    regions = (anchor, *(region for region in board.region_names if region in ties))
+    return AreaPopulationCondition(label, kind, regions, (), None, 0)
 
 
 def compile_statements(
