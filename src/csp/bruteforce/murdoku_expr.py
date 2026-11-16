@@ -1,13 +1,24 @@
 """Independent search for Murdoku boards with expression-language statements."""
 
 from collections.abc import Iterator, Sequence
+from dataclasses import fields, is_dataclass
 from itertools import combinations
 
 from ..murdoku import Board, Square
 from ..murdoku_declarations import statements as declaration_statements
 from ..murdoku_eval import grounded_dependencies, holds_grounded
-from ..murdoku_lang import Statement, holds
+from ..murdoku_lang import Name, Statement, holds
 from ..murdoku_typecheck import check_formula
+
+
+def _mentions_roles(value: object) -> bool:
+    if isinstance(value, Name):
+        return value.token.text == "roles" or value.token.text.startswith("role:")
+    if isinstance(value, tuple):
+        return any(_mentions_roles(item) for item in value)
+    if is_dataclass(value):
+        return any(_mentions_roles(getattr(value, item.name)) for item in fields(value))
+    return False
 
 
 def _placements(board: Board, checks: Sequence[Statement]) -> Iterator[dict[str, Square]]:
@@ -76,10 +87,20 @@ def solutions(
     checks = [*declaration_statements(board), *rules, *statements]
     for statement in checks:
         check_formula(board, statement.formula)
+    placement_checks = [statement for statement in checks if not _mentions_roles(statement.formula)]
+    role_checks = [statement for statement in checks if _mentions_roles(statement.formula)]
+    # Role-independent checks cannot observe this complete placeholder assignment.
+    placeholder_roles = {
+        (person, role.name): False for role in board.roles for person in board.people
+    }
     found: list[dict[str, Square | bool]] = []
     for placed in _placements(board, checks):
+        if not all(
+            holds(statement, board, placed, placeholder_roles) for statement in placement_checks
+        ):
+            continue
         for roles in _roles(board, placed):
-            if all(holds(statement, board, placed, roles) for statement in checks):
+            if all(holds(statement, board, placed, roles) for statement in role_checks):
                 result: dict[str, Square | bool] = dict(placed)
                 result.update(
                     {

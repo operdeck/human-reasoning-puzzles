@@ -91,6 +91,30 @@ def test_grounded_clue_prunes_before_enumerating_role_assignments(monkeypatch):
     assert all(placement["Ada"].row == 0 for placement in called)
 
 
+def test_role_independent_aggregate_prunes_before_enumerating_roles(monkeypatch):
+    board = _board(roles=True)
+    called = []
+    roles = murdoku_expr._roles
+
+    def record(current_board, placed):
+        called.append(dict(placed))
+        return roles(current_board, placed)
+
+    monkeypatch.setattr(murdoku_expr, "_roles", record)
+    statement = parse_statement("count people in area:north = 0")
+    assert grounded_dependencies(board, statement) is None
+    assert solutions(board, [statement], limit=20) == []
+    assert not called
+
+
+def test_bound_role_entities_are_evaluated_after_role_assignments():
+    board = _board(roles=True)
+    statement = parse_statement("every ?r in roles: Ada is ?r")
+    results = solutions(board, [statement], limit=20)
+    assert len(results) == 4
+    assert all(result["Ada has role guard"] is True for result in results)
+
+
 def test_search_enumerates_roles_and_uses_role_membership():
     board = _board(roles=True)
     assert len(solutions(board, [], limit=10)) == 8
