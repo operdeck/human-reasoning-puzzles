@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from itertools import permutations
+from typing import Literal
 
 from . import murdoku_lang as lang
 from .core import Kind, Model
@@ -44,6 +45,29 @@ class _SpatialBinding:
 
 
 type _Bindings = dict[str, str | _RoleBinding | _AreaBinding | _LineBinding | _SpatialBinding]
+
+
+@dataclass(frozen=True)
+class StatementOrigin:
+    """A numbered clue or unnumbered rule and its parsed source."""
+
+    kind: Literal["clue", "rule"]
+    number: int
+    statement: lang.Statement
+
+    @property
+    def label(self) -> str:
+        return f"{self.kind} {self.number}"
+
+
+@dataclass(frozen=True)
+class ExpressionCompilation:
+    """A compiled model and origins indexed by constraint, relation and initial log entry."""
+
+    model: Model
+    constraint_origins: dict[int, tuple[StatementOrigin, ...]]
+    relation_origins: dict[int, tuple[StatementOrigin, ...]]
+    initial_step_origins: dict[int, tuple[StatementOrigin, ...]]
 
 
 def _operand_sort(board: Board, operand: lang.Operand, bindings: _Bindings) -> Sort:
@@ -2828,26 +2852,63 @@ def compile_statements(
     board: Board, statements: Sequence[lang.Statement], *, rules: Sequence[lang.Statement] = ()
 ) -> Model:
     """Compile the currently supported expression patterns for a board."""
+    return compile_statements_with_origins(board, statements, rules=rules).model
+
+
+def compile_statements_with_origins(
+    board: Board, statements: Sequence[lang.Statement], *, rules: Sequence[lang.Statement] = ()
+) -> ExpressionCompilation:
+    """Compile expressions and retain their structured origins outside the engine.
+
+    Shared population primitives conservatively cite all population statements
+    in the batch; other primitives cite the statement that emitted them.
+    """
     if board.rules:
         raise ValueError("board rules must be migrated to expression statements first")
     for statement in (*rules, *statements):
         check_formula(board, statement.formula)
     model = compile_puzzle(board, [])
     empty_scopes: dict[Square | str, int] = {}
-    labelled = [
-        *((f"rule {index}", statement) for index, statement in enumerate(rules, 1)),
-        *((f"clue {index}", statement) for index, statement in enumerate(statements, 1)),
+    origins = [
+        *(StatementOrigin("rule", index, statement) for index, statement in enumerate(rules, 1)),
+        *(
+            StatementOrigin("clue", index, statement)
+            for index, statement in enumerate(statements, 1)
+        ),
     ]
     populations = [
-        (label, condition)
-        for label, statement in labelled
-        if (condition := _population_pattern(board, statement, label)) is not None
+        (origin, condition)
+        for origin in origins
+        if (condition := _population_pattern(board, origin.statement, origin.label)) is not None
     ]
+    constraint_origins: dict[int, tuple[StatementOrigin, ...]] = {}
+    relation_origins: dict[int, tuple[StatementOrigin, ...]] = {}
+    initial_step_origins: dict[int, tuple[StatementOrigin, ...]] = {}
+
+    def snapshot() -> tuple[int, int, int]:
+        return len(model.constraints), len(model.relations), len(model.log)
+
+    def record(start: tuple[int, int, int], emitted_by: tuple[StatementOrigin, ...]) -> None:
+        constraint_start, relation_start, step_start = start
+        constraint_origins.update(
+            (index, emitted_by) for index in range(constraint_start, len(model.constraints))
+        )
+        relation_origins.update(
+            (index, emitted_by) for index in range(relation_start, len(model.relations))
+        )
+        initial_step_origins.update(
+            (index, emitted_by) for index in range(step_start, len(model.log))
+        )
+
+    before_population = snapshot()
     _compile_area_population(model, board, [condition for _, condition in populations])
-    population_labels = {label for label, _ in populations}
-    for label, statement in labelled:
+    record(before_population, tuple(origin for origin, _ in populations))
+    population_labels = {origin.label for origin, _ in populations}
+    for origin in origins:
+        label, statement = origin.label, origin.statement
         if label in population_labels:
             continue
+        before_statement = snapshot()
         if not any(
             lower(model, board, statement, label)
             for lower in (
@@ -2863,4 +2924,5 @@ def compile_statements(
                 model, board, statement.formula, label, empty_scopes=empty_scopes
             )
             model.assign(literal, "clue", label)
-    return model
+        record(before_statement, (origin,))
+    return ExpressionCompilation(model, constraint_origins, relation_origins, initial_step_origins)

@@ -10,6 +10,7 @@ from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import (
     compile_statements,
+    compile_statements_with_origins,
     try_lower_count,
     try_lower_location,
     try_lower_membership,
@@ -317,6 +318,57 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         except Contradiction:
             continue
     assert actual == expected
+
+
+def test_compilation_retains_statement_origins_without_changing_model(board):
+    rule = parse_statement("Ada in area:hall | Ada remains inside", line=20)
+    relation = parse_statement("Ada dir:left Ben", line=30)
+    count = parse_statement("count role:guard = 1", line=31)
+    compiled = compile_statements_with_origins(board, [relation, count], rules=[rule])
+    model = compiled.model
+    labels = {
+        origin.label for origins in compiled.initial_step_origins.values() for origin in origins
+    }
+    assert "rule 1" in labels
+    assert any(
+        model.relations[index].name == "clue 1"
+        and len(origins) == 1
+        and origins[0].statement is relation
+        and origins[0].number == 1
+        and origins[0].kind == "clue"
+        for index, origins in compiled.relation_origins.items()
+    )
+    assert any(
+        len(origins) == 1 and origins[0].statement is count
+        for origins in compiled.constraint_origins.values()
+    )
+    assert any(
+        len(origins) == 1 and origins[0].statement is rule
+        for origins in compiled.initial_step_origins.values()
+    )
+
+
+def test_shared_population_primitives_keep_all_origin_statements():
+    board = Board(
+        size=3,
+        regions=[["a", "a", "b"], ["a", "b", "b"], ["c", "c", "c"]],
+        region_names={"a": "hall", "b": "garden", "c": "shed"},
+        objects=[],
+        people=["Ada", "Ben", "Cy"],
+    )
+    first = parse_statement(
+        "every ?b in areas except area:hall: count (people in ?b) < count (people in area:hall)"
+    )
+    second = parse_statement(
+        "every ?b in (area of free cells except area:shed): "
+        "count (people in ?b) > count (people in area:shed)"
+    )
+    compiled = compile_statements_with_origins(board, [first, second])
+    assert compiled.constraint_origins
+    assert all(
+        tuple(origin.statement for origin in origins) == (first, second)
+        for origins in compiled.constraint_origins.values()
+    )
 
 
 @pytest.mark.parametrize(
