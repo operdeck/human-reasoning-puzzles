@@ -45,6 +45,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "adj.empty": "empty",
         "adj.occupied": "occupied",
         "adj.free": "free",
+        "adj.empty.modifier": "empty",
+        "adj.occupied.modifier": "occupied",
+        "adj.free.modifier": "free",
         "rel.in": "in",
         "rel.on": "on",
         "rel.in.spatial": "entirely contained in",
@@ -165,6 +168,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "adj.empty": "leeg",
         "adj.occupied": "bezet",
         "adj.free": "vrij",
+        "adj.empty.modifier": "lege",
+        "adj.occupied.modifier": "bezette",
+        "adj.free.modifier": "vrije",
         "rel.in": "in",
         "rel.on": "op",
         "rel.in.spatial": "volledig binnen",
@@ -447,7 +453,11 @@ class ExpressionWords:
                     right=self._operand(right, bindings),
                 )
             case lang.Qualified(adjective=adjective, operand=operand):
-                return f"{self._phrase(f'adj.{adjective.text}')} {self._operand(operand, bindings)}"
+                singular_area = isinstance(operand, lang.Name) and operand.token.text.startswith(
+                    "area:"
+                )
+                key = f"adj.{adjective.text}" + ("" if singular_area else ".modifier")
+                return f"{self._phrase(key)} {self._operand(operand, bindings)}"
             case lang.Projection(kind=kind, operand=operand):
                 return self._phrase(
                     "op.projection",

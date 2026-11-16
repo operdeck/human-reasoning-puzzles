@@ -190,6 +190,14 @@ def test_spatial_containment_overlap_and_projection_are_distinct(board):
     assert "overlapping" in words.statement(parse_statement("count (area of object:bed) >= 1"))
 
 
+def test_dutch_adjective_modifiers_agree_with_their_operand(board):
+    words = ExpressionWords(board, "nl")
+    assert "lege gebieden" in words.statement(parse_statement("count empty areas = 1"))
+    assert "vrije vakjes" in words.statement(parse_statement("count free cells >= 1"))
+    assert "leeg gebied hall" in words.statement(parse_statement("some empty area:hall on rows:1"))
+    assert "is leeg" in words.statement(parse_statement("area:hall is empty"))
+
+
 def test_direction_wording_retains_axis_measure_and_superlative_exclusions(board):
     words = ExpressionWords(board)
     compound = words.statement(parse_statement("Ada dir:up+right Ben = 1"))
