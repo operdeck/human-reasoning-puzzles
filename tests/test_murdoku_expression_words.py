@@ -122,3 +122,21 @@ def test_direction_wording_retains_axis_measure_and_superlative_exclusions(board
     assert "each axis distance equal to 1" in compound
     assert "every other person outside the target set" in nearest
     assert "king-step distance" in nearest
+
+
+def test_determiner_and_direction_phrase_overrides_compose(board):
+    words = ExpressionWords(
+        board,
+        phrases={
+            "det.every": "all of {subject}",
+            "rel.dir.up.exact": "directly above",
+            "rel.dir.up_right": "northeast of",
+        },
+    )
+    assert "all of people is directly above" in words.statement(
+        parse_statement("every people dir:up Ben = 1")
+    )
+    assert "all of empty areas is empty" in words.statement(
+        parse_statement("every empty areas is empty")
+    )
+    assert "northeast of" in words.statement(parse_statement("Ada dir:right+up Ben"))

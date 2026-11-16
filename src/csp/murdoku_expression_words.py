@@ -55,6 +55,15 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.left": "left of",
         "rel.dir.right": "right of",
         "rel.dir.diagonal": "diagonally aligned with",
+        "rel.dir.up.exact": "above",
+        "rel.dir.down.exact": "below",
+        "rel.dir.left.exact": "left of",
+        "rel.dir.right.exact": "right of",
+        "rel.dir.diagonal.exact": "diagonally aligned with",
+        "rel.dir.up_right": "above and right of",
+        "rel.dir.up_left": "above and left of",
+        "rel.dir.down_right": "below and right of",
+        "rel.dir.down_left": "below and left of",
         "rel.dir.knight": "a knight's move from",
         "rel.dir.rows": "at a row distance from",
         "rel.dir.cols": "at a column distance from",
@@ -64,7 +73,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.areas": "at an area distance from",
         "rel.dir.nearest": "closer than every other person outside the target set to",
         "rel.dir.furthest": "farther than every other person outside the target set from",
-        "rel.compound": "{first} and {second}",
         "rel.metric": "{relation} (measured by {metric})",
         "metric.rows": "row distance",
         "metric.cols": "column distance",
@@ -82,13 +90,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "cmp.>": "greater than",
         "cmp.>=": "at least",
         "atom.one": "{subject} is {relation} {target}",
-        "atom.some": "at least one of {subject} is {relation} {target}",
-        "atom.every": "every member of {subject} is {relation} {target}",
-        "atom.no": "no member of {subject} is {relation} {target}",
         "adjective.one": "{subject} is {adjective}",
-        "adjective.some": "at least one of {subject} is {adjective}",
-        "adjective.every": "every member of {subject} is {adjective}",
-        "adjective.no": "no member of {subject} is {adjective}",
+        "det.some": "at least one of {subject}",
+        "det.every": "every member of {subject}",
+        "det.no": "no member of {subject}",
         "set.equal": "{left} and {right} are the same set",
         "set.not_equal": "{left} and {right} are different sets",
         "number.count": "the number of {operand}",
@@ -163,6 +168,15 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.left": "links van",
         "rel.dir.right": "rechts van",
         "rel.dir.diagonal": "diagonaal uitgelijnd met",
+        "rel.dir.up.exact": "boven",
+        "rel.dir.down.exact": "onder",
+        "rel.dir.left.exact": "links van",
+        "rel.dir.right.exact": "rechts van",
+        "rel.dir.diagonal.exact": "diagonaal uitgelijnd met",
+        "rel.dir.up_right": "boven en rechts van",
+        "rel.dir.up_left": "boven en links van",
+        "rel.dir.down_right": "onder en rechts van",
+        "rel.dir.down_left": "onder en links van",
         "rel.dir.knight": "een paardensprong verwijderd van",
         "rel.dir.rows": "op een rijafstand van",
         "rel.dir.cols": "op een kolomafstand van",
@@ -172,7 +186,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.areas": "op een gebiedsafstand van",
         "rel.dir.nearest": "dichter dan iedere andere persoon buiten de doelverzameling bij",
         "rel.dir.furthest": "verder dan iedere andere persoon buiten de doelverzameling van",
-        "rel.compound": "{first} en {second}",
         "rel.metric": "{relation} (gemeten met {metric})",
         "metric.rows": "rijafstand",
         "metric.cols": "kolomafstand",
@@ -190,13 +203,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "cmp.>": "groter dan",
         "cmp.>=": "minstens",
         "atom.one": "{subject} is {relation} {target}",
-        "atom.some": "minstens een van {subject} is {relation} {target}",
-        "atom.every": "ieder lid van {subject} is {relation} {target}",
-        "atom.no": "geen lid van {subject} is {relation} {target}",
         "adjective.one": "{subject} is {adjective}",
-        "adjective.some": "minstens een van {subject} is {adjective}",
-        "adjective.every": "ieder lid van {subject} is {adjective}",
-        "adjective.no": "geen lid van {subject} is {adjective}",
+        "det.some": "minstens een van {subject}",
+        "det.every": "ieder lid van {subject}",
+        "det.no": "geen lid van {subject}",
         "set.equal": "{left} en {right} zijn dezelfde verzameling",
         "set.not_equal": "{left} en {right} zijn verschillende verzamelingen",
         "number.count": "het aantal {operand}",
@@ -263,6 +273,7 @@ class ExpressionWords:
         operator: lang.Token,
         subject: lang.Operand,
         bindings: dict[str, Shape],
+        measure: lang.Measure | None,
     ) -> str:
         mode = operator.text
         if mode == "is":
@@ -277,11 +288,15 @@ class ExpressionWords:
             mode = mode.removeprefix("dir:")
             direction, _, metric = mode.partition(":")
             parts = direction.split("+")
-            relation = self._phrase(f"rel.dir.{parts[0]}")
             if len(parts) == 2:
-                relation = self._phrase(
-                    "rel.compound", first=relation, second=self._phrase(f"rel.dir.{parts[1]}")
-                )
+                vertical = next(part for part in parts if part in {"up", "down"})
+                horizontal = next(part for part in parts if part in {"left", "right"})
+                key = f"rel.dir.{vertical}_{horizontal}"
+            else:
+                key = f"rel.dir.{direction}"
+                if measure and measure.comparison.text == "=" and f"{key}.exact" in PHRASES["en"]:
+                    key += ".exact"
+            relation = self._phrase(key)
             if metric:
                 relation = self._phrase(
                     "rel.metric", relation=relation, metric=self._phrase(f"metric.{metric}")
@@ -348,7 +363,7 @@ class ExpressionWords:
                 return self._phrase(
                     "op.filter",
                     source=self._operand(source, bindings),
-                    relation=self._relation(op, source, bindings),
+                    relation=self._relation(op, source, bindings, measure),
                     target=self._target(target, measure, bindings, op),
                 )
             case lang.AdjectiveFilter(source=source, adjective=adjective):
@@ -384,19 +399,25 @@ class ExpressionWords:
             case _:
                 assert_never(value)
 
+    def _determined(
+        self, subject: lang.Operand, determiner: lang.Token | None, bindings: dict[str, Shape]
+    ) -> str:
+        rendered = self._operand(subject, bindings)
+        return self._phrase(f"det.{determiner.text}", subject=rendered) if determiner else rendered
+
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:
         match value:
             case lang.Atom(subject=subject, operator=op, target=target, determiner=det):
                 return self._phrase(
-                    f"atom.{det.text if det else 'one'}",
-                    subject=self._operand(subject, bindings),
-                    relation=self._relation(op, subject, bindings),
+                    "atom.one",
+                    subject=self._determined(subject, det, bindings),
+                    relation=self._relation(op, subject, bindings, value.measure),
                     target=self._target(target, value.measure, bindings, op),
                 )
             case lang.AdjectiveAtom(subject=subject, adjective=adjective, determiner=det):
                 return self._phrase(
-                    f"adjective.{det.text if det else 'one'}",
-                    subject=self._operand(subject, bindings),
+                    "adjective.one",
+                    subject=self._determined(subject, det, bindings),
                     adjective=self._phrase(f"adj.{adjective.text}"),
                 )
             case lang.SetComparison(left=left, operator=op, right=right):
