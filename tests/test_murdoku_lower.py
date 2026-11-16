@@ -1,4 +1,5 @@
 from dataclasses import replace
+from random import Random
 
 import pytest
 
@@ -495,6 +496,53 @@ def test_issue_243_clues_match_reference_for_every_placement(board, formula):
 )
 def test_composed_glossary_clues_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
+
+
+def test_random_small_well_typed_statements_match_reference():
+    random = Random(244)
+    formulas = [
+        "Ada in area:hall",
+        "not Ada on mark:red",
+        "Ada dir:up empty rows = 1",
+        "count people on mark:red = 1",
+        "Ada is role:guard iff Ben on mark:red",
+        "every ?a in areas: count (people in ?a) <= count people",
+        "some ?r in rows: ?r is empty",
+        "(people in area:hall) = Ada",
+        "every ?p, ?q in people: ?p dir:areas ?q >= 1",
+        "some (people on mark:red) dir:rows Ada = 0",
+    ]
+    for _ in range(30):
+        size = random.choice([2, 3])
+        cells = [Square(row, col) for row in range(size) for col in range(size)]
+        regions = ["a", "b", *(random.choice(["a", "b"]) for _ in cells[2:])]
+        random.shuffle(regions)
+        red = tuple(random.sample(cells, random.randint(1, min(3, len(cells)))))
+        objects = (
+            [BoardObject("rock", "blocking", (random.choice(cells),))]
+            if random.choice([False, True])
+            else []
+        )
+        board = Board(
+            size=size,
+            regions=[regions[row * size : (row + 1) * size] for row in range(size)],
+            region_names={"a": "hall", "b": "garden"},
+            objects=objects,
+            people=["Ada", "Ben"],
+            marks=[CellMark("red", red)],
+            roles=[RoleSpec("guard", frozenset({0, 1, 2}))],
+        )
+        first, second = random.sample(formulas, 2)
+        operator = random.choice(["and", "or", "iff", "if"])
+        formula = (
+            f"if ({first}) then ({second})"
+            if operator == "if"
+            else f"({first}) {operator} ({second})"
+        )
+        try:
+            _assert_compilation_matches_reference(board, formula)
+        except Contradiction:
+            assert not solutions(board, [parse_statement(formula)], limit=1000)
 
 
 @pytest.mark.parametrize(
