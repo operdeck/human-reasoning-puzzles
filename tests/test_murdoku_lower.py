@@ -344,6 +344,15 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "every ?p in (attribute:trained except Ada): ?p on mark:red",
         "(some ?p in (attribute:trained except Ada): ?p on mark:red) or Ada in area:hall",
         "if Ada is role:guard then some ?p in people: ?p on mark:blue",
+        "some ?p in role:guard: ?p on mark:red",
+        "every ?p in role:guard: ?p in area:hall",
+        "no ?p in role:guard: ?p touches Ben",
+        "exactly 1 ?p in role:guard: ?p on mark:blue",
+        "at least 1 ?p in role:guard: ?p is attribute:trained",
+        "at most 1 ?p in role:guard: ?p in area:hall",
+        "every ?p, ?q in role:guard: ?p dir:areas ?q = 0",
+        "some ?p, ?q in role:guard: ?p dir:left ?q",
+        "some ?p in people: every ?q in role:guard: ?p dir:areas ?q = 0",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):

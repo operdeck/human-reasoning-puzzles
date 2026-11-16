@@ -797,27 +797,43 @@ def _reify_formula(
         }[kind]
         return _reify_cardinality(model, literals, allowed, name)
     if isinstance(formula, lang.Quantified):
-        people = _static_people(board, _bind_operand(formula.source, bindings))
+        source = _bind_operand(formula.source, bindings)
+        people = _static_people(board, source)
+        domain_role = (
+            source.token.text.removeprefix("role:")
+            if isinstance(source, lang.Name) and source.token.text.startswith("role:")
+            else None
+        )
         if people is None:
-            raise NotImplementedError(f"{name}: quantifier source lowering is not implemented")
+            if domain_role is None:
+                raise NotImplementedError(f"{name}: quantifier source lowering is not implemented")
+            people = set(board.people)
         domain = [person for person in board.people if person in people]
-        literals = [
-            _reify_formula(
+        quantifier = " ".join(formula.quantifier.text.split())
+        literals = []
+        for index, values in enumerate(permutations(domain, len(formula.variables)), 1):
+            binding_name = f"{name} binding {index}"
+            body = _reify_formula(
                 model,
                 board,
                 formula.body,
-                f"{name} binding {index}",
+                f"{binding_name} body",
                 bindings
                 | dict(zip((variable.text for variable in formula.variables), values, strict=True)),
             )
-            for index, values in enumerate(permutations(domain, len(formula.variables)), 1)
-        ]
+            if domain_role is not None:
+                selected = [
+                    model.literal(board.role_variable(person, domain_role), True)
+                    for person in values
+                ]
+                selected.append(_opposite(model, body) if quantifier == "every" else body)
+                body = _reify_cardinality(model, selected, {len(selected)}, binding_name)
+            literals.append(body)
         maximum = len(literals)
-        quantifier = " ".join(formula.quantifier.text.split())
         target = int(formula.count.text) if formula.count is not None else 0
         allowed = {
             "some": set(range(1, maximum + 1)),
-            "every": {maximum},
+            "every": {0} if domain_role is not None else {maximum},
             "no": {0},
             "exactly": {target} if target <= maximum else set(),
             "at least": set(range(target, maximum + 1)),
