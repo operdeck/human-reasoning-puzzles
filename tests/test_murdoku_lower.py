@@ -1098,6 +1098,43 @@ def test_logeeravond_preserves_migrated_grade_and_unique_solution():
     _assert_migration_preserves_unique_solution(text, migrated)
 
 
+def test_garden_party_preserves_grade_solution_and_late_reveal():
+    text = example("wie-doet-het-met-wie-2.txt").read_text()
+    replacements = {
+        "with Wouter in same area exactly 1": "count (people in area of Wouter) = 1 + 1",
+        "dir people_on:object:badjas Noor left": "some (people on object:badjas) dir:left Noor",
+        "on Bram object:badjas": "Bram on object:badjas",
+        "beside Eva object:tafel": "Eva beside object:tafel",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+    board, rules, clues = load_expression_board(migrated)
+    model = compile_statements(board, clues, rules=rules)
+    domains = {
+        person: {model.value_of(literal) for literal in model.options(person)}
+        for person in board.people
+    }
+    assert len(domains["Wouter"]) > 1
+    first_singleton = {person: -1 for person, options in domains.items() if len(options) == 1}
+    assert Solver(model).solve().solved
+    for index, step in enumerate(model.log):
+        if step.var in domains:
+            if step.asserted:
+                domains[step.var] = {step.value}
+            else:
+                domains[step.var].discard(step.value)
+            if len(domains[step.var]) == 1:
+                first_singleton.setdefault(step.var, index)
+    assert set(first_singleton) == set(board.people)
+    assert first_singleton["Wouter"] > max(
+        index for person, index in first_singleton.items() if person != "Wouter"
+    )
+
+
 def test_random_small_well_typed_statements_match_reference():
     random = Random(244)
     for _ in range(30):
