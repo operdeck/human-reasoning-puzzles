@@ -10,6 +10,7 @@ from csp.puzzlefile import load_board
 from csp.story import (
     attribute_list,
     board_notes,
+    clue_paragraphs,
     figure_clues,
     murdoku_key_items,
     murdoku_rules,
@@ -136,6 +137,11 @@ def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
     assert [clue.sources for clue in ada.clues] == [(3,)]
     assert [(clue.text, clue.sources) for clue in ben.clues] == [("A custom sentence!", (1,))]
     assert [clue.sources for clue in result.other] == [(2,)]
+    assert clue_paragraphs(text, {1: "A replacement"}, expressions=clues) == [
+        "It is not true that (Ada is in rows 2).",
+        "A replacement.",
+        "(Ada is in rows 1) and (Ben is in columns 1).",
+    ]
 
 
 def test_expression_board_notes_include_generated_and_authored_rules():

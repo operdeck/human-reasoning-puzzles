@@ -4159,13 +4159,29 @@ def _expression_figure_clues(
     return CluePresentation(figures, tuple(other))
 
 
-def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[str]:
+def clue_paragraphs(
+    text: str,
+    overrides: dict[int, str] | None = None,
+    *,
+    expressions: Sequence[murdoku_lang.Statement] | None = None,
+) -> list[str]:
     """The clues grouped per person, one paragraph each, in the order of the people.
 
     What a clue says about its first person is folded into that person's sentence;
     clues that are not about one person come last, one paragraph each.
     `overrides` replaces the generated wording of clue numbers.
     """
+    if expressions is not None:
+        clues = [
+            dataclasses.replace(clue, wording=overrides[number])
+            if overrides is not None and number in overrides
+            else clue
+            for number, clue in enumerate(expressions, 1)
+        ]
+        entries = figure_clues(text, expressions=clues)
+        return [clue.text for figure in entries.figures for clue in figure.clues] + [
+            clue.text for clue in entries.other
+        ]
     return [paragraph.text for paragraph in _clue_paragraphs(text, overrides)]
 
 
