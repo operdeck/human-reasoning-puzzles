@@ -9,7 +9,7 @@ from itertools import permutations
 from . import murdoku_lang as lang
 from .core import Kind, Model
 from .murdoku import Board, Square, _direction_test, _hidden_boolean, compile_puzzle
-from .murdoku_typecheck import check_formula
+from .murdoku_typecheck import Sort, check_formula, infer_operand
 
 
 def _static_cells(
@@ -747,6 +747,27 @@ def _person_selected(
             lambda selected, result: selected == result,
         )
         return yes
+    if isinstance(operand, lang.Union):
+        first = operand.items[0]
+        namespace = (
+            first.token.text.partition(":")[0]
+            if isinstance(first, lang.Name) and ":" in first.token.text
+            else None
+        )
+        members = []
+        for index, item in enumerate(operand.items, 1):
+            if (
+                namespace
+                and isinstance(item, lang.Name)
+                and ":" not in item.token.text
+                and item.token.text not in board.people
+                and item.token.text != "people"
+            ):
+                item = replace(
+                    item, token=replace(item.token, text=f"{namespace}:{item.token.text}")
+                )
+            members.append(_person_selected(model, board, person, item, f"{name} item {index}"))
+        return _reify_cardinality(model, members, set(range(1, len(members) + 1)), name)
     if isinstance(operand, lang.Difference):
         left = _person_selected(model, board, person, operand.left, f"{name} left")
         right = _person_selected(model, board, person, operand.right, f"{name} right")
@@ -817,6 +838,8 @@ def _reify_formula(
     if isinstance(formula, lang.SetComparison):
         left_set = _bind_operand(formula.left, bindings)
         right_set = _bind_operand(formula.right, bindings)
+        if infer_operand(board, left_set).sort != Sort.PERSON:
+            raise NotImplementedError(f"{name}: set comparison lowering is not implemented")
         equalities = []
         for person in board.people:
             left_member = _person_selected(model, board, person, left_set, f"{name} {person} left")
@@ -876,13 +899,9 @@ def _reify_formula(
     if isinstance(formula, lang.Quantified):
         source = _bind_operand(formula.source, bindings)
         people = _static_people(board, source)
-        domain_role = (
-            source.token.text.removeprefix("role:")
-            if isinstance(source, lang.Name) and source.token.text.startswith("role:")
-            else None
-        )
+        dynamic = people is None
         if people is None:
-            if domain_role is None:
+            if infer_operand(board, source).sort != Sort.PERSON:
                 raise NotImplementedError(f"{name}: quantifier source lowering is not implemented")
             people = set(board.people)
         domain = [person for person in board.people if person in people]
@@ -898,9 +917,11 @@ def _reify_formula(
                 bindings
                 | dict(zip((variable.text for variable in formula.variables), values, strict=True)),
             )
-            if domain_role is not None:
+            if dynamic:
                 selected = [
-                    model.literal(board.role_variable(person, domain_role), True)
+                    _person_selected(
+                        model, board, person, source, f"{binding_name} {person} member"
+                    )
                     for person in values
                 ]
                 selected.append(_opposite(model, body) if quantifier == "every" else body)
@@ -910,7 +931,7 @@ def _reify_formula(
         target = int(formula.count.text) if formula.count is not None else 0
         allowed = {
             "some": set(range(1, maximum + 1)),
-            "every": {0} if domain_role is not None else {maximum},
+            "every": {0} if dynamic else {maximum},
             "no": {0},
             "exactly": {target} if target <= maximum else set(),
             "at least": set(range(target, maximum + 1)),
