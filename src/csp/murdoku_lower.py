@@ -1483,6 +1483,129 @@ def _spatial_selection_literals(
     ]
 
 
+def _reify_spatial_atom(
+    model: Model,
+    board: Board,
+    atom: lang.Atom,
+    name: str,
+    empty_scopes: dict[Square | str, int],
+    bindings: _Bindings,
+) -> int:
+    relation = _static_spatial_relation(board, atom.operator.text, atom.measure)
+    if relation is None:
+        raise NotImplementedError(f"{name}: spatial relation lowering is not implemented")
+    subjects = _static_spatial_entities(board, atom.subject)
+    if subjects is None:
+        sort = _operand_sort(board, atom.subject, bindings)
+        if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+            raise NotImplementedError(f"{name}: spatial subject is not implemented")
+        subjects = _spatial_universe(board, sort)
+    targets = _static_spatial_entities(board, atom.target)
+    if targets is None:
+        sort = _operand_sort(board, atom.target, bindings)
+        if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+            raise NotImplementedError(f"{name}: spatial target is not implemented")
+        targets = _spatial_universe(board, sort)
+    target_members = {
+        target: _spatial_selected(
+            model,
+            board,
+            target,
+            cells,
+            atom.target,
+            f"{name} target {target[1]}",
+            empty_scopes,
+            bindings,
+        )
+        for target, cells in targets.items()
+    }
+    quantifier = atom.determiner.text if atom.determiner else "some"
+    results = []
+    for subject, footprint in subjects.items():
+        selected = _spatial_selected(
+            model,
+            board,
+            subject,
+            footprint,
+            atom.subject,
+            f"{name} subject {subject[1]}",
+            empty_scopes,
+            bindings,
+        )
+        matches = [
+            target_members[target]
+            for target, cells in targets.items()
+            if relation(subject, footprint, target, cells)
+        ]
+        match = _reify_cardinality(
+            model, matches, set(range(1, len(matches) + 1)), f"{name} {subject[1]} matches"
+        )
+        results.append(
+            _reify_cardinality(
+                model,
+                [selected, _opposite(model, match) if quantifier == "every" else match],
+                {2},
+                f"{name} {subject[1]} result",
+            )
+        )
+    allowed = {0} if quantifier in {"every", "no"} else set(range(1, len(results) + 1))
+    return _reify_cardinality(model, results, allowed, name)
+
+
+def _reify_person_spatial_target(
+    model: Model,
+    board: Board,
+    person: str,
+    atom: lang.Atom,
+    name: str,
+    empty_scopes: dict[Square | str, int],
+    bindings: _Bindings,
+) -> int:
+    sort = _operand_sort(board, atom.target, bindings)
+    if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+        raise NotImplementedError(f"{name}: spatial target is not implemented")
+    direction = (
+        _direction(board, atom.operator.text, atom.measure)
+        if atom.operator.text.startswith("dir:")
+        else None
+    )
+    if atom.operator.text not in {"in", "on", "beside", "touches"} and direction is None:
+        raise NotImplementedError(f"{name}: spatial relation is not implemented")
+    results = []
+    for entity, footprint in _spatial_universe(board, sort).items():
+        selected = _spatial_selected(
+            model,
+            board,
+            entity,
+            footprint,
+            atom.target,
+            f"{name} {entity[1]} selected",
+            empty_scopes,
+            bindings,
+        )
+        variable, yes, _ = _hidden_boolean(
+            model, "expression", f"{name} {entity[1]} match", "Murdoku expression"
+        )
+        model.relate(
+            f"{name} {entity[1]} match",
+            (person, model.var_of(selected), variable),
+            lambda square, member, result, footprint=footprint: (
+                result
+                == (
+                    member
+                    and _position_matches(board, square, atom.operator.text, footprint, direction)
+                )
+            ),
+        )
+        results.append(yes)
+    result = _reify_cardinality(model, results, set(range(1, len(results) + 1)), name)
+    return (
+        _opposite(model, result)
+        if atom.determiner is not None and atom.determiner.text == "no"
+        else result
+    )
+
+
 def _area_empty_literal(
     model: Model, board: Board, region: str, name: str, empty_scopes: dict[Square | str, int]
 ) -> int:
@@ -1773,7 +1896,10 @@ def _reify_formula(
             if isinstance(atom.subject, lang.Name) and atom.subject.token.text in board.people
             else None
         )
-        if subject_person is None and _operand_sort(board, atom.subject, bindings) == Sort.PERSON:
+        subject_sort = _operand_sort(board, atom.subject, bindings)
+        if subject_sort != Sort.PERSON:
+            return _reify_spatial_atom(model, board, atom, name, empty_scopes, bindings)
+        if subject_person is None:
             quantified = lang.Quantified(
                 atom.determiner or replace(atom.operator, text="some"),
                 None,
@@ -1814,10 +1940,38 @@ def _reify_formula(
                 if atom.determiner is not None and atom.determiner.text == "no"
                 else result
             )
+        if (
+            subject_person is not None
+            and atom.operator.text != "is"
+            and _operand_sort(board, atom.target, bindings) != Sort.PERSON
+            and _static_cells(board, atom.target) is None
+            and not (
+                isinstance(atom.target, lang.Projection)
+                and isinstance(atom.target.operand, lang.Name)
+                and atom.target.operand.token.text in board.people
+            )
+        ):
+            return _reify_person_spatial_target(
+                model, board, subject_person, atom, name, empty_scopes, bindings
+            )
         return _reify_atom(model, board, atom, name)
     if isinstance(formula, lang.AdjectiveAtom):
         adjective_atom = replace(formula, subject=_bind_operand(formula.subject, bindings))
-        return _reify_adjective_atom(model, board, adjective_atom, name, empty_scopes)
+        entities = _static_spatial_entities(board, adjective_atom.subject)
+        if entities is not None and len(entities) == 1:
+            return _reify_adjective_atom(model, board, adjective_atom, name, empty_scopes)
+        variable_name = "?_expression"
+        while variable_name in bindings:
+            variable_name += "_"
+        variable = replace(formula.operator, text=variable_name)
+        quantified = lang.Quantified(
+            formula.determiner or replace(formula.operator, text="some"),
+            None,
+            (variable,),
+            adjective_atom.subject,
+            replace(adjective_atom, subject=lang.Name(variable), determiner=None),
+        )
+        return _reify_formula(model, board, quantified, name, bindings, empty_scopes)
     if isinstance(formula, lang.Negation):
         return _opposite(
             model,
