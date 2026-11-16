@@ -32,7 +32,7 @@ import multiprocessing
 import re
 import sys
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from queue import Empty
 from typing import Any
@@ -42,7 +42,7 @@ from .bruteforce import murdoku as brute
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Model, Solver
 from .murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
-from .murdoku_lang import Statement, holds, parse_statement
+from .murdoku_lang import Name, Statement, holds, parse_statement
 from .murdoku_lower import compile_statements
 from .puzzlefile import (
     keyed_clue_numbers,
@@ -548,20 +548,49 @@ def _placement(solution: dict[str, Any], people: Sequence[str]) -> dict[str, mur
     return {person: solution[person] for person in people}
 
 
-def _mentions(people: Sequence[str], clues: Iterable[str]) -> dict[str, int]:
+def _expression_people(value: object, people: set[str]) -> set[str]:
+    if isinstance(value, Name):
+        return {value.token.text} & people
+    if isinstance(value, tuple):
+        return set().union(*(_expression_people(item, people) for item in value))
+    if is_dataclass(value):
+        return set().union(
+            *(_expression_people(getattr(value, field.name), people) for field in fields(value))
+        )
+    return set()
+
+
+def _mentions(
+    people: Sequence[str], clues: Iterable[str], *, expressions: bool = False
+) -> dict[str, int]:
     """How many of `clues` name each person."""
     counts = dict.fromkeys(people, 0)
     for clue in clues:
-        for word in set(clue.split("|")[0].split()[1:]):
+        words = (
+            _expression_people(parse_statement(clue).formula, set(people))
+            if expressions
+            else set(clue.split("|")[0].split()[1:])
+        )
+        for word in words:
             if word in counts:
                 counts[word] += 1
     return counts
 
 
-def _unnamed(people: Sequence[str], clues: Iterable[str], exclude: Iterable[str]) -> list[str]:
+def _unnamed(
+    people: Sequence[str],
+    clues: Iterable[str],
+    exclude: Iterable[str],
+    *,
+    expressions: bool = False,
+) -> list[str]:
     """People outside `exclude` that none of `clues` names."""
     skip = set(exclude)
-    return [p for p, n in _mentions(people, clues).items() if not n and p not in skip]
+    return [
+        p
+        for p, n in _mentions(people, clues, expressions=expressions).items()
+        if not n and p not in skip
+    ]
 
 
 def suggest(

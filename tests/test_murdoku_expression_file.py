@@ -342,6 +342,15 @@ def test_expression_sampling_spreads_valid_solutions_and_preserves_role_assignme
         sample(board, clues, 0, rules=rules)
 
 
+def test_expression_mentions_use_ast_instead_of_wording_or_token_positions():
+    clues = [
+        "Ada in rows:1 | Ben is mentioned in the wording only.",
+        "not (Ada dir:left Ben) and some ?p in people: ?p is role:guard",
+    ]
+    assert clue_search._mentions(["Ada", "Ben"], clues, expressions=True) == {"Ada": 2, "Ben": 1}
+    assert clue_search._unnamed(["Ada", "Ben"], clues[:1], (), expressions=True) == ["Ben"]
+
+
 def test_expression_authoring_cli_thin(tmp_path, capsys):
     text = TEXT.replace(
         "  Ben in columns:1 | Ben is in the first column.",
