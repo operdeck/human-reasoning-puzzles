@@ -16,7 +16,7 @@ from .murdoku import (
     _hidden_boolean,
     compile_puzzle,
 )
-from .murdoku_typecheck import Sort, check_formula, infer_operand
+from .murdoku_typecheck import Shape, Sort, check_formula, infer_operand
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,26 @@ class _LineBinding:
 
 
 type _Bindings = dict[str, str | _RoleBinding | _AreaBinding | _LineBinding]
+
+
+def _operand_sort(board: Board, operand: lang.Operand, bindings: _Bindings) -> Sort:
+    shapes = {
+        variable: Shape(
+            Sort.ROLE
+            if isinstance(value, _RoleBinding)
+            else Sort.AREA
+            if isinstance(value, _AreaBinding)
+            else Sort.ROW
+            if isinstance(value, _LineBinding) and value.selector.startswith("rows:")
+            else Sort.COLUMN
+            if isinstance(value, _LineBinding)
+            else Sort.PERSON,
+            1,
+            1,
+        )
+        for variable, value in bindings.items()
+    }
+    return infer_operand(board, operand, shapes).sort
 
 
 def _static_cells(
@@ -716,7 +736,9 @@ def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
         return replace(operand, operand=_bind_operand(operand.operand, bindings))
     if isinstance(operand, lang.AdjectiveFilter):
         return replace(operand, source=_bind_operand(operand.source, bindings))
-    raise NotImplementedError("comprehension binding is not implemented")
+    if isinstance(operand, lang.Comprehension):
+        return replace(operand, source=_bind_operand(operand.source, bindings))
+    raise AssertionError("unknown operand")
 
 
 def _reify_cardinality(model: Model, literals: list[int], allowed: set[int], name: str) -> int:
@@ -851,6 +873,7 @@ def _person_selected(
     operand: lang.Operand,
     name: str,
     empty_scopes: dict[Square | str, int],
+    bindings: _Bindings,
 ) -> int:
     people = _static_people(board, operand)
     if people is not None:
@@ -886,16 +909,22 @@ def _person_selected(
                     item, token=replace(item.token, text=f"{namespace}:{item.token.text}")
                 )
             members.append(
-                _person_selected(model, board, person, item, f"{name} item {index}", empty_scopes)
+                _person_selected(
+                    model, board, person, item, f"{name} item {index}", empty_scopes, bindings
+                )
             )
         return _reify_cardinality(model, members, set(range(1, len(members) + 1)), name)
     if isinstance(operand, lang.Difference):
-        left = _person_selected(model, board, person, operand.left, f"{name} left", empty_scopes)
-        right = _person_selected(model, board, person, operand.right, f"{name} right", empty_scopes)
+        left = _person_selected(
+            model, board, person, operand.left, f"{name} left", empty_scopes, bindings
+        )
+        right = _person_selected(
+            model, board, person, operand.right, f"{name} right", empty_scopes, bindings
+        )
         return _reify_cardinality(model, [left, _opposite(model, right)], {2}, name)
     if isinstance(operand, lang.Filter):
         selected = _person_selected(
-            model, board, person, operand.source, f"{name} source", empty_scopes
+            model, board, person, operand.source, f"{name} source", empty_scopes, bindings
         )
         atom = lang.Atom(
             lang.Name(replace(operand.operator, text=person)),
@@ -903,7 +932,20 @@ def _person_selected(
             operand.target,
             measure=operand.measure,
         )
-        matches = _reify_formula(model, board, atom, f"{name} matches", empty_scopes=empty_scopes)
+        matches = _reify_formula(model, board, atom, f"{name} matches", bindings, empty_scopes)
+        return _reify_cardinality(model, [selected, matches], {2}, name)
+    if isinstance(operand, lang.Comprehension):
+        selected = _person_selected(
+            model, board, person, operand.source, f"{name} source", empty_scopes, bindings
+        )
+        matches = _reify_formula(
+            model,
+            board,
+            operand.condition,
+            f"{name} condition",
+            bindings | {operand.variable.text: person},
+            empty_scopes,
+        )
         return _reify_cardinality(model, [selected, matches], {2}, name)
     raise NotImplementedError(f"{name}: person set lowering is not implemented")
 
@@ -1361,13 +1403,19 @@ def _number_variable(
             else:
                 selections = _occupancy_literals(model, board, operand, name, empty_scopes)
                 if selections is None:
-                    if infer_operand(board, operand).sort != Sort.PERSON:
+                    if _operand_sort(board, operand, bindings) != Sort.PERSON:
                         raise NotImplementedError(
                             f"{name}: numeric count lowering is not implemented"
                         )
                     selections = [
                         _person_selected(
-                            model, board, person, operand, f"{name} {person} member", empty_scopes
+                            model,
+                            board,
+                            person,
+                            operand,
+                            f"{name} {person} member",
+                            empty_scopes,
+                            bindings,
                         )
                         for person in board.people
                     ]
@@ -1466,7 +1514,7 @@ def _reify_formula(
             if isinstance(atom.subject, lang.Name) and atom.subject.token.text in board.people
             else None
         )
-        if subject_person is None and infer_operand(board, atom.subject).sort == Sort.PERSON:
+        if subject_person is None and _operand_sort(board, atom.subject, bindings) == Sort.PERSON:
             quantified = lang.Quantified(
                 atom.determiner or replace(atom.operator, text="some"),
                 None,
@@ -1478,9 +1526,11 @@ def _reify_formula(
         if (
             subject_person is not None
             and atom.operator.text == "is"
-            and infer_operand(board, atom.target).sort == Sort.PERSON
+            and _operand_sort(board, atom.target, bindings) == Sort.PERSON
         ):
-            result = _person_selected(model, board, subject_person, atom.target, name, empty_scopes)
+            result = _person_selected(
+                model, board, subject_person, atom.target, name, empty_scopes, bindings
+            )
             return (
                 _opposite(model, result)
                 if atom.determiner is not None and atom.determiner.text == "no"
@@ -1489,7 +1539,7 @@ def _reify_formula(
         if (
             subject_person is not None
             and atom.operator.text != "is"
-            and infer_operand(board, atom.target).sort == Sort.PERSON
+            and _operand_sort(board, atom.target, bindings) == Sort.PERSON
             and not (isinstance(atom.target, lang.Name) and atom.target.token.text in board.people)
         ):
             quantified = lang.Quantified(
@@ -1531,15 +1581,15 @@ def _reify_formula(
             return _constant_boolean(
                 model, same_entities if formula.operator.text == "=" else not same_entities, name
             )
-        if infer_operand(board, left_set).sort != Sort.PERSON:
+        if _operand_sort(board, left_set, bindings) != Sort.PERSON:
             raise NotImplementedError(f"{name}: set comparison lowering is not implemented")
         equalities = []
         for person in board.people:
             left_member = _person_selected(
-                model, board, person, left_set, f"{name} {person} left", empty_scopes
+                model, board, person, left_set, f"{name} {person} left", empty_scopes, bindings
             )
             right_member = _person_selected(
-                model, board, person, right_set, f"{name} {person} right", empty_scopes
+                model, board, person, right_set, f"{name} {person} right", empty_scopes, bindings
             )
             equalities.append(
                 _reify_cardinality(
@@ -1565,7 +1615,7 @@ def _reify_formula(
         role_scope = _role_scope(board, operand)
         keys = _counted_keys(board, operand) if role_scope is None else None
         dynamic = keys is None and role_scope is None
-        if dynamic and infer_operand(board, operand).sort != Sort.PERSON:
+        if dynamic and _operand_sort(board, operand, bindings) != Sort.PERSON:
             raise NotImplementedError(f"{name}: count lowering is not implemented")
         maximum = (
             len(board.people)
@@ -1581,7 +1631,7 @@ def _reify_formula(
         elif dynamic:
             literals = [
                 _person_selected(
-                    model, board, person, operand, f"{name} {person} member", empty_scopes
+                    model, board, person, operand, f"{name} {person} member", empty_scopes, bindings
                 )
                 for person in board.people
             ]
@@ -1693,7 +1743,7 @@ def _reify_formula(
                     people = _static_people(board, source)
                     dynamic = people is None
                     if people is None:
-                        if infer_operand(board, source).sort != Sort.PERSON:
+                        if _operand_sort(board, source, bindings) != Sort.PERSON:
                             raise NotImplementedError(
                                 f"{name}: quantifier source lowering is not implemented"
                             )
@@ -1736,6 +1786,7 @@ def _reify_formula(
                                 source,
                                 f"{binding_name} {binding_value} member",
                                 empty_scopes,
+                                bindings,
                             )
                         )
                     else:

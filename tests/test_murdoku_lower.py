@@ -647,6 +647,26 @@ def test_static_spatial_filters_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "count (?p in people where ?p in area:hall) = 1",
+        "count (?p in role:guard where ?p on mark:red) = 1",
+        "count (?p in people where not ?p is role:guard) = 2",
+        "(?p in people where ?p is role:guard) = role:guard",
+        "Ada is (?p in people where ?p in area:hall)",
+        "every ?p in (?q in people where ?q is role:guard): ?p in area:hall",
+        "every ?p in people: count (?q in people where ?q beside ?p) = 0",
+        "every ?r in roles: count (?p in people where ?p is ?r) = count role:guard",
+        "some ?p in people: ?p beside (?q in people where ?q is role:guard)",
+        "count (?p in people where count (?q in people where ?q is ?p) = 1) = 2",
+        "count (?p in people where (?p on mark:red) or (?p is role:guard)) >= 1",
+    ],
+)
+def test_person_comprehensions_match_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
