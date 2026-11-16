@@ -1249,6 +1249,25 @@ def test_food_attribute_companion_preserves_migrated_grade_and_unique_solution(
     _assert_migration_preserves_unique_solution(text, migrated)
 
 
+def test_weekmenu_population_preserves_migrated_grade_and_unique_solution():
+    text = example("menu-murdoku-1.txt").read_text()
+    replacements = {
+        "with Vla in same area exactly 2": "count (people in area of Vla) = 2 + 1",
+        "on Pasta point_object:zonnebloem": "Pasta on point_object:zonnebloem",
+        "dir Broccoli Pasta left = 2": "Broccoli dir:left Pasta = 2",
+        "in Aardappel columns:5": "Aardappel in columns:5",
+        "dir Vis Aardappel up": "Vis dir:up Aardappel",
+        "dir Rijst Vis manhattan >= 7": "Rijst dir:manhattan Vis >= 7",
+        "dir Broccoli Rijst areas = 0": "Broccoli dir:areas Rijst = 0",
+        "in Broccoli rows:5": "Broccoli in rows:5",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
 @pytest.mark.parametrize(
     ("filename", "replacements"),
     [
