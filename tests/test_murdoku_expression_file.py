@@ -387,7 +387,26 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
     with pytest.raises(SystemExit) as error:
         cli.main([str(puzzle), "--expressions", "--explain"])
     assert error.value.code == 2
-    assert "--expressions currently supports only --show-model" in capsys.readouterr().err
+    assert "--expressions currently supports only --show-model, --grade and --brute-force" in (
+        capsys.readouterr().err
+    )
+
+
+def test_cli_expression_grade_and_brute_force(tmp_path, capsys, monkeypatch):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--expressions", "--grade"]) == 0
+    assert capsys.readouterr().out.strip() == "single"
+
+    def unsupported(*args, **kwargs):
+        raise AssertionError("independent search must not invoke expression lowering")
+
+    monkeypatch.setattr(cli, "compile_statements_with_origins", unsupported)
+    assert cli.main([str(puzzle), "--expressions", "--brute-force"]) == 0
+    assert "brute force: unique solution" in capsys.readouterr().out
+    puzzle.write_text(clue_search.with_clues(TEXT, []))
+    assert cli.main([str(puzzle), "--expressions", "--brute-force"]) == 1
+    assert "more than one solution" in capsys.readouterr().out
 
 
 def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsys):

@@ -50,6 +50,7 @@ from . import (
     undead,
     web,
 )
+from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
 from .murdoku_expression_file import load_expression_board
 from .murdoku_lower import compile_statements_with_origins
@@ -227,10 +228,14 @@ def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) 
     return tuple(lines)
 
 
-def brute_force(puzzle: Puzzle, text: str) -> int:
+def brute_force(puzzle: Puzzle, text: str, *, expressions: bool = False) -> int:
     """Search for solutions without the engine. Exit code 0 means exactly one."""
     start = time.perf_counter()
-    found = bruteforce.solutions(text, puzzle.kind, limit=2)
+    if expressions:
+        board, rules, clues = load_expression_board(text)
+        found = expression_brute.solutions(board, clues, limit=2, rules=rules)
+    else:
+        found = bruteforce.solutions(text, puzzle.kind, limit=2)
     elapsed = time.perf_counter() - start
     if not found:
         print(f"\nbrute force: no solution ({elapsed:.2f}s)")
@@ -653,7 +658,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--expressions",
         action="store_true",
-        help="preview the expression-language Murdoku model with --show-model",
+        help="preview expression-language Murdoku with --show-model, --grade or --brute-force",
     )
     instead = parser.add_mutually_exclusive_group()
     instead.add_argument(
@@ -765,7 +770,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
     if args.expressions and (
-        not args.show_model
+        not (args.show_model or args.grade or args.brute_force)
         or args.verbose
         or args.step
         or args.track_person
@@ -776,7 +781,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         or args.export is not None
         or booklets
     ):
-        parser.error("--expressions currently supports only --show-model")
+        parser.error(
+            "--expressions currently supports only --show-model, --grade and --brute-force"
+        )
     if args.nosolution:
         conflicts = (
             ("--export", args.export is not None),
@@ -846,14 +853,31 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             parser.error("--expressions is only available for Murdoku")
         try:
             expression_board, expression_rules, expression_clues = load_expression_board(text)
+            if args.brute_force:
+                expression_puzzle = Puzzle(
+                    "murdoku",
+                    murdoku.compile_puzzle(expression_board, []),
+                    partial(murdoku.render, expression_board),
+                )
+                print(expression_puzzle.draw("Start"))
+                return brute_force(expression_puzzle, text, expressions=True)
             compiled = compile_statements_with_origins(
                 expression_board, expression_clues, rules=expression_rules
             )
         except (ValueError, NotImplementedError) as exc:
             print(f"could not read {path.name}: {exc}", file=sys.stderr)
             return 2
-        print(murdoku_expression_report.describe(compiled))
-        return 0
+        if args.show_model:
+            print(murdoku_expression_report.describe(compiled))
+            return 0
+        if args.grade:
+            expression_fired: list[str] = []
+            expression_result = Solver(compiled.model).solve(
+                on_step=lambda rule, steps: expression_fired.append(rule)
+            )
+            print(report.grade(expression_fired) if expression_result.solved else "unsolved")
+            return 0 if expression_result.solved else 1
+        raise AssertionError("expression preview operation was not selected")
     if (args.lint or args.require_forward) and kind != "murdoku":
         parser.error("--lint and --require-forward are only available for Murdoku")
     try:

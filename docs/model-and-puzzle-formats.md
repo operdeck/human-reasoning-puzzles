@@ -351,8 +351,8 @@ For a draft board with expression `key_clue:` entries, use
 `puzzle-lab murdoku-board SPEC --expressions --suggest`; it uses the same
 limited suggestion templates and reports drafts it cannot close.
 `python -m csp FILE --expressions --show-model` previews the compiled model
-grouped by the source expressions; other main CLI operations still require the
-production grammar.
+grouped by the source expressions. `--grade` and `--brute-force` also accept
+`--expressions`; other main CLI operations still require the production grammar.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their
