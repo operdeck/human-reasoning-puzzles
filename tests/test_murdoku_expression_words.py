@@ -90,6 +90,33 @@ def test_only_on_idiom_covers_the_entire_object_set(board, language, scope):
     assert scope in words.statement(parse_statement("(people on object:bed) = Ada"))
 
 
+@pytest.mark.parametrize(
+    ("language", "operator", "expected"),
+    [
+        ("en", "<", "area hall has more people than every other area"),
+        ("en", ">", "area hall has fewer people than every other area"),
+        ("nl", "<", "gebied hall heeft meer personen dan ieder ander gebied"),
+        ("nl", ">", "gebied hall heeft minder personen dan ieder ander gebied"),
+    ],
+)
+def test_strict_area_population_comparison_has_an_idiom(board, language, operator, expected):
+    source = (
+        "every ?a in (areas except area:hall): "
+        f"count (people in ?a) {operator} count (people in area:hall)"
+    )
+    assert ExpressionWords(board, language).statement(parse_statement(source)) == expected
+
+
+def test_population_idiom_does_not_hide_ties_or_a_different_comparison_target(board):
+    words = ExpressionWords(board)
+    tied = (
+        "every ?a in (areas except area:hall): count (people in ?a) <= count (people in area:hall)"
+    )
+    different = tied.replace("<=", "<").replace("count (people in area:hall)", "count people")
+    assert "every ?a" in words.statement(parse_statement(tied))
+    assert "every ?a" in words.statement(parse_statement(different))
+
+
 def test_wording_overrides_and_names_are_used(board):
     words = ExpressionWords(
         board,

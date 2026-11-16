@@ -134,6 +134,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "choice.at most": "at most {count} of ({choices}) hold",
         "idiom.alone": "{person} is alone in their area",
         "idiom.only_on": "{person} is the only person on {target}",
+        "idiom.most_populated": "{area} has more people than every other area",
+        "idiom.least_populated": "{area} has fewer people than every other area",
     },
     "nl": {
         "set.people": "personen",
@@ -257,6 +259,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "choice.at most": "hoogstens {count} van ({choices}) gelden",
         "idiom.alone": "{person} is alleen in het eigen gebied",
         "idiom.only_on": "{person} is de enige persoon op {target}",
+        "idiom.most_populated": "{area} heeft meer personen dan ieder ander gebied",
+        "idiom.least_populated": "{area} heeft minder personen dan ieder ander gebied",
     },
 }
 
@@ -519,7 +523,45 @@ class ExpressionWords:
         rendered = self._operand(subject, bindings)
         return self._phrase(f"det.{determiner.text}", subject=rendered) if determiner else rendered
 
+    def _population_idiom(self, formula: lang.Quantified) -> str | None:
+        if (
+            formula.quantifier.text != "every"
+            or len(formula.variables) != 1
+            or not isinstance(formula.source, lang.Difference)
+            or not isinstance(formula.source.left, lang.Name)
+            or formula.source.left.token.text != "areas"
+            or not isinstance(formula.source.right, lang.Name)
+            or not formula.source.right.token.text.startswith("area:")
+            or infer_operand(self.board, formula.source.right).maximum != 1
+            or not isinstance(formula.body, lang.NumberComparison)
+            or formula.body.operator.text not in {"<", ">"}
+        ):
+            return None
+        comparison = formula.body
+        if not isinstance(comparison.left, lang.Count) or not isinstance(
+            comparison.right, lang.Count
+        ):
+            return None
+        targets = []
+        for count in (comparison.left, comparison.right):
+            operand = count.operand
+            if (
+                not isinstance(operand, lang.Filter)
+                or not isinstance(operand.source, lang.Name)
+                or operand.source.token.text != "people"
+                or operand.operator.text != "in"
+                or not isinstance(operand.target, lang.Name)
+            ):
+                return None
+            targets.append(operand.target.token.text)
+        if targets != [formula.variables[0].text, formula.source.right.token.text]:
+            return None
+        key = "idiom.most_populated" if comparison.operator.text == "<" else "idiom.least_populated"
+        return self._phrase(key, area=self._operand(formula.source.right, {}))
+
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:
+        if isinstance(value, lang.Quantified) and (idiom := self._population_idiom(value)):
+            return idiom
         match value:
             case lang.Atom(subject=subject, operator=op, target=target, determiner=det):
                 return self._phrase(
