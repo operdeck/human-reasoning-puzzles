@@ -73,6 +73,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.king": "at a king-step distance from",
         "rel.dir.euclidean": "at a straight-line distance from",
         "rel.dir.areas": "at an area distance from",
+        "rel.dir.areas.same": "in the same area as",
         "rel.dir.nearest": "closer than every other person outside the target set to",
         "rel.dir.furthest": "farther than every other person outside the target set from",
         "rel.metric": "{relation} (measured by {metric})",
@@ -186,6 +187,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.king": "op een koningsstapafstand van",
         "rel.dir.euclidean": "op een rechte afstand van",
         "rel.dir.areas": "op een gebiedsafstand van",
+        "rel.dir.areas.same": "in hetzelfde gebied als",
         "rel.dir.nearest": "dichter dan iedere andere persoon buiten de doelverzameling bij",
         "rel.dir.furthest": "verder dan iedere andere persoon buiten de doelverzameling van",
         "rel.metric": "{relation} (gemeten met {metric})",
@@ -324,7 +326,9 @@ class ExpressionWords:
                 key = f"rel.dir.{vertical}_{horizontal}"
             else:
                 key = f"rel.dir.{direction}"
-                if measure and measure.comparison.text == "=" and f"{key}.exact" in PHRASES["en"]:
+                if direction == "areas" and self._same_area(measure):
+                    key += ".same"
+                elif measure and measure.comparison.text == "=" and f"{key}.exact" in PHRASES["en"]:
                     key += ".exact"
             relation = self._phrase(key)
             if metric:
@@ -345,7 +349,7 @@ class ExpressionWords:
         rendered = self._operand(target, bindings)
         if infer_operand(self.board, target, bindings).maximum > 1:
             rendered = self._phrase("rel.any_target", target=rendered)
-        if measure:
+        if measure and not (operator and operator.text == "dir:areas" and self._same_area(measure)):
             rendered = self._phrase(
                 "rel.measure.axes"
                 if operator and ("+" in operator.text or operator.text == "dir:diagonal")
@@ -355,6 +359,10 @@ class ExpressionWords:
                 value=measure.value.text,
             )
         return rendered
+
+    @staticmethod
+    def _same_area(measure: lang.Measure | None) -> bool:
+        return bool(measure and measure.comparison.text == "=" and int(measure.value.text) == 0)
 
     def _operand(
         self, value: lang.Operand, bindings: dict[str, Shape], namespace: str | None = None

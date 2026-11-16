@@ -142,6 +142,22 @@ def test_direction_wording_retains_axis_measure_and_superlative_exclusions(board
     assert "king-step distance" in nearest
 
 
+@pytest.mark.parametrize(
+    ("language", "same", "distance"),
+    [
+        ("en", "in the same area as", "area distance"),
+        ("nl", "in hetzelfde gebied als", "gebiedsafstand"),
+    ],
+)
+def test_zero_area_distance_has_an_idiomatic_relation(board, language, same, distance):
+    words = ExpressionWords(board, language)
+    assert same in words.statement(parse_statement("Ada dir:areas Ben = 0"))
+    assert same in words.statement(parse_statement("count (people dir:areas Ada = 0) = 1"))
+    assert distance not in words.statement(parse_statement("Ada dir:areas Ben = 0"))
+    assert distance in words.statement(parse_statement("Ada dir:areas Ben >= 0"))
+    assert distance in words.statement(parse_statement("Ada dir:areas Ben = 1"))
+
+
 def test_determiner_and_direction_phrase_overrides_compose(board):
     words = ExpressionWords(
         board,
