@@ -22,6 +22,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "name.area": "area {name}",
         "name.tag": "areas tagged {name}",
         "name.object": "objects named {name}",
+        "name.object.display": "objects referred to as {name}",
         "name.object_kind": "{name} objects",
         "name.edge_item": "edge items named {name}",
         "name.point_object": "point objects named {name}",
@@ -140,6 +141,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "name.area": "gebied {name}",
         "name.tag": "gebieden met tag {name}",
         "name.object": "voorwerpen met de naam {name}",
+        "name.object.display": "voorwerpen aangeduid als {name}",
         "name.object_kind": "{name} voorwerpen",
         "name.edge_item": "randvoorwerpen met de naam {name}",
         "name.point_object": "puntvoorwerpen met de naam {name}",
@@ -330,7 +332,8 @@ class ExpressionWords:
         if ":" not in text and namespace:
             text = f"{namespace}:{text}"
         kind, _, name = text.partition(":")
-        return self._phrase(f"name.{kind}", name=self.names.get(name, name))
+        key = "name.object.display" if kind == "object" and name in self.names else f"name.{kind}"
+        return self._phrase(key, name=self.names.get(name, name))
 
     def _relation(
         self,

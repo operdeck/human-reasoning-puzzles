@@ -116,7 +116,7 @@ def test_read_language_display_names_and_compositional_overrides(board):
 def test_object_target_wording_uses_names_without_changing_set_wording(board):
     words = ExpressionWords(board, names={"bed": "a bed"})
     assert words.statement(parse_statement("Ada on object:bed")) == "Ada is on a bed"
-    assert "the number of objects named a bed" in words.statement(
+    assert "the number of objects referred to as a bed" in words.statement(
         parse_statement("count object:bed = 2")
     )
     overridden = ExpressionWords(
