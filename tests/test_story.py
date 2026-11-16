@@ -70,6 +70,7 @@ ALLOWED = {
     "generic_story": {"core", "proof", "story"},
     "murdoku": {"core"},
     "murdoku_lang": {"murdoku", "murdoku_eval"},
+    "murdoku_declarations": {"murdoku", "murdoku_lang"},
     "murdoku_typecheck": {"murdoku", "murdoku_lang"},
     "murdoku_eval": {"murdoku", "murdoku_lang", "murdoku_typecheck"},
     "sudoku": {"core", "puzzlefile", "towers"},

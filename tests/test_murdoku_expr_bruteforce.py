@@ -4,6 +4,7 @@ import pytest
 
 from csp.bruteforce.murdoku_expr import solutions
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square
+from csp.murdoku_declarations import statements as declaration_statements
 from csp.murdoku_lang import parse_statement
 
 
@@ -68,6 +69,10 @@ def test_legacy_board_rules_are_not_silently_ignored():
     [
         (RoleSpec("guard", frozenset({1})), ["count role:guard = 1"]),
         (
+            RoleSpec("guard", frozenset({0, 2})),
+            ["count role:guard = 0 or count role:guard = 2"],
+        ),
+        (
             RoleSpec("guard", frozenset({2}), different_regions=True),
             [
                 "count role:guard = 2",
@@ -77,6 +82,10 @@ def test_legacy_board_rules_are_not_silently_ignored():
         (
             RoleSpec("guard", frozenset({1}), eligible_people=frozenset({"Ada", "Ben"})),
             ["count role:guard = 1", "every role:guard is attribute:eligible"],
+        ),
+        (
+            RoleSpec("guard", frozenset(range(4)), eligible_people=frozenset()),
+            ["no role:guard is people"],
         ),
     ],
 )
@@ -99,6 +108,7 @@ def test_role_declarations_match_explicit_statements(declared_role, formulas):
     actual = all_solutions(unrestricted, [parse_statement(text) for text in formulas])
     assert expected
     assert actual == expected
+    assert all_solutions(unrestricted, declaration_statements(declared)) == expected
 
 
 @pytest.mark.parametrize(
@@ -125,6 +135,25 @@ def test_mark_declarations_match_explicit_statements(condition, comparison):
     }
     assert expected
     assert actual == expected
+    expanded = {
+        tuple(sorted(result.items()))
+        for result in solutions(unrestricted, declaration_statements(declared), limit=10)
+    }
+    assert expanded == expected
+
+
+def test_single_person_not_alone_mark_can_be_left_empty():
+    board = Board(
+        size=2,
+        regions=[["a", "a"], ["a", "a"]],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada"],
+        marks=[CellMark("social", (Square(0, 0),), "not_alone")],
+    )
+    results = solutions(board, [], limit=10)
+    assert len(results) == 3
+    assert all(result["Ada"] != Square(0, 0) for result in results)
 
 
 @pytest.mark.parametrize(

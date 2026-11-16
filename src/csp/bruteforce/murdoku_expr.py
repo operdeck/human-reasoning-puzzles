@@ -4,6 +4,7 @@ from collections.abc import Iterator, Sequence
 from itertools import combinations
 
 from ..murdoku import Board, Square
+from ..murdoku_declarations import statements as declaration_statements
 from ..murdoku_lang import Statement, holds
 from ..murdoku_typecheck import check_formula
 
@@ -23,22 +24,6 @@ def _placements(board: Board) -> Iterator[dict[str, Square]]:
                 del placed[person]
 
     yield from search(0, set(), set())
-
-
-def _marks_hold(board: Board, placed: dict[str, Square]) -> bool:
-    for mark in board.marks:
-        if mark.occupant_condition is None:
-            continue
-        for square in placed.values():
-            if square in mark.cells:
-                occupants = sum(
-                    board.region_of(other) == board.region_of(square) for other in placed.values()
-                )
-                if mark.occupant_condition == "alone" and occupants != 1:
-                    return False
-                if mark.occupant_condition == "not_alone" and occupants < 2:
-                    return False
-    return True
 
 
 def _roles(board: Board, placed: dict[str, Square]) -> Iterator[dict[tuple[str, str], bool]]:
@@ -73,14 +58,13 @@ def solutions(
         raise ValueError("solution limit must be positive")
     if board.rules:
         raise ValueError("board rules must be migrated to expression statements first")
-    for statement in statements:
+    checks = [*declaration_statements(board), *statements]
+    for statement in checks:
         check_formula(board, statement.formula)
     found: list[dict[str, Square | bool]] = []
     for placed in _placements(board):
-        if not _marks_hold(board, placed):
-            continue
         for roles in _roles(board, placed):
-            if all(holds(statement, board, placed, roles) for statement in statements):
+            if all(holds(statement, board, placed, roles) for statement in checks):
                 result: dict[str, Square | bool] = dict(placed)
                 result.update(
                     {
