@@ -318,6 +318,14 @@ Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are req
 
 Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
 
+The replacement expression language in [#244](https://github.com/operdeck/human-reasoning-puzzles/issues/244)
+is under development and is **not yet accepted by the puzzle reader**. In that
+language, `in` is reflexive footprint containment and `on` is reflexive overlap;
+other spatial operators require distinct entities. An `empty` cell has no
+person even if blocked; migrate the current empty-cell counts using
+`empty free cells` to retain their free-cell-only behavior. A person `is` a
+bound role entity means membership in that role.
+
 ### Clue grammar specification for #238
 
 This section specifies the canonical grammar. The reader accepts canonical

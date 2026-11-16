@@ -4,12 +4,18 @@ The existing puzzle reader remains authoritative until the new language is
 implemented and the corpus has been migrated.
 """
 
+from __future__ import annotations
+
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import assert_never
+from typing import TYPE_CHECKING, assert_never
 
 from lark import Lark, Transformer, Tree, UnexpectedInput, v_args
 from lark import Token as LarkToken
 from lark.exceptions import UnexpectedCharacters, UnexpectedEOF, UnexpectedToken
+
+if TYPE_CHECKING:
+    from .murdoku import Board, Square
 
 
 @dataclass(frozen=True)
@@ -32,25 +38,25 @@ class Name:
 class Union:
     """A comma-separated union; item names are resolved during typechecking."""
 
-    items: tuple["Operand", ...]
+    items: tuple[Operand, ...]
 
 
 @dataclass(frozen=True)
 class Difference:
-    left: "Operand"
-    right: "Operand"
+    left: Operand
+    right: Operand
 
 
 @dataclass(frozen=True)
 class Qualified:
     adjective: Token
-    operand: "Operand"
+    operand: Operand
 
 
 @dataclass(frozen=True)
 class Projection:
     kind: Token
-    operand: "Operand"
+    operand: Operand
 
 
 @dataclass(frozen=True)
@@ -61,15 +67,15 @@ class Measure:
 
 @dataclass(frozen=True)
 class Filter:
-    source: "Operand"
+    source: Operand
     operator: Token
-    target: "Operand"
+    target: Operand
     measure: Measure | None = None
 
 
 @dataclass(frozen=True)
 class AdjectiveFilter:
-    source: "Operand"
+    source: Operand
     operator: Token
     adjective: Token
 
@@ -77,8 +83,8 @@ class AdjectiveFilter:
 @dataclass(frozen=True)
 class Comprehension:
     variable: Token
-    source: "Operand"
-    condition: "Formula"
+    source: Operand
+    condition: Formula
 
 
 type Operand = (
@@ -113,14 +119,14 @@ class SetComparison:
 @dataclass(frozen=True)
 class Negation:
     operator: Token
-    formula: "Formula"
+    formula: Formula
 
 
 @dataclass(frozen=True)
 class Binary:
-    left: "Formula"
+    left: Formula
     operator: Token
-    right: "Formula"
+    right: Formula
 
 
 @dataclass(frozen=True)
@@ -135,9 +141,9 @@ class Count:
 
 @dataclass(frozen=True)
 class Arithmetic:
-    left: "Number"
+    left: Number
     operator: Token
-    right: "Number"
+    right: Number
 
 
 type Number = Integer | Count | Arithmetic
@@ -169,14 +175,14 @@ class Quantified:
     count: Token | None
     variables: tuple[Token, ...]
     source: Operand
-    body: "Formula"
+    body: Formula
 
 
 @dataclass(frozen=True)
 class Choice:
     quantifier: Token
     count: Token
-    choices: tuple["Formula", ...]
+    choices: tuple[Formula, ...]
 
 
 type Formula = (
@@ -678,3 +684,15 @@ def parse_statement(source: str, *, line: int = 1) -> Statement:
     """Parse a formula and preserve its optional author-supplied wording."""
     formula, separator, wording = source.partition("|")
     return Statement(parse_formula(formula, line=line), wording.strip() if separator else None)
+
+
+def holds(
+    statement: Statement,
+    board: Board,
+    placed: Mapping[str, Square],
+    roles: Mapping[tuple[str, str], bool],
+) -> bool:
+    """Evaluate a statement over a complete placement and role assignment."""
+    from .murdoku_eval import holds as evaluate
+
+    return evaluate(statement, board, placed, roles)
