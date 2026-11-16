@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from itertools import permutations
 
 from . import murdoku_lang as lang
@@ -17,6 +17,14 @@ from .murdoku import (
     compile_puzzle,
 )
 from .murdoku_typecheck import Sort, check_formula, infer_operand
+
+
+@dataclass(frozen=True)
+class _RoleBinding:
+    name: str
+
+
+type _Bindings = dict[str, str | _RoleBinding]
 
 
 def _static_cells(
@@ -635,10 +643,10 @@ def _opposite(model: Model, literal: int) -> int:
     return model.literal(model.var_of(literal), not value)
 
 
-def _bind_operand(operand: lang.Operand, bindings: dict[str, str]) -> lang.Operand:
+def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
     if isinstance(operand, lang.Name):
         value = bindings.get(operand.token.text)
-        if value is not None and value.startswith("\0role:"):
+        if isinstance(value, _RoleBinding):
             raise NotImplementedError("bound role entity is supported only as the target of is")
         return replace(operand, token=replace(operand.token, text=value)) if value else operand
     if isinstance(operand, lang.Union):
@@ -983,7 +991,7 @@ def _number_variable(
     board: Board,
     number: lang.Number,
     name: str,
-    bindings: dict[str, str],
+    bindings: _Bindings,
     empty_scopes: dict[Square | str, int],
 ) -> tuple[str, set[int]]:
     selections: list[int] | None = None
@@ -1054,7 +1062,7 @@ def _reify_formula(
     board: Board,
     formula: lang.Formula,
     name: str,
-    bindings: dict[str, str] | None = None,
+    bindings: _Bindings | None = None,
     empty_scopes: dict[Square | str, int] | None = None,
 ) -> int:
     bindings = {} if bindings is None else bindings
@@ -1063,11 +1071,11 @@ def _reify_formula(
         target_operand = formula.target
         if isinstance(target_operand, lang.Name):
             bound = bindings.get(target_operand.token.text)
-            if bound is not None and bound.startswith("\0role:"):
+            if isinstance(bound, _RoleBinding):
                 if formula.operator.text != "is":
                     raise NotImplementedError(f"{name}: bound role relation is not implemented")
                 target_operand = replace(
-                    target_operand, token=replace(target_operand.token, text=bound[1:])
+                    target_operand, token=replace(target_operand.token, text=f"role:{bound.name}")
                 )
         atom = replace(
             formula,
@@ -1257,7 +1265,7 @@ def _reify_formula(
         people = _static_people(board, source) if not role_entities else None
         dynamic = people is None and not role_entities
         if role_entities:
-            domain = [f"\0role:{role.name}" for role in board.roles]
+            domain: list[str | _RoleBinding] = [_RoleBinding(role.name) for role in board.roles]
         else:
             if people is None:
                 if infer_operand(board, source).sort != Sort.PERSON:
@@ -1280,17 +1288,20 @@ def _reify_formula(
                 empty_scopes,
             )
             if dynamic:
-                selected = [
-                    _person_selected(
-                        model,
-                        board,
-                        person,
-                        source,
-                        f"{binding_name} {person} member",
-                        empty_scopes,
+                selected = []
+                for binding_value in values:
+                    if isinstance(binding_value, _RoleBinding):
+                        raise ValueError(f"{name}: dynamic person set contains a role entity")
+                    selected.append(
+                        _person_selected(
+                            model,
+                            board,
+                            binding_value,
+                            source,
+                            f"{binding_name} {binding_value} member",
+                            empty_scopes,
+                        )
                     )
-                    for person in values
-                ]
                 selected.append(_opposite(model, body) if quantifier == "every" else body)
                 body = _reify_cardinality(model, selected, {len(selected)}, binding_name)
             literals.append(body)
