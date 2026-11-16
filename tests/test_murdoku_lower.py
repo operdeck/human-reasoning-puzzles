@@ -3,7 +3,7 @@ from dataclasses import replace
 import pytest
 
 from csp.bruteforce.murdoku_expr import solutions
-from csp.core import Contradiction, rule_relations
+from csp.core import Contradiction, Solver, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
 from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import (
@@ -32,7 +32,7 @@ def board():
     )
 
 
-def _assert_matches_reference(board, formula, lower):
+def _assert_matches_reference(board, formula, lower, *, solve=False):
     statement = parse_statement(formula)
     model = compile_puzzle(board, [])
     assert lower(model, board, statement, "clue 1")
@@ -53,9 +53,12 @@ def _assert_matches_reference(board, formula, lower):
                     "test",
                     "fixed role",
                 )
-            trial.check()
-            rule_relations(trial)
-            accepted = True
+            if solve:
+                accepted = Solver(trial).solve().contradiction is None
+            else:
+                trial.check()
+                rule_relations(trial)
+                accepted = True
         except Contradiction:
             accepted = False
         assert accepted == holds(statement, board, placed, roles), solution
@@ -115,6 +118,19 @@ def test_lowered_count_matches_reference_for_every_placement_and_role(board, for
 )
 def test_lowered_location_matches_reference_for_every_placement_and_role(board, formula):
     _assert_matches_reference(board, formula, try_lower_location)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "count (role:guard in area:hall) = 1",
+        "count (role:guard on mark:red,blue) = 0",
+        "count (role:guard beside object:bed) >= 1",
+        "count (role:guard dir:up object:bed = 1) odd",
+    ],
+)
+def test_lowered_role_spatial_counts_match_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_count, solve=True)
 
 
 @pytest.mark.parametrize(

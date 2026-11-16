@@ -6,7 +6,7 @@ from collections.abc import Callable, Sequence
 
 from . import murdoku_lang as lang
 from .core import Kind, Model
-from .murdoku import Board, Square, _direction_test, compile_puzzle
+from .murdoku import Board, Square, _direction_test, _hidden_boolean, compile_puzzle
 from .murdoku_typecheck import check_formula
 
 
@@ -205,6 +205,32 @@ def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square
     return None
 
 
+def _role_scope(board: Board, operand: lang.Operand) -> tuple[str, set[Square]] | None:
+    if not (
+        isinstance(operand, lang.Filter)
+        and isinstance(operand.source, lang.Name)
+        and operand.source.token.text.startswith("role:")
+    ):
+        return None
+    operator = operand.operator.text
+    if operator not in {"in", "on", "beside", "touches"} and not operator.startswith("dir:"):
+        return None
+    cells = _static_cells(board, operand.target)
+    if cells is None:
+        return None
+    direction = (
+        _direction(board, operator, operand.measure) if operator.startswith("dir:") else None
+    )
+    if operator.startswith("dir:") and direction is None:
+        return None
+    squares = {
+        square
+        for square in board.free
+        if _position_matches(board, square, operator, cells, direction)
+    }
+    return operand.source.token.text.removeprefix("role:"), squares
+
+
 def try_lower_location(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower a named person's static spatial relation as domain eliminations."""
     formula = statement.formula
@@ -341,24 +367,51 @@ def try_lower_count(model: Model, board: Board, statement: lang.Statement, name:
         case _:
             return False
     check_formula(board, formula)
-    keys = _counted_keys(board, operand)
-    if keys is None:
+    role_scope = _role_scope(board, operand)
+    keys = _counted_keys(board, operand) if role_scope is None else None
+    if keys is None and role_scope is None:
         return False
-    missing = {variable for variable, _ in keys} - set(model.all_variables)
+    if role_scope is not None:
+        role, _ = role_scope
+        variables = set(board.people) | {
+            board.role_variable(person, role) for person in board.people
+        }
+        maximum = len(board.people)
+    else:
+        assert keys is not None
+        variables = {variable for variable, _ in keys}
+        maximum = min(len(keys), len(board.people))
+    missing = variables - set(model.all_variables)
     if missing:
         raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
-    permitted = {
-        value for value in range(min(len(keys), len(board.people)) + 1) if predicate(value)
-    }
+    permitted = {value for value in range(maximum + 1) if predicate(value)}
     if not permitted:
         raise ValueError(
             f"line {location.line}, column {location.column}: "
             "comparison has no feasible value on this board"
         )
+    if role_scope is not None:
+        role, squares = role_scope
+        literals = []
+        for person in board.people:
+            variable, selected, _ = _hidden_boolean(
+                model, "expression_role_scope", f"{name} {person} selected", "Murdoku expression"
+            )
+            model.relate(
+                f"{name} {person} selection",
+                (person, board.role_variable(person, role), variable),
+                lambda square, has_role, selected, squares=squares: (
+                    selected == (has_role and square in squares)
+                ),
+            )
+            literals.append(selected)
+    else:
+        assert keys is not None
+        literals = [model.literal(variable, value) for variable, value in keys]
     model.constrain(
         name,
         Kind.COUNT,
-        [model.literal(variable, value) for variable, value in keys],
+        literals,
         allowed_counts=permitted,
         family="Murdoku expression",
     )
