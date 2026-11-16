@@ -331,6 +331,71 @@ statement and `Words:` may replace an expression phrase template. Phrase
 overrides must retain all placeholders of the original template; otherwise
 they could hide a subject, target, comparison, or other part of the clue.
 
+### Expression language under development
+
+The expression reader, evaluator and compiler can be used independently, but
+the CLI, player and booklet still use the grammar below. The following is not
+yet the production file format.
+
+An operand is a set of entities of one sort. Sorts are people, cells, rows,
+columns, logical areas, features and roles. A person's footprint is their
+square; a feature's footprint is its object cells, the cells touched by an
+edge or point item, or the cells of a mark. A role entity has no footprint.
+Attributes are fixed sets of people and tags are fixed sets of areas. Two
+separately declared objects remain distinct even if named alike.
+
+| Expression | Meaning |
+|---|---|
+| `Ada`, `people`, `areas`, `rows`, `columns`, `cells`, `objects`, `roles` | A person or a complete universe. |
+| `area:hall`, `tag:outside`, `object:bed`, `object_kind:standable` | One area, tagged areas, named object instances, or objects of a kind. |
+| `edge_item:door`, `point_object:fountain`, `mark:red` | Named feature instances. |
+| `role:guard`, `attribute:staff` | People holding a role or having an attribute. |
+| `rows:1,3-5`, `columns:last`, `corner:board` | Selected lines or board-corner cells. |
+| `area of S`, `row of S`, `column of S`, `cell of S` | Areas, lines or cells intersecting the footprints in `S`. |
+| `S, T`, `S except T` | Same-sort union and difference. `object:bed,chair` repeats the first namespace. |
+| `empty S`, `occupied S`, `free S` | Elements with the named property. |
+| `(S on T)`, `(S touches T)` | Elements of `S` related to at least one element of `T`. |
+| `(?x in S where formula)` | Elements of `S` for which the formula holds. |
+
+`empty` and `occupied` test whether any person is on a spatial footprint;
+`free` applies to cells and means not blocked by an object. Thus an empty
+blocked cell is still empty. Use `empty free cells` to preserve the old
+empty-cell count, which counts only free squares.
+
+Atoms have the form `[some|every|no] S operator T`. The right side is
+existential. A determiner is required when the left side may contain more
+than one entity; otherwise it is omitted. `in` means footprint containment,
+`on` means footprint overlap, `beside` means a shared side in the same area,
+and `touches` means a shared side regardless of area. `is` tests membership
+or identity; a person `is` a bound role entity when they hold that role.
+Containment and overlap are reflexive; adjacency and directional operators
+exclude the same entity. Distinct entities remain distinct even when their
+footprints coincide.
+`S = T` and `S != T` compare sets of the same sort.
+
+Directional operators are `dir:left`, `dir:right`, `dir:up`, `dir:down`,
+their vertical-plus-horizontal combinations, `dir:diagonal`, `dir:rows`,
+`dir:cols`, `dir:manhattan`, `dir:king`, `dir:euclidean`, `dir:areas`,
+`dir:knight`, `dir:nearest` and `dir:furthest`. An optional `= n`, `<= n`
+or `>= n` measures the gap where supported; a compound direction applies
+the measure to each axis of the same cell pair. Nearest and furthest use
+strict comparisons against other people outside the target set, so a tie
+does not satisfy the clue. Their optional metric suffix, for example
+`dir:nearest:king`, changes the distance measure.
+
+`count S` is the cardinality of `S`; comparisons accept integer arithmetic,
+`odd`, `even`, and inclusive ranges such as `1..3`. Formulas compose with
+`not`, `and`, `or`, `iff`, and `if ... then`, in that precedence order.
+Quantifiers bind `?` variables, as in `every ?p in role:guard: ?p in
+area:hall`; multiple variables bind ordered, distinct entities. Choices use
+`exactly 1 of (formula; formula)` or `at least` / `at most`. Union uses
+commas, never Boolean `and` or `or`.
+
+The reference evaluator defines clue meaning. Expression lowering emits
+generic constraints outside `core.py`; it must agree with the evaluator and
+preserve the existing tuned patterns and grades. `Key:` entries in the new
+reader match expression structure rather than wording or source positions.
+
 ### Clue grammar specification for #238
 
 This section specifies the canonical grammar. The reader accepts canonical
