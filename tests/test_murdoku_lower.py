@@ -314,6 +314,43 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
     assert actual == expected
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "Ada in area:hall and Ben in rows:3",
+        "Ada on mark:red or Ben on mark:blue",
+        "Ada is role:guard iff Ben is role:guard",
+        "if Ada is role:guard then Ben is attribute:staff",
+        "if Ada is attribute:trained then Ben dir:left Ada",
+        "not (Ada touches Ben or Ada on Ada)",
+        "exactly 1 of (Ada on mark:red; Ben on mark:blue; Ada is role:guard)",
+        "at least 2 of (Ada is role:guard; not Ada is role:guard; Ben in area:hall)",
+        "at most 1 of (Ada is role:guard; Ben is role:guard)",
+        "Ada is role:guard and not Ada is role:guard",
+        "Ada on Ada iff not Ada touches Ada",
+    ],
+)
+def test_boolean_compilation_matches_reference(board, formula):
+    statement = parse_statement(formula)
+    model = compile_statements(board, [statement])
+    for candidate in solutions(board, [], limit=1000):
+        trial = model.clone()
+        try:
+            for person in board.people:
+                trial.assign(trial.literal(person, candidate[person]), "test", "fixed placement")
+                role = board.role_variable(person, "guard")
+                trial.assign(trial.literal(role, candidate[role]), "test", "fixed role")
+            accepted = Solver(trial).solve().contradiction is None
+        except Contradiction:
+            accepted = False
+        placed = {person: candidate[person] for person in board.people}
+        roles = {
+            (person, "guard"): candidate[board.role_variable(person, "guard")]
+            for person in board.people
+        }
+        assert accepted == holds(statement, board, placed, roles), candidate
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])

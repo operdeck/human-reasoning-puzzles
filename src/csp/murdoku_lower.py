@@ -609,6 +609,123 @@ def try_lower_count(model: Model, board: Board, statement: lang.Statement, name:
     return True
 
 
+def _opposite(model: Model, literal: int) -> int:
+    value = model.value_of(literal)
+    if not isinstance(value, bool):
+        raise ValueError("a reified expression must use a Boolean literal")
+    return model.literal(model.var_of(literal), not value)
+
+
+def _reify_atom(model: Model, board: Board, atom: lang.Atom, name: str) -> int:
+    if not isinstance(atom.subject, lang.Name) or atom.subject.token.text not in board.people:
+        raise NotImplementedError(f"{name}: expression lowering is not implemented")
+    person = atom.subject.token.text
+    invert = atom.determiner is not None and atom.determiner.text == "no"
+    variable, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
+    if atom.operator.text == "is":
+        if isinstance(atom.target, lang.Name) and atom.target.token.text.startswith("role:"):
+            role = atom.target.token.text.removeprefix("role:")
+            model.relate(
+                name,
+                (board.role_variable(person, role), variable),
+                lambda present, result: result == present,
+            )
+        else:
+            people = _static_people(board, atom.target)
+            if people is None:
+                raise NotImplementedError(f"{name}: expression lowering is not implemented")
+            model.assign(yes if person in people else no, "clue", name, sources=(f"{name} state",))
+    elif isinstance(atom.target, lang.Name) and atom.target.token.text in board.people:
+        other = atom.target.token.text
+        same = person == other
+        test = _person_relation(board, atom, same=same)
+        if test is None:
+            raise NotImplementedError(f"{name}: expression lowering is not implemented")
+        if same:
+            model.relate(
+                name, (person, variable), lambda square, result: result == test(square, square)
+            )
+        else:
+            model.relate(
+                name,
+                (person, other, variable),
+                lambda left, right, result: result == test(left, right),
+            )
+    else:
+        cells = _static_cells(board, atom.target)
+        if cells is None or (
+            atom.operator.text not in {"in", "on", "beside", "touches"}
+            and not atom.operator.text.startswith("dir:")
+        ):
+            raise NotImplementedError(f"{name}: expression lowering is not implemented")
+        direction = (
+            _direction(board, atom.operator.text, atom.measure)
+            if atom.operator.text.startswith("dir:")
+            else None
+        )
+        if atom.operator.text.startswith("dir:") and direction is None:
+            raise NotImplementedError(f"{name}: expression lowering is not implemented")
+        model.relate(
+            name,
+            (person, variable),
+            lambda square, result: (
+                result == _position_matches(board, square, atom.operator.text, cells, direction)
+            ),
+        )
+    return no if invert else yes
+
+
+def _reify_formula(model: Model, board: Board, formula: lang.Formula, name: str) -> int:
+    if isinstance(formula, lang.Atom):
+        return _reify_atom(model, board, formula, name)
+    if isinstance(formula, lang.Negation):
+        return _opposite(model, _reify_formula(model, board, formula.formula, f"{name} not"))
+    if isinstance(formula, lang.Binary):
+        left = _reify_formula(model, board, formula.left, f"{name} left")
+        right = _reify_formula(model, board, formula.right, f"{name} right")
+        operator = formula.operator.text
+        if operator == "if":
+            left = _opposite(model, left)
+            operator = "or"
+        allowed = {"and": {2}, "or": {1, 2}, "iff": {0, 2}}[operator]
+        _, yes, _ = _hidden_boolean(model, "expression", name, "Murdoku expression")
+        model.constrain(
+            name,
+            Kind.COUNT,
+            (left, right),
+            allowed_counts=allowed,
+            reified_by=yes,
+            family="Murdoku expression",
+        )
+        return yes
+    if isinstance(formula, lang.Choice):
+        literals = [
+            _reify_formula(model, board, choice, f"{name} option {index}")
+            for index, choice in enumerate(formula.choices, 1)
+        ]
+        target = int(formula.count.text)
+        kind = " ".join(formula.quantifier.text.split())
+        allowed = {
+            "exactly": {target} if target <= len(literals) else set(),
+            "at least": set(range(target, len(literals) + 1)),
+            "at most": set(range(min(target, len(literals)) + 1)),
+        }[kind]
+        _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
+        if not allowed:
+            model.assign(no, "clue", name, sources=(f"{name} state",))
+            return yes
+        model.constrain(
+            name,
+            Kind.COUNT,
+            literals,
+            allowed_counts=allowed,
+            reified_by=yes,
+            family="Murdoku expression",
+        )
+        return yes
+    raise NotImplementedError(f"{name}: expression lowering is not implemented")
+
+
 def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Model:
     """Compile the currently supported expression patterns for a board."""
     if board.rules:
@@ -629,5 +746,6 @@ def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Mo
                 try_lower_count,
             )
         ):
-            raise NotImplementedError(f"{label}: expression lowering is not implemented")
+            literal = _reify_formula(model, board, statement.formula, label)
+            model.assign(literal, "clue", label)
     return model
