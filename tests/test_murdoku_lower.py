@@ -595,10 +595,19 @@ def test_overlapping_area_tags_share_one_empty_literal(board):
     assert counts["clue 1"].literals == counts["clue 2"].literals
 
 
-def test_area_quantifier_rejects_ambiguous_names(board):
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "every ?a in areas: ?a in ?a",
+        "every ?a, ?b in areas: ?a != ?b",
+        "every ?a in empty areas: ?a is empty",
+        "every ?a in area of people: ?a is occupied",
+        "every ?a in areas: count (?p in people where ?p in ?a) >= 0",
+    ],
+)
+def test_area_quantifier_preserves_region_identity_with_duplicate_names(board, formula):
     board = replace(board, region_names={"a": "same", "b": "same"}, area_tags={})
-    with pytest.raises(NotImplementedError, match="require distinct area names"):
-        compile_statements(board, [parse_statement("every ?a in areas: ?a in ?a")])
+    _assert_compilation_matches_reference(board, formula)
 
 
 @pytest.mark.parametrize(

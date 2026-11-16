@@ -27,7 +27,7 @@ class _RoleBinding:
 
 @dataclass(frozen=True)
 class _AreaBinding:
-    name: str
+    region: str
 
 
 @dataclass(frozen=True)
@@ -794,7 +794,7 @@ def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
         if isinstance(value, _RoleBinding):
             raise NotImplementedError("bound role entity is supported only as the target of is")
         if isinstance(value, _AreaBinding):
-            value = f"area:{value.name}"
+            value = f"__entity:area:{value.region}"
         if isinstance(value, _LineBinding):
             value = value.selector
         if isinstance(value, _SpatialBinding):
@@ -1069,6 +1069,8 @@ def _static_area_ids(board: Board, operand: lang.Operand) -> set[str] | None:
         text = operand.token.text
         if text == "areas":
             return set(board.region_names)
+        if text.startswith("__entity:area:"):
+            return {text.removeprefix("__entity:area:")}
         if text.startswith("area:"):
             return {board.region_id(text.removeprefix("area:"))}
         if text.startswith("tag:"):
@@ -1364,14 +1366,10 @@ def _spatial_universe(board: Board, sort: Sort) -> dict[tuple[Sort, str], set[Sq
     return entities
 
 
-def _spatial_binding(
-    board: Board, entity: tuple[Sort, str], name: str
-) -> _AreaBinding | _LineBinding | _SpatialBinding:
+def _spatial_binding(entity: tuple[Sort, str]) -> _AreaBinding | _LineBinding | _SpatialBinding:
     sort, key = entity
     if sort == Sort.AREA:
-        if len(set(board.region_names.values())) != len(board.region_names):
-            raise NotImplementedError(f"{name}: area quantifiers require distinct area names")
-        return _AreaBinding(board.region_names[key])
+        return _AreaBinding(key)
     elif sort in {Sort.ROW, Sort.COLUMN}:
         prefix = "rows" if sort == Sort.ROW else "columns"
         return _LineBinding(f"{prefix}:{int(key) + 1}")
@@ -1489,7 +1487,7 @@ def _spatial_selected(
             board,
             operand.condition,
             f"{name} condition",
-            bindings | {operand.variable.text: _spatial_binding(board, entity, name)},
+            bindings | {operand.variable.text: _spatial_binding(entity)},
             empty_scopes,
         )
         return _reify_cardinality(model, [selected, matches], {2}, name)
@@ -2571,15 +2569,9 @@ def _reify_formula(
             if area_domain is None and area_scope is not None:
                 area_adjective, area_domain = area_scope
             if area_domain is not None:
-                if len(set(board.region_names.values())) != len(board.region_names):
-                    raise NotImplementedError(
-                        f"{name}: area quantifiers require distinct area names"
-                    )
                 dynamic = area_adjective is not None
                 domain = [
-                    _AreaBinding(board.region_names[region])
-                    for region in board.region_names
-                    if region in area_domain
+                    _AreaBinding(region) for region in board.region_names if region in area_domain
                 ]
             else:
                 line_domain = _static_line_ids(board, source)
@@ -2603,7 +2595,7 @@ def _reify_formula(
                     elif entities is not None:
                         dynamic = False
                         ordered = sorted(entities, key=lambda item: (item[0].value, item[1]))
-                        domain = [_spatial_binding(board, entity, name) for entity in ordered]
+                        domain = [_spatial_binding(entity) for entity in ordered]
                     else:
                         people = _static_people(board, source)
                         dynamic = people is None
@@ -2620,9 +2612,7 @@ def _reify_formula(
                             }:
                                 spatial_domain = True
                                 universe = _spatial_universe(board, sort)
-                                domain = [
-                                    _spatial_binding(board, entity, name) for entity in universe
-                                ]
+                                domain = [_spatial_binding(entity) for entity in universe]
                             else:
                                 raise NotImplementedError(
                                     f"{name}: quantifier source lowering is not implemented"
@@ -2658,7 +2648,7 @@ def _reify_formula(
                             )
                         )
                     elif isinstance(binding_value, _AreaBinding) and area_adjective is not None:
-                        region = board.region_id(binding_value.name)
+                        region = binding_value.region
                         empty = _area_empty_literal(
                             model,
                             board,
