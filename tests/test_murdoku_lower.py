@@ -5,6 +5,7 @@ import pytest
 
 from csp.bruteforce.murdoku import solutions as legacy_solutions
 from csp.bruteforce.murdoku_expr import solutions
+from csp.clue_search import _measure
 from csp.core import Contradiction, Kind, Model, Solver, Step, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
 from csp.murdoku_expression_file import load_expression_board
@@ -1098,14 +1099,37 @@ def test_logeeravond_preserves_migrated_grade_and_unique_solution():
     _assert_migration_preserves_unique_solution(text, migrated)
 
 
-def test_garden_party_preserves_grade_solution_and_late_reveal():
-    text = example("wie-doet-het-met-wie-2.txt").read_text()
-    replacements = {
-        "with Wouter in same area exactly 1": "count (people in area of Wouter) = 1 + 1",
-        "dir people_on:object:badjas Noor left": "some (people on object:badjas) dir:left Noor",
-        "on Bram object:badjas": "Bram on object:badjas",
-        "beside Eva object:tafel": "Eva beside object:tafel",
-    }
+@pytest.mark.parametrize(
+    ("filename", "replacements"),
+    [
+        (
+            "wie-doet-het-met-wie-2.txt",
+            {
+                "with Wouter in same area exactly 1": "count (people in area of Wouter) = 1 + 1",
+                "dir people_on:object:badjas Noor left": (
+                    "some (people on object:badjas) dir:left Noor"
+                ),
+                "on Bram object:badjas": "Bram on object:badjas",
+                "beside Eva object:tafel": "Eva beside object:tafel",
+            },
+        ),
+        (
+            "wie-doet-het-met-wie-3.txt",
+            {
+                "with Wouter in same area exactly 1": "count (people in area of Wouter) = 1 + 1",
+                "dir people_on:object:zonnebril Pieter up = 1": (
+                    "some (people on object:zonnebril) dir:up Pieter = 1"
+                ),
+                "on Sanne object:badjas": "Sanne on object:badjas",
+                "on Daan object:zonnebril": "Daan on object:zonnebril",
+                "in Sanne area:bosjes": "Sanne in area:bosjes",
+                "in Femke area:zee": "Femke in area:zee",
+            },
+        ),
+    ],
+)
+def test_examples_preserve_grade_solution_and_late_reveal(filename, replacements):
+    text = example(filename).read_text()
     migrated = text
     for old, new in replacements.items():
         migrated = migrated.replace(old, new)
@@ -1130,9 +1154,10 @@ def test_garden_party_preserves_grade_solution_and_late_reveal():
             if len(domains[step.var]) == 1:
                 first_singleton.setdefault(step.var, index)
     assert set(first_singleton) == set(board.people)
-    assert first_singleton["Wouter"] > max(
+    late_last = first_singleton["Wouter"] > max(
         index for person, index in first_singleton.items() if person != "Wouter"
     )
+    assert late_last == _measure(text, "Wouter")[1]
 
 
 def test_random_small_well_typed_statements_match_reference():
