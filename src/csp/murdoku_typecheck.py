@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from math import perm
 from typing import TYPE_CHECKING
 
 from . import murdoku_lang as lang
@@ -387,10 +388,11 @@ def check_formula(
             quantifier=quantifier, count=count, variables=names, source=source, body=body
         ):
             shape = infer_operand(board, source, variables)
+            maximum = perm(shape.maximum, len(names)) if len(names) <= shape.maximum else 0
             if (
                 count
                 and " ".join(quantifier.text.split()) in {"exactly", "at least"}
-                and int(count.text) > shape.maximum
+                and int(count.text) > maximum
             ):
                 raise _error(count, "quantifier has no feasible value")
             nested = variables | {name.text: Shape(shape.sort, 1, 1) for name in names}

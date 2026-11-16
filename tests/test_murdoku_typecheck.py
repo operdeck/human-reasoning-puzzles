@@ -69,3 +69,13 @@ def test_typecheck_reports_errors(board, formula, message):
 )
 def test_typecheck_accepts_well_typed_formulas(board, formula):
     check_formula(board, parse_formula(formula))
+
+
+def test_bounded_quantifiers_count_distinct_tuples(board):
+    check_formula(board, parse_formula("exactly 6 ?r, ?s in rows: ?r != ?s"))
+    with pytest.raises(ValueError, match="quantifier has no feasible value"):
+        check_formula(board, parse_formula("exactly 7 ?r, ?s in rows: ?r != ?s"))
+    with pytest.raises(ValueError, match="quantifier has no feasible value"):
+        check_formula(
+            board, parse_formula("at least 1 ?a, ?b, ?c, ?d in rows: ?a = ?b and ?c = ?d")
+        )

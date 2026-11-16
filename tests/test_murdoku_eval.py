@@ -113,6 +113,7 @@ def test_multiple_roles_are_counted_independently(case):
         ("every ?p in people: ?p on mark:red,blue", True),
         ("no ?p in people: ?p on mark:rock", True),
         ("exactly 1 ?p in people: ?p on mark:red", True),
+        ("exactly 6 ?r, ?s in rows: ?r != ?s", True),
         ("at least 2 ?p in people: ?p on mark:red", False),
         ("at most 1 ?p in people: ?p on mark:red", True),
         ("exactly 1 of (Ada on mark:red; Ben on mark:red)", True),
