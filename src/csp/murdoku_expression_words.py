@@ -136,6 +136,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.only_on": "{person} is the only person on {target}",
         "idiom.most_populated": "{area} has more people than every other area",
         "idiom.least_populated": "{area} has fewer people than every other area",
+        "idiom.most_populated.free": (
+            "{area} has more people than every other area containing a free cell"
+        ),
+        "idiom.least_populated.free": (
+            "{area} has fewer people than every other area containing a free cell"
+        ),
     },
     "nl": {
         "set.people": "personen",
@@ -261,6 +267,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.only_on": "{person} is de enige persoon op {target}",
         "idiom.most_populated": "{area} heeft meer personen dan ieder ander gebied",
         "idiom.least_populated": "{area} heeft minder personen dan ieder ander gebied",
+        "idiom.most_populated.free": (
+            "{area} heeft meer personen dan ieder ander gebied met een vrij vakje"
+        ),
+        "idiom.least_populated.free": (
+            "{area} heeft minder personen dan ieder ander gebied met een vrij vakje"
+        ),
     },
 }
 
@@ -528,14 +540,24 @@ class ExpressionWords:
             formula.quantifier.text != "every"
             or len(formula.variables) != 1
             or not isinstance(formula.source, lang.Difference)
-            or not isinstance(formula.source.left, lang.Name)
-            or formula.source.left.token.text != "areas"
             or not isinstance(formula.source.right, lang.Name)
             or not formula.source.right.token.text.startswith("area:")
             or infer_operand(self.board, formula.source.right).maximum != 1
             or not isinstance(formula.body, lang.NumberComparison)
             or formula.body.operator.text not in {"<", ">"}
         ):
+            return None
+        domain = formula.source.left
+        all_areas = isinstance(domain, lang.Name) and domain.token.text == "areas"
+        free_areas = (
+            isinstance(domain, lang.Projection)
+            and domain.kind.text == "area"
+            and isinstance(domain.operand, lang.Qualified)
+            and domain.operand.adjective.text == "free"
+            and isinstance(domain.operand.operand, lang.Name)
+            and domain.operand.operand.token.text == "cells"
+        )
+        if not (all_areas or free_areas):
             return None
         comparison = formula.body
         if not isinstance(comparison.left, lang.Count) or not isinstance(
@@ -557,6 +579,8 @@ class ExpressionWords:
         if targets != [formula.variables[0].text, formula.source.right.token.text]:
             return None
         key = "idiom.most_populated" if comparison.operator.text == "<" else "idiom.least_populated"
+        if free_areas:
+            key += ".free"
         return self._phrase(key, area=self._operand(formula.source.right, {}))
 
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:

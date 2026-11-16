@@ -117,6 +117,21 @@ def test_population_idiom_does_not_hide_ties_or_a_different_comparison_target(bo
     assert "every ?a" in words.statement(parse_statement(different))
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "area hall has fewer people than every other area containing a free cell"),
+        ("nl", "gebied hall heeft minder personen dan ieder ander gebied met een vrij vakje"),
+    ],
+)
+def test_population_idiom_preserves_the_free_area_scope(board, language, expected):
+    source = (
+        "every ?a in (area of free cells except area:hall): "
+        "count (people in ?a) > count (people in area:hall)"
+    )
+    assert ExpressionWords(board, language).statement(parse_statement(source)) == expected
+
+
 def test_wording_overrides_and_names_are_used(board):
     words = ExpressionWords(
         board,
