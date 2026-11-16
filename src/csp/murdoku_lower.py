@@ -446,6 +446,48 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
     return True
 
 
+def try_lower_occupant_equality(
+    model: Model, board: Board, statement: lang.Statement, name: str
+) -> bool:
+    """Lower equality between a static occupant scope and a fixed set of people."""
+    formula = statement.formula
+    if not isinstance(formula, lang.SetComparison) or formula.operator.text != "=":
+        return False
+    for selected, expected in ((formula.left, formula.right), (formula.right, formula.left)):
+        if not (
+            isinstance(selected, lang.Filter)
+            and isinstance(selected.source, lang.Name)
+            and selected.source.token.text == "people"
+            and (
+                selected.operator.text in {"in", "on", "beside", "touches"}
+                or selected.operator.text.startswith("dir:")
+            )
+        ):
+            continue
+        people = _static_people(board, expected)
+        cells = _static_cells(board, selected.target)
+        if people is None or cells is None:
+            continue
+        direction = (
+            _direction(board, selected.operator.text, selected.measure)
+            if selected.operator.text.startswith("dir:")
+            else None
+        )
+        if selected.operator.text.startswith("dir:") and direction is None:
+            continue
+        check_formula(board, formula)
+        missing = set(board.people) - set(model.all_variables)
+        if missing:
+            raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+        for person in board.people:
+            for square in board.free:
+                matches = _position_matches(board, square, selected.operator.text, cells, direction)
+                if matches != (person in people):
+                    model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
+        return True
+    return False
+
+
 def try_lower_membership(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower a named person's role or fixed-set membership."""
     formula = statement.formula
@@ -637,6 +679,99 @@ def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement,
         model.relate(name, (first,), lambda square: test(square, square) != invert)
     else:
         model.relate(name, (first, second), lambda left, right: test(left, right) != invert)
+    return True
+
+
+def try_lower_person_choice(
+    model: Model, board: Board, statement: lang.Statement, name: str
+) -> bool:
+    """Lower small choices over fixed-person spatial atoms to a direct relation."""
+    formula = statement.formula
+    if not isinstance(formula, lang.Choice):
+        return False
+    predicates: list[Callable[[dict[str, Square]], bool]] = []
+    people: set[str] = set()
+    for choice in formula.choices:
+        negated = isinstance(choice, lang.Negation)
+        atom = choice.formula if isinstance(choice, lang.Negation) else choice
+        if not (
+            isinstance(atom, lang.Atom)
+            and isinstance(atom.subject, lang.Name)
+            and atom.subject.token.text in board.people
+        ):
+            return False
+        person = atom.subject.token.text
+        people.add(person)
+        invert = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
+        if isinstance(atom.target, lang.Name) and atom.target.token.text in board.people:
+            target = atom.target.token.text
+            test = _person_relation(board, atom, same=person == target)
+            if test is None:
+                return False
+            people.add(target)
+
+            def person_match(
+                placed: dict[str, Square],
+                person: str = person,
+                target: str = target,
+                test: Callable[[Square, Square], bool] = test,
+                invert: bool = invert,
+            ) -> bool:
+                return test(placed[person], placed[target]) != invert
+
+            predicates.append(person_match)
+        else:
+            cells = _static_cells(board, atom.target)
+            if cells is None or (
+                atom.operator.text not in {"in", "on", "beside", "touches"}
+                and not atom.operator.text.startswith("dir:")
+            ):
+                return False
+            direction = (
+                _direction(board, atom.operator.text, atom.measure)
+                if atom.operator.text.startswith("dir:")
+                else None
+            )
+            if atom.operator.text.startswith("dir:") and direction is None:
+                return False
+
+            def static_match(
+                placed: dict[str, Square],
+                person: str = person,
+                op: str = atom.operator.text,
+                cells: set[Square] = cells,
+                direction: Callable[[Square, Square], bool] | None = direction,
+                invert: bool = invert,
+            ) -> bool:
+                return _position_matches(board, placed[person], op, cells, direction) != invert
+
+            predicates.append(static_match)
+    if len(people) > 3:
+        return False
+    check_formula(board, formula)
+    missing = people - set(model.all_variables)
+    if missing:
+        raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+    ordered = tuple(person for person in board.people if person in people)
+    threshold = int(formula.count.text)
+    quantifier = " ".join(formula.quantifier.text.split())
+
+    def matches(*squares: Square) -> bool:
+        placed = dict(zip(ordered, squares, strict=True))
+        count = sum(predicate(placed) for predicate in predicates)
+        return {
+            "exactly": count == threshold,
+            "at least": count >= threshold,
+            "at most": count <= threshold,
+        }[quantifier]
+
+    if len(ordered) == 1:
+        (person,) = ordered
+        for square in board.free:
+            if not matches(square):
+                model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
+    else:
+        model.relate(name, ordered, matches)
     return True
 
 
@@ -2986,9 +3121,11 @@ def compile_statements_with_origins(
             lower(model, board, statement, label)
             for lower in (
                 try_lower_location,
+                try_lower_occupant_equality,
                 try_lower_membership,
                 try_lower_role_atom,
                 try_lower_person_pair,
+                try_lower_person_choice,
                 try_lower_role_target,
                 try_lower_count,
             )

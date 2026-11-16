@@ -15,6 +15,8 @@ from csp.murdoku_lower import (
     try_lower_count,
     try_lower_location,
     try_lower_membership,
+    try_lower_occupant_equality,
+    try_lower_person_choice,
     try_lower_person_pair,
     try_lower_role_atom,
     try_lower_role_target,
@@ -128,6 +130,43 @@ def test_lowered_count_matches_reference_for_every_placement_and_role(board, for
 )
 def test_lowered_location_matches_reference_for_every_placement_and_role(board, formula):
     _assert_matches_reference(board, formula, try_lower_location)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "(people on object:bed) = Ada",
+        "Ada = (people on mark:red,blue)",
+        "(people in area:hall) = Ada, Ben",
+        "(people beside object:bed) = Ben",
+        "(people touches mark:red) = attribute:trained",
+        "(people dir:up mark:red = 1) = Ada",
+    ],
+)
+def test_occupant_set_equality_matches_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_occupant_equality, solve=True)
+    _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "exactly 1 of (Ada dir:areas Ben = 0; Ada on mark:red)",
+        "at least 1 of (Ada in area:hall; not Ben on mark:red)",
+        "at most 1 of (Ada on object:bed; no Ben touches mark:red)",
+        "exactly 1 of (Ada in area:hall; Ada on mark:red)",
+    ],
+)
+def test_person_choice_lowering_matches_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_person_choice, solve=True)
+    _assert_compilation_matches_reference(board, formula)
+
+
+def test_person_choice_leaves_role_dependent_options_to_general_lowering(board):
+    formula = "exactly 1 of (Ada on mark:red; Ben is role:guard)"
+    model = compile_puzzle(board, [])
+    assert not try_lower_person_choice(model, board, parse_statement(formula), "clue 1")
+    _assert_compilation_matches_reference(board, formula)
 
 
 @pytest.mark.parametrize(
@@ -890,6 +929,31 @@ def test_point_object_example_preserves_migrated_grade_and_unique_solution():
         "in Cal area:Greenhouse": "Cal in area:Greenhouse",
         "on Eli point_object:cat": "Eli on point_object:cat",
         "not on Dee point_object:mouse2": "not Dee on point_object:mouse2",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
+def test_sparse_mystery_preserves_migrated_grade_and_unique_solution():
+    text = example("murdoku_sparse_mystery.txt").read_text()
+    replacements = {
+        "not in Ria tag:noble_areas": "not Ria in tag:noble_areas",
+        "not in Tomas tag:noble_areas": "not Tomas in tag:noble_areas",
+        "in Mara tag:noble_areas": "Mara in tag:noble_areas",
+        "in Nico tag:noble_areas": "Nico in tag:noble_areas",
+        "only Mara on object:bed": "(people on object:bed) = Mara",
+        "on Mara edge_item:gate": "Mara on edge_item:gate",
+        "on Nico object:chair": "Nico on object:chair",
+        "dir Nico Ria left = 1": "Nico dir:left Ria = 1",
+        "only Ria on object:carpet": "(people on object:carpet) = Ria",
+        "in Tomas corner:board": "Tomas in corner:board",
+        "on Tomas object:horse": "Tomas on object:horse",
+        "exactly 1 dir Tomas Mara areas = 0 ; dir Tomas Ria areas = 0": (
+            "exactly 1 of (Tomas dir:areas Mara = 0; Tomas dir:areas Ria = 0)"
+        ),
     }
     migrated = text
     for old, new in replacements.items():
