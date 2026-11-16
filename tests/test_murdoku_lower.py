@@ -485,6 +485,55 @@ def test_issue_243_clues_match_reference_for_every_placement(board, formula):
 
 
 @pytest.mark.parametrize(
+    ("ada_squares", "ben_squares", "card"),
+    [
+        (
+            (Square(0, 0), Square(1, 0)),
+            (Square(2, 1),),
+            "Ada dir:up empty rows = 1",
+        ),
+        (
+            (Square(0, 0), Square(0, 1)),
+            (Square(2, 2),),
+            "Ada on object:bed and every ?b in object:bed: Ada on ?b or ?b in empty rows",
+        ),
+        (
+            (Square(1, 0), Square(2, 0)),
+            (Square(0, 1),),
+            "some (people beside object:chest) dir:up Ada = 1",
+        ),
+        (
+            (Square(0, 0),),
+            (Square(1, 1), Square(2, 1)),
+            "Ada in rows:1,last and count people in rows:1,last = 1",
+        ),
+    ],
+)
+def test_issue_243_each_card_is_necessary_for_unique_solution(ada_squares, ben_squares, card):
+    board = Board(
+        size=3,
+        regions=[["a"] * 3 for _ in range(3)],
+        region_names={"a": "room"},
+        objects=[
+            BoardObject("bed", "standable", (Square(0, 0),)),
+            BoardObject("bed", "standable", (Square(1, 0),)),
+            BoardObject("chest", "blocking", (Square(0, 2),)),
+        ],
+        people=["Ada", "Ben"],
+        marks=[CellMark("ada", ada_squares), CellMark("ben", ben_squares)],
+    )
+    rules = [parse_statement("Ada on mark:ada"), parse_statement("Ben on mark:ben")]
+    statement = parse_statement(card)
+    assert len(solutions(board, [], limit=3, rules=rules)) == 2
+    expected = solutions(board, [statement], limit=3, rules=rules)
+    assert len(expected) == 1
+    model = compile_statements(board, [statement], rules=rules)
+    result = Solver(model).solve()
+    assert result.solved
+    assert model.solution() == expected[0]
+
+
+@pytest.mark.parametrize(
     "formula",
     [
         "every ?b in areas except area:hall: count (people in ?b) < count (people in area:hall)",
