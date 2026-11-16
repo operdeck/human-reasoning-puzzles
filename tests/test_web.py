@@ -183,6 +183,21 @@ def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
     assert "Ben remembers Ada in the study." in entry["text"]
 
 
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_vietnam_web_groups_pork_dish_clues_with_their_travelers(number):
+    text = example(f"vietnam-murdoku-{number}.txt").read_text()
+    bundle = web._murdoku(text, {})
+    assert any("De varkensvleesgerechten op het bord" in rule for rule in bundle["rules"])
+    for person, clue_number in (("Pippo", 1), ("Swena", 2)):
+        entry = next(
+            entry for entry in bundle["clueEntries"] if f"clue:{clue_number}" in entry["sources"]
+        )
+        assert entry["item"] == person
+        assert "een vakje met een varkensvleesgerecht" in entry["text"]
+        assert "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)" in entry["text"]
+        assert "bún chả" not in entry["text"]
+
+
 def test_murdoku_cell_details_describe_board_facts_without_solution():
     text = (
         example("murdoku_composition.txt")

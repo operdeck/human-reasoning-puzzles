@@ -66,8 +66,8 @@ Rules:
 with RauMuong attribute:reiziger in same area exactly 2
 
 Clues:
-not dir Pippo object:buncha,chaolong,thitkho,doi,phalau king <= 1
-not dir Swena object:buncha,chaolong,thitkho,doi,phalau king <= 1
+not dir Pippo object:buncha,chaolong,thitkho,doi,phalau king <= 1 | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+not dir Swena object:buncha,chaolong,thitkho,doi,phalau king <= 1 | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
 beside Mai object:thitkho
 beside Duc object:doi
 beside Quang object:doi
@@ -80,7 +80,7 @@ Title:
 Vietnam Murdoku 7x7: Groen uit de wok
 
 Intro:
-Na phở gà en loempia willen Pippo en Swena iets groens: rau muống xào, waterspinazie uit de wok met knoflook. Overal staan ook gerechten met varkensvlees of orgaanvlees, en daar blijven ze ver vandaan. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
+Na phở gà en loempia willen Pippo en Swena iets groens: rau muống xào, waterspinazie uit de wok met knoflook. De varkensvleesgerechten op het bord (soms met orgaanvlees) zijn bún chả, cháo lòng, thịt kho, dồi en phá lấu. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
 De rau muống xào is een van de zeven figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De rau muống ligt in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
 
 Figures:

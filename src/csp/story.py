@@ -475,6 +475,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.dir_exact": "{a} is exactly {n} {unit} {direction} {b}",
         "clue.dir_direction": "{a} is {direction} {b}",
         "clue.dir_knight": "{a} is a knight's move from {b}",
+        "clue.dir_near_cell": (
+            "{a} is on or directly next to {b} (including diagonally and across area borders)"
+        ),
+        "clue.dir_not_near_cell": (
+            "{a} is not on or directly next to {b} (not even diagonally or across area borders)"
+        ),
         "clue.area_isolation": ("No two side-adjacent areas{scope} are both occupied"),
         "clue.conditional": "If {a} holds role {role}, then {predicate}",
         "clue.alone_area": "{a} is the only person in {where}",
@@ -492,6 +498,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "target.at": "someone at {what}",
         "target.corner": "someone in the cells around {what}",
         "target.kind": "someone on {what}",
+        "cell_target.area": "a square {where}",
+        "cell_target.on": "a square of {what}",
+        "cell_target.at": "a square touching {what}",
+        "cell_target.corner": "a square around {what}",
+        "cell_target.kind": "a square of {what}",
         "target.people_on": "someone on {what}",
         "target.people": "one of {people}",
         "target.anyone": "anyone",
@@ -909,6 +920,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "clue.dir_exact": "{a} staat precies {n} {unit} {direction} {b}",
         "clue.dir_direction": "{a} staat {direction} {b}",
         "clue.dir_knight": "{a} staat een paardensprong van {b}",
+        "clue.dir_near_cell": (
+            "{a} staat op of direct naast {b} (ook schuin en over gebiedsgrenzen)"
+        ),
+        "clue.dir_not_near_cell": (
+            "{a} staat niet op of direct naast {b} "
+            "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)"
+        ),
         "clue.area_isolation": (
             "Twee gebieden die aan een zijde grenzen{scope} mogen niet allebei bezet zijn"
         ),
@@ -928,6 +946,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "target.at": "iemand bij {what}",
         "target.corner": "iemand in de vakjes rond {what}",
         "target.kind": "iemand op {what}",
+        "cell_target.area": "een vakje {where}",
+        "cell_target.on": "een vakje van {what}",
+        "cell_target.at": "een vakje dat {what} raakt",
+        "cell_target.corner": "een vakje rond {what}",
+        "cell_target.kind": "een vakje van {what}",
         "target.people_on": "iemand op {what}",
         "target.people": "een van {people}",
         "target.anyone": "iedereen",
@@ -3651,8 +3674,18 @@ class Story:
         return self.say(f"clue.{kind}", a=person, things=thing)
 
     def _direction_text(self, condition: DirectionCondition) -> str:
-        first, second = self._target_text(condition.first), self._target_text(condition.second)
+        first = self._target_text(condition.first, cells=not condition.first_is_people)
+        second = self._target_text(condition.second, cells=not condition.second_is_people)
         mode = condition.mode
+        if (
+            mode == "king"
+            and condition.comparison == "<="
+            and condition.distance == 1
+            and condition.first.kind == "person"
+            and not condition.second_is_people
+        ):
+            key = "clue.dir_not_near_cell" if condition.negated else "clue.dir_near_cell"
+            return self.say(key, a=first, b=second)
         if mode == "furthest":
             text = self.say("clue.furthest_all", a=first, b=second)
         elif mode == "knight":
@@ -3859,11 +3892,14 @@ class Story:
             kind = kind.replace("next_to", "on_or_next_to")
         return self.say(f"clue.{kind}", **fields)
 
-    def _target_text(self, selector: TargetSelector) -> str:
+    def _target_text(self, selector: TargetSelector, *, cells: bool = False) -> str:
+        prefix = "cell_target" if cells else "target"
         if selector.kind == "person":
             return selector.name
         if selector.kind == "union":
-            return self.say.join([self._target_text(part) for part in selector.parts], "or")
+            return self.say.join(
+                [self._target_text(part, cells=cells) for part in selector.parts], "or"
+            )
         if selector.kind == "people":
             return self.say("target.people", people=self.say.join(selector.name.split(",")))
         if selector.kind == "anyone":
@@ -3883,7 +3919,7 @@ class Story:
                 if selector.kind == "area"
                 else self.board.tagged_region_ids([selector.name])
             )
-            return self.say("target.area", where=self.places.regions(ids))
+            return self.say(f"{prefix}.area", where=self.places.regions(ids))
         if selector.kind == "people_on":
             return self.say("target.people_on", what=self._location_noun(selector.name))
         if selector.kind == "object_kind":
@@ -3891,13 +3927,13 @@ class Story:
                 "en": {"blocking": "blocking objects", "standable": "standable objects"},
                 "nl": {"blocking": "blokkerende objecten", "standable": "begaanbare objecten"},
             }
-            return self.say("target.kind", what=names[self.say.language][selector.name])
+            return self.say(f"{prefix}.kind", what=names[self.say.language][selector.name])
         what = self.places.thing(selector.name)
         if selector.kind in ("object", "mark"):
-            return self.say("target.on", what=what)
+            return self.say(f"{prefix}.on", what=what)
         if selector.kind == "edge_item":
-            return self.say("target.at", what=what)
-        return self.say("target.corner", what=what)
+            return self.say(f"{prefix}.at", what=what)
+        return self.say(f"{prefix}.corner", what=what)
 
     def _quantified_text(self, condition: QuantifiedCondition) -> str:
         target = (

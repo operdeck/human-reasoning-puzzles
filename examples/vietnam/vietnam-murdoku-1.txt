@@ -51,8 +51,8 @@ Rules:
 with PhoGa attribute:reiziger in same area exactly 2
 
 Clues:
-not dir Pippo object:buncha,thitkho,phalau king <= 1
-not dir Swena object:buncha,thitkho,phalau king <= 1
+not dir Pippo object:buncha,thitkho,phalau king <= 1 | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+not dir Swena object:buncha,thitkho,phalau king <= 1 | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
 dir Lan Khoa up
 beside Khoa object:thitkho
 not beside Pippo object:kruk
@@ -63,7 +63,7 @@ Title:
 Vietnam Murdoku 5x5: Op zoek naar phở gà
 
 Intro:
-Pippo en Swena trekken met hun rugzak door Vietnam, op zoek naar een kom phở gà. Overal staan gerechten met varkensvlees of orgaanvlees, en daar blijven ze ver vandaan. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
+Pippo en Swena trekken met hun rugzak door Vietnam, op zoek naar een kom phở gà. De varkensvleesgerechten op het bord (soms met orgaanvlees) zijn bún chả, thịt kho en phá lấu. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
 De phở gà is een van de vijf figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De phở gà staat in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
 
 Figures:

@@ -195,6 +195,11 @@ Clues should read like a detective's notes, not like arithmetic.
   and ask whether another reading of the sentence allows other squares. If it
   does, fix the generated text in `src/csp/story.py` with a test; do not
   redesign the board or swap a multi-square object for single squares.
+- **Spatial selectors name cells, not occupants.** In `dir`, `object:` names
+  the object's squares even when blocking; `people_on:object:` names people.
+  A negated `king <= 1` excludes the target squares and all eight neighboring
+  squares, including diagonals and neighbors across area borders. Keep that
+  distinction explicit in generated clues.
 - Every clue must be needed: `thin` and `report` show which are not; `--lint`
   flags implied and redundant clues.
 - **The theme's key clue must do work.** Global counts and greedy suggestions
