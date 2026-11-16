@@ -162,6 +162,11 @@ def test_required_person_set_location_respects_vacuous_quantification(board):
     assert vacuous_errors(board, [parse_statement("every people on object:table")])
     assert not vacuous_errors(board, [parse_statement("every role:guard on object:table")])
     assert not vacuous_errors(board, [parse_statement("no people on object:table")])
+    required = replace(board, roles=[RoleSpec("guard", frozenset({1}))])
+    assert vacuous_errors(required, [parse_statement("every role:guard on object:table")])
+    assert not vacuous_errors(
+        required, [parse_statement("every (role:guard except Ada) on object:table")]
+    )
 
 
 def test_impossible_occupied_scope_direction_is_an_error(board):

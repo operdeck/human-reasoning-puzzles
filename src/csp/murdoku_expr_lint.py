@@ -112,22 +112,17 @@ def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[s
                 named_person = isinstance(atom.subject, lang.Name) and (
                     atom.subject.token.text in board.people
                 )
-                some_people = (
-                    atom.determiner is not None
-                    and atom.determiner.text == "some"
-                    and infer_operand(board, atom.subject).sort == Sort.PERSON
+                determiner = atom.determiner.text if atom.determiner else ""
+                shape = (
+                    infer_operand(board, atom.subject) if determiner in {"some", "every"} else None
                 )
-                all_people = (
-                    atom.determiner is not None
-                    and atom.determiner.text == "every"
-                    and isinstance(atom.subject, lang.Name)
-                    and atom.subject.token.text == "people"
-                    and bool(board.people)
+                impossible_set = (
+                    shape is not None
+                    and shape.sort == Sort.PERSON
+                    and (determiner == "some" or shape.minimum > 0)
                 )
                 cells = (
-                    _static_cells(board, atom.target)
-                    if named_person or some_people or all_people
-                    else None
+                    _static_cells(board, atom.target) if named_person or impossible_set else None
                 )
                 if cells is not None and not cells.intersection(board.free):
                     token = atom.operator
