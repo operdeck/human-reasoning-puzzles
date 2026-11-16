@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from . import murdoku_lang as lang
 from .core import Kind, Model
 from .murdoku import Board, Square
@@ -93,36 +95,52 @@ def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square
 def try_lower_count(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower supported top-level counts; return false without changes for other shapes."""
     formula = statement.formula
-    if not (
-        isinstance(formula, lang.NumberComparison)
-        and isinstance(formula.left, lang.Count)
-        and isinstance(formula.right, lang.Integer)
-    ):
-        return False
+    predicate: Callable[[int], bool]
+    match formula:
+        case lang.NumberComparison(
+            left=lang.Count(operand=operand), operator=operator, right=lang.Integer(value=value)
+        ):
+            expected = int(value.text)
+            predicate = {
+                "=": lambda actual: actual == expected,
+                "!=": lambda actual: actual != expected,
+                "<": lambda actual: actual < expected,
+                "<=": lambda actual: actual <= expected,
+                ">": lambda actual: actual > expected,
+                ">=": lambda actual: actual >= expected,
+            }[operator.text]
+            location = operator
+        case lang.Parity(number=lang.Count(operand=operand), parity=parity):
+            remainder = int(parity.text == "odd")
+
+            def parity_matches(actual: int) -> bool:
+                return actual % 2 == remainder
+
+            predicate = parity_matches
+            location = parity
+        case lang.NumberRange(number=lang.Count(operand=operand), lower=lower, upper=upper):
+            start, end = int(lower.text), int(upper.text)
+
+            def range_matches(actual: int) -> bool:
+                return start <= actual <= end
+
+            predicate = range_matches
+            location = lower
+        case _:
+            return False
     check_formula(board, formula)
-    keys = _counted_keys(board, formula.left.operand)
+    keys = _counted_keys(board, operand)
     if keys is None:
         return False
     missing = {variable for variable, _ in keys} - set(model.all_variables)
     if missing:
         raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
-    expected = int(formula.right.value.text)
-    comparisons = {
-        "=": lambda value: value == expected,
-        "!=": lambda value: value != expected,
-        "<": lambda value: value < expected,
-        "<=": lambda value: value <= expected,
-        ">": lambda value: value > expected,
-        ">=": lambda value: value >= expected,
-    }
     permitted = {
-        value
-        for value in range(min(len(keys), len(board.people)) + 1)
-        if comparisons[formula.operator.text](value)
+        value for value in range(min(len(keys), len(board.people)) + 1) if predicate(value)
     }
     if not permitted:
         raise ValueError(
-            f"line {formula.operator.line}, column {formula.operator.column}: "
+            f"line {location.line}, column {location.column}: "
             "comparison has no feasible value on this board"
         )
     model.constrain(
