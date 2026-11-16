@@ -6,6 +6,7 @@ import pytest
 from csp.bruteforce.murdoku_expr import solutions
 from csp.core import Contradiction, Solver, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
+from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import (
     compile_statements,
@@ -16,6 +17,9 @@ from csp.murdoku_lower import (
     try_lower_role_atom,
     try_lower_role_target,
 )
+from csp.puzzlefile import load_board
+from csp.report import grade
+from tests.examples import example
 
 
 @pytest.fixture
@@ -537,6 +541,8 @@ def test_issue_243_each_card_is_necessary_for_unique_solution(ada_squares, ben_s
     "formula",
     [
         "every ?b in areas except area:hall: count (people in ?b) < count (people in area:hall)",
+        "every ?b in (area of free cells except area:hall): "
+        "count (people in ?b) > count (people in area:hall)",
         pytest.param(
             "no ?r in empty rows: some occupied rows dir:up ?r and some occupied rows dir:down ?r",
             marks=pytest.mark.solutions,
@@ -548,6 +554,61 @@ def test_issue_243_each_card_is_necessary_for_unique_solution(ada_squares, ben_s
 )
 def test_composed_glossary_clues_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "every ?b in areas except area:garden: "
+        "count (people in ?b) < count (people in area:garden)",
+        "every ?b in (area of free cells except area:hall): "
+        "count (people in ?b) > count (people in area:hall)",
+    ],
+)
+def test_population_patterns_match_reference_with_blocked_area(board, formula):
+    blocked = replace(
+        board,
+        objects=[BoardObject("wall", "blocking", tuple(Square(0, col) for col in range(3)))],
+    )
+    _assert_compilation_matches_reference(blocked, formula)
+
+
+def test_tuned_population_patterns_preserve_migrated_example_grade():
+    text = example("samen-onderweg.txt").read_text()
+    replacements = {
+        "most_populated area:Tokyo": (
+            "every ?b in (areas except area:Tokyo): "
+            "count (people in ?b) < count (people in area:Tokyo)"
+        ),
+        "least_populated area:Okinawa": (
+            "every ?b in (area of free cells except area:Okinawa): "
+            "count (people in ?b) > count (people in area:Okinawa)"
+        ),
+        "beside Keiko object:lantaarn": "Keiko beside object:lantaarn",
+        "on Mio object:bank": "Mio on object:bank",
+        "dir Haru Jun up": "Haru dir:up Jun",
+        "dir Haru Isamu left": "Haru dir:left Isamu",
+        "not beside Haru object:torii": "not Haru beside object:torii",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    legacy_board, legacy_clues = load_board(text)
+    board, rules, clues = load_expression_board(migrated)
+
+    def result(model):
+        fired = []
+        solved = Solver(model).solve(lambda rule, steps: fired.append(rule))
+        return solved, grade(fired)
+
+    original, original_grade = result(compile_puzzle(legacy_board, legacy_clues))
+    model = compile_statements(board, clues, rules=rules)
+    names = [constraint.name for constraint in model.constraints]
+    assert len(names) == len(set(names))
+    rewritten, rewritten_grade = result(model)
+    assert original.solved and rewritten.solved
+    assert rewritten.assignment == original.assignment
+    assert rewritten_grade == original_grade
 
 
 def test_random_small_well_typed_statements_match_reference():

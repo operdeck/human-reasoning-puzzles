@@ -3447,11 +3447,19 @@ def _compile_area_population(
     }
     usable = [region for region in sorted(board.region_names) if occupants[region]]
     levels: dict[tuple[str, int], tuple[int, int]] = {}
+    comparisons: set[tuple[str, str]] = set()
+    equalities: set[frozenset[str]] = set()
+
+    def area_name(region: str) -> str:
+        name = board.region_names[region]
+        if list(board.region_names.values()).count(name) > 1:
+            return f"{name} ({region})"
+        return name
 
     def level(region: str, k: int) -> tuple[int, int]:
         """(the area holds at least k people, the area holds fewer than k)."""
         if (region, k) not in levels:
-            name = board.region_names[region]
+            name = area_name(region)
             _variable, is_at_least, is_below = _hidden_boolean(
                 model,
                 f"{POPULATION_PREFIX}_{region}_{k}",
@@ -3479,10 +3487,14 @@ def _compile_area_population(
 
     def above(more: str, fewer: str) -> None:
         """`more` holds strictly more people than `fewer`."""
+        if (more, fewer) in comparisons:
+            return
+        comparisons.add((more, fewer))
+        more_name, fewer_name = area_name(more), area_name(fewer)
         # A nonnegative population is at least zero, so the greater one is nonempty.
         at_least_one, _ = level(more, 1)
         model.constrain(
-            f"{board.region_names[more]} outnumbers {board.region_names[fewer]}: nonempty",
+            f"{more_name} outnumbers {fewer_name}: nonempty",
             Kind.EXACTLY_ONE,
             [at_least_one],
             family=POPULATION_FAMILY,
@@ -3493,13 +3505,13 @@ def _compile_area_population(
                 model.assign(
                     below,
                     POPULATION_FAMILY,
-                    f"{board.region_names[fewer]} holds fewer than {k}",
-                    sources=(f"{board.region_names[more]} holds more",),
+                    f"{fewer_name} holds fewer than {k}",
+                    sources=(f"{more_name} holds more",),
                 )
                 continue
             _, short = level(more, k + 1)
             model.constrain(
-                f"{board.region_names[more]} outnumbers {board.region_names[fewer]}",
+                f"{more_name} outnumbers {fewer_name} at level {k}",
                 Kind.AT_MOST_ONE,
                 [at_least, short],
                 family=POPULATION_FAMILY,
@@ -3507,11 +3519,15 @@ def _compile_area_population(
 
     def same(first: str, second: str) -> None:
         """`first` and `second` hold the same number of people."""
+        pair = frozenset((first, second))
+        if pair in equalities:
+            return
+        equalities.add(pair)
         for k in range(1, maximum + 1):
             up, _ = level(first, k)
             _, short = level(second, k)
             model.constrain(
-                f"{board.region_names[first]} and {board.region_names[second]} agree on {k}",
+                f"{area_name(first)} and {area_name(second)} agree on {k}",
                 Kind.AT_MOST_ONE,
                 [up, short],
                 family=POPULATION_FAMILY,
@@ -3519,7 +3535,7 @@ def _compile_area_population(
             up, _ = level(second, k)
             _, short = level(first, k)
             model.constrain(
-                f"{board.region_names[second]} and {board.region_names[first]} agree on {k}",
+                f"{area_name(second)} and {area_name(first)} agree on {k}",
                 Kind.AT_MOST_ONE,
                 [up, short],
                 family=POPULATION_FAMILY,

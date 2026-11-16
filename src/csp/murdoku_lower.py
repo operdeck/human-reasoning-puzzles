@@ -9,10 +9,12 @@ from itertools import permutations
 from . import murdoku_lang as lang
 from .core import Kind, Model
 from .murdoku import (
+    AreaPopulationCondition,
     Board,
     Square,
     _area_distances,
     _auxiliary_variable,
+    _compile_area_population,
     _direction_test,
     _hidden_boolean,
     compile_puzzle,
@@ -2726,6 +2728,65 @@ def _reify_formula(
     raise NotImplementedError(f"{name}: expression lowering is not implemented")
 
 
+def _population_pattern(
+    board: Board, statement: lang.Statement, label: str
+) -> AreaPopulationCondition | None:
+    """Recognize strict single-area extremes without changing their meaning."""
+    formula = statement.formula
+    if not (
+        isinstance(formula, lang.Quantified)
+        and formula.quantifier.text == "every"
+        and len(formula.variables) == 1
+        and isinstance(formula.source, lang.Difference)
+        and isinstance(formula.source.right, lang.Name)
+        and formula.source.right.token.text.startswith("area:")
+        and isinstance(formula.body, lang.NumberComparison)
+        and formula.body.operator.text in {"<", ">"}
+    ):
+        return None
+    source = formula.source.left
+    if formula.body.operator.text == "<":
+        if not isinstance(source, lang.Name) or source.token.text != "areas":
+            return None
+        kind = "busiest_area"
+    else:
+        if not (
+            isinstance(source, lang.Projection)
+            and source.kind.text == "area"
+            and isinstance(source.operand, lang.Qualified)
+            and source.operand.adjective.text == "free"
+            and isinstance(source.operand.operand, lang.Name)
+            and source.operand.operand.token.text == "cells"
+        ):
+            return None
+        kind = "quietest_area"
+    left = formula.body.left
+    right = formula.body.right
+    if not (
+        isinstance(left, lang.Count)
+        and isinstance(left.operand, lang.Filter)
+        and isinstance(left.operand.source, lang.Name)
+        and left.operand.source.token.text == "people"
+        and left.operand.operator.text == "in"
+        and isinstance(left.operand.target, lang.Name)
+        and left.operand.target.token.text == formula.variables[0].text
+        and isinstance(right, lang.Count)
+        and isinstance(right.operand, lang.Filter)
+        and isinstance(right.operand.source, lang.Name)
+        and right.operand.source.token.text == "people"
+        and right.operand.operator.text == "in"
+    ):
+        return None
+    excluded = _static_area_ids(board, formula.source.right)
+    target = _static_area_ids(board, right.operand.target)
+    if excluded is None or len(excluded) != 1 or target != excluded:
+        return None
+    (region,) = excluded
+    if not any(board.region_of(square) == region for square in board.free):
+        return None
+    return AreaPopulationCondition(label, kind, (region,), (), None, 0)
+
+
 def compile_statements(
     board: Board, statements: Sequence[lang.Statement], *, rules: Sequence[lang.Statement] = ()
 ) -> Model:
@@ -2740,7 +2801,16 @@ def compile_statements(
         *((f"rule {index}", statement) for index, statement in enumerate(rules, 1)),
         *((f"clue {index}", statement) for index, statement in enumerate(statements, 1)),
     ]
+    populations = [
+        (label, condition)
+        for label, statement in labelled
+        if (condition := _population_pattern(board, statement, label)) is not None
+    ]
+    _compile_area_population(model, board, [condition for _, condition in populations])
+    population_labels = {label for label, _ in populations}
     for label, statement in labelled:
+        if label in population_labels:
+            continue
         if not any(
             lower(model, board, statement, label)
             for lower in (
