@@ -565,7 +565,11 @@ def _legacy_hint(source: str) -> str | None:
         (r"\bis\s+not\b", "not P is X"),
         (r"^\s*not_(?:in|on|beside)\s+", "not P in X (or not P on/beside X)"),
         (
-            r"^\s*(?:not\s+)?(?:in|on|beside|touches)\s+\S+\s+\S+",
+            r"^\s*not\s+(?:in|on|beside|touches)\s+\S+\s+\S+",
+            "not P in X (or not P on/beside/touches X)",
+        ),
+        (
+            r"^\s*(?:in|on|beside|touches)\s+\S+\s+\S+",
             "P in X (or P on/beside/touches X)",
         ),
         (r"^\s*(?:not\s+)?dir\s+", "P dir:mode X (or not P dir:mode X)"),

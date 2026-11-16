@@ -290,6 +290,7 @@ def test_formula_source_error_uses_requested_line():
     ("source", "replacement"),
     [
         ("in Ada area:hall", "P in X"),
+        ("not in Ada area:hall", "not P in X"),
         ("not_in Ada area:hall", "not P in X"),
         ("Ada is not Ben", "not P is X"),
         ("not has Ada role:guard", "P is role:x"),
