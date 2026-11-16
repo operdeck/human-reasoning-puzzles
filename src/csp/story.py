@@ -4362,7 +4362,71 @@ def murdoku_key(text: str) -> list[tuple[str, str]]:
     return [(label, name) for _, label, name in murdoku_key_items(text)]
 
 
-def murdoku_rules(text: str) -> list[str]:
+def _expression_rule_notes(
+    board: Board, statements: Sequence[murdoku_lang.Statement], say: Wording
+) -> list[str]:
+    notes: list[str] = []
+
+    def target_names(value: object) -> set[str]:
+        if isinstance(value, murdoku_lang.Name):
+            return {value.token.text}
+        if isinstance(value, tuple):
+            return {name for item in value for name in target_names(item)}
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
+            return {
+                name
+                for item in dataclasses.fields(value)
+                for name in target_names(getattr(value, item.name))
+            }
+        return set()
+
+    def visit(value: object) -> None:
+        if isinstance(value, (murdoku_lang.Atom, murdoku_lang.Filter)):
+            operator = value.operator.text
+            names = target_names(value.target)
+            kinds = {name.partition(":")[0] for name in names}
+            features = {name.rsplit(":", 1)[-1] for name in names} & board.edge_item_names
+            if operator == "beside" and (
+                "objects" in names or bool(kinds & {"object", "object_kind"})
+            ):
+                notes.append(say("doc.clue_beside_object"))
+            if operator == "touches" and "mark" in kinds:
+                notes.append(say("doc.clue_touches_mark"))
+            if operator == "on":
+                if "point_object" in kinds:
+                    notes.append(say("doc.clue_on_point"))
+                if "edge_item" in kinds:
+                    edge_kinds = {board.edge_item_kind(name) for name in features}
+                    if "door" in edge_kinds:
+                        notes.append(say("doc.clue_on_door"))
+                    if "window" in edge_kinds:
+                        notes.append(say("doc.clue_on_window"))
+            if operator.startswith("dir:"):
+                modes = operator.split(":")[1:]
+                if "manhattan" in modes:
+                    notes.append(say("doc.clue_distance"))
+                if "euclidean" in modes:
+                    notes.append(say("doc.clue_euclidean_distance"))
+                if "areas" in modes:
+                    notes.append(say("doc.clue_neighboring_areas"))
+        if isinstance(value, tuple):
+            for item in value:
+                visit(item)
+        elif dataclasses.is_dataclass(value) and not isinstance(value, type):
+            for item in dataclasses.fields(value):
+                visit(getattr(value, item.name))
+
+    for statement in statements:
+        visit(statement.formula)
+    return list(dict.fromkeys(notes))
+
+
+def murdoku_rules(
+    text: str,
+    *,
+    expression_rules: Sequence[murdoku_lang.Statement] | None = None,
+    expression_clues: Sequence[murdoku_lang.Statement] = (),
+) -> list[str]:
     """The rules a Murdoku player reads before starting, in the author's order.
 
     The `Intro:` paragraphs (or the standard rules when a file has none), what
@@ -4374,8 +4438,20 @@ def murdoku_rules(text: str) -> list[str]:
     sentence once, where it appears first, so the rules list reads as one rule
     rather than two conditions.
     """
-    board, clues = load_board(text)
     presentation = load_presentation(text)
+    if expression_rules is not None:
+        board = load_board_layout(text)
+        say = Wording.read(text)
+        intro = presentation.intro or [say("doc.rules")]
+        return _unique_player_rules(
+            intro,
+            [
+                *board_notes(text, expression_rules=expression_rules),
+                *_expression_rule_notes(board, [*expression_rules, *expression_clues], say),
+                say("doc.murdoku_note"),
+            ],
+        )
+    board, clues = load_board(text)
     entries = [*board.rules, *clues]
     entries += [part for kind, args in entries if kind == COUNTING for part in counted(args)[1]]
     kinds = {kind for kind, _ in entries}
@@ -4423,20 +4499,17 @@ def murdoku_rules(text: str) -> list[str]:
         clue_notes.append(phrase(text, "doc.clue_neighboring_areas"))
     if "away_from" in kinds:
         clue_notes.append(phrase(text, "doc.clue_away_from"))
-    said = [
-        *(presentation.intro or [phrase(text, "doc.rules")]),
-        *board_notes(text),
-        *clue_notes,
-        phrase(text, "doc.murdoku_note"),
-    ]
-    intro_count = len(presentation.intro) if presentation.intro else 1
-    intro_items = said[:intro_count]
+    return _unique_player_rules(
+        presentation.intro or [phrase(text, "doc.rules")],
+        [*board_notes(text), *clue_notes, phrase(text, "doc.murdoku_note")],
+    )
+
+
+def _unique_player_rules(intro_items: list[str], notes: list[str]) -> list[str]:
     # An intro paragraph may already contain a board rule or mark note; do not
     # print that same sentence again as a separate bullet.
     kept = intro_items + [
-        item
-        for item in said[intro_count:]
-        if not any(item in paragraph for paragraph in intro_items)
+        item for item in notes if not any(item in paragraph for paragraph in intro_items)
     ]
     return list(dict.fromkeys(kept))
 

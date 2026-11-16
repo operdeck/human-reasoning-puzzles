@@ -12,6 +12,7 @@ from csp.story import (
     board_notes,
     figure_clues,
     murdoku_key_items,
+    murdoku_rules,
     object_list,
     role_list,
 )
@@ -147,6 +148,44 @@ def test_expression_board_notes_include_generated_and_authored_rules():
         "Ada stays in the first row!",
         "Ben is in columns 1.",
     ]
+
+
+def test_expression_player_rules_use_ast_for_notes_and_deduplicate_intro():
+    text = (
+        "Intro: Ada stays in the first row.\n"
+        + TEXT.replace(
+            "  Ben in columns:1 | Ben is in the first column.",
+            "  Ben beside object:chair\n  Ben dir:manhattan Ada >= 1",
+        )
+        + "Objects:\nchair: standable r1c1\n"
+    )
+    _, rules, clues = load_expression_board(text)
+    output = murdoku_rules(text, expression_rules=rules, expression_clues=clues)
+    assert output.count("Ada stays in the first row.") == 1
+    assert any("Beside an object" in note for note in output)
+    assert "Distance counts steps across sides, not diagonals." in output
+
+
+def test_expression_player_rules_cover_mixed_feature_targets():
+    text = TEXT.replace("a: hall\nGrid:\na a\na a", "a: hall\nb: yard\nGrid:\na b\na b").replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  Ben on edge_item:door,window\n"
+        "  Ada on point_object:fountain\n"
+        "  Ada touches mark:red\n"
+        "  Ben dir:nearest:euclidean Ada",
+    )
+    text += (
+        "EdgeItems:\ndoor: door r1c1 r1c2\nwindow: window r2c1\n"
+        "PointObjects:\nfountain: r1.5c1.5\n"
+        "Marks:\nred: r2c2\n"
+    )
+    _, rules, clues = load_expression_board(text)
+    output = murdoku_rules(text, expression_rules=rules, expression_clues=clues)
+    assert any("On a door" in note for note in output)
+    assert any("On a window" in note for note in output)
+    assert any("On a point object" in note for note in output)
+    assert any("touches a marked square" in note for note in output)
+    assert any("straight line" in note for note in output)
 
 
 def test_expression_keys_match_ast_after_reordering_or_rewording():
