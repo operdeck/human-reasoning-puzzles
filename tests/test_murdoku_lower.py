@@ -397,6 +397,9 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "every ?r in roles: not Ada is ?r",
         "some ?r in roles: not Ada is ?r",
         "exactly 1 ?r in roles: Ada is ?r",
+        "every ?r in roles: ?r is ?r",
+        "every ?r, ?s in roles: ?r != ?s",
+        "(some ?r, ?s in roles: ?r = ?s) or Ada is role:guard",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
@@ -433,6 +436,11 @@ def _assert_compilation_matches_reference(board, formula):
         "some ?r in roles: not Ada is ?r",
         "exactly 1 ?r in roles: Ada is ?r",
         "every ?r in roles: Ada is ?r",
+        "every ?r, ?s in roles: ?r != ?s",
+        "every ?r in roles: ?r is ?r",
+        "no ?r, ?s in roles: ?r is ?s",
+        "every ?r, ?s in roles: count (?r, ?s) = 2",
+        "count roles = 2",
     ],
 )
 def test_bound_role_membership_with_multiple_roles(board, formula):

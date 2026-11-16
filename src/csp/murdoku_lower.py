@@ -643,6 +643,36 @@ def _opposite(model: Model, literal: int) -> int:
     return model.literal(model.var_of(literal), not value)
 
 
+def _constant_boolean(model: Model, value: bool, name: str) -> int:
+    _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
+    model.assign(yes if value else no, "clue", name, sources=(f"{name} state",))
+    return yes
+
+
+def _static_roles(board: Board, operand: lang.Operand, bindings: _Bindings) -> set[str] | None:
+    if isinstance(operand, lang.Name):
+        bound = bindings.get(operand.token.text)
+        if isinstance(bound, _RoleBinding):
+            return {bound.name}
+        if operand.token.text == "roles":
+            return {role.name for role in board.roles}
+    if isinstance(operand, lang.Union):
+        result: set[str] = set()
+        for item in operand.items:
+            roles = _static_roles(board, item, bindings)
+            if roles is None:
+                return None
+            result.update(roles)
+        return result
+    if isinstance(operand, lang.Difference):
+        left, right = (
+            _static_roles(board, operand.left, bindings),
+            _static_roles(board, operand.right, bindings),
+        )
+        return left - right if left is not None and right is not None else None
+    return None
+
+
 def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
     if isinstance(operand, lang.Name):
         value = bindings.get(operand.token.text)
@@ -1000,18 +1030,22 @@ def _number_variable(
     if isinstance(number, lang.Integer):
         values = {int(number.value.text)}
     elif isinstance(number, lang.Count):
-        operand = _bind_operand(number.operand, bindings)
-        selections = _occupancy_literals(model, board, operand, name, empty_scopes)
-        if selections is None:
-            if infer_operand(board, operand).sort != Sort.PERSON:
-                raise NotImplementedError(f"{name}: numeric count lowering is not implemented")
-            selections = [
-                _person_selected(
-                    model, board, person, operand, f"{name} {person} member", empty_scopes
-                )
-                for person in board.people
-            ]
-        values = set(range(len(selections) + 1))
+        roles = _static_roles(board, number.operand, bindings)
+        if roles is not None:
+            values = {len(roles)}
+        else:
+            operand = _bind_operand(number.operand, bindings)
+            selections = _occupancy_literals(model, board, operand, name, empty_scopes)
+            if selections is None:
+                if infer_operand(board, operand).sort != Sort.PERSON:
+                    raise NotImplementedError(f"{name}: numeric count lowering is not implemented")
+                selections = [
+                    _person_selected(
+                        model, board, person, operand, f"{name} {person} member", empty_scopes
+                    )
+                    for person in board.people
+                ]
+            values = set(range(len(selections) + 1))
     else:
         left, left_values = _number_variable(
             model, board, number.left, f"{name} left", bindings, empty_scopes
@@ -1068,6 +1102,18 @@ def _reify_formula(
     bindings = {} if bindings is None else bindings
     empty_scopes = {} if empty_scopes is None else empty_scopes
     if isinstance(formula, lang.Atom):
+        if formula.operator.text == "is":
+            subject_roles = _static_roles(board, formula.subject, bindings)
+            target_roles = _static_roles(board, formula.target, bindings)
+            if subject_roles is not None and target_roles is not None:
+                selected_roles = subject_roles & target_roles
+                determiner = formula.determiner.text if formula.determiner else "some"
+                matched = {
+                    "some": bool(selected_roles),
+                    "every": selected_roles == subject_roles,
+                    "no": not selected_roles,
+                }[determiner]
+                return _constant_boolean(model, matched, name)
         target_operand = formula.target
         if isinstance(target_operand, lang.Name):
             bound = bindings.get(target_operand.token.text)
@@ -1140,6 +1186,13 @@ def _reify_formula(
             _reify_formula(model, board, formula.formula, f"{name} not", bindings, empty_scopes),
         )
     if isinstance(formula, lang.SetComparison):
+        left_roles = _static_roles(board, formula.left, bindings)
+        right_roles = _static_roles(board, formula.right, bindings)
+        if left_roles is not None and right_roles is not None:
+            same_roles = left_roles == right_roles
+            return _constant_boolean(
+                model, same_roles if formula.operator.text == "=" else not same_roles, name
+            )
         left_set = _bind_operand(formula.left, bindings)
         right_set = _bind_operand(formula.right, bindings)
         if infer_operand(board, left_set).sort != Sort.PERSON:
@@ -1162,6 +1215,9 @@ def _reify_formula(
     count = _count_predicate(formula)
     if count is not None:
         operand, predicate, _ = count
+        roles = _static_roles(board, operand, bindings)
+        if roles is not None:
+            return _constant_boolean(model, predicate(len(roles)), name)
         operand = _bind_operand(operand, bindings)
         occupancy = _occupancy_literals(model, board, operand, name, empty_scopes)
         if occupancy is not None:
