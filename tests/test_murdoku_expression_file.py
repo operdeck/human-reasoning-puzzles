@@ -61,6 +61,12 @@ def test_expression_file_rejects_reserved_person_names_with_location(name):
         load_expression_board(text)
 
 
+def test_expression_file_rejects_reserved_person_in_inline_header():
+    text = "People: not\n" + TEXT.replace("People:\nAda\nBen\n", "")
+    with pytest.raises(ValueError, match=r"line 1, column 9: person name 'not' is reserved"):
+        load_expression_board(text)
+
+
 @pytest.mark.parametrize("name", ["Not", "empty-handed", "People"])
 def test_expression_file_allows_case_sensitive_non_keywords(name):
     text = TEXT.replace("Ada", name)

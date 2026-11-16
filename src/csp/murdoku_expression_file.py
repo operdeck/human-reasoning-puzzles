@@ -26,6 +26,10 @@ def _read_statements(text: str) -> tuple[list[Statement], list[Statement], list[
                 sections[current] = []
         elif current in sections:
             sections[current].append((number, raw))
+        elif current is None:
+            head, separator, value = raw.partition(":")
+            if separator and head.strip() == "People" and value.strip():
+                sections["People"] = [(number, " " * (len(head) + 1) + value)]
     for number, raw in sections["People"]:
         name = raw.strip()
         if name in RESERVED_IDENTIFIERS:
