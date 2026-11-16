@@ -523,7 +523,7 @@ def try_lower_area_companions(
         ):
             continue
         total = _literal_integer(target)
-        if total is None or total < 1 or len(board.people) < 2:
+        if total is None or not 1 <= total <= len(board.people) or len(board.people) < 2:
             continue
         check_formula(board, formula)
         missing = set(board.people) - set(model.all_variables)
@@ -564,6 +564,11 @@ def try_lower_occupied_cell_pair(
     first, second = (_static_cells(board, item.target) for item in filters)
     direction = _direction(board, atom.operator.text, atom.measure)
     if first is None or second is None or direction is None:
+        return False
+    free = set(board.free)
+    if not any(
+        left != right and direction(left, right) for left in first & free for right in second & free
+    ):
         return False
     check_formula(board, atom)
     missing = set(board.people) - set(model.all_variables)

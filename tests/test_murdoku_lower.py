@@ -212,6 +212,13 @@ def test_occupied_cell_pair_matches_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+def test_impossible_occupied_cell_pair_uses_general_lowering(board):
+    formula = "some (people on object:bed) dir:up (people on object:bed)"
+    model = compile_puzzle(board, [])
+    assert not try_lower_occupied_cell_pair(model, board, parse_statement(formula), "clue 1")
+    _assert_compilation_matches_reference(board, formula)
+
+
 @pytest.mark.parametrize(
     "formula",
     [
