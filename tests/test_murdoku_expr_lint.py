@@ -1,0 +1,87 @@
+from dataclasses import replace
+
+import pytest
+
+from csp.murdoku import Board, RoleSpec, Square
+from csp.murdoku_expr_lint import role_negation_warnings
+from csp.murdoku_lang import holds, parse_statement
+
+
+@pytest.fixture
+def board():
+    return Board(
+        size=2,
+        regions=[["a", "a"], ["b", "b"]],
+        region_names={"a": "hall", "b": "garden"},
+        objects=[],
+        people=["Ada", "Ben"],
+        roles=[RoleSpec("guard", frozenset({0, 1, 2}))],
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "not Ada dir:areas role:guard = 0",
+        "no Ada dir:areas role:guard = 0",
+        "if Ben in area:hall then not Ada dir:areas role:guard = 0",
+    ],
+)
+def test_warns_when_negated_relation_allows_role_membership(board, source):
+    statement = parse_statement(source, line=7)
+    warnings = role_negation_warnings(board, [statement])
+    assert len(warnings) == 1
+    assert warnings[0].startswith("line 7, column ")
+    assert "not Ada is role:guard" in warnings[0]
+
+
+def test_warning_reflects_reference_semantics(board):
+    statement = parse_statement("not Ada dir:areas role:guard = 0")
+    assert holds(
+        statement,
+        board,
+        {"Ada": Square(0, 0), "Ben": Square(1, 1)},
+        {("Ada", "guard"): True, ("Ben", "guard"): False},
+    )
+    assert role_negation_warnings(board, [statement])
+
+
+def test_warns_for_each_eligible_role_in_a_union(board):
+    board = replace(
+        board,
+        roles=[
+            RoleSpec("guard", frozenset({1})),
+            RoleSpec("chef", frozenset({1})),
+            RoleSpec("pilot", frozenset({1}), eligible_people=frozenset({"Ben"})),
+        ],
+    )
+    statement = parse_statement("not Ada dir:areas role:guard,chef,pilot = 0")
+    warnings = role_negation_warnings(board, [statement])
+    assert len(warnings) == 2
+    assert "not Ada is role:guard" in warnings[0]
+    assert "not Ada is role:chef" in warnings[1]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Ada dir:areas role:guard = 0",
+        "not not Ada dir:areas role:guard = 0",
+        "not Ada is role:guard",
+        "not Ada in area:hall",
+    ],
+)
+def test_does_not_warn_for_other_statements(board, source):
+    assert not role_negation_warnings(board, [parse_statement(source)])
+
+
+@pytest.mark.parametrize(
+    "role",
+    [
+        RoleSpec("guard", frozenset({0})),
+        RoleSpec("guard", frozenset({1}), eligible_people=frozenset({"Ben"})),
+    ],
+)
+def test_does_not_warn_for_an_ineligible_subject(board, role):
+    board = replace(board, roles=[role])
+    assert not role_negation_warnings(board, [parse_statement("not Ada dir:areas role:guard = 0")])
