@@ -91,6 +91,44 @@ def _counted_keys(board: Board, operand: lang.Operand) -> list[tuple[str, Square
     return None
 
 
+def _direction(board: Board, atom: lang.Atom) -> Callable[[Square, Square], bool] | None:
+    mode = atom.operator.text.removeprefix("dir:")
+    simple = {"up", "down", "left", "right"}
+    metrics = {"rows", "cols", "manhattan", "king", "euclidean", "areas", "knight"}
+    directions = mode.split("+")
+    if mode not in simple | metrics | {"diagonal"} and not all(
+        direction in simple for direction in directions
+    ):
+        return None
+    comparison = atom.measure.comparison.text if atom.measure else None
+    distance = int(atom.measure.value.text) if atom.measure else None
+    if mode in metrics:
+        return _direction_test(board, mode, comparison, distance)
+
+    def matches(value: int) -> bool:
+        if distance is None:
+            return True
+        if comparison == "=":
+            return value == distance
+        if comparison == "<=":
+            return value <= distance
+        return value >= distance
+
+    def directed(left: Square, right: Square) -> bool:
+        if mode == "diagonal":
+            gap = abs(left.row - right.row)
+            return gap > 0 and gap == abs(left.col - right.col) and matches(gap)
+        gaps = {
+            "up": right.row - left.row,
+            "down": left.row - right.row,
+            "left": right.col - left.col,
+            "right": left.col - right.col,
+        }
+        return all(gaps[component] > 0 and matches(gaps[component]) for component in directions)
+
+    return directed
+
+
 def try_lower_location(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower a named person's static spatial relation as domain eliminations."""
     formula = statement.formula
@@ -100,12 +138,18 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
         isinstance(atom, lang.Atom)
         and isinstance(atom.subject, lang.Name)
         and atom.subject.token.text in board.people
-        and atom.operator.text in {"in", "on", "beside", "touches"}
+        and (
+            atom.operator.text in {"in", "on", "beside", "touches"}
+            or atom.operator.text.startswith("dir:")
+        )
     ):
         return False
     check_formula(board, formula)
     cells = _static_cells(board, atom.target)
     if cells is None:
+        return False
+    direction = _direction(board, atom) if atom.operator.text.startswith("dir:") else None
+    if atom.operator.text.startswith("dir:") and direction is None:
         return False
     person = atom.subject.token.text
     if person not in model.all_variables:
@@ -114,6 +158,8 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
     for square in board.free:
         if atom.operator.text in {"in", "on"}:
             matches = square in cells
+        elif direction is not None:
+            matches = any(direction(square, cell) for cell in cells)
         else:
             matches = any(
                 abs(square.row - cell.row) + abs(square.col - cell.col) == 1
@@ -172,42 +218,12 @@ def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement,
 
         test = touching
     elif op.startswith("dir:"):
-        mode = op.removeprefix("dir:")
-        simple_directions = {"up", "down", "left", "right"}
-        metrics = {"rows", "cols", "manhattan", "king", "euclidean", "areas", "knight"}
-        directions = mode.split("+")
-        if mode not in simple_directions | metrics | {"diagonal"} and not all(
-            direction in simple_directions for direction in directions
-        ):
+        direction = _direction(board, atom)
+        if direction is None:
             return False
-        comparison = atom.measure.comparison.text if atom.measure else None
-        distance = int(atom.measure.value.text) if atom.measure else None
-        direction = _direction_test(board, mode, comparison, distance) if mode in metrics else None
-
-        def matches(value: int) -> bool:
-            if distance is None:
-                return True
-            if comparison == "=":
-                return value == distance
-            if comparison == "<=":
-                return value <= distance
-            return value >= distance
 
         def directed(left: Square, right: Square) -> bool:
-            if same:
-                return False
-            if direction is not None:
-                return direction(left, right)
-            if mode == "diagonal":
-                gap = abs(left.row - right.row)
-                return gap > 0 and gap == abs(left.col - right.col) and matches(gap)
-            gaps = {
-                "up": right.row - left.row,
-                "down": left.row - right.row,
-                "left": right.col - left.col,
-                "right": left.col - right.col,
-            }
-            return all(gaps[component] > 0 and matches(gaps[component]) for component in directions)
+            return not same and direction(left, right)
 
         test = directed
     else:

@@ -94,6 +94,11 @@ def test_lowered_count_matches_reference_for_every_placement_and_role(board, for
         "Ada beside object:bed",
         "Ada touches mark:red",
         "not Ada beside mark:blue",
+        "Ada dir:rows mark:red = 0",
+        "Ada dir:up+right mark:red,blue <= 1",
+        "Ada dir:diagonal object:bed",
+        "Ada dir:areas area:hall = 0",
+        "not Ada dir:king object:bed <= 1",
         "no Ada in rows:1,3",
         "not no Ada in rows:1,3",
     ],
@@ -158,6 +163,7 @@ def test_blocked_feature_footprints_still_support_adjacency(board):
     )
     _assert_matches_reference(board, "Ada beside object:rock", try_lower_location)
     _assert_matches_reference(board, "Ada touches object:rock", try_lower_location)
+    _assert_matches_reference(board, "Ada dir:king object:rock = 1", try_lower_location)
     _assert_matches_reference(board, "count people on object:rock = 0", try_lower_count)
 
 
