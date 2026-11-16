@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from . import murdoku_lang as lang
 from .core import Kind, Model
-from .murdoku import Board, Square
+from .murdoku import Board, Square, _direction_test
 from .murdoku_typecheck import check_formula
 
 
@@ -115,6 +115,79 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
     for square in board.free:
         if (square in cells) == exclude:
             model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
+    return True
+
+
+def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Lower a supported relation between named people to a binary relation."""
+    formula = statement.formula
+    negated = isinstance(formula, lang.Negation)
+    atom = formula.formula if isinstance(formula, lang.Negation) else formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and isinstance(atom.subject, lang.Name)
+        and isinstance(atom.target, lang.Name)
+        and atom.subject.token.text in board.people
+        and atom.target.token.text in board.people
+    ):
+        return False
+    check_formula(board, formula)
+    first, second = atom.subject.token.text, atom.target.token.text
+    missing = {first, second} - set(model.all_variables)
+    if missing:
+        raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+    op = atom.operator.text
+    same = first == second
+    test: Callable[[Square, Square], bool]
+    if op == "is":
+
+        def identity(_first: Square, _second: Square) -> bool:
+            return same
+
+        test = identity
+    elif op in {"in", "on"}:
+
+        def overlaps(left: Square, right: Square) -> bool:
+            return left == right
+
+        test = overlaps
+    elif op in {"beside", "touches"}:
+
+        def touching(left: Square, right: Square) -> bool:
+            return (
+                not same
+                and abs(left.row - right.row) + abs(left.col - right.col) == 1
+                and (op == "touches" or board.region_of(left) == board.region_of(right))
+            )
+
+        test = touching
+    elif op.startswith("dir:"):
+        mode = op.removeprefix("dir:")
+        simple_directions = {"up", "down", "left", "right"}
+        metrics = {"rows", "cols", "manhattan", "king", "euclidean", "areas", "knight"}
+        if mode not in simple_directions | metrics:
+            return False
+        if (
+            atom.measure is not None
+            and mode in simple_directions
+            and atom.measure.comparison.text != "="
+        ):
+            return False
+        comparison = atom.measure.comparison.text if atom.measure else None
+        distance = int(atom.measure.value.text) if atom.measure else None
+        direction = _direction_test(board, mode, comparison, distance)
+
+        def directed(left: Square, right: Square) -> bool:
+            return not same and direction(left, right)
+
+        test = directed
+    else:
+        return False
+    invert = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
+    if same:
+        model.relate(name, (first,), lambda square: test(square, square) != invert)
+    else:
+        model.relate(name, (first, second), lambda left, right: test(left, right) != invert)
     return True
 
 

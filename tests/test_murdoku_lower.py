@@ -3,10 +3,10 @@ from dataclasses import replace
 import pytest
 
 from csp.bruteforce.murdoku_expr import solutions
-from csp.core import Contradiction
+from csp.core import Contradiction, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
 from csp.murdoku_lang import holds, parse_statement
-from csp.murdoku_lower import try_lower_count, try_lower_location
+from csp.murdoku_lower import try_lower_count, try_lower_location, try_lower_person_pair
 
 
 @pytest.fixture
@@ -48,6 +48,7 @@ def _assert_matches_reference(board, formula, lower):
                     "fixed role",
                 )
             trial.check()
+            rule_relations(trial)
             accepted = True
         except Contradiction:
             accepted = False
@@ -93,10 +94,34 @@ def test_lowered_location_matches_reference_for_every_placement_and_role(board, 
     _assert_matches_reference(board, formula, try_lower_location)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "Ada dir:up Ben",
+        "Ada dir:down Ben = 1",
+        "Ada dir:manhattan Ben >= 2",
+        "Ada dir:euclidean Ben <= 2",
+        "Ada dir:areas Ben = 0",
+        "Ada dir:knight Ben",
+        "not Ada dir:areas Ben = 0",
+        "Ada is Ada",
+        "not Ada is Ben",
+        "Ada on Ada",
+        "Ada on Ben",
+        "Ada touches Ada",
+        "not Ada beside Ben",
+        "Ada dir:up Ada",
+    ],
+)
+def test_lowered_person_pair_matches_reference_for_every_placement_and_role(board, formula):
+    _assert_matches_reference(board, formula, try_lower_person_pair)
+
+
 def test_unsupported_statement_does_not_change_model(board):
     model = compile_puzzle(board, [])
     before = (model.num_literals, len(model.constraints), len(model.relations))
     assert not try_lower_count(model, board, parse_statement("Ada in area:hall"), "clue 1")
+    assert not try_lower_person_pair(model, board, parse_statement("Ada dir:up Ben <= 1"), "clue 2")
     assert before == (model.num_literals, len(model.constraints), len(model.relations))
 
 
