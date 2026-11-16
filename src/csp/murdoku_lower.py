@@ -1371,6 +1371,26 @@ def _spatial_selected(
     if static is not None:
         return _constant_boolean(model, entity in static, name)
     if isinstance(operand, lang.Projection):
+        source_sort = _operand_sort(board, operand.operand, bindings)
+        if source_sort != Sort.PERSON:
+            if source_sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL, Sort.FEATURE}:
+                raise NotImplementedError(f"{name}: projection source is not implemented")
+            sources = _spatial_universe(board, source_sort)
+            members = [
+                _spatial_selected(
+                    model,
+                    board,
+                    source,
+                    cells,
+                    operand.operand,
+                    f"{name} {source[1]} member",
+                    empty_scopes,
+                    bindings,
+                )
+                for source, cells in sources.items()
+                if cells & footprint
+            ]
+            return _reify_cardinality(model, members, set(range(1, len(members) + 1)), name)
         members = []
         for person in board.people:
             selected = _person_selected(
