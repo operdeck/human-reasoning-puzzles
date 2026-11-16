@@ -326,6 +326,11 @@ person even if blocked; migrate the current empty-cell counts using
 `empty free cells` to retain their free-cell-only behavior. A person `is` a
 bound role entity means membership in that role.
 
+For the in-development expression wording, `| wording` replaces one complete
+statement and `Words:` may replace an expression phrase template. Phrase
+overrides must retain all placeholders of the original template; otherwise
+they could hide a subject, target, comparison, or other part of the clue.
+
 ### Clue grammar specification for #238
 
 This section specifies the canonical grammar. The reader accepts canonical
