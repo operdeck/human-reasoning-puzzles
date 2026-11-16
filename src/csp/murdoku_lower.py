@@ -803,7 +803,12 @@ def _reify_formula(
         while variable_name in bindings:
             variable_name += "_"
         variable = replace(atom.operator, text=variable_name)
-        if isinstance(atom.subject, lang.Name) and atom.subject.token.text.startswith("role:"):
+        subject_person = (
+            atom.subject.token.text
+            if isinstance(atom.subject, lang.Name) and atom.subject.token.text in board.people
+            else None
+        )
+        if subject_person is None and infer_operand(board, atom.subject).sort == Sort.PERSON:
             quantified = lang.Quantified(
                 atom.determiner or replace(atom.operator, text="some"),
                 None,
@@ -813,9 +818,21 @@ def _reify_formula(
             )
             return _reify_formula(model, board, quantified, name, bindings)
         if (
-            atom.operator.text != "is"
-            and isinstance(atom.target, lang.Name)
-            and atom.target.token.text.startswith("role:")
+            subject_person is not None
+            and atom.operator.text == "is"
+            and infer_operand(board, atom.target).sort == Sort.PERSON
+        ):
+            result = _person_selected(model, board, subject_person, atom.target, name)
+            return (
+                _opposite(model, result)
+                if atom.determiner is not None and atom.determiner.text == "no"
+                else result
+            )
+        if (
+            subject_person is not None
+            and atom.operator.text != "is"
+            and infer_operand(board, atom.target).sort == Sort.PERSON
+            and not (isinstance(atom.target, lang.Name) and atom.target.token.text in board.people)
         ):
             quantified = lang.Quantified(
                 replace(atom.operator, text="some"),

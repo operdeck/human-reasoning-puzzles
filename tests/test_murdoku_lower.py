@@ -374,6 +374,11 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "count role:guard,attribute:trained = 1",
         "count ((people except role:guard) in area:hall) odd",
         "count ((role:guard,attribute:trained) on mark:red) >= 1 or Ben in rows:3",
+        "some (people except role:guard) on mark:red",
+        "every Ada,Ben is role:guard,attribute:trained",
+        "Ada is (people in area:hall) iff Ben is role:guard",
+        "no Ada touches (people except role:guard)",
+        "some (role:guard,attribute:trained) touches role:guard",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
