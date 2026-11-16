@@ -962,6 +962,35 @@ def test_sparse_mystery_preserves_migrated_grade_and_unique_solution():
     _assert_migration_preserves_unique_solution(text, migrated)
 
 
+def test_composition_fixture_preserves_migrated_grade_and_unique_solution():
+    text = example("murdoku_composition.txt").read_text()
+    replacements = {
+        "on Bo edge_item:archway": "Bo on edge_item:archway",
+        "on Cal edge_item:window": "Cal on edge_item:window",
+        "on Dee point_object:fountain": "Dee on point_object:fountain",
+        "on Dee object:bench": "Dee on object:bench",
+        "on Ada mark:quiet": "Ada on mark:quiet",
+        "dir Bo attribute:trained up": "Bo dir:up attribute:trained",
+        "if has Cal role:navigator then in Cal tag:daylight": (
+            "if Cal is role:navigator then Cal in tag:daylight"
+        ),
+        "has Cal role:navigator": "Cal is role:navigator",
+        "has Ada role:recorder": "Ada is role:recorder",
+        "has Bo role:recorder": "Bo is role:recorder",
+        "has Cal role:recorder": "Cal is role:recorder",
+        "subset role:navigator role:recorder": "every role:navigator is role:recorder",
+        "count people with role:navigator": "count role:navigator",
+        "count people with role:recorder": "count role:recorder",
+        "count people with attribute:trained": "count attribute:trained",
+        "count empty cells": "count empty free cells",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
 def test_random_small_well_typed_statements_match_reference():
     random = Random(244)
     for _ in range(30):
