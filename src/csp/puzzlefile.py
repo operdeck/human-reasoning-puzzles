@@ -221,6 +221,14 @@ def parse_square(token: str) -> Square:
 
 def load_board(text: str) -> tuple[Board, list[Clue]]:
     """Read a Murdoku puzzle file into its board and its list of clues."""
+    board = load_board_layout(text)
+    section = read_sections(text)
+    board.rules = _clues(section.get("Rules", []))
+    return board, _clues(section.get("Clues", []))
+
+
+def load_board_layout(text: str) -> Board:
+    """Read the fixed Murdoku layout without interpreting its rules or clues."""
     section = read_sections(text)
     for required in ("Size", "Regions", "Grid", "People"):
         if required not in section:
@@ -275,7 +283,6 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     role_eligibility = _role_eligibility(section.get("RoleEligibility", []), attributes)
     roles = _role_placements(section.get("Roles", []), people, role_eligibility)
 
-    clues = _clues(section.get("Clues", []))
     keyed_clue_numbers(text)
 
     board = Board(
@@ -298,8 +305,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     )
     board.backdrop = " ".join(section.get("Backdrop", [])) or None
     board.decorations = _decorations(section.get("Decorations", []))
-    board.rules = _clues(section.get("Rules", []))
-    return board, clues
+    return board
 
 
 def _clues(lines: list[str]) -> list[Clue]:

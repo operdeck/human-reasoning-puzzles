@@ -51,14 +51,18 @@ def _roles(board: Board, placed: dict[str, Square]) -> Iterator[dict[tuple[str, 
 
 
 def solutions(
-    board: Board, statements: Sequence[Statement], limit: int = 2
+    board: Board,
+    statements: Sequence[Statement],
+    limit: int = 2,
+    *,
+    rules: Sequence[Statement] = (),
 ) -> list[dict[str, Square | bool]]:
     """Return up to `limit` solutions, evaluating statements only via `holds`."""
     if limit < 1:
         raise ValueError("solution limit must be positive")
     if board.rules:
         raise ValueError("board rules must be migrated to expression statements first")
-    checks = [*declaration_statements(board), *statements]
+    checks = [*declaration_statements(board), *rules, *statements]
     for statement in checks:
         check_formula(board, statement.formula)
     found: list[dict[str, Square | bool]] = []

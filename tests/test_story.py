@@ -71,6 +71,7 @@ ALLOWED = {
     "murdoku": {"core"},
     "murdoku_lang": {"murdoku", "murdoku_eval"},
     "murdoku_declarations": {"murdoku", "murdoku_lang"},
+    "murdoku_expression_file": {"murdoku", "murdoku_lang", "murdoku_typecheck", "puzzlefile"},
     "murdoku_lower": {"core", "murdoku", "murdoku_lang", "murdoku_typecheck"},
     "murdoku_typecheck": {"murdoku", "murdoku_lang"},
     "murdoku_eval": {"murdoku", "murdoku_lang", "murdoku_typecheck"},

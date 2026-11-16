@@ -2726,16 +2726,21 @@ def _reify_formula(
     raise NotImplementedError(f"{name}: expression lowering is not implemented")
 
 
-def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Model:
+def compile_statements(
+    board: Board, statements: Sequence[lang.Statement], *, rules: Sequence[lang.Statement] = ()
+) -> Model:
     """Compile the currently supported expression patterns for a board."""
     if board.rules:
         raise ValueError("board rules must be migrated to expression statements first")
-    for statement in statements:
+    for statement in (*rules, *statements):
         check_formula(board, statement.formula)
     model = compile_puzzle(board, [])
     empty_scopes: dict[Square | str, int] = {}
-    for index, statement in enumerate(statements, 1):
-        label = f"clue {index}"
+    labelled = [
+        *((f"rule {index}", statement) for index, statement in enumerate(rules, 1)),
+        *((f"clue {index}", statement) for index, statement in enumerate(statements, 1)),
+    ]
+    for label, statement in labelled:
         if not any(
             lower(model, board, statement, label)
             for lower in (
