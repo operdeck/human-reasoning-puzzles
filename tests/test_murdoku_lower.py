@@ -542,6 +542,25 @@ def test_boolean_compilation_matches_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+def _has_compiled_completion(model):
+    result = Solver(model).solve()
+    if result.contradiction is not None:
+        return False
+    unresolved = [var for var in model.all_variables if model.chosen(var) is None]
+    if not unresolved:
+        return True
+    variable = min(unresolved, key=lambda var: len(model.options(var)))
+    for literal in model.options(variable):
+        trial = model.clone()
+        try:
+            trial.assign(literal, "test", "search auxiliary completion")
+        except Contradiction:
+            continue
+        if _has_compiled_completion(trial):
+            return True
+    return False
+
+
 def _assert_compilation_matches_reference(board, formula):
     sources = [formula] if isinstance(formula, str) else formula
     statements = [parse_statement(source) for source in sources]
@@ -554,7 +573,7 @@ def _assert_compilation_matches_reference(board, formula):
                 for role in board.roles:
                     variable = board.role_variable(person, role.name)
                     trial.assign(trial.literal(variable, candidate[variable]), "test", "fixed role")
-            accepted = Solver(trial).solve().contradiction is None
+            accepted = _has_compiled_completion(trial)
         except Contradiction:
             accepted = False
         placed = {person: candidate[person] for person in board.people}
