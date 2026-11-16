@@ -37,6 +37,14 @@ def test_tokenize_compound_direction_and_locations():
     assert tokens[-2] == Token("!=", 5, 3)
 
 
+def test_tokenize_non_ascii_identifiers():
+    assert [token.text for token in tokenize("Éva in area:Velázquez_room")] == [
+        "Éva",
+        "in",
+        "area:Velázquez_room",
+    ]
+
+
 def test_tokenize_reports_invalid_character_location():
     with pytest.raises(ValueError, match=r"line 2, column 2: unexpected character '@'"):
         tokenize("Ada\n @")

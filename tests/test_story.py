@@ -69,6 +69,7 @@ ALLOWED = {
     "sudoku_story": {"core", "proof", "story", "sudoku"},
     "generic_story": {"core", "proof", "story"},
     "murdoku": {"core"},
+    "murdoku_lang": set(),
     "sudoku": {"core", "puzzlefile", "towers"},
     "calcudoku": {"core", "puzzlefile"},
     "futoshiki": {"core", "puzzlefile"},
