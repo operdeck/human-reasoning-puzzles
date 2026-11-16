@@ -563,7 +563,10 @@ def _legacy_hint(source: str) -> str | None:
     """Suggest replacements only after parsing an old-form statement fails."""
     patterns = (
         (r"\bis\s+not\b", "not P is X"),
-        (r"^\s*not_(?:in|on|beside)\s+", "not P in X (or not P on/beside X)"),
+        (
+            r"^\s*not_(?:in|on|beside|touches)\s+",
+            "not P in X (or not P on/beside/touches X)",
+        ),
         (
             r"^\s*not\s+(?:in|on|beside|touches)\s+\S+\s+\S+",
             "not P in X (or not P on/beside/touches X)",
@@ -573,7 +576,14 @@ def _legacy_hint(source: str) -> str | None:
             "P in X (or P on/beside/touches X)",
         ),
         (r"^\s*(?:not\s+)?dir\s+", "P dir:mode X (or not P dir:mode X)"),
-        (r"\bhas\s+\S+\s+role:", "P is role:x (or not P is role:x)"),
+        (
+            r"\bnot\s+has\s+\S+\s+(?:role|attribute):",
+            "not P is role:x (or not P is attribute:x)",
+        ),
+        (
+            r"\bhas\s+\S+\s+(?:role|attribute):",
+            "P is role:x (or P is attribute:x)",
+        ),
         (r"^\s*subset\s+", "every role:a is role:b"),
         (r"^\s*alone\s+", "count people in area:x = 1 or count (people in area of P) = 1"),
         (r"^\s*only\s+", "(people on X) = P"),
@@ -590,10 +600,10 @@ def _legacy_hint(source: str) -> str | None:
             "every ?a in occupied areas: no (occupied areas touches ?a)",
         ),
         (r"^\s*count\s+roles\s+of\s+", "a role quantifier such as at most N ?r in roles: P is ?r"),
-        (r"^\s*count\s+people\s+with\s+role:", "count role:x"),
+        (r"^\s*count\s+people\s+with\s+(?:role|attribute):", "count role:x or count attribute:x"),
         (
-            r"^\s*count\s+people\s+(?:in|on|beside|touches)\s+\S+\s+with\s+role:",
-            "count (role:y in X), or the corresponding spatial relation",
+            r"^\s*count\s+people\s+(?:in|on|beside|touches)\s+\S+\s+with\s+(?:role|attribute):",
+            "count (role:y in X) or count (attribute:y in X), with the corresponding relation",
         ),
         (
             r"^\s*count\s+people\s+from\s+people:",
@@ -606,7 +616,8 @@ def _legacy_hint(source: str) -> str | None:
             "count (people in area of P) = N + 1 and any needed attribute filter",
         ),
         (
-            r"^\s*(?:exactly|at\s+least|at\s+most)\s+\d+\s+(?:in|on|beside|touches)\s+",
+            r"^\s*(?:exactly|at\s+least|at\s+most)\s+\d+\s+"
+            r"(?:in|on|beside|touches|dir|has|not)\s+",
             "exactly N of (P in X; Q in Y)",
         ),
     )

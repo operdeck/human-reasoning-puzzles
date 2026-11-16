@@ -149,6 +149,13 @@ def _name(
         raise _error(token, "adjacent_to: is removed; use ((areas touches X) except X)")
     if text == "people:any":
         raise _error(token, "people:any is removed; use people")
+    if kind == "people":
+        raise _error(token, "people: is removed; use a comma-separated union such as Ada, Ben")
+    if kind == "corner" and value.startswith("area:"):
+        raise _error(
+            token,
+            "corner:area: is removed; use a cell comprehension with a right-angle test",
+        )
     raise _error(token, f"unknown namespace {kind!r}")
 
 

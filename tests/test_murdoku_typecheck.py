@@ -54,6 +54,23 @@ def test_typecheck_reports_errors(board, formula, message):
 
 
 @pytest.mark.parametrize(
+    ("source", "replacement"),
+    [
+        ("people_on:object:bed", "(people on X)"),
+        ("adjacent_to:area:hall", "areas touches X"),
+        ("people:any", "use people"),
+        ("people:Ada", "comma-separated union"),
+        ("corner:area:hall", "cell comprehension with a right-angle test"),
+    ],
+)
+def test_removed_selector_namespaces_suggest_replacements(board, source, replacement):
+    with pytest.raises(ValueError) as error:
+        infer_operand(board, parse_operand(source, line=7))
+    assert "line 7, column 1:" in str(error.value)
+    assert replacement in str(error.value)
+
+
+@pytest.mark.parametrize(
     "formula",
     [
         "Ada in area:hall",
