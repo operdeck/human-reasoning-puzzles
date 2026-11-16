@@ -1301,6 +1301,20 @@ def _spatial_universe(board: Board, sort: Sort) -> dict[tuple[Sort, str], set[Sq
     return entities
 
 
+def _spatial_binding(
+    board: Board, entity: tuple[Sort, str], name: str
+) -> _AreaBinding | _LineBinding | _SpatialBinding:
+    sort, key = entity
+    if sort == Sort.AREA:
+        if len(set(board.region_names.values())) != len(board.region_names):
+            raise NotImplementedError(f"{name}: area quantifiers require distinct area names")
+        return _AreaBinding(board.region_names[key])
+    elif sort in {Sort.ROW, Sort.COLUMN}:
+        prefix = "rows" if sort == Sort.ROW else "columns"
+        return _LineBinding(f"{prefix}:{int(key) + 1}")
+    return _SpatialBinding(sort, key)
+
+
 def _spatial_selected(
     model: Model,
     board: Board,
@@ -1346,6 +1360,76 @@ def _spatial_selected(
             model, board, entity, footprint, operand.right, f"{name} right", empty_scopes, bindings
         )
         return _reify_cardinality(model, [left, _opposite(model, right)], {2}, name)
+    if isinstance(operand, (lang.Qualified, lang.AdjectiveFilter)):
+        inner = operand.operand if isinstance(operand, lang.Qualified) else operand.source
+        selected = _spatial_selected(
+            model, board, entity, footprint, inner, f"{name} source", empty_scopes, bindings
+        )
+        adjective = operand.adjective.text
+        if adjective == "free":
+            matches = _constant_boolean(model, footprint.isdisjoint(board.blocked), f"{name} free")
+        else:
+            if entity[0] == Sort.CELL:
+                row, col = (int(index) for index in entity[1].split(","))
+                empty = _cell_empty_literal(
+                    model, board, Square(row, col), f"{name} empty", empty_scopes
+                )
+            elif entity[0] == Sort.AREA:
+                empty = _area_empty_literal(model, board, entity[1], f"{name} empty", empty_scopes)
+            else:
+                occupants = [
+                    model.literal(person, square)
+                    for person in board.people
+                    for square in board.free
+                    if square in footprint
+                ]
+                empty = _reify_cardinality(model, occupants, {0}, f"{name} empty")
+            matches = empty if adjective == "empty" else _opposite(model, empty)
+        return _reify_cardinality(model, [selected, matches], {2}, name)
+    if isinstance(operand, lang.Filter):
+        source = _spatial_selected(
+            model,
+            board,
+            entity,
+            footprint,
+            operand.source,
+            f"{name} source",
+            empty_scopes,
+            bindings,
+        )
+        related = _static_spatial_relation(board, operand.operator.text, operand.measure)
+        if related is None:
+            raise NotImplementedError(f"{name}: spatial filter lowering is not implemented")
+        targets = _static_spatial_entities(board, operand.target)
+        if targets is not None:
+            matches = _constant_boolean(
+                model,
+                any(related(entity, footprint, target, cells) for target, cells in targets.items()),
+                f"{name} matches",
+            )
+        else:
+            target_sort = _operand_sort(board, operand.target, bindings)
+            if target_sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+                raise NotImplementedError(f"{name}: spatial filter target is not implemented")
+            possible = _spatial_universe(board, target_sort)
+            target_members = [
+                _spatial_selected(
+                    model,
+                    board,
+                    target,
+                    cells,
+                    operand.target,
+                    f"{name} target {target[1]}",
+                    empty_scopes,
+                    bindings,
+                )
+                for target, cells in possible.items()
+                if related(entity, footprint, target, cells)
+            ]
+            matches = _reify_cardinality(
+                model, target_members, set(range(1, len(target_members) + 1)), f"{name} matches"
+            )
+        return _reify_cardinality(model, [source, matches], {2}, name)
     if isinstance(operand, lang.Union):
         first = operand.items[0]
         namespace = (
@@ -1912,6 +1996,7 @@ def _reify_formula(
         role_domain = _static_roles(board, formula.source, bindings)
         area_adjective: str | None = None
         cell_adjective: str | None = None
+        spatial_domain = False
         if role_domain is not None:
             source = formula.source
             dynamic = False
@@ -1956,30 +2041,27 @@ def _reify_formula(
                         ]
                     elif entities is not None:
                         dynamic = False
-                        domain = []
                         ordered = sorted(entities, key=lambda item: (item[0].value, item[1]))
-                        for sort, key in ordered:
-                            if sort == Sort.AREA:
-                                if len(set(board.region_names.values())) != len(board.region_names):
-                                    raise NotImplementedError(
-                                        f"{name}: area quantifiers require distinct area names"
-                                    )
-                                domain.append(_AreaBinding(board.region_names[key]))
-                            elif sort in {Sort.ROW, Sort.COLUMN}:
-                                prefix = "rows" if sort == Sort.ROW else "columns"
-                                domain.append(_LineBinding(f"{prefix}:{int(key) + 1}"))
-                            else:
-                                domain.append(_SpatialBinding(sort, key))
+                        domain = [_spatial_binding(board, entity, name) for entity in ordered]
                     else:
                         people = _static_people(board, source)
                         dynamic = people is None
                         if people is None:
-                            if _operand_sort(board, source, bindings) != Sort.PERSON:
+                            sort = _operand_sort(board, source, bindings)
+                            if sort == Sort.PERSON:
+                                people = set(board.people)
+                            elif sort in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+                                spatial_domain = True
+                                universe = _spatial_universe(board, sort)
+                                domain = [
+                                    _spatial_binding(board, entity, name) for entity in universe
+                                ]
+                            else:
                                 raise NotImplementedError(
                                     f"{name}: quantifier source lowering is not implemented"
                                 )
-                            people = set(board.people)
-                        domain = [person for person in board.people if person in people]
+                        if people is not None:
+                            domain = [person for person in board.people if person in people]
         quantifier = " ".join(formula.quantifier.text.split())
         literals = []
         for index, values in enumerate(permutations(domain, len(formula.variables)), 1):
@@ -2032,6 +2114,26 @@ def _reify_formula(
                                 binding_value,
                                 source,
                                 f"{binding_name} {binding_value} member",
+                                empty_scopes,
+                                bindings,
+                            )
+                        )
+                    elif spatial_domain and isinstance(
+                        binding_value, (_AreaBinding, _LineBinding, _SpatialBinding)
+                    ):
+                        token = lang.Token("?_spatial_domain", 1, 1)
+                        bound_operand = _bind_operand(lang.Name(token), {token.text: binding_value})
+                        bound_entities = _static_spatial_entities(board, bound_operand)
+                        assert bound_entities is not None and len(bound_entities) == 1
+                        entity, footprint = next(iter(bound_entities.items()))
+                        selected.append(
+                            _spatial_selected(
+                                model,
+                                board,
+                                entity,
+                                footprint,
+                                source,
+                                binding_name,
                                 empty_scopes,
                                 bindings,
                             )

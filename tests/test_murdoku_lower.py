@@ -746,6 +746,29 @@ def test_person_projection_sets_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "every ?a in area of people: ?a is occupied",
+        "every ?a in area of role:guard: some ?p in role:guard: ?p in ?a",
+        "exactly 1 ?a in area of role:guard: ?a in area:hall",
+        "some ?r in row of people: Ada in ?r",
+        "every ?c in cell of people: ?c is occupied",
+        "every ?a, ?b in area of people: ?a != ?b",
+        "no ?a in (area of people except areas): ?a is occupied",
+        "every ?a in (area of people on mark:red): ?a is occupied",
+        "count (area of people in area of Ada) = 1",
+        "count (row of role:guard on mark:red) >= 1",
+        "count (cell of people on area of Ada) >= 1",
+        "count occupied (area of people) = count area of people",
+        "count empty (area of people) = 0",
+        "every ?r in occupied (row of role:guard): ?r is occupied",
+    ],
+)
+def test_projected_spatial_quantifiers_match_reference(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
