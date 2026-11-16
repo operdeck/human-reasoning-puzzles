@@ -202,6 +202,9 @@ _KEYWORDS = (
     "and|or|not|iff|if|then|in|on|beside|touches|is|where|except|some|every|no|"
     "count|of|exactly|at|least|most|empty|occupied|free|area|row|column|cell|odd|even"
 )
+RESERVED_IDENTIFIERS = frozenset(_KEYWORDS.split("|")) | frozenset(
+    {"people", "areas", "rows", "columns", "cells", "objects", "roles"}
+)
 _NAME = (
     r"/\?(?:[^\W\d]|_)\w*/ | /(?!(?:" + _KEYWORDS + r")(?![\w:-]))(?:[^\W\d]|_)[\w-]*(?::[\w-]+)*/"
 )

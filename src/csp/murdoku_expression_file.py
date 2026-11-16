@@ -3,13 +3,18 @@
 from dataclasses import fields, is_dataclass
 
 from .murdoku import Board
-from .murdoku_lang import Statement, Token, parse_statement
+from .murdoku_lang import RESERVED_IDENTIFIERS, Statement, Token, parse_statement
 from .murdoku_typecheck import check_formula
 from .puzzlefile import load_board_layout
 
 
 def _read_statements(text: str) -> tuple[list[Statement], list[Statement], list[tuple[int, str]]]:
-    sections: dict[str, list[tuple[int, str]]] = {"Rules": [], "Clues": [], "Key": []}
+    sections: dict[str, list[tuple[int, str]]] = {
+        "People": [],
+        "Rules": [],
+        "Clues": [],
+        "Key": [],
+    }
     current: str | None = None
     for number, raw in enumerate(text.splitlines(), 1):
         line = raw.strip()
@@ -21,6 +26,14 @@ def _read_statements(text: str) -> tuple[list[Statement], list[Statement], list[
                 sections[current] = []
         elif current in sections:
             sections[current].append((number, raw))
+    for number, raw in sections["People"]:
+        name = raw.strip()
+        if name in RESERVED_IDENTIFIERS:
+            column = len(raw) - len(raw.lstrip()) + 1
+            raise ValueError(
+                f"line {number}, column {column}: person name {name!r} is reserved; "
+                "choose a different name"
+            )
     rules = [parse_statement(line, line=number) for number, line in sections["Rules"]]
     clues = [parse_statement(line, line=number) for number, line in sections["Clues"]]
     return rules, clues, sections["Key"]

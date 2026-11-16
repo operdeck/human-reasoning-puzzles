@@ -54,6 +54,20 @@ def test_expression_file_reports_type_error_at_original_position():
         load_expression_board(text)
 
 
+@pytest.mark.parametrize("name", ["not", "of", "empty", "people", "roles"])
+def test_expression_file_rejects_reserved_person_names_with_location(name):
+    text = TEXT.replace("Ada\nBen\n", f"  {name}\nBen\n")
+    with pytest.raises(ValueError, match=rf"line 8, column 3: person name '{name}' is reserved"):
+        load_expression_board(text)
+
+
+@pytest.mark.parametrize("name", ["Not", "empty-handed", "People"])
+def test_expression_file_allows_case_sensitive_non_keywords(name):
+    text = TEXT.replace("Ada", name)
+    board, _, _ = load_expression_board(text)
+    assert name in board.people
+
+
 def test_legacy_reader_still_interprets_legacy_rules_and_clues():
     text = TEXT.replace("Ada in rows:1", "in Ada rows:1").replace(
         "Ben in columns:1", "in Ben columns:1"
