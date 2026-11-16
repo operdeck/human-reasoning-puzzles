@@ -266,7 +266,13 @@ class ExpressionWords:
             allowed = {
                 name for _, name, _, _ in formatter.parse(PHRASES[self.language][key]) if name
             }
-            supplied = {name for _, name, _, _ in formatter.parse(template) if name}
+            supplied = set()
+            for _, name, specification, _ in formatter.parse(template):
+                if name is None:
+                    continue
+                if not name or "{" in (specification or "") or "}" in (specification or ""):
+                    raise ValueError(f"Words: phrase {key!r} has an unsupported placeholder")
+                supplied.add(name)
             invalid = supplied - allowed
             if invalid:
                 raise ValueError(

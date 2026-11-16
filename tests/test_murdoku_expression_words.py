@@ -98,6 +98,9 @@ def test_invalid_language_and_phrase_key_fail_explicitly(board):
         ExpressionWords(board, phrases={"rel.unknown": "???"})
     with pytest.raises(ValueError, match=r"unknown placeholders.*subject"):
         ExpressionWords(board, phrases={"rel.beside": "near {subject}"})
+    for template in ("{}", "{subject:{width}}"):
+        with pytest.raises(ValueError, match="unsupported placeholder"):
+            ExpressionWords(board, phrases={"det.every": template})
 
 
 def test_read_language_display_names_and_compositional_overrides(board):
