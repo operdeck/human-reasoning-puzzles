@@ -740,7 +740,9 @@ def test_population_pattern_does_not_infer_missing_ties():
     )
 
 
-@pytest.mark.parametrize("filename", ["samen-onderweg.txt", "samen-in-de-blauwe-bladeren.txt"])
+@pytest.mark.parametrize(
+    "filename", ["samen-onderweg.txt", "samen-in-de-blauwe-bladeren.txt", "samen-in-japan.txt"]
+)
 def test_tuned_population_patterns_preserve_migrated_example_grade(filename):
     text = example(filename).read_text()
     replacements = {
@@ -774,10 +776,20 @@ def test_tuned_population_patterns_preserve_migrated_example_grade(filename):
         "dir Hideo Yuki up": "Hideo dir:up Yuki",
         "dir Nami Sora left": "Nami dir:left Sora",
         "dir Nami Sora up": "Nami dir:up Sora",
+        "not in Aiko area:Osaka": "not Aiko in area:Osaka",
+        "dir Benjiro Chiaki areas = 0": "Benjiro dir:areas Chiaki = 0",
+        "dir Benjiro Daiki left": "Benjiro dir:left Daiki",
+        "not beside Benjiro object:tempel": "not Benjiro beside object:tempel",
+        "dir Daiki Chiaki left": "Daiki dir:left Chiaki",
+        "dir Emi Fumiko left": "Emi dir:left Fumiko",
     }
     migrated = text
     for old, new in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
         migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+
+
+def _assert_migration_preserves_assignment_grade(text, migrated):
     legacy_board, legacy_clues = load_board(text)
     board, rules, clues = load_expression_board(migrated)
 
@@ -794,6 +806,24 @@ def test_tuned_population_patterns_preserve_migrated_example_grade(filename):
     assert original.solved and rewritten.solved
     assert rewritten.assignment == original.assignment
     assert rewritten_grade == original_grade
+
+
+def test_choice_pattern_preserves_migrated_house_example_grade():
+    text = example("murdoku_3_house.txt").read_text()
+    replacements = {
+        "exactly 1 in Ada area:study ; in Ben area:hall": (
+            "exactly 1 of (Ada in area:study; Ben in area:hall)"
+        ),
+        "dir Ada Dirk left": "Ada dir:left Dirk",
+        "in Eva area:garden": "Eva in area:garden",
+        "on Ben object:carpet": "Ben on object:carpet",
+        "dir Cleo Eva up": "Cleo dir:up Eva",
+        "not beside Ben object:lamp": "not Ben beside object:lamp",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
 
 
 def test_random_small_well_typed_statements_match_reference():
