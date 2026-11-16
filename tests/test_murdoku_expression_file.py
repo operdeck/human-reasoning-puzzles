@@ -178,6 +178,21 @@ def test_expression_figure_name_override_preserves_person_identity():
     assert entries.figures[1].clues[0].id == "clue:1"
 
 
+def test_expression_figure_clues_recognize_alone_and_only_on_idioms():
+    text = TEXT.replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  count (people in area of Ada) = 1\n"
+        "  (people on object:chair) = Ben\n"
+        "  (people on object:chair) != Ada",
+    )
+    text += "Objects:\nchair: standable r1c1\n"
+    _, _, clues = load_expression_board(text)
+    entries = figure_clues(text, expressions=clues)
+    assert [clue.sources for clue in entries.figures[0].clues] == [(1,)]
+    assert [clue.sources for clue in entries.figures[1].clues] == [(2,)]
+    assert [clue.sources for clue in entries.other] == [(3,)]
+
+
 def test_expression_player_rules_use_ast_for_notes_and_deduplicate_intro():
     text = (
         "Intro: Ada stays in the first row.\n"

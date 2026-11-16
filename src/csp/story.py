@@ -19,7 +19,7 @@ Everything here reads the public `Model` API, `Step` provenance and
 
 import dataclasses
 import re
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
@@ -64,7 +64,7 @@ from .murdoku import (
     role_statuses,
     target_name,
 )
-from .murdoku_expression_words import ExpressionWords
+from .murdoku_expression_words import ExpressionWords, alone_person, only_on
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_board_layout, load_presentation, read_sections
 
@@ -4136,12 +4136,7 @@ def _expression_figure_clues(
         formula = clue.formula
         while isinstance(formula, murdoku_lang.Negation):
             formula = formula.formula
-        owner = None
-        if isinstance(formula, (murdoku_lang.Atom, murdoku_lang.AdjectiveAtom)) and isinstance(
-            formula.subject, murdoku_lang.Name
-        ):
-            name = formula.subject.token.text
-            owner = name if name in by_person else None
+        owner = _expression_clue_owner(formula, by_person)
         sentence = _cap(say.statement(clue).strip())
         if not sentence.endswith((".", "!", "?")):
             sentence += "."
@@ -4157,6 +4152,19 @@ def _expression_figure_clues(
         for person in board.people
     )
     return CluePresentation(figures, tuple(other))
+
+
+def _expression_clue_owner(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
+    if isinstance(formula, (murdoku_lang.Atom, murdoku_lang.AdjectiveAtom)) and isinstance(
+        formula.subject, murdoku_lang.Name
+    ):
+        name = formula.subject.token.text
+        return name if name in people else None
+    if person := alone_person(formula, people):
+        return person.token.text
+    if only := only_on(formula, people):
+        return only[0].token.text
+    return None
 
 
 def clue_paragraphs(

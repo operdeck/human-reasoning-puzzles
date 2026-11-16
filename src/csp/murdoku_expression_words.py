@@ -1,7 +1,7 @@
 """Compositional wording for Murdoku expression statements."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from string import Formatter
 from typing import assert_never
@@ -288,6 +288,45 @@ LEGACY_CLUE_PHRASES = {
 EXPRESSION_PHRASE_PREFIXES = tuple(
     f"{namespace}." for namespace in {key.partition(".")[0] for key in PHRASES["en"]}
 )
+
+
+def alone_person(formula: lang.Formula, people: Collection[str]) -> lang.Name | None:
+    """Recognize exactly one person in a named person's area."""
+    if isinstance(formula, lang.NumberComparison) and formula.operator.text == "=":
+        for counted, number in ((formula.left, formula.right), (formula.right, formula.left)):
+            if (
+                isinstance(number, lang.Integer)
+                and number.value.text == "1"
+                and isinstance(counted, lang.Count)
+                and isinstance(counted.operand, lang.Filter)
+                and isinstance(counted.operand.source, lang.Name)
+                and counted.operand.source.token.text == "people"
+                and counted.operand.operator.text == "in"
+                and isinstance(counted.operand.target, lang.Projection)
+                and counted.operand.target.kind.text == "area"
+                and isinstance(counted.operand.target.operand, lang.Name)
+                and counted.operand.target.operand.token.text in people
+            ):
+                return counted.operand.target.operand
+    return None
+
+
+def only_on(
+    formula: lang.Formula, people: Collection[str]
+) -> tuple[lang.Name, lang.Operand] | None:
+    """Recognize a named person as the entire occupant set of a footprint."""
+    if isinstance(formula, lang.SetComparison) and formula.operator.text == "=":
+        for occupants, person in ((formula.left, formula.right), (formula.right, formula.left)):
+            if (
+                isinstance(occupants, lang.Filter)
+                and isinstance(occupants.source, lang.Name)
+                and occupants.source.token.text == "people"
+                and occupants.operator.text == "on"
+                and isinstance(person, lang.Name)
+                and person.token.text in people
+            ):
+                return person, occupants.target
+    return None
 
 
 @dataclass
@@ -669,41 +708,12 @@ class ExpressionWords:
         if statement.wording is not None:
             return statement.wording
         formula = statement.formula
-        if isinstance(formula, lang.NumberComparison) and formula.operator.text == "=":
-            for counted, number in ((formula.left, formula.right), (formula.right, formula.left)):
-                if (
-                    isinstance(number, lang.Integer)
-                    and number.value.text == "1"
-                    and isinstance(counted, lang.Count)
-                    and isinstance(counted.operand, lang.Filter)
-                    and isinstance(counted.operand.source, lang.Name)
-                    and counted.operand.source.token.text == "people"
-                    and counted.operand.operator.text == "in"
-                    and isinstance(counted.operand.target, lang.Projection)
-                    and counted.operand.target.kind.text == "area"
-                    and isinstance(counted.operand.target.operand, lang.Name)
-                    and counted.operand.target.operand.token.text in self.board.people
-                ):
-                    return self._phrase(
-                        "idiom.alone",
-                        person=self._name(counted.operand.target.operand.token),
-                    )
-        if isinstance(formula, lang.SetComparison) and formula.operator.text == "=":
-            for occupants, person in ((formula.left, formula.right), (formula.right, formula.left)):
-                if (
-                    isinstance(occupants, lang.Filter)
-                    and isinstance(occupants.source, lang.Name)
-                    and occupants.source.token.text == "people"
-                    and occupants.operator.text == "on"
-                    and isinstance(person, lang.Name)
-                    and person.token.text in self.board.people
-                ):
-                    target = self._operand(occupants.target, {})
-                    if infer_operand(self.board, occupants.target, {}).maximum > 1:
-                        target = self._phrase("rel.any_scope", target=target)
-                    return self._phrase(
-                        "idiom.only_on",
-                        person=self._name(person.token),
-                        target=target,
-                    )
+        if person := alone_person(formula, self.board.people):
+            return self._phrase("idiom.alone", person=self._name(person.token))
+        if only := only_on(formula, self.board.people):
+            person, operand = only
+            target = self._operand(operand, {})
+            if infer_operand(self.board, operand, {}).maximum > 1:
+                target = self._phrase("rel.any_scope", target=target)
+            return self._phrase("idiom.only_on", person=self._name(person.token), target=target)
         return self._formula(statement.formula, {})
