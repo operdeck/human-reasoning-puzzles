@@ -388,6 +388,11 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "count (empty areas in tag:outside) = 1",
         "count (occupied areas on mark:red) >= 1",
         "area:hall is empty iff count empty areas = 1",
+        "count role:guard = count (people in area:hall)",
+        "count role:guard + count (people in area:hall) >= 2",
+        "count role:guard - count (people on mark:red) = 0",
+        "(count role:guard + 1) odd",
+        "if count role:guard > count (people on mark:red) then Ada is role:guard",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):

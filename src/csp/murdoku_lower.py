@@ -8,7 +8,14 @@ from itertools import permutations
 
 from . import murdoku_lang as lang
 from .core import Kind, Model
-from .murdoku import Board, Square, _direction_test, _hidden_boolean, compile_puzzle
+from .murdoku import (
+    Board,
+    Square,
+    _auxiliary_variable,
+    _direction_test,
+    _hidden_boolean,
+    compile_puzzle,
+)
 from .murdoku_typecheck import Sort, check_formula, infer_operand
 
 
@@ -939,6 +946,73 @@ def _area_occupancy_scope(board: Board, operand: lang.Operand) -> tuple[str, set
     return adjective, selected_regions
 
 
+def _number_variable(
+    model: Model,
+    board: Board,
+    number: lang.Number,
+    name: str,
+    bindings: dict[str, str],
+    empty_scopes: dict[Square | str, int],
+) -> tuple[str, set[int]]:
+    selections: list[int] | None = None
+    children: tuple[str, str] | None = None
+    operator = ""
+    if isinstance(number, lang.Integer):
+        values = {int(number.value.text)}
+    elif isinstance(number, lang.Count):
+        operand = _bind_operand(number.operand, bindings)
+        if infer_operand(board, operand).sort != Sort.PERSON:
+            raise NotImplementedError(f"{name}: numeric count lowering is not implemented")
+        selections = [
+            _person_selected(model, board, person, operand, f"{name} {person} member", empty_scopes)
+            for person in board.people
+        ]
+        values = set(range(len(selections) + 1))
+    else:
+        left, left_values = _number_variable(
+            model, board, number.left, f"{name} left", bindings, empty_scopes
+        )
+        right, right_values = _number_variable(
+            model, board, number.right, f"{name} right", bindings, empty_scopes
+        )
+        operator = number.operator.text
+        values = {
+            first + second if operator == "+" else first - second
+            for first in left_values
+            for second in right_values
+        }
+        children = left, right
+    variable = _auxiliary_variable(model, "expression_number")
+    options = {value: model.literal(variable, value) for value in sorted(values)}
+    model.constrain(
+        f"{name} domain",
+        Kind.EXACTLY_ONE,
+        options.values(),
+        defines=variable,
+        hidden=True,
+        family="Murdoku expression",
+    )
+    if selections is not None:
+        for value, literal in options.items():
+            model.constrain(
+                f"{name} count {value}",
+                Kind.COUNT,
+                selections,
+                allowed_counts={value},
+                reified_by=literal,
+                family="Murdoku expression",
+            )
+    if children is not None:
+        model.relate(
+            name,
+            (*children, variable),
+            lambda left, right, result: (
+                result == (left + right if operator == "+" else left - right)
+            ),
+        )
+    return variable, values
+
+
 def _reify_formula(
     model: Model,
     board: Board,
@@ -1085,6 +1159,49 @@ def _reify_formula(
             assert keys is not None
             literals = [model.literal(variable, value) for variable, value in keys]
         return _reify_cardinality(model, literals, permitted, name)
+    if isinstance(formula, (lang.NumberComparison, lang.Parity, lang.NumberRange)):
+        if isinstance(formula, lang.NumberComparison):
+            left_number, _ = _number_variable(
+                model, board, formula.left, f"{name} left", bindings, empty_scopes
+            )
+            right_number, _ = _number_variable(
+                model, board, formula.right, f"{name} right", bindings, empty_scopes
+            )
+            operator = formula.operator.text
+            compare: Callable[[int, int], bool] = {
+                "=": lambda a, b: a == b,
+                "!=": lambda a, b: a != b,
+                "<": lambda a, b: a < b,
+                "<=": lambda a, b: a <= b,
+                ">": lambda a, b: a > b,
+                ">=": lambda a, b: a >= b,
+            }[operator]
+            output_variable, yes, _ = _hidden_boolean(
+                model, "expression", name, "Murdoku expression"
+            )
+            model.relate(
+                name,
+                (left_number, right_number, output_variable),
+                lambda a, b, result: result == compare(a, b),
+            )
+            return yes
+        number, _ = _number_variable(
+            model, board, formula.number, f"{name} number", bindings, empty_scopes
+        )
+        if isinstance(formula, lang.Parity):
+            wanted = int(formula.parity.text == "odd")
+
+            def test(value: int) -> bool:
+                return value % 2 == wanted
+        else:
+            lower, upper = int(formula.lower.text), int(formula.upper.text)
+
+            def test(value: int) -> bool:
+                return lower <= value <= upper
+
+        output_variable, yes, _ = _hidden_boolean(model, "expression", name, "Murdoku expression")
+        model.relate(name, (number, output_variable), lambda value, result: result == test(value))
+        return yes
     if isinstance(formula, lang.Binary):
         left = _reify_formula(model, board, formula.left, f"{name} left", bindings, empty_scopes)
         right = _reify_formula(model, board, formula.right, f"{name} right", bindings, empty_scopes)
