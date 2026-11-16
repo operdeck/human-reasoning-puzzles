@@ -924,7 +924,8 @@ PHRASES: dict[str, dict[str, str]] = {
             "{a} staat op of direct naast {b} (ook schuin en over gebiedsgrenzen)"
         ),
         "clue.dir_not_near_cell": (
-            "{a} staat niet op of direct naast {b} (ook niet schuin of over een gebiedsgrens)"
+            "{a} staat niet op of direct naast {b} "
+            "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)"
         ),
         "clue.area_isolation": (
             "Twee gebieden die aan een zijde grenzen{scope} mogen niet allebei bezet zijn"

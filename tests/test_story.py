@@ -878,14 +878,47 @@ def test_vietnam_avoidance_clues_name_dish_cells_not_occupants(number):
         assert clue.startswith(f"{person} staat niet op of direct naast een vakje van de bún chả")
         assert "een vakje van de thịt kho" in clue
         assert "een vakje van de phá lấu" in clue
-        assert "(ook niet schuin of over een gebiedsgrens)" in clue
+        assert "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)" in clue
         assert "iemand" not in clue
         assert "koningszet" not in clue
         assert "Het is niet zo" not in clue
     figures = figure_clues(text).figures
     for figure, clue_number in zip(figures[:2], (1, 2), strict=True):
         assert any(clue_number in paragraph.sources for paragraph in figure.clues)
-        assert "staat niet op of direct naast" in figure.clues[0].text
+        assert "staat niet op of direct naast een vakje met een varkensvleesgerecht" in (
+            figure.clues[0].text
+        )
+        assert "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)" in (
+            figure.clues[0].text
+        )
+
+
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_vietnam_pork_dish_group_matches_both_travelers_clues(number):
+    from csp.puzzlefile import load_presentation
+
+    text = example(f"vietnam-murdoku-{number}.txt").read_text()
+    board, clues = load_board(text)
+    conditions = murdoku.directional_conditions(board, clues, include_rules=False)[:2]
+    pippo, swena = conditions
+    assert [condition.first.name for condition in conditions] == ["Pippo", "Swena"]
+    assert pippo.second == swena.second
+    assert pippo.second.kind == "union"
+    assert {part.name for part in pippo.second.parts} == board.object_names - {"tunnel", "kruk"}
+    assert all(
+        condition.negated
+        and condition.mode == "king"
+        and condition.comparison == "<="
+        and condition.distance == 1
+        for condition in conditions
+    )
+    say = Wording.read(text)
+    dishes = [say.words[part.name].removeprefix("de ") for part in pippo.second.parts]
+    intro = " ".join(load_presentation(text).intro)
+    assert (
+        f"De varkensvleesgerechten op het bord (soms met orgaanvlees) zijn {say.join(dishes)}."
+        in intro
+    )
 
 
 @pytest.mark.parametrize("language", ["en", "nl"])

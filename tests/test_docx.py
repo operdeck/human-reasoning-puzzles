@@ -671,8 +671,9 @@ def test_vietnam_booklet_keeps_clear_avoidance_clues_with_each_traveler(number, 
     for row, person in zip(rows[:2], ("Pippo", "Swena"), strict=True):
         clue = row.cells[1].text
         assert person in clue
-        assert "staat niet op of direct naast een vakje van de bún chả" in clue
-        assert "(ook niet schuin of over een gebiedsgrens)" in clue
+        assert "staat niet op of direct naast een vakje met een varkensvleesgerecht" in clue
+        assert "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)" in clue
+        assert "bún chả" not in clue
         assert "iemand op" not in clue
         assert "koningszet" not in clue
 
