@@ -147,6 +147,18 @@ def test_required_self_direction_is_an_error(board, source):
     assert not holds(statement, board, placed, roles)
 
 
+@pytest.mark.parametrize("mode", ["rows", "cols"])
+@pytest.mark.parametrize("comparison", ["=", "<="])
+def test_required_same_line_for_people_is_an_error(board, mode, comparison):
+    statement = parse_statement(f"Ada dir:{mode} Ben {comparison} 0", line=4)
+    errors = vacuous_errors(board, [statement])
+    assert len(errors) == 1
+    assert "cannot share a row or column" in errors[0]
+    placed = {"Ada": Square(0, 0), "Ben": Square(1, 1)}
+    roles = {(person, "guard"): False for person in board.people}
+    assert not holds(statement, board, placed, roles)
+
+
 @pytest.mark.parametrize(
     "source",
     [
@@ -159,6 +171,9 @@ def test_required_self_direction_is_an_error(board, source):
         "if Ada beside Ben then Ada in area:hall",
         "not Ada dir:areas Ada = 0",
         "no Ada dir:left Ada",
+        "Ada dir:rows Ben >= 0",
+        "not Ada dir:cols Ben = 0",
+        "Ada dir:rows Ben = 0 or Ada in area:hall",
         "Ada in Ada",
         "Ada on Ada",
         "Ada beside object:bed",

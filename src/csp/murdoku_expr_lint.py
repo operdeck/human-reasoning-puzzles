@@ -104,6 +104,22 @@ def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[s
                 )
                 continue
             if (
+                atom.operator.text in {"dir:rows", "dir:cols"}
+                and (atom.determiner is None or atom.determiner.text != "no")
+                and isinstance(atom.subject, lang.Name)
+                and isinstance(atom.target, lang.Name)
+                and atom.subject.token.text in board.people
+                and atom.target.token.text in board.people
+                and atom.measure is not None
+                and atom.measure.comparison.text in {"=", "<="}
+                and int(atom.measure.value.text) == 0
+            ):
+                token = atom.operator
+                errors.append(
+                    f"line {token.line}, column {token.column}: people cannot share a row or column"
+                )
+                continue
+            if (
                 atom.operator.text not in {"beside", "touches"}
                 or (atom.determiner is not None and atom.determiner.text == "no")
                 or not isinstance(atom.subject, lang.Name)
