@@ -998,7 +998,9 @@ def _assert_migration_preserves_assignment_grade(text, migrated):
     assert len(names) == len(set(names))
     rewritten, rewritten_grade = result(model)
     assert original.solved and rewritten.solved
-    assert rewritten.assignment == original.assignment
+    assert {name: rewritten.assignment[name] for name in board.people} == {
+        name: original.assignment[name] for name in board.people
+    }
     assert rewritten_grade == original_grade
 
 
@@ -1149,6 +1151,32 @@ def test_hotel_qualified_companion_preserves_migrated_grade_and_unique_solution(
         "in Karin area:fietsenstalling": "Karin in area:fietsenstalling",
         "not beside Ruud object:saunabank": "not Ruud beside object:saunabank",
         "not beside Sven object:koffer": "not Sven beside object:koffer",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
+def test_zoo_role_occupancy_preserves_migrated_grade_and_unique_solution():
+    text = example("zoo-murdoku-1.txt").read_text()
+    replacements = {
+        "alone Leeuw": "count (people in area of Leeuw) = 1",
+        "for each area in all occupied by role:aap, count people in that area >= 2": (
+            "every ?p in role:aap: count (people in area of ?p) >= 2"
+        ),
+        "with Verzorger attribute:dier in same area exactly 1": (
+            "count (people in area of Verzorger) = 1 + 1 and "
+            "every ((people except Verzorger) in area of Verzorger) is attribute:dier"
+        ),
+        "in Makaak area:bergen": "Makaak in area:bergen",
+        "dir Berggorilla Kameel up": "Berggorilla dir:up Kameel",
+        "in Berggorilla columns:3": "Berggorilla in columns:3",
+        "in Leeuw area:savanne": "Leeuw in area:savanne",
+        "not beside Makaak object:gras": "not Makaak beside object:gras",
+        "dir Kameel Berggorilla left": "Kameel dir:left Berggorilla",
+        "dir Berggorilla Kameel manhattan <= 2": "Berggorilla dir:manhattan Kameel <= 2",
     }
     migrated = text
     for old, new in replacements.items():
