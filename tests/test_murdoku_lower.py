@@ -6,7 +6,12 @@ from csp.bruteforce.murdoku_expr import solutions
 from csp.core import Contradiction, rule_relations
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
 from csp.murdoku_lang import holds, parse_statement
-from csp.murdoku_lower import try_lower_count, try_lower_location, try_lower_person_pair
+from csp.murdoku_lower import (
+    compile_statements,
+    try_lower_count,
+    try_lower_location,
+    try_lower_person_pair,
+)
 
 
 @pytest.fixture
@@ -140,3 +145,34 @@ def test_static_empty_scope_reports_infeasible_count(board):
     assert try_lower_count(model, board, parse_statement("count people on mark:blocked = 0"), "ok")
     with pytest.raises(ValueError, match="no feasible value on this board"):
         try_lower_count(model, board, parse_statement("count people on mark:blocked = 1"), "bad")
+
+
+def test_compiled_statement_conjunction_matches_reference_search(board):
+    statements = [
+        parse_statement("Ada in area:hall"),
+        parse_statement("Ben in rows:3"),
+        parse_statement("count role:guard = 1"),
+        parse_statement("Ada dir:left Ben"),
+    ]
+    expected = solutions(board, statements, limit=1000)
+    assert expected
+    model = compile_statements(board, statements)
+    actual = []
+    for candidate in solutions(board, [], limit=1000):
+        trial = model.clone()
+        try:
+            for person in board.people:
+                trial.assign(trial.literal(person, candidate[person]), "test", "fixed placement")
+                role = board.role_variable(person, "guard")
+                trial.assign(trial.literal(role, candidate[role]), "test", "fixed role")
+            trial.check()
+            rule_relations(trial)
+            actual.append(candidate)
+        except Contradiction:
+            continue
+    assert actual == expected
+
+
+def test_compiler_explicitly_rejects_unimplemented_shapes(board):
+    with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
+        compile_statements(board, [parse_statement("some role:guard in area:hall")])

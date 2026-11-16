@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from . import murdoku_lang as lang
 from .core import Kind, Model
-from .murdoku import Board, Square, _direction_test
+from .murdoku import Board, Square, _direction_test, compile_puzzle
 from .murdoku_typecheck import check_formula
 
 
@@ -269,3 +269,20 @@ def try_lower_count(model: Model, board: Board, statement: lang.Statement, name:
         family="Murdoku expression",
     )
     return True
+
+
+def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Model:
+    """Compile the currently supported expression patterns for a board."""
+    if board.rules:
+        raise ValueError("board rules must be migrated to expression statements first")
+    for statement in statements:
+        check_formula(board, statement.formula)
+    model = compile_puzzle(board, [])
+    for index, statement in enumerate(statements, 1):
+        label = f"clue {index}"
+        if not any(
+            lower(model, board, statement, label)
+            for lower in (try_lower_location, try_lower_person_pair, try_lower_count)
+        ):
+            raise NotImplementedError(f"{label}: expression lowering is not implemented")
+    return model
