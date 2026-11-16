@@ -24,7 +24,12 @@ class _RoleBinding:
     name: str
 
 
-type _Bindings = dict[str, str | _RoleBinding]
+@dataclass(frozen=True)
+class _AreaBinding:
+    name: str
+
+
+type _Bindings = dict[str, str | _RoleBinding | _AreaBinding]
 
 
 def _static_cells(
@@ -678,6 +683,8 @@ def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
         value = bindings.get(operand.token.text)
         if isinstance(value, _RoleBinding):
             raise NotImplementedError("bound role entity is supported only as the target of is")
+        if isinstance(value, _AreaBinding):
+            value = f"area:{value.name}"
         return replace(operand, token=replace(operand.token, text=value)) if value else operand
     if isinstance(operand, lang.Union):
         return replace(
@@ -1270,6 +1277,13 @@ def _reify_formula(
             )
         left_set = _bind_operand(formula.left, bindings)
         right_set = _bind_operand(formula.right, bindings)
+        left_areas = _static_area_ids(board, left_set)
+        right_areas = _static_area_ids(board, right_set)
+        if left_areas is not None and right_areas is not None:
+            same_areas = left_areas == right_areas
+            return _constant_boolean(
+                model, same_areas if formula.operator.text == "=" else not same_areas, name
+            )
         if infer_operand(board, left_set).sort != Sort.PERSON:
             raise NotImplementedError(f"{name}: set comparison lowering is not implemented")
         equalities = []
@@ -1395,20 +1409,33 @@ def _reify_formula(
         if role_domain is not None:
             source = formula.source
             dynamic = False
-            domain: list[str | _RoleBinding] = [
+            domain: list[str | _RoleBinding | _AreaBinding] = [
                 _RoleBinding(role.name) for role in board.roles if role.name in role_domain
             ]
         else:
             source = _bind_operand(formula.source, bindings)
-            people = _static_people(board, source)
-            dynamic = people is None
-            if people is None:
-                if infer_operand(board, source).sort != Sort.PERSON:
+            area_domain = _static_area_ids(board, source)
+            if area_domain is not None:
+                if len(set(board.region_names.values())) != len(board.region_names):
                     raise NotImplementedError(
-                        f"{name}: quantifier source lowering is not implemented"
+                        f"{name}: area quantifiers require distinct area names"
                     )
-                people = set(board.people)
-            domain = [person for person in board.people if person in people]
+                dynamic = False
+                domain = [
+                    _AreaBinding(board.region_names[region])
+                    for region in board.region_names
+                    if region in area_domain
+                ]
+            else:
+                people = _static_people(board, source)
+                dynamic = people is None
+                if people is None:
+                    if infer_operand(board, source).sort != Sort.PERSON:
+                        raise NotImplementedError(
+                            f"{name}: quantifier source lowering is not implemented"
+                        )
+                    people = set(board.people)
+                domain = [person for person in board.people if person in people]
         quantifier = " ".join(formula.quantifier.text.split())
         literals = []
         for index, values in enumerate(permutations(domain, len(formula.variables)), 1):
@@ -1425,8 +1452,8 @@ def _reify_formula(
             if dynamic:
                 selected = []
                 for binding_value in values:
-                    if isinstance(binding_value, _RoleBinding):
-                        raise ValueError(f"{name}: dynamic person set contains a role entity")
+                    if not isinstance(binding_value, str):
+                        raise ValueError(f"{name}: dynamic person set contains a non-person entity")
                     selected.append(
                         _person_selected(
                             model,

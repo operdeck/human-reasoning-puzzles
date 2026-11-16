@@ -395,6 +395,11 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "not area:hall dir:areas area:hall = 0",
         "area:hall in area:garden or Ada is role:guard",
         "some area:hall,garden in tag:outside",
+        "every ?a in areas: ?a in ?a",
+        "every ?a in tag:outside: ?a in tag:outside",
+        "every ?a, ?b in areas: ?a != ?b",
+        "some ?a in area:hall,garden: ?a on area:hall",
+        "some ?a in areas: Ada in ?a and Ben in ?a",
         "count role:guard = count (people in area:hall)",
         "count role:guard + count (people in area:hall) >= 2",
         "count role:guard - count (people on mark:red) = 0",
@@ -567,6 +572,12 @@ def test_overlapping_area_tags_share_one_empty_literal(board):
     )
     counts = {constraint.name: constraint for constraint in model.constraints}
     assert counts["clue 1"].literals == counts["clue 2"].literals
+
+
+def test_area_quantifier_rejects_ambiguous_names(board):
+    board = replace(board, region_names={"a": "same", "b": "same"}, area_tags={})
+    with pytest.raises(NotImplementedError, match="require distinct area names"):
+        compile_statements(board, [parse_statement("every ?a in areas: ?a in ?a")])
 
 
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
