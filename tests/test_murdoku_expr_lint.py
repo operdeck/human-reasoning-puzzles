@@ -134,13 +134,33 @@ def test_person_adjacency_is_impossible_for_every_valid_placement(board, operato
 
 @pytest.mark.parametrize(
     "source",
+    ["Ada dir:left Ada", "Ada dir:areas Ada = 0", "Ada dir:nearest Ada"],
+)
+def test_required_self_direction_is_an_error(board, source):
+    statement = parse_statement(source, line=4)
+    errors = vacuous_errors(board, [statement])
+    assert len(errors) == 1
+    assert errors[0].startswith("line 4, column ")
+    assert "distinct entities" in errors[0]
+    placed = {"Ada": Square(0, 0), "Ben": Square(1, 1)}
+    roles = {(person, "guard"): False for person in board.people}
+    assert not holds(statement, board, placed, roles)
+
+
+@pytest.mark.parametrize(
+    "source",
     [
         "not Ada beside Ben",
         "not Ada touches Ben",
         "no Ada beside Ben",
         "no Ada touches Ben",
         "Ada beside Ben or Ada in area:hall",
+        "Ada dir:left Ada or Ada in area:hall",
         "if Ada beside Ben then Ada in area:hall",
+        "not Ada dir:areas Ada = 0",
+        "no Ada dir:left Ada",
+        "Ada in Ada",
+        "Ada on Ada",
         "Ada beside object:bed",
     ],
 )

@@ -90,6 +90,20 @@ def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[s
     for statement in statements:
         for atom in _required_atoms(statement.formula):
             if (
+                atom.operator.text.startswith("dir:")
+                and (atom.determiner is None or atom.determiner.text != "no")
+                and isinstance(atom.subject, lang.Name)
+                and isinstance(atom.target, lang.Name)
+                and atom.subject.token.text == atom.target.token.text
+                and atom.subject.token.text in board.people
+            ):
+                token = atom.operator
+                errors.append(
+                    f"line {token.line}, column {token.column}: a person cannot be "
+                    f"{token.text} themselves; directional relations require distinct entities"
+                )
+                continue
+            if (
                 atom.operator.text not in {"beside", "touches"}
                 or (atom.determiner is not None and atom.determiner.text == "no")
                 or not isinstance(atom.subject, lang.Name)
