@@ -1,13 +1,18 @@
 import pytest
 
 from csp.murdoku_lang import (
+    Arithmetic,
     Atom,
     Binary,
+    Count,
     Difference,
     Filter,
     Measure,
     Name,
     Negation,
+    NumberComparison,
+    NumberRange,
+    Parity,
     Projection,
     Qualified,
     SetComparison,
@@ -96,6 +101,37 @@ def test_parse_set_comparison():
     assert isinstance(result, SetComparison)
     assert isinstance(result.left, Filter)
     assert isinstance(result.right, Union)
+
+
+def test_count_comparison_uses_filter_and_arithmetic():
+    result = parse_formula("count people in area:x = 1 + 2")
+    assert isinstance(result, NumberComparison)
+    assert isinstance(result.left, Count) and isinstance(result.left.operand, Filter)
+    assert isinstance(result.right, Arithmetic) and result.right.operator.text == "+"
+
+
+def test_count_comparison_between_scopes():
+    result = parse_formula("count (people in area:a) > count (people in area:b)")
+    assert isinstance(result, NumberComparison)
+    assert isinstance(result.left, Count) and isinstance(result.right, Count)
+    assert result.operator.text == ">"
+
+
+@pytest.mark.parametrize(
+    ("clue", "kind"),
+    [
+        ("count empty areas odd", Parity),
+        ("count rows 1..3", NumberRange),
+    ],
+)
+def test_count_parity_and_range(clue, kind):
+    assert isinstance(parse_formula(clue), kind)
+
+
+def test_count_direction_filter_keeps_its_measure():
+    result = parse_formula("count (people dir:up Ada = 1) = 2")
+    assert isinstance(result, NumberComparison) and isinstance(result.left, Count)
+    assert isinstance(result.left.operand, Filter) and result.left.operand.measure is not None
 
 
 def test_formula_source_error_uses_requested_line():

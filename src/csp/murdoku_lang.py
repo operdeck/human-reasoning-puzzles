@@ -98,13 +98,53 @@ class Binary:
     right: "Formula"
 
 
-type Formula = Atom | SetComparison | Negation | Binary
+@dataclass(frozen=True)
+class Integer:
+    value: Token
+
+
+@dataclass(frozen=True)
+class Count:
+    operand: Operand
+
+
+@dataclass(frozen=True)
+class Arithmetic:
+    left: "Number"
+    operator: Token
+    right: "Number"
+
+
+type Number = Integer | Count | Arithmetic
+
+
+@dataclass(frozen=True)
+class NumberComparison:
+    left: Number
+    operator: Token
+    right: Number
+
+
+@dataclass(frozen=True)
+class Parity:
+    number: Number
+    parity: Token
+
+
+@dataclass(frozen=True)
+class NumberRange:
+    number: Number
+    lower: Token
+    upper: Token
+
+
+type Formula = Atom | SetComparison | Negation | Binary | NumberComparison | Parity | NumberRange
 
 _GRAMMAR = r"""
     ?operand: union ("except" union)*          -> difference
-    ?union: primary ("," primary)*             -> union
+    ?union: primary ("," union_item)*          -> union
+    ?union_item: primary | RANGE                -> name
     ?primary: NAME                             -> name
-            | RANGE                            -> name
             | ADJECTIVE primary                -> qualified
             | PROJECTION "of" primary          -> projection
             | "(" filtered ")"
@@ -126,6 +166,14 @@ _GRAMMAR = r"""
                     | DET operand RELATION operand -> determined_atom
                     | DET operand DIRECTION operand measure? -> determined_atom
                     | operand SET_COMPARISON operand  -> set_comparison
+                    | number NUM_COMPARISON number -> number_comparison
+                    | number PARITY             -> parity
+                    | number NUMBER ".." NUMBER -> number_range
+    ?number: number ADD_OP number_atom         -> arithmetic
+           | number_atom
+    ?number_atom: NUMBER                       -> integer
+                | COUNT filtered               -> count
+                | "(" number ")"
 
     ADJECTIVE.2: /(?:empty|occupied|free)(?![\w:-])/
     PROJECTION.2: /(?:area|row|column|cell)(?![\w:-])/
@@ -143,6 +191,10 @@ _GRAMMAR = r"""
     NUMBER: /\d+/
     COMPARISON: "=" | "<=" | ">="
     SET_COMPARISON: "=" | "!="
+    NUM_COMPARISON: "=" | "!=" | "<" | "<=" | ">" | ">="
+    ADD_OP: "+" | "-"
+    PARITY.2: /(?:odd|even)(?![\w:-])/
+    COUNT.2: /count(?![\w:-])/
     %import common.WS
     %ignore WS
 """
@@ -208,6 +260,26 @@ class _OperandTransformer(Transformer[LarkToken, Operand | Formula]):
 
 @v_args(inline=True)
 class _FormulaTransformer(_OperandTransformer):
+    def integer(self, value: LarkToken) -> Integer:
+        return Integer(_token(value, self.line_offset))
+
+    def count(self, _count: LarkToken, operand: Operand) -> Count:
+        return Count(operand)
+
+    def arithmetic(self, left: Number, operator: LarkToken, right: Number) -> Arithmetic:
+        return Arithmetic(left, _token(operator, self.line_offset), right)
+
+    def number_comparison(
+        self, left: Number, operator: LarkToken, right: Number
+    ) -> NumberComparison:
+        return NumberComparison(left, _token(operator, self.line_offset), right)
+
+    def parity(self, number: Number, parity: LarkToken) -> Parity:
+        return Parity(number, _token(parity, self.line_offset))
+
+    def number_range(self, number: Number, lower: LarkToken, upper: LarkToken) -> NumberRange:
+        return NumberRange(number, _token(lower, self.line_offset), _token(upper, self.line_offset))
+
     def relation_atom(
         self, subject: Operand, operator: LarkToken, target: Operand, measure: Measure | None = None
     ) -> Atom:
@@ -240,7 +312,10 @@ class _FormulaTransformer(_OperandTransformer):
         for index in range(0, len(parts), 2):
             operator, right = parts[index : index + 2]
             assert isinstance(operator, LarkToken)
-            assert isinstance(right, Atom | SetComparison | Negation | Binary)
+            assert isinstance(
+                right,
+                Atom | SetComparison | Negation | Binary | NumberComparison | Parity | NumberRange,
+            )
             result = Binary(result, _token(operator, self.line_offset), right)
         return result
 
@@ -281,5 +356,7 @@ def parse_operand(source: str, *, line: int = 1) -> Operand:
 def parse_formula(source: str, *, line: int = 1) -> Formula:
     """Parse the implemented formula subset, without board-dependent checks."""
     result = _parse(_FORMULA_PARSER, source, line)
-    assert isinstance(result, Atom | SetComparison | Negation | Binary)
+    assert isinstance(
+        result, Atom | SetComparison | Negation | Binary | NumberComparison | Parity | NumberRange
+    )
     return result
