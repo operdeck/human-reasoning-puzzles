@@ -851,6 +851,13 @@ def _reify_adjective_atom(
 
 
 def _cell_occupancy_scope(board: Board, operand: lang.Operand) -> tuple[str, list[Square]] | None:
+    if isinstance(operand, lang.Filter) and operand.operator.text in {"in", "on"}:
+        scope = _cell_occupancy_scope(board, operand.source)
+        target = _static_cells(board, operand.target)
+        if scope is None or target is None:
+            return None
+        adjective, squares = scope
+        return adjective, [square for square in squares if square in target]
     if not isinstance(operand, (lang.Qualified, lang.AdjectiveFilter)):
         return None
     adjective = operand.adjective.text

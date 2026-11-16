@@ -432,6 +432,9 @@ def test_blocked_footprint_is_empty(board):
         "count empty free cells = 6",
         "count occupied cells = 2",
         "count empty cells odd iff Ada is role:guard",
+        "count (empty cells on mark:blocked) = 1",
+        "count (empty free cells on mark:blocked) = 0",
+        "count (empty cells in area:hall) >= 1",
     ],
 )
 def test_cell_occupancy_counts_include_blocked_cells(board, formula):
@@ -439,6 +442,7 @@ def test_cell_occupancy_counts_include_blocked_cells(board, formula):
     board = replace(
         board,
         objects=[*board.objects, BoardObject("rock", "blocking", (blocked,))],
+        marks=[*board.marks, CellMark("blocked", (blocked,))],
     )
     statement = parse_statement(formula)
     model = compile_statements(board, [statement])
