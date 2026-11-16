@@ -132,6 +132,29 @@ def test_person_adjacency_is_impossible_for_every_valid_placement(board, operato
         assert not holds(statement, board, placed, roles)
 
 
+@pytest.mark.parametrize("operator", ["in", "on"])
+def test_required_person_location_without_free_cells_is_an_error(board, operator):
+    board = replace(
+        board,
+        objects=[
+            BoardObject("table", "blocking", (Square(0, 0),)),
+            BoardObject("chair", "standable", (Square(1, 1),)),
+        ],
+    )
+    statement = parse_statement(f"Ada {operator} object:table", line=4)
+    assert "line 4, column " in vacuous_errors(board, [statement])[0]
+    assert "no free cells" in vacuous_errors(board, [statement])[0]
+    placed = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    roles = {(person, "guard"): False for person in board.people}
+    assert not holds(statement, board, placed, roles)
+    assert not vacuous_errors(board, [parse_statement(f"Ada {operator} object:table,chair")])
+    assert not vacuous_errors(board, [parse_statement(f"not Ada {operator} object:table")])
+    assert not vacuous_errors(board, [parse_statement(f"no Ada {operator} object:table")])
+    assert not vacuous_errors(
+        board, [parse_statement(f"Ada {operator} object:table or Ada in area:hall")]
+    )
+
+
 def test_impossible_occupied_scope_direction_is_an_error(board):
     board = replace(
         board,
