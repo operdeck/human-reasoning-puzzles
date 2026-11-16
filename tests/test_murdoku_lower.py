@@ -1317,6 +1317,29 @@ def test_named_person_superlatives_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize("order", ["nearest", "furthest"])
+@pytest.mark.parametrize("metric", ["rows", "cols", "manhattan", "king", "euclidean", "areas"])
+def test_each_superlative_metric_matches_reference_including_ties(board, order, metric):
+    board = replace(
+        board,
+        regions=[["a"] * 3, ["b"] * 3, ["c"] * 3],
+        region_names={"a": "hall", "b": "garden", "c": "shed"},
+        people=["Ada", "Ben", "Cy"],
+        roles=[],
+    )
+    formula = f"Ada dir:{order}:{metric} Ben"
+    statement = parse_statement(formula)
+    tied = {"Ada": Square(0, 0), "Ben": Square(1, 1), "Cy": Square(2, 2)}
+    assert not holds(statement, board, tied, {})
+    placed = {
+        "Ada": Square(1, 1) if order == "nearest" else Square(0, 0),
+        "Ben": Square(2, 2),
+        "Cy": Square(0, 0) if order == "nearest" else Square(1, 1),
+    }
+    assert holds(statement, board, placed, {})
+    _assert_compilation_matches_reference(board, formula)
+
+
 @pytest.mark.parametrize(
     "formula",
     [
