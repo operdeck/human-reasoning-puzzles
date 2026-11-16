@@ -3,7 +3,7 @@ import pytest
 from csp.bruteforce.murdoku_expr import solutions
 from csp.core import Solver
 from csp.murdoku import Square
-from csp.murdoku_expression_file import load_expression_board
+from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
 from csp.murdoku_lang import Atom, Name
 from csp.murdoku_lower import compile_statements
 from csp.puzzlefile import load_board
@@ -62,3 +62,39 @@ def test_legacy_reader_still_interprets_legacy_rules_and_clues():
     assert len(board.rules) == len(clues) == 1
     assert board.rules[0] == ("in", ["Ada", "rows:1"])
     assert clues[0] == ("in", ["Ben", "columns:1"])
+
+
+def test_expression_keys_match_ast_after_reordering_or_rewording():
+    extra = "  Ada in rows:1 | Another wording.\n"
+    text = TEXT.replace("  Ben in columns:1", extra + "  Ben in columns:1")
+    text += "Key:\nclue: Ben   in columns:1\nrule: Ada in rows:1\n"
+    assert keyed_expression_clue_numbers(text) == {2}
+    load_expression_board(text)
+    reordered = text.replace(extra + "  Ben", "  Ben").replace(
+        "  Ben in columns:1 | Ben is in the first column.\n",
+        "  Ben in columns:1 | Changed wording.\n" + extra,
+    )
+    assert keyed_expression_clue_numbers(reordered) == {1}
+    load_expression_board(reordered)
+
+
+@pytest.mark.parametrize(
+    ("key", "message"),
+    [
+        ("clue: Ada in columns:1", "unresolved Key clue"),
+        ("clue: Ben in columns:1\nclue: Ben   in columns:1", "duplicate Key entry"),
+        ("clue: Ben in columns:1 | text", "bad Key entry"),
+    ],
+)
+def test_expression_keys_reject_invalid_references(key, message):
+    with pytest.raises(ValueError, match=message):
+        load_expression_board(TEXT + "Key:\n" + key + "\n")
+
+
+def test_expression_key_requires_a_unique_ast_match():
+    text = TEXT.replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  Ben in columns:1 | First wording.\n  Ben in columns:1 | Second wording.",
+    )
+    with pytest.raises(ValueError, match="unresolved Key clue"):
+        load_expression_board(text + "Key:\nclue: Ben in columns:1\n")

@@ -223,6 +223,7 @@ def load_board(text: str) -> tuple[Board, list[Clue]]:
     """Read a Murdoku puzzle file into its board and its list of clues."""
     board = load_board_layout(text)
     section = read_sections(text)
+    keyed_clue_numbers(text)
     board.rules = _clues(section.get("Rules", []))
     return board, _clues(section.get("Clues", []))
 
@@ -282,8 +283,6 @@ def load_board_layout(text: str) -> Board:
     pronouns = _pronoun_placements(section.get("Pronouns", []), people)
     role_eligibility = _role_eligibility(section.get("RoleEligibility", []), attributes)
     roles = _role_placements(section.get("Roles", []), people, role_eligibility)
-
-    keyed_clue_numbers(text)
 
     board = Board(
         size,
