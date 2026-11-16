@@ -2051,6 +2051,10 @@ def _reify_formula(
             subject=_bind_operand(formula.subject, bindings),
             target=_bind_operand(target_operand, bindings),
         )
+        if atom.operator.text.startswith(("dir:nearest", "dir:furthest")) and not (
+            isinstance(atom.target, lang.Name) and atom.target.token.text in board.people
+        ):
+            raise NotImplementedError(f"{name}: superlative target lowering is not implemented")
         spatial_match = _static_spatial_atom(board, atom)
         if spatial_match is not None:
             return _constant_boolean(model, spatial_match, name)
