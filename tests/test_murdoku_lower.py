@@ -380,6 +380,20 @@ def test_shared_population_primitives_keep_only_using_statements():
     assert by_name["hall outnumbers shed: nonempty"] == (first, second)
 
 
+def test_shared_empty_scopes_keep_each_using_statement(board):
+    first = parse_statement("area:hall is empty")
+    second = parse_statement("count empty areas = 1")
+    compiled = compile_statements_with_origins(board, [first, second])
+    assert any(
+        tuple(origin.statement for origin in origins) == (first, second)
+        for origins in compiled.constraint_origins.values()
+    )
+    assert any(
+        tuple(origin.statement for origin in origins) == (second,)
+        for origins in compiled.constraint_origins.values()
+    )
+
+
 @pytest.mark.parametrize(
     "formula",
     [

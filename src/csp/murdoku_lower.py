@@ -70,6 +70,23 @@ class ExpressionCompilation:
     initial_step_origins: dict[int, tuple[StatementOrigin, ...]]
 
 
+class _EmptyScopes(dict[Square | str, int]):
+    def __init__(self) -> None:
+        super().__init__()
+        self.used: set[Square | str] = set()
+        self.definitions: dict[Square | str, tuple[range, range]] = {}
+
+    def __getitem__(self, key: Square | str) -> int:
+        self.used.add(key)
+        return super().__getitem__(key)
+
+    def record(self, key: Square | str, model: Model, start: tuple[int, int]) -> None:
+        self.definitions[key] = (
+            range(start[0], len(model.constraints)),
+            range(start[1], len(model.log)),
+        )
+
+
 def _operand_sort(board: Board, operand: lang.Operand, bindings: _Bindings) -> Sort:
     if isinstance(operand, lang.Difference):
         return _operand_sort(board, operand.left, bindings)
@@ -1080,12 +1097,15 @@ def _cell_empty_literal(
     model: Model, board: Board, square: Square, name: str, empty_scopes: dict[Square | str, int]
 ) -> int:
     if square not in empty_scopes:
+        start = (len(model.constraints), len(model.log))
         occupants = (
             [model.literal(person, square) for person in board.people]
             if square in board.free
             else []
         )
         empty_scopes[square] = _reify_cardinality(model, occupants, {0}, name)
+        if isinstance(empty_scopes, _EmptyScopes):
+            empty_scopes.record(square, model, start)
     return empty_scopes[square]
 
 
@@ -1798,6 +1818,7 @@ def _area_empty_literal(
 ) -> int:
     key = f"area:{region}"
     if key not in empty_scopes:
+        start = (len(model.constraints), len(model.log))
         occupants = [
             model.literal(person, square)
             for person in board.people
@@ -1805,6 +1826,8 @@ def _area_empty_literal(
             if board.region_of(square) == region
         ]
         empty_scopes[key] = _reify_cardinality(model, occupants, {0}, name)
+        if isinstance(empty_scopes, _EmptyScopes):
+            empty_scopes.record(key, model, start)
     return empty_scopes[key]
 
 
@@ -2860,15 +2883,15 @@ def compile_statements_with_origins(
 ) -> ExpressionCompilation:
     """Compile expressions and retain their structured origins outside the engine.
 
-    Shared population primitives retain every statement that uses them; other
-    primitives cite the statement that emitted them.
+    Shared population and emptiness primitives retain every statement that
+    uses them; other primitives cite the statement that emitted them.
     """
     if board.rules:
         raise ValueError("board rules must be migrated to expression statements first")
     for statement in (*rules, *statements):
         check_formula(board, statement.formula)
     model = compile_puzzle(board, [])
-    empty_scopes: dict[Square | str, int] = {}
+    empty_scopes = _EmptyScopes()
     origins = [
         *(StatementOrigin("rule", index, statement) for index, statement in enumerate(rules, 1)),
         *(
@@ -2923,6 +2946,7 @@ def compile_statements_with_origins(
         if label in population_labels:
             continue
         before_statement = snapshot()
+        empty_scopes.used.clear()
         if not any(
             lower(model, board, statement, label)
             for lower in (
@@ -2939,4 +2963,14 @@ def compile_statements_with_origins(
             )
             model.assign(literal, "clue", label)
         record(before_statement, (origin,))
+        for key in empty_scopes.used:
+            constraints, steps = empty_scopes.definitions[key]
+            for index in constraints:
+                previous = constraint_origins.get(index, ())
+                if origin not in previous:
+                    constraint_origins[index] = (*previous, origin)
+            for index in steps:
+                previous = initial_step_origins.get(index, ())
+                if origin not in previous:
+                    initial_step_origins[index] = (*previous, origin)
     return ExpressionCompilation(model, constraint_origins, relation_origins, initial_step_origins)
