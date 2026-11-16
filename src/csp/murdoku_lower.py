@@ -533,9 +533,9 @@ def try_lower_role_target(model: Model, board: Board, statement: lang.Statement,
     return True
 
 
-def try_lower_count(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
-    """Lower supported top-level counts; return false without changes for other shapes."""
-    formula = statement.formula
+def _count_predicate(
+    formula: lang.Formula,
+) -> tuple[lang.Operand, Callable[[int], bool], lang.Token] | None:
     predicate: Callable[[int], bool]
     match formula:
         case lang.NumberComparison(
@@ -568,7 +568,17 @@ def try_lower_count(model: Model, board: Board, statement: lang.Statement, name:
             predicate = range_matches
             location = lower
         case _:
-            return False
+            return None
+    return operand, predicate, location
+
+
+def try_lower_count(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Lower supported top-level counts; return false without changes for other shapes."""
+    formula = statement.formula
+    count = _count_predicate(formula)
+    if count is None:
+        return False
+    operand, predicate, location = count
     check_formula(board, formula)
     role_scope = _role_scope(board, operand)
     keys = _counted_keys(board, operand) if role_scope is None else None
@@ -680,6 +690,36 @@ def _reify_formula(model: Model, board: Board, formula: lang.Formula, name: str)
         return _reify_atom(model, board, formula, name)
     if isinstance(formula, lang.Negation):
         return _opposite(model, _reify_formula(model, board, formula.formula, f"{name} not"))
+    count = _count_predicate(formula)
+    if count is not None:
+        operand, predicate, _ = count
+        role_scope = _role_scope(board, operand)
+        keys = _counted_keys(board, operand) if role_scope is None else None
+        if keys is None and role_scope is None:
+            raise NotImplementedError(f"{name}: expression lowering is not implemented")
+        maximum = (
+            len(board.people) if role_scope is not None else min(len(keys or []), len(board.people))
+        )
+        permitted = {value for value in range(maximum + 1) if predicate(value)}
+        _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
+        if not permitted:
+            model.assign(no, "clue", name, sources=(f"{name} state",))
+            return yes
+        if role_scope is not None:
+            role, squares = role_scope
+            literals = _role_selection_literals(model, board, role, squares, name)
+        else:
+            assert keys is not None
+            literals = [model.literal(variable, value) for variable, value in keys]
+        model.constrain(
+            name,
+            Kind.COUNT,
+            literals,
+            allowed_counts=permitted,
+            reified_by=yes,
+            family="Murdoku expression",
+        )
+        return yes
     if isinstance(formula, lang.Binary):
         left = _reify_formula(model, board, formula.left, f"{name} left")
         right = _reify_formula(model, board, formula.right, f"{name} right")

@@ -328,6 +328,11 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "at most 1 of (Ada is role:guard; Ben is role:guard)",
         "Ada is role:guard and not Ada is role:guard",
         "Ada on Ada iff not Ada touches Ada",
+        "if count role:guard = 0 then Ada in area:hall",
+        "count (role:guard on mark:red) >= 1 iff Ben is role:guard",
+        "not (count people on mark:red odd or count people in area:hall = 0)",
+        "exactly 1 of (count role:guard = 1; count people on mark:blue = 0)",
+        "count people on object:bed = 2 or Ada is role:guard",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
