@@ -465,6 +465,27 @@ def _assert_compilation_matches_reference(board, formula):
 @pytest.mark.parametrize(
     "formula",
     [
+        "Ada dir:up empty rows = 1",
+        "Ada on object:bed and every ?b in object:bed: Ada on ?b or ?b in empty rows",
+        "some (people beside object:chest) dir:up Ada = 1",
+        "Ada in rows:1,last and count people in rows:1,last = 1",
+    ],
+)
+def test_issue_243_clues_match_reference_for_every_placement(board, formula):
+    board = replace(
+        board,
+        objects=[
+            BoardObject("bed", "standable", (Square(0, 0),)),
+            BoardObject("bed", "standable", (Square(2, 0),)),
+            BoardObject("chest", "blocking", (Square(1, 1),)),
+        ],
+    )
+    _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
         "some ?r in roles: Ada is ?r",
         "some ?r in roles: not Ada is ?r",
         "exactly 1 ?r in roles: Ada is ?r",
