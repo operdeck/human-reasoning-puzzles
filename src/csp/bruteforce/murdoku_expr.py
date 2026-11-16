@@ -21,7 +21,13 @@ def _mentions_roles(value: object) -> bool:
     return False
 
 
-def _placements(board: Board, checks: Sequence[Statement]) -> Iterator[dict[str, Square]]:
+def _placements(
+    board: Board,
+    checks: Sequence[Statement],
+    order: Sequence[str],
+    fixed: dict[str, Square],
+    budget: list[int] | None,
+) -> Iterator[dict[str, Square]]:
     placed: dict[str, Square] = {}
     grounded = [
         (statement, dependencies)
@@ -30,11 +36,15 @@ def _placements(board: Board, checks: Sequence[Statement]) -> Iterator[dict[str,
     ]
 
     def search(index: int, rows: set[int], columns: set[int]) -> Iterator[dict[str, Square]]:
-        if index == len(board.people):
+        if budget is not None:
+            budget[0] -= 1
+            if budget[0] < 0:
+                return
+        if index == len(order):
             yield dict(placed)
             return
-        person = board.people[index]
-        for square in board.free:
+        person = order[index]
+        for square in (fixed[person],) if person in fixed else board.free:
             if square.row not in rows and square.col not in columns:
                 placed[person] = square
                 if all(
@@ -117,6 +127,17 @@ def solutions(
     if limit < 1:
         raise ValueError("solution limit must be positive")
     checks = _checks(board, statements, rules)
+    return _solutions(board, checks, limit, board.people, {}, None)
+
+
+def _solutions(
+    board: Board,
+    checks: Sequence[Statement],
+    limit: int,
+    order: Sequence[str],
+    fixed: dict[str, Square],
+    budget: list[int] | None,
+) -> list[dict[str, Square | bool]]:
     placement_checks = [statement for statement in checks if not _mentions_roles(statement.formula)]
     role_checks = [statement for statement in checks if _mentions_roles(statement.formula)]
     # Role-independent checks cannot observe this complete placeholder assignment.
@@ -124,7 +145,7 @@ def solutions(
         (person, role.name): False for role in board.roles for person in board.people
     }
     found: list[dict[str, Square | bool]] = []
-    for placed in _placements(board, checks):
+    for placed in _placements(board, checks, order, fixed, budget):
         if not all(
             holds(statement, board, placed, placeholder_roles) for statement in placement_checks
         ):
@@ -142,3 +163,45 @@ def solutions(
                 if len(found) >= limit:
                     return found
     return found
+
+
+def sample(
+    board: Board,
+    statements: Sequence[Statement],
+    limit: int,
+    *,
+    rules: Sequence[Statement] = (),
+) -> list[dict[str, Square | bool]]:
+    """Sample distinct solutions across each person's possible starting squares."""
+    if limit < 1:
+        raise ValueError("solution limit must be positive")
+    checks = _checks(board, statements, rules)
+    spent = [10**12]
+    plain = _solutions(board, checks, limit, board.people, {}, spent)
+    branches = len(board.people) * len(board.free)
+    nodes = max(200, (10**12 - spent[0]) // max(1, branches))
+    each = max(1, -(-limit // max(1, branches)))
+    found: set[tuple[tuple[str, Square | bool], ...]] = set()
+    groups: list[list[dict[str, Square | bool]]] = []
+
+    def keep(batch: list[dict[str, Square | bool]]) -> None:
+        group = []
+        for solution in batch:
+            key = tuple(sorted(solution.items()))
+            if key not in found:
+                found.add(key)
+                group.append(solution)
+        groups.append(group)
+
+    for person in board.people:
+        order = [person, *(other for other in board.people if other != person)]
+        for square in board.free:
+            keep(_solutions(board, checks, each, order, {person: square}, [nodes]))
+    keep(plain)
+    spread = [
+        group[i]
+        for i in range(max(map(len, groups), default=0))
+        for group in groups
+        if i < len(group)
+    ]
+    return spread[:limit]

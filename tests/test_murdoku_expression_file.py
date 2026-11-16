@@ -1,7 +1,7 @@
 import pytest
 
 from csp import clue_search
-from csp.bruteforce.murdoku_expr import accepts, solutions
+from csp.bruteforce.murdoku_expr import accepts, sample, solutions
 from csp.core import Solver
 from csp.murdoku import Square
 from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
@@ -323,6 +323,23 @@ def test_expression_placement_acceptance_matches_search_for_optional_roles():
         assert accepts(board, clues, placed, rules=rules) == any(
             all(result[person] == square for person, square in placed.items()) for result in found
         )
+
+
+def test_expression_sampling_spreads_valid_solutions_and_preserves_role_assignments():
+    text = TEXT.replace(
+        "  Ada in rows:1 | Ada stays in the first row.",
+        "  Ada is role:guard",
+    )
+    text += "Roles:\nguard: any\n"
+    board, rules, clues = load_expression_board(text)
+    found = sample(board, clues, 8, rules=rules)
+    assert len(found) == 4
+    assert len({tuple(sorted(result.items())) for result in found}) == len(found)
+    assert {result["Ada"] for result in found} == {Square(0, 1), Square(1, 1)}
+    all_solutions = solutions(board, clues, 100, rules=rules)
+    assert all(result in all_solutions for result in found)
+    with pytest.raises(ValueError, match="positive"):
+        sample(board, clues, 0, rules=rules)
 
 
 def test_expression_authoring_cli_thin(tmp_path, capsys):
