@@ -1,5 +1,6 @@
 """Compositional wording for Murdoku expression statements."""
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from string import Formatter
@@ -341,7 +342,15 @@ class ExpressionWords:
             text = f"{namespace}:{text}"
         kind, _, name = text.partition(":")
         key = "name.object.display" if kind == "object" and name in self.names else f"name.{kind}"
-        return self._phrase(key, name=self.names.get(name, name))
+        rendered = self.names.get(name, name)
+        if kind == "area":
+            rendered = re.sub(
+                r"^(?:in|on|at|op)\s+(?:(?:the|a|an|de|het|een)\s+)?",
+                "",
+                rendered,
+                flags=re.IGNORECASE,
+            )
+        return self._phrase(key, name=rendered)
 
     def _relation(
         self,

@@ -137,6 +137,18 @@ def test_object_target_wording_uses_names_without_changing_set_wording(board):
     assert overridden.statement(parse_statement("Ada on object:bed")) == "Ada is on exactly a bed"
 
 
+@pytest.mark.parametrize(
+    ("language", "display", "expected"),
+    [
+        ("en", "in the hall", "Ada is in area hall"),
+        ("nl", "in de hal", "Ada is in gebied hal"),
+    ],
+)
+def test_area_names_accept_existing_location_wordings(board, language, display, expected):
+    words = ExpressionWords(board, language, names={"hall": display})
+    assert words.statement(parse_statement("Ada in area:hall")) == expected
+
+
 def test_read_rejects_misspelled_expression_phrase_keys(board):
     with pytest.raises(ValueError, match="unknown expression phrase key"):
         ExpressionWords.read(board, "Words:\nrel.besid: next to\n")
