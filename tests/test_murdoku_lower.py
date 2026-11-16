@@ -1185,23 +1185,64 @@ def test_zoo_role_occupancy_preserves_migrated_grade_and_unique_solution():
     _assert_migration_preserves_unique_solution(text, migrated)
 
 
-def test_food_attribute_companion_preserves_migrated_grade_and_unique_solution():
-    text = example("food-murdoku-1.txt").read_text()
-    replacements = {
-        "with Jos attribute:food in same area exactly 1": (
-            "count (people in area of Jos) = 1 + 1 and "
-            "every ((people except Jos) in area of Jos) is attribute:food"
+@pytest.mark.parametrize(
+    ("filename", "replacements"),
+    [
+        (
+            "food-murdoku-1.txt",
+            {
+                "dir Okonomiyaki Onigiri areas = 0": "Okonomiyaki dir:areas Onigiri = 0",
+                "not in Tonkatsu area:kobe": "not (Tonkatsu in area:kobe)",
+                "dir Onigiri Tonkatsu left": "Onigiri dir:left Tonkatsu",
+                "dir Okonomiyaki Tonkatsu manhattan >= 6": (
+                    "Okonomiyaki dir:manhattan Tonkatsu >= 6"
+                ),
+                "dir Onigiri Tonkatsu manhattan >= 8": "Onigiri dir:manhattan Tonkatsu >= 8",
+                "in Sushi rows:4": "Sushi in rows:4",
+                "dir Mochi Tonkatsu up": "Mochi dir:up Tonkatsu",
+                "dir Mochi Okonomiyaki left": "Mochi dir:left Okonomiyaki",
+            },
         ),
-        "dir Okonomiyaki Onigiri areas = 0": "Okonomiyaki dir:areas Onigiri = 0",
-        "not in Tonkatsu area:kobe": "not (Tonkatsu in area:kobe)",
-        "dir Onigiri Tonkatsu left": "Onigiri dir:left Tonkatsu",
-        "dir Okonomiyaki Tonkatsu manhattan >= 6": "Okonomiyaki dir:manhattan Tonkatsu >= 6",
-        "dir Onigiri Tonkatsu manhattan >= 8": "Onigiri dir:manhattan Tonkatsu >= 8",
-        "in Sushi rows:4": "Sushi in rows:4",
-        "dir Mochi Tonkatsu up": "Mochi dir:up Tonkatsu",
-        "dir Mochi Okonomiyaki left": "Mochi dir:left Okonomiyaki",
-    }
-    migrated = text
+        (
+            "food-murdoku-2.txt",
+            {
+                "beside Ramen object:plate": "Ramen beside object:plate",
+                "dir Tempura Tonkatsu manhattan <= 2": "Tempura dir:manhattan Tonkatsu <= 2",
+                "in Tempura rows:4": "Tempura in rows:4",
+                "dir Tempura Yakitori areas >= 1": "Tempura dir:areas Yakitori >= 1",
+                "dir Yakitori Ramen left": "Yakitori dir:left Ramen",
+                "in Tonkatsu area:kobe": "Tonkatsu in area:kobe",
+                "dir Tonkatsu Tempura up": "Tonkatsu dir:up Tempura",
+                "in Ramen columns:4": "Ramen in columns:4",
+            },
+        ),
+        (
+            "food-murdoku-3.txt",
+            {
+                "dir Gyoza Okonomiyaki manhattan >= 5": "Gyoza dir:manhattan Okonomiyaki >= 5",
+                "in Tonkatsu rows:1": "Tonkatsu in rows:1",
+                "in Okonomiyaki columns:1": "Okonomiyaki in columns:1",
+                "dir Gyoza Sushi up": "Gyoza dir:up Sushi",
+                "dir Sushi Yakitori manhattan >= 8": "Sushi dir:manhattan Yakitori >= 8",
+                "dir Gyoza Tempura areas >= 1": "Gyoza dir:areas Tempura >= 1",
+                "dir Okonomiyaki Yakitori manhattan <= 3": (
+                    "Okonomiyaki dir:manhattan Yakitori <= 3"
+                ),
+                "in Tempura rows:3": "Tempura in rows:3",
+                "in Sushi rows:6": "Sushi in rows:6",
+            },
+        ),
+    ],
+)
+def test_food_attribute_companion_preserves_migrated_grade_and_unique_solution(
+    filename, replacements
+):
+    text = example(filename).read_text()
+    migrated = text.replace(
+        "with Jos attribute:food in same area exactly 1",
+        "count (people in area of Jos) = 1 + 1 and "
+        "every ((people except Jos) in area of Jos) is attribute:food",
+    )
     for old, new in replacements.items():
         migrated = migrated.replace(old, new)
     _assert_migration_preserves_assignment_grade(text, migrated)
