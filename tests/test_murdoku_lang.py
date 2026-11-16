@@ -1,6 +1,8 @@
 import pytest
 
 from csp.murdoku_lang import (
+    AdjectiveAtom,
+    AdjectiveFilter,
     Arithmetic,
     Atom,
     Binary,
@@ -188,6 +190,33 @@ def test_comprehension_carries_variable_and_condition():
     result = parse_operand("(?p in people where ?p on object:chair)")
     assert isinstance(result, Comprehension)
     assert result.variable.text == "?p" and isinstance(result.condition, Atom)
+
+
+def test_adjective_after_is_is_not_an_entity_name():
+    result = parse_formula("rows:last is empty")
+    assert isinstance(result, AdjectiveAtom) and result.adjective.text == "empty"
+    filtered = parse_operand("(rows is empty)")
+    assert isinstance(filtered, AdjectiveFilter) and filtered.adjective.text == "empty"
+
+
+def test_keyword_prefixes_and_namespaced_keywords_remain_names():
+    assert isinstance(parse_operand("somebody"), Name)
+    assert isinstance(parse_operand("area:empty"), Name)
+    with pytest.raises(ValueError):
+        parse_operand("empty")
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "P dir:up empty rows = 1",
+        "P on object:bed and every ?b in object:bed: P on ?b or ?b in empty rows",
+        "some (people beside object:chest) dir:up P = 1",
+        "P in rows:1,last and count people in rows:1,last = 1",
+    ],
+)
+def test_previously_inexpressible_clue_shapes_parse(formula):
+    assert parse_formula(formula)
 
 
 def test_formula_source_error_uses_requested_line():

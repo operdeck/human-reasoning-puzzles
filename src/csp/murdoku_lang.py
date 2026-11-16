@@ -67,13 +67,22 @@ class Filter:
 
 
 @dataclass(frozen=True)
+class AdjectiveFilter:
+    source: "Operand"
+    operator: Token
+    adjective: Token
+
+
+@dataclass(frozen=True)
 class Comprehension:
     variable: Token
     source: "Operand"
     condition: "Formula"
 
 
-type Operand = Name | Union | Difference | Qualified | Projection | Filter | Comprehension
+type Operand = (
+    Name | Union | Difference | Qualified | Projection | Filter | AdjectiveFilter | Comprehension
+)
 
 
 @dataclass(frozen=True)
@@ -83,6 +92,14 @@ class Atom:
     target: Operand
     determiner: Token | None = None
     measure: Measure | None = None
+
+
+@dataclass(frozen=True)
+class AdjectiveAtom:
+    subject: Operand
+    operator: Token
+    adjective: Token
+    determiner: Token | None = None
 
 
 @dataclass(frozen=True)
@@ -163,6 +180,7 @@ class Choice:
 
 type Formula = (
     Atom
+    | AdjectiveAtom
     | SetComparison
     | Negation
     | Binary
@@ -171,6 +189,14 @@ type Formula = (
     | NumberRange
     | Quantified
     | Choice
+)
+
+_KEYWORDS = (
+    "and|or|not|iff|if|then|in|on|beside|touches|is|where|except|some|every|no|"
+    "count|of|exactly|at|least|most|empty|occupied|free|area|row|column|cell|odd|even"
+)
+_NAME = (
+    r"/\?(?:[^\W\d]|_)\w*/ | /(?!(?:" + _KEYWORDS + r")(?![\w:-]))(?:[^\W\d]|_)[\w-]*(?::[\w-]+)*/"
 )
 
 _GRAMMAR = r"""
@@ -184,6 +210,8 @@ _GRAMMAR = r"""
             | "(" VARIABLE "in" operand "where" formula ")" -> comprehension
     ?filtered: operand filter_suffix*           -> filtered
     filter_suffix: RELATION union               -> spatial_filter
+                 | IS union                     -> spatial_filter
+                 | IS ADJECTIVE                 -> adjective_filter
                  | DIRECTION union measure?     -> direction_filter
     measure: COMPARISON NUMBER
 
@@ -199,8 +227,12 @@ _GRAMMAR = r"""
     ?formula_primary: "(" formula ")"
                     | choice
                     | operand RELATION operand   -> relation_atom
+                    | operand IS operand         -> relation_atom
+                    | operand IS ADJECTIVE       -> adjective_atom
                     | operand DIRECTION operand measure? -> relation_atom
                     | DET operand RELATION operand -> determined_atom
+                    | DET operand IS operand       -> determined_atom
+                    | DET operand IS ADJECTIVE     -> determined_adjective
                     | DET operand DIRECTION operand measure? -> determined_atom
                     | operand SET_COMPARISON operand  -> set_comparison
                     | number NUM_COMPARISON number -> number_comparison
@@ -218,7 +250,8 @@ _GRAMMAR = r"""
 
     ADJECTIVE.2: /(?:empty|occupied|free)(?![\w:-])/
     PROJECTION.2: /(?:area|row|column|cell)(?![\w:-])/
-    RELATION.2: /(?:in|on|beside|touches|is)(?![\w:-])/
+    RELATION.2: /(?:in|on|beside|touches)(?![\w:-])/
+    IS.2: /is(?![\w:-])/
     DET.2: /(?:some|every|no)(?![\w:-])/
     BOUND.2: /(?:exactly|at[ \t]+least|at[ \t]+most)(?![\w:-])/
     VARIABLE: /\?(?:[^\W\d]|_)\w*/
@@ -229,7 +262,7 @@ _GRAMMAR = r"""
     AND.2: /and(?![\w:-])/
     NOT.2: /not(?![\w:-])/
     DIRECTION.2: /dir:[\w-]+(?::[\w-]+)?(?:\+(?:up|down|left|right))?/
-    NAME: /\?(?:[^\W\d]|_)\w*/ | /(?:[^\W\d]|_)[\w-]*(?::[\w-]+)*/
+    NAME: __NAME__
     RANGE: /\d+(?:-\d+)?/
     NUMBER: /\d+/
     COMPARISON: "=" | "<=" | ">="
@@ -240,7 +273,7 @@ _GRAMMAR = r"""
     COUNT.2: /count(?![\w:-])/
     %import common.WS
     %ignore WS
-"""
+""".replace("__NAME__", _NAME)
 
 _OPERAND_PARSER = Lark(
     _GRAMMAR,
@@ -270,6 +303,12 @@ class _FilterSuffix:
     operator: Token
     target: Operand
     measure: Measure | None = None
+
+
+@dataclass(frozen=True)
+class _AdjectiveSuffix:
+    operator: Token
+    adjective: Token
 
 
 @dataclass(frozen=True)
@@ -308,19 +347,44 @@ class _OperandTransformer(Transformer[LarkToken, Operand | Formula]):
     def spatial_filter(self, operator: LarkToken, target: Operand) -> _FilterSuffix:
         return _FilterSuffix(_token(operator, self.line_offset), target)
 
+    def adjective_filter(self, operator: LarkToken, adjective: LarkToken) -> _AdjectiveSuffix:
+        return _AdjectiveSuffix(
+            _token(operator, self.line_offset), _token(adjective, self.line_offset)
+        )
+
     def direction_filter(
         self, operator: LarkToken, target: Operand, measure: Measure | None = None
     ) -> _FilterSuffix:
         return _FilterSuffix(_token(operator, self.line_offset), target, measure)
 
-    def filtered(self, source: Operand, *suffixes: _FilterSuffix) -> Operand:
+    def filtered(self, source: Operand, *suffixes: _FilterSuffix | _AdjectiveSuffix) -> Operand:
         for suffix in suffixes:
-            source = Filter(source, suffix.operator, suffix.target, suffix.measure)
+            if isinstance(suffix, _AdjectiveSuffix):
+                source = AdjectiveFilter(source, suffix.operator, suffix.adjective)
+            else:
+                source = Filter(source, suffix.operator, suffix.target, suffix.measure)
         return source
 
 
 @v_args(inline=True)
 class _FormulaTransformer(_OperandTransformer):
+    def adjective_atom(
+        self, subject: Operand, operator: LarkToken, adjective: LarkToken
+    ) -> AdjectiveAtom:
+        return AdjectiveAtom(
+            subject, _token(operator, self.line_offset), _token(adjective, self.line_offset)
+        )
+
+    def determined_adjective(
+        self, determiner: LarkToken, subject: Operand, operator: LarkToken, adjective: LarkToken
+    ) -> AdjectiveAtom:
+        return AdjectiveAtom(
+            subject,
+            _token(operator, self.line_offset),
+            _token(adjective, self.line_offset),
+            _token(determiner, self.line_offset),
+        )
+
     def comprehension(
         self, variable: LarkToken, source: Operand, condition: Formula
     ) -> Comprehension:
@@ -341,11 +405,20 @@ class _FormulaTransformer(_OperandTransformer):
             assert isinstance(variable, LarkToken)
             bound.append(_token(variable, self.line_offset))
         assert isinstance(
-            source, Name | Union | Difference | Qualified | Projection | Filter | Comprehension
+            source,
+            Name
+            | Union
+            | Difference
+            | Qualified
+            | Projection
+            | Filter
+            | AdjectiveFilter
+            | Comprehension,
         )
         assert isinstance(
             body,
             Atom
+            | AdjectiveAtom
             | SetComparison
             | Negation
             | Binary
@@ -417,6 +490,7 @@ class _FormulaTransformer(_OperandTransformer):
             assert isinstance(
                 right,
                 Atom
+                | AdjectiveAtom
                 | SetComparison
                 | Negation
                 | Binary
@@ -493,7 +567,15 @@ def parse_operand(source: str, *, line: int = 1) -> Operand:
     """Parse a set-expression subset, without resolving or typechecking names."""
     result = _parse(_OPERAND_PARSER, source, line)
     assert isinstance(
-        result, Name | Union | Difference | Qualified | Projection | Filter | Comprehension
+        result,
+        Name
+        | Union
+        | Difference
+        | Qualified
+        | Projection
+        | Filter
+        | AdjectiveFilter
+        | Comprehension,
     )
     return result
 
@@ -504,6 +586,7 @@ def parse_formula(source: str, *, line: int = 1) -> Formula:
     assert isinstance(
         result,
         Atom
+        | AdjectiveAtom
         | SetComparison
         | Negation
         | Binary
