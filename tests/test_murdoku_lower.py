@@ -537,7 +537,10 @@ def test_issue_243_each_card_is_necessary_for_unique_solution(ada_squares, ben_s
     "formula",
     [
         "every ?b in areas except area:hall: count (people in ?b) < count (people in area:hall)",
-        "no ?r in empty rows: some occupied rows dir:up ?r and some occupied rows dir:down ?r",
+        pytest.param(
+            "no ?r in empty rows: some occupied rows dir:up ?r and some occupied rows dir:down ?r",
+            marks=pytest.mark.solutions,
+        ),
         "some ?p in people: every ?c in (cells in area:hall): ?p dir:left ?c",
         "(people in area of role:guard) = Ada, role:guard",
         "every ?p, ?q in people: ?p dir:areas ?q >= 1",
@@ -845,7 +848,7 @@ def test_static_spatial_quantifiers_match_reference(board, formula):
         "no ?c in empty free cells: not ?c is free",
         "exactly 2 ?c in occupied cells: ?c is occupied",
         "at least 1 ?c in (empty cells on mark:red): ?c on mark:red",
-        "every ?a, ?b in occupied cells: ?a != ?b",
+        pytest.param("every ?a, ?b in occupied cells: ?a != ?b", marks=pytest.mark.solutions),
         "every ?c in occupied cells: some ?p in people: ?p on ?c",
     ],
 )
@@ -876,7 +879,7 @@ def test_repeated_boolean_operands_retain_multiplicity(board, formula):
         "area of Ada = area of Ben",
         "area of Ada != area of Ben",
         "row of Ada = row of Ben",
-        "cell of Ada != cell of Ben",
+        pytest.param("cell of Ada != cell of Ben", marks=pytest.mark.solutions),
         "count area of people = 1",
         "count area of role:guard = 0",
         "count row of people = 2",
@@ -904,7 +907,7 @@ def test_person_projection_sets_match_reference(board, formula):
         "every ?a in (area of people on mark:red): ?a is occupied",
         "count (area of people in area of Ada) = 1",
         "count (row of role:guard on mark:red) >= 1",
-        "count (cell of people on area of Ada) >= 1",
+        pytest.param("count (cell of people on area of Ada) >= 1", marks=pytest.mark.solutions),
         "count occupied (area of people) = count area of people",
         "count empty (area of people) = 0",
         "every ?r in occupied (row of role:guard): ?r is occupied",
@@ -924,7 +927,7 @@ def test_projected_spatial_quantifiers_match_reference(board, formula):
         "area:hall in area of people",
         "area:hall on area of Ben",
         "row of Ada on column of Ben",
-        "cell of Ada on area of Ben",
+        pytest.param("cell of Ada on area of Ben", marks=pytest.mark.solutions),
         "object:bed in area of Ben",
         "Ada in area of role:guard",
         "not Ada in area of role:guard",
@@ -948,7 +951,10 @@ def test_dynamic_spatial_relations_match_reference(board, formula):
     [
         "count (?a in areas where ?a is empty) = count empty areas",
         "count (?r in rows where ?r on Ada) = 1",
-        "every ?c in (?x in cells where ?x on people): ?c is occupied",
+        pytest.param(
+            "every ?c in (?x in cells where ?x on people): ?c is occupied",
+            marks=pytest.mark.solutions,
+        ),
         "count (?a in area of people where ?a on role:guard) = 1",
         "every ?p in people: count (?a in areas where ?p in ?a) = 1",
         "Ada in (?a in areas where ?a is occupied)",
@@ -967,7 +973,10 @@ def test_spatial_comprehensions_match_reference(board, formula):
     [
         "area of occupied cells = area of people",
         "row of occupied cells = row of people",
-        "cell of occupied (row of people) = cell of row of people",
+        pytest.param(
+            "cell of occupied (row of people) = cell of row of people",
+            marks=pytest.mark.solutions,
+        ),
         "count area of (?o in objects where ?o is occupied) <= 1",
         "every ?a in area of occupied cells: ?a is occupied",
     ],
@@ -1020,16 +1029,22 @@ def test_set_target_superlatives_match_reference(board, formula):
     "formula",
     [
         "count (?r in roles where Ada is ?r) = 1",
-        "count (?r in roles where Ada is ?r) + count (?r in roles where Ben is ?r) >= 1",
+        pytest.param(
+            "count (?r in roles where Ada is ?r) + count (?r in roles where Ben is ?r) >= 1",
+            marks=pytest.mark.solutions,
+        ),
         "(?r in roles where Ada is ?r) = (?r in roles where Ben is ?r)",
         "some (?r in roles where Ada is ?r) is roles",
         "every (?r in roles where Ada is ?r) is roles",
         "every ?r in (?s in roles where Ada is ?s): Ada is ?r",
-        "some ?r in roles: count (?s in (roles except ?r) where Ben is ?s) >= 1",
+        pytest.param(
+            "some ?r in roles: count (?s in (roles except ?r) where Ben is ?s) >= 1",
+            marks=pytest.mark.solutions,
+        ),
         "count (roles is (?r in roles where Ada is ?r)) = 1",
         "Ada is (?r in roles where Ben is ?r)",
         "not Ada is (?r in roles where Ben is ?r)",
-        "every people is (?r in roles where Ada is ?r)",
+        pytest.param("every people is (?r in roles where Ada is ?r)", marks=pytest.mark.solutions),
     ],
 )
 def test_role_comprehensions_match_reference(board, formula):
