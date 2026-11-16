@@ -78,6 +78,18 @@ def test_common_shapes_have_idiomatic_wording(board, language, alone, only):
     assert words.statement(parse_statement("(people on object:bed) = Ada")).startswith(only)
 
 
+@pytest.mark.parametrize(
+    ("language", "scope"),
+    [
+        ("en", "any of the objects named bed"),
+        ("nl", "een van de voorwerpen met de naam bed"),
+    ],
+)
+def test_only_on_idiom_covers_the_entire_object_set(board, language, scope):
+    words = ExpressionWords(board, language)
+    assert scope in words.statement(parse_statement("(people on object:bed) = Ada"))
+
+
 def test_wording_overrides_and_names_are_used(board):
     words = ExpressionWords(
         board,

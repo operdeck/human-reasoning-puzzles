@@ -88,6 +88,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.measure": "{target} (distance {comparison} {value})",
         "rel.measure.axes": "{target} (each axis distance {comparison} {value})",
         "rel.any_target": "at least one of {target}",
+        "rel.any_scope": "any of the {target}",
         "rel.distinct_target": "{target} (distinct from the subject)",
         "target.object": "{name}",
         "target.object.named": "an object named {name}",
@@ -207,6 +208,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.measure": "{target} (afstand {comparison} {value})",
         "rel.measure.axes": "{target} (afstand op elke as {comparison} {value})",
         "rel.any_target": "minstens een van {target}",
+        "rel.any_scope": "een van de {target}",
         "rel.distinct_target": "{target} (verschillend van het onderwerp)",
         "target.object": "{name}",
         "target.object.named": "een voorwerp met de naam {name}",
@@ -606,9 +608,12 @@ class ExpressionWords:
                     and isinstance(person, lang.Name)
                     and person.token.text in self.board.people
                 ):
+                    target = self._operand(occupants.target, {})
+                    if infer_operand(self.board, occupants.target, {}).maximum > 1:
+                        target = self._phrase("rel.any_scope", target=target)
                     return self._phrase(
                         "idiom.only_on",
                         person=self._name(person.token),
-                        target=self._target(occupants.target, None, {}),
+                        target=target,
                     )
         return self._formula(statement.formula, {})
