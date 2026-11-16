@@ -3,7 +3,7 @@ from typing import get_args
 
 import pytest
 
-from csp import clue_search
+from csp import cli, clue_search
 from csp.bruteforce.murdoku_expr import accepts, sample, solutions
 from csp.core import Solver
 from csp.murdoku import Square
@@ -369,6 +369,25 @@ def test_expression_authoring_cli_thin(tmp_path, capsys):
     assert "Ben in columns:1 | Ben is in the first column." in result
     assert clue_search.main(["report", str(puzzle), "--expressions"]) == 0
     assert "required by Key; current puzzle: unique" in capsys.readouterr().out
+
+
+def test_cli_expression_model_preview_groups_source_statements(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--expressions", "--show-model"]) == 0
+    result = capsys.readouterr().out
+    assert "rule 1: Ada in rows:1" in result
+    assert "clue 1: Ben in columns:1" in result
+    assert "constraints" in result and "relations" in result
+
+
+def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    with pytest.raises(SystemExit) as error:
+        cli.main([str(puzzle), "--expressions", "--explain"])
+    assert error.value.code == 2
+    assert "--expressions currently supports only --show-model" in capsys.readouterr().err
 
 
 def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsys):

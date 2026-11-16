@@ -34,6 +34,7 @@ from . import (
     minesweeper,
     mosaic,
     murdoku,
+    murdoku_expression_report,
     pattern,
     picture,
     rectangles,
@@ -50,6 +51,8 @@ from . import (
     web,
 )
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
+from .murdoku_expression_file import load_expression_board
+from .murdoku_lower import compile_statements_with_origins
 from .puzzlefile import (
     KINDS,
     detect,
@@ -647,6 +650,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Murdoku only: trace a person's live squares and region-overlap companions",
     )
     parser.add_argument("--type", choices=["auto", *KINDS], default="auto")
+    parser.add_argument(
+        "--expressions",
+        action="store_true",
+        help="preview the expression-language Murdoku model with --show-model",
+    )
     instead = parser.add_mutually_exclusive_group()
     instead.add_argument(
         "--show-model",
@@ -756,6 +764,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
+    if args.expressions and (
+        not args.show_model
+        or args.verbose
+        or args.step
+        or args.track_person
+        or args.png is not None
+        or args.svg is not None
+        or args.interactive
+        or args.nosolution
+        or args.export is not None
+        or booklets
+    ):
+        parser.error("--expressions currently supports only --show-model")
     if args.nosolution:
         conflicts = (
             ("--export", args.export is not None),
@@ -820,6 +841,19 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         return 2
     text = path.read_text()
     kind = detect(text) if args.type == "auto" else args.type
+    if args.expressions:
+        if kind != "murdoku":
+            parser.error("--expressions is only available for Murdoku")
+        try:
+            expression_board, expression_rules, expression_clues = load_expression_board(text)
+            compiled = compile_statements_with_origins(
+                expression_board, expression_clues, rules=expression_rules
+            )
+        except (ValueError, NotImplementedError) as exc:
+            print(f"could not read {path.name}: {exc}", file=sys.stderr)
+            return 2
+        print(murdoku_expression_report.describe(compiled))
+        return 0
     if (args.lint or args.require_forward) and kind != "murdoku":
         parser.error("--lint and --require-forward are only available for Murdoku")
     try:
