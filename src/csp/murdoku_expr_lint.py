@@ -78,6 +78,40 @@ def role_negation_warnings(board: Board, statements: Sequence[lang.Statement]) -
     return warnings
 
 
+def referenced_roles(board: Board, statements: Sequence[lang.Statement]) -> set[str]:
+    """Find roles named by expression ASTs, including union shorthand."""
+    found: set[str] = set()
+
+    def visit(value: object, namespace: str = "") -> None:
+        if isinstance(value, lang.Name):
+            token = value.token.text
+            if token == "roles":
+                found.update(board.role_names)
+            elif token.startswith("role:"):
+                found.add(token.partition(":")[2])
+            elif namespace == "role" and token not in board.people and not token.startswith("?"):
+                found.add(token)
+        elif isinstance(value, lang.Union):
+            first = value.items[0]
+            context = (
+                first.token.text.partition(":")[0]
+                if isinstance(first, lang.Name) and ":" in first.token.text
+                else ""
+            )
+            for item in value.items:
+                visit(item, context)
+        elif isinstance(value, tuple):
+            for item in value:
+                visit(item)
+        elif is_dataclass(value):
+            for field in fields(value):
+                visit(getattr(value, field.name))
+
+    for statement in statements:
+        visit(statement.formula)
+    return found & board.role_names
+
+
 def _required_atoms(formula: lang.Formula) -> Iterator[lang.Atom]:
     if isinstance(formula, lang.Atom):
         yield formula

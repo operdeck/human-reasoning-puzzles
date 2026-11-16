@@ -4,7 +4,12 @@ from itertools import permutations
 import pytest
 
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square
-from csp.murdoku_expr_lint import role_negation_warnings, size_budget_warnings, vacuous_errors
+from csp.murdoku_expr_lint import (
+    referenced_roles,
+    role_negation_warnings,
+    size_budget_warnings,
+    vacuous_errors,
+)
 from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import compile_statements_with_origins
 
@@ -46,6 +51,23 @@ def test_warning_reflects_reference_semantics(board):
         {("Ada", "guard"): True, ("Ben", "guard"): False},
     )
     assert role_negation_warnings(board, [statement])
+
+
+def test_role_references_follow_union_shorthand_and_role_quantifiers(board):
+    board = replace(
+        board,
+        roles=[RoleSpec(name, frozenset({0, 1, 2})) for name in ("guard", "chef", "pilot")],
+    )
+    assert referenced_roles(board, [parse_statement("some role:guard,chef in area:hall")]) == {
+        "guard",
+        "chef",
+    }
+    assert referenced_roles(board, [parse_statement("every ?r in roles: Ada is ?r")]) == {
+        "guard",
+        "chef",
+        "pilot",
+    }
+    assert not referenced_roles(board, [parse_statement("Ada in area:hall")])
 
 
 @pytest.mark.parametrize(

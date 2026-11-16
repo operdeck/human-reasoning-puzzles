@@ -352,7 +352,9 @@ For a draft board with expression `key_clue:` entries, use
 limited suggestion templates and reports drafts it cannot close.
 `python -m csp FILE --expressions --show-model` previews the compiled model
 grouped by the source expressions. `--grade` and `--brute-force` also accept
-`--expressions`; other main CLI operations still require the production grammar.
+`--expressions`. `--lint --expressions` previews board and expression diagnostics,
+including impossible required relations, role-negation and relation-size warnings.
+Other main CLI operations still require the production grammar.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their

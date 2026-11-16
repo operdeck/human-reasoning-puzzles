@@ -34,7 +34,9 @@ from . import (
     minesweeper,
     mosaic,
     murdoku,
+    murdoku_expr_lint,
     murdoku_expression_report,
+    murdoku_expression_words,
     pattern,
     picture,
     rectangles,
@@ -658,7 +660,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--expressions",
         action="store_true",
-        help="preview expression-language Murdoku with --show-model, --grade or --brute-force",
+        help=(
+            "preview expression-language Murdoku with --show-model, --grade, "
+            "--brute-force or --lint"
+        ),
     )
     instead = parser.add_mutually_exclusive_group()
     instead.add_argument(
@@ -770,7 +775,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
     if args.expressions and (
-        not (args.show_model or args.grade or args.brute_force)
+        not (args.show_model or args.grade or args.brute_force or args.lint)
         or args.verbose
         or args.step
         or args.track_person
@@ -782,7 +787,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         or booklets
     ):
         parser.error(
-            "--expressions currently supports only --show-model, --grade and --brute-force"
+            "--expressions currently supports only --show-model, --grade, --brute-force and --lint"
         )
     if args.nosolution:
         conflicts = (
@@ -853,6 +858,14 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             parser.error("--expressions is only available for Murdoku")
         try:
             expression_board, expression_rules, expression_clues = load_expression_board(text)
+            expression_statements = [*expression_rules, *expression_clues]
+            if args.lint:
+                murdoku_expression_words.ExpressionWords.read(expression_board, text)
+                errors = murdoku_expr_lint.vacuous_errors(expression_board, expression_statements)
+                if errors:
+                    for error in errors:
+                        print(f"lint error: {error}")
+                    return 1
             if args.brute_force:
                 expression_puzzle = Puzzle(
                     "murdoku",
@@ -865,8 +878,31 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                 expression_board, expression_clues, rules=expression_rules
             )
         except (ValueError, NotImplementedError) as exc:
-            print(f"could not read {path.name}: {exc}", file=sys.stderr)
-            return 2
+            prefix = "lint error in" if args.lint else "could not read"
+            print(f"{prefix} {path.name}: {exc}", file=sys.stderr)
+            return 1 if args.lint else 2
+        if args.lint:
+            references = murdoku_expr_lint.referenced_roles(expression_board, expression_statements)
+            findings = _murdoku_lint(expression_board, [], compiled.model, text)
+            used_role_warnings = {
+                f"warning: role {role} is declared but unused" for role in references
+            }
+            findings = [finding for finding in findings if finding not in used_role_warnings]
+            findings.extend(
+                f"warning: {warning}"
+                for warning in murdoku_expr_lint.role_negation_warnings(
+                    expression_board, expression_statements
+                )
+            )
+            findings.extend(
+                f"warning: {warning}"
+                for warning in murdoku_expr_lint.size_budget_warnings(expression_board, compiled)
+            )
+            for finding in findings:
+                print(finding)
+            if not findings:
+                print("lint: no issues found")
+            return 0
         if args.show_model:
             print(murdoku_expression_report.describe(compiled))
             return 0

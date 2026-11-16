@@ -387,8 +387,9 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
     with pytest.raises(SystemExit) as error:
         cli.main([str(puzzle), "--expressions", "--explain"])
     assert error.value.code == 2
-    assert "--expressions currently supports only --show-model, --grade and --brute-force" in (
-        capsys.readouterr().err
+    assert (
+        "--expressions currently supports only --show-model, --grade, --brute-force and --lint"
+        in (capsys.readouterr().err)
     )
 
 
@@ -407,6 +408,30 @@ def test_cli_expression_grade_and_brute_force(tmp_path, capsys, monkeypatch):
     puzzle.write_text(clue_search.with_clues(TEXT, []))
     assert cli.main([str(puzzle), "--expressions", "--brute-force"]) == 1
     assert "more than one solution" in capsys.readouterr().out
+
+
+def test_cli_expression_lint_reports_role_warnings_without_legacy_parsing(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    text = TEXT.replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  not Ben dir:areas role:guard = 0",
+    )
+    puzzle.write_text(text + "Roles:\nguard: any\nchef: any\n")
+    assert cli.main([str(puzzle), "--expressions", "--lint"]) == 0
+    result = capsys.readouterr().out
+    assert "Ben may still be role:guard" in result
+    assert "role chef is declared but unused" in result
+    assert "role guard is declared but unused" not in result
+
+
+def test_cli_expression_lint_rejects_impossible_relations_and_bad_wording(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT.replace("Ben in columns:1", "Ben beside Ada"))
+    assert cli.main([str(puzzle), "--expressions", "--lint"]) == 1
+    assert "people cannot beside each other" in capsys.readouterr().out
+    puzzle.write_text(TEXT + "Words:\nrel.besid: next to\n")
+    assert cli.main([str(puzzle), "--expressions", "--lint"]) == 1
+    assert "rel.besid" in capsys.readouterr().err
 
 
 def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsys):
