@@ -143,16 +143,17 @@ def test_direction_wording_retains_axis_measure_and_superlative_exclusions(board
 
 
 @pytest.mark.parametrize(
-    ("language", "same", "distance"),
+    ("language", "same", "distance", "distinct"),
     [
-        ("en", "in the same area as", "area distance"),
-        ("nl", "in hetzelfde gebied als", "gebiedsafstand"),
+        ("en", "in the same area as", "area distance", "distinct from the subject"),
+        ("nl", "in hetzelfde gebied als", "gebiedsafstand", "verschillend van het onderwerp"),
     ],
 )
-def test_zero_area_distance_has_an_idiomatic_relation(board, language, same, distance):
+def test_zero_area_distance_has_an_idiomatic_relation(board, language, same, distance, distinct):
     words = ExpressionWords(board, language)
     assert same in words.statement(parse_statement("Ada dir:areas Ben = 0"))
     assert same in words.statement(parse_statement("count (people dir:areas Ada = 0) = 1"))
+    assert distinct in words.statement(parse_statement("Ada dir:areas role:guard = 0"))
     assert distance not in words.statement(parse_statement("Ada dir:areas Ben = 0"))
     assert distance in words.statement(parse_statement("Ada dir:areas Ben >= 0"))
     assert distance in words.statement(parse_statement("Ada dir:areas Ben = 1"))

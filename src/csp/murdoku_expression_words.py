@@ -86,6 +86,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.measure": "{target} (distance {comparison} {value})",
         "rel.measure.axes": "{target} (each axis distance {comparison} {value})",
         "rel.any_target": "at least one of {target}",
+        "rel.distinct_target": "{target} (distinct from the subject)",
         "cmp.=": "equal to",
         "cmp.!=": "not equal to",
         "cmp.<": "less than",
@@ -200,6 +201,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.measure": "{target} (afstand {comparison} {value})",
         "rel.measure.axes": "{target} (afstand op elke as {comparison} {value})",
         "rel.any_target": "minstens een van {target}",
+        "rel.distinct_target": "{target} (verschillend van het onderwerp)",
         "cmp.=": "gelijk aan",
         "cmp.!=": "niet gelijk aan",
         "cmp.<": "kleiner dan",
@@ -349,6 +351,8 @@ class ExpressionWords:
         rendered = self._operand(target, bindings)
         if infer_operand(self.board, target, bindings).maximum > 1:
             rendered = self._phrase("rel.any_target", target=rendered)
+        if operator and operator.text == "dir:areas":
+            rendered = self._phrase("rel.distinct_target", target=rendered)
         if measure and not (operator and operator.text == "dir:areas" and self._same_area(measure)):
             rendered = self._phrase(
                 "rel.measure.axes"
