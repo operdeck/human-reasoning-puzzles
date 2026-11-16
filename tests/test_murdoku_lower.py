@@ -639,6 +639,9 @@ def test_overlapping_area_tags_share_one_empty_literal(board):
         "every ?a in area of people: ?a is occupied",
         "every ?a in areas: count (?p in people where ?p in ?a) >= 0",
         "every ?a in areas: count (people in ?a) <= count people",
+        "every ?a in areas: count (people in ?a) >= 1",
+        "every ?a in areas: (people in ?a) = Ada",
+        "every ?a in areas: some (people in ?a) on mark:red",
     ],
 )
 def test_area_quantifier_preserves_region_identity_with_duplicate_names(board, formula):

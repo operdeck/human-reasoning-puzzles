@@ -45,25 +45,24 @@ type _Bindings = dict[str, str | _RoleBinding | _AreaBinding | _LineBinding | _S
 
 
 def _operand_sort(board: Board, operand: lang.Operand, bindings: _Bindings) -> Sort:
+    if isinstance(operand, lang.Difference):
+        return _operand_sort(board, operand.left, bindings)
+    if isinstance(operand, lang.Union):
+        return _operand_sort(board, operand.items[0], bindings)
+    if isinstance(operand, (lang.Filter, lang.AdjectiveFilter, lang.Comprehension)):
+        return _operand_sort(board, operand.source, bindings)
+    if isinstance(operand, lang.Qualified):
+        return _operand_sort(board, operand.operand, bindings)
+    if isinstance(operand, lang.Projection):
+        return {
+            "area": Sort.AREA,
+            "row": Sort.ROW,
+            "column": Sort.COLUMN,
+            "cell": Sort.CELL,
+        }[operand.kind.text]
     entities = _static_spatial_entities(board, operand)
     if entities:
         return next(iter(entities))[0]
-    if entities is not None:
-        if isinstance(operand, lang.Difference):
-            return _operand_sort(board, operand.left, bindings)
-        if isinstance(operand, lang.Union):
-            return _operand_sort(board, operand.items[0], bindings)
-        if isinstance(operand, (lang.Filter, lang.AdjectiveFilter)):
-            return _operand_sort(board, operand.source, bindings)
-        if isinstance(operand, lang.Qualified):
-            return _operand_sort(board, operand.operand, bindings)
-        if isinstance(operand, lang.Projection):
-            return {
-                "area": Sort.AREA,
-                "row": Sort.ROW,
-                "column": Sort.COLUMN,
-                "cell": Sort.CELL,
-            }[operand.kind.text]
     shapes = {
         variable: Shape(
             Sort.ROLE
