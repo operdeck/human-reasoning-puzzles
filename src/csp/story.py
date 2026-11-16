@@ -4292,10 +4292,12 @@ def mark_note(mark: CellMark, say: Wording) -> str:
     return say(key, abbr=mark.name[:2].upper(), name=name)
 
 
-def board_notes(text: str) -> list[str]:
+def board_notes(
+    text: str, *, expression_rules: Sequence[murdoku_lang.Statement] | None = None
+) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
     board rules with author wording or global counts."""
-    board, clues = load_board(text)
+    board = load_board_layout(text)
     say = Wording.read(text)
 
     def name(raw: str) -> str:
@@ -4316,13 +4318,20 @@ def board_notes(text: str) -> list[str]:
             )
         )
     notes.extend(mark_note(mark, say) for mark in board.marks)
-    notes.extend(f"{wording}." for wording in say.rules.values())
-    told = Story(board, clues, say)
-    notes.extend(
-        f"{_cap(told._global_count_text(condition))}."
-        for condition in global_count_conditions(board, clues)
-        if condition.number is None and condition.description not in say.rules
-    )
+    if expression_rules is not None:
+        words = ExpressionWords.read(board, text)
+        for rule in expression_rules:
+            sentence = _cap(words.statement(rule).strip())
+            notes.append(sentence if sentence.endswith((".", "!", "?")) else f"{sentence}.")
+    else:
+        board, clues = load_board(text)
+        notes.extend(f"{wording}." for wording in say.rules.values())
+        told = Story(board, clues, say)
+        notes.extend(
+            f"{_cap(told._global_count_text(condition))}."
+            for condition in global_count_conditions(board, clues)
+            if condition.number is None and condition.description not in say.rules
+        )
     return notes
 
 

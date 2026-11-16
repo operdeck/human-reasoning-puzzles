@@ -7,7 +7,14 @@ from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expr
 from csp.murdoku_lang import Atom, Name
 from csp.murdoku_lower import compile_statements
 from csp.puzzlefile import load_board
-from csp.story import attribute_list, figure_clues, murdoku_key_items, object_list, role_list
+from csp.story import (
+    attribute_list,
+    board_notes,
+    figure_clues,
+    murdoku_key_items,
+    object_list,
+    role_list,
+)
 
 TEXT = """\
 Size: 2
@@ -128,6 +135,18 @@ def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
     assert [clue.sources for clue in ada.clues] == [(3,)]
     assert [(clue.text, clue.sources) for clue in ben.clues] == [("A custom sentence!", (1,))]
     assert [clue.sources for clue in result.other] == [(2,)]
+
+
+def test_expression_board_notes_include_generated_and_authored_rules():
+    text = TEXT.replace(
+        "  Ada in rows:1 | Ada stays in the first row.",
+        "  Ada in rows:1 | Ada stays in the first row!\n  Ben in columns:1",
+    )
+    _, rules, _ = load_expression_board(text)
+    assert board_notes(text, expression_rules=rules) == [
+        "Ada stays in the first row!",
+        "Ben is in columns 1.",
+    ]
 
 
 def test_expression_keys_match_ast_after_reordering_or_rewording():
