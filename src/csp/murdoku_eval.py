@@ -26,15 +26,23 @@ class _Evaluation:
         board: Board,
         placed: Mapping[str, Square],
         roles: Mapping[tuple[str, str], bool],
+        *,
+        partial: bool = False,
     ) -> None:
-        if set(placed) != set(board.people):
+        if not partial and set(placed) != set(board.people):
             raise ValueError("placement must name every person exactly once")
+        if partial and not set(placed) <= set(board.people):
+            raise ValueError("placement contains an unknown person")
         if any(
             not (0 <= sq.row < board.size and 0 <= sq.col < board.size) for sq in placed.values()
         ):
             raise ValueError("placement contains a square outside the board")
         role_keys = {(person, role.name) for person in board.people for role in board.roles}
-        if set(roles) != role_keys or any(not isinstance(value, bool) for value in roles.values()):
+        if (
+            (not partial and set(roles) != role_keys)
+            or not set(roles) <= role_keys
+            or any(not isinstance(value, bool) for value in roles.values())
+        ):
             raise ValueError("role assignments must contain a Boolean for every person and role")
         self.board = board
         self.placed = placed
@@ -46,7 +54,9 @@ class _Evaluation:
             )
         }
         self.people = {
-            name: Entity(Sort.PERSON, name, frozenset({placed[name]})) for name in board.people
+            name: Entity(Sort.PERSON, name, frozenset({placed[name]}))
+            for name in board.people
+            if name in placed
         }
         self.rows = {
             row: Entity(
@@ -476,3 +486,66 @@ def holds(
     """Evaluate one checked statement over a complete placement and role assignment."""
     check_formula(board, statement.formula)
     return _Evaluation(board, placed, roles).formula(statement.formula, {})
+
+
+def grounded_dependencies(board: Board, statement: lang.Statement) -> frozenset[str] | None:
+    """Identify spatial atoms whose result depends only on named people and fixed footprints."""
+    formula = statement.formula
+    while isinstance(formula, lang.Negation):
+        formula = formula.formula
+    if not isinstance(formula, lang.Atom) or not isinstance(formula.subject, lang.Name):
+        return None
+    subject = formula.subject.token.text
+    if subject not in board.people or formula.operator.text == "is":
+        return None
+    if formula.operator.text.startswith(("dir:nearest", "dir:furthest")):
+        return None
+    static_namespaces = {
+        "area",
+        "tag",
+        "rows",
+        "columns",
+        "corner",
+        "object",
+        "object_kind",
+        "edge_item",
+        "point_object",
+        "mark",
+    }
+
+    def dependencies(operand: lang.Operand, namespace: str = "") -> set[str] | None:
+        if isinstance(operand, lang.Name):
+            name = operand.token.text
+            if name in board.people:
+                return {name}
+            if name in {"areas", "rows", "columns", "cells", "objects"}:
+                return set()
+            kind, separator, _ = name.partition(":")
+            return set() if (kind if separator else namespace) in static_namespaces else None
+        if isinstance(operand, lang.Union):
+            first = operand.items[0]
+            prefix = (
+                first.token.text.partition(":")[0]
+                if isinstance(first, lang.Name) and ":" in first.token.text
+                else ""
+            )
+            sets = [dependencies(item, prefix) for item in operand.items]
+            if any(value is None for value in sets):
+                return None
+            return set().union(*(value for value in sets if value is not None))
+        if isinstance(operand, lang.Difference):
+            left = dependencies(operand.left)
+            right = dependencies(operand.right)
+            return None if left is None or right is None else left | right
+        return None
+
+    target = dependencies(formula.target)
+    return None if target is None else frozenset({subject} | target)
+
+
+def holds_grounded(statement: lang.Statement, board: Board, placed: Mapping[str, Square]) -> bool:
+    """Evaluate a grounded spatial atom once all its named people are placed."""
+    dependencies = grounded_dependencies(board, statement)
+    if dependencies is None or not dependencies <= placed.keys():
+        raise ValueError("statement is not grounded by this placement")
+    return _Evaluation(board, placed, {}, partial=True).formula(statement.formula, {})

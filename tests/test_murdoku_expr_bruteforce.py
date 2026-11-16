@@ -2,10 +2,12 @@ from dataclasses import replace
 
 import pytest
 
+from csp.bruteforce import murdoku_expr
 from csp.bruteforce.murdoku_expr import solutions
 from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square
 from csp.murdoku_declarations import statements as declaration_statements
-from csp.murdoku_lang import parse_statement
+from csp.murdoku_eval import grounded_dependencies, holds_grounded
+from csp.murdoku_lang import holds, parse_statement
 
 
 def _board(*, blocked=False, roles=False, marked=False, one_area=False):
@@ -28,6 +30,65 @@ def test_search_returns_expected_placements():
         {"Ada": Square(0, 0), "Ben": Square(1, 1)},
         {"Ada": Square(0, 1), "Ben": Square(1, 0)},
     ]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Ada in rows:1",
+        "not Ada dir:areas Ben = 0",
+        "Ada dir:up Ben",
+        "Ada on rows:1,2",
+        "Ada in (areas except area:north)",
+        "no Ada in rows:1",
+    ],
+)
+def test_grounded_pruning_matches_reference_for_every_completion(source):
+    board = _board(roles=True)
+    statement = parse_statement(source)
+    dependencies = grounded_dependencies(board, statement)
+    assert dependencies is not None
+    for candidate in solutions(board, [], limit=20):
+        complete = {person: candidate[person] for person in board.people}
+        partial = {person: complete[person] for person in dependencies}
+        roles = {
+            (person, "guard"): candidate[board.role_variable(person, "guard")]
+            for person in board.people
+        }
+        assert holds_grounded(statement, board, partial) == holds(statement, board, complete, roles)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Ada is role:guard",
+        "Ada on role:guard",
+        "Ada dir:nearest Ben",
+        "Ada in empty rows",
+        "count people in rows:1 = 1",
+    ],
+)
+def test_non_groundable_formulas_are_never_pruned(source):
+    board = _board(roles=True)
+    statement = parse_statement(source)
+    assert grounded_dependencies(board, statement) is None
+    with pytest.raises(ValueError, match="not grounded"):
+        holds_grounded(statement, board, {"Ada": Square(0, 0)})
+
+
+def test_grounded_clue_prunes_before_enumerating_role_assignments(monkeypatch):
+    board = _board(roles=True)
+    called = []
+    roles = murdoku_expr._roles
+
+    def record(current_board, placed):
+        called.append(dict(placed))
+        return roles(current_board, placed)
+
+    monkeypatch.setattr(murdoku_expr, "_roles", record)
+    assert len(solutions(board, [parse_statement("Ada in rows:1")], limit=20)) == 4
+    assert len(called) == 2
+    assert all(placement["Ada"].row == 0 for placement in called)
 
 
 def test_search_enumerates_roles_and_uses_role_membership():

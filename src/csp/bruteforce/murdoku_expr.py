@@ -5,12 +5,18 @@ from itertools import combinations
 
 from ..murdoku import Board, Square
 from ..murdoku_declarations import statements as declaration_statements
+from ..murdoku_eval import grounded_dependencies, holds_grounded
 from ..murdoku_lang import Statement, holds
 from ..murdoku_typecheck import check_formula
 
 
-def _placements(board: Board) -> Iterator[dict[str, Square]]:
+def _placements(board: Board, checks: Sequence[Statement]) -> Iterator[dict[str, Square]]:
     placed: dict[str, Square] = {}
+    grounded = [
+        (statement, dependencies)
+        for statement in checks
+        if (dependencies := grounded_dependencies(board, statement)) is not None
+    ]
 
     def search(index: int, rows: set[int], columns: set[int]) -> Iterator[dict[str, Square]]:
         if index == len(board.people):
@@ -20,7 +26,12 @@ def _placements(board: Board) -> Iterator[dict[str, Square]]:
         for square in board.free:
             if square.row not in rows and square.col not in columns:
                 placed[person] = square
-                yield from search(index + 1, rows | {square.row}, columns | {square.col})
+                if all(
+                    holds_grounded(statement, board, placed)
+                    for statement, dependencies in grounded
+                    if person in dependencies and dependencies <= placed.keys()
+                ):
+                    yield from search(index + 1, rows | {square.row}, columns | {square.col})
                 del placed[person]
 
     yield from search(0, set(), set())
@@ -66,7 +77,7 @@ def solutions(
     for statement in checks:
         check_formula(board, statement.formula)
     found: list[dict[str, Square | bool]] = []
-    for placed in _placements(board):
+    for placed in _placements(board, checks):
         for roles in _roles(board, placed):
             if all(holds(statement, board, placed, roles) for statement in checks):
                 result: dict[str, Square | bool] = dict(placed)
