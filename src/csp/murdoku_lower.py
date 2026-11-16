@@ -29,7 +29,12 @@ class _AreaBinding:
     name: str
 
 
-type _Bindings = dict[str, str | _RoleBinding | _AreaBinding]
+@dataclass(frozen=True)
+class _LineBinding:
+    selector: str
+
+
+type _Bindings = dict[str, str | _RoleBinding | _AreaBinding | _LineBinding]
 
 
 def _static_cells(
@@ -685,6 +690,8 @@ def _bind_operand(operand: lang.Operand, bindings: _Bindings) -> lang.Operand:
             raise NotImplementedError("bound role entity is supported only as the target of is")
         if isinstance(value, _AreaBinding):
             value = f"area:{value.name}"
+        if isinstance(value, _LineBinding):
+            value = value.selector
         return replace(operand, token=replace(operand.token, text=value)) if value else operand
     if isinstance(operand, lang.Union):
         return replace(
@@ -857,10 +864,10 @@ def _person_selected(
         )
         return yes
     if isinstance(operand, lang.Union):
-        first = operand.items[0]
+        first_item = operand.items[0]
         namespace = (
-            first.token.text.partition(":")[0]
-            if isinstance(first, lang.Name) and ":" in first.token.text
+            first_item.token.text.partition(":")[0]
+            if isinstance(first_item, lang.Name) and ":" in first_item.token.text
             else None
         )
         members = []
@@ -949,27 +956,89 @@ def _static_area_ids(board: Board, operand: lang.Operand) -> set[str] | None:
     return None
 
 
-def _static_area_atom(board: Board, atom: lang.Atom) -> bool | None:
-    subjects = _static_area_ids(board, atom.subject)
-    targets = _static_area_ids(board, atom.target)
+def _static_line_ids(board: Board, operand: lang.Operand) -> tuple[Sort, set[int]] | None:
+    if isinstance(operand, lang.Name):
+        text = operand.token.text
+        if text in {"rows", "columns"}:
+            return (Sort.ROW if text == "rows" else Sort.COLUMN), set(range(board.size))
+        kind, separator, bounds = text.partition(":")
+        if separator and kind in {"rows", "columns"}:
+            first, has_last, last = bounds.partition("-")
+            start = board.size if first == "last" else int(first)
+            end = (board.size if last == "last" else int(last)) if has_last else start
+            return (Sort.ROW if kind == "rows" else Sort.COLUMN), set(range(start - 1, end))
+    if isinstance(operand, lang.Difference):
+        left, right = _static_line_ids(board, operand.left), _static_line_ids(board, operand.right)
+        if left is not None and right is not None and left[0] == right[0]:
+            return left[0], left[1] - right[1]
+    if isinstance(operand, lang.Union):
+        first_item = operand.items[0]
+        namespace = (
+            first_item.token.text.partition(":")[0]
+            if isinstance(first_item, lang.Name) and ":" in first_item.token.text
+            else None
+        )
+        sort: Sort | None = None
+        indices: set[int] = set()
+        for item in operand.items:
+            if (
+                namespace
+                and isinstance(item, lang.Name)
+                and ":" not in item.token.text
+                and item.token.text not in {"rows", "columns"}
+            ):
+                item = replace(
+                    item, token=replace(item.token, text=f"{namespace}:{item.token.text}")
+                )
+            part = _static_line_ids(board, item)
+            if part is None or (sort is not None and sort != part[0]):
+                return None
+            sort = part[0]
+            indices.update(part[1])
+        if sort is not None:
+            return sort, indices
+    return None
+
+
+def _static_spatial_entities(
+    board: Board, operand: lang.Operand
+) -> dict[tuple[Sort, str], set[Square]] | None:
+    areas = _static_area_ids(board, operand)
+    if areas is not None:
+        return {
+            (Sort.AREA, area): {
+                Square(row, col)
+                for row in range(board.size)
+                for col in range(board.size)
+                if board.region_of(Square(row, col)) == area
+            }
+            for area in areas
+        }
+    lines = _static_line_ids(board, operand)
+    if lines is None:
+        return None
+    sort, indices = lines
+    return {
+        (sort, str(index)): {
+            Square(index, other) if sort == Sort.ROW else Square(other, index)
+            for other in range(board.size)
+        }
+        for index in indices
+    }
+
+
+def _static_spatial_atom(board: Board, atom: lang.Atom) -> bool | None:
+    subjects = _static_spatial_entities(board, atom.subject)
+    targets = _static_spatial_entities(board, atom.target)
     if subjects is None or targets is None:
         return None
     operator = atom.operator.text
     direction = _direction(board, operator, atom.measure) if operator.startswith("dir:") else None
     if operator not in {"is", "in", "on", "beside", "touches"} and direction is None:
         return None
-    footprints = {
-        region: {
-            Square(row, col)
-            for row in range(board.size)
-            for col in range(board.size)
-            if board.region_of(Square(row, col)) == region
-        }
-        for region in subjects | targets
-    }
 
-    def related(subject: str, target: str) -> bool:
-        first, second = footprints[subject], footprints[target]
+    def related(subject: tuple[Sort, str], target: tuple[Sort, str]) -> bool:
+        first, second = subjects[subject], targets[target]
         if operator == "is":
             return subject == target
         if operator == "in":
@@ -993,7 +1062,7 @@ def _static_area_atom(board: Board, atom: lang.Atom) -> bool | None:
     determiner = atom.determiner.text if atom.determiner else "some"
     return {
         "some": bool(matching),
-        "every": matching == subjects,
+        "every": matching == set(subjects),
         "no": not matching,
     }[determiner]
 
@@ -1257,9 +1326,9 @@ def _reify_formula(
             subject=_bind_operand(formula.subject, bindings),
             target=_bind_operand(target_operand, bindings),
         )
-        area_match = _static_area_atom(board, atom)
-        if area_match is not None:
-            return _constant_boolean(model, area_match, name)
+        spatial_match = _static_spatial_atom(board, atom)
+        if spatial_match is not None:
+            return _constant_boolean(model, spatial_match, name)
         variable_name = "?_expression"
         while variable_name in bindings:
             variable_name += "_"
@@ -1333,6 +1402,13 @@ def _reify_formula(
             same_areas = left_areas == right_areas
             return _constant_boolean(
                 model, same_areas if formula.operator.text == "=" else not same_areas, name
+            )
+        left_lines = _static_line_ids(board, left_set)
+        right_lines = _static_line_ids(board, right_set)
+        if left_lines is not None and right_lines is not None:
+            same_lines = left_lines == right_lines
+            return _constant_boolean(
+                model, same_lines if formula.operator.text == "=" else not same_lines, name
             )
         if infer_operand(board, left_set).sort != Sort.PERSON:
             raise NotImplementedError(f"{name}: set comparison lowering is not implemented")
@@ -1460,7 +1536,7 @@ def _reify_formula(
         if role_domain is not None:
             source = formula.source
             dynamic = False
-            domain: list[str | _RoleBinding | _AreaBinding] = [
+            domain: list[str | _RoleBinding | _AreaBinding | _LineBinding] = [
                 _RoleBinding(role.name) for role in board.roles if role.name in role_domain
             ]
         else:
@@ -1481,15 +1557,24 @@ def _reify_formula(
                     if region in area_domain
                 ]
             else:
-                people = _static_people(board, source)
-                dynamic = people is None
-                if people is None:
-                    if infer_operand(board, source).sort != Sort.PERSON:
-                        raise NotImplementedError(
-                            f"{name}: quantifier source lowering is not implemented"
-                        )
-                    people = set(board.people)
-                domain = [person for person in board.people if person in people]
+                line_domain = _static_line_ids(board, source)
+                if line_domain is not None:
+                    dynamic = False
+                    line_kind, line_indices = line_domain
+                    prefix = "rows" if line_kind == Sort.ROW else "columns"
+                    domain = [
+                        _LineBinding(f"{prefix}:{index + 1}") for index in sorted(line_indices)
+                    ]
+                else:
+                    people = _static_people(board, source)
+                    dynamic = people is None
+                    if people is None:
+                        if infer_operand(board, source).sort != Sort.PERSON:
+                            raise NotImplementedError(
+                                f"{name}: quantifier source lowering is not implemented"
+                            )
+                        people = set(board.people)
+                    domain = [person for person in board.people if person in people]
         quantifier = " ".join(formula.quantifier.text.split())
         literals = []
         for index, values in enumerate(permutations(domain, len(formula.variables)), 1):
