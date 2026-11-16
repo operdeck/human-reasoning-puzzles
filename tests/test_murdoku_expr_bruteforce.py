@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from csp.bruteforce.murdoku_expr import solutions
@@ -59,3 +61,67 @@ def test_legacy_board_rules_are_not_silently_ignored():
     board.rules = [("in", ["Ada", "area:north"])]
     with pytest.raises(ValueError, match="board rules must be migrated"):
         solutions(board, [])
+
+
+@pytest.mark.parametrize(
+    ("declared_role", "formulas"),
+    [
+        (RoleSpec("guard", frozenset({1})), ["count role:guard = 1"]),
+        (
+            RoleSpec("guard", frozenset({2}), different_regions=True),
+            [
+                "count role:guard = 2",
+                "every ?p, ?q in role:guard: ?p dir:areas ?q >= 1",
+            ],
+        ),
+        (
+            RoleSpec("guard", frozenset({1}), eligible_people=frozenset({"Ada", "Ben"})),
+            ["count role:guard = 1", "every role:guard is attribute:eligible"],
+        ),
+    ],
+)
+def test_role_declarations_match_explicit_statements(declared_role, formulas):
+    base = Board(
+        size=3,
+        regions=[["a", "a", "a"], ["a", "b", "b"], ["a", "b", "b"]],
+        region_names={"a": "hall", "b": "garden"},
+        objects=[],
+        people=["Ada", "Ben", "Cleo"],
+        attributes={"eligible": frozenset({"Ada", "Ben"})},
+    )
+    declared = replace(base, roles=[declared_role])
+    unrestricted = replace(base, roles=[RoleSpec("guard", frozenset(range(4)))])
+
+    def all_solutions(board, statements):
+        return {tuple(sorted(result.items())) for result in solutions(board, statements, limit=500)}
+
+    expected = all_solutions(declared, [])
+    actual = all_solutions(unrestricted, [parse_statement(text) for text in formulas])
+    assert expected
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    ("condition", "comparison"),
+    [("alone", "= 1"), ("not_alone", ">= 2")],
+)
+def test_mark_declarations_match_explicit_statements(condition, comparison):
+    base = Board(
+        size=2,
+        regions=[["a", "a"], ["a", "b"]],
+        region_names={"a": "hall", "b": "garden"},
+        objects=[],
+        people=["Ada", "Ben"],
+    )
+    cells = (Square(0, 0), Square(1, 1))
+    declared = replace(base, marks=[CellMark("quiet", cells, condition)])
+    unrestricted = replace(base, marks=[CellMark("quiet", cells)])
+    statement = parse_statement(
+        f"every ?p in (people on mark:quiet): count (people in area of ?p) {comparison}"
+    )
+    expected = {tuple(sorted(result.items())) for result in solutions(declared, [], limit=10)}
+    actual = {
+        tuple(sorted(result.items())) for result in solutions(unrestricted, [statement], limit=10)
+    }
+    assert expected
+    assert actual == expected
