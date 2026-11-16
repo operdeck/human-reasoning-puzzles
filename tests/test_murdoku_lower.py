@@ -441,6 +441,8 @@ def _assert_compilation_matches_reference(board, formula):
         "no ?r, ?s in roles: ?r is ?s",
         "every ?r, ?s in roles: count (?r, ?s) = 2",
         "count roles = 2",
+        "every ?r in roles: every ?s in (roles except ?r): ?s != ?r",
+        "every ?r in roles: count (roles except ?r) = 1",
     ],
 )
 def test_bound_role_membership_with_multiple_roles(board, formula):

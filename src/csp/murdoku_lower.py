@@ -1316,13 +1316,17 @@ def _reify_formula(
         }[kind]
         return _reify_cardinality(model, literals, allowed, name)
     if isinstance(formula, lang.Quantified):
-        source = _bind_operand(formula.source, bindings)
-        role_entities = isinstance(source, lang.Name) and source.token.text == "roles"
-        people = _static_people(board, source) if not role_entities else None
-        dynamic = people is None and not role_entities
-        if role_entities:
-            domain: list[str | _RoleBinding] = [_RoleBinding(role.name) for role in board.roles]
+        role_domain = _static_roles(board, formula.source, bindings)
+        if role_domain is not None:
+            source = formula.source
+            dynamic = False
+            domain: list[str | _RoleBinding] = [
+                _RoleBinding(role.name) for role in board.roles if role.name in role_domain
+            ]
         else:
+            source = _bind_operand(formula.source, bindings)
+            people = _static_people(board, source)
+            dynamic = people is None
             if people is None:
                 if infer_operand(board, source).sort != Sort.PERSON:
                     raise NotImplementedError(
