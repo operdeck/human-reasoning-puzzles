@@ -96,6 +96,24 @@ def test_invalid_language_and_phrase_key_fail_explicitly(board):
         ExpressionWords(board, "fr")
     with pytest.raises(ValueError, match="unknown expression phrase keys"):
         ExpressionWords(board, phrases={"rel.unknown": "???"})
+    with pytest.raises(ValueError, match=r"unknown placeholders.*subject"):
+        ExpressionWords(board, phrases={"rel.beside": "near {subject}"})
+
+
+def test_read_language_display_names_and_compositional_overrides(board):
+    words = ExpressionWords.read(
+        board,
+        "Language: nl\nWords:\nAda: de bewaker\nrel.beside: vlak naast\n",
+    )
+    assert words.statement(parse_statement("Ada beside object:bed")) == (
+        "de bewaker is vlak naast minstens een van voorwerpen met de naam bed"
+    )
+
+
+@pytest.mark.parametrize("line", ["unseparated", ": missing name"])
+def test_read_rejects_malformed_words(board, line):
+    with pytest.raises(ValueError, match="Words:"):
+        ExpressionWords.read(board, f"Words:\n{line}\n")
 
 
 def test_role_binding_and_spatial_identity_are_worded_differently(board):

@@ -2,11 +2,13 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from string import Formatter
 from typing import assert_never
 
 from . import murdoku_lang as lang
 from .murdoku import Board
 from .murdoku_typecheck import Shape, Sort, check_formula, infer_operand
+from .puzzlefile import read_sections
 
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
@@ -253,6 +255,34 @@ class ExpressionWords:
         unknown = set(self.phrases) - set(PHRASES[self.language])
         if unknown:
             raise ValueError(f"unknown expression phrase keys: {', '.join(sorted(unknown))}")
+        formatter = Formatter()
+        for key, template in self.phrases.items():
+            allowed = {
+                name for _, name, _, _ in formatter.parse(PHRASES[self.language][key]) if name
+            }
+            supplied = {name for _, name, _, _ in formatter.parse(template) if name}
+            invalid = supplied - allowed
+            if invalid:
+                raise ValueError(
+                    f"Words: phrase {key!r} has unknown placeholders: {', '.join(sorted(invalid))}"
+                )
+
+    @classmethod
+    def read(cls, board: Board, text: str) -> "ExpressionWords":
+        """Read language, display names and expression phrase overrides from a puzzle."""
+        sections = read_sections(text)
+        language = (sections.get("Language") or ["en"])[0]
+        if language not in PHRASES:
+            raise ValueError(f"unknown expression language {language!r}")
+        names: dict[str, str] = {}
+        phrases: dict[str, str] = {}
+        for line in sections.get("Words", []):
+            name, separator, phrase = line.partition(":")
+            if not separator or not name.strip() or not phrase.strip():
+                raise ValueError(f"Words: {line!r} is not like 'name: wording'")
+            key = name.strip()
+            (phrases if key in PHRASES[language] else names)[key] = phrase.strip()
+        return cls(board, language, names, phrases)
 
     def _phrase(self, key: str, **values: str) -> str:
         return self.phrases.get(key, PHRASES[self.language][key]).format(**values)
