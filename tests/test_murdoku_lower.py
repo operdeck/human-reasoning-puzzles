@@ -13,6 +13,7 @@ from csp.murdoku_lower import (
     try_lower_membership,
     try_lower_person_pair,
     try_lower_role_atom,
+    try_lower_role_target,
 )
 
 
@@ -192,6 +193,38 @@ def test_role_determiners_on_an_empty_role_are_not_miscompiled(board):
 def test_lowered_role_overlap_matches_reference(board, formula):
     board = replace(board, roles=[*board.roles, RoleSpec("guest", frozenset({0, 1, 2}))])
     _assert_matches_reference(board, formula, try_lower_role_atom, solve=True)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "Ada dir:areas role:guard = 0",
+        "not Ada dir:areas role:guard = 0",
+        "no Ada dir:up role:guard",
+        "Ada on role:guard",
+        "not Ada on role:guard",
+        "Ada touches role:guard",
+    ],
+)
+def test_lowered_relation_to_role_matches_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_role_target, solve=True)
+
+
+def test_one_person_role_target_distinguishes_self_overlap_from_other_relations():
+    board = Board(
+        size=1,
+        regions=[["a"]],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada"],
+        roles=[RoleSpec("guard", frozenset({0, 1}))],
+    )
+    for formula in (
+        "Ada dir:areas role:guard = 0",
+        "not Ada dir:areas role:guard = 0",
+        "Ada on role:guard",
+    ):
+        _assert_matches_reference(board, formula, try_lower_role_target, solve=True)
 
 
 @pytest.mark.parametrize(

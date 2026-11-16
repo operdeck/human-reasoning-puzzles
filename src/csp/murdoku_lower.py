@@ -410,26 +410,10 @@ def try_lower_role_atom(model: Model, board: Board, statement: lang.Statement, n
     return True
 
 
-def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
-    """Lower a supported relation between named people to a binary relation."""
-    formula = statement.formula
-    negated = isinstance(formula, lang.Negation)
-    atom = formula.formula if isinstance(formula, lang.Negation) else formula
-    if not (
-        isinstance(atom, lang.Atom)
-        and isinstance(atom.subject, lang.Name)
-        and isinstance(atom.target, lang.Name)
-        and atom.subject.token.text in board.people
-        and atom.target.token.text in board.people
-    ):
-        return False
-    check_formula(board, formula)
-    first, second = atom.subject.token.text, atom.target.token.text
-    missing = {first, second} - set(model.all_variables)
-    if missing:
-        raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+def _person_relation(
+    board: Board, atom: lang.Atom, *, same: bool
+) -> Callable[[Square, Square], bool] | None:
     op = atom.operator.text
-    same = first == second
     test: Callable[[Square, Square], bool]
     if op == "is":
 
@@ -456,19 +440,96 @@ def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement,
     elif op.startswith("dir:"):
         direction = _direction(board, op, atom.measure)
         if direction is None:
-            return False
+            return None
 
         def directed(left: Square, right: Square) -> bool:
             return not same and direction(left, right)
 
         test = directed
     else:
+        return None
+    return test
+
+
+def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Lower a supported relation between named people to a binary relation."""
+    formula = statement.formula
+    negated = isinstance(formula, lang.Negation)
+    atom = formula.formula if isinstance(formula, lang.Negation) else formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and isinstance(atom.subject, lang.Name)
+        and isinstance(atom.target, lang.Name)
+        and atom.subject.token.text in board.people
+        and atom.target.token.text in board.people
+    ):
+        return False
+    check_formula(board, formula)
+    first, second = atom.subject.token.text, atom.target.token.text
+    missing = {first, second} - set(model.all_variables)
+    if missing:
+        raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+    same = first == second
+    test = _person_relation(board, atom, same=same)
+    if test is None:
         return False
     invert = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
     if same:
         model.relate(name, (first,), lambda square: test(square, square) != invert)
     else:
         model.relate(name, (first, second), lambda left, right: test(left, right) != invert)
+    return True
+
+
+def try_lower_role_target(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Lower a named person's spatial relation to an existential role-holder set."""
+    formula = statement.formula
+    negated = isinstance(formula, lang.Negation)
+    atom = formula.formula if isinstance(formula, lang.Negation) else formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and isinstance(atom.subject, lang.Name)
+        and atom.subject.token.text in board.people
+        and isinstance(atom.target, lang.Name)
+        and atom.target.token.text.startswith("role:")
+        and atom.operator.text != "is"
+    ):
+        return False
+    check_formula(board, formula)
+    person = atom.subject.token.text
+    role = atom.target.token.text.removeprefix("role:")
+    different = _person_relation(board, atom, same=False)
+    if different is None:
+        return False
+    variables = set(board.people) | {board.role_variable(holder, role) for holder in board.people}
+    missing = variables - set(model.all_variables)
+    if missing:
+        raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+    literals = []
+    for holder in board.people:
+        if holder == person:
+            if atom.operator.text in {"in", "on"}:
+                literals.append(model.literal(board.role_variable(holder, role), True))
+            continue
+        variable, selected, _ = _hidden_boolean(
+            model, "expression_role_target", f"{name} {holder} selected", "Murdoku expression"
+        )
+        model.relate(
+            f"{name} {holder} selection",
+            (person, holder, board.role_variable(holder, role), variable),
+            lambda left, right, has_role, selected, test=different: (
+                selected == (has_role and test(left, right))
+            ),
+        )
+        literals.append(selected)
+    exclude = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
+    allowed = {0} if exclude else set(range(1, len(literals) + 1))
+    if not allowed:
+        model.relate(name, (person,), lambda _square: False)
+    else:
+        model.constrain(
+            name, Kind.COUNT, literals, allowed_counts=allowed, family="Murdoku expression"
+        )
     return True
 
 
@@ -564,6 +625,7 @@ def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Mo
                 try_lower_membership,
                 try_lower_role_atom,
                 try_lower_person_pair,
+                try_lower_role_target,
                 try_lower_count,
             )
         ):
