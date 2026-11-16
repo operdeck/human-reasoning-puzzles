@@ -22,6 +22,7 @@ from .murdoku import (
     _compile_quantified_condition,
     _direction_test,
     _hidden_boolean,
+    _target_selector,
     compile_puzzle,
 )
 from .murdoku_typecheck import Shape, Sort, check_formula, infer_operand
@@ -502,13 +503,9 @@ def _literal_integer(number: lang.Number) -> int | None:
     return None
 
 
-def try_lower_area_companions(
-    model: Model, board: Board, statement: lang.Statement, name: str
-) -> bool:
-    """Lower a person's fixed area population to pairwise companion witnesses."""
-    formula = statement.formula
+def _area_companion_count(board: Board, formula: lang.Formula) -> tuple[str, int] | None:
     if not isinstance(formula, lang.NumberComparison) or formula.operator.text != "=":
-        return False
+        return None
     for counted, target in ((formula.left, formula.right), (formula.right, formula.left)):
         if not (
             isinstance(counted, lang.Count)
@@ -525,17 +522,67 @@ def try_lower_area_companions(
         total = _literal_integer(target)
         if total is None or not 1 <= total <= len(board.people) or len(board.people) < 2:
             continue
-        check_formula(board, formula)
-        missing = set(board.people) - set(model.all_variables)
-        if missing:
-            raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
         person = counted.operand.target.operand.token.text
-        condition = QuantifiedCondition(
-            name, "alone_with", person, TargetSelector("anyone", ""), rest=(str(total - 1),)
-        )
-        _compile_quantified_condition(model, board, condition)
-        return True
-    return False
+        return person, total - 1
+    return None
+
+
+def try_lower_area_companions(
+    model: Model, board: Board, statement: lang.Statement, name: str
+) -> bool:
+    """Lower a person's fixed area population to pairwise companion witnesses."""
+    formula = statement.formula
+    selected = TargetSelector("anyone", "")
+    if isinstance(formula, lang.Binary) and formula.operator.text == "and":
+        count, qualifier = formula.left, formula.right
+        match = _area_companion_count(board, count)
+        if match is None:
+            count, qualifier = formula.right, formula.left
+            match = _area_companion_count(board, count)
+        if match is None or not isinstance(qualifier, lang.Atom):
+            return False
+        person, _ = match
+        subject = qualifier.subject
+        if not (
+            qualifier.determiner is not None
+            and qualifier.determiner.text == "every"
+            and isinstance(subject, lang.Filter)
+            and subject.operator.text == "in"
+            and isinstance(subject.source, lang.Difference)
+            and isinstance(subject.source.left, lang.Name)
+            and subject.source.left.token.text == "people"
+            and isinstance(subject.source.right, lang.Name)
+            and subject.source.right.token.text == person
+            and isinstance(subject.target, lang.Projection)
+            and subject.target.kind.text == "area"
+            and isinstance(subject.target.operand, lang.Name)
+            and subject.target.operand.token.text == person
+            and isinstance(qualifier.target, lang.Name)
+            and qualifier.measure is None
+        ):
+            return False
+        kind, separator, _ = qualifier.target.token.text.partition(":")
+        allowed = {
+            "on": {"object", "object_kind", "mark", "edge_item", "point_object", "area", "tag"},
+            "in": {"object", "object_kind", "mark", "edge_item", "point_object", "area", "tag"},
+            "is": {"role", "attribute"},
+        }
+        if not separator or kind not in allowed.get(qualifier.operator.text, set()):
+            return False
+        check_formula(board, formula)
+        selected = _target_selector(board, qualifier.target.token.text)
+    else:
+        match = _area_companion_count(board, formula)
+    if match is None:
+        return False
+    check_formula(board, formula)
+    missing = set(board.people) - set(model.all_variables)
+    if missing:
+        raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+    person, companions = match
+    condition = QuantifiedCondition(name, "alone_with", person, selected, rest=(str(companions),))
+    _compile_quantified_condition(model, board, condition)
+    return True
 
 
 def occupied_cell_pair_scopes(

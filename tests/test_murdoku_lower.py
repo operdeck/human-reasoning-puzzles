@@ -203,6 +203,22 @@ def test_person_area_population_matches_reference(board, formula):
 @pytest.mark.parametrize(
     "formula",
     [
+        "count (people in area of Ada) = 2 and "
+        "every ((people except Ada) in area of Ada) on mark:red",
+        "every ((people except Ada) in area of Ada) is role:guard and "
+        "count (people in area of Ada) = 2",
+        "count (people in area of Ada) = 1 and "
+        "every ((people except Ada) in area of Ada) is attribute:trained",
+    ],
+)
+def test_qualified_area_companions_match_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_area_companions, solve=True)
+    _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
         "some (people on mark:red) dir:up (people on mark:blue)",
         "some (people on mark:red,blue) dir:rows (people on mark:red) = 0",
         "some (people in area:garden) dir:king (people on mark:red) <= 2",
@@ -474,6 +490,24 @@ def test_tuned_companions_and_cell_pairs_preserve_origins(board):
     assert any(
         compiled.model.constraints[index].name.startswith("clue 2")
         for index in compiled.constraint_origins
+    )
+
+
+def test_qualified_companion_witnesses_preserve_origins(board):
+    clue = parse_statement(
+        "count (people in area of Ada) = 2 and "
+        "every ((people except Ada) in area of Ada) is role:guard"
+    )
+    compiled = compile_statements_with_origins(board, [clue])
+    assert any(
+        compiled.model.relations[index].name.startswith("clue 1")
+        and tuple(origin.statement for origin in origins) == (clue,)
+        for index, origins in compiled.relation_origins.items()
+    )
+    assert any(
+        compiled.model.constraints[index].name == "clue 1"
+        and tuple(origin.statement for origin in origins) == (clue,)
+        for index, origins in compiled.constraint_origins.items()
     )
 
 
@@ -1091,6 +1125,30 @@ def test_logeeravond_preserves_migrated_grade_and_unique_solution():
         "beside Bas object:toilet": "Bas beside object:toilet",
         "dir Cato Daan left": "Cato dir:left Daan",
         "in Cato area:gang": "Cato in area:gang",
+    }
+    migrated = text
+    for old, new in replacements.items():
+        migrated = migrated.replace(old, new)
+    _assert_migration_preserves_assignment_grade(text, migrated)
+    _assert_migration_preserves_unique_solution(text, migrated)
+
+
+def test_hotel_qualified_companion_preserves_migrated_grade_and_unique_solution():
+    text = example("wie-doet-het-met-wie-5.txt").read_text()
+    replacements = {
+        "with Wouter object:badjas in same area exactly 1": (
+            "count (people in area of Wouter) = 1 + 1 and "
+            "every ((people except Wouter) in area of Wouter) on object:badjas"
+        ),
+        "dir people_on:object:sloffen people_on:object:bril up = 1": (
+            "some (people on object:sloffen) dir:up (people on object:bril) = 1"
+        ),
+        "beside Hanneke object:tapijt": "Hanneke beside object:tapijt",
+        "beside Mieke object:bank": "Mieke beside object:bank",
+        "in Jeroen area:speelgoedwinkel": "Jeroen in area:speelgoedwinkel",
+        "in Karin area:fietsenstalling": "Karin in area:fietsenstalling",
+        "not beside Ruud object:saunabank": "not Ruud beside object:saunabank",
+        "not beside Sven object:koffer": "not Sven beside object:koffer",
     }
     migrated = text
     for old, new in replacements.items():
