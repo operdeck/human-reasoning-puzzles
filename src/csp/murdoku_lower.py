@@ -231,6 +231,25 @@ def _role_scope(board: Board, operand: lang.Operand) -> tuple[str, set[Square]] 
     return operand.source.token.text.removeprefix("role:"), squares
 
 
+def _role_selection_literals(
+    model: Model, board: Board, role: str, squares: set[Square], name: str
+) -> list[int]:
+    literals = []
+    for person in board.people:
+        variable, selected, _ = _hidden_boolean(
+            model, "expression_role_scope", f"{name} {person} selected", "Murdoku expression"
+        )
+        model.relate(
+            f"{name} {person} selection",
+            (person, board.role_variable(person, role), variable),
+            lambda square, has_role, selected, squares=squares: (
+                selected == (has_role and square in squares)
+            ),
+        )
+        literals.append(selected)
+    return literals
+
+
 def try_lower_location(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
     """Lower a named person's static spatial relation as domain eliminations."""
     formula = statement.formula
@@ -297,6 +316,60 @@ def try_lower_membership(model: Model, board: Board, statement: lang.Statement, 
         raise ValueError(f"model lacks declared variable: {person}")
     accepted = (person in people) != invert
     model.relate(name, (person,), lambda _square: accepted)
+    return True
+
+
+def try_lower_role_atom(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Lower a role-holder determiner over a fixed spatial or person set."""
+    formula = statement.formula
+    negated = isinstance(formula, lang.Negation)
+    atom = formula.formula if isinstance(formula, lang.Negation) else formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and isinstance(atom.subject, lang.Name)
+        and atom.subject.token.text.startswith("role:")
+    ):
+        return False
+    check_formula(board, formula)
+    role = atom.subject.token.text.removeprefix("role:")
+    determiner = atom.determiner.text if atom.determiner else "some"
+    counterexamples = determiner == "every"
+    require_zero = (determiner in {"no", "every"}) != negated
+    variables = {board.role_variable(person, role) for person in board.people}
+    if atom.operator.text == "is":
+        people = _static_people(board, atom.target)
+        if people is None:
+            return False
+        selected = set(board.people) - people if counterexamples else people
+        missing = variables - set(model.all_variables)
+        if missing:
+            raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+        literals = [
+            model.literal(board.role_variable(person, role), True)
+            for person in board.people
+            if person in selected
+        ]
+    else:
+        scope = _role_scope(
+            board, lang.Filter(atom.subject, atom.operator, atom.target, atom.measure)
+        )
+        if scope is None:
+            return False
+        _, squares = scope
+        if counterexamples:
+            squares = set(board.free) - squares
+        variables.update(board.people)
+        missing = variables - set(model.all_variables)
+        if missing:
+            raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+        literals = _role_selection_literals(model, board, role, squares, name)
+    allowed = {0} if require_zero else set(range(1, len(literals) + 1))
+    if not allowed:
+        model.relate(name, (board.people[0],), lambda _square: False)
+    else:
+        model.constrain(
+            name, Kind.COUNT, literals, allowed_counts=allowed, family="Murdoku expression"
+        )
     return True
 
 
@@ -424,19 +497,7 @@ def try_lower_count(model: Model, board: Board, statement: lang.Statement, name:
         )
     if role_scope is not None:
         role, squares = role_scope
-        literals = []
-        for person in board.people:
-            variable, selected, _ = _hidden_boolean(
-                model, "expression_role_scope", f"{name} {person} selected", "Murdoku expression"
-            )
-            model.relate(
-                f"{name} {person} selection",
-                (person, board.role_variable(person, role), variable),
-                lambda square, has_role, selected, squares=squares: (
-                    selected == (has_role and square in squares)
-                ),
-            )
-            literals.append(selected)
+        literals = _role_selection_literals(model, board, role, squares, name)
     else:
         assert keys is not None
         literals = [model.literal(variable, value) for variable, value in keys]
@@ -464,6 +525,7 @@ def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Mo
             for lower in (
                 try_lower_location,
                 try_lower_membership,
+                try_lower_role_atom,
                 try_lower_person_pair,
                 try_lower_count,
             )

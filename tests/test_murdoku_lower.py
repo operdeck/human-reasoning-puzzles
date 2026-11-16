@@ -12,6 +12,7 @@ from csp.murdoku_lower import (
     try_lower_location,
     try_lower_membership,
     try_lower_person_pair,
+    try_lower_role_atom,
 )
 
 
@@ -153,6 +154,33 @@ def test_lowered_membership_matches_reference(board, formula):
 @pytest.mark.parametrize(
     "formula",
     [
+        "some role:guard in area:hall",
+        "every role:guard in area:hall",
+        "no role:guard in area:hall",
+        "not every role:guard in area:hall",
+        "not no role:guard in area:hall",
+        "some role:guard is attribute:trained",
+        "every role:guard is attribute:trained",
+        "not every role:guard is attribute:trained",
+    ],
+)
+def test_lowered_role_determiners_match_reference(board, formula):
+    _assert_matches_reference(board, formula, try_lower_role_atom, solve=True)
+
+
+def test_role_determiners_on_an_empty_role_are_not_miscompiled(board):
+    board = replace(board, roles=[RoleSpec("guard", frozenset({0}))])
+    _assert_matches_reference(
+        board, "some role:guard in area:hall", try_lower_role_atom, solve=True
+    )
+    _assert_matches_reference(
+        board, "every role:guard in area:hall", try_lower_role_atom, solve=True
+    )
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
         "Ada dir:up Ben",
         "Ada dir:down Ben = 1",
         "Ada dir:up Ben <= 1",
@@ -239,4 +267,4 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
 
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
-        compile_statements(board, [parse_statement("some role:guard in area:hall")])
+        compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
