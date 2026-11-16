@@ -209,6 +209,27 @@ it logs on every example.
 Keep the ladder honest: if a rule never fires on any example, say so rather
 than listing it as working.
 
+## Reading a scan
+
+A transcription starts from a photo or scan. `csp.scan` does the measuring —
+`ocr` (macOS Vision through pyobjc, or pytesseract), `find_grid` (lines detected,
+not assumed; it refuses ambiguous or uneven fits and tilted pages, but its results
+still need visual checking), `tiles` (normalised square cells), `icon_mask` +
+`rank_cells` (which cells repeat one example icon) and `contact_sheet` (a labelled
+sheet for the owner to correct). `uv run python -m csp.scan PAGE --size N --tiles
+DIR --sheet FILE --seed r3c5 --ocr` runs the whole pipeline.
+
+It needs `uv sync --extra scan`; numpy and opencv are imported on first use, so the
+solver itself keeps its zero-dependency install. Use `--ocr-language nl+en` to
+select Dutch and English; tesseract also needs those language data installed.
+
+What it cannot do is *name* a shape: matching says which cells repeat, never what
+an icon depicts. Ask for one example cell per kind or for the lists, and never
+invent a cell to make a clue parse — a placeholder board is fine only when the
+file header says so. Scans and derived images stay in the git-ignored
+`proprietary puzzles/`. The skill's [Reading a scan](.github/skills/murdoku-puzzle-generator/SKILL.md#reading-a-scan)
+section has the full workflow and the traps.
+
 ## Murdoku format and occupancy
 
 Use the [canonical Murdoku grammar](docs/model-and-puzzle-formats.md#murdoku)

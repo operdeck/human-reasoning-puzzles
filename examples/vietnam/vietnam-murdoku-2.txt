@@ -56,8 +56,8 @@ Rules:
 with Loempia attribute:reiziger in same area exactly 2
 
 Clues:
-not dir Pippo object:buncha,chaolong,thitkho,phalau king <= 1
-not dir Swena object:buncha,chaolong,thitkho,phalau king <= 1
+not dir Pippo object:buncha,chaolong,thitkho,phalau king <= 1 | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+not dir Swena object:buncha,chaolong,thitkho,phalau king <= 1 | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
 beside Minh object:thitkho
 beside Tuan object:buncha
 in Linh area:Hanoi
@@ -68,7 +68,7 @@ Title:
 Vietnam Murdoku 6x6: Op zoek naar de loempia
 
 Intro:
-Na hun eerste kom phở gà zoeken Pippo en Swena in Vietnam naar een knapperige loempia. Overal staan gerechten met varkensvlees of orgaanvlees, en daar blijven ze ver vandaan. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
+Na hun eerste kom phở gà zoeken Pippo en Swena in Vietnam naar een knapperige loempia. De varkensvleesgerechten op het bord (soms met orgaanvlees) zijn bún chả, cháo lòng, thịt kho en phá lấu. Een oude Vietcongtunnel loopt onder een stadsgrens door; op de tunnel kan niemand staan.
 De loempia is een van de zes figuren. Zet iedereen op een vrij vakje, met één figuur per rij en per kolom. De loempia ligt in een gebied met precies twee anderen: Pippo en Swena, en verder niemand.
 
 Figures:

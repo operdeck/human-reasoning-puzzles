@@ -29,6 +29,12 @@ docx = [
     "resvg-py>=0.5",
     "python-docx>=1.1",
 ]
+scan = [
+    "numpy>=2.1",
+    "opencv-python-headless>=4.10",
+    "pytesseract>=0.3.13 ; sys_platform != 'darwin'",
+    "pyobjc-framework-Vision>=10.3 ; sys_platform == 'darwin'",
+]
 
 [dependency-groups]
 dev = [
@@ -39,6 +45,8 @@ dev = [
     "python-docx>=1.1",
     "fonttools>=4.50",
     "resvg-py>=0.5",
+    "numpy>=2.1",
+    "opencv-python-headless>=4.10",
 ]
 
 [tool.setuptools.package-data]
@@ -56,7 +64,7 @@ python_version = "3.12"
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["fontTools.*", "resvg_py"]
+module = ["fontTools.*", "resvg_py", "Vision", "Foundation", "pytesseract", "cv2"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
