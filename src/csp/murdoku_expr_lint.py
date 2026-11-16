@@ -67,3 +67,33 @@ def role_negation_warnings(board: Board, statements: Sequence[lang.Statement]) -
                     f"add `not {person} is role:{name}` if non-membership is intended"
                 )
     return warnings
+
+
+def _required_atoms(formula: lang.Formula) -> Iterator[lang.Atom]:
+    if isinstance(formula, lang.Atom):
+        yield formula
+    elif isinstance(formula, lang.Binary) and formula.operator.text == "and":
+        yield from _required_atoms(formula.left)
+        yield from _required_atoms(formula.right)
+
+
+def vacuous_errors(board: Board, statements: Sequence[lang.Statement]) -> list[str]:
+    """Report required named-person relations forbidden by the board rules."""
+    errors = []
+    for statement in statements:
+        for atom in _required_atoms(statement.formula):
+            if (
+                atom.operator.text != "beside"
+                or (atom.determiner is not None and atom.determiner.text == "no")
+                or not isinstance(atom.subject, lang.Name)
+                or not isinstance(atom.target, lang.Name)
+                or atom.subject.token.text not in board.people
+                or atom.target.token.text not in board.people
+            ):
+                continue
+            token = atom.operator
+            errors.append(
+                f"line {token.line}, column {token.column}: people cannot be beside each other; "
+                "they occupy different rows and columns"
+            )
+    return errors

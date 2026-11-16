@@ -3,7 +3,7 @@ from dataclasses import replace
 import pytest
 
 from csp.murdoku import Board, RoleSpec, Square
-from csp.murdoku_expr_lint import role_negation_warnings
+from csp.murdoku_expr_lint import role_negation_warnings, vacuous_errors
 from csp.murdoku_lang import holds, parse_statement
 
 
@@ -102,3 +102,28 @@ def test_does_not_warn_for_other_statements(board, source):
 def test_does_not_warn_for_an_ineligible_subject(board, role):
     board = replace(board, roles=[role])
     assert not role_negation_warnings(board, [parse_statement("not Ada dir:areas role:guard = 0")])
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["Ada beside Ben", "Ada in area:hall and Ada beside Ben", "Ada beside Ada"],
+)
+def test_impossible_required_people_adjacency_is_an_error(board, source):
+    errors = vacuous_errors(board, [parse_statement(source, line=4)])
+    assert len(errors) == 1
+    assert errors[0].startswith("line 4, column ")
+    assert "different rows and columns" in errors[0]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "not Ada beside Ben",
+        "no Ada beside Ben",
+        "Ada beside Ben or Ada in area:hall",
+        "if Ada beside Ben then Ada in area:hall",
+        "Ada beside object:bed",
+    ],
+)
+def test_adjacency_error_does_not_reject_nonrequired_or_other_relations(board, source):
+    assert not vacuous_errors(board, [parse_statement(source)])
