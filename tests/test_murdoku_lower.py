@@ -384,6 +384,10 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "rows:3 is empty iff Ada is role:guard",
         "if object:bed is occupied then Ada on object:bed",
         "no area:hall is empty",
+        "count empty areas = 1",
+        "count (empty areas in tag:outside) = 1",
+        "count (occupied areas on mark:red) >= 1",
+        "area:hall is empty iff count empty areas = 1",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
@@ -479,6 +483,35 @@ def test_overlapping_cell_counts_share_empty_literals(board):
     counts = {constraint.name: constraint for constraint in model.constraints}
     assert set(counts["clue 2"].literals) < set(counts["clue 1"].literals)
     assert len(set(counts["clue 2"].literals)) == len(board.free)
+
+
+def test_area_emptiness_is_reused_between_atom_and_count(board):
+    model = compile_statements(
+        board,
+        [
+            parse_statement("area:hall is empty"),
+            parse_statement("count empty areas = 1"),
+        ],
+    )
+    counts = {constraint.name: constraint for constraint in model.constraints}
+    assert counts["clue 1"].reified_by in counts["clue 2"].literals
+
+
+def test_overlapping_area_tags_share_one_empty_literal(board):
+    board = replace(
+        board,
+        regions=[["a", "b", "a"], ["b", "a", "b"], ["b", "b", "b"]],
+        area_tags={"outside": ["garden"], "other": ["garden"]},
+    )
+    model = compile_statements(
+        board,
+        [
+            parse_statement("count (empty areas in tag:outside) = 1"),
+            parse_statement("count (empty areas in tag:other) = 1"),
+        ],
+    )
+    counts = {constraint.name: constraint for constraint in model.constraints}
+    assert counts["clue 1"].literals == counts["clue 2"].literals
 
 
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):

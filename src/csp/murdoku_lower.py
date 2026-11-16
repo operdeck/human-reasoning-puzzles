@@ -736,7 +736,7 @@ def _person_selected(
     person: str,
     operand: lang.Operand,
     name: str,
-    cell_empties: dict[Square, int],
+    empty_scopes: dict[Square | str, int],
 ) -> int:
     people = _static_people(board, operand)
     if people is not None:
@@ -772,16 +772,16 @@ def _person_selected(
                     item, token=replace(item.token, text=f"{namespace}:{item.token.text}")
                 )
             members.append(
-                _person_selected(model, board, person, item, f"{name} item {index}", cell_empties)
+                _person_selected(model, board, person, item, f"{name} item {index}", empty_scopes)
             )
         return _reify_cardinality(model, members, set(range(1, len(members) + 1)), name)
     if isinstance(operand, lang.Difference):
-        left = _person_selected(model, board, person, operand.left, f"{name} left", cell_empties)
-        right = _person_selected(model, board, person, operand.right, f"{name} right", cell_empties)
+        left = _person_selected(model, board, person, operand.left, f"{name} left", empty_scopes)
+        right = _person_selected(model, board, person, operand.right, f"{name} right", empty_scopes)
         return _reify_cardinality(model, [left, _opposite(model, right)], {2}, name)
     if isinstance(operand, lang.Filter):
         selected = _person_selected(
-            model, board, person, operand.source, f"{name} source", cell_empties
+            model, board, person, operand.source, f"{name} source", empty_scopes
         )
         atom = lang.Atom(
             lang.Name(replace(operand.operator, text=person)),
@@ -789,22 +789,52 @@ def _person_selected(
             operand.target,
             measure=operand.measure,
         )
-        matches = _reify_formula(model, board, atom, f"{name} matches", cell_empties=cell_empties)
+        matches = _reify_formula(model, board, atom, f"{name} matches", empty_scopes=empty_scopes)
         return _reify_cardinality(model, [selected, matches], {2}, name)
     raise NotImplementedError(f"{name}: person set lowering is not implemented")
 
 
 def _cell_empty_literal(
-    model: Model, board: Board, square: Square, name: str, cell_empties: dict[Square, int]
+    model: Model, board: Board, square: Square, name: str, empty_scopes: dict[Square | str, int]
 ) -> int:
-    if square not in cell_empties:
+    if square not in empty_scopes:
         occupants = (
             [model.literal(person, square) for person in board.people]
             if square in board.free
             else []
         )
-        cell_empties[square] = _reify_cardinality(model, occupants, {0}, name)
-    return cell_empties[square]
+        empty_scopes[square] = _reify_cardinality(model, occupants, {0}, name)
+    return empty_scopes[square]
+
+
+def _static_area_ids(board: Board, operand: lang.Operand) -> set[str] | None:
+    if isinstance(operand, lang.Name):
+        text = operand.token.text
+        if text == "areas":
+            return set(board.region_names)
+        if text.startswith("area:"):
+            return {board.region_id(text.removeprefix("area:"))}
+        if text.startswith("tag:"):
+            return board.tagged_region_ids([text.removeprefix("tag:")])
+    if isinstance(operand, lang.Difference):
+        left, right = _static_area_ids(board, operand.left), _static_area_ids(board, operand.right)
+        return left - right if left is not None and right is not None else None
+    return None
+
+
+def _area_empty_literal(
+    model: Model, board: Board, region: str, name: str, empty_scopes: dict[Square | str, int]
+) -> int:
+    key = f"area:{region}"
+    if key not in empty_scopes:
+        occupants = [
+            model.literal(person, square)
+            for person in board.people
+            for square in board.free
+            if board.region_of(square) == region
+        ]
+        empty_scopes[key] = _reify_cardinality(model, occupants, {0}, name)
+    return empty_scopes[key]
 
 
 def _reify_adjective_atom(
@@ -812,7 +842,7 @@ def _reify_adjective_atom(
     board: Board,
     atom: lang.AdjectiveAtom,
     name: str,
-    cell_empties: dict[Square, int],
+    empty_scopes: dict[Square | str, int],
 ) -> int:
     shape = infer_operand(board, atom.subject)
     cells = _static_cells(board, atom.subject)
@@ -828,7 +858,12 @@ def _reify_adjective_atom(
         )
         result = yes
     elif shape.sort == Sort.CELL and len(cells) == 1:
-        empty = _cell_empty_literal(model, board, next(iter(cells)), name, cell_empties)
+        empty = _cell_empty_literal(model, board, next(iter(cells)), name, empty_scopes)
+        result = empty if atom.adjective.text == "empty" else _opposite(model, empty)
+    elif shape.sort == Sort.AREA and (regions := _static_area_ids(board, atom.subject)) is not None:
+        if len(regions) != 1:
+            raise NotImplementedError(f"{name}: adjective lowering is not implemented")
+        empty = _area_empty_literal(model, board, next(iter(regions)), name, empty_scopes)
         result = empty if atom.adjective.text == "empty" else _opposite(model, empty)
     else:
         literals = [
@@ -880,16 +915,40 @@ def _cell_occupancy_scope(board: Board, operand: lang.Operand) -> tuple[str, lis
     return adjective, squares
 
 
+def _area_occupancy_scope(board: Board, operand: lang.Operand) -> tuple[str, set[str]] | None:
+    if isinstance(operand, lang.Filter) and operand.operator.text in {"in", "on"}:
+        scope = _area_occupancy_scope(board, operand.source)
+        if scope is None:
+            return None
+        adjective, regions = scope
+        targets = _static_area_ids(board, operand.target)
+        if targets is not None:
+            return adjective, regions & targets
+        if operand.operator.text == "on":
+            cells = _static_cells(board, operand.target)
+            if cells is not None:
+                return adjective, regions & {board.region_of(square) for square in cells}
+        return None
+    if not isinstance(operand, (lang.Qualified, lang.AdjectiveFilter)):
+        return None
+    adjective = operand.adjective.text
+    source = operand.operand if isinstance(operand, lang.Qualified) else operand.source
+    selected_regions = _static_area_ids(board, source)
+    if adjective not in {"empty", "occupied"} or selected_regions is None:
+        return None
+    return adjective, selected_regions
+
+
 def _reify_formula(
     model: Model,
     board: Board,
     formula: lang.Formula,
     name: str,
     bindings: dict[str, str] | None = None,
-    cell_empties: dict[Square, int] | None = None,
+    empty_scopes: dict[Square | str, int] | None = None,
 ) -> int:
     bindings = {} if bindings is None else bindings
-    cell_empties = {} if cell_empties is None else cell_empties
+    empty_scopes = {} if empty_scopes is None else empty_scopes
     if isinstance(formula, lang.Atom):
         atom = replace(
             formula,
@@ -913,13 +972,13 @@ def _reify_formula(
                 atom.subject,
                 replace(atom, subject=lang.Name(variable), determiner=None),
             )
-            return _reify_formula(model, board, quantified, name, bindings, cell_empties)
+            return _reify_formula(model, board, quantified, name, bindings, empty_scopes)
         if (
             subject_person is not None
             and atom.operator.text == "is"
             and infer_operand(board, atom.target).sort == Sort.PERSON
         ):
-            result = _person_selected(model, board, subject_person, atom.target, name, cell_empties)
+            result = _person_selected(model, board, subject_person, atom.target, name, empty_scopes)
             return (
                 _opposite(model, result)
                 if atom.determiner is not None and atom.determiner.text == "no"
@@ -938,7 +997,7 @@ def _reify_formula(
                 atom.target,
                 replace(atom, target=lang.Name(variable), determiner=None),
             )
-            result = _reify_formula(model, board, quantified, name, bindings, cell_empties)
+            result = _reify_formula(model, board, quantified, name, bindings, empty_scopes)
             return (
                 _opposite(model, result)
                 if atom.determiner is not None and atom.determiner.text == "no"
@@ -947,11 +1006,11 @@ def _reify_formula(
         return _reify_atom(model, board, atom, name)
     if isinstance(formula, lang.AdjectiveAtom):
         adjective_atom = replace(formula, subject=_bind_operand(formula.subject, bindings))
-        return _reify_adjective_atom(model, board, adjective_atom, name, cell_empties)
+        return _reify_adjective_atom(model, board, adjective_atom, name, empty_scopes)
     if isinstance(formula, lang.Negation):
         return _opposite(
             model,
-            _reify_formula(model, board, formula.formula, f"{name} not", bindings, cell_empties),
+            _reify_formula(model, board, formula.formula, f"{name} not", bindings, empty_scopes),
         )
     if isinstance(formula, lang.SetComparison):
         left_set = _bind_operand(formula.left, bindings)
@@ -961,10 +1020,10 @@ def _reify_formula(
         equalities = []
         for person in board.people:
             left_member = _person_selected(
-                model, board, person, left_set, f"{name} {person} left", cell_empties
+                model, board, person, left_set, f"{name} {person} left", empty_scopes
             )
             right_member = _person_selected(
-                model, board, person, right_set, f"{name} {person} right", cell_empties
+                model, board, person, right_set, f"{name} {person} right", empty_scopes
             )
             equalities.append(
                 _reify_cardinality(
@@ -983,10 +1042,21 @@ def _reify_formula(
             literals = []
             for square in cell_squares:
                 empty = _cell_empty_literal(
-                    model, board, square, f"{name} {square} empty", cell_empties
+                    model, board, square, f"{name} {square} empty", empty_scopes
                 )
                 literals.append(empty if adjective == "empty" else _opposite(model, empty))
             permitted = {value for value in range(len(cell_squares) + 1) if predicate(value)}
+            return _reify_cardinality(model, literals, permitted, name)
+        area_scope = _area_occupancy_scope(board, operand)
+        if area_scope is not None:
+            adjective, regions = area_scope
+            literals = []
+            for region in sorted(regions):
+                empty = _area_empty_literal(
+                    model, board, region, f"{name} {region} empty", empty_scopes
+                )
+                literals.append(empty if adjective == "empty" else _opposite(model, empty))
+            permitted = {value for value in range(len(regions) + 1) if predicate(value)}
             return _reify_cardinality(model, literals, permitted, name)
         role_scope = _role_scope(board, operand)
         keys = _counted_keys(board, operand) if role_scope is None else None
@@ -1007,7 +1077,7 @@ def _reify_formula(
         elif dynamic:
             literals = [
                 _person_selected(
-                    model, board, person, operand, f"{name} {person} member", cell_empties
+                    model, board, person, operand, f"{name} {person} member", empty_scopes
                 )
                 for person in board.people
             ]
@@ -1016,8 +1086,8 @@ def _reify_formula(
             literals = [model.literal(variable, value) for variable, value in keys]
         return _reify_cardinality(model, literals, permitted, name)
     if isinstance(formula, lang.Binary):
-        left = _reify_formula(model, board, formula.left, f"{name} left", bindings, cell_empties)
-        right = _reify_formula(model, board, formula.right, f"{name} right", bindings, cell_empties)
+        left = _reify_formula(model, board, formula.left, f"{name} left", bindings, empty_scopes)
+        right = _reify_formula(model, board, formula.right, f"{name} right", bindings, empty_scopes)
         operator = formula.operator.text
         if operator == "if":
             left = _opposite(model, left)
@@ -1026,7 +1096,7 @@ def _reify_formula(
         return _reify_cardinality(model, [left, right], allowed, name)
     if isinstance(formula, lang.Choice):
         literals = [
-            _reify_formula(model, board, choice, f"{name} option {index}", bindings, cell_empties)
+            _reify_formula(model, board, choice, f"{name} option {index}", bindings, empty_scopes)
             for index, choice in enumerate(formula.choices, 1)
         ]
         target = int(formula.count.text)
@@ -1057,7 +1127,7 @@ def _reify_formula(
                 f"{binding_name} body",
                 bindings
                 | dict(zip((variable.text for variable in formula.variables), values, strict=True)),
-                cell_empties,
+                empty_scopes,
             )
             if dynamic:
                 selected = [
@@ -1067,7 +1137,7 @@ def _reify_formula(
                         person,
                         source,
                         f"{binding_name} {person} member",
-                        cell_empties,
+                        empty_scopes,
                     )
                     for person in values
                 ]
@@ -1095,7 +1165,7 @@ def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Mo
     for statement in statements:
         check_formula(board, statement.formula)
     model = compile_puzzle(board, [])
-    cell_empties: dict[Square, int] = {}
+    empty_scopes: dict[Square | str, int] = {}
     for index, statement in enumerate(statements, 1):
         label = f"clue {index}"
         if not any(
@@ -1110,7 +1180,7 @@ def compile_statements(board: Board, statements: Sequence[lang.Statement]) -> Mo
             )
         ):
             literal = _reify_formula(
-                model, board, statement.formula, label, cell_empties=cell_empties
+                model, board, statement.formula, label, empty_scopes=empty_scopes
             )
             model.assign(literal, "clue", label)
     return model
