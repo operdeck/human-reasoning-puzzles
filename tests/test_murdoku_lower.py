@@ -828,18 +828,6 @@ def test_choice_pattern_preserves_migrated_house_example_grade():
 
 def test_random_small_well_typed_statements_match_reference():
     random = Random(244)
-    formulas = [
-        "Ada in area:hall",
-        "not Ada on mark:red",
-        "Ada dir:up empty rows = 1",
-        "count people on mark:red = 1",
-        "Ada is role:guard iff Ben on mark:red",
-        "every ?a in areas: count (people in ?a) <= count people",
-        "some ?r in rows: ?r is empty",
-        "(people in area:hall) = Ada",
-        "every ?p, ?q in people: ?p dir:areas ?q >= 1",
-        "some (people on mark:red) dir:rows Ada = 0",
-    ]
     for _ in range(30):
         size = random.choice([2, 3])
         cells = [Square(row, col) for row in range(size) for col in range(size)]
@@ -860,6 +848,24 @@ def test_random_small_well_typed_statements_match_reference():
             marks=[CellMark("red", red)],
             roles=[RoleSpec("guard", frozenset({0, 1, 2}))],
         )
+        person = random.choice(board.people)
+        relation = random.choice(["in", "on", "beside", "touches"])
+        target = random.choice(["area:hall", "area:garden", "mark:red", "rows:1"])
+        count = random.randrange(len(board.people) + 1)
+        comparison = random.choice(["=", "!=", "<=", ">="])
+        quantifier = random.choice(["some", "every", "no"])
+        formulas = [
+            f"{person} {relation} {target}",
+            f"count people {relation} {target} {comparison} {count}",
+            f"{quantifier} role:guard {relation} {target}",
+            f"{quantifier} ?r in rows: ?r is {random.choice(['empty', 'occupied'])}",
+            f"(people in area:hall) = {person}",
+            "every ?p in people: ?p is role:guard iff ?p on mark:red",
+            "every ?p, ?q in people: ?p dir:areas ?q >= 1",
+            f"some (people on mark:red) dir:rows {person} = 0",
+            "Ada dir:up empty rows = 1",
+            "every ?a in areas: count (people in ?a) <= count people",
+        ]
         first, second = random.sample(formulas, 2)
         operator = random.choice(["and", "or", "iff", "if"])
         formula = (
