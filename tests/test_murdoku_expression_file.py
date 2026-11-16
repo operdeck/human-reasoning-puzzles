@@ -5,7 +5,7 @@ from csp.bruteforce.murdoku_expr import solutions
 from csp.core import Solver
 from csp.murdoku import Square
 from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
-from csp.murdoku_lang import Atom, Name
+from csp.murdoku_lang import Atom, Name, format_statement, holds
 from csp.murdoku_lower import compile_statements
 from csp.puzzlefile import load_board
 from csp.story import (
@@ -322,3 +322,31 @@ def test_mark_ablation_reads_layout_without_parsing_clues():
     board, rules, clues = load_expression_board(without)
     assert len(rules) == len(clues) == 1
     assert board.marks[0].occupant_condition is None
+
+
+def test_expression_candidate_templates_use_reference_semantics_and_exclusions():
+    text = TEXT + "Objects:\nchair: standable r1c2\nstatue: blocking r2c2\n"
+    board, _, _ = load_expression_board(text)
+    placement = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    candidates = clue_search.expression_candidate_clues(
+        board,
+        placement,
+        kinds=["in", "on", "beside", "not beside", "line"],
+        exclude=iter(["Ben"]),
+        exclude_targets=["statue"],
+    )
+    rendered = [format_statement(clue) for clue in candidates]
+    assert "Ada on object:chair" in rendered
+    assert "Ada in rows:1" in rendered
+    assert all("Ben" not in clue and "statue" not in clue for clue in rendered)
+    assert all(holds(clue, board, placement, {}) for clue in candidates)
+
+
+def test_expression_direction_candidates_use_expression_syntax():
+    board, _, _ = load_expression_board(TEXT)
+    placement = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    candidates = clue_search.expression_candidate_clues(board, placement, kinds=["dir"])
+    rendered = [format_statement(clue) for clue in candidates]
+    assert "Ada dir:up Ben" in rendered
+    assert "Ben dir:down Ada" in rendered
+    assert all(holds(clue, board, placement, {}) for clue in candidates)

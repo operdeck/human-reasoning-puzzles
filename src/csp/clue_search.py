@@ -42,6 +42,7 @@ from .bruteforce import murdoku as brute
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Model, Solver
 from .murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
+from .murdoku_lang import Statement, holds, parse_statement
 from .murdoku_lower import compile_statements
 from .puzzlefile import (
     keyed_clue_numbers,
@@ -455,6 +456,92 @@ def candidate_clues(
         )
         and _true_for(board, clue, placement)
     ]
+
+
+def expression_candidate_clues(
+    board: murdoku.Board,
+    placement: dict[str, murdoku.Square],
+    kinds: Sequence[str] = SUGGEST_KINDS,
+    exclude: Iterable[str] = (),
+    exclude_targets: Iterable[str] = (),
+) -> list[Statement]:
+    """Generate typed, true expression clues directly from named-person templates."""
+    if set(placement) != set(board.people):
+        raise ValueError(f"placement must name exactly the people {board.people}")
+    unknown = set(kinds) - set(SUGGEST_KINDS) - set(EXTRA_KINDS)
+    if unknown:
+        raise ValueError(f"unknown clue kinds {sorted(unknown)}")
+    excluded = set(exclude)
+    people = [person for person in board.people if person not in excluded]
+    blocked_targets = set(exclude_targets)
+    areas = [
+        ("area", name)
+        for name in sorted(set(board.region_names.values()))
+        if name not in blocked_targets
+    ] + [("tag", name) for name in sorted(board.area_tags) if name not in blocked_targets]
+    areas.append(("corner", "board"))
+    features = [
+        (kind, name)
+        for kind, names in (
+            ("object", board.object_names),
+            ("mark", board.mark_names),
+            ("edge_item", board.edge_item_names),
+            ("point_object", board.point_object_names),
+        )
+        for name in sorted(names)
+        if name not in blocked_targets
+    ]
+    roles = {(person, role.name): False for person in board.people for role in board.roles}
+    found: list[Statement] = []
+    seen: set[str] = set()
+
+    def add(source: str) -> None:
+        if source not in seen:
+            statement = parse_statement(source)
+            if holds(statement, board, placement, roles):
+                found.append(statement)
+                seen.add(source)
+
+    for kind in kinds:
+        if kind == "dir":
+            for person in people:
+                for other in people:
+                    if person == other:
+                        continue
+                    for mode in ("left", "right", "up", "down", "knight", "furthest"):
+                        add(f"{person} dir:{mode} {other}")
+                    for mode in ("rows", "cols", "manhattan", "euclidean", "king", "areas"):
+                        for comparison in ("=", "<=", ">="):
+                            for distance in (0, 1, 2, 3):
+                                add(f"{person} dir:{mode} {other} {comparison} {distance}")
+            continue
+        negative = kind.startswith("not ")
+        operator = kind.removeprefix("not ")
+        if operator == "line":
+            options = [
+                f"{axis}:{number}"
+                for axis in ("rows", "columns")
+                for number in range(1, board.size + 1)
+            ]
+            for person in people:
+                for target in options:
+                    add(f"{person} in {target}")
+                    add(f"not {person} in {target}")
+            continue
+        targets = areas + features if operator == "in" else features
+        if operator == "beside":
+            targets = [(namespace, name) for namespace, name in targets if namespace == "object"]
+            if not blocked_targets:
+                targets += [
+                    ("object_kind", kind)
+                    for kind in ("blocking", "standable")
+                    if any(obj.kind == kind for obj in board.objects)
+                ]
+        for person in people:
+            for namespace, name in targets:
+                prefix = "not " if negative else ""
+                add(f"{prefix}{person} {operator} {namespace}:{name}")
+    return found
 
 
 def _placement(solution: dict[str, Any], people: Sequence[str]) -> dict[str, murdoku.Square]:
