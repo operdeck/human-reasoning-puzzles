@@ -337,8 +337,12 @@ The expression reader, evaluator and compiler can be used independently, but
 the CLI, player and booklet still use the grammar below. The following is not
 yet the production file format. As an authoring preview, `python -m
 csp.clue_search report FILE --expressions` and `thin FILE --expressions`
-measure expression puzzles with the new independent search and compiler;
-suggestion and other commands still use the production grammar.
+measure expression puzzles with the new independent search and compiler.
+`suggest FILE --expressions --solution "Ada=r1c1 ..."` previews suggestions
+using named-person location, line and direction templates. This is not yet a
+complete suggestion vocabulary: it does not generate arbitrary expressions or
+distinguish solutions differing only in roles. Other authoring commands still
+use the production grammar.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their

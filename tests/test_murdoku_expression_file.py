@@ -372,9 +372,83 @@ def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsy
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
     with pytest.raises(SystemExit) as error:
-        clue_search.main(["suggest", str(puzzle), "--expressions"])
+        clue_search.main(["ease", str(puzzle), "--expressions"])
     assert error.value.code == 2
-    assert "--expressions is supported only by report and thin" in capsys.readouterr().err
+    assert "--expressions is supported only by report, thin and suggest" in capsys.readouterr().err
+
+
+def test_expression_suggest_closes_puzzle_and_cli_uses_expression_syntax(tmp_path, capsys):
+    text = clue_search.with_clues(TEXT, [])
+    placement = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    added = clue_search.suggest(text, placement, kinds=["line"], expressions=True)
+    board, rules, clues = load_expression_board(clue_search.with_clues(text, added))
+    assert solutions(board, clues, 2, rules=rules) == [placement]
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(text)
+    assert (
+        clue_search.main(
+            [
+                "suggest",
+                str(puzzle),
+                "--expressions",
+                "--kinds",
+                "line",
+                "--solution",
+                "Ada=r1c2 Ben=r2c1",
+            ]
+        )
+        == 0
+    )
+    assert "unique with" in capsys.readouterr().out
+
+
+def test_expression_suggest_preserves_keyed_needed_clue_and_coverage():
+    text = TEXT.replace("  Ada in rows:1 | Ada stays in the first row.\n", "")
+    text += "Key:\nclue: Ben in columns:1\n"
+    placement = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    added = clue_search.suggest(
+        text, placement, kinds=["line"], needs=[1], cover=True, expressions=True
+    )
+    final = clue_search.with_clues(text, [*clue_search.clue_lines(text), *added])
+    board, rules, clues = load_expression_board(final)
+    assert solutions(board, clues, 2, rules=rules) == [placement]
+    assert not clue_search._unnamed(
+        board.people, clue_search.clue_lines(final), (), expressions=True
+    )
+    board, rules, clues = load_expression_board(
+        clue_search.with_clues(text, added), validate_keys=False
+    )
+    assert len(solutions(board, clues, 2, rules=rules)) == 2
+
+
+def test_expression_suggest_preserves_needed_mark_effect():
+    text = """Size: 3
+Regions:
+a: alcove
+b: hall
+Grid:
+a b b
+b a b
+b b b
+People:
+Ada
+Ben
+Cal
+Marks:
+quiet: r1c1 ; alone
+Clues:
+count (people on mark:quiet) = 1
+Ada in rows:1
+"""
+    placement = clue_search.parse_solution("Ada=r1c1 Ben=r2c3 Cal=r3c2")
+    added = clue_search.suggest(
+        text, placement, kinds=["line"], needs_marks=["quiet"], sample=100, expressions=True
+    )
+    final = clue_search.with_clues(text, [*clue_search.clue_lines(text), *added])
+    board, rules, clues = load_expression_board(final)
+    assert len(solutions(board, clues, 2, rules=rules)) == 1
+    board, rules, clues = load_expression_board(clue_search.without_mark_condition(final, "quiet"))
+    assert len(solutions(board, clues, 2, rules=rules)) == 2
 
 
 def test_mark_ablation_reads_layout_without_parsing_clues():

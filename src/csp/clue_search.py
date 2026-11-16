@@ -42,7 +42,7 @@ from .bruteforce import murdoku as brute
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Model, Solver
 from .murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
-from .murdoku_lang import Name, Statement, holds, parse_statement
+from .murdoku_lang import Name, Statement, format_statement, holds, parse_statement
 from .murdoku_lower import compile_statements
 from .puzzlefile import (
     keyed_clue_numbers,
@@ -605,6 +605,8 @@ def suggest(
     cover: bool = False,
     exclude_targets: Iterable[str] = (),
     needs_marks: Iterable[str] = (),
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """Clues to add to `text` so that `placement` becomes its only solution.
 
@@ -627,12 +629,24 @@ def suggest(
     rival of some needed clue is skipped, so removing any one of them still
     leaves another solution.
     """
-    board, _ = load_board(text)
+    if expressions:
+        board, rules, clues = load_expression_board(text)
+    else:
+        board, _ = load_board(text)
+        rules, clues = [], []
     unknown = set(board.people) ^ set(placement)
     if unknown:
         raise ValueError(f"--solution must place exactly the people {board.people}")
     exclude_targets = tuple(exclude_targets)
-    candidates = candidate_clues(board, placement, kinds, exclude, exclude_targets)
+    if expressions:
+        if not expression_brute.accepts(board, clues, placement, rules=rules):
+            raise ValueError("the intended placement does not satisfy the starting puzzle")
+        statements = expression_candidate_clues(board, placement, kinds, exclude, exclude_targets)
+        parsed_candidates = {format_statement(statement): statement for statement in statements}
+        candidates = list(parsed_candidates)
+    else:
+        candidates = candidate_clues(board, placement, kinds, exclude, exclude_targets)
+        parsed_candidates = {}
     lines = clue_lines(text)
     needed = sorted(set(needs))
     marks_needed = tuple(dict.fromkeys(needs_marks))
@@ -642,10 +656,54 @@ def suggest(
         raise ValueError(f"--needs names clue numbers {bad}; the puzzle has {len(lines)} clues")
     added: list[str] = []
 
+    def sampled(puzzle: str) -> list[dict[str, murdoku.Square]]:
+        if expressions:
+            trial_board, trial_rules, trial_clues = load_expression_board(
+                puzzle, validate_keys=False
+            )
+            found = expression_brute.sample(trial_board, trial_clues, sample, rules=trial_rules)
+        else:
+            found = brute.sample(puzzle, sample)
+        return [_placement(result, board.people) for result in found]
+
+    def accepts(puzzle: str, other: dict[str, murdoku.Square]) -> bool:
+        if expressions:
+            trial_board, trial_rules, trial_clues = load_expression_board(
+                puzzle, validate_keys=False
+            )
+            return expression_brute.accepts(trial_board, trial_clues, other, rules=trial_rules)
+        return brute.accepts(puzzle, other)
+
+    def true_for(trial_board: murdoku.Board, clue: str, other: dict[str, murdoku.Square]) -> bool:
+        if expressions:
+            roles = {
+                (person, role.name): False
+                for person in trial_board.people
+                for role in trial_board.roles
+            }
+            return holds(parsed_candidates[clue], trial_board, other, roles)
+        return _true_for(trial_board, clue, other)
+
+    def unnamed(clue_lines: Iterable[str], excluded: Iterable[str]) -> list[str]:
+        return _unnamed(board.people, clue_lines, excluded, expressions=expressions)
+
+    def names(clue: str) -> set[str]:
+        if expressions:
+            return _expression_people(parsed_candidates[clue].formula, set(board.people))
+        return set(clue.split()[1:]) & set(board.people)
+
+    def solution_count(puzzle: str) -> int:
+        if expressions:
+            trial_board, trial_rules, trial_clues = load_expression_board(
+                puzzle, validate_keys=False
+            )
+            return len(expression_brute.solutions(trial_board, trial_clues, 2, rules=trial_rules))
+        return len(brute.solutions(puzzle, 2))
+
     def _reseed(person: str, added: list[str]) -> list[str]:
         # Start again from one clue about `person`, kept necessary like a needed clue.
-        named = set(board.people) - set(_unnamed(board.people, lines + added, ())) | {person}
-        for clue in (c for c in candidates if person in c.split()[1:] and c not in lines):
+        named = set(board.people) - set(unnamed(lines + added, ())) | {person}
+        for clue in (c for c in candidates if person in names(c) and c not in lines):
             seeded = with_clues(text, [*lines, clue])
             more = suggest(
                 seeded,
@@ -657,18 +715,19 @@ def suggest(
                 needs=[*needed, len(lines) + 1],
                 exclude_targets=exclude_targets,
                 needs_marks=marks_needed,
+                expressions=expressions,
             )
             trial = [clue, *more]
             completed = with_clues(text, lines + trial)
             if (
-                len(brute.solutions(completed, 2)) == 1
-                and named.isdisjoint(_unnamed(board.people, lines + trial, ()))
+                solution_count(completed) == 1
+                and named.isdisjoint(unnamed(lines + trial, ()))
                 and all(
-                    len(brute.solutions(with_clues(text, lines[: n - 1] + lines[n:] + trial))) > 1
+                    solution_count(with_clues(text, lines[: n - 1] + lines[n:] + trial)) > 1
                     for n in needed
                 )
                 and all(
-                    len(brute.solutions(without_mark_condition(completed, name), 2)) > 1
+                    solution_count(without_mark_condition(completed, name)) > 1
                     for name in marks_needed
                 )
             ):
@@ -679,14 +738,14 @@ def suggest(
 
     while True:
         current = with_clues(text, lines + added)
-        others = [_placement(found, board.people) for found in brute.sample(current, sample)]
+        others = sampled(current)
         others = [other for other in others if other != placement]
         rival_sets: list[tuple[murdoku.Board, list[dict[str, murdoku.Square]]]] = []
         for number in needed:
             without = with_clues(text, lines[: number - 1] + lines[number:] + added)
-            found = [_placement(f, board.people) for f in brute.sample(without, sample)]
+            found = sampled(without)
             rivals = [
-                other for other in found if other != placement and not brute.accepts(current, other)
+                other for other in found if other != placement and not accepts(current, other)
             ]
             if not rivals:
                 log(f"needed clue {number} is already redundant; add fewer clues first")
@@ -694,38 +753,51 @@ def suggest(
             rival_sets.append((board, rivals))
         for name in marks_needed:
             without = without_mark_condition(current, name)
-            found = [_placement(f, board.people) for f in brute.sample(without, sample)]
+            found = sampled(without)
             rivals = [
-                other for other in found if other != placement and not brute.accepts(current, other)
+                other for other in found if other != placement and not accepts(current, other)
             ]
             if not rivals:
                 log(f"no sampled rival found for mark {name}; try a larger sample or fewer clues")
                 return added
-            rival_sets.append((load_board(without)[0], rivals))
+            rival_sets.append((load_board_layout(without), rivals))
         if not others:
             if cover:
                 added = _cover(
-                    text, lines, added, candidates, board.people, exclude, needed, log, marks_needed
+                    text,
+                    lines,
+                    added,
+                    candidates,
+                    board.people,
+                    exclude,
+                    needed,
+                    log,
+                    marks_needed,
+                    expressions=expressions,
                 )
-                for person in _unnamed(board.people, lines + added, exclude):
+                for person in unnamed(lines + added, exclude):
                     added = _reseed(person, added)
-            result = outcome(with_clues(text, lines + added), timeout)
-            log(f"unique with {len(added)} added clues ({result})")
+            result = outcome(with_clues(text, lines + added), timeout, expressions=expressions)
+            if result.solutions == 1:
+                log(f"unique with {len(added)} added clues ({result})")
+            else:
+                log(f"no other sampled placements; result is {result}")
             return added
         best, best_cut, best_key = None, 0, (0, 0)
-        mentions = _mentions(board.people, lines + added)
+        mentions = _mentions(board.people, lines + added, expressions=expressions)
         for clue in candidates:
             if clue in lines or clue in added:
                 continue
             if any(
-                not any(_true_for(rival_board, clue, rival) for rival in rivals)
+                not any(true_for(rival_board, clue, rival) for rival in rivals)
                 for rival_board, rivals in rival_sets
             ):
                 continue
-            cut = sum(not _true_for(board, clue, other) for other in others)
+            cut = sum(not true_for(board, clue, other) for other in others)
             # Equal cuts (often "all sampled") go to the least-mentioned people, so
             # the clues spread over the cast instead of piling up on one person.
-            spread = -sum(mentions.get(word, 0) for word in clue.split()[1:])
+            words = names(clue) if expressions else clue.split()[1:]
+            spread = -sum(mentions.get(word, 0) for word in words)
             if cut and (cut, spread) > best_key:
                 best, best_cut, best_key = clue, cut, (cut, spread)
         if best is None:
@@ -748,6 +820,8 @@ def _cover(
     needed: Sequence[int],
     log: Callable[[str], None],
     marks_needed: Sequence[str] = (),
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """`added` with clues swapped so that every person outside `exclude` is named.
 
@@ -756,31 +830,46 @@ def _cover(
     lose their last clue, and each needed clue must stay necessary.
     """
 
+    def solution_count(puzzle: str) -> int:
+        if expressions:
+            board, rules, parsed = load_expression_board(puzzle, validate_keys=False)
+            return len(expression_brute.solutions(board, parsed, 2, rules=rules))
+        return len(brute.solutions(puzzle, 2))
+
     def unique(clues: list[str]) -> bool:
-        return len(brute.solutions(with_clues(text, clues), 2)) == 1
+        return solution_count(with_clues(text, clues)) == 1
+
+    def named_in(clue: str) -> set[str]:
+        if expressions:
+            return _expression_people(parse_statement(clue).formula, set(people))
+        return set(clue.split()[1:])
 
     def fine(trial: list[str]) -> bool:
-        named = {p for p, n in _mentions(people, lines + trial).items() if n}
+        named = {
+            p for p, n in _mentions(people, lines + trial, expressions=expressions).items() if n
+        }
         return (
-            named >= {p for p, n in _mentions(people, lines + added).items() if n}
+            named
+            >= {
+                p for p, n in _mentions(people, lines + added, expressions=expressions).items() if n
+            }
             and unique(lines + trial)
             and not any(unique(lines[: n - 1] + lines[n:] + trial) for n in needed)
             and all(
-                len(brute.solutions(without_mark_condition(with_clues(text, lines + trial), name)))
-                > 1
+                solution_count(without_mark_condition(with_clues(text, lines + trial), name)) > 1
                 for name in marks_needed
             )
         )
 
     skip = set(exclude)
     for person in people:
-        if person in skip or _mentions(people, lines + added)[person]:
+        if person in skip or _mentions(people, lines + added, expressions=expressions)[person]:
             continue
         swap = next(
             (
                 [*added[:i], clue, *added[i + 1 :]]
                 for clue in candidates
-                if person in clue.split()[1:]
+                if person in named_in(clue)
                 for i in reversed(range(len(added)))
                 if fine([*added[:i], clue, *added[i + 1 :]])
             ),
@@ -882,7 +971,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--expressions",
         action="store_true",
-        help="report, thin: read the developing expression language",
+        help="report, thin, suggest: read the developing expression language",
     )
     parser.add_argument("--keep", type=int, nargs="*", default=[], help="thin: clue numbers")
     parser.add_argument("--max-grade", choices=GRADES, help="thin, ease: hardest grade allowed")
@@ -922,8 +1011,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="suggest, ease: marks whose occupancy effects must stay necessary",
     )
     args = parser.parse_args(argv)
-    if args.expressions and args.command not in ("report", "thin"):
-        parser.error("--expressions is supported only by report and thin")
+    if args.expressions and args.command not in ("report", "thin", "suggest"):
+        parser.error("--expressions is supported only by report, thin and suggest")
     if args.needs_mark and args.command not in ("suggest", "ease"):
         parser.error("--needs-mark is supported only by suggest and ease")
     text = args.puzzle.read_text()
@@ -988,6 +1077,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.cover,
         args.exclude_target,
         args.needs_mark,
+        expressions=args.expressions,
     )
     print("Clues to add:")
     print("\n".join(added))

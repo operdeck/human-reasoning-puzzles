@@ -94,11 +94,14 @@ def keyed_expression_clue_numbers(text: str) -> set[int]:
     return _keyed_clues(rules, clues, references)
 
 
-def load_expression_board(text: str) -> tuple[Board, list[Statement], list[Statement]]:
+def load_expression_board(
+    text: str, *, validate_keys: bool = True
+) -> tuple[Board, list[Statement], list[Statement]]:
     """Return the layout, unnumbered rules and numbered clues with source positions."""
     board = load_board_layout(text)
     rules, clues, references = _read_statements(text)
     for statement in (*rules, *clues):
         check_formula(board, statement.formula)
-    _keyed_clues(rules, clues, references)
+    if validate_keys:
+        _keyed_clues(rules, clues, references)
     return board, rules, clues
