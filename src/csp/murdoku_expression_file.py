@@ -28,7 +28,7 @@ def _read_statements(text: str) -> tuple[list[Statement], list[Statement], list[
 
 def _ast_key(value: object) -> object:
     if isinstance(value, Token):
-        return value.text
+        return " ".join(value.text.split())
     if isinstance(value, tuple):
         return tuple(_ast_key(item) for item in value)
     if is_dataclass(value):

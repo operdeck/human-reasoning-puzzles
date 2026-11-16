@@ -98,3 +98,10 @@ def test_expression_key_requires_a_unique_ast_match():
     )
     with pytest.raises(ValueError, match="unresolved Key clue"):
         load_expression_board(text + "Key:\nclue: Ben in columns:1\n")
+
+
+def test_expression_key_normalizes_whitespace_inside_quantifier():
+    text = TEXT.replace("Ben in columns:1", "at   least 1 ?p in people: ?p in columns:1")
+    text += "Key:\nclue: at least 1 ?p in people: ?p in columns:1\n"
+    assert keyed_expression_clue_numbers(text) == {1}
+    load_expression_board(text)
