@@ -1,7 +1,7 @@
 import pytest
 
 from csp import clue_search
-from csp.bruteforce.murdoku_expr import solutions
+from csp.bruteforce.murdoku_expr import accepts, solutions
 from csp.core import Solver
 from csp.murdoku import Square
 from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
@@ -288,6 +288,41 @@ def test_expression_authoring_outcome_thinning_and_key_protection():
     report = clue_search.removal_report(text, expressions=True)
     assert report[0][2] == result
     assert report[1][2].good
+
+
+def test_expression_placement_acceptance_checks_rules_roles_and_board_constraints():
+    text = TEXT.replace(
+        "  Ada in rows:1 | Ada stays in the first row.",
+        "  Ada in rows:1 | Ada stays in the first row.\n  Ada is role:guard",
+    )
+    text += "Roles:\nguard: 1\n"
+    board, rules, clues = load_expression_board(text)
+    accepted = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    assert accepts(board, clues, accepted, rules=rules)
+    assert not accepts(board, clues, {"Ada": Square(0, 0), "Ben": Square(1, 1)}, rules=rules)
+    assert not accepts(board, clues, {"Ada": Square(0, 0), "Ben": Square(0, 1)}, rules=rules)
+    with pytest.raises(ValueError, match="every person"):
+        accepts(board, clues, {"Ada": Square(0, 1)}, rules=rules)
+
+
+def test_expression_placement_acceptance_matches_search_for_optional_roles():
+    text = TEXT.replace(
+        "  Ada in rows:1 | Ada stays in the first row.",
+        "  Ada is role:guard",
+    )
+    text += "Roles:\nguard: any\n"
+    board, rules, clues = load_expression_board(text)
+    found = solutions(board, clues, limit=100, rules=rules)
+    placements = (
+        {"Ada": Square(0, 0), "Ben": Square(1, 1)},
+        {"Ada": Square(0, 1), "Ben": Square(1, 0)},
+        {"Ada": Square(1, 0), "Ben": Square(0, 1)},
+        {"Ada": Square(1, 1), "Ben": Square(0, 0)},
+    )
+    for placed in placements:
+        assert accepts(board, clues, placed, rules=rules) == any(
+            all(result[person] == square for person, square in placed.items()) for result in found
+        )
 
 
 def test_expression_authoring_cli_thin(tmp_path, capsys):

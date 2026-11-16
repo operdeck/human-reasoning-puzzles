@@ -72,6 +72,40 @@ def _roles(board: Board, placed: dict[str, Square]) -> Iterator[dict[tuple[str, 
     yield from search(0)
 
 
+def _checks(
+    board: Board, statements: Sequence[Statement], rules: Sequence[Statement]
+) -> list[Statement]:
+    if board.rules:
+        raise ValueError("board rules must be migrated to expression statements first")
+    checks = [*declaration_statements(board), *rules, *statements]
+    for statement in checks:
+        check_formula(board, statement.formula)
+    return checks
+
+
+def accepts(
+    board: Board,
+    statements: Sequence[Statement],
+    placed: dict[str, Square],
+    *,
+    rules: Sequence[Statement] = (),
+) -> bool:
+    """Whether a placement satisfies the board and expressions for some valid role assignment."""
+    checks = _checks(board, statements, rules)
+    if set(placed) != set(board.people):
+        raise ValueError("placement must name every person exactly once")
+    if any(square not in board.free for square in placed.values()):
+        return False
+    if len({square.row for square in placed.values()}) != len(placed) or len(
+        {square.col for square in placed.values()}
+    ) != len(placed):
+        return False
+    return any(
+        all(holds(statement, board, placed, roles) for statement in checks)
+        for roles in _roles(board, placed)
+    )
+
+
 def solutions(
     board: Board,
     statements: Sequence[Statement],
@@ -82,11 +116,7 @@ def solutions(
     """Return up to `limit` solutions, evaluating statements only via `holds`."""
     if limit < 1:
         raise ValueError("solution limit must be positive")
-    if board.rules:
-        raise ValueError("board rules must be migrated to expression statements first")
-    checks = [*declaration_statements(board), *rules, *statements]
-    for statement in checks:
-        check_formula(board, statement.formula)
+    checks = _checks(board, statements, rules)
     placement_checks = [statement for statement in checks if not _mentions_roles(statement.formula)]
     role_checks = [statement for statement in checks if _mentions_roles(statement.formula)]
     # Role-independent checks cannot observe this complete placeholder assignment.
