@@ -353,6 +353,12 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "every ?p, ?q in role:guard: ?p dir:areas ?q = 0",
         "some ?p, ?q in role:guard: ?p dir:left ?q",
         "some ?p in people: every ?q in role:guard: ?p dir:areas ?q = 0",
+        "some role:guard on mark:red or Ada in area:hall",
+        "every role:guard is attribute:trained iff Ben is role:guard",
+        "no role:guard in area:hall and Ada on mark:red",
+        "not (Ada touches role:guard) or Ben is role:guard",
+        "no Ada on role:guard iff Ada is role:guard",
+        "some role:guard touches role:guard or Ada is role:guard",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):

@@ -739,16 +739,43 @@ def _reify_formula(
 ) -> int:
     bindings = {} if bindings is None else bindings
     if isinstance(formula, lang.Atom):
-        return _reify_atom(
-            model,
-            board,
-            replace(
-                formula,
-                subject=_bind_operand(formula.subject, bindings),
-                target=_bind_operand(formula.target, bindings),
-            ),
-            name,
+        atom = replace(
+            formula,
+            subject=_bind_operand(formula.subject, bindings),
+            target=_bind_operand(formula.target, bindings),
         )
+        variable_name = "?_expression"
+        while variable_name in bindings:
+            variable_name += "_"
+        variable = replace(atom.operator, text=variable_name)
+        if isinstance(atom.subject, lang.Name) and atom.subject.token.text.startswith("role:"):
+            quantified = lang.Quantified(
+                atom.determiner or replace(atom.operator, text="some"),
+                None,
+                (variable,),
+                atom.subject,
+                replace(atom, subject=lang.Name(variable), determiner=None),
+            )
+            return _reify_formula(model, board, quantified, name, bindings)
+        if (
+            atom.operator.text != "is"
+            and isinstance(atom.target, lang.Name)
+            and atom.target.token.text.startswith("role:")
+        ):
+            quantified = lang.Quantified(
+                replace(atom.operator, text="some"),
+                None,
+                (variable,),
+                atom.target,
+                replace(atom, target=lang.Name(variable), determiner=None),
+            )
+            result = _reify_formula(model, board, quantified, name, bindings)
+            return (
+                _opposite(model, result)
+                if atom.determiner is not None and atom.determiner.text == "no"
+                else result
+            )
+        return _reify_atom(model, board, atom, name)
     if isinstance(formula, lang.Negation):
         return _opposite(
             model, _reify_formula(model, board, formula.formula, f"{name} not", bindings)
