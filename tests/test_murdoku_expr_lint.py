@@ -167,6 +167,10 @@ def test_required_person_set_location_respects_vacuous_quantification(board):
     assert not vacuous_errors(
         required, [parse_statement("every (role:guard except Ada) on object:table")]
     )
+    statement = parse_statement("every role:guard on object:table")
+    placed = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    assert holds(statement, board, placed, {("Ada", "guard"): False, ("Ben", "guard"): False})
+    assert not holds(statement, required, placed, {("Ada", "guard"): True, ("Ben", "guard"): False})
 
 
 def test_impossible_occupied_scope_direction_is_an_error(board):
