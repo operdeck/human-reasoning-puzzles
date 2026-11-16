@@ -125,3 +125,59 @@ def test_mark_declarations_match_explicit_statements(condition, comparison):
     }
     assert expected
     assert actual == expected
+
+
+@pytest.mark.parametrize(
+    ("ada_cells", "ben_cells", "cards", "expected"),
+    [
+        (
+            (Square(0, 0),),
+            (Square(1, 1), Square(2, 1)),
+            ("Ada dir:up empty rows = 1",),
+            {"Ada": Square(0, 0), "Ben": Square(2, 1)},
+        ),
+        (
+            (Square(0, 0),),
+            (Square(1, 1), Square(2, 1)),
+            (
+                "Ada on object:bed",
+                "every ?b in object:bed: Ada on ?b or ?b in empty rows",
+            ),
+            {"Ada": Square(0, 0), "Ben": Square(1, 1)},
+        ),
+        (
+            (Square(1, 0),),
+            (Square(0, 1), Square(0, 2)),
+            ("some (people beside object:chest) dir:up Ada = 1",),
+            {"Ada": Square(1, 0), "Ben": Square(0, 2)},
+        ),
+        (
+            (Square(0, 0), Square(1, 0)),
+            (Square(0, 1), Square(1, 1), Square(2, 1)),
+            ("Ada in rows:1,last", "count people in rows:1,last = 1"),
+            {"Ada": Square(0, 0), "Ben": Square(1, 1)},
+        ),
+    ],
+)
+def test_original_card_examples_are_necessary_for_uniqueness(ada_cells, ben_cells, cards, expected):
+    board = Board(
+        size=3,
+        regions=[["a"] * 3 for _ in range(3)],
+        region_names={"a": "hall"},
+        objects=[
+            BoardObject("bed", "standable", (Square(0, 0),)),
+            BoardObject("bed", "standable", (Square(2, 2),)),
+            BoardObject("chest", "standable", (Square(0, 1),)),
+        ],
+        people=["Ada", "Ben"],
+        marks=[CellMark("ada", ada_cells), CellMark("ben", ben_cells)],
+    )
+    givens = [parse_statement("Ada on mark:ada"), parse_statement("Ben on mark:ben")]
+    assert len(solutions(board, givens, limit=10)) > 1
+    parsed = [parse_statement(card) for card in cards]
+    assert solutions(board, givens + parsed, limit=10) == [expected]
+    if cards[0] == "Ada in rows:1,last":
+        assert all(
+            len(solutions(board, givens + parsed[:index] + parsed[index + 1 :], limit=10)) > 1
+            for index in range(len(parsed))
+        )
