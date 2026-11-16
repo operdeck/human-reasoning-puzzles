@@ -337,18 +337,55 @@ def try_lower_role_atom(model: Model, board: Board, statement: lang.Statement, n
     require_zero = (determiner in {"no", "every"}) != negated
     variables = {board.role_variable(person, role) for person in board.people}
     if atom.operator.text == "is":
-        people = _static_people(board, atom.target)
-        if people is None:
-            return False
-        selected = set(board.people) - people if counterexamples else people
-        missing = variables - set(model.all_variables)
-        if missing:
-            raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
-        literals = [
-            model.literal(board.role_variable(person, role), True)
-            for person in board.people
-            if person in selected
-        ]
+        if isinstance(atom.target, lang.Name) and atom.target.token.text.startswith("role:"):
+            target_role = atom.target.token.text.removeprefix("role:")
+            variables.update(board.role_variable(person, target_role) for person in board.people)
+            missing = variables - set(model.all_variables)
+            if missing:
+                raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+            if target_role == role:
+                literals = (
+                    []
+                    if counterexamples
+                    else [
+                        model.literal(board.role_variable(person, role), True)
+                        for person in board.people
+                    ]
+                )
+            else:
+                literals = []
+                for person in board.people:
+                    variable, selected, _ = _hidden_boolean(
+                        model,
+                        "expression_role_pair",
+                        f"{name} {person} selected",
+                        "Murdoku expression",
+                    )
+                    model.relate(
+                        f"{name} {person} selection",
+                        (
+                            board.role_variable(person, role),
+                            board.role_variable(person, target_role),
+                            variable,
+                        ),
+                        lambda source, target, result, opposite=counterexamples: (
+                            result == (source and (target != opposite))
+                        ),
+                    )
+                    literals.append(selected)
+        else:
+            people = _static_people(board, atom.target)
+            if people is None:
+                return False
+            selected_people = set(board.people) - people if counterexamples else people
+            missing = variables - set(model.all_variables)
+            if missing:
+                raise ValueError(f"model lacks declared variables: {', '.join(sorted(missing))}")
+            literals = [
+                model.literal(board.role_variable(person, role), True)
+                for person in board.people
+                if person in selected_people
+            ]
     else:
         scope = _role_scope(
             board, lang.Filter(atom.subject, atom.operator, atom.target, atom.measure)

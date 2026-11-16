@@ -181,6 +181,22 @@ def test_role_determiners_on_an_empty_role_are_not_miscompiled(board):
 @pytest.mark.parametrize(
     "formula",
     [
+        "some role:guard is role:guest",
+        "every role:guard is role:guest",
+        "no role:guard is role:guest",
+        "not every role:guard is role:guest",
+        "every role:guard is role:guard",
+        "not every role:guard is role:guard",
+    ],
+)
+def test_lowered_role_overlap_matches_reference(board, formula):
+    board = replace(board, roles=[*board.roles, RoleSpec("guest", frozenset({0, 1, 2}))])
+    _assert_matches_reference(board, formula, try_lower_role_atom, solve=True)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
         "Ada dir:up Ben",
         "Ada dir:down Ben = 1",
         "Ada dir:up Ben <= 1",
