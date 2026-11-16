@@ -850,7 +850,22 @@ def test_named_person_superlatives_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
-@pytest.mark.parametrize("formula", ["Ada dir:nearest object:bed", "Ada dir:nearest role:guard"])
-def test_compiler_explicitly_rejects_unimplemented_shapes(board, formula):
-    with pytest.raises(NotImplementedError):
-        compile_statements(board, [parse_statement(formula)])
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "Ada dir:nearest role:guard",
+        "Ada dir:furthest role:guard",
+        "no Ada dir:nearest role:guard",
+        "Ada dir:nearest object:bed",
+        "Ada dir:furthest:king mark:red,blue",
+        "Ada dir:nearest area of Ben",
+        "Ada dir:nearest (people except Ada)",
+    ],
+)
+def test_set_target_superlatives_match_reference(board, formula):
+    board = replace(
+        board,
+        people=["Ada", "Ben", "Cy"],
+        roles=[RoleSpec("guard", frozenset({0, 1, 2, 3}))],
+    )
+    _assert_compilation_matches_reference(board, formula)

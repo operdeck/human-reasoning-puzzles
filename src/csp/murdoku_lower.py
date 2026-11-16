@@ -828,59 +828,6 @@ def _reify_atom(model: Model, board: Board, atom: lang.Atom, name: str) -> int:
                 raise NotImplementedError(f"{name}: expression lowering is not implemented")
             model.assign(yes if person in people else no, "clue", name, sources=(f"{name} state",))
     elif (
-        atom.operator.text.startswith(("dir:nearest", "dir:furthest"))
-        and isinstance(atom.target, lang.Name)
-        and atom.target.token.text in board.people
-    ):
-        other = atom.target.token.text
-        if person == other:
-            model.assign(no, "clue", name, sources=(f"{name} state",))
-        else:
-            mode = atom.operator.text.removeprefix("dir:")
-            order, separator, metric = mode.partition(":")
-            metric = metric if separator else "manhattan"
-            areas = _area_distances(board) if metric == "areas" else {}
-
-            def distance(a: Square, b: Square) -> int:
-                rows, cols = abs(a.row - b.row), abs(a.col - b.col)
-                return {
-                    "rows": lambda: rows,
-                    "cols": lambda: cols,
-                    "manhattan": lambda: rows + cols,
-                    "king": lambda: max(rows, cols),
-                    "euclidean": lambda: rows * rows + cols * cols,
-                    "areas": lambda: areas[board.region_of(a), board.region_of(b)],
-                }[metric]()
-
-            witnesses = []
-            for rival in board.people:
-                if rival in {person, other}:
-                    continue
-                witness_var, witness, _ = _hidden_boolean(
-                    model, "expression", f"{name} {rival} comparison", "Murdoku expression"
-                )
-                model.relate(
-                    f"{name} {rival} comparison",
-                    (person, other, rival, witness_var),
-                    lambda first, target, candidate, result: (
-                        result
-                        == (
-                            distance(first, target) < distance(candidate, target)
-                            if order == "nearest"
-                            else distance(first, target) > distance(candidate, target)
-                        )
-                    ),
-                )
-                witnesses.append(witness)
-            model.constrain(
-                f"{name} comparisons",
-                Kind.COUNT,
-                witnesses,
-                allowed_counts={len(witnesses)},
-                reified_by=yes,
-                family="Murdoku expression",
-            )
-    elif (
         isinstance(atom.target, lang.Projection)
         and isinstance(atom.target.operand, lang.Name)
         and atom.target.operand.token.text in board.people
@@ -2014,6 +1961,108 @@ def _number_variable(
     return variable, values
 
 
+def _reify_superlative(
+    model: Model,
+    board: Board,
+    person: str,
+    atom: lang.Atom,
+    name: str,
+    bindings: _Bindings,
+    empty_scopes: dict[Square | str, int],
+) -> int:
+    mode = atom.operator.text.removeprefix("dir:")
+    order, separator, metric = mode.partition(":")
+    metric = metric if separator else "manhattan"
+    areas = _area_distances(board) if metric == "areas" else {}
+
+    def distance(a: Square, b: Square) -> int:
+        rows, cols = abs(a.row - b.row), abs(a.col - b.col)
+        return {
+            "rows": lambda: rows,
+            "cols": lambda: cols,
+            "manhattan": lambda: rows + cols,
+            "king": lambda: max(rows, cols),
+            "euclidean": lambda: rows * rows + cols * cols,
+            "areas": lambda: areas[board.region_of(a), board.region_of(b)],
+        }[metric]()
+
+    def nearer(first: Square, rival: Square, cells: set[Square]) -> bool:
+        own = min(distance(first, target) for target in cells)
+        other = min(distance(rival, target) for target in cells)
+        return own < other if order == "nearest" else own > other
+
+    sort = _operand_sort(board, atom.target, bindings)
+    if sort == Sort.PERSON:
+        target_members = {
+            target: _person_selected(
+                model, board, target, atom.target, f"{name} {target} target", empty_scopes, bindings
+            )
+            for target in board.people
+        }
+        candidates: list[tuple[str | None, set[Square] | None, int]] = [
+            (target, None, member) for target, member in target_members.items() if target != person
+        ]
+    else:
+        target_members = {}
+        entities = _static_spatial_entities(board, atom.target)
+        if entities is None:
+            entities = _spatial_universe(board, sort)
+        candidates = [
+            (
+                None,
+                footprint,
+                _spatial_selected(
+                    model,
+                    board,
+                    entity,
+                    footprint,
+                    atom.target,
+                    f"{name} {entity[1]} target",
+                    empty_scopes,
+                    bindings,
+                ),
+            )
+            for entity, footprint in entities.items()
+        ]
+
+    alternatives = []
+    for index, (target_person, target_cells, selected) in enumerate(candidates, 1):
+        witnesses = [selected]
+        for rival in board.people:
+            if rival in (person, target_person):
+                continue
+            label = f"{name} target {index} rival {rival}"
+            variable, yes, _ = _hidden_boolean(model, "expression", label, "Murdoku expression")
+            if target_person is None:
+                assert target_cells is not None
+                model.relate(
+                    label,
+                    (person, rival, variable),
+                    lambda first, candidate, result, cells=target_cells: (
+                        result == nearer(first, candidate, cells)
+                    ),
+                )
+            else:
+                model.relate(
+                    label,
+                    (person, target_person, rival, variable),
+                    lambda first, target, candidate, result: (
+                        result == nearer(first, candidate, {target})
+                    ),
+                )
+                yes = _reify_cardinality(model, [target_members[rival], yes], {1, 2}, label)
+            witnesses.append(yes)
+        alternatives.append(
+            _reify_cardinality(model, witnesses, {len(witnesses)}, f"{name} {index}")
+        )
+    result = _reify_cardinality(model, alternatives, set(range(1, len(alternatives) + 1)), name)
+    return (
+        _opposite(model, result)
+        if atom.determiner is not None and atom.determiner.text == "no"
+        else result
+    )
+
+
 def _reify_formula(
     model: Model,
     board: Board,
@@ -2051,10 +2100,6 @@ def _reify_formula(
             subject=_bind_operand(formula.subject, bindings),
             target=_bind_operand(target_operand, bindings),
         )
-        if atom.operator.text.startswith(("dir:nearest", "dir:furthest")) and not (
-            isinstance(atom.target, lang.Name) and atom.target.token.text in board.people
-        ):
-            raise NotImplementedError(f"{name}: superlative target lowering is not implemented")
         spatial_match = _static_spatial_atom(board, atom)
         if spatial_match is not None:
             return _constant_boolean(model, spatial_match, name)
@@ -2079,6 +2124,12 @@ def _reify_formula(
                 replace(atom, subject=lang.Name(variable), determiner=None),
             )
             return _reify_formula(model, board, quantified, name, bindings, empty_scopes)
+        if subject_person is not None and atom.operator.text.startswith(
+            ("dir:nearest", "dir:furthest")
+        ):
+            return _reify_superlative(
+                model, board, subject_person, atom, name, bindings, empty_scopes
+            )
         if (
             subject_person is not None
             and atom.operator.text == "is"
