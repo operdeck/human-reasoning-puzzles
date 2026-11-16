@@ -730,6 +730,40 @@ def _reify_atom(model: Model, board: Board, atom: lang.Atom, name: str) -> int:
     return no if invert else yes
 
 
+def _person_selected(
+    model: Model, board: Board, person: str, operand: lang.Operand, name: str
+) -> int:
+    people = _static_people(board, operand)
+    if people is not None:
+        _, yes, no = _hidden_boolean(model, "expression", name, "Murdoku expression")
+        model.assign(yes if person in people else no, "clue", name, sources=(f"{name} state",))
+        return yes
+    if isinstance(operand, lang.Name) and operand.token.text.startswith("role:"):
+        role = operand.token.text.removeprefix("role:")
+        variable, yes, _ = _hidden_boolean(model, "expression", name, "Murdoku expression")
+        model.relate(
+            name,
+            (board.role_variable(person, role), variable),
+            lambda selected, result: selected == result,
+        )
+        return yes
+    if isinstance(operand, lang.Difference):
+        left = _person_selected(model, board, person, operand.left, f"{name} left")
+        right = _person_selected(model, board, person, operand.right, f"{name} right")
+        return _reify_cardinality(model, [left, _opposite(model, right)], {2}, name)
+    if isinstance(operand, lang.Filter):
+        selected = _person_selected(model, board, person, operand.source, f"{name} source")
+        atom = lang.Atom(
+            lang.Name(replace(operand.operator, text=person)),
+            operand.operator,
+            operand.target,
+            measure=operand.measure,
+        )
+        matches = _reify_formula(model, board, atom, f"{name} matches")
+        return _reify_cardinality(model, [selected, matches], {2}, name)
+    raise NotImplementedError(f"{name}: person set lowering is not implemented")
+
+
 def _reify_formula(
     model: Model,
     board: Board,
@@ -780,6 +814,22 @@ def _reify_formula(
         return _opposite(
             model, _reify_formula(model, board, formula.formula, f"{name} not", bindings)
         )
+    if isinstance(formula, lang.SetComparison):
+        left_set = _bind_operand(formula.left, bindings)
+        right_set = _bind_operand(formula.right, bindings)
+        equalities = []
+        for person in board.people:
+            left_member = _person_selected(model, board, person, left_set, f"{name} {person} left")
+            right_member = _person_selected(
+                model, board, person, right_set, f"{name} {person} right"
+            )
+            equalities.append(
+                _reify_cardinality(
+                    model, [left_member, right_member], {0, 2}, f"{name} {person} equal"
+                )
+            )
+        result = _reify_cardinality(model, equalities, {len(equalities)}, name)
+        return _opposite(model, result) if formula.operator.text == "!=" else result
     count = _count_predicate(formula)
     if count is not None:
         operand, predicate, _ = count

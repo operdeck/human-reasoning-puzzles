@@ -359,6 +359,13 @@ def test_compiled_statement_conjunction_matches_reference_search(board):
         "not (Ada touches role:guard) or Ben is role:guard",
         "no Ada on role:guard iff Ada is role:guard",
         "some role:guard touches role:guard or Ada is role:guard",
+        "role:guard = Ada",
+        "role:guard != Ada, Ben",
+        "(people in area:hall) = Ada",
+        "(role:guard on mark:red) = (people on mark:blue)",
+        "(people except role:guard) = Ada",
+        "(role:guard = Ada) iff Ben on mark:red",
+        "every ?p in people: (role:guard = ?p) or ?p in area:hall",
     ],
 )
 def test_boolean_compilation_matches_reference(board, formula):
