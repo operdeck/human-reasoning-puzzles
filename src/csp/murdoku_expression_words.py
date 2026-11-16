@@ -51,6 +51,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.beside": "beside",
         "rel.touches": "touching",
         "rel.is.person": "a member of",
+        "rel.is.same_person": "the same person as",
         "rel.is.spatial": "the same entity as",
         "rel.dir.up": "above",
         "rel.dir.down": "below",
@@ -166,6 +167,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.beside": "naast",
         "rel.touches": "rakend aan",
         "rel.is.person": "een lid van",
+        "rel.is.same_person": "dezelfde persoon als",
         "rel.is.spatial": "hetzelfde als",
         "rel.dir.up": "boven",
         "rel.dir.down": "onder",
@@ -306,13 +308,26 @@ class ExpressionWords:
         self,
         operator: lang.Token,
         subject: lang.Operand,
+        target: lang.Operand,
         bindings: dict[str, Shape],
         measure: lang.Measure | None,
     ) -> str:
         mode = operator.text
         if mode == "is":
             sort = infer_operand(self.board, subject, bindings).sort
-            relation = self._phrase("rel.is.person" if sort == Sort.PERSON else "rel.is.spatial")
+            if sort != Sort.PERSON:
+                key = "rel.is.spatial"
+            elif isinstance(target, lang.Name) and (
+                target.token.text in self.board.people
+                or (
+                    target.token.text.startswith("?")
+                    and infer_operand(self.board, target, bindings).sort == Sort.PERSON
+                )
+            ):
+                key = "rel.is.same_person"
+            else:
+                key = "rel.is.person"
+            relation = self._phrase(key)
         elif (
             mode in {"in", "on"}
             and infer_operand(self.board, subject, bindings).sort != Sort.PERSON
@@ -405,7 +420,7 @@ class ExpressionWords:
                 return self._phrase(
                     "op.filter",
                     source=self._operand(source, bindings),
-                    relation=self._relation(op, source, bindings, measure),
+                    relation=self._relation(op, source, target, bindings, measure),
                     target=self._target(target, measure, bindings, op),
                 )
             case lang.AdjectiveFilter(source=source, adjective=adjective):
@@ -453,7 +468,7 @@ class ExpressionWords:
                 return self._phrase(
                     "atom.one",
                     subject=self._determined(subject, det, bindings),
-                    relation=self._relation(op, subject, bindings, value.measure),
+                    relation=self._relation(op, subject, target, bindings, value.measure),
                     target=self._target(target, value.measure, bindings, op),
                 )
             case lang.AdjectiveAtom(subject=subject, adjective=adjective, determiner=det):

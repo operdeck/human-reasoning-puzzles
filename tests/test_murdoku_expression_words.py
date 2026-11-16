@@ -124,6 +124,17 @@ def test_role_binding_and_spatial_identity_are_worded_differently(board):
     assert "the same entity as" in identity
 
 
+def test_person_identity_and_role_membership_have_distinct_wording(board):
+    words = ExpressionWords(board)
+    assert words.statement(parse_statement("Ada is Ben")) == "Ada is the same person as Ben"
+    assert "Ada is the same person as ?p" in words.statement(
+        parse_statement("some ?p in people: Ada is ?p")
+    )
+    assert "Ada is a member of ?r" in words.statement(
+        parse_statement("some ?r in roles: Ada is ?r")
+    )
+
+
 def test_spatial_containment_overlap_and_projection_are_distinct(board):
     words = ExpressionWords(board)
     assert "entirely contained in" in words.statement(
