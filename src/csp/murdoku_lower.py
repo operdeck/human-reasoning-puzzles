@@ -1315,6 +1315,36 @@ def _spatial_binding(
     return _SpatialBinding(sort, key)
 
 
+def _spatial_person_matches(
+    model: Model,
+    board: Board,
+    entity: tuple[Sort, str],
+    footprint: set[Square],
+    operand: lang.Operand,
+    relation: Callable[[tuple[Sort, str], set[Square], tuple[Sort, str], set[Square]], bool],
+    name: str,
+    empty_scopes: dict[Square | str, int],
+    bindings: _Bindings,
+) -> int:
+    matches = []
+    for person in board.people:
+        selected = _person_selected(
+            model, board, person, operand, f"{name} {person} selected", empty_scopes, bindings
+        )
+        variable, yes, _ = _hidden_boolean(
+            model, "expression", f"{name} {person} match", "Murdoku expression"
+        )
+        model.relate(
+            f"{name} {person} match",
+            (person, model.var_of(selected), variable),
+            lambda square, member, result, person=person: (
+                result == (member and relation(entity, footprint, (Sort.PERSON, person), {square}))
+            ),
+        )
+        matches.append(yes)
+    return _reify_cardinality(model, matches, set(range(1, len(matches) + 1)), name)
+
+
 def _spatial_selected(
     model: Model,
     board: Board,
@@ -1409,6 +1439,19 @@ def _spatial_selected(
             )
         else:
             target_sort = _operand_sort(board, operand.target, bindings)
+            if target_sort == Sort.PERSON:
+                matches = _spatial_person_matches(
+                    model,
+                    board,
+                    entity,
+                    footprint,
+                    operand.target,
+                    related,
+                    f"{name} matches",
+                    empty_scopes,
+                    bindings,
+                )
+                return _reify_cardinality(model, [source, matches], {2}, name)
             if target_sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
                 raise NotImplementedError(f"{name}: spatial filter target is not implemented")
             possible = _spatial_universe(board, target_sort)
@@ -1501,11 +1544,16 @@ def _reify_spatial_atom(
             raise NotImplementedError(f"{name}: spatial subject is not implemented")
         subjects = _spatial_universe(board, sort)
     targets = _static_spatial_entities(board, atom.target)
+    target_people = False
     if targets is None:
         sort = _operand_sort(board, atom.target, bindings)
-        if sort not in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+        if sort == Sort.PERSON:
+            target_people = True
+            targets = {}
+        elif sort in {Sort.AREA, Sort.ROW, Sort.COLUMN, Sort.CELL}:
+            targets = _spatial_universe(board, sort)
+        else:
             raise NotImplementedError(f"{name}: spatial target is not implemented")
-        targets = _spatial_universe(board, sort)
     target_members = {
         target: _spatial_selected(
             model,
@@ -1532,14 +1580,27 @@ def _reify_spatial_atom(
             empty_scopes,
             bindings,
         )
-        matches = [
-            target_members[target]
-            for target, cells in targets.items()
-            if relation(subject, footprint, target, cells)
-        ]
-        match = _reify_cardinality(
-            model, matches, set(range(1, len(matches) + 1)), f"{name} {subject[1]} matches"
-        )
+        if target_people:
+            match = _spatial_person_matches(
+                model,
+                board,
+                subject,
+                footprint,
+                atom.target,
+                relation,
+                f"{name} {subject[1]} matches",
+                empty_scopes,
+                bindings,
+            )
+        else:
+            matches = [
+                target_members[target]
+                for target, cells in targets.items()
+                if relation(subject, footprint, target, cells)
+            ]
+            match = _reify_cardinality(
+                model, matches, set(range(1, len(matches) + 1)), f"{name} {subject[1]} matches"
+            )
         results.append(
             _reify_cardinality(
                 model,
