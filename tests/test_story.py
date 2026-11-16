@@ -85,6 +85,8 @@ ALLOWED = {
         "core",
         "proof",
         "murdoku",
+        "murdoku_lang",
+        "murdoku_expression_words",
         "puzzlefile",
         "sudoku",
         "battleships",

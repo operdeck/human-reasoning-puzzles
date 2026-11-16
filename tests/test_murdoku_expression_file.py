@@ -7,7 +7,7 @@ from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expr
 from csp.murdoku_lang import Atom, Name
 from csp.murdoku_lower import compile_statements
 from csp.puzzlefile import load_board
-from csp.story import attribute_list, murdoku_key_items, object_list, role_list
+from csp.story import attribute_list, figure_clues, murdoku_key_items, object_list, role_list
 
 TEXT = """\
 Size: 2
@@ -112,6 +112,22 @@ def test_layout_presentation_does_not_parse_expression_clues_as_legacy():
     assert [name for name, _ in role_list(text)] == ["guard"]
     assert [name for name, _ in attribute_list(text)] == ["staff"]
     assert murdoku_key_items(text) == []
+
+
+def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
+    text = TEXT.replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  Ben in columns:1 | A custom sentence!\n"
+        "  Ada in rows:1 and Ben in columns:1\n"
+        "  not Ada in rows:2",
+    )
+    board, _, clues = load_expression_board(text)
+    result = figure_clues(text, expressions=clues)
+    assert [figure.person for figure in result.figures] == board.people
+    ada, ben = result.figures
+    assert [clue.sources for clue in ada.clues] == [(3,)]
+    assert [(clue.text, clue.sources) for clue in ben.clues] == [("A custom sentence!", (1,))]
+    assert [clue.sources for clue in result.other] == [(2,)]
 
 
 def test_expression_keys_match_ast_after_reordering_or_rewording():

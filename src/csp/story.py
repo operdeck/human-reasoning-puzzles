@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, groupby
 from typing import Any, Literal
 
-from . import battleships, minesweeper, starbattle, sudoku
+from . import battleships, minesweeper, murdoku_lang, starbattle, sudoku
 from .core import Constraint, Kind, Model, Solver, Step
 from .murdoku import (
     AREA_POPULATION,
@@ -64,6 +64,7 @@ from .murdoku import (
     role_statuses,
     target_name,
 )
+from .murdoku_expression_words import ExpressionWords
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_board_layout, load_presentation, read_sections
 
@@ -4101,8 +4102,12 @@ class CluePresentation:
     other: tuple[ClueParagraph, ...]
 
 
-def figure_clues(text: str) -> CluePresentation:
+def figure_clues(
+    text: str, *, expressions: Sequence[murdoku_lang.Statement] | None = None
+) -> CluePresentation:
     """Shared booklet/player entries; ownership comes from syntax, never wording."""
+    if expressions is not None:
+        return _expression_figure_clues(text, expressions)
     board, _ = load_board(text)
     presentation = load_presentation(text)
     say = Wording.read(text).for_people(board.people)
@@ -4117,6 +4122,41 @@ def figure_clues(text: str) -> CluePresentation:
         for person in board.people
     )
     return CluePresentation(figures, tuple(clue for clue in paragraphs if clue.person is None))
+
+
+def _expression_figure_clues(
+    text: str, clues: Sequence[murdoku_lang.Statement]
+) -> CluePresentation:
+    board = load_board_layout(text)
+    presentation = load_presentation(text)
+    say = ExpressionWords.read(board, text)
+    by_person: dict[str, list[ClueParagraph]] = {person: [] for person in board.people}
+    other: list[ClueParagraph] = []
+    for number, clue in enumerate(clues, 1):
+        formula = clue.formula
+        while isinstance(formula, murdoku_lang.Negation):
+            formula = formula.formula
+        owner = None
+        if isinstance(formula, (murdoku_lang.Atom, murdoku_lang.AdjectiveAtom)) and isinstance(
+            formula.subject, murdoku_lang.Name
+        ):
+            name = formula.subject.token.text
+            owner = name if name in by_person else None
+        sentence = _cap(say.statement(clue).strip())
+        if not sentence.endswith((".", "!", "?")):
+            sentence += "."
+        paragraph = ClueParagraph(sentence, (number,), owner)
+        (by_person[owner] if owner is not None else other).append(paragraph)
+    figures = tuple(
+        FigureClues(
+            person,
+            _cap(say.names.get(person, person)),
+            presentation.figures[person].description if person in presentation.figures else "",
+            tuple(by_person[person]),
+        )
+        for person in board.people
+    )
+    return CluePresentation(figures, tuple(other))
 
 
 def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[str]:
