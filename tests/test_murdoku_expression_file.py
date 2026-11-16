@@ -54,6 +54,22 @@ def test_expression_file_reports_type_error_at_original_position():
         load_expression_board(text)
 
 
+@pytest.mark.parametrize(
+    ("legacy", "replacement"),
+    [
+        ("people_on:bed", "(people on X)"),
+        ("adjacent_to:hall", "((areas touches X) except X)"),
+        ("people:any", "use people"),
+    ],
+)
+def test_removed_legacy_namespaces_suggest_replacements(legacy, replacement):
+    text = TEXT.replace("Ben in columns:1", f"Ben in {legacy}")
+    with pytest.raises(ValueError) as error:
+        load_expression_board(text)
+    assert "line 13, column 10" in str(error.value)
+    assert replacement in str(error.value)
+
+
 @pytest.mark.parametrize("name", ["not", "of", "empty", "people", "roles"])
 def test_expression_file_rejects_reserved_person_names_with_location(name):
     text = TEXT.replace("Ada\nBen\n", f"  {name}\nBen\n")

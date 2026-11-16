@@ -286,6 +286,27 @@ def test_formula_source_error_uses_requested_line():
         parse_formula("Ada in @", line=7)
 
 
+@pytest.mark.parametrize(
+    ("source", "replacement"),
+    [
+        ("in Ada area:hall", "P in X"),
+        ("not has Ada role:guard", "P is role:x"),
+        ("subset role:guard role:chef", "every role:a is role:b"),
+        ("count roles of Ada <= 1", "at most N"),
+        ("alone Ada", "count"),
+        ("only Ada on object:bed", "people on X"),
+        ("dir Ada Ben up = 1", "P dir:mode X"),
+        ("no_adjacent_occupied areas", "occupied areas touches"),
+    ],
+)
+def test_removed_legacy_forms_suggest_replacements(source, replacement):
+    with pytest.raises(ValueError) as error:
+        parse_formula(source, line=7)
+    assert "line 7, column " in str(error.value)
+    assert "legacy form is removed" in str(error.value)
+    assert replacement in str(error.value)
+
+
 def test_statement_keeps_optional_wording_separate_from_formula():
     statement = parse_statement("Ada in area:hall | Ada is in the hall.")
     assert isinstance(statement.formula, Atom)

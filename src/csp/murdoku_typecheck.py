@@ -143,6 +143,12 @@ def _name(
         if not count:
             raise _error(token, f"unknown {kind} {value!r}")
         return Shape(Sort.FEATURE, count, count)
+    if kind == "people_on":
+        raise _error(token, "people_on: is removed; use (people on X)")
+    if kind == "adjacent_to":
+        raise _error(token, "adjacent_to: is removed; use ((areas touches X) except X)")
+    if text == "people:any":
+        raise _error(token, "people:any is removed; use people")
     raise _error(token, f"unknown namespace {kind!r}")
 
 

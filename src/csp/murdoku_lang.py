@@ -6,6 +6,7 @@ implemented and the corpus has been migrated.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
@@ -558,6 +559,44 @@ def _resolve_ambiguity(tree: Tree[LarkToken], line: int) -> Tree[LarkToken]:
     return Tree(tree.data, children, tree.meta)
 
 
+def _legacy_hint(source: str) -> str | None:
+    """Suggest replacements only after parsing an old-form statement fails."""
+    patterns = (
+        (
+            r"^\s*(?:not\s+)?(?:in|on|beside|touches)\s+\S+\s+\S+",
+            "P in X (or P on/beside/touches X)",
+        ),
+        (r"^\s*(?:not\s+)?dir\s+", "P dir:mode X"),
+        (r"^\s*(?:not\s+)?has\s+", "P is role:x (or not P is role:x)"),
+        (r"^\s*subset\s+", "every role:a is role:b"),
+        (r"^\s*alone\s+", "count people in area:x = 1 or count (people in area of P) = 1"),
+        (r"^\s*only\s+", "(people on X) = P"),
+        (
+            r"^\s*most_populated\s+",
+            "every ?a in areas except area:x: count (people in ?a) < count (people in area:x)",
+        ),
+        (
+            r"^\s*least_populated\s+",
+            "count comparisons over area of free cells, with equalities for any tied areas",
+        ),
+        (
+            r"^\s*no_adjacent_occupied\s+",
+            "every ?a in occupied areas: no (occupied areas touches ?a)",
+        ),
+        (r"^\s*count\s+roles\s+of\s+", "a role quantifier such as at most N ?r in roles: P is ?r"),
+        (r"^\s*for\s+each\s+area\s+", "every ?a in areas: ..."),
+        (
+            r"^\s*with\s+.*\bin\s+same\s+area\b",
+            "count (people in area of P) = N + 1 and any needed attribute filter",
+        ),
+        (
+            r"^\s*(?:exactly|at\s+least|at\s+most)\s+\d+\s+(?:in|on|beside|touches)\s+",
+            "exactly N of (P in X; Q in Y)",
+        ),
+    )
+    return next((hint for pattern, hint in patterns if re.search(pattern, source)), None)
+
+
 def _parse(parser: Lark, source: str, line: int) -> object:
     try:
         tree = parser.parse(source)
@@ -575,7 +614,9 @@ def _parse(parser: Lark, source: str, line: int) -> object:
             found = repr(exc.char)
         else:
             found = "input"
-        raise ValueError(f"line {error_line}, column {column}: unexpected {found}") from exc
+        hint = _legacy_hint(source) if parser is _FORMULA_PARSER else None
+        suffix = f"; this legacy form is removed; use {hint}" if hint else ""
+        raise ValueError(f"line {error_line}, column {column}: unexpected {found}{suffix}") from exc
     return _FormulaTransformer(line - 1).transform(_resolve_ambiguity(tree, line))
 
 
