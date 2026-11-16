@@ -1,14 +1,19 @@
 import pytest
 
 from csp.murdoku_lang import (
+    Atom,
+    Binary,
     Difference,
     Filter,
     Measure,
     Name,
+    Negation,
     Projection,
     Qualified,
+    SetComparison,
     Token,
     Union,
+    parse_formula,
     parse_operand,
 )
 
@@ -60,6 +65,42 @@ def test_parse_non_ascii_identifiers():
     assert parse_operand("Éva, area:Velázquez_room") == Union(
         (Name(Token("Éva", 1, 1)), Name(Token("area:Velázquez_room", 1, 6)))
     )
+
+
+def test_parse_formula_respects_boolean_precedence():
+    result = parse_formula("Ada in area:x or Ben in area:y and not Cleo on mark:z")
+    assert isinstance(result, Binary) and result.operator.text == "or"
+    assert isinstance(result.right, Binary) and result.right.operator.text == "and"
+    assert isinstance(result.right.right, Negation)
+    assert isinstance(result.right.right.formula, Atom)
+
+
+def test_parentheses_and_implication():
+    result = parse_formula("if (Ada in area:x or Ben in area:y) then not Cleo in area:z")
+    assert isinstance(result, Binary) and result.operator.text == "if"
+    assert isinstance(result.left, Binary) and result.left.operator.text == "or"
+    assert isinstance(result.right, Negation)
+
+
+def test_parse_determined_direction_with_filter_and_measure():
+    result = parse_formula("some (people beside object:chest) dir:up Ada = 1")
+    assert isinstance(result, Atom)
+    assert result.determiner == Token("some", 1, 1)
+    assert isinstance(result.subject, Filter)
+    assert result.operator.text == "dir:up"
+    assert result.measure == Measure(Token("=", 1, 46), Token("1", 1, 48))
+
+
+def test_parse_set_comparison():
+    result = parse_formula("(people in area:changing) = Ada, Ben")
+    assert isinstance(result, SetComparison)
+    assert isinstance(result.left, Filter)
+    assert isinstance(result.right, Union)
+
+
+def test_formula_source_error_uses_requested_line():
+    with pytest.raises(ValueError, match=r"line 7, column \d+: unexpected"):
+        parse_formula("Ada in @", line=7)
 
 
 @pytest.mark.parametrize(

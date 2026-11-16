@@ -68,8 +68,39 @@ class Filter:
 
 type Operand = Name | Union | Difference | Qualified | Projection | Filter
 
+
+@dataclass(frozen=True)
+class Atom:
+    subject: Operand
+    operator: Token
+    target: Operand
+    determiner: Token | None = None
+    measure: Measure | None = None
+
+
+@dataclass(frozen=True)
+class SetComparison:
+    left: Operand
+    operator: Token
+    right: Operand
+
+
+@dataclass(frozen=True)
+class Negation:
+    operator: Token
+    formula: "Formula"
+
+
+@dataclass(frozen=True)
+class Binary:
+    left: "Formula"
+    operator: Token
+    right: "Formula"
+
+
+type Formula = Atom | SetComparison | Negation | Binary
+
 _GRAMMAR = r"""
-    ?start: operand
     ?operand: union ("except" union)*          -> difference
     ?union: primary ("," primary)*             -> union
     ?primary: NAME                             -> name
@@ -82,19 +113,44 @@ _GRAMMAR = r"""
                  | DIRECTION union measure?     -> direction_filter
     measure: COMPARISON NUMBER
 
+    ?formula: IF formula THEN formula           -> implication
+            | equivalence
+    ?equivalence: disjunction (IFF disjunction)* -> binary
+    ?disjunction: conjunction (OR conjunction)* -> binary
+    ?conjunction: negated (AND negated)*        -> binary
+    ?negated: NOT negated                       -> negation
+            | formula_primary
+    ?formula_primary: "(" formula ")"
+                    | operand RELATION operand   -> relation_atom
+                    | operand DIRECTION operand measure? -> relation_atom
+                    | DET operand RELATION operand -> determined_atom
+                    | DET operand DIRECTION operand measure? -> determined_atom
+                    | operand SET_COMPARISON operand  -> set_comparison
+
     ADJECTIVE.2: /(?:empty|occupied|free)(?![\w:-])/
     PROJECTION.2: /(?:area|row|column|cell)(?![\w:-])/
     RELATION.2: /(?:in|on|beside|touches|is)(?![\w:-])/
+    DET.2: /(?:some|every|no)(?![\w:-])/
+    IF.2: /if(?![\w:-])/
+    THEN.2: /then(?![\w:-])/
+    IFF.2: /iff(?![\w:-])/
+    OR.2: /or(?![\w:-])/
+    AND.2: /and(?![\w:-])/
+    NOT.2: /not(?![\w:-])/
     DIRECTION.2: /dir:[\w-]+(?::[\w-]+)?(?:\+(?:up|down|left|right))?/
     NAME: /\?(?:[^\W\d]|_)\w*/ | /(?:[^\W\d]|_)[\w-]*(?::[\w-]+)*/
     RANGE: /\d+(?:-\d+)?/
     NUMBER: /\d+/
     COMPARISON: "=" | "<=" | ">="
+    SET_COMPARISON: "=" | "!="
     %import common.WS
     %ignore WS
 """
 
-_OPERAND_PARSER = Lark(_GRAMMAR, parser="lalr", propagate_positions=True)
+_OPERAND_PARSER = Lark(_GRAMMAR, start="operand", parser="lalr", propagate_positions=True)
+_FORMULA_PARSER = Lark(
+    _GRAMMAR, start="formula", parser="earley", lexer="dynamic", ambiguity="explicit"
+)
 
 
 def _token(token: LarkToken, line_offset: int) -> Token:
@@ -110,7 +166,7 @@ class _FilterSuffix:
 
 
 @v_args(inline=True)
-class _OperandTransformer(Transformer[LarkToken, Operand]):
+class _OperandTransformer(Transformer[LarkToken, Operand | Formula]):
     def __init__(self, line_offset: int) -> None:
         super().__init__()
         self.line_offset = line_offset
@@ -150,10 +206,53 @@ class _OperandTransformer(Transformer[LarkToken, Operand]):
         return source
 
 
-def parse_operand(source: str, *, line: int = 1) -> Operand:
-    """Parse a set-expression subset, without resolving or typechecking names."""
+@v_args(inline=True)
+class _FormulaTransformer(_OperandTransformer):
+    def relation_atom(
+        self, subject: Operand, operator: LarkToken, target: Operand, measure: Measure | None = None
+    ) -> Atom:
+        return Atom(subject, _token(operator, self.line_offset), target, measure=measure)
+
+    def determined_atom(
+        self,
+        determiner: LarkToken,
+        subject: Operand,
+        operator: LarkToken,
+        target: Operand,
+        measure: Measure | None = None,
+    ) -> Atom:
+        return Atom(
+            subject,
+            _token(operator, self.line_offset),
+            target,
+            determiner=_token(determiner, self.line_offset),
+            measure=measure,
+        )
+
+    def set_comparison(self, left: Operand, operator: LarkToken, right: Operand) -> SetComparison:
+        return SetComparison(left, _token(operator, self.line_offset), right)
+
+    def negation(self, operator: LarkToken, formula: Formula) -> Negation:
+        return Negation(_token(operator, self.line_offset), formula)
+
+    def binary(self, first: Formula, *parts: LarkToken | Formula) -> Formula:
+        result = first
+        for index in range(0, len(parts), 2):
+            operator, right = parts[index : index + 2]
+            assert isinstance(operator, LarkToken)
+            assert isinstance(right, Atom | SetComparison | Negation | Binary)
+            result = Binary(result, _token(operator, self.line_offset), right)
+        return result
+
+    def implication(
+        self, operator: LarkToken, left: Formula, _then: LarkToken, right: Formula
+    ) -> Binary:
+        return Binary(left, _token(operator, self.line_offset), right)
+
+
+def _parse(parser: Lark, source: str, line: int) -> object:
     try:
-        tree = _OPERAND_PARSER.parse(source)
+        tree = parser.parse(source)
     except UnexpectedInput as exc:
         error_line, column = exc.line + line - 1, exc.column
         if isinstance(exc, UnexpectedToken) and exc.token.type == "$END":
@@ -167,5 +266,20 @@ def parse_operand(source: str, *, line: int = 1) -> Operand:
         else:
             found = "input"
         raise ValueError(f"line {error_line}, column {column}: unexpected {found}") from exc
-    result: Operand = _OperandTransformer(line - 1).transform(tree)
+    if any(subtree.data == "_ambig" for subtree in tree.iter_subtrees()):
+        raise ValueError(f"line {line}: ambiguous expression")
+    return _FormulaTransformer(line - 1).transform(tree)
+
+
+def parse_operand(source: str, *, line: int = 1) -> Operand:
+    """Parse a set-expression subset, without resolving or typechecking names."""
+    result = _parse(_OPERAND_PARSER, source, line)
+    assert isinstance(result, Name | Union | Difference | Qualified | Projection | Filter)
+    return result
+
+
+def parse_formula(source: str, *, line: int = 1) -> Formula:
+    """Parse the implemented formula subset, without board-dependent checks."""
+    result = _parse(_FORMULA_PARSER, source, line)
+    assert isinstance(result, Atom | SetComparison | Negation | Binary)
     return result
