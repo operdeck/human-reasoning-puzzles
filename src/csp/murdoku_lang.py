@@ -562,18 +562,20 @@ def _resolve_ambiguity(tree: Tree[LarkToken], line: int) -> Tree[LarkToken]:
 def _legacy_hint(source: str) -> str | None:
     """Suggest replacements only after parsing an old-form statement fails."""
     patterns = (
+        (r"\bis\s+not\b", "not P is X"),
+        (r"^\s*not_(?:in|on|beside)\s+", "not P in X (or not P on/beside X)"),
         (
             r"^\s*(?:not\s+)?(?:in|on|beside|touches)\s+\S+\s+\S+",
             "P in X (or P on/beside/touches X)",
         ),
-        (r"^\s*(?:not\s+)?dir\s+", "P dir:mode X"),
-        (r"^\s*(?:not\s+)?has\s+", "P is role:x (or not P is role:x)"),
+        (r"^\s*(?:not\s+)?dir\s+", "P dir:mode X (or not P dir:mode X)"),
+        (r"\bhas\s+\S+\s+role:", "P is role:x (or not P is role:x)"),
         (r"^\s*subset\s+", "every role:a is role:b"),
         (r"^\s*alone\s+", "count people in area:x = 1 or count (people in area of P) = 1"),
         (r"^\s*only\s+", "(people on X) = P"),
         (
             r"^\s*most_populated\s+",
-            "every ?a in areas except area:x: count (people in ?a) < count (people in area:x)",
+            "count comparisons over areas, with equalities for any tied areas",
         ),
         (
             r"^\s*least_populated\s+",
@@ -584,7 +586,17 @@ def _legacy_hint(source: str) -> str | None:
             "every ?a in occupied areas: no (occupied areas touches ?a)",
         ),
         (r"^\s*count\s+roles\s+of\s+", "a role quantifier such as at most N ?r in roles: P is ?r"),
+        (r"^\s*count\s+people\s+with\s+role:", "count role:x"),
+        (
+            r"^\s*count\s+people\s+(?:in|on|beside|touches)\s+\S+\s+with\s+role:",
+            "count (role:y in X), or the corresponding spatial relation",
+        ),
+        (
+            r"^\s*count\s+people\s+from\s+people:",
+            "count (A, B is attribute:t)",
+        ),
         (r"^\s*for\s+each\s+area\s+", "every ?a in areas: ..."),
+        (r"^\s*with\s+role:", "some role:y in area:x and count people in area:x >= 2"),
         (
             r"^\s*with\s+.*\bin\s+same\s+area\b",
             "count (people in area of P) = N + 1 and any needed attribute filter",
