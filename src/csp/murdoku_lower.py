@@ -863,10 +863,82 @@ def _static_area_ids(board: Board, operand: lang.Operand) -> set[str] | None:
             return {board.region_id(text.removeprefix("area:"))}
         if text.startswith("tag:"):
             return board.tagged_region_ids([text.removeprefix("tag:")])
+    if isinstance(operand, lang.Union):
+        first = operand.items[0]
+        namespace = (
+            first.token.text.partition(":")[0]
+            if isinstance(first, lang.Name) and ":" in first.token.text
+            else None
+        )
+        result: set[str] = set()
+        for item in operand.items:
+            if (
+                namespace
+                and isinstance(item, lang.Name)
+                and ":" not in item.token.text
+                and item.token.text != "areas"
+            ):
+                item = replace(
+                    item, token=replace(item.token, text=f"{namespace}:{item.token.text}")
+                )
+            regions = _static_area_ids(board, item)
+            if regions is None:
+                return None
+            result.update(regions)
+        return result
     if isinstance(operand, lang.Difference):
         left, right = _static_area_ids(board, operand.left), _static_area_ids(board, operand.right)
         return left - right if left is not None and right is not None else None
     return None
+
+
+def _static_area_atom(board: Board, atom: lang.Atom) -> bool | None:
+    subjects = _static_area_ids(board, atom.subject)
+    targets = _static_area_ids(board, atom.target)
+    if subjects is None or targets is None:
+        return None
+    operator = atom.operator.text
+    direction = _direction(board, operator, atom.measure) if operator.startswith("dir:") else None
+    if operator not in {"is", "in", "on", "beside", "touches"} and direction is None:
+        return None
+    footprints = {
+        region: {
+            Square(row, col)
+            for row in range(board.size)
+            for col in range(board.size)
+            if board.region_of(Square(row, col)) == region
+        }
+        for region in subjects | targets
+    }
+
+    def related(subject: str, target: str) -> bool:
+        first, second = footprints[subject], footprints[target]
+        if operator == "is":
+            return subject == target
+        if operator == "in":
+            return first <= second
+        if operator == "on":
+            return bool(first & second)
+        if subject == target:
+            return False
+        if direction is not None:
+            return any(direction(a, b) for a in first for b in second)
+        return any(
+            abs(a.row - b.row) + abs(a.col - b.col) == 1
+            and (operator == "touches" or board.region_of(a) == board.region_of(b))
+            for a in first
+            for b in second
+        )
+
+    matching = {
+        subject for subject in subjects if any(related(subject, target) for target in targets)
+    }
+    determiner = atom.determiner.text if atom.determiner else "some"
+    return {
+        "some": bool(matching),
+        "every": matching == subjects,
+        "no": not matching,
+    }[determiner]
 
 
 def _area_empty_literal(
@@ -1128,6 +1200,9 @@ def _reify_formula(
             subject=_bind_operand(formula.subject, bindings),
             target=_bind_operand(target_operand, bindings),
         )
+        area_match = _static_area_atom(board, atom)
+        if area_match is not None:
+            return _constant_boolean(model, area_match, name)
         variable_name = "?_expression"
         while variable_name in bindings:
             variable_name += "_"
