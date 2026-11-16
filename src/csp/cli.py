@@ -661,8 +661,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--expressions",
         action="store_true",
         help=(
-            "preview expression-language Murdoku with --show-model, --grade, "
-            "--brute-force or --lint"
+            "preview expression-language Murdoku solving, model reports, grading, "
+            "brute-force search and lint"
         ),
     )
     instead = parser.add_mutually_exclusive_group()
@@ -775,7 +775,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
     if args.expressions and (
-        not (args.show_model or args.grade or args.brute_force or args.lint)
+        args.explain
+        or args.require_forward
         or args.verbose
         or args.step
         or args.track_person
@@ -787,7 +788,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         or booklets
     ):
         parser.error(
-            "--expressions currently supports only --show-model, --grade, --brute-force and --lint"
+            "--expressions currently supports only normal solves, --show-model, --grade, "
+            "--brute-force and --lint"
         )
     if args.nosolution:
         conflicts = (
@@ -913,17 +915,18 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             )
             print(report.grade(expression_fired) if expression_result.solved else "unsolved")
             return 0 if expression_result.solved else 1
-        raise AssertionError("expression preview operation was not selected")
-    if (args.lint or args.require_forward) and kind != "murdoku":
-        parser.error("--lint and --require-forward are only available for Murdoku")
-    try:
-        puzzle = load(text, kind)
-    except ValueError as exc:
-        if args.lint or args.require_forward:
-            print(f"lint error in {path.name}: {exc}", file=sys.stderr)
-            return 1
-        print(f"could not read {path.name}: {exc}", file=sys.stderr)
-        return 2
+        puzzle = Puzzle(kind, compiled.model, partial(murdoku.render, expression_board))
+    else:
+        if (args.lint or args.require_forward) and kind != "murdoku":
+            parser.error("--lint and --require-forward are only available for Murdoku")
+        try:
+            puzzle = load(text, kind)
+        except ValueError as exc:
+            if args.lint or args.require_forward:
+                print(f"lint error in {path.name}: {exc}", file=sys.stderr)
+                return 1
+            print(f"could not read {path.name}: {exc}", file=sys.stderr)
+            return 2
 
     model = puzzle.model
     track_board: murdoku.Board | None = None

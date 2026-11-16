@@ -388,9 +388,21 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
         cli.main([str(puzzle), "--expressions", "--explain"])
     assert error.value.code == 2
     assert (
-        "--expressions currently supports only --show-model, --grade, --brute-force and --lint"
-        in (capsys.readouterr().err)
+        "--expressions currently supports only normal solves, --show-model, --grade, "
+        "--brute-force and --lint" in (capsys.readouterr().err)
     )
+
+
+def test_cli_expression_normal_solve_and_stalled_board(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--expressions"]) == 0
+    result = capsys.readouterr().out
+    assert "Start" in result and "Solved" in result
+    assert "deductions logged" in result
+    puzzle.write_text(clue_search.with_clues(TEXT, []))
+    assert cli.main([str(puzzle), "--expressions"]) == 1
+    assert "As far as the rules go" in capsys.readouterr().out
 
 
 def test_cli_expression_grade_and_brute_force(tmp_path, capsys, monkeypatch):
