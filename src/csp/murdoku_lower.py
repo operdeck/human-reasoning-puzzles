@@ -779,10 +779,27 @@ def _reify_cardinality(model: Model, literals: list[int], allowed: set[int], nam
     if not allowed:
         model.assign(no, "clue", name, sources=(f"{name} state",))
     else:
+        seen: set[int] = set()
+        distinct = []
+        for index, literal in enumerate(literals, 1):
+            if literal in seen:
+                variable, alias, _ = _hidden_boolean(
+                    model, "expression", f"{name} duplicate {index}", "Murdoku expression"
+                )
+                value = model.value_of(literal)
+                model.relate(
+                    f"{name} duplicate {index}",
+                    (model.var_of(literal), variable),
+                    lambda original, selected, value=value: selected == (original == value),
+                )
+                distinct.append(alias)
+            else:
+                seen.add(literal)
+                distinct.append(literal)
         model.constrain(
             name,
             Kind.COUNT,
-            literals,
+            distinct,
             allowed_counts=allowed,
             reified_by=yes,
             family="Murdoku expression",
@@ -1759,6 +1776,7 @@ def _reify_formula(
     if isinstance(formula, lang.Quantified):
         role_domain = _static_roles(board, formula.source, bindings)
         area_adjective: str | None = None
+        cell_adjective: str | None = None
         if role_domain is not None:
             source = formula.source
             dynamic = False
@@ -1792,8 +1810,16 @@ def _reify_formula(
                         _LineBinding(f"{prefix}:{index + 1}") for index in sorted(line_indices)
                     ]
                 else:
+                    cell_scope = _cell_occupancy_scope(board, source)
                     entities = _static_spatial_entities(board, source)
-                    if entities is not None:
+                    if cell_scope is not None:
+                        cell_adjective, selected_squares = cell_scope
+                        dynamic = True
+                        domain = [
+                            _SpatialBinding(Sort.CELL, f"{square.row},{square.col}")
+                            for square in selected_squares
+                        ]
+                    elif entities is not None:
                         dynamic = False
                         domain = []
                         ordered = sorted(entities, key=lambda item: (item[0].value, item[1]))
@@ -1846,6 +1872,22 @@ def _reify_formula(
                         )
                         selected.append(
                             empty if area_adjective == "empty" else _opposite(model, empty)
+                        )
+                    elif (
+                        isinstance(binding_value, _SpatialBinding)
+                        and binding_value.sort == Sort.CELL
+                        and cell_adjective is not None
+                    ):
+                        row, col = (int(index) for index in binding_value.key.split(","))
+                        empty = _cell_empty_literal(
+                            model,
+                            board,
+                            Square(row, col),
+                            f"{binding_name} {binding_value.key} empty",
+                            empty_scopes,
+                        )
+                        selected.append(
+                            empty if cell_adjective == "empty" else _opposite(model, empty)
                         )
                     elif isinstance(binding_value, str):
                         selected.append(

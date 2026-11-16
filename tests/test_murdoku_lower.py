@@ -691,6 +691,40 @@ def test_static_spatial_quantifiers_match_reference(board, formula):
     _assert_compilation_matches_reference(board, formula)
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "every ?c in occupied cells: ?c is free",
+        "every ?c in empty cells: ?c is empty",
+        "some ?c in empty cells: not ?c is free",
+        "no ?c in empty free cells: not ?c is free",
+        "exactly 2 ?c in occupied cells: ?c is occupied",
+        "at least 1 ?c in (empty cells on mark:red): ?c on mark:red",
+        "every ?a, ?b in occupied cells: ?a != ?b",
+        "every ?c in occupied cells: some ?p in people: ?p on ?c",
+    ],
+)
+def test_occupancy_dependent_cell_quantifiers_match_reference(board, formula):
+    board = replace(
+        board,
+        objects=[*board.objects, BoardObject("rock", "blocking", (Square(0, 2),))],
+    )
+    _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "(area:hall is empty and area:hall is empty) iff Ada is role:guard",
+        "(area:hall is empty iff area:hall is empty) iff Ada is role:guard",
+        "(exactly 1 of (area:hall is empty; area:hall is empty)) iff Ada is role:guard",
+        "(exactly 2 of (area:hall is empty; area:hall is empty)) iff Ada is role:guard",
+    ],
+)
+def test_repeated_boolean_operands_retain_multiplicity(board, formula):
+    _assert_compilation_matches_reference(board, formula)
+
+
 def test_compiler_explicitly_rejects_unimplemented_shapes(board):
     with pytest.raises(NotImplementedError, match="clue 1: expression lowering is not implemented"):
         compile_statements(board, [parse_statement("Ada dir:nearest Ben")])
