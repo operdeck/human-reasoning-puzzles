@@ -5,6 +5,7 @@ implemented and the corpus has been migrated.
 """
 
 from dataclasses import dataclass
+from typing import assert_never
 
 from lark import Lark, Transformer, Tree, UnexpectedInput, v_args
 from lark import Token as LarkToken
@@ -563,6 +564,72 @@ def _parse(parser: Lark, source: str, line: int) -> object:
     return _FormulaTransformer(line - 1).transform(_resolve_ambiguity(tree, line))
 
 
+def _bound_references(
+    variables: tuple[Token, ...],
+    source: Operand,
+    body: Formula,
+    outer: frozenset[str],
+) -> set[str]:
+    references = _references(source, outer)
+    declared: set[str] = set()
+    for variable in variables:
+        if variable.text in outer or variable.text in declared:
+            raise ValueError(
+                f"line {variable.line}, column {variable.column}: "
+                f"variable {variable.text!r} clashes with an existing binding"
+            )
+        declared.add(variable.text)
+    body_references = _references(body, outer | declared)
+    for variable in variables:
+        if variable.text not in body_references:
+            raise ValueError(
+                f"line {variable.line}, column {variable.column}: unused variable {variable.text!r}"
+            )
+    return references | (body_references - declared)
+
+
+def _references(node: Operand | Formula | Number, bound: frozenset[str]) -> set[str]:
+    match node:
+        case Name(token=token):
+            if not token.text.startswith("?"):
+                return set()
+            if token.text not in bound:
+                raise ValueError(
+                    f"line {token.line}, column {token.column}: unbound variable {token.text!r}"
+                )
+            return {token.text}
+        case Union(items=items) | Choice(choices=items):
+            return set().union(*(_references(item, bound) for item in items))
+        case Difference(left=left, right=right) | SetComparison(left=left, right=right):
+            return _references(left, bound) | _references(right, bound)
+        case Qualified(operand=operand) | Projection(operand=operand) | Count(operand=operand):
+            return _references(operand, bound)
+        case Filter(source=source, target=target):
+            return _references(source, bound) | _references(target, bound)
+        case AdjectiveFilter(source=source):
+            return _references(source, bound)
+        case Comprehension(variable=variable, source=source, condition=condition):
+            return _bound_references((variable,), source, condition, bound)
+        case Atom(subject=subject, target=target):
+            return _references(subject, bound) | _references(target, bound)
+        case AdjectiveAtom(subject=subject):
+            return _references(subject, bound)
+        case Negation(formula=formula):
+            return _references(formula, bound)
+        case Binary(left=left, right=right):
+            return _references(left, bound) | _references(right, bound)
+        case NumberComparison(left=left, right=right) | Arithmetic(left=left, right=right):
+            return _references(left, bound) | _references(right, bound)
+        case Parity(number=number) | NumberRange(number=number):
+            return _references(number, bound)
+        case Quantified(variables=variables, source=source, body=body):
+            return _bound_references(variables, source, body, bound)
+        case Integer():
+            return set()
+        case _:
+            assert_never(node)
+
+
 def parse_operand(source: str, *, line: int = 1) -> Operand:
     """Parse a set-expression subset, without resolving or typechecking names."""
     result = _parse(_OPERAND_PARSER, source, line)
@@ -577,6 +644,7 @@ def parse_operand(source: str, *, line: int = 1) -> Operand:
         | AdjectiveFilter
         | Comprehension,
     )
+    _references(result, frozenset())
     return result
 
 
@@ -596,4 +664,5 @@ def parse_formula(source: str, *, line: int = 1) -> Formula:
         | Quantified
         | Choice,
     )
+    _references(result, frozenset())
     return result

@@ -192,6 +192,36 @@ def test_comprehension_carries_variable_and_condition():
     assert result.variable.text == "?p" and isinstance(result.condition, Atom)
 
 
+@pytest.mark.parametrize(
+    ("formula", "message"),
+    [
+        ("Ada in ?room", "unbound variable '\\?room'"),
+        ("every ?p in ?p: ?p in area:x", "unbound variable '\\?p'"),
+        ("every ?p, ?p in people: ?p in area:x", "clashes with an existing binding"),
+        ("every ?p in people: Ada in area:x", "unused variable '\\?p'"),
+        (
+            "every ?p in people: some ?p in people: ?p in area:x",
+            "clashes with an existing binding",
+        ),
+    ],
+)
+def test_variable_bindings_reject_unbound_clashing_and_unused_names(formula, message):
+    with pytest.raises(ValueError, match=message):
+        parse_formula(formula)
+
+
+def test_nested_quantifiers_can_use_outer_variables_in_their_source():
+    result = parse_formula("every ?p in people: some ?a in area of ?p: ?p in ?a")
+    assert isinstance(result, Quantified) and isinstance(result.body, Quantified)
+
+
+def test_sibling_quantifiers_can_reuse_a_variable_name():
+    result = parse_formula(
+        "(some ?p in people: ?p in area:x) and (some ?p in people: ?p in area:y)"
+    )
+    assert isinstance(result, Binary)
+
+
 def test_adjective_after_is_is_not_an_entity_name():
     result = parse_formula("rows:last is empty")
     assert isinstance(result, AdjectiveAtom) and result.adjective.text == "empty"
