@@ -165,20 +165,39 @@ def try_lower_person_pair(model: Model, board: Board, statement: lang.Statement,
         mode = op.removeprefix("dir:")
         simple_directions = {"up", "down", "left", "right"}
         metrics = {"rows", "cols", "manhattan", "king", "euclidean", "areas", "knight"}
-        if mode not in simple_directions | metrics:
-            return False
-        if (
-            atom.measure is not None
-            and mode in simple_directions
-            and atom.measure.comparison.text != "="
+        directions = mode.split("+")
+        if mode not in simple_directions | metrics | {"diagonal"} and not all(
+            direction in simple_directions for direction in directions
         ):
             return False
         comparison = atom.measure.comparison.text if atom.measure else None
         distance = int(atom.measure.value.text) if atom.measure else None
-        direction = _direction_test(board, mode, comparison, distance)
+        direction = _direction_test(board, mode, comparison, distance) if mode in metrics else None
+
+        def matches(value: int) -> bool:
+            if distance is None:
+                return True
+            if comparison == "=":
+                return value == distance
+            if comparison == "<=":
+                return value <= distance
+            return value >= distance
 
         def directed(left: Square, right: Square) -> bool:
-            return not same and direction(left, right)
+            if same:
+                return False
+            if direction is not None:
+                return direction(left, right)
+            if mode == "diagonal":
+                gap = abs(left.row - right.row)
+                return gap > 0 and gap == abs(left.col - right.col) and matches(gap)
+            gaps = {
+                "up": right.row - left.row,
+                "down": left.row - right.row,
+                "left": right.col - left.col,
+                "right": left.col - right.col,
+            }
+            return all(gaps[component] > 0 and matches(gaps[component]) for component in directions)
 
         test = directed
     else:

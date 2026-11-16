@@ -99,6 +99,10 @@ def test_lowered_location_matches_reference_for_every_placement_and_role(board, 
     [
         "Ada dir:up Ben",
         "Ada dir:down Ben = 1",
+        "Ada dir:up Ben <= 1",
+        "Ada dir:right Ben >= 1",
+        "Ada dir:up+right Ben = 1",
+        "Ada dir:diagonal Ben >= 2",
         "Ada dir:manhattan Ben >= 2",
         "Ada dir:euclidean Ben <= 2",
         "Ada dir:areas Ben = 0",
@@ -121,7 +125,7 @@ def test_unsupported_statement_does_not_change_model(board):
     model = compile_puzzle(board, [])
     before = (model.num_literals, len(model.constraints), len(model.relations))
     assert not try_lower_count(model, board, parse_statement("Ada in area:hall"), "clue 1")
-    assert not try_lower_person_pair(model, board, parse_statement("Ada dir:up Ben <= 1"), "clue 2")
+    assert not try_lower_person_pair(model, board, parse_statement("Ada dir:nearest Ben"), "clue 2")
     assert before == (model.num_literals, len(model.constraints), len(model.relations))
 
 
