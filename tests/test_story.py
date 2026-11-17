@@ -1650,8 +1650,8 @@ Ben
 Marks:
 quiet: r1c1 ; alone
 Clues:
-on Ada mark:quiet
-not in Ben area:room
+Ada on mark:quiet
+not Ben in area:room
 """
     story = explain(text)
 
@@ -1685,7 +1685,7 @@ Ben
 Marks:
 social: r1c1 ; not_alone
 Clues:
-on Ada mark:social
+Ada on mark:social
 """
     assert expected in explain(text)
 
@@ -1708,8 +1708,8 @@ Marks:
 quiet: r2c1 r3c2 ; alone
 bench: r1c2
 Clues:
-in Ada area:room
-on Ben mark:bench
+Ada in area:room
+Ben on mark:bench
 count people on mark:quiet = 1
 """
     explanation = explain(text)
@@ -1730,8 +1730,8 @@ count people on mark:quiet = 1
         text.replace("count people on mark:quiet = 1", "count people on mark:quiet >= 1")
     )
     assert "all other quiet squares are empty" not in no_limit
-    excluded = explain(text.replace("in Ada area:room", "not in Ada area:hall area:garden"))
-    assert "Ada is not in the hall or Ada is not in the garden (1)" in excluded
+    excluded = explain(text.replace("Ada in area:room", "not Ada in (area:hall, garden)"))
+    assert "It is not true that (Ada is in the hall or Ada is in the garden) (1)" in excluded
 
 
 def test_direct_area_clue_does_not_repeat_the_area_when_it_fixes_a_square():

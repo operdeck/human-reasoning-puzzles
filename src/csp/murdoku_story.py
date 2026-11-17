@@ -18,7 +18,7 @@ from .murdoku import (
 from .murdoku_eval import grounded_dependencies, holds_grounded
 from .murdoku_expression_file import load_expression_board
 from .murdoku_expression_words import ExpressionWords
-from .murdoku_lang import Atom, Name
+from .murdoku_lang import Atom, Count, Filter, Integer, Name, NumberComparison
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .proof import Episode, Inference, Move, episodes, essential, replay
 from .story import Places, Wording, _cap
@@ -42,6 +42,23 @@ class _Narrator(generic_story.Narrator):
             for role in board.roles
         }
         self.visible = set(board.people) | self.roles.keys()
+        self.told_mark_counts: set[str] = set()
+        self.sole_marks = {
+            formula.left.operand.target.token.text.removeprefix("mark:")
+            for origin in compilation.origins
+            if isinstance(formula := origin.statement.formula, NumberComparison)
+            and formula.operator.text == "="
+            and isinstance(formula.right, Integer)
+            and formula.right.value.text == "1"
+            and isinstance(formula.left, Count)
+            and isinstance(formula.left.operand, Filter)
+            and isinstance(formula.left.operand.source, Name)
+            and formula.left.operand.source.token.text == "people"
+            and formula.left.operand.operator.text == "on"
+            and formula.left.operand.measure is None
+            and isinstance(formula.left.operand.target, Name)
+            and formula.left.operand.target.token.text.startswith("mark:")
+        }
         self.mark_sources: dict[str, tuple[CellMark, str]] = {}
         for mark in board.marks:
             if mark.occupant_condition is None:
@@ -205,7 +222,8 @@ class _Narrator(generic_story.Narrator):
         if not own:
             return None
         previous = set(self.options[person])
-        self.conclusion(own)
+        already_told = set(self.told)
+        self.conclusion(own, include_marks=False)
         squares = self.options[person]
         if not squares:
             return None
@@ -259,6 +277,12 @@ class _Narrator(generic_story.Narrator):
                     suffix += f", {self.say('so')} **{instruction}**"
                     open_squares.difference_update(crossed)
         said = f"{clue}{suffix}."
+        if len(squares) == 1:
+            (square,) = squares
+            if (person, square) not in already_told and (
+                meaning := self._mark_placement(person, square)
+            ):
+                said += f" {meaning}."
         other = self.conclusion(step for step in steps if step.var != person)
         if other:
             said += " " + self._because(sources, other)
@@ -554,7 +578,34 @@ class _Narrator(generic_story.Narrator):
             return self.say("is_not", who=var, where=self.say("on", what=self.places.square(value)))
         return super().negated(var, value)
 
-    def conclusion(self, steps: Iterable[Step]) -> str | None:
+    def _mark_placement(self, person: str, square: Square) -> str:
+        sentences = []
+        for mark in self.board.marks:
+            if square not in mark.cells:
+                continue
+            if mark.occupant_condition is not None:
+                sentences.append(
+                    self.say(
+                        f"mark_placed.{mark.occupant_condition}",
+                        who=person,
+                        mark=mark.name.replace("_", " "),
+                        where=self.places.region(
+                            self.board.region_names[self.board.region_of(square)]
+                        ),
+                    )
+                )
+            if mark.name in self.sole_marks and mark.name not in self.told_mark_counts:
+                self.told_mark_counts.add(mark.name)
+                others = self.board.mark_cells([mark.name]) - {square}
+                if others:
+                    sentences.append(
+                        self.say("mark_count_filled", mark=mark.name.replace("_", " "))
+                    )
+                    for cells in self.options.values():
+                        cells.difference_update(others)
+        return ". ".join(sentences)
+
+    def conclusion(self, steps: Iterable[Step], *, include_marks: bool = True) -> str | None:
         steps = list(steps)
         before = {person: set(cells) for person, cells in self.options.items()}
         placed = set()
@@ -571,7 +622,10 @@ class _Narrator(generic_story.Narrator):
             if len(cells) == 1 and (person in placed or cells != previous):
                 (square,) = cells
                 if (person, square) not in self.told:
-                    said.append(f"**{self.placed(person, square)}**")
+                    sentence = f"**{self.placed(person, square)}**"
+                    if include_marks and (meaning := self._mark_placement(person, square)):
+                        sentence += f". {meaning}"
+                    said.append(sentence)
                     self.told.add((person, square))
             elif cells != previous and cells:
                 line = self.places.common_line(cells)
