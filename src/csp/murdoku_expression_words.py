@@ -94,6 +94,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.king.near": "{clause} (including diagonals and across area boundaries)",
         "idiom.king.not_near": "{clause} (not even diagonally, including across area boundaries)",
         "target.object.cell": "a square of {name}",
+        "target.corner": "a board corner",
         "target.person.on": "someone on {target}",
         "target.or": "{left} or {right}",
         "rel.dir.euclidean": "at a straight-line distance from",
@@ -264,6 +265,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "{clause} (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)"
         ),
         "target.object.cell": "een vakje van {name}",
+        "target.corner": "een rasterhoek",
         "target.person.on": "iemand op {target}",
         "target.or": "{left} of {right}",
         "rel.dir.euclidean": "op een rechte afstand van",
@@ -754,9 +756,8 @@ class ExpressionWords:
         namespace, _, name = (
             target.token.text.partition(":") if isinstance(target, lang.Name) else ("", "", "")
         )
-        person = (
-            subject is not None and infer_operand(self.board, subject, bindings).sort is Sort.PERSON
-        )
+        shape = infer_operand(self.board, subject, bindings) if subject is not None else None
+        person = shape is not None and shape.sort is Sort.PERSON
         king_target = (
             self._king_target(target, bindings)
             if person and operator and operator.text == "dir:king"
@@ -766,6 +767,16 @@ class ExpressionWords:
             rendered = king_target
         elif namespace == "area" and person:
             _, rendered = self._area_location(name)
+        elif (
+            namespace == "corner"
+            and person
+            and shape is not None
+            and shape.maximum == 1
+            and operator is not None
+            and operator.text == "in"
+            and not {"name.corner", "rel.any_target"}.intersection(self.phrases)
+        ):
+            rendered = self._phrase("target.corner")
         elif namespace in {"edge_item", "point_object", "mark"} and person:
             rendered = self._phrase(
                 f"target.{namespace}",
@@ -1246,7 +1257,15 @@ class ExpressionWords:
         if only := only_on(formula, self.board.people):
             person, operand = only
             target = self._operand(operand, {})
-            if infer_operand(self.board, operand, {}).maximum > 1:
+            maximum = infer_operand(self.board, operand, {}).maximum
+            if (
+                maximum == 1
+                and isinstance(operand, lang.Name)
+                and operand.token.text.startswith("object:")
+                and "name.object" not in self.phrases
+            ):
+                target = self._target(operand, None, {}, subject=person)
+            if maximum > 1:
                 target = self._phrase("rel.any_scope", target=target)
             return self._phrase("idiom.only_on", person=self._name(person.token), target=target)
         return self._formula(statement.formula, {})

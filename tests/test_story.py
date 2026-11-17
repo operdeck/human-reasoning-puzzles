@@ -673,6 +673,9 @@ def test_opening_does_not_restate_line_or_edge_clues(name, clue):
 
 
 def test_new_murdoku_clues_have_dutch_wording():
+    from csp.murdoku_expression_words import ExpressionWords
+    from csp.murdoku_lang import parse_statement
+
     square = murdoku.Square
     board = murdoku.Board(
         3,
@@ -684,20 +687,23 @@ def test_new_murdoku_clues_have_dutch_wording():
         ],
         ["Anna", "Betsy", "Eli"],
     )
-    story = Story(board, [], Wording("nl", {"stoel": "de stoel", "bed": "het bed"}))
-    assert story._clue_text("not_on", ["Anna", "object:stoel"], ("Anna",)) == (
+    words = ExpressionWords(board, "nl", {"stoel": "de stoel", "bed": "het bed"})
+    assert words.statement(parse_statement("not Anna on object:stoel")) == (
         "Anna zit niet op de stoel"
     )
-    assert story._clue_text("only", ["Anna", "object:bed"], ("Betsy",)) == (
-        "alleen Anna zit op het bed"
+    assert words.statement(parse_statement("(people on object:bed) = Anna")) == (
+        "Anna is de enige persoon op het bed"
     )
-    assert story._clue_text("in", ["Eli", "corner:board"], ("Eli",)) == "Eli is in een rasterhoek"
-    assert story._clue_text("dir", ["Anna", "Eli", "left", "=", "1"], ("Anna", "Eli")) == (
+    assert words.statement(parse_statement("Eli in corner:board")) == "Eli is in een rasterhoek"
+    assert words.statement(parse_statement("Anna dir:left Eli = 1")) == (
         "Anna staat precies één kolom links van Eli"
     )
 
 
 def test_story_can_name_a_boundary_door():
+    from csp.murdoku_expression_words import ExpressionWords
+    from csp.murdoku_lang import parse_statement
+
     square = murdoku.Square
     board = murdoku.Board(
         2,
@@ -707,12 +713,12 @@ def test_story_can_name_a_boundary_door():
         ["Ada", "Ben"],
         edge_items=[murdoku.EdgeItem("gate", "door", (square(0, 0), square(0, 1)))],
     )
-    story = Story(board, [], Wording("nl", {"gate": "de deur"}))
-    assert story._clue_text("on", ["Ada", "edge_item:gate"], ("Ada",)) == (
+    words = ExpressionWords(board, "nl", {"gate": "de deur"})
+    assert words.statement(parse_statement("Ada on edge_item:gate")) == (
         "Ada zit op een vakje dat de deur raakt"
     )
-    assert story._clue_text("beside", ["Ada", "edge_item:gate"], ("Ada",)) == (
-        "Ada staat naast de deur"
+    assert words.statement(parse_statement("Ada beside edge_item:gate")) == (
+        "Ada staat naast een vakje dat de deur raakt"
     )
 
 

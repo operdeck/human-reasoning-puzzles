@@ -34,6 +34,23 @@ def test_languages_offer_the_same_keys_and_placeholders():
         assert fields(PHRASES["en"][key]) == fields(PHRASES["nl"][key]), key
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [("en", "Ada is in a board corner"), ("nl", "Ada is in een rasterhoek")],
+)
+def test_board_corner_target_is_singular_without_overriding_authored_names(
+    board, language, expected
+):
+    statement = parse_statement("Ada in corner:board")
+    assert ExpressionWords(board, language).statement(statement) == expected
+    words = ExpressionWords(board, language, phrases={"name.corner": "CUSTOM CORNERS"})
+    assert "CUSTOM CORNERS" in words.statement(statement)
+    counted = ExpressionWords(board, language).statement(
+        parse_statement("count (people in corner:board) = 2")
+    )
+    assert ("in a board corner" if language == "en" else "in een rasterhoek") not in counted
+
+
 def test_person_verb_and_single_line_idioms_keep_explicit_phrase_overrides(board):
     words = ExpressionWords(
         board,
