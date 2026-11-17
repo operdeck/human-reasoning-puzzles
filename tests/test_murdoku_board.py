@@ -7,7 +7,6 @@ import pytest
 
 from csp import audit, clue_search
 from csp import murdoku_board as mb
-from csp.bruteforce import murdoku as brute
 from csp.bruteforce import murdoku_expr as expression_brute
 from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
 
@@ -67,17 +66,25 @@ def test_expression_spec_uses_ast_for_late_and_decor_exclusions():
         )
 
 
-def test_expression_late_rule_matches_legacy_placement_semantics():
+@pytest.mark.parametrize("expressions", [False, True])
+def test_late_rule_matches_exact_area_companions_without_legacy_search(expressions):
     text = SPEC.replace("key_clue: not Ann beside object:rots\n", "")
-    spec = mb.read_spec(text, expressions=False)
-    expression_spec = mb.read_spec(text, expressions=True)
+    spec = mb.read_spec(text, expressions=expressions)
     layout = ((0, 0, 0, 1, 1),) * 2 + ((0, 0, 2, 1, 1),) * 3
     colours = ["#F4CBC3", "#CBE6B9", "#C4DCF2"]
-    legacy = mb.draft_text(spec, layout, colours, [])
-    expression = mb.draft_text(expression_spec, layout, colours, [])
+    draft = mb.draft_text(spec, layout, colours, [])
     base = mb.draft_text(spec, layout, colours, [], rules=False)
-    for placement in brute.solutions(base, 1000):
-        assert mb._accepts(legacy, placement, False) == mb._accepts(expression, placement, True)
+    board, rules, clues = load_expression_board(base)
+    outcomes = set()
+    for placement in expression_brute.solutions(board, clues, 1000, rules=rules):
+        area = board.region_of(placement["Dee"])
+        companions = {
+            person for person in board.people if board.region_of(placement[person]) == area
+        }
+        expected = companions == {"Ann", "Dee"}
+        outcomes.add(expected)
+        assert mb._accepts(draft, placement, expressions) == expected
+    assert outcomes == {False, True}
 
 
 def test_expression_board_candidate_and_close():

@@ -21,7 +21,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import svg
-from .bruteforce import murdoku as brute
 from .bruteforce import murdoku_expr as expression_brute
 from .murdoku import Square
 from .murdoku_expression_file import load_expression_board
@@ -149,15 +148,12 @@ class Spec:
         if unknown := set(self.decor) - {obj.name for obj in self.objects}:
             raise ValueError(f"decor names unknown objects: {', '.join(sorted(unknown))}")
         for clue in self.key_clues:
-            if self.expressions:
-                from .clue_search import _expression_people
+            from .clue_search import _expression_people
 
-                tokens = _expression_people(
-                    parse_statement(clue).formula,
-                    set(self.people) | {f"object:{name}" for name in self.decor},
-                )
-            else:
-                tokens = set(clue.partition("|")[0].split())
+            tokens = _expression_people(
+                parse_statement(clue).formula,
+                set(self.people) | {f"object:{name}" for name in self.decor},
+            )
             if self.late is not None and self.late in tokens:
                 raise ValueError(f"key clue {clue!r} names the late figure {self.late}")
             targets = {part for token in tokens for part in token.split(":")}
@@ -728,12 +724,7 @@ def draft_text(
         lines += [
             "",
             "Rules:",
-            (
-                f"(people in area of {spec.late}) = ({spec.late}, attribute:{spec.companion_trait})"
-                if spec.expressions
-                else f"with {spec.late} attribute:{spec.companion_trait} "
-                f"in same area exactly {len(spec.companions)}"
-            ),
+            f"(people in area of {spec.late}) = ({spec.late}, attribute:{spec.companion_trait})",
         ]
     chosen = spec.key_clues if clues is None else clues
     if chosen:
@@ -870,27 +861,23 @@ def _key_clue_bites(spec: Spec, base: str, legal: Sequence[Mapping[str, Square]]
 
 
 def _accepts(text: str, placement: dict[str, Square], expressions: bool) -> bool:
-    if expressions:
-        board, rules, clues = load_expression_board(text)
-        return expression_brute.accepts(board, clues, placement, rules=rules)
-    return brute.accepts(text, placement)
+    board, rules, clues = load_expression_board(text)
+    return expression_brute.accepts(board, clues, placement, rules=rules)
 
 
 def _sample(text: str, limit: int, expressions: bool) -> list[dict[str, Square]]:
-    if expressions:
-        board, rules, clues = load_expression_board(text)
-        sampled = expression_brute.sample(board, clues, limit, rules=rules)
-        placements = []
-        for result in sampled:
-            placement = {}
-            for person in board.people:
-                square = result[person]
-                if not isinstance(square, Square):
-                    raise ValueError("expression search returned a non-square person placement")
-                placement[person] = square
-            placements.append(placement)
-        return placements
-    return brute.sample(text, limit)
+    board, rules, clues = load_expression_board(text)
+    sampled = expression_brute.sample(board, clues, limit, rules=rules)
+    placements = []
+    for result in sampled:
+        placement = {}
+        for person in board.people:
+            square = result[person]
+            if not isinstance(square, Square):
+                raise ValueError("expression search returned a non-square person placement")
+            placement[person] = square
+        placements.append(placement)
+    return placements
 
 
 def draft_with_clues(text: str, clues: Sequence[str]) -> str:
