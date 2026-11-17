@@ -942,7 +942,8 @@ def test_an_object_with_several_pieces_is_named_indefinitely_despite_its_words()
 
 
 def test_english_uses_an_before_a_vowel_for_one_of_several_objects():
-    from csp.story import Places, Wording, load_board
+    from csp.puzzlefile import load_board_layout
+    from csp.story import Places, Wording
 
     text = """Size: 3
 Language: en
@@ -962,7 +963,7 @@ bench: standable r3c1
 Words:
 bench: the bench
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     places = Places(board, Wording.read(text))
     assert places.thing("apple") == "an apple"
     assert places.thing("bench") == "a bench"

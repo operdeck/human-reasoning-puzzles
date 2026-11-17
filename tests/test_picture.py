@@ -20,7 +20,10 @@ from csp.murdoku import (  # noqa: E402
     RoleSpec,
     Square,
 )
-from csp.puzzlefile import load_board, load_board_layout, load_presentation  # noqa: E402
+from csp.murdoku_expression_file import load_expression_board  # noqa: E402
+from csp.murdoku_lower import object_count_scope  # noqa: E402
+from csp.puzzlefile import load_board_layout, load_presentation  # noqa: E402
+from csp.story import global_count_texts  # noqa: E402
 from tests.examples import all_examples, example  # noqa: E402
 
 pytestmark = pytest.mark.booklet
@@ -630,7 +633,7 @@ Marks:
 quiet: r1c1 ; alone
 social: r1c1 ; not_alone
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
     pad = max(3, CELL // 24)
@@ -659,7 +662,7 @@ Marks:
 quiet: r1c1 ; alone
 social: r1c2 ; not_alone
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     svg = drawing.murdoku_picture(board, cell=CELL, coordinates=False, legend=False).to_svg()
 
     def hexed(rgb):
@@ -683,7 +686,7 @@ B
 Marks:
 plain: r1c1
 """
-    pboard, _ = load_board(plain)
+    pboard = load_board_layout(plain)
     plain_svg = drawing.murdoku_picture(pboard, cell=CELL, coordinates=False, legend=False).to_svg()
     # A plain mark still gets a dashed cue, in the neutral "special square" colour.
     assert "stroke-dasharray" in plain_svg
@@ -759,8 +762,6 @@ not has B role:bandit
 
 
 def test_png_global_count_legend_highlights_scope_and_cli_passes_counts(tmp_path, monkeypatch):
-    from csp import murdoku
-
     text = """Size: 2
 Regions:
 a: room
@@ -773,22 +774,33 @@ People:
 Ada
 Ben
 Clues:
-count people on object:bed = 1
+count (people on object:bed) = 1
 """
-    board, clues = load_board(text)
-    (condition,) = murdoku.global_count_conditions(board, clues)
+    board, rules, clues = load_expression_board(text)
+    scope = object_count_scope(board, [*rules, *clues])
+    captions = global_count_texts(text)
     image = picture.murdoku_picture(
-        board, cell=CELL, coordinates=False, global_counts=[condition], count_lines=True
+        board,
+        cell=CELL,
+        coordinates=False,
+        count_scope=scope,
+        count_texts=captions,
+        count_lines=True,
     )
     tiny = picture.murdoku_picture(
-        board, cell=12, coordinates=False, global_counts=[condition], count_lines=True
+        board,
+        cell=12,
+        coordinates=False,
+        count_scope=scope,
+        count_texts=captions,
+        count_lines=True,
     )
     plain = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
     assert image.height > plain.height
     assert tiny.width > 0 and tiny.height > 0
     markup = drawing.murdoku_picture(
-        board, cell=CELL, coordinates=False, global_counts=[condition]
+        board, cell=CELL, coordinates=False, count_scope=scope, count_texts=captions
     ).to_svg()
     assert "stroke-dasharray" in markup
     assert "<ellipse" in markup
@@ -814,9 +826,9 @@ sloffen: standable r2c1
 People:
 Ada
 Clues:
-count people on object:badjas = 1
+count (people on object:badjas) = 1
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     square = Square
     # Two objects one above the other are two rings, not one tall ellipse.
     assert picture._scope_groups(board, {square(0, 0), square(1, 0)}) == [
@@ -832,8 +844,6 @@ count people on object:badjas = 1
 def test_scope_rings_two_touching_objects_apart():
     import re
 
-    from csp import murdoku
-
     text = """Size: 2
 Regions:
 a: room
@@ -846,16 +856,16 @@ sloffen: standable r2c1
 People:
 Ada
 Clues:
-count people on object:badjas = 1
-count people on object:sloffen = 1
+count (people on object:badjas) = 1
+count (people on object:sloffen) = 1
 """
-    board, clues = load_board(text)
+    board, rules, clues = load_expression_board(text)
     markup = drawing.murdoku_picture(
         board,
         cell=CELL,
         coordinates=False,
         legend=False,
-        global_counts=murdoku.global_count_conditions(board, clues),
+        count_scope=object_count_scope(board, [*rules, *clues]),
     ).to_svg()
     rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
     assert len(rings) == 2
@@ -866,8 +876,6 @@ count people on object:sloffen = 1
 
 
 def test_scope_rings_are_drawn_under_object_icons(monkeypatch):
-    from csp import murdoku
-
     text = """Size: 2
 Regions:
 a: room
@@ -879,9 +887,9 @@ bed: standable r1c1
 People:
 Ada
 Clues:
-count people on object:bed = 1
+count (people on object:bed) = 1
 """
-    board, clues = load_board(text)
+    board, rules, clues = load_expression_board(text)
     events = []
     scope_outline = drawing._scope_outline
     icon = drawing._icon
@@ -900,15 +908,13 @@ count people on object:bed = 1
         board,
         cell=CELL,
         coordinates=False,
-        global_counts=murdoku.global_count_conditions(board, clues),
+        count_scope=object_count_scope(board, [*rules, *clues]),
     )
 
     assert events.index("scope") < events.index("icon")
 
 
 def test_scope_rings_wrap_a_rectangular_object_and_trace_an_l_shaped_one():
-    from csp import murdoku
-
     text = """Size: 3
 Regions:
 a: room
@@ -922,16 +928,16 @@ tafel: standable r2c3 r3c2 r3c3
 People:
 Ada
 Clues:
-count people on object:bed = 1
-count people on object:tafel = 1
+count (people on object:bed) = 1
+count (people on object:tafel) = 1
 """
-    board, clues = load_board(text)
+    board, rules, clues = load_expression_board(text)
     markup = drawing.murdoku_picture(
         board,
         cell=CELL,
         coordinates=False,
         legend=False,
-        global_counts=murdoku.global_count_conditions(board, clues),
+        count_scope=object_count_scope(board, [*rules, *clues]),
     ).to_svg()
     # One oval around the bed's two squares, one circle per square of the L.
     rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
@@ -1082,7 +1088,7 @@ B
 def test_bad_region_colour_is_rejected():
     text = "Size: 2\nRegions:\na: here #12345\nGrid:\na a\na a\nPeople:\nA\nB\n"
     with pytest.raises(ValueError, match="colour"):
-        load_board(text)
+        load_board_layout(text)
 
 
 def test_cli_png_defaults_to_puzzle_stem(tmp_path, capsys):
@@ -1878,7 +1884,7 @@ def test_decorations_are_drawn_at_their_anchors_but_never_enter_the_puzzle(monke
 def test_a_bad_decoration_line_is_rejected():
     text = example("halloween-museum-1.txt").read_text().replace("bat: r3.5c0.5", "bat r3.5c0.5", 1)
     with pytest.raises(ValueError, match="bad decoration"):
-        load_board(text)
+        load_board_layout(text)
 
 
 def test_dominosa_draws_pips_instead_of_digits():

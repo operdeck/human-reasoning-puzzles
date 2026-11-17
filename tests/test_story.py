@@ -16,7 +16,7 @@ import csp
 from csp import bruteforce, cli, murdoku, sudoku
 from csp.core import Kind, Model, Solver, Step, rule_single
 from csp.proof import Move, episodes, replay, shortest
-from csp.puzzlefile import detect, load_board
+from csp.puzzlefile import detect, load_board, load_board_layout
 from csp.story import (
     Story,
     Wording,
@@ -38,7 +38,7 @@ PLACED = re.compile(r"\*\*(\w+) op r(\d+)k(\d+)\*\*")
 @pytest.mark.parametrize("number,murderer", [(1, "Carmen"), (2, "Diego"), (3, "Gonzalo")])
 def test_halloween_reveal_names_the_unique_solved_murderer(number, murderer):
     text = example(f"halloween-museum-{number}.txt").read_text()
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     solutions = bruteforce.solutions(text, "murdoku", limit=2)
     assert len(solutions) == 1
     assert [
