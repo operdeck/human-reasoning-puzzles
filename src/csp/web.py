@@ -19,12 +19,12 @@ from typing import Any
 from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles, starbattle, svg
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
-from .murdoku import Board, Clue, Square, global_count_conditions
-from .murdoku_expression_file import is_expression_file, load_expression_board
+from .murdoku import Board, Square
+from .murdoku_expression_file import load_expression_board
 from .murdoku_expression_words import ExpressionWords
 from .murdoku_lower import object_count_scope
 from .picture import murdoku_key_symbols
-from .puzzlefile import display_family, language_of, load_board, load_presentation
+from .puzzlefile import display_family, language_of, load_presentation
 from .story import (
     PEER_RULE_LABELS,
     Places,
@@ -33,7 +33,6 @@ from .story import (
     clue_paragraphs,
     family_rules,
     figure_clues,
-    global_count_texts,
     mark_note,
     murdoku_key_items,
     murdoku_rules,
@@ -261,12 +260,7 @@ def bundle(
 def _murdoku(
     text: str, solution: Mapping[str, Any], *, expressions: bool = False
 ) -> dict[str, Any]:
-    if expressions or is_expression_file(text):
-        board, rule_statements, clue_statements = load_expression_board(text)
-        clues: list[Clue] = []
-    else:
-        board, clues = load_board(text)
-        rule_statements, clue_statements = [], []
+    board, rule_statements, clue_statements = load_expression_board(text)
     presentation = load_presentation(text)
     count_details = []
     if rule_statements or clue_statements:
@@ -282,9 +276,7 @@ def _murdoku(
                 count_details.append(
                     (scope, caption if caption is not None else words.statement(statement))
                 )
-    entries = figure_clues(
-        text, expressions=clue_statements if (expressions or is_expression_file(text)) else None
-    )
+    entries = figure_clues(text, expressions=clue_statements)
     say = Wording.read(text)
     palette = []
     for entry in entries.figures:
@@ -298,11 +290,7 @@ def _murdoku(
             item["svg"] = picture
         palette.append(item)
     placed = {str(sq): person for person, sq in solution.items() if isinstance(sq, Square)}
-    rules = (
-        murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
-        if (expressions or is_expression_file(text))
-        else murdoku_rules(text)
-    )
+    rules = murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
     return {
         "language": language_of(text),
         "size": [board.size, board.size],
@@ -322,9 +310,7 @@ def _murdoku(
         "autoMark": {"default": True, "mark": "cross", "onPlace": LINES},
         "givens": {},
         "solution": dict(sorted(placed.items())),
-        "cellDetails": _murdoku_cell_details(
-            board, clues, text, presentation.clue_text, count_details=count_details
-        ),
+        "cellDetails": _murdoku_cell_details(board, text, count_details=count_details),
         "detailTargets": _murdoku_point_details(board, text),
         "headings": {
             **{
@@ -351,7 +337,7 @@ def _murdoku(
         "clues": clue_paragraphs(
             text,
             presentation.clue_text,
-            expressions=clue_statements if (expressions or is_expression_file(text)) else None,
+            expressions=clue_statements,
         ),
         "clueEntries": [
             {
@@ -384,9 +370,7 @@ def _murdoku(
 
 def _murdoku_cell_details(
     board: Board,
-    clues: list[Clue],
     text: str,
-    clue_text: Mapping[int, str],
     *,
     count_details: Iterable[tuple[Iterable[Square], str]] = (),
 ) -> dict[str, list[str]]:
@@ -427,15 +411,6 @@ def _murdoku_cell_details(
         if not caption.endswith((".", "!", "?")):
             caption += "."
         add(scope, caption)
-    counts = global_count_conditions(board, clues)
-    if any(count.object_scope for count in counts):
-        for count, wording in zip(counts, global_count_texts(text), strict=True):
-            if count.object_scope:
-                if count.number is not None:
-                    wording = clue_text.get(count.number, wording)
-                if not wording.endswith((".", "!", "?")):
-                    wording += "."
-                add(count.scope_cells(board), wording)
     return details
 
 

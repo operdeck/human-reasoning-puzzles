@@ -12,10 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import icons, murdoku, picture
-from .murdoku_expression_file import is_expression_file, load_expression_board
+from . import icons, picture
+from .murdoku_expression_file import load_expression_board
 from .murdoku_lower import object_count_scope
-from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
+from .puzzlefile import Figure, Presentation, language_of, load_presentation
 from .story import (
     CluePresentation,
     Wording,
@@ -70,13 +70,8 @@ def _picture_stream(
 ) -> tuple[io.BytesIO, float]:
     """The board picture and its height/width ratio; `backdrop=False` leaves the
     backdrop out, for pages too full to give it room."""
-    count_scope: set[murdoku.Square] = set()
-    if expressions:
-        board, rules, statements = load_expression_board(text)
-        count_scope = object_count_scope(board, [*rules, *statements])
-        clues: list[Any] = []
-    else:
-        board, clues = load_board(text)
+    board, rules, statements = load_expression_board(text)
+    count_scope = object_count_scope(board, [*rules, *statements])
     if not backdrop:
         board.backdrop = None
     # The counts are rules the page states itself, so leave their lines out of
@@ -89,7 +84,6 @@ def _picture_stream(
         show_attributes=False,
         language=language_of(text),
         area_tags=False,
-        global_counts=murdoku.global_count_conditions(board, clues),
         count_scope=count_scope,
         count_lines=False,
         names=Wording.read(text).words,
@@ -292,7 +286,7 @@ class Entry:
     expressions: bool = False
 
     def __post_init__(self) -> None:
-        if self.kind == "murdoku" and not self.expressions and is_expression_file(self.text):
+        if self.kind == "murdoku" and not self.expressions:
             object.__setattr__(self, "expressions", True)
 
     def numbered(self, title: str) -> str:
@@ -435,15 +429,9 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     presentation = load_presentation(text)
     _title(document, _puzzle_title(entry), new_page, bookmark, entry.section)
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
-    if entry.expressions:
-        _, rule_statements, clue_statements = load_expression_board(text)
-        rules = murdoku_rules(
-            text, expression_rules=rule_statements, expression_clues=clue_statements
-        )
-        clues = figure_clues(text, expressions=clue_statements)
-    else:
-        rules = murdoku_rules(text)
-        clues = figure_clues(text)
+    _, rule_statements, clue_statements = load_expression_board(text)
+    rules = murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
+    clues = figure_clues(text, expressions=clue_statements)
     for line in rules:
         _runs(document.add_paragraph(style="List Bullet"), line)
     _, aspect = _picture_stream(text, None, None, expressions=entry.expressions)

@@ -1007,7 +1007,8 @@ def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_
     assert used[-1] is kept
 
 
-def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
+@pytest.mark.parametrize("expressions", [False, True])
+def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch, expressions):
     import csp.docx_export as docx_export
     import csp.picture as picture
     from csp.puzzlefile import load_board_layout
@@ -1021,7 +1022,7 @@ def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
 
     monkeypatch.setattr(picture, "murdoku_picture", capture)
     text = example("wie-doet-het-met-wie-1.txt").read_text()
-    docx_export._picture_stream(text, None, None, expressions=True)
+    docx_export._picture_stream(text, None, None, expressions=expressions)
     assert seen["count_scope"] == load_board_layout(text).squares_of(["badjas", "sloffen"])
     # The page states the counts itself, so the picture leaves those lines out.
     assert seen["count_lines"] is False
