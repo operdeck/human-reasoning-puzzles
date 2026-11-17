@@ -6,13 +6,21 @@ from typing import Any
 
 from . import generic_story
 from .core import Constraint, Kind, Model, Solver, Step
-from .murdoku import POPULATION_FAMILY, Board, Square, board_rules
+from .murdoku import (
+    POPULATION_FAMILY,
+    Board,
+    CellMark,
+    Square,
+    board_rules,
+    mark_occupant_name,
+    occupant_condition_sources,
+)
 from .murdoku_eval import grounded_dependencies, holds_grounded
 from .murdoku_expression_file import load_expression_board
 from .murdoku_expression_words import ExpressionWords
 from .murdoku_lang import Atom, Name
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
-from .proof import Episode, Inference, Move, episodes, replay
+from .proof import Episode, Inference, Move, episodes, essential, replay
 from .story import Places, Wording, _cap
 
 
@@ -33,7 +41,22 @@ class _Narrator(generic_story.Narrator):
             for person in board.people
             for role in board.roles
         }
-        self.visible.update(self.roles)
+        self.visible = set(board.people) | self.roles.keys()
+        self.mark_sources: dict[str, tuple[CellMark, str]] = {}
+        for mark in board.marks:
+            if mark.occupant_condition is None:
+                continue
+            for region in {board.region_of(square) for square in mark.cells}:
+                sources = occupant_condition_sources(
+                    mark_occupant_name(mark, board.region_names[region])
+                )
+                for source in sources.values():
+                    self.mark_sources[source] = mark, region
+                    self.source_words[source] = say(
+                        f"count.mark_occupant.{mark.occupant_condition}",
+                        mark=say.words.get(mark.name, mark.name.replace("_", " ")),
+                        where=self.places.region(board.region_names[region]),
+                    )
         self.source_variables = {
             constraint.name: {
                 self.model.var_of(literal)
@@ -550,9 +573,20 @@ class _Narrator(generic_story.Narrator):
                     said.append(f"**{self.placed(person, square)}**")
                     self.told.add((person, square))
             elif cells != previous and cells:
-                said.append(
-                    "**" + self.places.describe(person, cells, previous, placing=False) + "**"
-                )
+                line = self.places.common_line(cells)
+                if line is not None and line != self.places.common_line(previous):
+                    where = self.say("in", what=self.places.line(*line))
+                    said.append(
+                        "**"
+                        + self.say("can_only_one", who=person, where=where)
+                        + "**, **"
+                        + self.say("nobody_else")
+                        + "**"
+                    )
+                else:
+                    said.append(
+                        "**" + self.places.describe(person, cells, previous, placing=False) + "**"
+                    )
         role_updates = {
             step.var: step.value if step.asserted else not step.value
             for step in steps
@@ -593,12 +627,93 @@ class _Narrator(generic_story.Narrator):
                 said.extend(f"**{self.placed(variable, False)}**" for variable in excluded)
         return self.say.join(said) if said else None
 
+    def _what_if(self, inference: Inference, history: Sequence[Step]) -> str:
+        step = next(step for step in inference.steps if step.rule == "what_if")
+        broken = next(
+            (self.mark_sources[source] for source in step.sources if source in self.mark_sources),
+            None,
+        )
+        if broken is None or step.var not in self.board.people:
+            return super()._what_if(inference, history)
+        mark, region = broken
+        if mark.occupant_condition != "not_alone":
+            return super()._what_if(inference, history)
+        trial = {person: set(cells) for person, cells in self.options.items()}
+        for inner in step.trail:
+            if inner.var in trial:
+                if inner.asserted:
+                    trial[inner.var] = {inner.value}
+                else:
+                    trial[inner.var].discard(inner.value)
+        occupants = {
+            person
+            for person, cells in trial.items()
+            if cells
+            and all(
+                square in mark.cells and self.board.region_of(square) == region for square in cells
+            )
+        }
+        if (
+            len(occupants) != 1
+            or not all(trial.values())
+            or any(
+                self.board.region_of(square) == region
+                for person, cells in trial.items()
+                if person not in occupants
+                for square in cells
+            )
+        ):
+            return super()._what_if(inference, history)
+        parts: list[str] = []
+        seen: set[tuple[str, Square]] = set()
+        for index in essential(self.model, history, step):
+            inner = step.trail[index]
+            if index and inner.asserted and inner.var in self.board.people:
+                pair = inner.var, inner.value
+                if pair not in seen:
+                    parts.append(
+                        self.say("then_on", who=inner.var, square=self.places.square(inner.value))
+                    )
+                    seen.add(pair)
+        companions = [
+            person
+            for person, cells in self.options.items()
+            if person not in occupants
+            and any(self.board.region_of(square) == region for square in cells)
+        ]
+        if len(companions) == 1:
+            (companion,) = companions
+            elsewhere = {self.board.region_of(square) for square in trial[companion]}
+            if len(elsewhere) == 1:
+                (other_region,) = elsewhere
+                parts.append(
+                    self.say(
+                        "then_in",
+                        who=companion,
+                        where=self.places.region(self.board.region_names[other_region]),
+                    )
+                )
+        parts.append(
+            self.say(
+                "mark_breaks.not_alone",
+                mark=mark.name.replace("_", " "),
+                where=self.places.region(self.board.region_names[region]),
+            )
+        )
+        return self.say(
+            "cannot",
+            who=step.var,
+            squares=self.places.square(step.value),
+            chain=", ".join(parts),
+        )
+
     def pattern(self, inference: Inference, history: Sequence[Step]) -> str:
         move = inference.move
         assert move is not None
         if move.rule == "what_if" and inference.steps[0].var in self.visible:
             paragraph = self._what_if(inference, history)
-            self.conclusion(inference.steps)
+            if conclusion := self.conclusion(inference.steps):
+                paragraph += f" {_cap(self.say('so'))} {conclusion}."
             return paragraph
         conclusion = self.conclusion(inference.steps)
         if conclusion is None:

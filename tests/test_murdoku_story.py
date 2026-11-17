@@ -99,6 +99,33 @@ def test_last_candidate_is_announced_once_before_the_later_assignment():
     assert narrator.conclusion([Step("Ada", last, True, "single", "")]) is None
 
 
+def test_what_if_announces_its_upshot_before_marking_a_placement_told(monkeypatch):
+    board, rules, clues = load_expression_board(TEXT)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = murdoku_story._Narrator(TEXT, board, compilation, numbered=True)
+    first, last = Square(0, 0), Square(0, 1)
+    narrator.options["Ada"] = {first, last}
+    step = Step("Ada", first, False, "what_if", "")
+    move = Move.of("what_if", [step])
+    assert move is not None
+    inference = Inference("what_if", compilation.model, (step,), move)
+    monkeypatch.setattr(narrator, "_what_if", lambda *_args: "The alternative contradicts a clue.")
+    assert narrator.pattern(inference, []) == (
+        "The alternative contradicts a clue. So **Ada on r1c2**."
+    )
+    assert narrator.conclusion([Step("Ada", last, True, "single", "")]) is None
+
+
+def test_new_common_line_is_reserved_instead_of_listing_removed_columns():
+    board, rules, clues = load_expression_board(TEXT)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = murdoku_story._Narrator(TEXT, board, compilation, numbered=True)
+    conclusion = narrator.conclusion(
+        [Step("Ada", Square(1, column), False, "relations", "") for column in range(2)]
+    )
+    assert conclusion == "**Ada can only be in row 1**, **nobody else can be there**"
+
+
 @pytest.mark.parametrize("language", ["en", "nl"])
 @pytest.mark.parametrize("complete", [False, True])
 def test_role_exclusions_are_grouped_only_when_every_other_person_is_known(language, complete):

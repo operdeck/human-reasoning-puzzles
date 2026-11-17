@@ -2542,6 +2542,18 @@ def _auxiliary_variable(model: Model, prefix: str) -> str:
     return name
 
 
+def occupant_condition_sources(name: str) -> dict[str, str]:
+    """Name the proof sources of one conditional occupancy declaration."""
+    return {
+        "impossible": f"{name} cannot be satisfied",
+        "trigger_state": f"{name} trigger state",
+        "trigger": f"{name} trigger count",
+        "condition_state": f"{name} condition state",
+        "count": f"{name} occupant count",
+        "implication": f"{name} applies only when triggered",
+    }
+
+
 def apply_occupant_condition(
     model: Model,
     name: str,
@@ -2556,13 +2568,14 @@ def apply_occupant_condition(
     """
     triggers = tuple(dict.fromkeys(trigger_literals))
     occupants = tuple(dict.fromkeys(occupant_literals))
+    sources = occupant_condition_sources(name)
     # A count above the number of squares can never be met, e.g. in an area that is all blocked.
     allowed = frozenset(n for n in allowed_counts if 0 <= n <= len(occupants))
     if not triggers:
         return
     if not allowed:
         model.constrain(
-            f"{name} cannot be satisfied",
+            sources["impossible"],
             Kind.COUNT,
             triggers,
             allowed_counts={0},
@@ -2574,14 +2587,14 @@ def apply_occupant_condition(
     active = model.literal(trigger_var, True)
     inactive = model.literal(trigger_var, False)
     model.constrain(
-        f"{name} trigger state",
+        sources["trigger_state"],
         Kind.EXACTLY_ONE,
         [active, inactive],
         defines=trigger_var,
         family="conditional occupancy",
     )
     model.constrain(
-        f"{name} trigger count",
+        sources["trigger"],
         Kind.COUNT,
         triggers,
         allowed_counts=range(1, len(triggers) + 1),
@@ -2593,14 +2606,14 @@ def apply_occupant_condition(
     valid = model.literal(condition_var, True)
     invalid = model.literal(condition_var, False)
     model.constrain(
-        f"{name} condition state",
+        sources["condition_state"],
         Kind.EXACTLY_ONE,
         [valid, invalid],
         defines=condition_var,
         family="conditional occupancy",
     )
     model.constrain(
-        f"{name} occupant count",
+        sources["count"],
         Kind.COUNT,
         occupants,
         allowed_counts=allowed,
@@ -2608,7 +2621,7 @@ def apply_occupant_condition(
         family="conditional occupancy",
     )
     model.constrain(
-        f"{name} applies only when triggered",
+        sources["implication"],
         Kind.AT_MOST_ONE,
         [active, invalid],
         family="conditional occupancy",
