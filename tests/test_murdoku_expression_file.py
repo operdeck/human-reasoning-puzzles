@@ -175,9 +175,9 @@ def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
     assert [(clue.text, clue.sources) for clue in ben.clues] == [("A custom sentence!", (1,))]
     assert [clue.sources for clue in result.other] == [(2,)]
     assert clue_paragraphs(text, {1: "A replacement"}, expressions=clues) == [
-        "Ada is not in rows 2.",
+        "Ada is not in row 2.",
         "A replacement.",
-        "(Ada is in rows 1) and (Ben is in columns 1).",
+        "(Ada is in row 1) and (Ben is in column 1).",
     ]
 
 
@@ -189,7 +189,7 @@ def test_expression_figure_clues_merge_generated_predicates_and_preserve_sources
     _, _, clues = load_expression_board(text)
     ben = figure_clues(text, expressions=clues).figures[1]
     assert [(clue.text, clue.sources) for clue in ben.clues] == [
-        ("Ben is in columns 1 and is not in rows 1.", (1, 2))
+        ("Ben is in column 1 and is not in row 1.", (1, 2))
     ]
 
 
@@ -201,7 +201,7 @@ def test_expression_board_notes_include_generated_and_authored_rules():
     _, rules, _ = load_expression_board(text)
     assert board_notes(text, expression_rules=rules) == [
         "Ada stays in the first row!",
-        "Ben is in columns 1.",
+        "Ben is in column 1.",
     ]
 
 
@@ -211,10 +211,8 @@ def test_expression_player_presentation_uses_dutch_wording():
     )
     _, rules, clues = load_expression_board(text)
     entries = figure_clues(text, expressions=clues)
-    assert entries.figures[1].clues[0].text == "Ben is in kolommen 1."
-    assert "Ada is in rijen 1." in murdoku_rules(
-        text, expression_rules=rules, expression_clues=clues
-    )
+    assert entries.figures[1].clues[0].text == "Ben is in kolom 1."
+    assert "Ada is in rij 1." in murdoku_rules(text, expression_rules=rules, expression_clues=clues)
 
 
 def test_expression_figure_name_override_preserves_person_identity():
@@ -223,7 +221,7 @@ def test_expression_figure_name_override_preserves_person_identity():
     entries = figure_clues(text, expressions=clues)
     assert entries.figures[1].person == "Ben"
     assert entries.figures[1].name == "The detective"
-    assert entries.figures[1].clues[0].text == "The detective is in columns 1."
+    assert entries.figures[1].clues[0].text == "The detective is in column 1."
     assert entries.figures[1].clues[0].id == "clue:1"
 
 

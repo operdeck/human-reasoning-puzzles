@@ -33,6 +33,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "name.attribute": "people with attribute {name}",
         "name.rows": "rows {name}",
         "name.columns": "columns {name}",
+        "name.row": "row {name}",
+        "name.column": "column {name}",
         "name.corner": "board corners",
         "op.union": "{left}, {right}",
         "op.except": "{left} except {right}",
@@ -112,6 +114,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "cmp.>=": "at least",
         "atom.one": "{subject} is {relation} {target}",
         "atom.not": "{subject} is not {relation} {target}",
+        "atom.one.standing": "{subject} is {relation} {target}",
+        "atom.not.standing": "{subject} is not {relation} {target}",
+        "atom.one.sitting": "{subject} is {relation} {target}",
+        "atom.not.sitting": "{subject} is not {relation} {target}",
         "adjective.one": "{subject} is {adjective}",
         "det.some": "at least one of {subject}",
         "det.every": "every member of {subject}",
@@ -175,6 +181,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "name.attribute": "personen met eigenschap {name}",
         "name.rows": "rijen {name}",
         "name.columns": "kolommen {name}",
+        "name.row": "rij {name}",
+        "name.column": "kolom {name}",
         "name.corner": "bordhoeken",
         "op.union": "{left}, {right}",
         "op.except": "{left} behalve {right}",
@@ -254,6 +262,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "cmp.>=": "minstens",
         "atom.one": "{subject} is {relation} {target}",
         "atom.not": "{subject} is niet {relation} {target}",
+        "atom.one.standing": "{subject} staat {relation} {target}",
+        "atom.not.standing": "{subject} staat niet {relation} {target}",
+        "atom.one.sitting": "{subject} zit {relation} {target}",
+        "atom.not.sitting": "{subject} zit niet {relation} {target}",
         "adjective.one": "{subject} is {adjective}",
         "det.some": "minstens een van {subject}",
         "det.every": "ieder lid van {subject}",
@@ -441,6 +453,8 @@ class ExpressionWords:
             text = f"{namespace}:{text}"
         kind, _, name = text.partition(":")
         key = "name.object.display" if kind == "object" and name in self.names else f"name.{kind}"
+        if kind in {"rows", "columns"} and name.isdigit() and key not in self.phrases:
+            key = "name.row" if kind == "rows" else "name.column"
         rendered = self.names.get(name, name.replace("_", " "))
         if kind == "area":
             rendered = re.sub(
@@ -450,6 +464,21 @@ class ExpressionWords:
                 flags=re.IGNORECASE,
             )
         return self._phrase(key, name=rendered)
+
+    def _atom_key(
+        self, atom: lang.Atom, bindings: dict[str, Shape], *, negated: bool = False
+    ) -> str:
+        key = "atom.not" if negated else "atom.one"
+        if (
+            key in self.phrases
+            or infer_operand(self.board, atom.subject, bindings).sort is not Sort.PERSON
+        ):
+            return key
+        if atom.operator.text == "beside" or atom.operator.text.startswith("dir:"):
+            return f"{key}.standing"
+        if atom.operator.text == "on":
+            return f"{key}.sitting"
+        return key
 
     def _relation(
         self,
@@ -759,7 +788,7 @@ class ExpressionWords:
                         second=self._operand(target, bindings),
                     )
                 return self._phrase(
-                    "atom.one",
+                    self._atom_key(value, bindings),
                     subject=self._determined(subject, det, bindings),
                     relation=self._relation(op, subject, target, bindings, value.measure),
                     target=self._target(target, value.measure, bindings, op, subject),
@@ -785,7 +814,7 @@ class ExpressionWords:
                     and formula.subject.token.text in self.board.people
                 ):
                     return self._phrase(
-                        "atom.not",
+                        self._atom_key(formula, bindings, negated=True),
                         subject=self._operand(formula.subject, bindings),
                         relation=self._relation(
                             formula.operator,

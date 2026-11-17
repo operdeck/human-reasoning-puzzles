@@ -34,6 +34,27 @@ def test_languages_offer_the_same_keys_and_placeholders():
         assert fields(PHRASES["en"][key]) == fields(PHRASES["nl"][key]), key
 
 
+def test_person_verb_and_single_line_idioms_keep_explicit_phrase_overrides(board):
+    words = ExpressionWords(
+        board,
+        "nl",
+        phrases={
+            "atom.one": "{subject} bevindt zich {relation} {target}",
+            "atom.not": "{subject} bevindt zich niet {relation} {target}",
+            "name.rows": "de rij met nummer {name}",
+        },
+    )
+    assert words.statement(parse_statement("Ada beside object:bed")).startswith(
+        "Ada bevindt zich naast"
+    )
+    assert words.statement(parse_statement("not Ada on object:bed")).startswith(
+        "Ada bevindt zich niet op"
+    )
+    assert words.statement(parse_statement("Ada in rows:1")) == (
+        "Ada bevindt zich in de rij met nummer 1"
+    )
+
+
 @pytest.mark.parametrize("language", ["en", "nl"])
 @pytest.mark.parametrize(
     "source",
@@ -241,7 +262,7 @@ def test_read_language_display_names_and_compositional_overrides(board):
         "Language: nl\nWords:\nAda: de bewaker\nrel.beside: vlak naast\n",
     )
     assert words.statement(parse_statement("Ada beside object:bed")) == (
-        "de bewaker is vlak naast een bed"
+        "de bewaker staat vlak naast een bed"
     )
 
 
@@ -263,9 +284,9 @@ def test_object_target_wording_uses_names_without_changing_set_wording(board):
         ("en", "point_object:lamp", "Ada is on a cell touching the lamp"),
         ("en", "edge_item:window", "Ada is on a cell touching a window"),
         ("en", "mark:red", "Ada is on a cell marked red"),
-        ("nl", "point_object:lamp", "Ada is op een vakje dat de lamp raakt"),
-        ("nl", "edge_item:window", "Ada is op een vakje dat een raam raakt"),
-        ("nl", "mark:red", "Ada is op een vakje met de markering red"),
+        ("nl", "point_object:lamp", "Ada zit op een vakje dat de lamp raakt"),
+        ("nl", "edge_item:window", "Ada zit op een vakje dat een raam raakt"),
+        ("nl", "mark:red", "Ada zit op een vakje met de markering red"),
     ],
 )
 def test_person_locations_describe_feature_footprints_and_repeated_instances(

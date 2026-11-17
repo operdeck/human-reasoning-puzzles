@@ -338,6 +338,9 @@ touching the feature, and marks as marked cells. Place captions may retain their
 preposition (`hall: on Monday` in `Words:` changes the wording, not containment).
 Clues belonging to one figure share a paragraph and retain all source numbers;
 authored sentences keep their wording rather than being shortened into predicates.
+Single numbered rows and columns use singular names. Dutch person-location
+sentences use `staat` for directions and adjacency, and `zit` for `on`;
+explicit `atom.one` and `atom.not` templates still take precedence.
 
 ### Expression clue language
 
