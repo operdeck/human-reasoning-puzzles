@@ -54,7 +54,7 @@ from . import (
 )
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
-from .murdoku_expression_file import load_expression_board
+from .murdoku_expression_file import is_expression_file, load_expression_board
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .puzzlefile import (
     KINDS,
@@ -157,6 +157,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "battleships":
         model, battleships_puzzle = battleships.compile_puzzle(text)
         return Puzzle(kind, model, partial(battleships.render, battleships_puzzle))
+    if is_expression_file(text):
+        expression_board = load_expression_board(text)[0]
+        return Puzzle(kind, _expression_model(text), partial(murdoku.render, expression_board))
     board, clues = load_board(text)
     model = murdoku.compile_puzzle(board, clues)
     global_counts = murdoku.global_count_conditions(board, clues)
@@ -233,7 +236,7 @@ def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) 
 def brute_force(puzzle: Puzzle, text: str, *, expressions: bool = False) -> int:
     """Search for solutions without the engine. Exit code 0 means exactly one."""
     start = time.perf_counter()
-    if expressions:
+    if expressions or (puzzle.kind == "murdoku" and is_expression_file(text)):
         board, rules, clues = load_expression_board(text)
         found = expression_brute.solutions(board, clues, limit=2, rules=rules)
     else:
@@ -308,7 +311,7 @@ def make_image(
     if kind in families:
         parse, draw = families[kind]
         return draw(parse(text), solution, interactive=interactive)
-    if expressions:
+    if expressions or (kind == "murdoku" and is_expression_file(text)):
         board = load_expression_board(text)[0]
         global_counts: Sequence[murdoku.GlobalCountCondition] = ()
     else:
@@ -535,7 +538,7 @@ def _write_booklet(
         return 2
     for listed in listing:
         file, kind, text = listed.path, listed.kind, texts[listed.path]
-        told = expressions and kind == "murdoku"
+        told = kind == "murdoku" and (expressions or is_expression_file(text))
         try:
             model = _expression_model(text) if told else load(text, kind).model
         except ValueError as exc:
@@ -623,12 +626,13 @@ def _export(files: list[Path], out: Path, *, expressions: bool = False) -> int:
     for listed in collection.arrange(kinds, family_names):
         file, kind, text = listed.path, listed.kind, texts[listed.path]
         try:
-            model = _expression_model(text) if expressions else load(text, kind).model
+            told = kind == "murdoku" and (expressions or is_expression_file(text))
+            model = _expression_model(text) if told else load(text, kind).model
             fired = _Fired()
             result = Solver(model.clone()).solve(on_step=fired.append_step)
             if not result.solved:
                 raise ValueError("not solved by the rules")
-            picture = make_image(kind, text, interactive=True, expressions=expressions).to_svg()
+            picture = make_image(kind, text, interactive=True, expressions=told).to_svg()
             fired_rules = [rule for rule, _ in fired.items]
             data = web.bundle(
                 text,
@@ -641,7 +645,7 @@ def _export(files: list[Path], out: Path, *, expressions: bool = False) -> int:
                 not report.beyond_deduction(fired_rules),
                 number=listed.number,
                 section=listed.section,
-                expressions=expressions,
+                expressions=told,
             )
         except ValueError as exc:
             print(f"could not export {file.name}: {exc}", file=sys.stderr)
@@ -876,8 +880,14 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         return 2
     text = path.read_text()
     kind = detect(text) if args.type == "auto" else args.type
+    use_expressions = args.expressions or (kind == "murdoku" and is_expression_file(text))
+    if use_expressions and (args.track_person or args.interactive or args.nosolution):
+        parser.error(
+            f"{path.name} uses the expression grammar, which does not support "
+            "--track-person, --interactive or --nosolution yet"
+        )
     expression_compiled: ExpressionCompilation | None = None
-    if args.expressions:
+    if use_expressions:
         if kind != "murdoku":
             parser.error("--expressions is only available for Murdoku")
         try:
@@ -1032,7 +1042,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                 picture_path,
                 role_statuses=role_statuses,
                 interactive=interactive,
-                expressions=args.expressions,
+                expressions=use_expressions,
             ):
                 return 2
 
@@ -1088,7 +1098,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             for picture_path in picture_paths:
                 solved = picture_path.with_stem(f"{picture_path.stem}-solution")
                 write_picture(
-                    kind, text, solved, result.assignment, roles, expressions=args.expressions
+                    kind, text, solved, result.assignment, roles, expressions=use_expressions
                 )
     elif result.contradiction:
         print(puzzle.draw("Stuck"))

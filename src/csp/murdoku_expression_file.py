@@ -1,6 +1,7 @@
 """Read a Murdoku layout and expression-language rules and clues."""
 
 from dataclasses import fields, is_dataclass
+from functools import lru_cache
 
 from .murdoku import Board
 from .murdoku_lang import RESERVED_IDENTIFIERS, Statement, Token, parse_statement
@@ -105,3 +106,16 @@ def load_expression_board(
     if validate_keys:
         _keyed_clues(rules, clues, references)
     return board, rules, clues
+
+
+@lru_cache(maxsize=256)
+def is_expression_file(text: str) -> bool:
+    """Whether a Murdoku file's clues and rules are written in the expression grammar.
+
+    No legacy clue parses as an expression, so the reader can tell the two apart.
+    """
+    try:
+        load_expression_board(text)
+    except (ValueError, NotImplementedError):
+        return False
+    return True

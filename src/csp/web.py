@@ -20,7 +20,7 @@ from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Board, Clue, Square, global_count_conditions
-from .murdoku_expression_file import load_expression_board
+from .murdoku_expression_file import is_expression_file, load_expression_board
 from .picture import murdoku_key_symbols
 from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
@@ -259,14 +259,16 @@ def bundle(
 def _murdoku(
     text: str, solution: Mapping[str, Any], *, expressions: bool = False
 ) -> dict[str, Any]:
-    if expressions:
+    if expressions or is_expression_file(text):
         board, rule_statements, clue_statements = load_expression_board(text)
         clues: list[Clue] = []
     else:
         board, clues = load_board(text)
         rule_statements, clue_statements = [], []
     presentation = load_presentation(text)
-    entries = figure_clues(text, expressions=clue_statements if expressions else None)
+    entries = figure_clues(
+        text, expressions=clue_statements if (expressions or is_expression_file(text)) else None
+    )
     say = Wording.read(text)
     palette = []
     for entry in entries.figures:
@@ -282,7 +284,7 @@ def _murdoku(
     placed = {str(sq): person for person, sq in solution.items() if isinstance(sq, Square)}
     rules = (
         murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
-        if expressions
+        if (expressions or is_expression_file(text))
         else murdoku_rules(text)
     )
     return {
@@ -331,7 +333,7 @@ def _murdoku(
         "clues": clue_paragraphs(
             text,
             presentation.clue_text,
-            expressions=clue_statements if expressions else None,
+            expressions=clue_statements if (expressions or is_expression_file(text)) else None,
         ),
         "clueEntries": [
             {

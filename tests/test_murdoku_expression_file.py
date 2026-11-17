@@ -1,5 +1,6 @@
 import json
 from dataclasses import fields, is_dataclass
+from pathlib import Path
 from typing import get_args
 
 import pytest
@@ -397,6 +398,20 @@ def test_cli_expression_svg_writes_puzzle_and_solution(tmp_path):
     assert cli.main([str(puzzle), "--expressions", "--svg"]) == 0
     assert (tmp_path / "puzzle.svg").read_text().startswith("<svg")
     assert (tmp_path / "puzzle-solution.svg").exists()
+
+
+def test_expression_files_are_detected_without_a_flag(tmp_path, capsys):
+    from csp.bruteforce import solutions
+    from csp.murdoku_expression_file import is_expression_file
+
+    assert is_expression_file(TEXT)
+    assert not is_expression_file(Path("examples/demo/murdoku_3_house.txt").read_text())
+    assert cli.load(TEXT, "murdoku").model is not None
+    assert len(solutions(TEXT, "murdoku", 2)) == 1
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--explain"]) == 0
+    assert "Ben = r2c1" in capsys.readouterr().out
 
 
 def test_cli_expression_explain_uses_the_generic_story(tmp_path, capsys):
