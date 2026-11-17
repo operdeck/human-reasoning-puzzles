@@ -543,7 +543,7 @@ def test_murdoku_web_key_keeps_text_fallbacks_for_unknown_symbols():
         .read_text()
         .replace("fountain", "unlisted_thing")
         .replace("window: window", "mystery_window: window")
-        .replace("on Cal edge_item:window", "on Cal edge_item:mystery_window")
+        .replace("Cal on edge_item:window", "Cal on edge_item:mystery_window")
     )
     key = web._murdoku(text, {})["key"]
     point = next(item for item in key if item["name"] == "Unlisted thing")

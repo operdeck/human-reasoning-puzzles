@@ -934,25 +934,36 @@ def test_vietnam_avoidance_clues_name_dish_cells_not_occupants(number):
 
 @pytest.mark.parametrize("number", [1, 2, 3])
 def test_vietnam_pork_dish_group_matches_both_travelers_clues(number):
+    from csp import murdoku_lang as lang
+    from csp.murdoku_expression_file import load_expression_board
     from csp.puzzlefile import load_presentation
 
     text = example(f"vietnam-murdoku-{number}.txt").read_text()
-    board, clues = load_board(text)
-    conditions = murdoku.directional_conditions(board, clues, include_rules=False)[:2]
-    pippo, swena = conditions
-    assert [condition.first.name for condition in conditions] == ["Pippo", "Swena"]
-    assert pippo.second == swena.second
-    assert pippo.second.kind == "union"
-    assert {part.name for part in pippo.second.parts} == board.object_names - {"tunnel", "kruk"}
-    assert all(
-        condition.negated
-        and condition.mode == "king"
-        and condition.comparison == "<="
-        and condition.distance == 1
-        for condition in conditions
-    )
+    board, _, clues = load_expression_board(text)
+    targets = []
+    for statement, person in zip(clues[:2], ["Pippo", "Swena"], strict=True):
+        assert isinstance(statement.formula, lang.Negation)
+        condition = statement.formula.formula
+        assert isinstance(condition, lang.Atom)
+        assert isinstance(condition.subject, lang.Name)
+        assert condition.subject.token.text == person
+        assert condition.operator.text == "dir:king"
+        assert condition.measure is not None
+        assert condition.measure.comparison.text == "<="
+        assert condition.measure.value.text == "1"
+        assert isinstance(condition.target, lang.Union)
+        assert all(isinstance(item, lang.Name) for item in condition.target.items)
+        targets.append(
+            [
+                item.token.text.removeprefix("object:")
+                for item in condition.target.items
+                if isinstance(item, lang.Name)
+            ]
+        )
+    assert targets[0] == targets[1]
+    assert set(targets[0]) == board.object_names - {"tunnel", "kruk"}
     say = Wording.read(text)
-    dishes = [say.words[part.name].removeprefix("de ") for part in pippo.second.parts]
+    dishes = [say.words[name].removeprefix("de ") for name in targets[0]]
     intro = " ".join(load_presentation(text).intro)
     assert (
         f"De varkensvleesgerechten op het bord (soms met orgaanvlees) zijn {say.join(dishes)}."
@@ -1352,7 +1363,7 @@ Dee
 
 def test_tamagotchi_combines_necessary_marks_and_narrates_the_case():
     text = example("tamagotchi-murdoku-9x9.txt").read_text()
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     solutions = bruteforce.solutions(text, "murdoku", limit=2)
     assert len(solutions) == 1
     solution = solutions[0]
