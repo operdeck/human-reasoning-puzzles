@@ -10,7 +10,9 @@ Queens and Star Battle to Zebra grids and custom Murdoku mystery series. An expl
 constraint engine powers the solver, which solves the way a person would, with named
 deduction rules rather than search; Puzzle Lab helps create and validate new
 puzzles from seeds and specifications, while dedicated Murdoku tools turn loose
-clues and board sketches into original mysteries.
+clues and board sketches into original mysteries. A powerful
+[Murdoku clue language](#a-murdoku-clue-language-that-says-what-you-mean) expresses
+complex relations between people, areas and objects.
 
 **For players:** [Murdoku](https://operdeck.github.io/human-reasoning-puzzles/murdoku/), Sudoku, Queens, Kakuro,
 Akari and more run in the browser, with notes and auto-marking. **For developers:** a
@@ -83,6 +85,28 @@ water waves, unspecified `?` segments, single-cell circles, rounded ends, and
 square middles. All five need the fleet rules, not just row and column arithmetic.
 Generate another original board with
 `uv run puzzle-lab fresh battleships --size 6 --tier medium --seed 136 --output /tmp/fleet.txt`.
+
+## A Murdoku clue language that says what you mean
+
+Murdoku clues are written in a small, typed expression language rather than a
+fixed list of clue shapes. Sets of people, areas, rows, objects and marks
+combine freely, so a clue can chain several relations. Every clue is parsed,
+type-checked and checked by an independent brute force, and the solver explains it
+in plain words.
+
+> The person on a horse stands in an area next to the area of whoever is on the
+> traveller square.
+
+```
+some (people on object:horse) in (areas touches (area of (people on mark:traveller)))
+```
+
+Read it inside out: `people on mark:traveller` is whoever stands on the
+traveller square, `area of …` is the area they are in, `areas touches …` are the
+areas sharing a side with it, and the outer `in` asks that the horse rider is in
+one of them. Counting, quantifiers (`every ?a in tag:crime_scene: some role:murderer in ?a`),
+roles, directions and arithmetic combine the same way; see
+[Model and puzzle formats](docs/model-and-puzzle-formats.md#murdoku).
 
 ## A first Murdoku case
 
