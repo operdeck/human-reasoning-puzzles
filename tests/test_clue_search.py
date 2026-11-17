@@ -40,7 +40,7 @@ def test_outcome_reports_unique_solution_and_grade():
 
 @pytest.mark.skipif("fork" not in multiprocessing.get_all_start_methods(), reason="fork-only stubs")
 def test_outcome_times_each_solver_separately_and_preserves_a_completed_count(monkeypatch):
-    def solutions(_text, _limit):
+    def solutions(_board, _clues, _limit, *, rules=()):
         time.sleep(0.6)
         return [{}]
 
@@ -48,16 +48,17 @@ def test_outcome_times_each_solver_separately_and_preserves_a_completed_count(mo
         time.sleep(0.6)
         return "count", None
 
-    monkeypatch.setattr(clue_search.brute, "solutions", solutions)
+    text = "Size: 1\nRegions:\na: room\nGrid:\na\nPeople:\nAda\nClues:\n"
+    monkeypatch.setattr(clue_search.expression_brute, "solutions", solutions)
     monkeypatch.setattr(clue_search, "_measure", grade)
-    assert clue_search.outcome("", timeout=1) == clue_search.Outcome(1, "count")
+    assert clue_search.outcome(text, timeout=1) == clue_search.Outcome(1, "count")
 
     def slow_grade(_text, _late_person):
         time.sleep(2)
         return "count", None
 
     monkeypatch.setattr(clue_search, "_measure", slow_grade)
-    assert clue_search.outcome("", timeout=1) == clue_search.Outcome(1, None)
+    assert clue_search.outcome(text, timeout=1) == clue_search.Outcome(1, None)
 
 
 def test_outcome_checks_that_the_late_figure_is_resolved_last():
@@ -259,11 +260,12 @@ def test_sample_never_hides_a_second_solution():
         assert (len(murdoku_expr.sample(board, clues, 40, rules=rules)) > 1) == several
 
 
-def test_mentions_counts_each_person_once_per_clue():
+@pytest.mark.parametrize("expressions", [False, True])
+def test_mentions_counts_each_person_once_per_clue(expressions):
     counts = clue_search._mentions(
         ["Ada", "Ben", "Cy"],
         ["Ada dir:left Ben", "Ada beside object:Ada_bench | Ada sits", "Ben on object:bed"],
-        expressions=True,
+        expressions=expressions,
     )
     assert counts == {"Ada": 2, "Ben": 2, "Cy": 0}
 

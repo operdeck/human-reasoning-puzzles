@@ -288,6 +288,8 @@ Clues:
 
 
 def test_clue_search_only_generates_parseable_canonical_clues():
+    from csp.murdoku_lang import format_statement, holds, parse_statement
+
     text = """Size: 3
 Regions:
 a: west
@@ -303,10 +305,12 @@ Ben
     board, _ = load_board(text)
     placement = {"Ada": Square(0, 0), "Ben": Square(1, 2)}
     candidates = clue_search.candidate_clues(board, placement)
-    parsed = [parse_clue_line(clue) for clue in candidates]
-    assert ("in", ["Ada", "area:west"]) in parsed
-    assert ("dir", ["Ada", "Ben", "left"]) in parsed
-    assert ("dir", ["Ada", "Ben", "areas", ">=", "1"]) in parsed
+    parsed = [parse_statement(clue) for clue in candidates]
+    assert {format_statement(statement) for statement in parsed} == set(candidates)
+    assert all(holds(statement, board, placement, {}) for statement in parsed)
+    assert "Ada in area:west" in candidates
+    assert "Ada dir:left Ben" in candidates
+    assert "Ada dir:areas Ben >= 1" in candidates
     assert all(
         not clue.startswith(("in_region", "left_of", "same_region", "same ", "not same"))
         for clue in candidates
@@ -328,7 +332,7 @@ Ben
     board, _ = load_board(text)
     placement = {"Ada": Square(0, 0), "Ben": Square(1, 1)}
     candidates = clue_search.candidate_clues(board, placement)
-    assert "dir Ada Ben areas = 0" in candidates
+    assert "Ada dir:areas Ben = 0" in candidates
     assert not any(clue.startswith(("same ", "not same ")) for clue in candidates)
 
 

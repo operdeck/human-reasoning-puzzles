@@ -416,20 +416,21 @@ def test_expression_mentions_use_ast_instead_of_wording_or_token_positions():
     assert clue_search._unnamed(["Ada", "Ben"], clues[:1], (), expressions=True) == ["Ben"]
 
 
-def test_expression_authoring_cli_thin(tmp_path, capsys):
+@pytest.mark.parametrize("flag", [[], ["--expressions"]])
+def test_expression_authoring_cli_thin(tmp_path, capsys, flag):
     text = TEXT.replace(
         "  Ben in columns:1 | Ben is in the first column.",
         "  Ben in columns:1 | Ben is in the first column.\n  Ben in rows:2",
     )
-    text += "Key:\nclue: Ben in columns:1\n"
+    text += "Key:\nclue: Ben in (columns:1)\n"
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(text)
-    assert clue_search.main(["thin", str(puzzle), "--expressions"]) == 0
+    assert clue_search.main(["thin", str(puzzle), *flag]) == 0
     result = capsys.readouterr().out
     assert "dropped 2: Ben in rows:2" in result
     assert "result: unique, grade single" in result
     assert "Ben in columns:1 | Ben is in the first column." in result
-    assert clue_search.main(["report", str(puzzle), "--expressions"]) == 0
+    assert clue_search.main(["report", str(puzzle), *flag]) == 0
     assert "required by Key; current puzzle: unique" in capsys.readouterr().out
 
 
