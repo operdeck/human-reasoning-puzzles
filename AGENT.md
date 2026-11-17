@@ -101,7 +101,7 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   Python test on 3.12 and 3.13, plus all web checks, on every pull request.
   Each Python version uses four deterministic `--shard=INDEX/4` partitions,
   including the `solutions` and `booklet` cases; their union is the full suite.
-  CI prints slow-test timings and stack traces for tests taking over three minutes.
+  CI prints per-test outcomes and slow-test timings.
   Local LLM-based checks that cannot run in CI, such as independent review of
   booklet or web output, may take longer but must be split into reviewable pieces.
   Run an exhaustive suite locally when an enhancement could affect puzzle

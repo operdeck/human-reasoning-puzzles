@@ -1,4 +1,4 @@
-"""Independent search for Murdoku boards with expression-language statements."""
+"""Independent minimum-remaining-values search checked by the reference evaluator."""
 
 from collections.abc import Iterator, Sequence
 from dataclasses import fields, is_dataclass
@@ -35,31 +35,72 @@ def _placements(
         if (dependencies := grounded_dependencies(board, statement)) is not None
     ]
 
-    due: list[list[tuple[Statement, frozenset[str]]]] = []
-    for index, person in enumerate(order):
-        seen = set(order[: index + 1])
-        due.append([(s, d) for s, d in grounded if person in d and d <= seen])
+    unary = {
+        person: [statement for statement, dependencies in grounded if dependencies == {person}]
+        for person in order
+    }
+    domains = {
+        person: [
+            square
+            for square in ((fixed[person],) if person in fixed else board.free)
+            if all(
+                holds_grounded(statement, board, {person: square}, frozenset({person}))
+                for statement in unary[person]
+            )
+        ]
+        for person in order
+    }
+    linked = {
+        person: [
+            (statement, deps) for statement, deps in grounded if person in deps and len(deps) > 1
+        ]
+        for person in order
+    }
 
-    def search(index: int, rows: set[int], columns: set[int]) -> Iterator[dict[str, Square]]:
+    def search(
+        remaining: Sequence[str], rows: set[int], columns: set[int]
+    ) -> Iterator[dict[str, Square]]:
         if budget is not None:
             budget[0] -= 1
             if budget[0] < 0:
                 return
-        if index == len(order):
+        if not remaining:
             yield dict(placed)
             return
-        person = order[index]
-        for square in (fixed[person],) if person in fixed else board.free:
-            if square.row not in rows and square.col not in columns:
+        choices: list[Square] | None = None
+        chosen = remaining[0]
+        for person in remaining:
+            due = [
+                (statement, deps)
+                for statement, deps in linked[person]
+                if deps <= placed.keys() | {person}
+            ]
+            candidates = []
+            for square in domains[person]:
+                if square.row in rows or square.col in columns:
+                    continue
                 placed[person] = square
                 if all(
                     holds_grounded(statement, board, placed, dependencies)
-                    for statement, dependencies in due[index]
+                    for statement, dependencies in due
                 ):
-                    yield from search(index + 1, rows | {square.row}, columns | {square.col})
+                    candidates.append(square)
                 del placed[person]
+            if not candidates:
+                return
+            if choices is None or len(candidates) < len(choices):
+                chosen, choices = person, candidates
+        assert choices is not None
+        for square in choices:
+            placed[chosen] = square
+            yield from search(
+                [person for person in remaining if person != chosen],
+                rows | {square.row},
+                columns | {square.col},
+            )
+            del placed[chosen]
 
-    yield from search(0, set(), set())
+    yield from search(order, set(), set())
 
 
 def _roles(board: Board, placed: dict[str, Square]) -> Iterator[dict[tuple[str, str], bool]]:

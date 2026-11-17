@@ -32,6 +32,35 @@ def test_search_returns_expected_placements():
     ]
 
 
+def test_search_uses_constrained_people_before_an_unrestricted_person():
+    board = Board(
+        size=4,
+        regions=[["a"] * 4 for _ in range(4)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben", "Cleo", "Dee"],
+    )
+    statements = [
+        parse_statement(f"{person} in {axis}:{index}")
+        for index, person in enumerate(board.people[1:], 1)
+        for axis in ("rows", "columns")
+    ]
+    checks = murdoku_expr._checks(board, statements, ())
+    results = murdoku_expr._solutions(board, checks, 2, board.people, {}, [5])
+    assert results == [
+        {"Ada": Square(3, 3), "Ben": Square(0, 0), "Cleo": Square(1, 1), "Dee": Square(2, 2)}
+    ]
+
+
+def test_reordered_sampling_preserves_fixed_branches_and_distinct_solutions():
+    board = _board(roles=True)
+    statements = [parse_statement("Ben in rows:1")]
+    expected = {tuple(sorted(result.items())) for result in solutions(board, statements, limit=20)}
+    sampled = murdoku_expr.sample(board, statements, limit=20)
+    assert len(sampled) == len(expected)
+    assert {tuple(sorted(result.items())) for result in sampled} == expected
+
+
 @pytest.mark.parametrize(
     "source",
     [
