@@ -1,3 +1,4 @@
+import json
 from dataclasses import fields, is_dataclass
 from typing import get_args
 
@@ -385,7 +386,7 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
     with pytest.raises(SystemExit) as error:
-        cli.main([str(puzzle), "--expressions", "--export", str(tmp_path)])
+        cli.main([str(puzzle), "--expressions", "--docx"])
     assert error.value.code == 2
     assert "--expressions currently supports only" in capsys.readouterr().err
 
@@ -621,3 +622,13 @@ def test_expression_suggestion_construct_inventory_tracks_public_ast():
     candidates = clue_search.expression_candidate_clues(board, placement, kinds=["line", "dir"])
     emitted = set().union(*(node_names(clue.formula) for clue in candidates))
     assert offered <= emitted
+
+
+def test_cli_expression_export_writes_a_playable_bundle(tmp_path):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    out = tmp_path / "web"
+    assert cli.main([str(puzzle), "--expressions", "--export", str(out)]) == 0
+    bundle = json.loads((out / "puzzle.json").read_text())
+    assert bundle["playable"] and bundle["solution"]["r2c1"] == "Ben"
+    assert bundle["clueEntries"] and all(e["sources"] for e in bundle["clueEntries"])

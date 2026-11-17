@@ -579,7 +579,12 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
     return 0
 
 
-def _export(files: list[Path], out: Path) -> int:
+def _expression_model(text: str) -> Model:
+    board, rules, clues = load_expression_board(text)
+    return compile_statements_with_origins(board, clues, rules=rules).model
+
+
+def _export(files: list[Path], out: Path, *, expressions: bool = False) -> int:
     """Write a browser bundle and interactive board per puzzle, and `index.json`, to `out`."""
     if importlib.util.find_spec("fontTools") is None:
         print("--export needs the picture extras: uv sync --extra svg", file=sys.stderr)
@@ -604,12 +609,12 @@ def _export(files: list[Path], out: Path) -> int:
     for listed in collection.arrange(kinds, family_names):
         file, kind, text = listed.path, listed.kind, texts[listed.path]
         try:
-            model = load(text, kind).model
+            model = _expression_model(text) if expressions else load(text, kind).model
             fired = _Fired()
             result = Solver(model.clone()).solve(on_step=fired.append_step)
             if not result.solved:
                 raise ValueError("not solved by the rules")
-            picture = make_image(kind, text, interactive=True).to_svg()
+            picture = make_image(kind, text, interactive=True, expressions=expressions).to_svg()
             fired_rules = [rule for rule, _ in fired.items]
             data = web.bundle(
                 text,
@@ -622,6 +627,7 @@ def _export(files: list[Path], out: Path) -> int:
                 not report.beyond_deduction(fired_rules),
                 number=listed.number,
                 section=listed.section,
+                expressions=expressions,
             )
         except ValueError as exc:
             print(f"could not export {file.name}: {exc}", file=sys.stderr)
@@ -783,16 +789,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
-    if args.expressions and (
-        args.track_person
-        or args.interactive
-        or args.nosolution
-        or args.export is not None
-        or booklets
-    ):
+    if args.expressions and (args.track_person or args.interactive or args.nosolution or booklets):
         parser.error(
             "--expressions currently supports only normal solves (with --verbose, --step, "
-            "--explain, --svg or --png), "
+            "--explain, --svg, --png or --export), "
             "--show-model, --grade, "
             "--brute-force, --lint and --require-forward"
         )
@@ -825,7 +825,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.interactive and args.svg is None:
         parser.error("--interactive needs --svg")
     if args.export is not None:
-        return _export(paths, args.export)
+        return _export(paths, args.export, expressions=args.expressions)
     if booklets:
         return max(
             _booklet(paths, value, suffix, solve=not args.nosolution) for value, suffix in booklets

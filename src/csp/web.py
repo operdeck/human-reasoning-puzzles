@@ -20,6 +20,7 @@ from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Board, Clue, Square, global_count_conditions
+from .murdoku_expression_file import load_expression_board
 from .picture import murdoku_key_symbols
 from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
@@ -227,6 +228,7 @@ def bundle(
     *,
     number: int = 0,
     section: str = "",
+    expressions: bool = False,
 ) -> dict[str, Any]:
     """The JSON-ready bundle of one puzzle; `model` is compiled but not yet solved.
 
@@ -248,16 +250,23 @@ def bundle(
         "license": LICENSE,
     }
     if kind == "murdoku":
-        out |= _murdoku(text, solution)
+        out |= _murdoku(text, solution, expressions=expressions)
     else:
         out |= _family(text, kind, model, solution, picture)
     return out
 
 
-def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
-    board, clues = load_board(text)
+def _murdoku(
+    text: str, solution: Mapping[str, Any], *, expressions: bool = False
+) -> dict[str, Any]:
+    if expressions:
+        board, rule_statements, clue_statements = load_expression_board(text)
+        clues: list[Clue] = []
+    else:
+        board, clues = load_board(text)
+        rule_statements, clue_statements = [], []
     presentation = load_presentation(text)
-    entries = figure_clues(text)
+    entries = figure_clues(text, expressions=clue_statements if expressions else None)
     say = Wording.read(text)
     palette = []
     for entry in entries.figures:
@@ -271,7 +280,11 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
             item["svg"] = picture
         palette.append(item)
     placed = {str(sq): person for person, sq in solution.items() if isinstance(sq, Square)}
-    rules = murdoku_rules(text)
+    rules = (
+        murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
+        if expressions
+        else murdoku_rules(text)
+    )
     return {
         "language": language_of(text),
         "size": [board.size, board.size],
@@ -315,7 +328,11 @@ def _murdoku(text: str, solution: Mapping[str, Any]) -> dict[str, Any]:
         },
         "combineExtras": True,
         "rules": rules,
-        "clues": clue_paragraphs(text, presentation.clue_text),
+        "clues": clue_paragraphs(
+            text,
+            presentation.clue_text,
+            expressions=clue_statements if expressions else None,
+        ),
         "clueEntries": [
             {
                 "id": clue.id,
