@@ -25,7 +25,7 @@ pastel fills, no two touching cages alike, and their target in the corner.
 
 import math
 import textwrap
-from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -143,6 +143,7 @@ def murdoku_picture(
     *,
     role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
     global_counts: Sequence[GlobalCountCondition] = (),
+    count_scope: Collection[Square] = (),
     cell: int = 120,
     coordinates: bool = True,
     legend: bool = True,
@@ -223,12 +224,15 @@ def murdoku_picture(
     # already part of a mark carries that mark's own cue, so ring scope only the
     # unmarked squares it counts (avoids a second, misleading ring).
     marked = {square for mark in board.marks for square in mark.cells}
-    count_scope = {
-        square
-        for condition in global_counts
-        if condition.object_scope
-        for square in condition.scope_cells(board)
-    } - marked
+    count_scope = (
+        set(count_scope)
+        | {
+            square
+            for condition in global_counts
+            if condition.object_scope
+            for square in condition.scope_cells(board)
+        }
+    ) - marked
     for r in range(board.size):
         for c in range(board.size):
             sq = Square(r, c)

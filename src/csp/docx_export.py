@@ -14,6 +14,7 @@ from typing import Any
 
 from . import icons, murdoku, picture
 from .murdoku_expression_file import load_expression_board
+from .murdoku_lower import object_count_scope
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
     CluePresentation,
@@ -69,8 +70,10 @@ def _picture_stream(
 ) -> tuple[io.BytesIO, float]:
     """The board picture and its height/width ratio; `backdrop=False` leaves the
     backdrop out, for pages too full to give it room."""
+    count_scope: set[murdoku.Square] = set()
     if expressions:
-        board = load_expression_board(text)[0]
+        board, rules, statements = load_expression_board(text)
+        count_scope = object_count_scope(board, [*rules, *statements])
         clues: list[Any] = []
     else:
         board, clues = load_board(text)
@@ -87,6 +90,7 @@ def _picture_stream(
         language=language_of(text),
         area_tags=False,
         global_counts=murdoku.global_count_conditions(board, clues),
+        count_scope=count_scope,
         count_lines=False,
         names=Wording.read(text).words,
     )

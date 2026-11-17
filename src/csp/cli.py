@@ -55,7 +55,11 @@ from . import (
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
 from .murdoku_expression_file import is_expression_file, load_expression_board
-from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
+from .murdoku_lower import (
+    ExpressionCompilation,
+    compile_statements_with_origins,
+    object_count_scope,
+)
 from .puzzlefile import (
     KINDS,
     detect,
@@ -312,8 +316,10 @@ def make_image(
     if kind in families:
         parse, draw = families[kind]
         return draw(parse(text), solution, interactive=interactive)
+    count_scope: set[murdoku.Square] = set()
     if expressions or (kind == "murdoku" and is_expression_file(text)):
-        board = load_expression_board(text)[0]
+        board, rules, statements = load_expression_board(text)
+        count_scope = object_count_scope(board, [*rules, *statements])
         global_counts: Sequence[murdoku.GlobalCountCondition] = ()
     else:
         board, clues = load_board(text)
@@ -325,6 +331,7 @@ def make_image(
         solution,
         role_statuses=role_statuses,
         global_counts=global_counts,
+        count_scope=count_scope,
         interactive=interactive,
         language=language_of(text),
         names=story.Wording.read(text).words,
@@ -826,13 +833,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
-    if args.expressions and (args.track_person or args.interactive or args.nosolution):
-        parser.error(
-            "--expressions currently supports only normal solves (with --verbose, --step, "
-            "--explain, --svg, --png, --export, --docx or --pdf), "
-            "--show-model, --grade, "
-            "--brute-force, --lint and --require-forward"
-        )
     if args.nosolution:
         conflicts = (
             ("--export", args.export is not None),
@@ -900,11 +900,6 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
     text = path.read_text()
     kind = detect(text) if args.type == "auto" else args.type
     use_expressions = args.expressions or (kind == "murdoku" and is_expression_file(text))
-    if use_expressions and (args.track_person or args.interactive or args.nosolution):
-        parser.error(
-            f"{path.name} uses the expression grammar, which does not support "
-            "--track-person, --interactive or --nosolution yet"
-        )
     expression_compiled: ExpressionCompilation | None = None
     if use_expressions:
         if kind != "murdoku":

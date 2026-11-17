@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, is_dataclass, replace
 from itertools import permutations
 from typing import Literal
 
@@ -108,6 +108,49 @@ class ExpressionCompilation:
 
         follow(step)
         return tuple(origin for origin in self.origins if origin in selected)
+
+
+def object_count_scope(board: Board, statements: Sequence[lang.Statement]) -> set[Square]:
+    """Static object footprints counted by statements, for subtle picture outlines."""
+    scope: set[Square] = set()
+
+    def object_target(operand: lang.Operand) -> bool:
+        if isinstance(operand, lang.Name):
+            return operand.token.text == "objects" or operand.token.text.partition(":")[0] in {
+                "object",
+                "object_kind",
+                "edge_item",
+                "point_object",
+            }
+        if isinstance(operand, lang.Union):
+            return object_target(operand.items[0]) and all(
+                (isinstance(item, lang.Name) and ":" not in item.token.text) or object_target(item)
+                for item in operand.items[1:]
+            )
+        if isinstance(operand, lang.Difference):
+            return object_target(operand.left)
+        return False
+
+    def visit(value: object, counted: bool = False) -> None:
+        if isinstance(value, lang.Count):
+            visit(value.operand, True)
+        elif isinstance(value, lang.Filter):
+            if counted and value.operator.text in {"in", "on"} and object_target(value.target):
+                cells = _static_cells(board, value.target)
+                if cells is not None:
+                    scope.update(cells & set(board.free))
+            visit(value.source, counted)
+            visit(value.target)
+        elif isinstance(value, tuple):
+            for item in value:
+                visit(item, counted)
+        elif is_dataclass(value) and not isinstance(value, lang.Token):
+            for field in fields(value):
+                visit(getattr(value, field.name), counted)
+
+    for statement in statements:
+        visit(statement.formula)
+    return scope
 
 
 class _EmptyScopes(dict[Square | str, int]):

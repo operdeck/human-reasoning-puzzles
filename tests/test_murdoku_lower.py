@@ -10,6 +10,7 @@ from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import (
     compile_statements,
     compile_statements_with_origins,
+    object_count_scope,
     try_lower_area_companions,
     try_lower_count,
     try_lower_location,
@@ -39,6 +40,31 @@ def board():
         ],
         roles=[RoleSpec("guard", frozenset({0, 1, 2}))],
     )
+
+
+@pytest.mark.parametrize(
+    ("formula", "expected"),
+    [
+        ("count people on object:bed = 1", {Square(2, 0)}),
+        ("count people on object_kind:standable = 1", {Square(2, 0)}),
+        ("count people on objects = 1", {Square(2, 0)}),
+        ("count (empty free cells on object:bed) = 0", {Square(2, 0)}),
+        ("count people on object:bed = 1 and count empty areas = 1", {Square(2, 0)}),
+        ("count people in area:garden = 1", set()),
+        ("count people on mark:red = 1", set()),
+        ("some people on object:bed", set()),
+        ("count people in rows:1 = 1", set()),
+    ],
+)
+def test_object_count_scope_comes_from_counted_ast_not_other_clues(board, formula, expected):
+    assert object_count_scope(board, [parse_statement(formula)]) == expected
+
+
+def test_object_count_scope_ignores_blocking_object_cells(board):
+    board = replace(
+        board, objects=[*board.objects, BoardObject("wall", "blocking", (Square(0, 0),))]
+    )
+    assert object_count_scope(board, [parse_statement("count people on object:wall = 0")]) == set()
 
 
 def _assert_matches_reference(board, formula, lower, *, solve=False):

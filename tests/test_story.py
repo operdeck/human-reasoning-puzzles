@@ -97,6 +97,7 @@ ALLOWED = {
         "icons",
         "murdoku",
         "murdoku_expression_file",
+        "murdoku_lower",
         "picture",
         "puzzlefile",
         "story",
@@ -2225,19 +2226,11 @@ def test_murdoku_key_uses_the_words_aliases():
 
 
 def test_only_object_counts_get_a_dashed_scope_ring():
-    board, clues = load_board(example("murdoku_composition.txt").read_text())
-    conditions = murdoku.global_count_conditions(board, clues)
-    assert [condition.object_scope for condition in conditions] == [
-        True,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-    ]
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import object_count_scope
+
+    board, rules, clues = load_expression_board(example("murdoku_composition.txt").read_text())
+    assert object_count_scope(board, [*rules, *clues]) == board.squares_of(["bench"])
 
 
 @pytest.mark.parametrize(

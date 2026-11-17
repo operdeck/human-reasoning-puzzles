@@ -383,13 +383,28 @@ def test_cli_expression_model_preview_groups_source_statements(tmp_path, capsys)
     assert "constraints" in result and "relations" in result
 
 
-def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path, capsys):
+@pytest.mark.parametrize("flag", [[], ["--expressions"]])
+def test_cli_expression_nosolution_never_solves_or_overwrites_solution(tmp_path, monkeypatch, flag):
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
-    with pytest.raises(SystemExit) as error:
-        cli.main([str(puzzle), "--expressions", "--nosolution"])
-    assert error.value.code == 2
-    assert "--expressions currently supports only" in capsys.readouterr().err
+    solution = tmp_path / "puzzle-solution.svg"
+    solution.write_text("keep this solution")
+
+    def no_solving(*args, **kwargs):
+        pytest.fail("--nosolution must not run the solver")
+
+    monkeypatch.setattr(Solver, "solve", no_solving)
+    assert cli.main([str(puzzle), *flag, "--nosolution", "--svg"]) == 0
+    assert (tmp_path / "puzzle.svg").read_text().startswith("<svg")
+    assert solution.read_text() == "keep this solution"
+
+
+def test_cli_expression_interactive_board_has_clickable_cells(tmp_path):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--interactive", "--svg"]) == 0
+    assert 'id="r1c1"' in puzzle.with_suffix(".svg").read_text()
+    assert not (tmp_path / "puzzle-solution.svg").exists()
 
 
 def test_cli_expression_svg_writes_puzzle_and_solution(tmp_path):
@@ -492,13 +507,49 @@ def test_cli_expression_require_forward(tmp_path, capsys):
     assert "does not solve using forward rules" in capsys.readouterr().err
 
 
-def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsys):
+def test_expression_authoring_cli_eases_using_the_expression_reader(tmp_path, capsys):
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
-    with pytest.raises(SystemExit) as error:
-        clue_search.main(["ease", str(puzzle), "--expressions"])
-    assert error.value.code == 2
-    assert "--expressions is supported only by report, thin and suggest" in capsys.readouterr().err
+    assert (
+        clue_search.main(
+            [
+                "ease",
+                str(puzzle),
+                "--expressions",
+                "--solution",
+                "Ada=r1c2 Ben=r2c1",
+                "--max-grade",
+                "single",
+            ]
+        )
+        == 0
+    )
+    assert "start: unique, grade single" in capsys.readouterr().out
+
+
+def test_expression_count_scopes_reach_cli_and_booklet_pictures(monkeypatch):
+    from csp import docx_export, picture
+
+    text = (
+        TEXT.replace(
+            "  Ben in columns:1 | Ben is in the first column.",
+            "  count people on object:bed = 1",
+        )
+        + "Objects:\nbed: standable r1c2\n"
+    )
+    original = picture.murdoku_picture
+    calls = []
+
+    def capture(*args, **kwargs):
+        calls.append(kwargs["count_scope"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(picture, "murdoku_picture", capture)
+    assert "stroke-dasharray" in cli.make_image("murdoku", text).to_svg()
+    stream, aspect = docx_export._picture_stream(text, None, None, expressions=True)
+    assert stream.getvalue().startswith(b"\x89PNG")
+    assert aspect > 0
+    assert calls == [{Square(0, 1)}, {Square(0, 1)}]
 
 
 def test_expression_suggest_closes_puzzle_and_cli_uses_expression_syntax(tmp_path, capsys):

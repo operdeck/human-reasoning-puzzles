@@ -1032,7 +1032,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--expressions",
         action="store_true",
-        help="report, thin, suggest: read the developing expression language",
+        help="read clues and rules with the expression grammar",
     )
     parser.add_argument("--keep", type=int, nargs="*", default=[], help="thin: clue numbers")
     parser.add_argument("--max-grade", choices=GRADES, help="thin, ease: hardest grade allowed")

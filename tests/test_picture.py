@@ -1785,15 +1785,15 @@ def test_the_legend_does_not_explain_the_count_ring():
 
 
 def test_only_object_counts_have_a_scope_ring():
-    from csp import murdoku
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import object_count_scope
 
     text = example("wie-doet-het-met-wie-1.txt").read_text()
-    board, clues = load_board(text)
-    counts = murdoku.global_count_conditions(board, clues)
-    assert any(condition.object_scope for condition in counts)
+    board, rules, clues = load_expression_board(text)
+    assert object_count_scope(board, [*rules, *clues])
 
-    plain = load_board(example("samen-in-japan.txt").read_text())
-    assert not any(condition.object_scope for condition in murdoku.global_count_conditions(*plain))
+    board, rules, clues = load_expression_board(example("samen-in-japan.txt").read_text())
+    assert not object_count_scope(board, [*rules, *clues])
 
 
 def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
