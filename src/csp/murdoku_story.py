@@ -7,8 +7,10 @@ from typing import Any
 from . import generic_story
 from .core import Constraint, Kind, Model, Solver, Step
 from .murdoku import POPULATION_FAMILY, Board, Square, board_rules
+from .murdoku_eval import grounded_dependencies, holds_grounded
 from .murdoku_expression_file import load_expression_board
 from .murdoku_expression_words import ExpressionWords
+from .murdoku_lang import Atom, Name
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .proof import Episode, Inference, Move, episodes, replay
 from .story import Places, Wording, _cap
@@ -19,6 +21,8 @@ class _Narrator(generic_story.Narrator):
         self, text: str, board: Board, compilation: ExpressionCompilation, numbered: bool
     ) -> None:
         say = Wording.read(text).for_people(board.people)
+        if not numbered:
+            say = say.unnumbered()
         super().__init__(compilation.model, say)
         self.board = board
         self.compilation = compilation
@@ -30,6 +34,28 @@ class _Narrator(generic_story.Narrator):
             for role in board.roles
         }
         self.visible.update(self.roles)
+        self.source_variables = {
+            constraint.name: {
+                self.model.var_of(literal)
+                for literal in (
+                    *constraint.literals,
+                    *((constraint.reified_by,) if constraint.reified_by is not None else ()),
+                )
+            }
+            for constraint in self.model.constraints
+        }
+        self.source_variables.update(
+            {relation.name: set(relation.variables) for relation in self.model.relations}
+        )
+        if not numbered:
+            for specification in board.roles:
+                if specification.eligible_people is None:
+                    continue
+                for person in board.people:
+                    if person not in specification.eligible_people:
+                        self.told.add((board.role_variable(person, specification.name), False))
+                    elif specification.allowed_counts == {len(specification.eligible_people)}:
+                        self.told.add((board.role_variable(person, specification.name), True))
         words = ExpressionWords.read(board, text)
         population_words = {
             origin.label: say(
@@ -116,6 +142,81 @@ class _Narrator(generic_story.Narrator):
                         b=second,
                         role=say.words.get(specification.name, specification.name),
                     )
+
+    def _direct(
+        self, sources: tuple[str, ...], steps: Sequence[Step], open_squares: set[Square]
+    ) -> str | None:
+        if len(sources) != 1:
+            return None
+        origin = next((item for item in self.compilation.origins if item.label == sources[0]), None)
+        if origin is None or origin.kind != "clue":
+            return None
+        dependencies = grounded_dependencies(self.board, origin.statement)
+        if dependencies is None or len(dependencies) != 1:
+            return None
+        (person,) = dependencies
+        own = [step for step in steps if step.var == person]
+        if not own:
+            return None
+        previous = set(self.options[person])
+        self.conclusion(own)
+        squares = self.options[person]
+        if not squares:
+            return None
+        clue = _cap(self.statements[origin.label])
+        region = self.places.common_region(squares)
+        previous_region = self.places.common_region(previous)
+        line = self.places.common_line(squares) if len(squares) > 1 else None
+        line_where = self.say("in", what=self.places.line(*line)) if line else None
+        where: str | None
+        if len(squares) == 1:
+            square = next(iter(squares))
+            where = f"**{self.placed(person, square)}**"
+            if region and region != previous_region and region not in clue:
+                where = f"**{region}**: {where}"
+            self.told.add((person, square))
+            open_squares.difference_update(
+                {cell for cell in open_squares if cell.row == square.row or cell.col == square.col}
+            )
+        else:
+            where = region or line_where or self.places.where(squares, self.places.free)
+            if where and (where in clue or where == previous_region):
+                where = ""
+            if where:
+                where = f"**{where}**"
+        suffix = f": {where}" if where else ""
+        if line:
+            kind, index = line
+            formula = origin.statement.formula
+            explicit = (
+                isinstance(formula, Atom)
+                and formula.operator.text == "in"
+                and isinstance(formula.target, Name)
+                and formula.target.token.text.startswith("rows:" if kind == "row" else "columns:")
+            )
+            line_squares = {
+                cell for cell in open_squares if (cell.row if kind == "row" else cell.col) == index
+            }
+            candidates = {
+                cell
+                for cell in previous & open_squares
+                if holds_grounded(origin.statement, self.board, {person: cell}, dependencies)
+            }
+            if (region is None or explicit) and candidates and candidates <= line_squares:
+                crossed = line_squares - candidates
+                if crossed:
+                    instruction = self.say(
+                        "cross_out.one" if len(crossed) == 1 else "cross_out.many",
+                        n=self.say.number(len(crossed)),
+                        line=self.say(f"cross_out.{kind}"),
+                    )
+                    suffix += f", {self.say('so')} **{instruction}**"
+                    open_squares.difference_update(crossed)
+        said = f"{clue}{suffix}."
+        other = self.conclusion(step for step in steps if step.var != person)
+        if other:
+            said += " " + self.say("expression.by", sources=self.names(sources), conclusion=other)
+        return said
 
     def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
         if (
@@ -461,13 +562,18 @@ class _Narrator(generic_story.Narrator):
             origins = self.compilation.initial_step_origins.get(index, ())
             sources = tuple(origin.label for origin in origins) or step.sources
             initial.setdefault(sources, []).append(step)
+        open_squares = set(self.board.free)
         for sources, steps in initial.items():
-            if conclusion := self.conclusion(steps):
+            if direct := self._direct(sources, steps, open_squares):
+                paragraphs.append(direct)
+            elif conclusion := self.conclusion(steps):
                 paragraphs.append(
                     self.say("expression.by", sources=self.names(sources), conclusion=conclusion)
                 )
+        if paragraphs:
+            paragraphs = [f"**{self.say('direct')}.** " + " ".join(paragraphs)]
         history = list(self.compilation.model.log)
-        support: list[str] = []
+        support: dict[str, tuple[str, ...]] = {}
         for group in groups:
             for inference in (group.pattern, *group.consequences):
                 for _, region, minimum in self._refuted_populations(inference.steps):
@@ -479,6 +585,19 @@ class _Narrator(generic_story.Narrator):
                     if inference.move is not None
                     else tuple(source for step in inference.steps for source in step.sources)
                 )
+                variables = {
+                    variable
+                    for source in sources
+                    for variable in self.source_variables.get(source, ())
+                }
+                premises = tuple(
+                    dict.fromkeys(
+                        source
+                        for variable, evidence in support.items()
+                        if variable in variables
+                        for source in evidence
+                    )
+                )
                 if paragraph := (
                     self._population_full(inference)
                     or self._population_tied(inference)
@@ -486,10 +605,10 @@ class _Narrator(generic_story.Narrator):
                 ):
                     self.conclusion(inference.steps)
                     paragraphs.append(paragraph)
-                    support.clear()
                 elif not any(step.var in self.visible for step in inference.steps):
-                    support.extend(sources)
-                elif inference.move is not None and not support:
+                    for step in inference.steps:
+                        support[step.var] = tuple(dict.fromkeys((*premises, *sources)))
+                elif inference.move is not None and not premises:
                     if paragraph := self.pattern(inference, history):
                         paragraphs.append(paragraph)
                 else:
@@ -498,11 +617,10 @@ class _Narrator(generic_story.Narrator):
                         paragraphs.append(
                             self.say(
                                 "expression.by",
-                                sources=self.names([*support, *sources]),
+                                sources=self.names([*premises, *sources]),
                                 conclusion=conclusion,
                             )
                         )
-                        support.clear()
                 history.extend(inference.steps)
         if not solved:
             paragraphs.append(self.say("generic.stalled"))

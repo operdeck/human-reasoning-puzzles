@@ -578,7 +578,9 @@ def _write_booklet(
         )
         if told and placed is not None:
             assert start is not None
-            narrative = pattern_story(kind, text, start, fired.items)
+            narrative = murdoku_story.explain(
+                text, start=start.clone(), fired=fired.items, numbered=False
+            )
             entry = dataclasses.replace(entry, steps=narrative.paragraphs)
         if kind != "murdoku":
             steps = solving_steps(fired.items)

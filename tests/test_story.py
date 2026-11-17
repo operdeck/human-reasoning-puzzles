@@ -72,8 +72,10 @@ ALLOWED = {
         "generic_story",
         "core",
         "murdoku",
+        "murdoku_eval",
         "murdoku_expression_file",
         "murdoku_expression_words",
+        "murdoku_lang",
         "murdoku_lower",
         "proof",
         "story",
@@ -359,7 +361,7 @@ def test_every_placement_in_the_story_is_right(name):
 def test_story_is_bullets_and_leads_with_the_direct_clues(name):
     story = explain((example(name)).read_text())
     paragraphs = story.split("\n\n")
-    assert all(p.startswith("- **") for p in paragraphs)
+    assert all(p.startswith("- ") and "**" in p for p in paragraphs)
     assert paragraphs[0].startswith("- **De directe aanwijzingen.**")
 
 

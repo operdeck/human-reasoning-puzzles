@@ -89,6 +89,17 @@ def test_proof_settles_hidden_singletons_after_visible_solution():
     assert result.chosen("guard") is True
 
 
+@pytest.mark.parametrize(("eligible", "show"), [("Ada", False), ("Ada Ben", True)])
+def test_unnumbered_story_omits_only_role_facts_given_by_the_figure_list(eligible, show):
+    text = TEXT.replace("Rules:", f"RoleEligibility:\nguard: {eligible}\nRules:")
+    numbered = murdoku_story.explain(text).markdown()
+    unnumbered = murdoku_story.explain(text, numbered=False).markdown()
+    assert "Ada has the guard role" in numbered
+    assert "Ben does not have the guard role" in numbered
+    assert ("Ada has the guard role" in unnumbered) is show
+    assert ("Ben does not have the guard role" in unnumbered) is show
+
+
 def test_thinning_preserves_required_role_deductions_not_just_visible_placements():
     model = Model()
     person = model.literal("Ada", "hall")
@@ -151,6 +162,85 @@ def test_expression_story_routes_cli_booklet_and_public_facade_through_the_same_
     assert story.figure_clues(TEXT) == story.figure_clues(
         TEXT, expressions=cli.load_expression_board(TEXT)[2]
     )
+
+
+DIRECT = """\
+Size: 4
+Regions:
+a: west
+b: east
+Grid:
+a a b b
+a a b b
+b b a a
+b b a a
+PointObjects:
+beacon: r2.5c0.5
+sign: r0.5c2.5
+People:
+Ada
+Ben
+Cleo
+Dirk
+Clues:
+Ada on point_object:beacon
+Ben on point_object:sign
+"""
+
+
+@pytest.mark.parametrize(
+    ("language", "first", "second"),
+    [
+        (
+            "en",
+            "**in column 1**, so **cross out the other two open squares in that column**.",
+            "**in row 1**, so **cross out the other open square in that row**.",
+        ),
+        (
+            "nl",
+            "**in kolom 1**, dus **streep de twee andere nog open vakjes in die kolom weg**.",
+            "**in rij 1**, dus **streep het andere nog open vakje in die rij weg**.",
+        ),
+    ],
+)
+def test_direct_clues_reserve_lines_across_areas_without_counting_a_square_twice(
+    language, first, second
+):
+    opening = murdoku_story.explain(f"Language: {language}\n" + DIRECT).paragraphs[0]
+    assert first in opening and second in opening
+    assert "(1)" in opening and "(2)" in opening
+    assert "(1)" not in murdoku_story.explain(DIRECT, numbered=False).paragraphs[0]
+    found = solutions(DIRECT, "murdoku", limit=100)
+    assert len(found) == 16
+    crossed = {Square(0, 0), Square(3, 0), Square(0, 3)}
+    assert all(not crossed.intersection(answer.values()) for answer in found)
+
+
+def test_direct_clue_reservation_excludes_blocked_cells():
+    text = DIRECT.replace("PointObjects:", "Objects:\nrock: blocking r4c1\nPointObjects:")
+    opening = murdoku_story.explain(text).paragraphs[0]
+    assert "**in column 1**, so **cross out the other open square in that column**." in opening
+
+
+def test_direct_clues_use_an_announced_rule_to_establish_the_line():
+    text = DIRECT.replace("beacon: r2.5c0.5", "beacon: r2.5c2.5").replace(
+        "Clues:", "Rules:\nnot Ada in rows:3\nClues:"
+    )
+    opening = murdoku_story.explain(text).paragraphs[0]
+    assert "rule 1" in opening
+    assert (
+        "Ada is on a cell touching the beacon (1): **in row 2**, so "
+        "**cross out the other two open squares in that row**."
+    ) in opening
+
+
+def test_hidden_population_work_is_not_cited_for_an_unrelated_directional_deduction():
+    paragraphs = murdoku_story.explain(example("samen-onderweg.txt").read_text()).paragraphs
+    deduction = next(paragraph for paragraph in paragraphs if "Haru zit niet in rij 5" in paragraph)
+    assert "Haru staat boven Jun" in deduction
+    assert "Jun zit niet in rij 1" in deduction
+    assert "meeste mensen" not in deduction
+    assert "minste mensen" not in deduction
 
 
 def test_role_separation_sources_keep_the_puzzles_thematic_wording():
