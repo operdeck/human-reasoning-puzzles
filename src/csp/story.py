@@ -65,7 +65,7 @@ from .murdoku import (
     target_name,
 )
 from .murdoku_expression_file import is_expression_file, load_expression_board
-from .murdoku_expression_words import ExpressionWords, alone_person, feature_name, only_on
+from .murdoku_expression_words import NUMBERS, ExpressionWords, alone_person, feature_name, only_on
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_board_layout, load_presentation, read_sections
 
@@ -1436,13 +1436,6 @@ CONDITION_PHRASES = {
 }
 for _language, _entries in CONDITION_PHRASES.items():
     PHRASES[_language].update(_entries)
-
-NUMBERS = {
-    "en": ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
-           "ten", "eleven", "twelve"],
-    "nl": ["nul", "één", "twee", "drie", "vier", "vijf", "zes", "zeven", "acht", "negen",
-           "tien", "elf", "twaalf"],
-}  # fmt: skip
 
 MAX_LISTED = 3  # squares named outright alongside, or instead of, a description
 

@@ -299,6 +299,23 @@ def test_murdoku_count_details_follow_edge_and_point_scopes():
     assert fountain not in details["r2c2"]
 
 
+def test_expression_count_hover_keeps_author_wording_on_its_own_scope():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace(
+            "Clues:\n",
+            "Clues:\ncount people on point_object:fountain = 1 | One guest touches the fountain!\n",
+        )
+    )
+    details = web._murdoku(text, {})["cellDetails"]
+    assert all(
+        "One guest touches the fountain!" in details[cell]
+        for cell in ("r3c1", "r3c2", "r4c1", "r4c2")
+    )
+    assert "One guest touches the fountain!" not in details["r2c2"]
+
+
 def test_murdoku_point_hovers_include_outer_edges_and_corners():
     bundle = web._murdoku(example("menu-murdoku-3.txt").read_text(), {})
     targets = bundle["detailTargets"]

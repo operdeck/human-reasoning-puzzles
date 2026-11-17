@@ -11,6 +11,13 @@ from .murdoku import Board, BoardObject, CellMark, EdgeItem, PointObject
 from .murdoku_typecheck import Shape, Sort, check_formula, infer_operand
 from .puzzlefile import read_sections
 
+NUMBERS = {
+    "en": ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+           "ten", "eleven", "twelve"],
+    "nl": ["nul", "één", "twee", "drie", "vier", "vijf", "zes", "zeven", "acht", "negen",
+           "tien", "elf", "twaalf"],
+}  # fmt: skip
+
 PHRASES: dict[str, dict[str, str]] = {
     "en": {
         "set.people": "people",
@@ -128,6 +135,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "number.add": "({left} plus {right})",
         "number.subtract": "({left} minus {right})",
         "number.compare": "{left} is {comparison} {right}",
+        "count.exactly": "exactly",
+        "count.at_least": "at least",
+        "count.at_most": "at most",
+        "count.people.one": "{quantifier} {count} person is {relation} {target}",
+        "count.people.many": "{quantifier} {count} people are {relation} {target}",
         "number.parity": "{number} is {parity}",
         "number.range": "{number} is between {lower} and {upper}, inclusive",
         "parity.odd": "odd",
@@ -276,6 +288,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "number.add": "({left} plus {right})",
         "number.subtract": "({left} min {right})",
         "number.compare": "{left} is {comparison} {right}",
+        "count.exactly": "precies",
+        "count.at_least": "minstens",
+        "count.at_most": "hoogstens",
+        "count.people.one": "{quantifier} {count} persoon staat {relation} {target}",
+        "count.people.many": "{quantifier} {count} mensen staan {relation} {target}",
         "number.parity": "{number} is {parity}",
         "number.range": "{number} ligt tussen {lower} en {upper}, inclusief",
         "parity.odd": "oneven",
@@ -722,6 +739,47 @@ class ExpressionWords:
         rendered = self._operand(subject, bindings)
         return self._phrase(f"det.{determiner.text}", subject=rendered) if determiner else rendered
 
+    def _count_idiom(
+        self, formula: lang.NumberComparison, bindings: dict[str, Shape]
+    ) -> str | None:
+        if (
+            "number.compare" in self.phrases
+            or not isinstance(formula.left, lang.Count)
+            or not isinstance(formula.left.operand, lang.Filter)
+            or not isinstance(formula.right, lang.Integer)
+        ):
+            return None
+        filtered = formula.left.operand
+        if (
+            not isinstance(filtered.source, lang.Name)
+            or filtered.source.token.text != "people"
+            or filtered.operator.text not in {"on", "in"}
+            or filtered.measure is not None
+            or formula.operator.text not in {"=", ">=", "<="}
+        ):
+            return None
+        count = int(formula.right.value.text)
+        names = NUMBERS[self.language]
+        number = names[count] if 0 <= count < len(names) else str(count)
+        quantifier = {"=": "exactly", ">=": "at_least", "<=": "at_most"}[formula.operator.text]
+        target = self._target(filtered.target, None, bindings, filtered.operator, filtered.source)
+        if isinstance(filtered.target, lang.Name):
+            namespace, _, name = filtered.target.token.text.partition(":")
+            if (
+                namespace in {"edge_item", "point_object", "mark"}
+                and f"target.{namespace}" not in self.phrases
+            ):
+                target = self._feature_name(namespace, name)
+        return self._phrase(
+            "count.people.one" if count == 1 else "count.people.many",
+            count=number,
+            quantifier=self._phrase(f"count.{quantifier}"),
+            relation=self._relation(
+                filtered.operator, filtered.source, filtered.target, bindings, None
+            ),
+            target=target,
+        )
+
     def _population_idiom(self, formula: lang.Quantified) -> str | None:
         if (
             formula.quantifier.text != "every"
@@ -771,6 +829,10 @@ class ExpressionWords:
         return self._phrase(key, area=self._operand(formula.source.right, {}))
 
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:
+        if isinstance(value, lang.NumberComparison) and (
+            idiom := self._count_idiom(value, bindings)
+        ):
+            return idiom
         if isinstance(value, lang.Quantified) and (idiom := self._population_idiom(value)):
             return idiom
         match value:

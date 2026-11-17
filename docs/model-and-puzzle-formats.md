@@ -341,6 +341,9 @@ authored sentences keep their wording rather than being shortened into predicate
 Single numbered rows and columns use singular names. Dutch person-location
 sentences use `staat` for directions and adjacency, and `zit` for `on`;
 explicit `atom.one` and `atom.not` templates still take precedence.
+Simple counts of people on or in a footprint read as "exactly", "at least" or
+"at most" that many people. Other counts and arithmetic remain compositional;
+an explicit `number.compare` template overrides this idiom.
 
 ### Expression clue language
 

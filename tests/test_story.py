@@ -151,6 +151,8 @@ ALLOWED = {
     "web": {
         "akari",
         "murdoku_expression_file",
+        "murdoku_expression_words",
+        "murdoku_lower",
         "collection",
         "core",
         "dominosa",

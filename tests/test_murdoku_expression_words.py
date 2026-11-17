@@ -55,6 +55,39 @@ def test_person_verb_and_single_line_idioms_keep_explicit_phrase_overrides(board
     )
 
 
+@pytest.mark.parametrize(
+    ("language", "formula", "expected"),
+    [
+        ("en", "count people on object:bed = 1", "exactly one person is on a bed"),
+        ("en", "count people in area:hall >= 2", "at least two people are in the hall"),
+        ("en", "count people in area:hall <= 0", "at most zero people are in the hall"),
+        ("nl", "count people on object:bed = 2", "precies twee mensen staan op een bed"),
+        ("nl", "count people on object:bed = 1", "precies één persoon staat op een bed"),
+    ],
+)
+def test_person_count_idiom_preserves_bounds_number_and_footprint(
+    board, language, formula, expected
+):
+    words = ExpressionWords(board, language)
+    assert words.statement(parse_statement(formula)) == expected
+
+
+def test_person_count_idiom_respects_numeric_templates_and_keeps_other_counts_compositional(board):
+    words = ExpressionWords(board, phrases={"number.compare": "{left}: {comparison} {right}"})
+    assert words.statement(parse_statement("count people in area:hall = 1")).startswith(
+        "the number of"
+    )
+    assert (
+        ExpressionWords(board)
+        .statement(parse_statement("count empty cells = 1"))
+        .startswith("the number of")
+    )
+    targets = ExpressionWords(board, phrases={"target.mark": "the square labelled {name}"})
+    assert targets.statement(parse_statement("count people on mark:red = 1")) == (
+        "exactly one person is on the square labelled red"
+    )
+
+
 @pytest.mark.parametrize("language", ["en", "nl"])
 @pytest.mark.parametrize(
     "source",

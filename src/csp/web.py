@@ -21,6 +21,8 @@ from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Board, Clue, Square, global_count_conditions
 from .murdoku_expression_file import is_expression_file, load_expression_board
+from .murdoku_expression_words import ExpressionWords
+from .murdoku_lower import object_count_scope
 from .picture import murdoku_key_symbols
 from .puzzlefile import display_family, language_of, load_board, load_presentation
 from .story import (
@@ -266,6 +268,20 @@ def _murdoku(
         board, clues = load_board(text)
         rule_statements, clue_statements = [], []
     presentation = load_presentation(text)
+    count_details = []
+    if rule_statements or clue_statements:
+        words = ExpressionWords.read(board, text)
+        numbered = [
+            *((None, statement) for statement in rule_statements),
+            *enumerate(clue_statements, 1),
+        ]
+        for number, statement in numbered:
+            scope = object_count_scope(board, [statement])
+            if scope:
+                caption = presentation.clue_text.get(number) if number is not None else None
+                count_details.append(
+                    (scope, caption if caption is not None else words.statement(statement))
+                )
     entries = figure_clues(
         text, expressions=clue_statements if (expressions or is_expression_file(text)) else None
     )
@@ -306,7 +322,9 @@ def _murdoku(
         "autoMark": {"default": True, "mark": "cross", "onPlace": LINES},
         "givens": {},
         "solution": dict(sorted(placed.items())),
-        "cellDetails": _murdoku_cell_details(board, clues, text, presentation.clue_text),
+        "cellDetails": _murdoku_cell_details(
+            board, clues, text, presentation.clue_text, count_details=count_details
+        ),
         "detailTargets": _murdoku_point_details(board, text),
         "headings": {
             **{
@@ -365,7 +383,12 @@ def _murdoku(
 
 
 def _murdoku_cell_details(
-    board: Board, clues: list[Clue], text: str, clue_text: Mapping[int, str]
+    board: Board,
+    clues: list[Clue],
+    text: str,
+    clue_text: Mapping[int, str],
+    *,
+    count_details: Iterable[tuple[Iterable[Square], str]] = (),
 ) -> dict[str, list[str]]:
     """Player-visible board facts for each cell, independent of the solution."""
     say = Wording.read(text)
@@ -399,6 +422,11 @@ def _murdoku_cell_details(
         add(point.cells, say("web.cell_touch", name=places.thing(point.name)))
     for mark in board.marks:
         add(mark.cells, mark_note(mark, say))
+    for scope, caption in count_details:
+        caption = caption[:1].upper() + caption[1:]
+        if not caption.endswith((".", "!", "?")):
+            caption += "."
+        add(scope, caption)
     counts = global_count_conditions(board, clues)
     if any(count.object_scope for count in counts):
         for count, wording in zip(counts, global_count_texts(text), strict=True):
