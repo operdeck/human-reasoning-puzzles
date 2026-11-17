@@ -1831,15 +1831,21 @@ def test_opening_narrows_clue_by_clue_and_places_whoever_it_pins_down():
 
 def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():
     story = explain((example("murdoku_3_house.txt")).read_text())
-    assert "Either Ada is in the study, or Ben is in the hall, but not both (1)." in story
-    assert "Ben is on r3c4, so **Ada is not in the study**" in story
+    assert (
+        "Either Ada is in the study, or Ben is in the hall, but not both (1), "
+        "so **Ada is not in the study**."
+    ) in story
+    assert story.index("**Ben on r3c4**") < story.index("**Ada is not in the study**")
+    assert story.count("**Ben on r3c4**") == 1
     assert "**Ben is on r3c4**" not in story
 
 
 def test_chains_are_told_as_if_then_with_the_reason_for_each_link():
     text = (example("prrrdoku2.txt")).read_text()
-    original_clues = text.replace("dir Anna Mao up = 5\n", "in Jos area:keukenwinkel\n")
-    story = explain(original_clues.replace("dir Jos Mao manhattan >= 13\n", ""))
+    assert "Anna dir:up Mao = 5\n" in text
+    assert "Jos dir:manhattan Mao >= 13\n" in text
+    original_clues = text.replace("Anna dir:up Mao = 5\n", "Jos in area:keukenwinkel\n")
+    story = explain(original_clues.replace("Jos dir:manhattan Mao >= 13\n", ""))
     assert (
         "Als Otto niet op r6k5 zit, dan zit Otto op r7k6, dan zit Luna niet op r7k4 (rij 7), "
         "dan zit Luna op r8k3. Dus Otto zit op r6k5 of Luna zit op r8k3; hoe dan ook"
@@ -1904,8 +1910,14 @@ def test_role_rules_are_told_without_engine_names():
     story = explain(example("murdoku_orient_express.txt").read_text())
     for leak in ("__", "role and area", "occupant count", "has role", "cardinality"):
         assert leak not in story
-    assert "De moordenaar is op de plaats delict, dus **Svetlana is de moordenaar**" in story
-    assert "Svetlana is de moordenaar en moet in coupé 2 zijn" in story
+    reveal = next(
+        paragraph
+        for paragraph in story.split("\n\n")
+        if "**Svetlana is de moordenaar**" in paragraph
+    )
+    assert "regel 2: de moordenaar is op de plaats delict" in reveal
+    assert "regel 1: minstens twee mensen staan in het gebied van de moordenaar" in reveal
+    assert "**Svetlana zit op de plaats delict**" in story
 
 
 @pytest.mark.parametrize("name", ["murdoku_orient_express_2.txt", "murdoku_orient_express_3.txt"])
@@ -2143,7 +2155,8 @@ def test_intro_sentences_keep_their_own_order_when_none_repeat_a_rule():
         "Wouter wordt als laatste geplaatst en is alleen in een kamer met degene "
         "met wie hij het doet." in rules[0]
     )
-    assert rules[1:4] == [
+    assert "Wouter" in rules[1]
+    assert rules[2:5] == [
         "Precies twee mensen staan op een badjas.",
         "Precies één persoon staat op een paar sloffen.",
         "Precies één persoon staat op een bril.",

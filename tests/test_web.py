@@ -175,7 +175,7 @@ def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
     text = (
         example("murdoku_3_house.txt")
         .read_text()
-        .replace("Clues:\n", "Clues:\nin Ada area:study | Ben remembers Ada in the study.\n")
+        .replace("Clues:\n", "Clues:\nAda in area:study | Ben remembers Ada in the study.\n")
     )
     bundle = web._murdoku(text, {})
     entry = next(entry for entry in bundle["clueEntries"] if "clue:1" in entry["sources"])

@@ -99,6 +99,26 @@ def test_last_candidate_is_announced_once_before_the_later_assignment():
     assert narrator.conclusion([Step("Ada", last, True, "single", "")]) is None
 
 
+@pytest.mark.parametrize(("language", "row"), [("en", "row 1"), ("nl", "rij 1")])
+@pytest.mark.parametrize("numbered", [True, False])
+def test_chain_link_reasons_use_board_metadata_and_expression_origins(language, row, numbered):
+    text = f"Language: {language}\n" + TEXT
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = murdoku_story._Narrator(text, board, compilation, numbered)
+    source = next(name for name, about in narrator.board_sources.items() if about == ("row", 0))
+    assert narrator._link_reason(source) == f" ({row})"
+    origin = next(item for item in compilation.origins if item.kind == "clue" and item.number == 2)
+    source = next(
+        constraint.name
+        for index, constraint in enumerate(compilation.model.constraints)
+        if origin in compilation.constraint_origins.get(index, ())
+    )
+    reason = narrator._link_reason(source)
+    assert reason == (" (2)" if numbered else " (The guard is in the first row)")
+    assert "__" not in reason
+
+
 def test_what_if_announces_its_upshot_before_marking_a_placement_told(monkeypatch):
     board, rules, clues = load_expression_board(TEXT)
     compilation = compile_statements_with_origins(board, clues, rules=rules)

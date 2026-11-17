@@ -149,6 +149,7 @@ class _Narrator(generic_story.Narrator):
             self.source_words[rule.name] = wording
             if kind != "person":
                 self.source_words[rule.family] = say(f"expression.{key}", square="", person="")
+        self.board_sources = {rule.name: rule.about for rule in board_rules(board)}
         for variable, (person, role) in self.roles.items():
             name = say.words.get(role, role)
             self.source_words[
@@ -707,6 +708,58 @@ class _Narrator(generic_story.Narrator):
             chain=", ".join(parts),
         )
 
+    def _link_reason(self, source: str) -> str:
+        kind, value = self.board_sources.get(source, ("", None))
+        if kind in ("row", "col"):
+            return f" ({self.places.line(kind, value)})"
+        origins = set(self.source_origins.get(source, ()))
+        labels = [
+            (
+                str(origin.number)
+                if origin.kind == "clue"
+                else self.say("expression.rule", number=origin.number)
+            )
+            if self.say.numbered
+            else self.statements[origin.label]
+            for origin in self.compilation.origins
+            if origin.label in origins
+        ]
+        if not labels and source in self.mark_sources:
+            labels.append(self.source_words[source])
+        return f" ({self.say.join(labels)})" if labels else ""
+
+    def _chain(
+        self,
+        chain: Sequence[tuple[str, Any]],
+        conclusion: str,
+        sources: Sequence[str] = (),
+    ) -> str:
+        if not chain or any(
+            person not in self.board.people or not isinstance(square, Square)
+            for person, square in chain
+        ):
+            paragraph = super()._chain(chain, conclusion)
+            return self._because(sources, paragraph) if sources else paragraph
+        first, a = chain[0]
+        last, z = chain[-1]
+        ends = self.say.join(
+            [
+                self.say("is", who=person, where=self.say("on", what=self.places.square(square)))
+                for person, square in ((first, a), (last, z))
+            ],
+            "or",
+        )
+        if len(chain) == 2:
+            if sources:
+                ends += self._link_reason(sources[0])
+            return _cap(self.say("chain_either", ends=ends, outcome=conclusion))
+        parts = [self.say("chain_if", who=first, square=self.places.square(a))]
+        for index, (person, square) in enumerate(chain[1:]):
+            key = "chain_on" if index % 2 == 0 else "chain_off"
+            reason = self._link_reason(sources[index]) if index < len(sources) else ""
+            parts.append(self.say(key, who=person, square=self.places.square(square)) + reason)
+        return f"{', '.join(parts)}. {self.say('chain_so', ends=ends, outcome=conclusion)}"
+
     def pattern(self, inference: Inference, history: Sequence[Step]) -> str:
         move = inference.move
         assert move is not None
@@ -719,7 +772,7 @@ class _Narrator(generic_story.Narrator):
         if conclusion is None:
             return ""
         if move.rule == "chains" and all(var in self.visible for var, _ in move.chain):
-            return self._chain(move.chain, conclusion)
+            return self._chain(move.chain, conclusion, move.sources)
         return self._because(move.sources, conclusion)
 
     def tell(
