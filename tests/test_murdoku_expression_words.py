@@ -118,6 +118,46 @@ def test_only_an_exactly_one_role_gets_a_definite_singular_caption(board, counts
     assert "the candidates for guard" in words.statement(source)
 
 
+def test_area_union_keeps_each_preposition_and_negates_the_whole_alternative(board):
+    words = ExpressionWords(board, names={"hall": "on Monday", "garden": "in Paris"})
+    source = "Ada in area:hall,garden"
+    sentence = "Ada is on Monday or Ada is in Paris"
+    assert words.statement(parse_statement(source)) == sentence
+    assert words.statement(parse_statement("not " + source)) == (
+        f"it is not true that ({sentence})"
+    )
+    override = ExpressionWords(board, phrases={"op.union": "{left} PLUS {right}"})
+    assert "PLUS" in override.statement(parse_statement(source))
+
+
+@pytest.mark.parametrize("counts", [{0}, {0, 1}, {1}, {2}])
+def test_single_holder_quantifier_is_shortened_only_when_the_person_must_exist(board, counts):
+    board.roles = [RoleSpec("guard", frozenset(counts))]
+    source = parse_statement("every ?p in role:guard: count people in area of ?p >= 2")
+    sentence = ExpressionWords(board).statement(source)
+    if counts == {1}:
+        assert sentence == "at least two people are in the area of the guard"
+    else:
+        assert "?p" in sentence
+    override = ExpressionWords(
+        board, phrases={"quant.every": "FOR {variables} FROM {source}: {body}"}
+    )
+    assert override.statement(source).startswith("FOR")
+
+
+def test_unique_holder_in_a_single_tag_uses_the_authored_place_caption(board):
+    board.roles = [RoleSpec("guard", frozenset({1}))]
+    board.area_tags["scene"] = ["hall"]
+    words = ExpressionWords(board, names={"scene": "at the crime scene"})
+    assert words.statement(parse_statement("every ?a in tag:scene: some role:guard in ?a")) == (
+        "the guard is at the crime scene"
+    )
+    words = ExpressionWords(board)
+    assert words.statement(parse_statement("every ?a in tag:scene: some role:guard in ?a")) == (
+        "the guard is in the hall"
+    )
+
+
 @pytest.mark.parametrize(
     ("language", "formula", "expected"),
     [

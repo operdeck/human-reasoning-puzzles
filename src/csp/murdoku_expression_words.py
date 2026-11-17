@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Callable, Collection, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from string import Formatter
 from typing import assert_never
 
@@ -28,6 +28,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "set.objects": "objects",
         "set.roles": "roles",
         "idiom.every_area_someone": "Each of the {areas} contains someone from {people}",
+        "idiom.every_area_person": "{people} is in each of the {areas}",
         "name.area": "area {name}",
         "name.tag": "areas tagged {name}",
         "name.object": "objects named {name}",
@@ -51,6 +52,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "op.comprehension": "{variable} in {source} where {condition}",
         "op.projection": "{kind} overlapping {operand}",
         "projection.area": "areas",
+        "projection.area.person": "the area of {operand}",
         "projection.row": "rows",
         "projection.column": "columns",
         "projection.cell": "cells",
@@ -166,6 +168,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "choice.exactly": "exactly {count} of ({choices}) hold",
         "choice.either": "either {left}, or {right}, but not both",
         "idiom.same_area": "{first} and {second} are in the same area",
+        "idiom.location.or": "{left} or {right}",
         "idiom.direction": "exactly {count} {unit} {direction}",
         "unit.row.one": "row",
         "unit.row.many": "rows",
@@ -186,6 +189,7 @@ PHRASES: dict[str, dict[str, str]] = {
     },
     "nl": {
         "idiom.every_area_someone": "In elk van de {areas} is minstens één van de {people}",
+        "idiom.every_area_person": "{people} is in elk van de {areas}",
         "set.people": "personen",
         "set.areas": "gebieden",
         "set.rows": "rijen",
@@ -216,6 +220,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "op.comprehension": "{variable} in {source} waarvoor {condition}",
         "op.projection": "{kind} die {operand} overlappen",
         "projection.area": "gebieden",
+        "projection.area.person": "het gebied van {operand}",
         "projection.row": "rijen",
         "projection.column": "kolommen",
         "projection.cell": "vakjes",
@@ -333,6 +338,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "choice.exactly": "precies {count} van ({choices}) gelden",
         "choice.either": "of {left}, of {right}, maar niet allebei",
         "idiom.same_area": "{first} en {second} staan in hetzelfde gebied",
+        "idiom.location.or": "{left} of {right}",
         "idiom.direction": "precies {count} {unit} {direction}",
         "unit.row.one": "rij",
         "unit.row.many": "rijen",
@@ -640,6 +646,47 @@ class ExpressionWords:
             )
         return None
 
+    def _area_union(self, atom: lang.Atom, bindings: dict[str, Shape]) -> str | None:
+        if (
+            atom.operator.text != "in"
+            or atom.determiner is not None
+            or not isinstance(atom.subject, lang.Name)
+            or atom.subject.token.text not in self.board.people
+            or not isinstance(atom.target, lang.Union)
+            or "op.union" in self.phrases
+        ):
+            return None
+        parts: list[str] = []
+        inherited = ""
+        for item in atom.target.items:
+            if not isinstance(item, lang.Name):
+                return None
+            namespace, separator, name = item.token.text.partition(":")
+            if separator:
+                inherited = namespace
+            else:
+                namespace, name = inherited, namespace
+            if namespace != "area":
+                return None
+            preposition, noun = self._area_location(name)
+            relation = (
+                preposition
+                if preposition and "rel.in" not in self.phrases
+                else self._phrase("rel.in")
+            )
+            parts.append(
+                self._phrase(
+                    self._atom_key(atom, bindings),
+                    subject=self._operand(atom.subject, bindings),
+                    relation=relation,
+                    target=noun,
+                )
+            )
+        result = parts[0]
+        for part in parts[1:]:
+            result = self._phrase("idiom.location.or", left=result, right=part)
+        return result
+
     def _exact_direction(
         self, atom: lang.Atom, bindings: dict[str, Shape], *, negated: bool = False
     ) -> str | None:
@@ -825,6 +872,16 @@ class ExpressionWords:
                 key = f"adj.{adjective.text}" + ("" if singular_area else ".modifier")
                 return f"{self._phrase(key)} {self._operand(operand, bindings)}"
             case lang.Projection(kind=kind, operand=operand):
+                shape = infer_operand(self.board, operand, bindings)
+                if (
+                    kind.text == "area"
+                    and shape.sort is Sort.PERSON
+                    and shape.minimum == shape.maximum == 1
+                    and "op.projection" not in self.phrases
+                ):
+                    return self._phrase(
+                        "projection.area.person", operand=self._operand(operand, bindings)
+                    )
                 return self._phrase(
                     "op.projection",
                     kind=self._phrase(f"projection.{kind.text}"),
@@ -966,6 +1023,22 @@ class ExpressionWords:
         return self._phrase(key, area=self._operand(formula.source.right, {}))
 
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:
+        if (
+            isinstance(value, lang.Quantified)
+            and value.quantifier.text == "every"
+            and len(value.variables) == 1
+            and "quant.every" not in self.phrases
+            and (shape := infer_operand(self.board, value.source, bindings)).sort is Sort.PERSON
+            and shape.minimum == shape.maximum == 1
+        ):
+            (variable,) = value.variables
+            scoped = {**bindings, variable.text: shape}
+            words = replace(
+                self, names={**self.names, variable.text: self._operand(value.source, bindings)}
+            )
+            return words._formula(value.body, scoped)
+        if isinstance(value, lang.Atom) and (idiom := self._area_union(value, bindings)):
+            return idiom
         if isinstance(value, lang.Atom) and (idiom := self._exact_direction(value, bindings)):
             return idiom
         if isinstance(value, lang.Atom) and (idiom := self._near_king(value, bindings)):
@@ -1009,6 +1082,10 @@ class ExpressionWords:
                     right=self._operand(right, bindings),
                 )
             case lang.Negation(formula=formula):
+                if isinstance(formula, lang.Atom) and (
+                    idiom := self._area_union(formula, bindings)
+                ):
+                    return self._phrase("bool.not", formula=idiom)
                 if (
                     "bool.not" not in self.phrases
                     and isinstance(formula, lang.Atom)
@@ -1131,6 +1208,34 @@ class ExpressionWords:
             and isinstance(formula.body.target, lang.Name)
             and formula.body.target.token.text == formula.variables[0].text
         ):
+            people = infer_operand(self.board, formula.body.subject)
+            if (
+                people.minimum == people.maximum == 1
+                and "idiom.every_area_someone" not in self.phrases
+            ):
+                if (
+                    isinstance(formula.source, lang.Name)
+                    and formula.source.token.text.startswith(("area:", "tag:"))
+                    and infer_operand(self.board, formula.source).maximum == 1
+                ):
+                    namespace, _, name = formula.source.token.text.partition(":")
+                    if namespace == "tag" and name not in self.names:
+                        (region,) = self.board.tagged_region_ids([name])
+                        name = self.board.region_names[region]
+                    preposition, noun = self._area_location(name)
+                    return self._phrase(
+                        "atom.one",
+                        subject=self._operand(formula.body.subject, {}),
+                        relation=preposition
+                        if preposition and "rel.in" not in self.phrases
+                        else self._phrase("rel.in"),
+                        target=noun,
+                    )
+                return self._phrase(
+                    "idiom.every_area_person",
+                    areas=self._operand(formula.source, {}),
+                    people=self._operand(formula.body.subject, {}),
+                )
             return self._phrase(
                 "idiom.every_area_someone",
                 areas=self._operand(formula.source, {}),
