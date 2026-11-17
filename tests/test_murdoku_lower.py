@@ -786,6 +786,10 @@ def _assert_compilation_matches_reference(board, formula):
     sources = [formula] if isinstance(formula, str) else formula
     statements = [parse_statement(source) for source in sources]
     model = compile_statements(board, statements)
+    names = [constraint.name for constraint in model.constraints] + [
+        relation.name for relation in model.relations
+    ]
+    assert len(names) == len(set(names)), "proof sources must have unique names"
     for candidate in solutions(board, [], limit=1000):
         trial = model.clone()
         try:

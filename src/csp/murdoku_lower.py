@@ -2523,7 +2523,9 @@ def _reify_superlative(
                         result == nearer(first, candidate, {target})
                     ),
                 )
-                yes = _reify_cardinality(model, [target_members[rival], yes], {1, 2}, label)
+                yes = _reify_cardinality(
+                    model, [target_members[rival], yes], {1, 2}, f"{label} selection"
+                )
             witnesses.append(yes)
         alternatives.append(
             _reify_cardinality(model, witnesses, {len(witnesses)}, f"{name} {index}")
