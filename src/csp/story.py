@@ -1680,6 +1680,41 @@ class Places:
     def placed(self, who: str, square: Square) -> str:
         return self.say("placed", who=who, square=self.square(square))
 
+    def blockers(
+        self, gone: set[Square], placed: dict[str, Square], *, max_people: int = 2
+    ) -> list[str] | None:
+        """Name announced row/column occupiers that cover every excluded square."""
+        takers: dict[str, set[Square]] = {}
+        order = {person: index for index, person in enumerate(placed)}
+        for square in gone:
+            for person, there in placed.items():
+                if there.row == square.row or there.col == square.col:
+                    takers.setdefault(person, set()).add(square)
+        chosen: list[str] = []
+        left = set(gone)
+        while left:
+            best = max(
+                takers, key=lambda person: (len(takers[person] & left), order[person]), default=None
+            )
+            if best is None or not takers[best] & left:
+                return None
+            chosen.append(best)
+            left -= takers[best]
+        if len(chosen) > max_people:
+            return None
+        said = []
+        for person in chosen:
+            there = placed[person]
+            covered = takers[person] & gone
+            if all(square.row == there.row for square in covered):
+                line = self.line("row", there.row)
+            elif all(square.col == there.col for square in covered):
+                line = self.line("col", there.col)
+            else:
+                line = self.say.join([self.line("row", there.row), self.line("col", there.col)])
+            said.append(self.say("takes_line", who=person, line=line))
+        return said
+
     def _areas(self) -> list[tuple[str, Callable[[Square], bool]]]:
         board = self.board
         areas: list[tuple[str, Callable[[Square], bool]]] = []
@@ -3162,41 +3197,17 @@ class Story:
     ) -> list[str] | None:
         """Who took the squares the reader still had for `who`, fewest people
         first; None if that takes more than `max_people`."""
-        takers: dict[str, set[Square]] = {}
-        for sq in gone:
-            for other, there in state.placed.items():
-                if (
-                    other != who
-                    and (not announced_only or other in state.announced)
-                    and (there.row == sq.row or there.col == sq.col)
-                ):
-                    takers.setdefault(other, set()).add(sq)
-        chosen: list[str] = []
-        left = set(gone)
-        while left:
-            best = max(
-                takers, key=lambda p: (len(takers[p] & left), state.order.index(p)), default=None
-            )
-            if best is None or not takers[best] & left:
-                return None
-            chosen.append(best)
-            left -= takers[best]
-        if len(chosen) > max_people:
-            return None
-        said = []
-        for other in chosen:
-            there = state.placed[other]
-            covered = takers[other] & gone
-            if all(sq.row == there.row for sq in covered):
-                line = self.places.line("row", there.row)
-            elif all(sq.col == there.col for sq in covered):
-                line = self.places.line("col", there.col)
-            else:
-                line = self.say.join(
-                    [self.places.line("row", there.row), self.places.line("col", there.col)]
-                )
-            said.append(self.say("takes_line", who=other, line=line))
-        return said
+        return self.places.blockers(
+            gone,
+            {
+                person: state.placed[person]
+                for person in state.order
+                if person != who
+                and person in state.placed
+                and (not announced_only or person in state.announced)
+            },
+            max_people=max_people,
+        )
 
     def _what_if(self, step: Step, state: _State) -> tuple[str, Square, str]:
         """Who could not be where, and the chain of events that rules it out."""

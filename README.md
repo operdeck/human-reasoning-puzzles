@@ -59,8 +59,9 @@ uv run puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp
 
 Murdoku `--explain` follows the typed clue and rule expressions, marks conclusions
 in bold, and describes remaining locations by areas, rows, columns or objects.
-It also explains role deductions, including those made after everyone is placed;
-booklets render the same emphasis.
+It also explains role deductions, including those made after everyone is placed,
+and population arguments: known occupants, the busiest or tied quietest areas,
+and why another area must be empty. Booklets render the same emphasis.
 Sudoku explanations group singles and describe locked candidates, subsets and
 row/column patterns. Every other family, and any Sudoku step those patterns do
 not cover, gets a generic story built from the model alone: clue deductions are

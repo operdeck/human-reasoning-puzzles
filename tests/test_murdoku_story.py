@@ -1,11 +1,15 @@
 import re
+from dataclasses import replace
 
 import pytest
 
 from csp import cli, generic_story, murdoku_story, story
 from csp.bruteforce import solutions
-from csp.core import Kind, Model, Solver
-from csp.proof import Move, replay
+from csp.core import Kind, Model, Solver, Step
+from csp.murdoku import Square
+from csp.murdoku_expression_file import load_expression_board
+from csp.murdoku_lower import compile_statements_with_origins
+from csp.proof import Inference, Move, replay
 from tests.examples import example
 
 TEXT = """\
@@ -197,3 +201,74 @@ def test_population_capacity_fallback_still_names_the_floors_not_hidden_literals
     assert "Osaka area holding at least two people" in words
     assert "already hold all five people, so **nobody is in Okinawa**." in words
     assert "holds at least" not in words
+
+
+@pytest.mark.parametrize(
+    ("language", "blocked", "tied"),
+    [
+        (
+            "en",
+            "all other free squares in Hiroshima are unavailable, "
+            "so **only Goro is in Hiroshima**.",
+            "The areas with the fewest people are Hiroshima and Okinawa (2), "
+            "so **only Tatsuya is in Okinawa**.",
+        ),
+        (
+            "nl",
+            "alle andere vrije vakjes in Hiroshima vallen af, "
+            "dus **alleen Goro zit in Hiroshima**.",
+            "De gebieden met de minste mensen zijn Hiroshima en Okinawa (2), "
+            "dus **alleen Tatsuya zit in Okinawa**.",
+        ),
+    ],
+)
+def test_tied_populations_explain_geometric_capacity_before_using_the_equality(
+    language, blocked, tied
+):
+    text = (
+        example("samen-in-de-blauwe-bladeren.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    result = murdoku_story.explain(text)
+    paragraph = next(paragraph for paragraph in result.paragraphs if tied in paragraph)
+    assert blocked in paragraph
+    assert paragraph.index(blocked) < paragraph.index(tied)
+    assert "?b" not in result.markdown()
+    assert result.complete
+
+
+@pytest.mark.parametrize("case", ["unannounced", "untied", "outside", "placement"])
+def test_tied_population_argument_requires_announced_blockers_and_matching_effects(case):
+    text = example("samen-in-de-blauwe-bladeren.txt").read_text()
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    if case == "untied":
+        compilation = replace(compilation, population_conditions=())
+    narrator = murdoku_story._Narrator(text, board, compilation, numbered=True)
+    placements = {
+        "Kaori": Square(0, 1),
+        "Renji": Square(1, 4),
+        "Goro": Square(3, 5),
+        "Mizuki": Square(2, 0),
+        "Tatsuya": Square(8, 6),
+    }
+    for person, square in placements.items():
+        narrator.options[person] = {square}
+        if case != "unannounced" or person != "Renji":
+            narrator.told.add((person, square))
+    constraint = next(
+        constraint
+        for constraint, region, minimum in narrator.population_levels.values()
+        if region == board.region_id("Okinawa") and minimum == 2
+    )
+    literal = constraint.reified_by
+    assert literal is not None
+    model = compilation.model
+    steps = [Step(model.var_of(literal), model.value_of(literal), False, "count", "")]
+    if case in {"outside", "placement"}:
+        steps.append(Step("Yuki", Square(4, 8), case == "placement", "count", ""))
+    inference = Inference("count", model, tuple(steps), None)
+    before = {person: set(cells) for person, cells in narrator.options.items()}
+    assert narrator._population_tied(inference) is None
+    assert narrator.options == before

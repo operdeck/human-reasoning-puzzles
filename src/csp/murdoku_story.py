@@ -31,10 +31,30 @@ class _Narrator(generic_story.Narrator):
         }
         self.visible.update(self.roles)
         words = ExpressionWords.read(board, text)
+        population_words = {
+            origin.label: say(
+                f"clue.{condition.kind}" + ("_tie" if len(condition.regions) > 1 else ""),
+                areas=say.join(sorted(board.region_names[region] for region in condition.regions)),
+            )
+            for origin, condition in compilation.population_conditions
+            if origin.statement.wording is None
+            and not any(
+                key.startswith(
+                    "idiom.most_populated"
+                    if condition.kind == "busiest_area"
+                    else "idiom.least_populated"
+                )
+                for key in words.phrases
+            )
+        }
         self.statements = {}
         for origin in compilation.origins:
             label = say(f"expression.{origin.kind}", number=origin.number)
-            statement = words.statement(origin.statement).rstrip(".")
+            statement = (
+                population_words[origin.label]
+                if origin.label in population_words
+                else words.statement(origin.statement).rstrip(".")
+            )
             self.source_words[origin.label] = f"{label}: {statement}" if numbered else statement
             self.statements[origin.label] = statement + (
                 f" ({origin.number})" if numbered and origin.kind == "clue" else ""
@@ -44,6 +64,12 @@ class _Narrator(generic_story.Narrator):
             for constraint in compilation.model.constraints
             if (level := self._population_level(constraint)) is not None
         }
+        self.population_variables = {}
+        self.population_limits: set[tuple[str, int]] = set()
+        for constraint, region, minimum in self.population_levels.values():
+            literal = constraint.reified_by
+            assert literal is not None
+            self.population_variables[self.model.var_of(literal)] = (literal, region, minimum)
         for index, origins in compilation.constraint_origins.items():
             self.source_words[compilation.model.constraints[index].name] = say.join(
                 [self.source_words[origin.label] for origin in origins]
@@ -178,16 +204,31 @@ class _Narrator(generic_story.Narrator):
                 return None
         return sentences
 
+    def _refuted_populations(self, steps: Iterable[Step]) -> Iterable[tuple[Step, str, int]]:
+        for step in steps:
+            if step.var not in self.population_variables:
+                continue
+            literal, region, minimum = self.population_variables[step.var]
+            active = (step.value == self.model.value_of(literal)) == step.asserted
+            if not active:
+                yield step, region, minimum
+
+    def _only_removes(self, steps: Iterable[Step], regions: set[str]) -> bool:
+        return all(
+            step.var not in self.visible
+            or (
+                step.var in self.options
+                and not step.asserted
+                and isinstance(step.value, Square)
+                and self.board.region_of(step.value) in regions
+            )
+            for step in steps
+        )
+
     def _population_full(self, inference: Inference) -> str | None:
         """Explain a refuted nonempty area using the floors that exhaust all people."""
-        for step in inference.steps:
-            if not step.sources or step.sources[0] not in self.population_levels:
-                continue
-            target, region, minimum = self.population_levels[step.sources[0]]
-            literal = target.reified_by
-            assert literal is not None
-            active = (step.value == self.model.value_of(literal)) == step.asserted
-            if minimum != 1 or step.var != self.model.var_of(literal) or active:
+        for step, region, minimum in self._refuted_populations(inference.steps):
+            if minimum != 1 or not step.sources:
                 continue
             levels = [
                 (other_region, count)
@@ -202,6 +243,7 @@ class _Narrator(generic_story.Narrator):
                 or len(regions) != len(levels)
                 or region in regions
                 or total != len(self.board.people)
+                or not self._only_removes(inference.steps, {region})
             ):
                 continue
             empty = self.say(
@@ -235,6 +277,83 @@ class _Narrator(generic_story.Narrator):
             for cells in self.options.values():
                 cells.difference_update(empty_cells)
             return f"{reason}, {self.say('so')} **{empty}**."
+        return None
+
+    def _population_tied(self, inference: Inference) -> str | None:
+        """Prove tied sole occupants using only already announced row/column blockers."""
+        announced = {
+            person: min(cells)
+            for person, cells in self.options.items()
+            if len(cells) == 1 and (person, min(cells)) in self.told
+        }
+        for _, target, minimum in self._refuted_populations(inference.steps):
+            if minimum != 2 or (target, minimum) in self.population_limits:
+                continue
+            occupants = [
+                person
+                for person, square in announced.items()
+                if self.board.region_of(square) == target
+            ]
+            if len(occupants) != 1:
+                continue
+            (target_person,) = occupants
+            for origin, condition in self.compilation.population_conditions:
+                if target not in condition.regions:
+                    continue
+                for source in condition.regions:
+                    if source == target or not self._only_removes(
+                        inference.steps, {source, target}
+                    ):
+                        continue
+                    people = [
+                        person
+                        for person, square in announced.items()
+                        if self.board.region_of(square) == source
+                    ]
+                    if len(people) != 1:
+                        continue
+                    (source_person,) = people
+                    source_cells = {
+                        square
+                        for square in self.board.free
+                        if self.board.region_of(square) == source
+                    }
+                    blockers = self.places.blockers(
+                        source_cells - {announced[source_person]}, announced, max_people=3
+                    )
+                    if not blockers:
+                        continue
+                    source_where = self.places.region(self.board.region_names[source])
+                    target_where = self.places.region(self.board.region_names[target])
+                    reason = self.say(
+                        "count.population_blocked",
+                        blockers=self.say.join(blockers),
+                        where=source_where,
+                    )
+                    source_only = self.say(
+                        "count.population_only", who=source_person, where=source_where
+                    )
+                    target_only = self.say(
+                        "count.population_only", who=target_person, where=target_where
+                    )
+                    for person, cells in self.options.items():
+                        cells.difference_update(
+                            {
+                                square
+                                for square in cells
+                                if (person != source_person and square in source_cells)
+                                or (
+                                    person != target_person
+                                    and self.board.region_of(square) == target
+                                )
+                            }
+                        )
+                    self.population_limits.update({(source, 2), (target, 2)})
+                    return (
+                        f"{_cap(reason)}, {self.say('so')} **{source_only}**. "
+                        f"{_cap(self.statements[origin.label])}, "
+                        f"{self.say('so')} **{target_only}**."
+                    )
         return None
 
     def placed(self, var: str, value: Any, name: str | None = None) -> str:
@@ -326,7 +445,9 @@ class _Narrator(generic_story.Narrator):
                     if inference.move is not None
                     else tuple(source for step in inference.steps for source in step.sources)
                 )
-                if paragraph := self._population_full(inference):
+                if paragraph := self._population_full(inference) or self._population_tied(
+                    inference
+                ):
                     self.conclusion(inference.steps)
                     paragraphs.append(paragraph)
                     support.clear()
