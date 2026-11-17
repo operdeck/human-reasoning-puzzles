@@ -913,10 +913,14 @@ if has Ada role:guide then on Ada mark:altar
 
 @pytest.mark.parametrize("number", [1, 2, 3])
 def test_vietnam_avoidance_clues_name_dish_cells_not_occupants(number):
-    from csp.story import clue_texts, figure_clues
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_expression_words import ExpressionWords
+    from csp.story import figure_clues
 
     text = example(f"vietnam-murdoku-{number}.txt").read_text()
-    clues = clue_texts(text)
+    board, _, statements = load_expression_board(text)
+    words = ExpressionWords.read(board, text)
+    clues = [words.statement(dataclasses.replace(clue, wording=None)) for clue in statements]
     for person, clue in zip(("Pippo", "Swena"), clues[:2], strict=True):
         assert clue.startswith(f"{person} staat niet op of direct naast een vakje van de bún chả")
         assert "een vakje van de thịt kho" in clue
@@ -987,15 +991,16 @@ def test_king_adjacency_wording_distinguishes_cells_from_people(language, negate
     )
     prefix = "not " if negated else ""
     text = text[: text.index("Clues:")] + (
-        f"Clues:\n{prefix}dir Pippo object:buncha king <= 1\n"
-        f"{prefix}dir Pippo people_on:object:buncha king <= 1\n"
-        f"{prefix}dir Pippo object:buncha king = 1\n"
+        f"Clues:\n{prefix}Pippo dir:king object:buncha <= 1\n"
+        f"{prefix}Pippo dir:king (people on object:buncha) <= 1\n"
+        f"{prefix}Pippo dir:king object:buncha = 1\n"
     )
     cell, person, exact = clue_texts(text)
     assert ("directly next to" if language == "en" else "direct naast") in cell
     assert (("not on" if language == "en" else "niet op") in cell) == negated
     assert ("someone on" if language == "en" else "iemand op") in person
-    assert ("king move" if language == "en" else "koningszet") in exact
+    assert ("king-step distance" if language == "en" else "koningsstapafstand") in exact
+    assert ("directly next to" if language == "en" else "direct naast") not in exact
     assert ("a square of" if language == "en" else "een vakje van") in exact
 
 

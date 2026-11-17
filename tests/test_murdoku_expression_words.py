@@ -55,6 +55,39 @@ def test_person_verb_and_single_line_idioms_keep_explicit_phrase_overrides(board
     )
 
 
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_king_neighbourhood_preserves_union_scope_and_author_templates(board, language):
+    board.objects.append(BoardObject("chair", "standable", (Square(2, 2),)))
+    source = "not Ada dir:king object:bed,chair <= 1"
+    words = ExpressionWords(board, language)
+    sentence = words.statement(parse_statement(source))
+    assert (
+        "not on or directly next to" if language == "en" else "niet op of direct naast"
+    ) in sentence
+    assert (
+        "a square of a bed or a square of the chair"
+        if language == "en"
+        else "een vakje van een bed of een vakje van de chair"
+    ) in sentence
+    assert ("across area boundaries" if language == "en" else "over gebiedsgrenzen") in sentence
+    assert "distance" not in sentence
+    override = ExpressionWords(board, language, phrases={"rel.dir.king": "NEAR"})
+    assert "NEAR" in override.statement(parse_statement(source))
+    assert (
+        override.statement(parse_statement(source + " | Keep this sentence."))
+        == "Keep this sentence."
+    )
+
+
+@pytest.mark.parametrize("comparison", ["= 1", "<= 2", ">= 1"])
+def test_other_king_distances_are_not_rewritten_as_on_or_adjacent(board, comparison):
+    sentence = ExpressionWords(board).statement(
+        parse_statement(f"Ada dir:king object:bed {comparison}")
+    )
+    assert "king-step distance" in sentence
+    assert "directly next to" not in sentence
+
+
 @pytest.mark.parametrize(
     ("language", "formula", "expected"),
     [

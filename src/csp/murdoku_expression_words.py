@@ -87,6 +87,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.cols": "at a column distance from",
         "rel.dir.manhattan": "at a side-step distance from",
         "rel.dir.king": "at a king-step distance from",
+        "rel.dir.king.near": "on or directly next to",
+        "idiom.king.near": "{clause} (including diagonals and across area boundaries)",
+        "idiom.king.not_near": "{clause} (not even diagonally, including across area boundaries)",
+        "target.object.cell": "a square of {name}",
+        "target.person.on": "someone on {target}",
+        "target.or": "{left} or {right}",
         "rel.dir.euclidean": "at a straight-line distance from",
         "rel.dir.areas": "at an area distance from",
         "rel.dir.areas.same": "in the same area as",
@@ -240,6 +246,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.cols": "op een kolomafstand van",
         "rel.dir.manhattan": "op een zijstapafstand van",
         "rel.dir.king": "op een koningsstapafstand van",
+        "rel.dir.king.near": "op of direct naast",
+        "idiom.king.near": "{clause} (ook schuin, en dit geldt zelfs over gebiedsgrenzen heen)",
+        "idiom.king.not_near": (
+            "{clause} (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)"
+        ),
+        "target.object.cell": "een vakje van {name}",
+        "target.person.on": "iemand op {target}",
+        "target.or": "{left} of {right}",
         "rel.dir.euclidean": "op een rechte afstand van",
         "rel.dir.areas": "op een gebiedsafstand van",
         "rel.dir.areas.same": "in hetzelfde gebied als",
@@ -566,6 +580,73 @@ class ExpressionWords:
             relation = self._phrase(f"rel.{mode}")
         return relation
 
+    def _king_target(
+        self, target: lang.Operand, bindings: dict[str, Shape], namespace: str | None = None
+    ) -> str | None:
+        if isinstance(target, lang.Name):
+            prefix, separator, name = target.token.text.partition(":")
+            if not separator:
+                prefix, name = namespace or "", prefix
+            if prefix == "object" and not {"target.object", "target.object.named"}.intersection(
+                self.phrases
+            ):
+                return self._phrase("target.object.cell", name=self._feature_name("object", name))
+        elif isinstance(target, lang.Union):
+            first = target.items[0]
+            inherited = (
+                first.token.text.partition(":")[0]
+                if isinstance(first, lang.Name) and ":" in first.token.text
+                else None
+            )
+            parts: list[str] = []
+            for item in target.items:
+                rendered = self._king_target(item, bindings, inherited)
+                if rendered is None:
+                    return None
+                parts.append(rendered)
+            result = parts[0]
+            for part in parts[1:]:
+                result = self._phrase("target.or", left=result, right=part)
+            return result
+        elif (
+            isinstance(target, lang.Filter)
+            and isinstance(target.source, lang.Name)
+            and target.source.token.text == "people"
+            and target.operator.text == "on"
+            and target.measure is None
+            and "op.filter" not in self.phrases
+        ):
+            return self._phrase(
+                "target.person.on",
+                target=self._target(target.target, None, bindings, target.operator, target.source),
+            )
+        return None
+
+    def _near_king(
+        self, atom: lang.Atom, bindings: dict[str, Shape], *, negated: bool = False
+    ) -> str | None:
+        if (
+            atom.operator.text != "dir:king"
+            or atom.determiner is not None
+            or not isinstance(atom.subject, lang.Name)
+            or atom.subject.token.text not in self.board.people
+            or atom.measure is None
+            or atom.measure.comparison.text != "<="
+            or int(atom.measure.value.text) != 1
+            or {"rel.dir.king", "rel.measure"}.intersection(self.phrases)
+        ):
+            return None
+        target = self._king_target(atom.target, bindings)
+        if target is None:
+            return None
+        clause = self._phrase(
+            self._atom_key(atom, bindings, negated=negated),
+            subject=self._operand(atom.subject, bindings),
+            relation=self._phrase("rel.dir.king.near"),
+            target=target,
+        )
+        return self._phrase("idiom.king.not_near" if negated else "idiom.king.near", clause=clause)
+
     def _target(
         self,
         target: lang.Operand,
@@ -580,7 +661,14 @@ class ExpressionWords:
         person = (
             subject is not None and infer_operand(self.board, subject, bindings).sort is Sort.PERSON
         )
-        if namespace == "area" and person:
+        king_target = (
+            self._king_target(target, bindings)
+            if person and operator and operator.text == "dir:king"
+            else None
+        )
+        if king_target is not None:
+            rendered = king_target
+        elif namespace == "area" and person:
             _, rendered = self._area_location(name)
         elif namespace in {"edge_item", "point_object", "mark"} and person:
             rendered = self._phrase(
@@ -829,6 +917,8 @@ class ExpressionWords:
         return self._phrase(key, area=self._operand(formula.source.right, {}))
 
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:
+        if isinstance(value, lang.Atom) and (idiom := self._near_king(value, bindings)):
+            return idiom
         if isinstance(value, lang.NumberComparison) and (
             idiom := self._count_idiom(value, bindings)
         ):
@@ -868,6 +958,12 @@ class ExpressionWords:
                     right=self._operand(right, bindings),
                 )
             case lang.Negation(formula=formula):
+                if (
+                    "bool.not" not in self.phrases
+                    and isinstance(formula, lang.Atom)
+                    and (idiom := self._near_king(formula, bindings, negated=True))
+                ):
+                    return idiom
                 if (
                     "bool.not" not in self.phrases
                     and isinstance(formula, lang.Atom)

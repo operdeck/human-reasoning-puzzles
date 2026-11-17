@@ -341,6 +341,11 @@ authored sentences keep their wording rather than being shortened into predicate
 Single numbered rows and columns use singular names. Dutch person-location
 sentences use `staat` for directions and adjacency, and `zit` for `on`;
 explicit `atom.one` and `atom.not` templates still take precedence.
+A named person's `dir:king object:… <= 1` reads as "on or directly next to
+a square of …", explicitly including diagonals and area boundaries; negation
+covers the whole union of target footprints. A target such as
+`people on object:…` instead names a person on the object. Exact distances
+such as `= 1` retain their metric wording, as do other bounds.
 Simple counts of people on or in a footprint read as "exactly", "at least" or
 "at most" that many people. Other counts and arithmetic remain compositional;
 an explicit `number.compare` template overrides this idiom.
