@@ -54,7 +54,7 @@ inspection methods, `assign`/`eliminate`). Renderers learn what changed from
 that and the public API. `murdoku` owns the board and what clues mean, and
 `board_rules()` is the structured meaning of its constraints — look names
 up there, never parse them. Wording (`Language:`, `Words:`, phrasebooks)
-lives only in `story`; pictures only in `picture`. Explanation concerns
+lives in `story` and `murdoku_expression_words`; pictures only in `picture`. Explanation concerns
 never go on `Board` or into `core`. `test_modules_only_import_their_own_layer`
 enforces the import graph.
 
@@ -241,6 +241,13 @@ for file syntax and semantics, and
 for puzzle workflows. Keep vocabulary in the format guide; do not duplicate it
 here or accept legacy spellings.
 
+There is one meaning per word, and commas form unions. Multi-element left
+operands require an explicit determiner. The reference evaluator defines what
+an expression means; the compiler and independent brute force must agree with
+it. Lower expressions in `murdoku_lower`, never in `core.py`, and preserve the
+tuned pattern table so migration does not change grades. Compose expressions
+instead of adding a puzzle-specific keyword.
+
 Repeated `Regions:` IDs form one logical area, even when disconnected;
 `AreaTags:` are separate, overlapping sets. Every object footprint explicitly
 declares `blocking` or `standable`, is connected, and does not overlap another
@@ -278,14 +285,18 @@ generated text for language and consistency, not for solving.
 
 ## Murdoku global counts
 
-`count` clues are Murdoku vocabulary, not new engine rules. Compile them to
-`Kind.COUNT` constraints using `murdoku.global_count_conditions`, and call the
-same semantic tally from the independent brute-force solver. Reified empty
-areas/cells must be true exactly when their occupant count is zero; reuse one
-empty Boolean per logical area or cell even when tagged selectors overlap.
-Count every entry in `People:`; no subset is implicit. Count only unblocked
-free cells for empty-cell selectors. Attributes are fixed facts: an attribute
-count may reject an inconsistent model but cannot locate a person. See
+Use the [expression reference](docs/model-and-puzzle-formats.md#expression-clue-language)
+for count and occupancy meaning. The evaluator is authoritative;
+`murdoku_lower` lowers counts to generic model primitives outside `core.py`.
+Preserve the tuned count/population patterns and their grades rather than
+turning every expression into a large relation.
+
+Reified emptiness must be equivalent to zero people on the footprint,
+including blocked cells. Reuse an empty Boolean per logical area or cell
+even when tags overlap. Migrated free-cell-only counts use `empty free cells`.
+Count every entry in `People:` unless the operand explicitly selects a
+subset. Attributes are fixed facts: an attribute count may reject an
+inconsistent model but cannot locate a person. See
 `benchmark/murdoku_global_counts.py` before changing the count/chain workload.
 The text board and `--step` show true/open totals, additional demand, and
 feasible totals; active location scopes are highlighted without adding

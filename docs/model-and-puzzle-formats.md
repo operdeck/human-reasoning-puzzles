@@ -348,7 +348,7 @@ assertions and set comparisons; compound Boolean formulas; numeric, parity and
 range comparisons; quantifiers and choices. Its AST inventory is guarded
 against additions to the language.
 For a draft board with expression `key_clue:` entries, use
-`puzzle-lab murdoku-board SPEC --expressions --suggest`; it uses the same
+`puzzle-lab murdoku-board SPEC --suggest`; expressions are the default. It uses the same
 limited suggestion templates and reports drafts it cannot close.
 `python -m csp FILE --show-model` shows the compiled model grouped by source
 expressions. Console solving, `--grade`, `--brute-force`, `--verbose`, `--step`,

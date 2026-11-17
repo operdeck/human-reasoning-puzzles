@@ -1115,7 +1115,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     board_parser.add_argument(
         "--expressions",
         action="store_true",
-        help="preview expression-language key clues, rules and suggestions",
+        default=True,
+        help="use expression-language key clues, rules and suggestions (the default)",
     )
     board_parser.add_argument(
         "--key-clue",

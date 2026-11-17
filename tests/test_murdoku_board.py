@@ -1,6 +1,7 @@
 """The Murdoku board generator: filters, templates, spec reading and drafts."""
 
 import random
+from pathlib import Path
 
 import pytest
 
@@ -9,7 +10,6 @@ from csp import murdoku_board as mb
 from csp.bruteforce import murdoku as brute
 from csp.bruteforce import murdoku_expr as expression_brute
 from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
-from csp.puzzlefile import keyed_clue_numbers, load_board
 
 SPEC = """theme: test
 size: 5
@@ -20,7 +20,7 @@ late: Dee
 companions: Ann
 object: rots blocking x2
 object: kruk standable x1
-key_clue: not beside Ann object:rots
+key_clue: not Ann beside object:rots
 candidates: 2
 keep: 2
 seed: 3
@@ -29,12 +29,20 @@ seed: 3
 
 def test_read_spec_keeps_hex_colours_and_drops_comments():
     spec = mb.read_spec(SPEC)
+    assert spec.expressions
     assert spec.colours == {"West": "#F6E3A1"}
     assert spec.companions == ("Ann",)
     assert [(o.name, o.kind, o.count) for o in spec.objects] == [
         ("rots", "blocking", 2),
         ("kruk", "standable", 1),
     ]
+
+
+@pytest.mark.parametrize("name", ["japan-6x6", "vietnam-5x5", "vietnam-6x6", "vietnam-7x7"])
+def test_published_specs_use_expression_key_clues_by_default(name):
+    source = Path(__file__).parents[1] / "specs" / "murdoku" / f"{name}.txt"
+    spec = mb.read_spec(source.read_text())
+    assert spec.expressions and spec.key_clues
 
 
 def test_read_spec_accepts_only_declared_decorative_objects():
@@ -47,7 +55,7 @@ def test_read_spec_accepts_only_declared_decorative_objects():
 
 
 def test_expression_spec_uses_ast_for_late_and_decor_exclusions():
-    text = SPEC.replace("not beside Ann object:rots", "not Ann beside object:rots")
+    text = SPEC
     spec = mb.read_spec(text + "decor: kruk\n", expressions=True)
     assert spec.expressions
     with pytest.raises(ValueError, match="names the late figure"):
@@ -60,10 +68,9 @@ def test_expression_spec_uses_ast_for_late_and_decor_exclusions():
 
 
 def test_expression_late_rule_matches_legacy_placement_semantics():
-    spec = mb.read_spec(SPEC.replace("key_clue: not beside Ann object:rots\n", ""))
-    expression_spec = mb.read_spec(
-        SPEC.replace("key_clue: not beside Ann object:rots\n", ""), expressions=True
-    )
+    text = SPEC.replace("key_clue: not Ann beside object:rots\n", "")
+    spec = mb.read_spec(text, expressions=False)
+    expression_spec = mb.read_spec(text, expressions=True)
     layout = ((0, 0, 0, 1, 1),) * 2 + ((0, 0, 2, 1, 1),) * 3
     colours = ["#F4CBC3", "#CBE6B9", "#C4DCF2"]
     legacy = mb.draft_text(spec, layout, colours, [])
@@ -74,7 +81,7 @@ def test_expression_late_rule_matches_legacy_placement_semantics():
 
 
 def test_expression_board_candidate_and_close():
-    text = SPEC.replace("not beside Ann object:rots", "not Ann beside object:rots")
+    text = SPEC
     spec = mb.read_spec(text + "decor: kruk\n", expressions=True)
     item = mb.candidate(spec, 0)
     assert item is not None
@@ -96,7 +103,7 @@ def test_expression_board_candidate_and_close():
 @pytest.mark.parametrize(
     "line, problem",
     [
-        ("key_clue: beside Dee object:rots", "names the late figure"),
+        ("key_clue: Dee beside object:rots", "names the late figure"),
         ("late_extra: x", "unknown spec keys"),
         ("template: spiral", "template must be"),
     ],
@@ -147,8 +154,8 @@ def test_candidates_are_reproducible_and_satisfy_the_late_rule():
     first = mb.candidate(spec, 0)
     assert first is not None
     assert mb.candidate(spec, 0) == first
-    assert brute.accepts(first.text, first.placement)
-    board, _ = load_board(first.text)
+    board, rules, clues = load_expression_board(first.text)
+    assert expression_brute.accepts(board, clues, first.placement, rules=rules)
     dee = board.region_of(first.placement["Dee"])
     others = {p for p, sq in first.placement.items() if p != "Dee" and board.region_of(sq) == dee}
     assert others == {"Ann"}
@@ -178,16 +185,15 @@ def test_close_adds_clues_that_leave_the_late_figure_out():
     closed = mb.close(spec, first)
     assert closed.closing.startswith(f"{len(clue_search.clue_lines(closed.text)) - 1} clues added")
     assert "# Suggested clues:" in closed.text
-    assert keyed_clue_numbers(closed.text) == {1}
+    assert keyed_expression_clue_numbers(closed.text) == {1}
     assert not any("Dee" in line.split() for line in clue_search.clue_lines(closed.text))
     assert all("object:kruk" not in line.split() for line in clue_search.clue_lines(closed.text))
-    assert brute.accepts(closed.text, closed.placement)
+    board, rules, clues = load_expression_board(closed.text)
+    assert expression_brute.accepts(board, clues, closed.placement, rules=rules)
 
 
 def test_a_key_clue_that_rules_nothing_out_is_rejected():
-    spec = mb.read_spec(
-        SPEC.replace("not beside Ann object:rots", "in Ann area:West area:East area:North")
-    )
+    spec = mb.read_spec(SPEC.replace("not Ann beside object:rots", "Ann in area:West,East,North"))
     tally: dict[str, int] = {}
     assert mb.candidate(spec, 0, tally) is None
     assert tally.get("key clue rules nothing out")
@@ -200,3 +206,19 @@ def test_write_refuses_to_overwrite(tmp_path):
     assert any(p.name.endswith("-report.txt") for p in paths)
     with pytest.raises(FileExistsError):
         mb.write(report, spec, tmp_path, pictures=False)
+
+
+def test_board_cli_closes_expression_drafts_without_a_language_flag(tmp_path):
+    from csp.puzzle_lab import main
+
+    source = tmp_path / "theme.txt"
+    source.write_text(SPEC.replace("candidates: 2", "candidates: 1"))
+    output = tmp_path / "drafts"
+    assert (
+        main(["murdoku-board", str(source), "--output", str(output), "--no-pictures", "--suggest"])
+        == 0
+    )
+    (draft,) = output.glob("*-c*.txt")
+    _, rules, clues = load_expression_board(draft.read_text())
+    assert rules and clues
+    assert keyed_expression_clue_numbers(draft.read_text()) == {1}

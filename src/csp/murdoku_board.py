@@ -112,7 +112,7 @@ class Spec:
     seed: int = 1
     min_area: int = int(THRESHOLDS["min_area"])
     max_ratio: float = THRESHOLDS["max_ratio"]
-    expressions: bool = False
+    expressions: bool = True
 
     def __post_init__(self) -> None:
         if not 4 <= self.size <= 12:
@@ -165,7 +165,7 @@ class Spec:
                 raise ValueError(f"key clue {clue!r} names decorative objects")
 
 
-def read_spec(text: str, *, expressions: bool = False) -> Spec:
+def read_spec(text: str, *, expressions: bool = True) -> Spec:
     """A spec from `key: value` lines; `object:` and `key_clue:` may repeat.
 
     `object: bank standable x2 size 2 in Hue` asks for two standable benches of two
