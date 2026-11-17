@@ -385,13 +385,16 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
     with pytest.raises(SystemExit) as error:
-        cli.main([str(puzzle), "--expressions", "--explain"])
+        cli.main([str(puzzle), "--expressions", "--svg"])
     assert error.value.code == 2
-    assert (
-        "--expressions currently supports only normal solves (with --verbose or --step), "
-        "--show-model, --grade, "
-        "--brute-force, --lint and --require-forward" in (capsys.readouterr().err)
-    )
+    assert "--expressions currently supports only" in capsys.readouterr().err
+
+
+def test_cli_expression_explain_uses_the_generic_story(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--expressions", "--explain"]) == 0
+    assert "Ben = r2c1" in capsys.readouterr().out
 
 
 def test_cli_expression_normal_solve_and_stalled_board(tmp_path, capsys):

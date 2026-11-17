@@ -352,7 +352,7 @@ For a draft board with expression `key_clue:` entries, use
 limited suggestion templates and reports drafts it cannot close.
 `python -m csp FILE --expressions --show-model` previews the compiled model
 grouped by the source expressions. `--grade` and `--brute-force` also accept
-`--expressions`. Normal console solving, including `--verbose` and `--step`, is also available with `--expressions`.
+`--expressions`. Normal console solving, including `--verbose`, `--step` and a generic-story `--explain`, is also available with `--expressions`.
 `--lint --expressions` previews board and expression diagnostics, including
 impossible required relations, role-negation and relation-size warnings;
 `--require-forward` adds a forward-only solve check. Other

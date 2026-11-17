@@ -775,8 +775,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
     if args.expressions and (
-        args.explain
-        or args.track_person
+        args.track_person
         or args.png is not None
         or args.svg is not None
         or args.interactive
@@ -785,7 +784,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         or booklets
     ):
         parser.error(
-            "--expressions currently supports only normal solves (with --verbose or --step), "
+            "--expressions currently supports only normal solves (with --verbose, --step or "
+            "--explain), "
             "--show-model, --grade, "
             "--brute-force, --lint and --require-forward"
         )
@@ -1016,7 +1016,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
     if args.brute_force:
         return brute_force(puzzle, text)
     if args.explain:
-        if kind == "murdoku":
+        if kind == "murdoku" and expression_compiled is None:
             print(f"\n{story.explain(text)}")
             return 0
         explanation = pattern_story(kind, text, model)
