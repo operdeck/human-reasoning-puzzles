@@ -136,22 +136,22 @@ Igor
 Olga
 
 Rules:
-for each area in all occupied by role:moordenaar, count people in that area = 1
-for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1
+every ?p in role:moordenaar: count (people in area of ?p) = 1
+every ?a in tag:plaats_delict: some role:moordenaar in ?a
 
 Clues:
-in Olga area:noordperron
-in Ludmila area:coupe_1
-on Anastasia object:perron_bank
-dir Ludmila Bogdan up
-not on Ludmila edge_item:raam
-dir Dragomir Katarina areas = 0
-beside Igor object:klok
-dir Olga Igor left
-in Vladimir area:gangpad
-on Bogdan edge_item:raam
-not beside Olga object:klok
-dir Dragomir Vladimir left
+Olga in area:noordperron
+Ludmila in area:coupe_1
+Anastasia on object:perron_bank
+Ludmila dir:up Bogdan
+not (Ludmila on edge_item:raam)
+Dragomir dir:areas Katarina = 0
+Igor beside object:klok
+Olga dir:left Igor
+Vladimir in area:gangpad
+Bogdan on edge_item:raam
+not (Olga beside object:klok)
+Dragomir dir:left Vladimir
 
 Title:
 Moord in de Oriënt Express 3: Wie is de moordenaar?

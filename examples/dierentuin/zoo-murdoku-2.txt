@@ -69,19 +69,19 @@ Neushoorn
 Verzorger
 
 Rules:
-alone Tijger
-for each area in all occupied by role:aap, count people in that area >= 2
-with Verzorger attribute:dier in same area exactly 1
+count (people in area of Tijger) = 1
+every ?p in role:aap: count (people in area of ?p) >= 2
+count (people in area of Verzorger) = 1 + 1 and every ((people except Verzorger) in area of Verzorger) is attribute:dier
 
 Clues:
-dir Makaak Neushoorn manhattan >= 5
-dir Tijger Gibbon left
-beside Nijlpaard object:waterlelie
-in Makaak columns:5
-not in Tijger area:moeras
-not in Gibbon area:rivier
-in Neushoorn columns:3
-in Tijger rows:1
+Makaak dir:manhattan Neushoorn >= 5
+Tijger dir:left Gibbon
+Nijlpaard beside object:waterlelie
+Makaak in columns:5
+not (Tijger in area:moeras)
+not (Gibbon in area:rivier)
+Neushoorn in columns:3
+Tijger in rows:1
 
 # Booklet text for --docx (optional).
 Title:

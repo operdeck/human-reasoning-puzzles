@@ -93,14 +93,14 @@ Elena
 Fernando
 
 Rules:
-for each area in tag:crime_scene, count people in that area with role:murderer >= 1
+every ?a in tag:crime_scene: some role:murderer in ?a
 
 Clues:
-beside Bernardo object:painting
-in Alba area:Goya_room
-on Fernando object:sarcophagus
-beside Diego object:sauropod
-not beside Elena object:scarab
+Bernardo beside object:painting
+Alba in area:Goya_room
+Fernando on object:sarcophagus
+Diego beside object:sauropod
+not (Elena beside object:scarab)
 
 Title:
 Halloween at the Museum: The cursed dagger

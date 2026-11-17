@@ -405,7 +405,8 @@ def test_expression_files_are_detected_without_a_flag(tmp_path, capsys):
     from csp.murdoku_expression_file import is_expression_file
 
     assert is_expression_file(TEXT)
-    assert not is_expression_file(Path("examples/demo/murdoku_3_house.txt").read_text())
+    assert is_expression_file(Path("examples/demo/murdoku_3_house.txt").read_text())
+    assert not is_expression_file("Size: 3\n\nClues:\n  dir A B left = 1\n")
     assert cli.load(TEXT, "murdoku").model is not None
     assert len(solutions(TEXT, "murdoku", 2)) == 1
     puzzle = tmp_path / "puzzle.txt"

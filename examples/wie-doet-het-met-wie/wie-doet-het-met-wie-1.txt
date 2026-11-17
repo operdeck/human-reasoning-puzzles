@@ -62,16 +62,16 @@ Daan
 Wouter
 
 Rules:
-with Wouter in same area exactly 1
+count (people in area of Wouter) = 1 + 1
 count people on object:badjas = 2
 count people on object:sloffen = 1
 
 Clues:
-dir people_on:object:badjas people_on:object:sloffen up = 1 | Een van de gasten met een badjas staat precies één rij boven de gast met sloffen.
-on Marloes object:badjas | Marloes heeft alleen een badjas aan.
-beside Bas object:toilet
-dir Cato Daan left
-in Cato area:gang
+some (people on object:badjas) dir:up (people on object:sloffen) = 1 | Een van de gasten met een badjas staat precies één rij boven de gast met sloffen.
+Marloes on object:badjas | Marloes heeft alleen een badjas aan.
+Bas beside object:toilet
+Cato dir:left Daan
+Cato in area:gang
 
 Title:
 Murdoku: De logeeravond

@@ -114,26 +114,26 @@ Vittoria
 Marco
 
 Rules:
-for each area in all occupied by role:murderer, count people in that area >= 2
-for each area in tag:crime_scene, count people in that area with role:murderer >= 1
+every ?p in role:murderer: count (people in area of ?p) >= 2
+every ?a in tag:crime_scene: some role:murderer in ?a
 
 Clues:
-in Lorenzo area:roof
-in Matteo area:restaurant
-on Paolo object:chair
-on Marco object:bed
-in Raffaele area:room_east
-beside Lorenzo object:table
-beside Matteo object:table
-beside Lorenzo object:bench
-beside Marco object:corpse
-beside Raffaele object:vase
-on Vittoria object:staircase
-beside Giulia object:sofa
-not beside Lucia object:corpse
-not in Raffaele rows:6
-dir Lorenzo Lucia up
-dir Paolo Sofia up
+Lorenzo in area:roof
+Matteo in area:restaurant
+Paolo on object:chair
+Marco on object:bed
+Raffaele in area:room_east
+Lorenzo beside object:table
+Matteo beside object:table
+Lorenzo beside object:bench
+Marco beside object:corpse
+Raffaele beside object:vase
+Vittoria on object:staircase
+Giulia beside object:sofa
+not (Lucia beside object:corpse)
+not (Raffaele in rows:6)
+Lorenzo dir:up Lucia
+Paolo dir:up Sofia
 
 Title:
 The Murder Hotel: The housekeeper's discovery

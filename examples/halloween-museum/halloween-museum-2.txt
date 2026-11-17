@@ -101,17 +101,17 @@ Fernando
 Gonzalo
 
 Rules:
-for each area in tag:crime_scene, count people in that area with role:murderer >= 1
+every ?a in tag:crime_scene: some role:murderer in ?a
 
 Clues:
-beside Fernando object:pumpkin
-in Alba area:El_Greco_room
-beside Carmen object:scarab
-in Bernardo area:armoury
-dir Alba Elena left
-in Gonzalo area:gift_shop
-not on Bernardo edge_item:door
-beside Carmen object:sarcophagus
+Fernando beside object:pumpkin
+Alba in area:El_Greco_room
+Carmen beside object:scarab
+Bernardo in area:armoury
+Alba dir:left Elena
+Gonzalo in area:gift_shop
+not (Bernardo on edge_item:door)
+Carmen beside object:sarcophagus
 
 Title:
 Halloween at the Museum: The crossbow

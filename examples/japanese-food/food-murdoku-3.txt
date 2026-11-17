@@ -57,18 +57,18 @@ Sushi
 Jos
 
 Rules:
-with Jos attribute:food in same area exactly 1
+count (people in area of Jos) = 1 + 1 and every ((people except Jos) in area of Jos) is attribute:food
 
 Clues:
-dir Gyoza Okonomiyaki manhattan >= 5
-in Tonkatsu rows:1
-in Okonomiyaki columns:1
-dir Gyoza Sushi up
-dir Sushi Yakitori manhattan >= 8
-dir Gyoza Tempura areas >= 1
-dir Okonomiyaki Yakitori manhattan <= 3
-in Tempura rows:3
-in Sushi rows:6
+Gyoza dir:manhattan Okonomiyaki >= 5
+Tonkatsu in rows:1
+Okonomiyaki in columns:1
+Gyoza dir:up Sushi
+Sushi dir:manhattan Yakitori >= 8
+Gyoza dir:areas Tempura >= 1
+Okonomiyaki dir:manhattan Yakitori <= 3
+Tempura in rows:3
+Sushi in rows:6
 
 # Booklet text for --docx (optional).
 Title:

@@ -60,16 +60,16 @@ Vis
 Vla
 
 Rules:
-with Vla in same area exactly 2
+count (people in area of Vla) = 2 + 1
 
 Clues:
-on Pasta point_object:zonnebloem
-dir Broccoli Pasta left = 2
-in Aardappel columns:5
-dir Vis Aardappel up
-dir Rijst Vis manhattan >= 7
-dir Broccoli Rijst areas = 0
-in Broccoli rows:5
+Pasta on point_object:zonnebloem
+Broccoli dir:left Pasta = 2
+Aardappel in columns:5
+Vis dir:up Aardappel
+Rijst dir:manhattan Vis >= 7
+Broccoli dir:areas Rijst = 0
+Broccoli in rows:5
 
 # Booklet text for --docx (optional).
 Title:

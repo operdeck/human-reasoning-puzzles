@@ -40,11 +40,11 @@ Akumatchi
 
 Clues:
 count people on mark:quiet = 1 | Exactly one figure stands on a quiet square.
-on Mametchi object:chair
-beside Masktchi object:sakura
-in Memetchi corner:board
-in Kuchipatchi area:fountain_plaza
-not beside Lovelitchi object:carpet
+Mametchi on object:chair
+Masktchi beside object:sakura
+Memetchi in corner:board
+Kuchipatchi in area:fountain_plaza
+not (Lovelitchi beside object:carpet)
 
 # Booklet text for --docx (optional).
 Title:

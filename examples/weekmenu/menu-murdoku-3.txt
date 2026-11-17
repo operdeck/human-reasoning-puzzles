@@ -73,19 +73,19 @@ Wortel
 Vla
 
 Rules:
-with Vla in same area exactly 2
+count (people in area of Vla) = 2 + 1
 
 Clues:
-not on Aardappel point_object:zonnebloem
-on Noedels point_object:sierui
-not in Pasta rows:5
-dir Vis Noedels up = 6
-dir Aardappel Bonen up = 3
-dir Aardappel Noedels manhattan >= 14
-not in Wortel area:zondag
-on Vis point_object:sierui
-dir Aardappel Vis manhattan >= 5
-dir Noedels Wortel manhattan <= 5
+not (Aardappel on point_object:zonnebloem)
+Noedels on point_object:sierui
+not (Pasta in rows:5)
+Vis dir:up Noedels = 6
+Aardappel dir:up Bonen = 3
+Aardappel dir:manhattan Noedels >= 14
+not (Wortel in area:zondag)
+Vis on point_object:sierui
+Aardappel dir:manhattan Vis >= 5
+Noedels dir:manhattan Wortel <= 5
 
 # Booklet text for --docx (optional).
 Title:

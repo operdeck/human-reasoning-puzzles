@@ -56,17 +56,17 @@ Tonkatsu
 Jos
 
 Rules:
-with Jos attribute:food in same area exactly 1
+count (people in area of Jos) = 1 + 1 and every ((people except Jos) in area of Jos) is attribute:food
 
 Clues:
-dir Okonomiyaki Onigiri areas = 0
-not in Tonkatsu area:kobe
-dir Onigiri Tonkatsu left
-dir Okonomiyaki Tonkatsu manhattan >= 6
-dir Onigiri Tonkatsu manhattan >= 8
-in Sushi rows:4
-dir Mochi Tonkatsu up
-dir Mochi Okonomiyaki left
+Okonomiyaki dir:areas Onigiri = 0
+not (Tonkatsu in area:kobe)
+Onigiri dir:left Tonkatsu
+Okonomiyaki dir:manhattan Tonkatsu >= 6
+Onigiri dir:manhattan Tonkatsu >= 8
+Sushi in rows:4
+Mochi dir:up Tonkatsu
+Mochi dir:left Okonomiyaki
 
 # Booklet text for --docx (optional).
 Title:

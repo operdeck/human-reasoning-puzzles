@@ -53,13 +53,13 @@ Keiko
 Mio
 
 Clues:
-most_populated area:Tokyo
-least_populated area:Okinawa
-beside Keiko object:lantaarn
-on Mio object:bank
-dir Haru Jun up
-dir Haru Isamu left
-not beside Haru object:torii
+every ?b in (areas except area:Tokyo): count (people in ?b) < count (people in area:Tokyo)
+every ?b in (area of free cells except area:Okinawa): count (people in ?b) > count (people in area:Okinawa)
+Keiko beside object:lantaarn
+Mio on object:bank
+Haru dir:up Jun
+Haru dir:left Isamu
+not (Haru beside object:torii)
 
 Question:
 Waar staat iedereen?

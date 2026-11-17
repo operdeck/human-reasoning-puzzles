@@ -65,18 +65,18 @@ Kameel
 Verzorger
 
 Rules:
-alone Leeuw
-for each area in all occupied by role:aap, count people in that area >= 2
-with Verzorger attribute:dier in same area exactly 1
+count (people in area of Leeuw) = 1
+every ?p in role:aap: count (people in area of ?p) >= 2
+count (people in area of Verzorger) = 1 + 1 and every ((people except Verzorger) in area of Verzorger) is attribute:dier
 
 Clues:
-in Makaak area:bergen
-dir Berggorilla Kameel up
-in Berggorilla columns:3
-in Leeuw area:savanne
-not beside Makaak object:gras
-dir Kameel Berggorilla left
-dir Berggorilla Kameel manhattan <= 2
+Makaak in area:bergen
+Berggorilla dir:up Kameel
+Berggorilla in columns:3
+Leeuw in area:savanne
+not (Makaak beside object:gras)
+Kameel dir:left Berggorilla
+Berggorilla dir:manhattan Kameel <= 2
 
 # Booklet text for --docx (optional).
 Title:

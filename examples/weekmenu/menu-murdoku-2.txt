@@ -67,17 +67,17 @@ Spinazie
 Vla
 
 Rules:
-with Vla in same area exactly 2
+count (people in area of Vla) = 2 + 1
 
 Clues:
-on Pasta point_object:zonnebloem
-on Pasta point_object:sierui
-not in Aardappel rows:6
-dir Pasta Rijst manhattan >= 9
-dir Kip Spinazie up = 2
-dir Aardappel Noedels left = 3
-dir Aardappel Rijst up = 1
-dir Kip Noedels areas >= 1
+Pasta on point_object:zonnebloem
+Pasta on point_object:sierui
+not (Aardappel in rows:6)
+Pasta dir:manhattan Rijst >= 9
+Kip dir:up Spinazie = 2
+Aardappel dir:left Noedels = 3
+Aardappel dir:up Rijst = 1
+Kip dir:areas Noedels >= 1
 
 # Booklet text for --docx (optional).
 Title:

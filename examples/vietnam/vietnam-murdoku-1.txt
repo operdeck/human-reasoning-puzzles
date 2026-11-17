@@ -48,15 +48,15 @@ Attributes:
 reiziger: Pippo Swena
 
 Rules:
-with PhoGa attribute:reiziger in same area exactly 2
+count (people in area of PhoGa) = 2 + 1 and every ((people except PhoGa) in area of PhoGa) is attribute:reiziger
 
 Clues:
-not dir Pippo object:buncha,thitkho,phalau king <= 1 | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
-not dir Swena object:buncha,thitkho,phalau king <= 1 | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
-dir Lan Khoa up
-beside Khoa object:thitkho
-not beside Pippo object:kruk
-dir Swena Pippo up
+not (Pippo dir:king object:buncha,thitkho,phalau <= 1) | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+not (Swena dir:king object:buncha,thitkho,phalau <= 1) | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+Lan dir:up Khoa
+Khoa beside object:thitkho
+not (Pippo beside object:kruk)
+Swena dir:up Pippo
 
 # Booklet text for --docx (optional).
 Title:

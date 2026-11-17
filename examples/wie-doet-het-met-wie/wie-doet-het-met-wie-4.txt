@@ -67,18 +67,18 @@ Inge
 Wouter
 
 Rules:
-with Wouter in same area exactly 1
+count (people in area of Wouter) = 1 + 1
 count people on object:badjas = 2
 count people on object:sloffen = 1
 count people on object:bril = 1
 
 Clues:
-dir Inge people_on:object:badjas up = 1 | Een gast met een badjas staat precies één rij onder Inge.
-dir Bas Esther areas = 0
-in Kees area:logeerkamer
-not beside Inge object:badjas
-on Marloes object:bril | Marloes heeft alleen een bril op.
-on Esther object:sloffen | Esther heeft sloffen aan.
+Inge dir:up (people on object:badjas) = 1 | Een gast met een badjas staat precies één rij onder Inge.
+Bas dir:areas Esther = 0
+Kees in area:logeerkamer
+not (Inge beside object:badjas)
+Marloes on object:bril | Marloes heeft alleen een bril op.
+Esther on object:sloffen | Esther heeft sloffen aan.
 
 Title:
 Murdoku: Het logeerweekend

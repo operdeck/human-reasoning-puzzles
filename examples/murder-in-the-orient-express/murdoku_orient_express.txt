@@ -102,22 +102,22 @@ Katarina
 Ludmila
 
 Rules:
-for each area in all occupied by role:moordenaar, count people in that area >= 2
-for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1
+every ?p in role:moordenaar: count (people in area of ?p) >= 2
+every ?a in tag:plaats_delict: some role:moordenaar in ?a
 
 Clues:
-in Ludmila area:coupe_1
-in Vladimir area:coupe_2
-beside Ludmila object:trein_bank
-on Anastasia object:perron_bank
-beside Bogdan object:bedieningspaneel
-not beside Vladimir object:trein_bank
-dir Ludmila Vladimir up
-not on Ludmila edge_item:raam
-beside Katarina object:koffiebar
-dir Dragomir Ludmila left
-dir Anastasia Dragomir left
-not beside Dragomir object:klok
+Ludmila in area:coupe_1
+Vladimir in area:coupe_2
+Ludmila beside object:trein_bank
+Anastasia on object:perron_bank
+Bogdan beside object:bedieningspaneel
+not (Vladimir beside object:trein_bank)
+Ludmila dir:up Vladimir
+not (Ludmila on edge_item:raam)
+Katarina beside object:koffiebar
+Dragomir dir:left Ludmila
+Anastasia dir:left Dragomir
+not (Dragomir beside object:klok)
 
 # Booklet text for --docx (optional).
 Title:
