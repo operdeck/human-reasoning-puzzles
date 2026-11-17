@@ -451,17 +451,21 @@ Numbers from actual runs, not estimates:
 | `wie-doet-het-met-wie-1.txt` | solved, 23 iterations | `single` 10, `relations` 6, `subsumption` 4, `cover2` 2 |
 | `murdoku_3_house.txt` | solved, 11 iterations | `single` 5, `relations` 4, `subsumption` 1 |
 | `murdoku_sparse_mystery.txt` | solved, 5 iterations | `single` 4 |
-| `murdoku_global_counts.txt` | solved, 13 iterations | `single` 9, `count` 3 |
-| `murdoku_composition.txt` | solved, 38 iterations | `single` 20, `count` 14, `relations` 3 |
+| `murdoku_global_counts.txt` | solved, 11 iterations | `single` 8, `count` 2 |
+| `murdoku_composition.txt` | solved, 44 iterations | `single` 25, `count` 15, `relations` 3 |
 | `samen-onderweg.txt` | solved, 29 iterations | `single` 17, `count` 7, `relations` 3, `subsumption` 1 |
 | `prrrdoku1.txt` | solved, 14 iterations | `single` 7, `relations` 4, `subsumption` 2 |
-| `prrrdoku2.txt` | solved, 27 iterations | `single` 9, `relations` 14, `chains` 2, `what_if` 1 |
-| `prrrdoku3.txt` | solved, 40 iterations | `single` 9, `relations` 18, `subsumption` 5, `cover2` 2, `what_if` 5 |
+| `prrrdoku2.txt` | solved, 36 iterations | `single` 17, `count` 1, `relations` 14, `chains` 2, `what_if` 1 |
+| `prrrdoku3.txt` | solved, 242 iterations | `single` 99, `count` 63, `relations` 67, `subsumption` 5, `cover2` 2, `what_if` 5 |
 | `calcudoku_1_4x4.txt` | solved, 22 iterations | `single` 15, `relations` 6 |
 | `calcudoku_3_6x6.txt` | solved, 57 iterations | `single` 35, `relations` 21 |
 | `calcudoku_4_6x6.txt` | solved, 60 iterations | `single` 36, `relations` 20, `cover2` 3 |
 | `calcudoku_6_6x6.txt` | solved, 73 iterations | `single` 35, `relations` 30, `cover2` 4, `what_if` 3 |
 | `calcudoku_5_7x7.txt` | solved, 80 iterations | `single` 47, `relations` 26, `cover2` 4, `cover3` 2 |
+
+The Murdoku rows use expression compilation. Counts include propagation of
+hidden gates, not just human placements; migration preserves the hardest rule
+and deductive frontier, not the number of auxiliary steps.
 
 No example in `examples/` needs `rule_wing`; it is in the ladder for models
 that do, and the Norvig benchmark credits it (see `benchmark/`).
@@ -487,15 +491,15 @@ The late-reveal Prrrdokus preserve their original assignments while changing
 the board or clues so Vladimir is the final placement and her companion stays
 ambiguous until then. Puzzle 1 moves r4c2 from kampeerplek to speeltuin.
 Puzzle 2 replaces Jos's kitchen-shop location clue with
-`dir Anna Mao up = 5` and retains `dir Jos Mao manhattan >= 13`; it needs
+`Anna dir:up Mao = 5` and retains `Jos dir:manhattan Mao >= 13`; it needs
 `what_if` and keeps Vladimir last.
 Puzzle 3 moves r2c5 from Bankastraat to Helmholtzstraat, moves r1c6 and r2c6
 from Bankastraat to Klimgebied Noord to keep Bankastraat connected, and adds
-`dir Mao Otto manhattan <= 6`. `--track-person Vladimir` traces the live square and
+`Mao dir:manhattan Otto <= 6`. `--track-person Vladimir` traces the live square and
 region-overlap companion candidates; regression tests check the final
 placement, ambiguity and connected region.
 
-Prrrdoku 3 still needs `what_if` (5 firings, after 34 earlier firings). The
+Prrrdoku 3 still needs `what_if` (5 firings). The
 document's own solution argues by cases too ("Waar zit Anna?"). Its key clue,
 "Luna is furthest from Mao", is a three-person relation, which gives chains
 no weak links yet.

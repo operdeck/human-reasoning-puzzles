@@ -283,7 +283,7 @@ def make_image(
 
     `solution` is drawn in if given; `interactive` draws the variant for the
     online game instead: cells as elements with ids, no solution. `expressions`
-    reads Murdoku in the expression grammar (count scopes are not drawn yet).
+    reads Murdoku in the expression grammar, including object-related count scopes.
     """
     from . import picture
 

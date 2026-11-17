@@ -356,6 +356,9 @@ whole alternative. A quantified person is named directly only when exactly one
 must exist; optional and multiple-holder domains keep their quantifiers.
 Newly reserved rows and columns are stated explicitly. Counterfactuals cite
 mark occupancy rules and their possible companions, never internal gate names.
+Placements on conditional marks state the resulting solitude or company. Once
+one marked square is occupied and an exact-one count applies, the story also
+explains why the other squares carrying that mark are empty.
 Chains cite the row, column, clue or rule that justifies each link; unnumbered
 booklets state the premise instead of referring to an absent clue number.
 Simple counts of people on or in a footprint read as "exactly", "at least" or
