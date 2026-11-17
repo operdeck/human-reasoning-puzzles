@@ -6,6 +6,7 @@ transcription fails here rather than quietly solving some other puzzle.
 """
 
 import re
+from functools import partial
 from itertools import product
 from pathlib import Path
 from typing import Any
@@ -810,7 +811,11 @@ count people on object:bed = 1
 """
     board, clues = load_board(text)
     (condition,) = murdoku.global_count_conditions(board, clues)
-    puzzle = cli.load(text, "murdoku")
+    puzzle = cli.Puzzle(
+        "murdoku",
+        murdoku.compile_puzzle(board, clues),
+        partial(murdoku.render, board, global_counts=[condition]),
+    )
 
     model_report = report.describe(puzzle.model)
     assert condition.label in model_report

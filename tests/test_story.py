@@ -93,7 +93,14 @@ ALLOWED = {
         "minesweeper",
         "starbattle",
     },
-    "docx_export": {"icons", "murdoku", "picture", "puzzlefile", "story"},
+    "docx_export": {
+        "icons",
+        "murdoku",
+        "murdoku_expression_file",
+        "picture",
+        "puzzlefile",
+        "story",
+    },
     "murdoku_board": {
         "svg",
         "bruteforce",
@@ -128,6 +135,7 @@ ALLOWED = {
     "collection": set(),
     "web": {
         "akari",
+        "murdoku_expression_file",
         "collection",
         "core",
         "dominosa",

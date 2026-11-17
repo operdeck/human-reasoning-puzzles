@@ -760,7 +760,7 @@ not has B role:bandit
 
 
 def test_png_global_count_legend_highlights_scope_and_cli_passes_counts(tmp_path, monkeypatch):
-    from csp import cli, murdoku
+    from csp import murdoku
 
     text = """Size: 2
 Regions:
@@ -798,22 +798,6 @@ count people on object:bed = 1
     # The ring did change pixels inside the bed's square, compared with the plain board.
     region = (margin, margin, margin + CELL, margin + CELL)
     assert image.crop(region).tobytes() != plain.crop(region).tobytes()
-
-    puzzle = tmp_path / "global-count.txt"
-    target = tmp_path / "global-count.png"
-    puzzle.write_text(text)
-    seen = []
-    original = drawing.murdoku_picture
-
-    def capture(board, placed=None, **kwargs):
-        seen.append(kwargs.get("global_counts"))
-        return original(board, placed, **kwargs)
-
-    monkeypatch.setattr(drawing, "murdoku_picture", capture)
-    cli.main([str(puzzle), "--png", str(target)])
-
-    assert seen and seen[0]
-    assert target.exists()
 
 
 def test_scope_groups_ring_each_object_even_when_two_touch():

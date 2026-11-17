@@ -915,6 +915,19 @@ def _cover(
     return added
 
 
+def _count(puzzle: str, expressions: bool) -> int:
+    if expressions:
+        board, rules, clues = load_expression_board(puzzle, validate_keys=False)
+        return len(expression_brute.solutions(board, clues, 2, rules=rules))
+    return len(brute.solutions(puzzle, 2))
+
+
+def _clue_names(clue: str, people: Sequence[str], expressions: bool) -> set[str]:
+    if expressions:
+        return _expression_people(parse_statement(clue).formula, set(people))
+    return set(clue.split()[1:])
+
+
 def ease(
     text: str,
     placement: dict[str, murdoku.Square],
@@ -925,6 +938,8 @@ def ease(
     exclude: Iterable[str] = (),
     needs: Iterable[int] = (),
     needs_marks: Iterable[str] = (),
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """Clues to add to a unique `text` until its grade is at most `max_grade`.
 
@@ -935,38 +950,48 @@ def ease(
     Ties go to clues about the people named least so far. Stops within
     `max_grade` or when nothing helps.
     """
-    board, _ = load_board(text)
-    candidates = candidate_clues(board, placement, kinds, exclude)
+    expressions = expressions or is_expression_file(text)
+    if expressions:
+        board = load_expression_board(text)[0]
+        candidates = [
+            format_statement(statement)
+            for statement in expression_candidate_clues(board, placement, kinds, exclude)
+        ]
+    else:
+        board, _ = load_board(text)
+        candidates = candidate_clues(board, placement, kinds, exclude)
     lines = clue_lines(text)
     needed = sorted(set(needs))
     marks_needed = tuple(dict.fromkeys(needs_marks))
     for name in marks_needed:
-        if len(brute.solutions(without_mark_condition(text, name))) < 2:
+        if _count(without_mark_condition(text, name), expressions) < 2:
             raise ValueError(f"mark {name!r} is not necessary in the starting puzzle")
     added: list[str] = []
-    current = outcome(text, timeout)
+    current = outcome(text, timeout, expressions=expressions)
     while not _within(current.grade, max_grade):
-        mentions = _mentions(board.people, lines + added)
+        mentions = _mentions(board.people, lines + added, expressions=expressions)
         best: tuple[tuple[int, int], int, str, Outcome] | None = None
         for clue in candidates:
             if clue in lines or clue in added:
                 continue
             if any(
-                len(brute.solutions(with_clues(text, [*lines[: n - 1], *lines[n:], *added, clue])))
+                _count(with_clues(text, [*lines[: n - 1], *lines[n:], *added, clue]), expressions)
                 == 1
                 for n in needed
             ):
                 continue
             trial = with_clues(text, [*lines, *added, clue])
             if any(
-                len(brute.solutions(without_mark_condition(trial, name))) == 1
+                _count(without_mark_condition(trial, name), expressions) == 1
                 for name in marks_needed
             ):
                 continue
-            result = outcome(trial, timeout)
+            result = outcome(trial, timeout, expressions=expressions)
             if not result.good or result.grade is None:
                 continue
-            spread = sum(mentions.get(word, 0) for word in clue.split()[1:])
+            spread = sum(
+                mentions.get(word, 0) for word in _clue_names(clue, board.people, expressions)
+            )
             level = GRADES.index(result.grade)
             rank = (0, -level) if _within(result.grade, max_grade) else (1, level)
             key = (rank, spread, clue, result)
@@ -983,8 +1008,12 @@ def ease(
 
 def occupancy(text: str, sample: int = 400) -> tuple[int, list[tuple[str, str, int]]]:
     """(placements seen, [(object, square, times occupied)]) over the allowed placements."""
-    board, _ = load_board(text)
-    found = brute.sample(text, sample)
+    if is_expression_file(text):
+        board, rules, clues = load_expression_board(text)
+        found = expression_brute.sample(board, clues, sample, rules=rules)
+    else:
+        board, _ = load_board(text)
+        found = brute.sample(text, sample)
     used = [{found_one[person] for person in board.people} for found_one in found]
     rows = [
         (obj.name, str(square), sum(square in squares for squares in used))
@@ -1043,8 +1072,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="suggest, ease: marks whose occupancy effects must stay necessary",
     )
     args = parser.parse_args(argv)
-    if args.expressions and args.command not in ("report", "thin", "suggest"):
-        parser.error("--expressions is supported only by report, thin and suggest")
     if args.needs_mark and args.command not in ("suggest", "ease"):
         parser.error("--needs-mark is supported only by suggest and ease")
     text = args.puzzle.read_text()
@@ -1093,6 +1120,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.exclude,
             args.needs,
             args.needs_mark,
+            expressions=args.expressions,
         )
         print("Clues to add:")
         print("\n".join(added))
