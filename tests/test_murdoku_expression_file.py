@@ -385,9 +385,17 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
     with pytest.raises(SystemExit) as error:
-        cli.main([str(puzzle), "--expressions", "--svg"])
+        cli.main([str(puzzle), "--expressions", "--export", str(tmp_path)])
     assert error.value.code == 2
     assert "--expressions currently supports only" in capsys.readouterr().err
+
+
+def test_cli_expression_svg_writes_puzzle_and_solution(tmp_path):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--expressions", "--svg"]) == 0
+    assert (tmp_path / "puzzle.svg").read_text().startswith("<svg")
+    assert (tmp_path / "puzzle-solution.svg").exists()
 
 
 def test_cli_expression_explain_uses_the_generic_story(tmp_path, capsys):

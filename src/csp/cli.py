@@ -267,11 +267,13 @@ def make_image(
     role_statuses: dict[tuple[str, str], bool | None] | None = None,
     *,
     interactive: bool = False,
+    expressions: bool = False,
 ) -> Any:
     """The picture (an `svg.Canvas`) of a puzzle of any family.
 
     `solution` is drawn in if given; `interactive` draws the variant for the
-    online game instead: cells as elements with ids, no solution.
+    online game instead: cells as elements with ids, no solution. `expressions`
+    reads Murdoku in the expression grammar (count scopes are not drawn yet).
     """
     from . import picture
 
@@ -306,8 +308,12 @@ def make_image(
     if kind in families:
         parse, draw = families[kind]
         return draw(parse(text), solution, interactive=interactive)
-    board, clues = load_board(text)
-    global_counts = murdoku.global_count_conditions(board, clues)
+    if expressions:
+        board = load_expression_board(text)[0]
+        global_counts: Sequence[murdoku.GlobalCountCondition] = ()
+    else:
+        board, clues = load_board(text)
+        global_counts = murdoku.global_count_conditions(board, clues)
     if solution is None and (unknown := picture.unknown_object_icons(board)):
         print(f"warning: no icon for {', '.join(unknown)}; using text labels", file=sys.stderr)
     return picture.murdoku_picture(
@@ -329,10 +335,13 @@ def write_picture(
     role_statuses: dict[tuple[str, str], bool | None] | None = None,
     *,
     interactive: bool = False,
+    expressions: bool = False,
 ) -> bool:
     """Save the puzzle as SVG or PNG (by `path`'s extension), with `solution` if given."""
     try:
-        image = make_image(kind, text, solution, role_statuses, interactive=interactive)
+        image = make_image(
+            kind, text, solution, role_statuses, interactive=interactive, expressions=expressions
+        )
         image.save(path)
     except ImportError:
         extra = "svg" if path.suffix.lower() == ".svg" else "png"
@@ -776,16 +785,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
     if args.expressions and (
         args.track_person
-        or args.png is not None
-        or args.svg is not None
         or args.interactive
         or args.nosolution
         or args.export is not None
         or booklets
     ):
         parser.error(
-            "--expressions currently supports only normal solves (with --verbose, --step or "
-            "--explain), "
+            "--expressions currently supports only normal solves (with --verbose, --step, "
+            "--explain, --svg or --png), "
             "--show-model, --grade, "
             "--brute-force, --lint and --require-forward"
         )
@@ -1004,7 +1011,12 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         for picture_path in picture_paths:
             interactive = args.interactive and picture_path.suffix.lower() == ".svg"
             if not write_picture(
-                kind, text, picture_path, role_statuses=role_statuses, interactive=interactive
+                kind,
+                text,
+                picture_path,
+                role_statuses=role_statuses,
+                interactive=interactive,
+                expressions=args.expressions,
             ):
                 return 2
 
@@ -1059,7 +1071,9 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                 roles = murdoku.role_statuses(board, model)
             for picture_path in picture_paths:
                 solved = picture_path.with_stem(f"{picture_path.stem}-solution")
-                write_picture(kind, text, solved, result.assignment, roles)
+                write_picture(
+                    kind, text, solved, result.assignment, roles, expressions=args.expressions
+                )
     elif result.contradiction:
         print(puzzle.draw("Stuck"))
         print(f"\ncontradiction: {result.contradiction}")
