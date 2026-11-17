@@ -16,12 +16,13 @@ def partition(specification, nodeids):
     return [item.nodeid for item in items], [item.nodeid for item in removed]
 
 
-def test_ci_shards_partition_every_parameterized_case_once_independently_of_order():
+@pytest.mark.parametrize("total", [4, 8])
+def test_ci_shards_partition_every_parameterized_case_once_independently_of_order(total):
     cases = [f"tests/test_puzzle.py::test_solve[case-{index}]" for index in range(100)]
     seen = []
-    for shard in range(1, 5):
-        selected, removed = partition(f"{shard}/4", cases)
-        backwards, _ = partition(f"{shard}/4", list(reversed(cases)))
+    for shard in range(1, total + 1):
+        selected, removed = partition(f"{shard}/{total}", cases)
+        backwards, _ = partition(f"{shard}/{total}", list(reversed(cases)))
         assert set(selected).isdisjoint(removed)
         assert set(selected) | set(removed) == set(cases)
         assert selected == list(reversed(backwards))
