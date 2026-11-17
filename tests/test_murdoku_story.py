@@ -238,6 +238,29 @@ def test_tied_populations_explain_geometric_capacity_before_using_the_equality(
     assert result.complete
 
 
+@pytest.mark.parametrize(
+    ("language", "reason"),
+    [
+        ("en", "The area counts allow at most one person in Okinawa"),
+        ("nl", "De gebiedstellingen geven in Okinawa hoogstens één persoon"),
+    ],
+)
+def test_population_ceiling_fallback_explains_the_bound_without_auxiliary_names(
+    monkeypatch, language, reason
+):
+    monkeypatch.setattr(murdoku_story._Narrator, "_population_tied", lambda *_args: None)
+    text = (
+        example("samen-in-de-blauwe-bladeren.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    result = murdoku_story.explain(text)
+    assert reason in result.markdown()
+    assert "holds at least" not in result.markdown()
+    assert "__area_population" not in result.markdown()
+    assert result.complete
+
+
 @pytest.mark.parametrize("case", ["unannounced", "untied", "outside", "placement"])
 def test_tied_population_argument_requires_announced_blockers_and_matching_effects(case):
     text = example("samen-in-de-blauwe-bladeren.txt").read_text()

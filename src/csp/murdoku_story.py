@@ -65,7 +65,8 @@ class _Narrator(generic_story.Narrator):
             if (level := self._population_level(constraint)) is not None
         }
         self.population_variables = {}
-        self.population_limits: set[tuple[str, int]] = set()
+        self.told_population_limits: set[tuple[str, int]] = set()
+        self.population_bounds: dict[str, int] = {}
         for constraint, region, minimum in self.population_levels.values():
             literal = constraint.reified_by
             assert literal is not None
@@ -287,7 +288,7 @@ class _Narrator(generic_story.Narrator):
             if len(cells) == 1 and (person, min(cells)) in self.told
         }
         for _, target, minimum in self._refuted_populations(inference.steps):
-            if minimum != 2 or (target, minimum) in self.population_limits:
+            if minimum != 2 or (target, minimum) in self.told_population_limits:
                 continue
             occupants = [
                 person
@@ -348,12 +349,41 @@ class _Narrator(generic_story.Narrator):
                                 )
                             }
                         )
-                    self.population_limits.update({(source, 2), (target, 2)})
+                    self.told_population_limits.update({(source, 2), (target, 2)})
                     return (
                         f"{_cap(reason)}, {self.say('so')} **{source_only}**. "
                         f"{_cap(self.statements[origin.label])}, "
                         f"{self.say('so')} **{target_only}**."
                     )
+        return None
+
+    def _population_ceiling(self, inference: Inference) -> str | None:
+        for step in inference.steps:
+            for name in step.sources:
+                if name not in self.population_levels:
+                    continue
+                _, region, minimum = self.population_levels[name]
+                maximum = self.population_bounds.get(region)
+                if (
+                    maximum is None
+                    or maximum != minimum - 1
+                    or not self._only_removes(inference.steps, {region})
+                    or not any(item.var in self.visible for item in inference.steps)
+                ):
+                    continue
+                conclusion = self.conclusion(inference.steps)
+                if conclusion is None:
+                    continue
+                reason = self.say(
+                    "count.population_at_most_zero"
+                    if maximum == 0
+                    else "count.population_at_most_one"
+                    if maximum == 1
+                    else "count.population_at_most",
+                    where=self.places.region(self.board.region_names[region]),
+                    count=self.say.number(maximum),
+                )
+                return f"{_cap(reason)}, {self.say('so')} {conclusion}."
         return None
 
     def placed(self, var: str, value: Any, name: str | None = None) -> str:
@@ -440,13 +470,19 @@ class _Narrator(generic_story.Narrator):
         support: list[str] = []
         for group in groups:
             for inference in (group.pattern, *group.consequences):
+                for _, region, minimum in self._refuted_populations(inference.steps):
+                    self.population_bounds[region] = min(
+                        self.population_bounds.get(region, len(self.board.people)), minimum - 1
+                    )
                 sources = (
                     inference.move.sources
                     if inference.move is not None
                     else tuple(source for step in inference.steps for source in step.sources)
                 )
-                if paragraph := self._population_full(inference) or self._population_tied(
-                    inference
+                if paragraph := (
+                    self._population_full(inference)
+                    or self._population_tied(inference)
+                    or self._population_ceiling(inference)
                 ):
                     self.conclusion(inference.steps)
                     paragraphs.append(paragraph)
