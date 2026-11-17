@@ -351,6 +351,11 @@ A role with exactly one holder may use a singular name such as "the murderer";
 optional or multiple-holder roles retain set wording. Worked solutions announce
 a last candidate once, cite a single clue directly, and group remaining role
 exclusions only after every other person's role state is known.
+Alternative areas retain their own prepositions, with negation covering the
+whole alternative. A quantified person is named directly only when exactly one
+must exist; optional and multiple-holder domains keep their quantifiers.
+Newly reserved rows and columns are stated explicitly. Counterfactuals cite
+mark occupancy rules and their possible companions, never internal gate names.
 Simple counts of people on or in a footprint read as "exactly", "at least" or
 "at most" that many people. Other counts and arithmetic remain compositional;
 an explicit `number.compare` template overrides this idiom.

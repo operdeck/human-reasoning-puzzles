@@ -1467,9 +1467,8 @@ class Wording:
     def read(cls, text: str) -> "Wording":
         """The `Language:` and `Words:` sections of a puzzle file, and `Rules:` wordings.
 
-        A rule line may end in `| wording`, like a clue. That sentence is shown
-        to players (booklet and web rules, picture legend) but never used in
-        worked solutions, which keep the generated wording.
+        A rule line may end in `| wording`, like a clue. Keep that sentence with
+        its rule so renderers can preserve the author's wording.
         """
         section = read_sections(text)
         language = section.get("Language", ["en"])[0]

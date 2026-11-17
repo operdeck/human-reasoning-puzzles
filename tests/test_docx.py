@@ -576,14 +576,22 @@ def test_zoo_roles_are_not_called_roles():
     assert "is geen aap" in explain(_read("zoo-murdoku-1"))
 
 
-def test_no_example_has_an_implied_clue():
-    from csp.murdoku import implied_clues
-    from csp.puzzlefile import detect, load_board
+def test_examples_print_all_and_only_their_explicit_numbered_clues():
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.puzzlefile import detect
+    from csp.story import figure_clues
 
     for path in all_examples():
         text = path.read_text()
         if detect(text) == "murdoku":
-            assert not implied_clues(load_board(text)[1]), path.name
+            _, _, clues = load_expression_board(text)
+            printed = figure_clues(text)
+            paragraphs = [clue for figure in printed.figures for clue in figure.clues] + list(
+                printed.other
+            )
+            assert {number for clue in paragraphs for number in clue.sources} == set(
+                range(1, len(clues) + 1)
+            ), path.name
 
 
 def _lint_output(text):

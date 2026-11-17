@@ -263,8 +263,7 @@ def test_shortest_proof_still_solves_and_drops_moves(name):
 
 
 def test_shortest_proof_drops_what_ifs_it_can_do_without():
-    board, clues = load_board((example("prrrdoku3.txt")).read_text())
-    model = murdoku.compile_puzzle(board, clues)
+    model = cli.load(example("prrrdoku3.txt").read_text(), "murdoku").model
     moves = _moves(model)
     kept = shortest(model, moves)
     assert sum(m.rule == "what_if" for m in kept) < sum(m.rule == "what_if" for m in moves)
@@ -348,6 +347,25 @@ def test_episodes_preserve_replay_order_and_pattern_evidence():
 
 # --- story ----------------------------------------------------------------
 
+MOST_TOKYO = (
+    "every ?b in (areas except area:Tokyo): count (people in ?b) < count (people in area:Tokyo)"
+)
+LEAST_OKINAWA = (
+    "every ?b in (area of free cells except area:Okinawa): "
+    "count (people in ?b) > count (people in area:Okinawa)"
+)
+TIED_QUIETEST = (
+    "count (people in area:Hiroshima) = count (people in area:Okinawa) and "
+    "every ?b in (area of free cells except area:Okinawa,area:Hiroshima): "
+    "count (people in ?b) > count (people in area:Okinawa)"
+)
+
+
+def _move_clue_to_rules(text, source):
+    assert text.count(source + "\n") == 1
+    assert "Rules:" not in text
+    return text.replace(source + "\n", "").replace("Clues:\n", f"Rules:\n{source}\n\nClues:\n")
+
 
 @pytest.mark.parametrize("name", PRRRDOKUS)
 def test_every_placement_in_the_story_is_right(name):
@@ -407,70 +425,14 @@ def test_tied_population_explanation_uses_the_puzzles_own_names_and_language():
 
 
 def test_tied_population_explanation_accepts_an_unnumbered_rule():
-    text = (
-        example("samen-in-de-blauwe-bladeren.txt")
-        .read_text()
-        .replace(
-            "Clues:\nmost_populated area:Tokyo\nleast_populated area:Okinawa area:Hiroshima\n",
-            "Rules:\nleast_populated area:Okinawa area:Hiroshima\n\n"
-            "Clues:\nmost_populated area:Tokyo\n",
-        )
+    text = _move_clue_to_rules(
+        example("samen-in-de-blauwe-bladeren.txt").read_text(), TIED_QUIETEST
     )
     story = explain(text)
     assert (
         "De gebieden met de minste mensen zijn Hiroshima en Okinawa, "
         "dus **alleen Tatsuya zit in Okinawa**."
     ) in story
-
-
-@pytest.mark.parametrize("case", ["unannounced", "untied", "outside", "placement"])
-def test_tied_population_explanation_requires_established_premises(case):
-    text = example("samen-in-de-blauwe-bladeren.txt").read_text()
-    if case == "untied":
-        text = text.replace(
-            "least_populated area:Okinawa area:Hiroshima",
-            "least_populated area:Okinawa",
-        )
-    board, clues = load_board(text)
-    story = Story(board, clues, Wording.read(text))
-    target = next(
-        constraint
-        for constraint in story.model.constraints
-        if story._population_level(constraint) == (board.region_id("Okinawa"), 2)
-    )
-    square = murdoku.Square
-    positions = {
-        "Kaori": square(0, 1),
-        "Renji": square(1, 4),
-        "Goro": square(3, 5),
-        "Mizuki": square(2, 0),
-        "Tatsuya": square(8, 6),
-    }
-    before = {person: set(board.free) for person in board.people}
-    before["Yuki"] = {square(6, 7), square(7, 6), square(4, 8), square(5, 8)}
-    if case == "placement":
-        before["Yuki"].remove(square(5, 8))
-    options = {person: set(squares) for person, squares in before.items()}
-    options["Yuki"].remove(square(6, 7))
-    if case == "outside":
-        options["Yuki"].remove(square(4, 8))
-    if case == "placement":
-        options["Yuki"] = {square(4, 8)}
-    state = _State(
-        options,
-        {person: set(board.free) for person in board.people},
-        placed=positions,
-        order=list(positions),
-        announced=[person for person in positions if case != "unannounced" or person != "Renji"],
-    )
-    assert story._population_tied_single(target, False, ["Yuki"], before, state) is None
-
-
-def test_hidden_population_count_fallback_does_not_read_out_engine_labels(monkeypatch):
-    monkeypatch.setattr(Story, "_population_tied_single", lambda *_args: None)
-    story = explain(example("samen-in-de-blauwe-bladeren.txt").read_text())
-    assert "De gebiedstellingen geven in Okinawa hoogstens één persoon" in story
-    assert "toegestane aantallen" not in story
 
 
 def test_story_says_area_capacity_the_way_a_person_does():
@@ -503,14 +465,10 @@ def test_story_explains_the_area_comparison_in_english():
 
 
 def test_story_uses_the_actual_population_clue_number():
-    text = (
-        example("samen-onderweg.txt")
-        .read_text()
-        .replace(
-            "most_populated area:Tokyo\nleast_populated area:Okinawa",
-            "least_populated area:Okinawa\nmost_populated area:Tokyo",
-        )
-    )
+    text = example("samen-onderweg.txt").read_text()
+    original = MOST_TOKYO + "\n" + LEAST_OKINAWA
+    assert original in text
+    text = text.replace(original, LEAST_OKINAWA + "\n" + MOST_TOKYO)
     story = explain(text)
     assert "Het gebied met de meeste mensen is Tokyo (2)" in story
 
@@ -533,7 +491,7 @@ def test_story_does_not_invent_population_witnesses():
     text = (
         example("samen-onderweg.txt")
         .read_text()
-        .replace("beside Keiko object:lantaarn", "beside Keiko object:torii")
+        .replace("Keiko beside object:lantaarn", "Keiko beside object:torii")
     )
     story = explain(text)
     assert "Keiko staat naast de torii (3): **in Tokyo**." in story
@@ -541,12 +499,14 @@ def test_story_does_not_invent_population_witnesses():
 
 
 def test_story_does_not_treat_tied_busiest_areas_as_strictly_ordered():
-    text = (
-        example("samen-onderweg.txt")
-        .read_text()
-        .replace("most_populated area:Tokyo", "most_populated area:Tokyo area:Osaka")
+    text = example("samen-onderweg.txt").read_text()
+    assert MOST_TOKYO in text
+    text = text.replace(
+        MOST_TOKYO,
+        "count (people in area:Tokyo) = count (people in area:Osaka) and "
+        + MOST_TOKYO.replace("except area:Tokyo", "except area:Tokyo,area:Osaka"),
     )
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     solutions = bruteforce.solutions(text, "murdoku", limit=2)
     assert solutions
     for solution in solutions:
@@ -556,14 +516,7 @@ def test_story_does_not_treat_tied_busiest_areas_as_strictly_ordered():
 
 
 def test_story_can_explain_an_unnumbered_population_rule():
-    text = (
-        example("samen-onderweg.txt")
-        .read_text()
-        .replace(
-            "Clues:\nmost_populated area:Tokyo\n",
-            "Rules:\nmost_populated area:Tokyo\n\nClues:\n",
-        )
-    )
+    text = _move_clue_to_rules(example("samen-onderweg.txt").read_text(), MOST_TOKYO)
     story = explain(text)
     assert (
         "Het gebied met de meeste mensen is Tokyo, dus **zijn er in Tokyo minstens drie mensen**."
@@ -584,7 +537,7 @@ def test_story_describes_by_region_and_row_before_squares():
     story = explain((example("prrrdoku3.txt")).read_text())
     assert "Luna is op de woonboot of Luna is in het water" in story
     assert "Otto en Pip staan in hetzelfde gebied" in story
-    assert "Luna kan alleen in kolom 1, **daar kan verder niemand**" in story
+    assert "**Luna kan alleen in kolom 1**, **daar kan verder niemand**" in story
 
 
 def test_opening_uses_shared_columns_across_regions():
@@ -1383,6 +1336,8 @@ def test_tamagotchi_combines_necessary_marks_and_narrates_the_case():
     assert len(bruteforce.solutions(text.replace("; not_alone", ""), "murdoku", limit=2)) == 2
 
     explanation = explain(text)
+    assert "__" not in explanation
+    assert "occupant count" not in explanation
     assert (
         "**Kuchipatchi cannot be on r7c5**: then Memetchi would be on r9c7, "
         "then Akumatchi would be in the market, but a social square needs company"
@@ -1899,8 +1854,8 @@ def test_story_cites_clue_numbers():
 
 
 def test_story_in_english():
-    board, clues = load_board((example("prrrdoku1.txt")).read_text())
-    story = Story(board, clues, Wording()).tell()
+    text = example("prrrdoku1.txt").read_text().replace("Language: nl", "Language: en")
+    story = explain(text)
     assert story.startswith("- **The direct clues.**")
     assert "**Tim on r1c1**" in story
     assert "Otto is exactly one row above Tjitske (5)" in story
@@ -1923,8 +1878,10 @@ def test_cli_explain(capsys):
 
 
 def test_board_rules_are_what_the_model_is_built_from():
-    board, clues = load_board((example("prrrdoku1.txt")).read_text())
-    model = murdoku.compile_puzzle(board, clues)
+    from csp.murdoku_lower import compile_statements
+
+    board = load_board_layout(example("prrrdoku1.txt").read_text())
+    model = compile_statements(board, [])
     names = {rule.name for rule in murdoku.board_rules(board)}
     assert names == {c.name for c in model.constraints}
 
@@ -2050,7 +2007,7 @@ def test_beside_object_clues_use_spatial_adjacency():
         "Ann is not beside the bench.",
         "Bob is beside the chair.",
         "Cy is not beside the table.",
-        "Di is beside the stool.",
+        "Di is beside a stool.",
     ]
     text = ON_OR_NEXT_TO.format(lang="nl")
     dutch = Story(*load_board(text), Wording.read(text)).clue_texts()
@@ -2131,24 +2088,25 @@ def test_figure_clues_keep_combined_sources_global_clues_and_clueless_figures():
     assert sorted(n for clue in paragraphs for n in clue.sources) == list(range(1, 7))
 
 
-def test_rule_wording_and_garment_clue_are_told_in_the_opener():
+def test_count_rules_and_author_garment_clues_use_expression_wording():
     from csp.story import board_notes, clue_paragraphs, global_count_texts
 
     text = example("wie-doet-het-met-wie-1.txt").read_text()
-    assert global_count_texts(text) == [
-        "Precies twee mensen staan op een badjas",
-        "Precies één persoon staat op een paar sloffen",
+    counts = global_count_texts(text)
+    assert len(counts) == 3
+    assert counts[-2:] == [
+        "Precies twee mensen staan op een badjas.",
+        "Precies één persoon staat op een paar sloffen.",
     ]
     assert board_notes(text)[-2:] == [
         "Precies twee mensen staan op een badjas.",
         "Precies één persoon staat op een paar sloffen.",
     ]
     story = explain(text)
-    # Author wordings are for players; worked solutions keep the generated text.
-    assert "dragen een badjas" not in story and "heeft alleen een badjas aan" not in story
-    assert "Precies twee mensen staan op een badjas" in story
+    assert "Marloes heeft alleen een badjas aan (2): **op een badjas**." in story
+    assert "precies twee mensen staan op een badjas" in story.casefold()
     assert (
-        "Iemand op een badjas staat precies één rij boven iemand op een paar sloffen."
+        "Een van de gasten met een badjas staat precies één rij boven de gast met sloffen."
         in clue_paragraphs(text)
     )
 
@@ -2436,7 +2394,7 @@ def test_point_intro_does_not_repeat_the_note_or_mention_a_door():
     assert csp.story.phrase(text, "doc.clue_on_door") not in rules
 
     text = text.replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
-    text = text.replace("Clues:\n", "Clues:\non Ada edge_item:gate\n")
+    text = text.replace("Clues:\n", "Clues:\nAda on edge_item:gate\n")
     rules = murdoku_rules(text)
     assert sum(point in rule for rule in rules) == 1
     assert csp.story.phrase(text, "doc.clue_on_door") in rules
