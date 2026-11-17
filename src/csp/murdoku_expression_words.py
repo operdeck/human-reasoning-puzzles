@@ -37,6 +37,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "name.point_object": "point objects named {name}",
         "name.mark": "marks named {name}",
         "name.role": "people holding role {name}",
+        "name.role.one": "the {name}",
         "name.attribute": "people with attribute {name}",
         "name.rows": "rows {name}",
         "name.columns": "columns {name}",
@@ -165,6 +166,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "choice.exactly": "exactly {count} of ({choices}) hold",
         "choice.either": "either {left}, or {right}, but not both",
         "idiom.same_area": "{first} and {second} are in the same area",
+        "idiom.direction": "exactly {count} {unit} {direction}",
+        "unit.row.one": "row",
+        "unit.row.many": "rows",
+        "unit.column.one": "column",
+        "unit.column.many": "columns",
         "choice.at least": "at least {count} of ({choices}) hold",
         "choice.at most": "at most {count} of ({choices}) hold",
         "idiom.alone": "{person} is alone in their area",
@@ -196,6 +202,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "name.point_object": "puntvoorwerpen met de naam {name}",
         "name.mark": "markeringen met de naam {name}",
         "name.role": "personen met rol {name}",
+        "name.role.one": "de {name}",
         "name.attribute": "personen met eigenschap {name}",
         "name.rows": "rijen {name}",
         "name.columns": "kolommen {name}",
@@ -326,6 +333,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "choice.exactly": "precies {count} van ({choices}) gelden",
         "choice.either": "of {left}, of {right}, maar niet allebei",
         "idiom.same_area": "{first} en {second} staan in hetzelfde gebied",
+        "idiom.direction": "precies {count} {unit} {direction}",
+        "unit.row.one": "rij",
+        "unit.row.many": "rijen",
+        "unit.column.one": "kolom",
+        "unit.column.many": "kolommen",
         "choice.at least": "minstens {count} van ({choices}) gelden",
         "choice.at most": "hoogstens {count} van ({choices}) gelden",
         "idiom.alone": "{person} is alleen in het eigen gebied",
@@ -484,6 +496,12 @@ class ExpressionWords:
             text = f"{namespace}:{text}"
         kind, _, name = text.partition(":")
         key = "name.object.display" if kind == "object" and name in self.names else f"name.{kind}"
+        if (
+            kind == "role"
+            and key not in self.phrases
+            and any(role.name == name and role.allowed_counts == {1} for role in self.board.roles)
+        ):
+            key = "name.role.one"
         if kind in {"rows", "columns"} and name.isdigit() and key not in self.phrases:
             key = "name.row" if kind == "rows" else "name.column"
         rendered = self.names.get(name, name.replace("_", " "))
@@ -621,6 +639,37 @@ class ExpressionWords:
                 target=self._target(target.target, None, bindings, target.operator, target.source),
             )
         return None
+
+    def _exact_direction(
+        self, atom: lang.Atom, bindings: dict[str, Shape], *, negated: bool = False
+    ) -> str | None:
+        direction = atom.operator.text.removeprefix("dir:")
+        if (
+            direction not in {"up", "down", "left", "right"}
+            or atom.measure is None
+            or atom.measure.comparison.text != "="
+            or int(atom.measure.value.text) < 1
+            or infer_operand(self.board, atom.subject, bindings).sort is not Sort.PERSON
+            or infer_operand(self.board, atom.target, bindings).sort is not Sort.PERSON
+            or {f"rel.dir.{direction}", f"rel.dir.{direction}.exact", "rel.measure"}.intersection(
+                self.phrases
+            )
+        ):
+            return None
+        count = int(atom.measure.value.text)
+        names = NUMBERS[self.language]
+        unit = "row" if direction in {"up", "down"} else "column"
+        return self._phrase(
+            self._atom_key(atom, bindings, negated=negated),
+            subject=self._determined(atom.subject, atom.determiner, bindings),
+            relation=self._phrase(
+                "idiom.direction",
+                count=names[count] if count < len(names) else str(count),
+                unit=self._phrase(f"unit.{unit}.{'one' if count == 1 else 'many'}"),
+                direction=self._phrase(f"rel.dir.{direction}.exact"),
+            ),
+            target=self._target(atom.target, None, bindings, atom.operator, atom.subject),
+        )
 
     def _near_king(
         self, atom: lang.Atom, bindings: dict[str, Shape], *, negated: bool = False
@@ -917,6 +966,8 @@ class ExpressionWords:
         return self._phrase(key, area=self._operand(formula.source.right, {}))
 
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:
+        if isinstance(value, lang.Atom) and (idiom := self._exact_direction(value, bindings)):
+            return idiom
         if isinstance(value, lang.Atom) and (idiom := self._near_king(value, bindings)):
             return idiom
         if isinstance(value, lang.NumberComparison) and (
@@ -958,6 +1009,13 @@ class ExpressionWords:
                     right=self._operand(right, bindings),
                 )
             case lang.Negation(formula=formula):
+                if (
+                    "bool.not" not in self.phrases
+                    and isinstance(formula, lang.Atom)
+                    and formula.determiner is None
+                    and (idiom := self._exact_direction(formula, bindings, negated=True))
+                ):
+                    return idiom
                 if (
                     "bool.not" not in self.phrases
                     and isinstance(formula, lang.Atom)

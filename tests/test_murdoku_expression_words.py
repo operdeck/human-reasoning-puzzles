@@ -89,6 +89,36 @@ def test_other_king_distances_are_not_rewritten_as_on_or_adjacent(board, compari
 
 
 @pytest.mark.parametrize(
+    ("language", "source", "expected"),
+    [
+        ("en", "Ada dir:up Ben = 1", "Ada is exactly one row above Ben"),
+        ("nl", "Ada dir:right Ben = 2", "Ada staat precies twee kolommen rechts van Ben"),
+        ("en", "not Ada dir:down Ben = 1", "Ada is not exactly one row below Ben"),
+    ],
+)
+def test_exact_person_directions_name_the_distance_units(board, language, source, expected):
+    assert ExpressionWords(board, language).statement(parse_statement(source)) == expected
+
+
+def test_exact_direction_idiom_retains_phrase_overrides_and_spatial_distance_semantics(board):
+    words = ExpressionWords(board, phrases={"rel.dir.up.exact": "ABOVE"})
+    assert "ABOVE" in words.statement(parse_statement("Ada dir:up Ben = 1"))
+    assert "exactly one row" not in ExpressionWords(board).statement(
+        parse_statement("area:hall dir:up area:garden = 1")
+    )
+
+
+@pytest.mark.parametrize("counts", [{0}, {0, 1}, {1}, {2}])
+def test_only_an_exactly_one_role_gets_a_definite_singular_caption(board, counts):
+    board.roles = [RoleSpec("guard", frozenset(counts))]
+    source = parse_statement("Ada dir:up role:guard")
+    caption = ExpressionWords(board).statement(source)
+    assert ("the guard" in caption) == (counts == {1})
+    words = ExpressionWords(board, phrases={"name.role": "the candidates for {name}"})
+    assert "the candidates for guard" in words.statement(source)
+
+
+@pytest.mark.parametrize(
     ("language", "formula", "expected"),
     [
         ("en", "count people on object:bed = 1", "exactly one person is on a bed"),
