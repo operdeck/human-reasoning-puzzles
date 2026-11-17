@@ -386,7 +386,7 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
     with pytest.raises(SystemExit) as error:
-        cli.main([str(puzzle), "--expressions", "--docx"])
+        cli.main([str(puzzle), "--expressions", "--nosolution"])
     assert error.value.code == 2
     assert "--expressions currently supports only" in capsys.readouterr().err
 
@@ -632,3 +632,13 @@ def test_cli_expression_export_writes_a_playable_bundle(tmp_path):
     bundle = json.loads((out / "puzzle.json").read_text())
     assert bundle["playable"] and bundle["solution"]["r2c1"] == "Ben"
     assert bundle["clueEntries"] and all(e["sources"] for e in bundle["clueEntries"])
+
+
+def test_cli_expression_docx_has_puzzle_and_solution_pages(tmp_path):
+    docx = pytest.importorskip("docx")
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    out = tmp_path / "booklet.docx"
+    assert cli.main([str(puzzle), "--expressions", "--docx", str(out)]) == 0
+    text = "\n".join(p.text for p in docx.Document(str(out)).paragraphs)
+    assert "Ben" in text

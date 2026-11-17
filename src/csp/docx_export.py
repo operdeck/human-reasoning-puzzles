@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from . import icons, murdoku, picture
+from .murdoku_expression_file import load_expression_board
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
     CluePresentation,
@@ -64,10 +65,15 @@ def _picture_stream(
     solution: dict[str, Any] | None,
     role_statuses: dict[tuple[str, str], bool | None] | None,
     backdrop: bool = True,
+    expressions: bool = False,
 ) -> tuple[io.BytesIO, float]:
     """The board picture and its height/width ratio; `backdrop=False` leaves the
     backdrop out, for pages too full to give it room."""
-    board, clues = load_board(text)
+    if expressions:
+        board = load_expression_board(text)[0]
+        clues: list[Any] = []
+    else:
+        board, clues = load_board(text)
     if not backdrop:
         board.backdrop = None
     # The counts are rules the page states itself, so leave their lines out of
@@ -279,6 +285,7 @@ class Entry:
     number: int = 0
     section: str = ""
     pattern_first: bool = False
+    expressions: bool = False
 
     def numbered(self, title: str) -> str:
         """`title` with the puzzle's number in front, if it has one."""
@@ -384,7 +391,7 @@ def _puzzle_board(document: Any, entry: Entry, width: float, backdrop: bool = Tr
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm
 
-    stream, _ = _picture_stream(entry.text, None, None, backdrop)
+    stream, _ = _picture_stream(entry.text, None, None, backdrop, entry.expressions)
     paragraph = document.add_paragraph()
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.add_run().add_picture(stream, width=Cm(width))
@@ -420,11 +427,18 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     presentation = load_presentation(text)
     _title(document, _puzzle_title(entry), new_page, bookmark, entry.section)
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
-    rules = murdoku_rules(text)
+    if entry.expressions:
+        _, rule_statements, clue_statements = load_expression_board(text)
+        rules = murdoku_rules(
+            text, expression_rules=rule_statements, expression_clues=clue_statements
+        )
+        clues = figure_clues(text, expressions=clue_statements)
+    else:
+        rules = murdoku_rules(text)
+        clues = figure_clues(text)
     for line in rules:
         _runs(document.add_paragraph(style="List Bullet"), line)
-    clues = figure_clues(text)
-    _, aspect = _picture_stream(text, None, None)
+    _, aspect = _picture_stream(text, None, None, expressions=entry.expressions)
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)
     small = (
@@ -435,7 +449,7 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     width = _puzzle_board_width(aspect, 0, 0, rules_lines, figures_cm)
     backdrop = width > MIN_BOARD_WIDTH_CM
     if not backdrop:
-        _, aspect = _picture_stream(text, None, None, backdrop=False)
+        _, aspect = _picture_stream(text, None, None, backdrop=False, expressions=entry.expressions)
         width = _puzzle_board_width(aspect, 0, 0, rules_lines, figures_cm)
     _puzzle_board(document, entry, width, backdrop)
     _board_lists(document, text)
@@ -454,14 +468,21 @@ def _add_solution(document: Any, entry: Entry, title: str, bookmark: str | None 
     text = entry.text
     presentation = load_presentation(text)
     _title(document, title, True, bookmark, entry.section)
-    stream, aspect = _picture_stream(text, entry.solution, entry.role_statuses)
-    blocks = [b.strip().removeprefix("- ") for b in explain(text, numbered=False).split("\n\n")]
+    stream, aspect = _picture_stream(
+        text, entry.solution, entry.role_statuses, expressions=entry.expressions
+    )
+    if entry.expressions:
+        blocks = [b.strip().removeprefix("- ") for b in entry.steps]
+    else:
+        blocks = [b.strip().removeprefix("- ") for b in explain(text, numbered=False).split("\n\n")]
     blocks = [b for b in blocks if b]
     lines = sum(-(-len(BOLD.sub(r"\1", b)) // CLUE_LINE_CHARS) for b in blocks)
     small = lines > MANY_SOLUTION_LINES
     width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0, 6)
     if width <= max(MIN_BOARD_WIDTH_CM, SOLUTION_MIN_BOARD_CM):
-        stream, aspect = _picture_stream(text, entry.solution, entry.role_statuses, False)
+        stream, aspect = _picture_stream(
+            text, entry.solution, entry.role_statuses, False, entry.expressions
+        )
         width = _puzzle_board_width(aspect, int(lines * (0.8 if small else 1)), 0, 6)
     document.add_picture(stream, width=Cm(max(width, SOLUTION_MIN_BOARD_CM)))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER

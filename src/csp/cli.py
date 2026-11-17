@@ -462,7 +462,9 @@ def _filled(model: Model, solution: dict[str, Any]) -> Model:
     return twin
 
 
-def _booklet(files: list[Path], requested: Any, suffix: str, solve: bool = True) -> int:
+def _booklet(
+    files: list[Path], requested: Any, suffix: str, solve: bool = True, expressions: bool = False
+) -> int:
     """One booklet (.docx or .pdf), puzzles first and then solutions, for the puzzle `files`
     of any family; without files, for every example Murdoku. `solve=False` writes the puzzle
     pages only and does not solve anything."""
@@ -480,12 +482,12 @@ def _booklet(files: list[Path], requested: Any, suffix: str, solve: bool = True)
             print("found no Murdoku puzzles under examples/", file=sys.stderr)
             return 2
     if suffix == ".docx":
-        return _write_booklet(files, out, solve=solve)
+        return _write_booklet(files, out, solve=solve, expressions=expressions)
     from . import pdf_convert
 
     with tempfile.TemporaryDirectory() as folder:
         docx = Path(folder) / f"{out.stem}.docx"
-        status = _write_booklet(files, docx, announce=False, solve=solve)
+        status = _write_booklet(files, docx, announce=False, solve=solve, expressions=expressions)
         if status:
             return status
         try:
@@ -508,7 +510,13 @@ def _murdoku_examples() -> list[Path]:
     ]
 
 
-def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: bool = True) -> int:
+def _write_booklet(
+    files: list[Path],
+    out: Path,
+    announce: bool = True,
+    solve: bool = True,
+    expressions: bool = False,
+) -> int:
     needed = ("docx", "fontTools", "resvg_py")
     if any(importlib.util.find_spec(module) is None for module in needed):
         print("the booklet needs python-docx and resvg: uv sync --extra docx", file=sys.stderr)
@@ -527,12 +535,13 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
         return 2
     for listed in listing:
         file, kind, text = listed.path, listed.kind, texts[listed.path]
+        told = expressions and kind == "murdoku"
         try:
-            model = load(text, kind).model
+            model = _expression_model(text) if told else load(text, kind).model
         except ValueError as exc:
             print(f"could not read {file.name}: {exc}", file=sys.stderr)
             return 2
-        start = model.clone() if kind != "murdoku" else None
+        start = model.clone() if kind != "murdoku" or told else None
         fired = _Fired()
         result = Solver(model).solve(on_step=fired.append_step) if solve else None
         placed = None
@@ -552,7 +561,12 @@ def _write_booklet(files: list[Path], out: Path, announce: bool = True, solve: b
             kind,
             number=listed.number if len(listing) > 1 else 0,
             section=listed.section if len(listing) > 1 else "",
+            expressions=told,
         )
+        if told and placed is not None:
+            assert start is not None
+            narrative = pattern_story(kind, text, start, fired.items)
+            entry = dataclasses.replace(entry, steps=narrative.paragraphs)
         if kind != "murdoku":
             steps = solving_steps(fired.items)
             pattern_first = False
@@ -789,10 +803,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
-    if args.expressions and (args.track_person or args.interactive or args.nosolution or booklets):
+    if args.expressions and (args.track_person or args.interactive or args.nosolution):
         parser.error(
             "--expressions currently supports only normal solves (with --verbose, --step, "
-            "--explain, --svg, --png or --export), "
+            "--explain, --svg, --png, --export, --docx or --pdf), "
             "--show-model, --grade, "
             "--brute-force, --lint and --require-forward"
         )
@@ -814,7 +828,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not booklets or args.export is not None:
             parser.error("give one or more puzzle files (only --docx and --pdf need none)")
         return max(
-            _booklet([], value, suffix, solve=not args.nosolution) for value, suffix in booklets
+            _booklet([], value, suffix, solve=not args.nosolution, expressions=args.expressions)
+            for value, suffix in booklets
         )
     paths = _expand_patterns(args.puzzles)
     if paths is None:
@@ -828,7 +843,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _export(paths, args.export, expressions=args.expressions)
     if booklets:
         return max(
-            _booklet(paths, value, suffix, solve=not args.nosolution) for value, suffix in booklets
+            _booklet(paths, value, suffix, solve=not args.nosolution, expressions=args.expressions)
+            for value, suffix in booklets
         )
     status = 0
     for path in paths:

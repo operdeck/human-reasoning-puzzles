@@ -970,9 +970,9 @@ def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_
     used = []
     original = docx_export._picture_stream
 
-    def record(text, solution, role_statuses, backdrop=True):
+    def record(text, solution, role_statuses, backdrop=True, expressions=False):
         used.append(backdrop)
-        return original(text, solution, role_statuses, backdrop)
+        return original(text, solution, role_statuses, backdrop, expressions)
 
     monkeypatch.setattr(docx_export, "_picture_stream", record)
     write_docx(example(name).read_text(), tmp_path / "b.docx", tmp_path)
