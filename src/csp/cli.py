@@ -55,7 +55,7 @@ from . import (
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
 from .murdoku_expression_file import load_expression_board
-from .murdoku_lower import compile_statements_with_origins
+from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .puzzlefile import (
     KINDS,
     detect,
@@ -776,8 +776,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
     if args.expressions and (
         args.explain
-        or args.verbose
-        or args.step
         or args.track_person
         or args.png is not None
         or args.svg is not None
@@ -787,7 +785,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         or booklets
     ):
         parser.error(
-            "--expressions currently supports only normal solves, --show-model, --grade, "
+            "--expressions currently supports only normal solves (with --verbose or --step), "
+            "--show-model, --grade, "
             "--brute-force, --lint and --require-forward"
         )
     if args.nosolution:
@@ -854,6 +853,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         return 2
     text = path.read_text()
     kind = detect(text) if args.type == "auto" else args.type
+    expression_compiled: ExpressionCompilation | None = None
     if args.expressions:
         if kind != "murdoku":
             parser.error("--expressions is only available for Murdoku")
@@ -928,6 +928,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             )
             print(report.grade(expression_fired) if expression_result.solved else "unsolved")
             return 0 if expression_result.solved else 1
+        expression_compiled = compiled
         puzzle = Puzzle(kind, compiled.model, partial(murdoku.render, expression_board))
     else:
         if (args.lint or args.require_forward) and kind != "murdoku":
@@ -1029,6 +1030,14 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         if not (args.verbose or args.step or args.track_person):
             return
         narrate(rule, steps)
+        if expression_compiled is not None:
+            labels = {
+                origin.label
+                for step in steps
+                for origin in expression_compiled.origins_for_step(step)
+            }
+            if labels:
+                print(f"  from {', '.join(sorted(labels))}")
         if args.track_person:
             assert track_board is not None
             print(murdoku.track_person_status(track_board, model, args.track_person))

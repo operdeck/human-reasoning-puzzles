@@ -388,7 +388,8 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
         cli.main([str(puzzle), "--expressions", "--explain"])
     assert error.value.code == 2
     assert (
-        "--expressions currently supports only normal solves, --show-model, --grade, "
+        "--expressions currently supports only normal solves (with --verbose or --step), "
+        "--show-model, --grade, "
         "--brute-force, --lint and --require-forward" in (capsys.readouterr().err)
     )
 
@@ -444,6 +445,13 @@ def test_cli_expression_lint_rejects_impossible_relations_and_bad_wording(tmp_pa
     puzzle.write_text(TEXT + "Words:\nrel.besid: next to\n")
     assert cli.main([str(puzzle), "--expressions", "--lint"]) == 1
     assert "rel.besid" in capsys.readouterr().err
+
+
+def test_cli_expression_verbose_names_source_statements(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--expressions", "--verbose"]) == 0
+    assert "single" in capsys.readouterr().out
 
 
 def test_cli_expression_require_forward(tmp_path, capsys):
