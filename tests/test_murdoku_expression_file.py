@@ -732,6 +732,21 @@ def test_expression_suggestion_construct_inventory_tracks_public_ast():
     assert offered <= emitted
 
 
+@pytest.mark.parametrize(("counts", "expected"), [("0", 1), ("1", 2), ("2", 1), ("any", 2)])
+def test_suggestions_distinguish_placement_uniqueness_from_role_uniqueness(counts, expected):
+    text = TEXT + f"Roles:\nguard: {counts}\n"
+    board, rules, clues = load_expression_board(text)
+    placement = {"Ada": Square(0, 1), "Ben": Square(1, 0)}
+    assert len(solutions(board, clues, 2, rules=rules)) == expected
+    messages = []
+    assert clue_search.suggest(text, placement, log=messages.append) == []
+    if expected == 1:
+        assert any("unique with 0 added clues" in message for message in messages)
+    else:
+        assert any("result is several" in message for message in messages)
+        assert not any("unique with" in message for message in messages)
+
+
 def test_cli_expression_export_writes_a_playable_bundle(tmp_path):
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
