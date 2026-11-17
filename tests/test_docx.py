@@ -191,7 +191,7 @@ def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_point
     text = (
         source.read_text()
         .replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
-        .replace("Clues:\n", "Clues:\non Ada edge_item:gate\ndir Ada Bo manhattan <= 2\n")
+        .replace("Clues:\n", "Clues:\nAda on edge_item:gate\nAda dir:manhattan Bo <= 2\n")
         .replace(
             "\n\nQuestion:",
             "\nThe distance is a mystery; take your first steps into the garden.\n\nQuestion:",
@@ -662,7 +662,7 @@ def test_booklet_combines_each_figure_description_and_clues_without_numbers(tmp_
 def test_booklet_keeps_semantic_custom_clues_with_their_figure(tmp_path):
     source = example("murdoku_3_house.txt")
     text = source.read_text().replace(
-        "dir Ada Dirk left", "dir Ada Dirk left | The person to Dirk's left is Ada."
+        "Ada dir:left Dirk", "Ada dir:left Dirk | The person to Dirk's left is Ada."
     )
     out = tmp_path / "custom.docx"
     write_docx(text, out, source.parent)
@@ -994,6 +994,7 @@ def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_
 def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
     import csp.docx_export as docx_export
     import csp.picture as picture
+    from csp.puzzlefile import load_board_layout
 
     seen = {}
     original = picture.murdoku_picture
@@ -1003,8 +1004,9 @@ def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
         return original(board, placed, **kwargs)
 
     monkeypatch.setattr(picture, "murdoku_picture", capture)
-    docx_export._picture_stream(example("wie-doet-het-met-wie-1.txt").read_text(), None, None)
-    assert seen["global_counts"]
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    docx_export._picture_stream(text, None, None, expressions=True)
+    assert seen["count_scope"] == load_board_layout(text).squares_of(["badjas", "sloffen"])
     # The page states the counts itself, so the picture leaves those lines out.
     assert seen["count_lines"] is False
 
