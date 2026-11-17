@@ -153,3 +153,47 @@ def test_role_separation_sources_keep_the_puzzles_thematic_wording():
     words = murdoku_story.explain(example("menu-murdoku-1.txt").read_text()).markdown()
     assert "er staat nooit meer dan één zetmeel op dezelfde dag" in words
     assert "in different regions" not in words
+
+
+@pytest.mark.parametrize(
+    ("language", "known", "minimum", "empty"),
+    [
+        (
+            "en",
+            "Keiko and Mio are in Osaka, so **at least two people are there**.",
+            "**at least three people are in Tokyo**.",
+            "Together that accounts for all five people, so **nobody is in Okinawa**.",
+        ),
+        (
+            "nl",
+            "Keiko en Mio zijn in Osaka, dus **daar zijn minstens twee mensen**.",
+            "**zijn er in Tokyo minstens drie mensen**.",
+            "Samen zijn dat alle vijf mensen, dus **niemand is in Okinawa**.",
+        ),
+    ],
+)
+def test_population_capacity_explains_the_people_comparison_and_empty_area(
+    language, known, minimum, empty
+):
+    text = (
+        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+    )
+    result = murdoku_story.explain(text)
+    paragraph = next(paragraph for paragraph in result.paragraphs if empty in paragraph)
+    assert known in paragraph
+    assert minimum in paragraph
+    assert paragraph.index(known) < paragraph.index(minimum) < paragraph.index(empty)
+    assert "(1)" in paragraph
+    assert "holds at least" not in result.markdown()
+    assert "__area_population" not in result.markdown()
+    assert "(1)" not in murdoku_story.explain(text, numbered=False).markdown()
+
+
+def test_population_capacity_fallback_still_names_the_floors_not_hidden_literals(monkeypatch):
+    monkeypatch.setattr(murdoku_story._Narrator, "_population_evidence", lambda *_args: None)
+    text = example("samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
+    words = murdoku_story.explain(text).markdown()
+    assert "Tokyo area holding at least three people" in words
+    assert "Osaka area holding at least two people" in words
+    assert "already hold all five people, so **nobody is in Okinawa**." in words
+    assert "holds at least" not in words

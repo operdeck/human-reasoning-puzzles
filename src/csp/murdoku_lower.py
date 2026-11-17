@@ -74,6 +74,7 @@ class ExpressionCompilation:
     constraint_origins: dict[int, tuple[StatementOrigin, ...]]
     relation_origins: dict[int, tuple[StatementOrigin, ...]]
     initial_step_origins: dict[int, tuple[StatementOrigin, ...]]
+    population_conditions: tuple[tuple[StatementOrigin, AreaPopulationCondition], ...]
 
     def origins_for_step(self, step: Step) -> tuple[StatementOrigin, ...]:
         """Find structured origins for a step's sources, scope and trail."""
@@ -3339,5 +3340,10 @@ def compile_statements_with_origins(
                 if origin not in previous:
                     initial_step_origins[index] = (*previous, origin)
     return ExpressionCompilation(
-        model, tuple(origins), constraint_origins, relation_origins, initial_step_origins
+        model,
+        tuple(origins),
+        constraint_origins,
+        relation_origins,
+        initial_step_origins,
+        tuple(populations),
     )

@@ -5,13 +5,13 @@ from itertools import combinations
 from typing import Any
 
 from . import generic_story
-from .core import Model, Solver, Step
-from .murdoku import Board, Square, board_rules
+from .core import Constraint, Kind, Model, Solver, Step
+from .murdoku import POPULATION_FAMILY, Board, Square, board_rules
 from .murdoku_expression_file import load_expression_board
 from .murdoku_expression_words import ExpressionWords
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .proof import Episode, Inference, Move, episodes, replay
-from .story import Places, Wording
+from .story import Places, Wording, _cap
 
 
 class _Narrator(generic_story.Narrator):
@@ -31,10 +31,19 @@ class _Narrator(generic_story.Narrator):
         }
         self.visible.update(self.roles)
         words = ExpressionWords.read(board, text)
+        self.statements = {}
         for origin in compilation.origins:
             label = say(f"expression.{origin.kind}", number=origin.number)
             statement = words.statement(origin.statement).rstrip(".")
             self.source_words[origin.label] = f"{label}: {statement}" if numbered else statement
+            self.statements[origin.label] = statement + (
+                f" ({origin.number})" if numbered and origin.kind == "clue" else ""
+            )
+        self.population_levels = {
+            constraint.name: (constraint, *level)
+            for constraint in compilation.model.constraints
+            if (level := self._population_level(constraint)) is not None
+        }
         for index, origins in compilation.constraint_origins.items():
             self.source_words[compilation.model.constraints[index].name] = say.join(
                 [self.source_words[origin.label] for origin in origins]
@@ -80,6 +89,153 @@ class _Narrator(generic_story.Narrator):
                         b=second,
                         role=say.words.get(specification.name, specification.name),
                     )
+
+    def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
+        if (
+            constraint.kind is not Kind.COUNT
+            or constraint.family != POPULATION_FAMILY
+            or constraint.reified_by is None
+            or not constraint.allowed_counts
+        ):
+            return None
+        minimum = min(constraint.allowed_counts)
+        if minimum < 1 or constraint.allowed_counts != frozenset(
+            range(minimum, len(constraint.literals) + 1)
+        ):
+            return None
+        regions = set()
+        for literal in constraint.literals:
+            square = self.model.value_of(literal)
+            if self.model.var_of(literal) not in self.board.people or not isinstance(
+                square, Square
+            ):
+                return None
+            regions.add(self.board.region_of(square))
+        return (regions.pop(), minimum) if len(regions) == 1 else None
+
+    def _population_evidence(self, levels: Sequence[tuple[str, int]]) -> list[str] | None:
+        sentences = []
+        known: dict[str, int] = {}
+        pending = []
+        for region, count in levels:
+            people = [
+                person
+                for person, cells in self.options.items()
+                if cells and all(self.board.region_of(cell) == region for cell in cells)
+            ]
+            if len(people) < count:
+                pending.append((region, count))
+                continue
+            sentences.append(
+                _cap(
+                    self.say(
+                        "count.population_person" if count == 1 else "count.population_people",
+                        people=self.say.join(people[:count]),
+                        where=self.places.region(self.board.region_names[region]),
+                        count=self.say.number(count),
+                    )
+                )
+                + "."
+            )
+            known[region] = count
+        while pending:
+            for region, count in pending:
+                comparison = next(
+                    (
+                        origin
+                        for origin, condition in self.compilation.population_conditions
+                        for other, lower in known.items()
+                        if count == lower + 1
+                        and (
+                            (
+                                condition.kind == "busiest_area"
+                                and region in condition.regions
+                                and other not in condition.regions
+                            )
+                            or (
+                                condition.kind == "quietest_area"
+                                and other in condition.regions
+                                and region not in condition.regions
+                            )
+                        )
+                    ),
+                    None,
+                )
+                if comparison is None:
+                    continue
+                minimum = self.say(
+                    "count.population_minimum",
+                    count=self.say.number(count),
+                    where=self.places.region(self.board.region_names[region]),
+                )
+                sentences.append(
+                    f"{_cap(self.statements[comparison.label])}, {self.say('so')} **{minimum}**."
+                )
+                known[region] = count
+                pending.remove((region, count))
+                break
+            else:
+                return None
+        return sentences
+
+    def _population_full(self, inference: Inference) -> str | None:
+        """Explain a refuted nonempty area using the floors that exhaust all people."""
+        for step in inference.steps:
+            if not step.sources or step.sources[0] not in self.population_levels:
+                continue
+            target, region, minimum = self.population_levels[step.sources[0]]
+            literal = target.reified_by
+            assert literal is not None
+            active = (step.value == self.model.value_of(literal)) == step.asserted
+            if minimum != 1 or step.var != self.model.var_of(literal) or active:
+                continue
+            levels = [
+                (other_region, count)
+                for name in step.sources[1:]
+                if name in self.population_levels
+                for _, other_region, count in [self.population_levels[name]]
+            ]
+            regions = {other_region for other_region, _ in levels}
+            total = sum(count for _, count in levels)
+            if (
+                len(levels) < 2
+                or len(regions) != len(levels)
+                or region in regions
+                or total != len(self.board.people)
+            ):
+                continue
+            empty = self.say(
+                "global_count.area_empty",
+                where=self.places.region(self.board.region_names[region]),
+            )
+            if (evidence := self._population_evidence(levels)) is not None:
+                reason = " ".join(
+                    [*evidence, _cap(self.say("count.population_all", n=self.say.number(total)))]
+                )
+            else:
+                reason = _cap(
+                    self.say(
+                        "count.population_full",
+                        areas=self.say.join(
+                            [
+                                self.say(
+                                    "count.population_reason_one"
+                                    if count == 1
+                                    else "count.population_reason",
+                                    area=self.board.region_names[other_region],
+                                    count=self.say.number(count),
+                                )
+                                for other_region, count in levels
+                            ]
+                        ),
+                        n=self.say.number(total),
+                    )
+                )
+            empty_cells = {cell for cell in self.board.free if self.board.region_of(cell) == region}
+            for cells in self.options.values():
+                cells.difference_update(empty_cells)
+            return f"{reason}, {self.say('so')} **{empty}**."
+        return None
 
     def placed(self, var: str, value: Any, name: str | None = None) -> str:
         if var in self.board.people and isinstance(value, Square):
@@ -170,7 +326,11 @@ class _Narrator(generic_story.Narrator):
                     if inference.move is not None
                     else tuple(source for step in inference.steps for source in step.sources)
                 )
-                if not any(step.var in self.visible for step in inference.steps):
+                if paragraph := self._population_full(inference):
+                    self.conclusion(inference.steps)
+                    paragraphs.append(paragraph)
+                    support.clear()
+                elif not any(step.var in self.visible for step in inference.steps):
                     support.extend(sources)
                 elif inference.move is not None and not support:
                     if paragraph := self.pattern(inference, history):
