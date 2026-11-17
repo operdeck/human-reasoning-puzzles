@@ -15,7 +15,6 @@ chaolong: de cháo lòng
 thitkho: de thịt kho
 phalau: de phá lấu
 tunnel: de Vietcongtunnel
-clue.with_same_area_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
 
 Regions:
 a: Hanoi #F4CBC3
@@ -53,7 +52,7 @@ Attributes:
 reiziger: Pippo Swena
 
 Rules:
-count (people in area of Loempia) = 2 + 1 and every ((people except Loempia) in area of Loempia) is attribute:reiziger
+count (people in area of Loempia) = 2 + 1 and every ((people except Loempia) in area of Loempia) is attribute:reiziger | De loempia deelt een gebied met precies twee anderen, en dat zijn allebei reizigers.
 
 Clues:
 not (Pippo dir:king object:buncha,chaolong,thitkho,phalau <= 1) | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from . import icons, murdoku, picture
-from .murdoku_expression_file import load_expression_board
+from .murdoku_expression_file import is_expression_file, load_expression_board
 from .murdoku_lower import object_count_scope
 from .puzzlefile import Figure, Presentation, language_of, load_board, load_presentation
 from .story import (
@@ -291,6 +291,10 @@ class Entry:
     pattern_first: bool = False
     expressions: bool = False
 
+    def __post_init__(self) -> None:
+        if self.kind == "murdoku" and not self.expressions and is_expression_file(self.text):
+            object.__setattr__(self, "expressions", True)
+
     def numbered(self, title: str) -> str:
         """`title` with the puzzle's number in front, if it has one."""
         return f"{self.number}. {title}" if self.number else title
@@ -475,7 +479,7 @@ def _add_solution(document: Any, entry: Entry, title: str, bookmark: str | None 
     stream, aspect = _picture_stream(
         text, entry.solution, entry.role_statuses, expressions=entry.expressions
     )
-    if entry.expressions:
+    if entry.expressions and entry.steps:
         blocks = [b.strip().removeprefix("- ") for b in entry.steps]
     else:
         blocks = [b.strip().removeprefix("- ") for b in explain(text, numbered=False).split("\n\n")]

@@ -13,7 +13,6 @@ thitkho: de thịt kho
 phalau: de phá lấu
 tunnel: de Vietcongtunnel
 kruk: de kruk
-clue.with_same_area_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
 
 Regions:
 a: Hanoi #F4CBC3
@@ -48,7 +47,7 @@ Attributes:
 reiziger: Pippo Swena
 
 Rules:
-count (people in area of PhoGa) = 2 + 1 and every ((people except PhoGa) in area of PhoGa) is attribute:reiziger
+count (people in area of PhoGa) = 2 + 1 and every ((people except PhoGa) in area of PhoGa) is attribute:reiziger | De phở gà deelt een gebied met precies twee anderen, en dat zijn allebei reizigers.
 
 Clues:
 not (Pippo dir:king object:buncha,thitkho,phalau <= 1) | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).

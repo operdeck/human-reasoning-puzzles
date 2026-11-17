@@ -9,7 +9,7 @@ import pytest
 pytest.importorskip("fontTools")
 
 from csp import cli, icons, murdoku, story, svg, web
-from csp.puzzlefile import load_board
+from csp.murdoku_expression_file import load_expression_board
 from tests.examples import EXAMPLES, example, played_examples
 
 pytestmark = pytest.mark.solutions
@@ -161,7 +161,7 @@ def test_murdoku_cards_cover_every_source_clue_once(exported):
         bundle = _bundle(exported, source.stem)
         if bundle["family"] != "murdoku":
             continue
-        board, clues = load_board(source.read_text())
+        board, _, clues = load_expression_board(source.read_text())
         entries = bundle["clueEntries"]
         expected = [f"clue:{number}" for number in range(1, len(clues) + 1)]
         actual = [source for entry in entries for source in entry["sources"]]

@@ -147,3 +147,9 @@ def test_expression_story_routes_cli_booklet_and_public_facade_through_the_same_
     assert story.figure_clues(TEXT) == story.figure_clues(
         TEXT, expressions=cli.load_expression_board(TEXT)[2]
     )
+
+
+def test_role_separation_sources_keep_the_puzzles_thematic_wording():
+    words = murdoku_story.explain(example("menu-murdoku-1.txt").read_text()).markdown()
+    assert "er staat nooit meer dan één zetmeel op dezelfde dag" in words
+    assert "in different regions" not in words

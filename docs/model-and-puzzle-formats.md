@@ -318,31 +318,31 @@ Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are req
 
 Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
 
-The replacement expression language in [#244](https://github.com/operdeck/human-reasoning-puzzles/issues/244)
-is under development and is **not yet accepted by the puzzle reader**. In that
-language, `in` is reflexive footprint containment and `on` is reflexive overlap;
+The expression language in [#244](https://github.com/operdeck/human-reasoning-puzzles/issues/244)
+is detected automatically by the CLI, web exporter, booklet and authoring tools.
+In this language, `in` is reflexive footprint containment and `on` is reflexive overlap;
 other spatial operators require distinct entities. An `empty` cell has no
 person even if blocked; migrate the current empty-cell counts using
 `empty free cells` to retain their free-cell-only behavior. A person `is` a
 bound role entity means membership in that role.
 
-For the in-development expression wording, `| wording` replaces one complete
+For expression wording, `| wording` replaces one complete
 statement and `Words:` may replace an expression phrase template. Phrase
 overrides must retain all placeholders of the original template; otherwise
 they could hide a subject, target, comparison, or other part of the clue.
+Legacy `clue.*` phrase keys are rejected: move a puzzle-specific sentence to
+that statement's `| wording`. The role declaration's distinct-area rule can be
+worded with `rule.role_separation`, retaining `{a}`, `{b}` and `{role}`.
 
-### Expression language under development
+### Expression clue language
 
-The expression reader, evaluator and compiler can be used independently, but
-the CLI, player and booklet still use the grammar below. The following is not
-yet the production file format. As an authoring preview, `python -m
-csp.clue_search report FILE --expressions` and `thin FILE --expressions`
-measure expression puzzles with the new independent search and compiler.
-`suggest FILE --expressions --solution "Ada=r1c1 ..."` previews suggestions
-using named-person location, line and direction templates. This is not yet a
-complete suggestion vocabulary: it does not generate arbitrary expressions or
-distinguish solutions differing only in roles. Other authoring commands still
-use the production grammar. The preview excludes unions, differences,
+The reader, reference evaluator and compiler can also be used independently.
+`python -m csp.clue_search report FILE`, `thin FILE` and `ease FILE` measure
+expression puzzles with the independent search and compiler.
+`suggest FILE --solution "Ada=r1c1 ..."` uses named-person location, line and
+direction templates. Its suggestion vocabulary remains limited: it does not
+generate arbitrary expressions or distinguish solutions differing only in roles.
+The suggestion templates exclude unions, differences,
 adjective-qualified and projected sets, filters and comprehensions; occupancy
 assertions and set comparisons; compound Boolean formulas; numeric, parity and
 range comparisons; quantifiers and choices. Its AST inventory is guarded
@@ -350,13 +350,14 @@ against additions to the language.
 For a draft board with expression `key_clue:` entries, use
 `puzzle-lab murdoku-board SPEC --expressions --suggest`; it uses the same
 limited suggestion templates and reports drafts it cannot close.
-`python -m csp FILE --expressions --show-model` previews the compiled model
-grouped by the source expressions. `--grade` and `--brute-force` also accept
-`--expressions`. Normal console solving, including `--verbose`, `--step`, a generic-story `--explain`, `--svg`/`--png`, `--export` and `--docx`/`--pdf` are also available with `--expressions`.
-`--lint --expressions` previews board and expression diagnostics, including
+`python -m csp FILE --show-model` shows the compiled model grouped by source
+expressions. Console solving, `--grade`, `--brute-force`, `--verbose`, `--step`,
+expression-native `--explain`, `--svg`/`--png`, `--export`, `--docx`/`--pdf`,
+`--nosolution`, `--interactive` and `--track-person` use the same expression model.
+`--lint` reports board and expression diagnostics, including
 impossible required relations, role-negation and relation-size warnings;
-`--require-forward` adds a forward-only solve check. Other
-main CLI operations still require the production grammar.
+`--require-forward` adds a forward-only solve check. `--expressions` remains an
+explicit selection when automatic detection is not wanted.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their
@@ -423,12 +424,11 @@ generic constraints outside `core.py`; it must agree with the evaluator and
 preserve the existing tuned patterns and grades. `Key:` entries in the new
 reader match expression structure rather than wording or source positions.
 
-### Clue grammar specification for #238
+### Legacy predicate grammar (#238 migration reference)
 
-This section specifies the canonical grammar. The reader accepts canonical
-forms only; the migration table below documents how legacy forms were mapped
-and is not an alternate accepted syntax. `Rules:` and `Clues:` use the same
-predicates.
+The following describes the previous predicate reader, retained temporarily
+for unmigrated tooling and tests. New puzzles use the expression grammar above,
+not these forms. This section will disappear with the compatibility code.
 
 #### Selectors and predicate shape
 

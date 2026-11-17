@@ -298,14 +298,28 @@ def test_full_booklet_generates_for_every_published_puzzle(tmp_path, capsys):
 
 
 def test_inline_wording_does_not_change_the_puzzle():
-    from csp.puzzlefile import load_board
+    from csp.murdoku_expression_file import load_expression_board
 
-    plain = (
-        (example("prrrdoku1.txt"))
-        .read_text()
-        .replace(" | Otto zit precies één rij boven Tjitske.", "")
-    )
-    assert load_board(plain) == load_board((example("prrrdoku1.txt")).read_text())
+    source = example("prrrdoku1.txt").read_text()
+    plain = source.replace(" | Otto zit precies één rij boven Tjitske.", "")
+    board, rules, clues = load_expression_board(plain)
+    original_board, original_rules, original_clues = load_expression_board(source)
+    assert board == original_board
+    assert [statement.formula for statement in (*rules, *clues)] == [
+        statement.formula for statement in (*original_rules, *original_clues)
+    ]
+
+
+def test_direct_booklet_entry_detects_expressions_and_generates_its_solution_story(tmp_path):
+    from csp.bruteforce import solutions
+
+    source = example("murdoku_3_house.txt")
+    text = source.read_text()
+    (solution,) = solutions(text, "murdoku", limit=2)
+    output = tmp_path / "house.docx"
+    write_booklet([Entry(text, source, solution)], output)
+    rendered = _text(output)
+    assert all(f"{person} on {square}" in rendered for person, square in solution.items())
 
 
 def _media(path):
@@ -573,14 +587,11 @@ def test_no_example_has_an_implied_clue():
 
 
 def _lint_output(text):
-    from csp.cli import _murdoku_lint
-    from csp.core import Model  # noqa: F401
-    from csp.murdoku import compile_puzzle
-    from csp.puzzlefile import load_board
+    from csp.cli import _murdoku_lint, load
+    from csp.puzzlefile import load_board_layout
 
-    board, clues = load_board(text)
-    model = compile_puzzle(board, clues)
-    return "\n".join(_murdoku_lint(board, clues, model, text))
+    board = load_board_layout(text)
+    return "\n".join(_murdoku_lint(board, [], load(text, "murdoku").model, text))
 
 
 def test_zoo_puzzles_have_no_one_person_role():

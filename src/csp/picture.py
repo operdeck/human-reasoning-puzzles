@@ -2308,13 +2308,22 @@ class _Legend:
         self.count_size = max(10, cell // 10)
         self.count_line = int(self.count_size * 1.6)
         max_chars = max(18, int(board.size * cell / (self.count_size * 0.55)))
+        texts = (
+            count_texts
+            if count_texts is not None
+            else [condition.description for condition in self.global_counts]
+        )
+        numbers = (
+            [condition.number or index for index, condition in enumerate(self.global_counts, 1)]
+            if self.global_counts
+            else list(range(1, len(texts) + 1))
+        )
         self.global_count_lines = [
             lines
-            for index, condition in enumerate(self.global_counts if count_lines else (), 1)
+            for number, text in (zip(numbers, texts, strict=True) if count_lines else ())
             for lines in [
                 textwrap.wrap(
-                    f"{self.words['global']} {condition.number or index}: "
-                    + (count_texts[index - 1] if count_texts else condition.description),
+                    f"{self.words['global']} {number}: " + text,
                     width=max_chars,
                 )
             ]

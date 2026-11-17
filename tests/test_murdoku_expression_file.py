@@ -17,12 +17,15 @@ from csp.story import (
     attribute_list,
     board_notes,
     clue_paragraphs,
+    clue_texts,
     figure_clues,
+    global_count_texts,
     murdoku_key_items,
     murdoku_rules,
     object_list,
     role_list,
 )
+from tests.examples import example
 
 TEXT = """\
 Size: 2
@@ -39,6 +42,34 @@ Rules:
 Clues:
   Ben in columns:1 | Ben is in the first column.
 """
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        f"{series}-{number}.txt"
+        for series in ("vietnam-murdoku", "menu-murdoku")
+        for number in (1, 2, 3)
+    ],
+)
+def test_migrated_thematic_examples_export_without_legacy_word_keys(name, tmp_path, capsys):
+    source = example(name)
+    assert cli.main([str(source), "--export", str(tmp_path)]) == 0
+    bundle = json.loads((tmp_path / f"{source.stem}.json").read_text())
+    assert bundle["solution"]
+    assert bundle["rules"]
+    assert "could not export" not in capsys.readouterr().err
+
+
+def test_plain_clue_and_count_text_preserve_expression_wording_and_file_order():
+    text = TEXT.replace(
+        "Rules:\n", "Rules:\ncount people = 2 | Both people are present!\n"
+    ).replace("Clues:\n", "Clues:\ncount empty free cells = 2 | Two free cells are empty.\n")
+    assert clue_texts(text) == ["Two free cells are empty.", "Ben is in the first column."]
+    assert global_count_texts(text) == [
+        "Both people are present!",
+        "Two free cells are empty.",
+    ]
 
 
 def test_expression_file_keeps_source_positions_and_separate_rules():

@@ -441,6 +441,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "expression.column": "at most one person per column",
         "expression.role_count": "the allowed number of people with the {role} role is {counts}",
         "expression.role_eligibility": "the declared role candidates",
+        "rule.role_separation": "there is at most one {role} per area ({a}, {b})",
         "expression.role_state": "{person} either has the {role} role or does not",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
@@ -896,6 +897,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "expression.column": "hoogstens één persoon per kolom",
         "expression.role_count": "het toegestane aantal personen met de rol {role} is {counts}",
         "expression.role_eligibility": "de opgegeven kandidaten voor de rollen",
+        "rule.role_separation": "er is hoogstens één {role} per gebied ({a}, {b})",
         "expression.role_state": "{person} heeft de rol {role} wel of niet",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
@@ -4147,6 +4149,11 @@ def figure_clues(
     return CluePresentation(figures, tuple(clue for clue in paragraphs if clue.person is None))
 
 
+def _expression_sentence(words: ExpressionWords, statement: murdoku_lang.Statement) -> str:
+    sentence = _cap(words.statement(statement).strip())
+    return sentence if sentence.endswith((".", "!", "?")) else sentence + "."
+
+
 def _expression_figure_clues(
     text: str, clues: Sequence[murdoku_lang.Statement]
 ) -> CluePresentation:
@@ -4160,9 +4167,7 @@ def _expression_figure_clues(
         while isinstance(formula, murdoku_lang.Negation):
             formula = formula.formula
         owner = _expression_clue_owner(formula, by_person)
-        sentence = _cap(say.statement(clue).strip())
-        if not sentence.endswith((".", "!", "?")):
-            sentence += "."
+        sentence = _expression_sentence(say, clue)
         paragraph = ClueParagraph(sentence, (number,), owner)
         (by_person[owner] if owner is not None else other).append(paragraph)
     figures = tuple(
@@ -4308,12 +4313,36 @@ def _clue_paragraphs(
 
 def clue_texts(text: str) -> list[str]:
     """The numbered clues of a Murdoku puzzle file in plain language."""
+    if is_expression_file(text):
+        board, _, statements = load_expression_board(text)
+        words = ExpressionWords.read(board, text)
+        return [_expression_sentence(words, clue) for clue in statements]
     board, clues = load_board(text)
     return Story(board, clues, Wording.read(text)).clue_texts()
 
 
 def global_count_texts(text: str) -> list[str]:
     """Each global count of a Murdoku puzzle file as one plain sentence, in file order."""
+    if is_expression_file(text):
+        board, rules, statements = load_expression_board(text)
+        words = ExpressionWords.read(board, text)
+
+        def contains_count(value: object) -> bool:
+            if isinstance(value, murdoku_lang.Count):
+                return True
+            if isinstance(value, tuple):
+                return any(contains_count(item) for item in value)
+            if dataclasses.is_dataclass(value) and not isinstance(value, type):
+                return any(
+                    contains_count(getattr(value, item.name)) for item in dataclasses.fields(value)
+                )
+            return False
+
+        return [
+            _expression_sentence(words, statement)
+            for statement in (*rules, *statements)
+            if contains_count(statement.formula)
+        ]
     board, clues = load_board(text)
     told = Story(board, clues, Wording.read(text))
     return [

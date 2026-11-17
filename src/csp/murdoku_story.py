@@ -1,6 +1,7 @@
 """Murdoku explanations from expression origins and the generic engine's proof."""
 
 from collections.abc import Iterable, Sequence
+from itertools import combinations
 from typing import Any
 
 from . import generic_story
@@ -69,6 +70,16 @@ class _Narrator(generic_story.Narrator):
                     [str(count) for count in sorted(specification.allowed_counts)], "or"
                 ),
             )
+            if specification.different_regions:
+                for first, second in combinations(board.people, 2):
+                    self.source_words[
+                        f"{first} and {second} {specification.name} in different regions"
+                    ] = say(
+                        "rule.role_separation",
+                        a=first,
+                        b=second,
+                        role=say.words.get(specification.name, specification.name),
+                    )
 
     def placed(self, var: str, value: Any, name: str | None = None) -> str:
         if var in self.board.people and isinstance(value, Square):

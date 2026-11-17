@@ -2268,8 +2268,8 @@ least_populated area:Alpha
 def test_area_population_capacity_solves_samen_onderweg_without_what_if():
     """Issue #224: the count rule finds the human argument, so no case split."""
     text = (example("samen-onderweg.txt")).read_text()
-    board, clues = load_board(text)
-    model = murdoku.compile_puzzle(board, clues)
+    board = load_board_layout(text)
+    model = cli.load(text, "murdoku").model
     fired: list[str] = []
     rules = tuple(rule for rule in DEFAULT_RULES if rule.name != "what_if")
     result = Solver(model, rules).solve(lambda name, steps: fired.append(name))
@@ -2955,7 +2955,7 @@ def test_numeric_region_ids_still_read():
         lambda m: m[0].replace("a", "0").replace("b", "1"),
         numbered,
     )
-    board, _ = load_board(numbered)
+    board = load_board_layout(numbered)
     assert board.region_names["0"] == "klimgebied"
     assert board.region_of(murdoku.Square(0, 3)) == "1"
 
@@ -3479,8 +3479,6 @@ def _colour_family(hex_colour):
 
 
 def test_colour_words_in_region_names_match_their_background():
-    from csp.puzzlefile import load_board
-
     all_words = {
         "red", "rood", "pink", "roze", "orange", "oranje", "brown", "bruin", "yellow",
         "geel", "green", "groen", "blue", "blauw", "purple", "paars", "grey", "gray",
@@ -3491,7 +3489,7 @@ def test_colour_words_in_region_names_match_their_background():
         text = path.read_text()
         if "People:" not in text:
             continue
-        board, _ = load_board(text)
+        board = load_board_layout(text)
         for rid, name in board.region_names.items():
             colour = board.colours.get(rid)
             for word in set(name.lower().split("_")) & all_words:
