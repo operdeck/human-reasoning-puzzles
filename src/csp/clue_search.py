@@ -41,7 +41,11 @@ from . import murdoku, report
 from .bruteforce import murdoku as brute
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Model, Solver
-from .murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
+from .murdoku_expression_file import (
+    is_expression_file,
+    keyed_expression_clue_numbers,
+    load_expression_board,
+)
 from .murdoku_lang import Name, Statement, format_statement, holds, parse_statement
 from .murdoku_lower import compile_statements
 from .puzzlefile import (
@@ -274,6 +278,7 @@ def outcome(
     text: str, timeout: float = 5.0, late_person: str | None = None, *, expressions: bool = False
 ) -> Outcome:
     """Measure solutions and grade with separate timeouts for the two solvers."""
+    expressions = expressions or is_expression_file(text)
     count = _timed(text, timeout, late_person, grading=False, expressions=expressions)
     if count is None:
         return Outcome(None, None)
@@ -287,6 +292,7 @@ def removal_report(
     text: str, timeout: float = 5.0, *, expressions: bool = False
 ) -> list[tuple[int, str, Outcome]]:
     """For each clue: the outcome without it, or the current outcome if Key requires it."""
+    expressions = expressions or is_expression_file(text)
     lines = clue_lines(text)
     keyed = (keyed_expression_clue_numbers if expressions else keyed_clue_numbers)(text)
     current = outcome(text, timeout, expressions=expressions) if keyed else None
@@ -326,6 +332,7 @@ def thin(
     A clue is dropped when the puzzle stays unique, solved and within
     `max_grade` without it. Clue numbers in `keep` and `Key:` are never dropped.
     """
+    expressions = expressions or is_expression_file(text)
     lines = clue_lines(text)
     kept = set(keep) | (keyed_expression_clue_numbers if expressions else keyed_clue_numbers)(text)
     alive = list(range(1, len(lines) + 1))
@@ -653,6 +660,7 @@ def suggest(
     rival of some needed clue is skipped, so removing any one of them still
     leaves another solution.
     """
+    expressions = expressions or is_expression_file(text)
     if expressions:
         board, rules, clues = load_expression_board(text)
     else:

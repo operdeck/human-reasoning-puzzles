@@ -6,7 +6,7 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 from itertools import permutations
-from typing import assert_never
+from typing import Any, assert_never
 
 from . import murdoku_lang as lang
 from .murdoku import Board, Square
@@ -18,6 +18,66 @@ class Entity:
     sort: Sort
     key: str | int | Square | tuple[str, int]
     footprint: frozenset[Square]
+
+
+_STATIC: dict[int, tuple[Board, tuple[Any, ...]]] = {}
+
+
+def _static_entities(board: Board) -> tuple[Any, ...]:
+    """The entities that depend only on the board, shared between evaluations of it."""
+    cached = _STATIC.get(id(board))
+    if cached is not None and cached[0] is board:
+        return cached[1]
+    built = _build_static(board)
+    if len(_STATIC) >= 16:
+        _STATIC.clear()
+    _STATIC[id(board)] = (board, built)
+    return built
+
+
+def _build_static(board: Board) -> tuple[Any, ...]:
+    cells = {
+        square: Entity(Sort.CELL, square, frozenset({square}))
+        for square in (Square(row, col) for row in range(board.size) for col in range(board.size))
+    }
+    rows = {
+        row: Entity(
+            Sort.ROW,
+            row,
+            frozenset(Square(row, col) for col in range(board.size)),
+        )
+        for row in range(board.size)
+    }
+    columns = {
+        col: Entity(
+            Sort.COLUMN,
+            col,
+            frozenset(Square(row, col) for row in range(board.size)),
+        )
+        for col in range(board.size)
+    }
+    areas = {
+        region: Entity(
+            Sort.AREA,
+            region,
+            frozenset(square for square in cells if board.region_of(square) == region),
+        )
+        for region in board.region_names
+    }
+    role_entities = {role.name: Entity(Sort.ROLE, role.name, frozenset()) for role in board.roles}
+    features: dict[str, list[tuple[str, Entity]]] = {}
+    for kind, entries in (
+        ("object", [(obj.name, obj.squares) for obj in board.objects]),
+        ("edge_item", [(item.name, item.cells) for item in board.edge_items]),
+        ("point_object", [(item.name, item.cells) for item in board.point_objects]),
+        ("mark", [(item.name, item.cells) for item in board.marks]),
+    ):
+        features[kind] = [
+            (name, Entity(Sort.FEATURE, (kind, index), frozenset(cells)))
+            for index, (name, cells) in enumerate(entries)
+        ]
+
+    return cells, rows, columns, areas, role_entities, features
 
 
 class _Evaluation:
@@ -37,65 +97,32 @@ class _Evaluation:
             not (0 <= sq.row < board.size and 0 <= sq.col < board.size) for sq in placed.values()
         ):
             raise ValueError("placement contains a square outside the board")
-        role_keys = {(person, role.name) for person in board.people for role in board.roles}
-        if (
-            (not partial and set(roles) != role_keys)
-            or not set(roles) <= role_keys
-            or any(not isinstance(value, bool) for value in roles.values())
-        ):
-            raise ValueError("role assignments must contain a Boolean for every person and role")
+        if roles or not partial:
+            role_keys = {(person, role.name) for person in board.people for role in board.roles}
+            if (
+                (not partial and set(roles) != role_keys)
+                or not set(roles) <= role_keys
+                or any(not isinstance(value, bool) for value in roles.values())
+            ):
+                raise ValueError(
+                    "role assignments must contain a Boolean for every person and role"
+                )
         self.board = board
         self.placed = placed
         self.roles = roles
-        self.cells = {
-            square: Entity(Sort.CELL, square, frozenset({square}))
-            for square in (
-                Square(row, col) for row in range(board.size) for col in range(board.size)
-            )
-        }
         self.people = {
             name: Entity(Sort.PERSON, name, frozenset({placed[name]}))
             for name in board.people
             if name in placed
         }
-        self.rows = {
-            row: Entity(
-                Sort.ROW,
-                row,
-                frozenset(Square(row, col) for col in range(board.size)),
-            )
-            for row in range(board.size)
-        }
-        self.columns = {
-            col: Entity(
-                Sort.COLUMN,
-                col,
-                frozenset(Square(row, col) for row in range(board.size)),
-            )
-            for col in range(board.size)
-        }
-        self.areas = {
-            region: Entity(
-                Sort.AREA,
-                region,
-                frozenset(square for square in self.cells if board.region_of(square) == region),
-            )
-            for region in board.region_names
-        }
-        self.role_entities = {
-            role.name: Entity(Sort.ROLE, role.name, frozenset()) for role in board.roles
-        }
-        self.features: dict[str, list[tuple[str, Entity]]] = {}
-        for kind, entries in (
-            ("object", [(obj.name, obj.squares) for obj in board.objects]),
-            ("edge_item", [(item.name, item.cells) for item in board.edge_items]),
-            ("point_object", [(item.name, item.cells) for item in board.point_objects]),
-            ("mark", [(item.name, item.cells) for item in board.marks]),
-        ):
-            self.features[kind] = [
-                (name, Entity(Sort.FEATURE, (kind, index), frozenset(cells)))
-                for index, (name, cells) in enumerate(entries)
-            ]
+        (
+            self.cells,
+            self.rows,
+            self.columns,
+            self.areas,
+            self.role_entities,
+            self.features,
+        ) = _static_entities(board)
 
     def name(
         self, token: lang.Token, variables: Mapping[str, Entity], namespace: str | None = None
@@ -105,17 +132,21 @@ class _Evaluation:
             return {variables[name]}
         if name in self.people:
             return {self.people[name]}
-        universes = {
-            "people": set(self.people.values()),
-            "areas": set(self.areas.values()),
-            "rows": set(self.rows.values()),
-            "columns": set(self.columns.values()),
-            "cells": set(self.cells.values()),
-            "objects": {entity for _, entity in self.features["object"]},
-            "roles": set(self.role_entities.values()),
-        }
-        if name in universes:
-            return universes[name]
+        match name:
+            case "people":
+                return set(self.people.values())
+            case "areas":
+                return set(self.areas.values())
+            case "rows":
+                return set(self.rows.values())
+            case "columns":
+                return set(self.columns.values())
+            case "cells":
+                return set(self.cells.values())
+            case "objects":
+                return {entity for _, entity in self.features["object"]}
+            case "roles":
+                return set(self.role_entities.values())
         if ":" not in name and namespace:
             name = f"{namespace}:{name}"
         kind, separator, value = name.partition(":")
@@ -543,9 +574,18 @@ def grounded_dependencies(board: Board, statement: lang.Statement) -> frozenset[
     return None if target is None else frozenset({subject} | target)
 
 
-def holds_grounded(statement: lang.Statement, board: Board, placed: Mapping[str, Square]) -> bool:
-    """Evaluate a grounded spatial atom once all its named people are placed."""
-    dependencies = grounded_dependencies(board, statement)
+def holds_grounded(
+    statement: lang.Statement,
+    board: Board,
+    placed: Mapping[str, Square],
+    dependencies: frozenset[str] | None = None,
+) -> bool:
+    """Evaluate a grounded spatial atom once all its named people are placed.
+
+    `dependencies` may pass the statement's `grounded_dependencies` when already known.
+    """
+    if dependencies is None:
+        dependencies = grounded_dependencies(board, statement)
     if dependencies is None or not dependencies <= placed.keys():
         raise ValueError("statement is not grounded by this placement")
     return _Evaluation(board, placed, {}, partial=True).formula(statement.formula, {})

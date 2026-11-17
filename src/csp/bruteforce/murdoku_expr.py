@@ -35,6 +35,11 @@ def _placements(
         if (dependencies := grounded_dependencies(board, statement)) is not None
     ]
 
+    due: list[list[tuple[Statement, frozenset[str]]]] = []
+    for index, person in enumerate(order):
+        seen = set(order[: index + 1])
+        due.append([(s, d) for s, d in grounded if person in d and d <= seen])
+
     def search(index: int, rows: set[int], columns: set[int]) -> Iterator[dict[str, Square]]:
         if budget is not None:
             budget[0] -= 1
@@ -48,9 +53,8 @@ def _placements(
             if square.row not in rows and square.col not in columns:
                 placed[person] = square
                 if all(
-                    holds_grounded(statement, board, placed)
-                    for statement, dependencies in grounded
-                    if person in dependencies and dependencies <= placed.keys()
+                    holds_grounded(statement, board, placed, dependencies)
+                    for statement, dependencies in due[index]
                 ):
                     yield from search(index + 1, rows | {square.row}, columns | {square.col})
                 del placed[person]
