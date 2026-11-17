@@ -645,8 +645,17 @@ marks and area tags used by the clues; attributes, roles and objects remain
 separate under the board. The layout reserves space for wrapped descriptions,
 clueless figures and portraits, shrinking the board or omitting its backdrop
 on crowded pages. Worked solutions do not refer to clue numbers.
+Counterfactuals name hypothetical people and placements rather than internal
+occupancy flags. A refuted mark trigger becomes a case on a person only when
+that person is its only possible occupant and the recorded trail actually
+places them there.
 Booklets use A4 pages, matching the dimensions used by the page-fit estimates.
-`Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
+`Words:` lines whose name is a phrase key (see `PHRASES` in `story.py` and
+`murdoku_expression_words.py`) reword that phrase for the puzzle, e.g.
+`name.attribute: people with the {name} attribute`, or
+`role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles
+are really kinds such as species. A `lint` warning flags a clue already
+implied by another (a person put in one region and also "not in" another).
 
 Every Murdoku booklet puzzle page and web player rules panel also reminds players
 that only stated rules and clues determine what is possible: a kind or trait
@@ -656,7 +665,7 @@ reminder; do not repeat it in each puzzle's `Intro:`.
 `--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 
 * `Title:`, `Intro:` (blank lines separate paragraphs; wrapped lines are joined, and `**bold**` is allowed), `Question:`, `Reveal:` (answer text, solution file only). Before the first section block, `Intro: text` also works as a single paragraph.
-* A clue line may end in `| wording` (e.g. `above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura." A `Rules:` line may end in `| wording` as well; that sentence is listed with the rules (booklet, web player) and in the picture legend. Worked solutions never use author wordings.
+* A clue line may end in `| wording` (e.g. `Otto dir:up Tjitske = 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it the expression phrasebook supplies English or Dutch wording, e.g. `Ramen dir:left Tempura = 5` → "Ramen is exactly five columns left of Tempura." A `Rules:` line may end in `| wording` as well; that sentence is listed with the rules (booklet, web player) and in the picture legend. Worked solutions use the same expression wording and overrides; they never infer clue semantics from an author's prose.
 * `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C` whose picture is vendored in `src/csp/assets/emoji/`; `--lint` warns otherwise). Without any of these it is text only. Put licensed artwork in the figures folder; the only bundled third-party images are the vendored Noto Emoji (see `src/csp/assets/NOTICE.md`).
 
 Pass a glob (quoted) such as `"examples/**/*.txt"` to put every matching puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own numbered page, after a clickable table of contents. The order comes from `collection.arrange`: Murdoku first, grouped by category — the folder below the matched files' common folder, so `examples/japanese-food/` is "Japanese food" and `demo` leads — then the other families; within a group files sort naturally (`6x6` before `12x12`). The web player's index uses the same numbers and sections.

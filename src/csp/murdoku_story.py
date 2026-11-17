@@ -1,6 +1,7 @@
 """Murdoku explanations from expression origins and the generic engine's proof."""
 
 from collections.abc import Iterable, Sequence
+from dataclasses import replace
 from itertools import combinations
 from typing import Any
 
@@ -60,6 +61,7 @@ class _Narrator(generic_story.Narrator):
             and formula.left.operand.target.token.text.startswith("mark:")
         }
         self.mark_sources: dict[str, tuple[CellMark, str]] = {}
+        self.mark_triggers: dict[str, tuple[CellMark, str]] = {}
         for mark in board.marks:
             if mark.occupant_condition is None:
                 continue
@@ -67,6 +69,7 @@ class _Narrator(generic_story.Narrator):
                 sources = occupant_condition_sources(
                     mark_occupant_name(mark, board.region_names[region])
                 )
+                self.mark_triggers[sources["trigger"]] = mark, region
                 for source in sources.values():
                     self.mark_sources[source] = mark, region
                     self.source_words[source] = say(
@@ -682,17 +685,111 @@ class _Narrator(generic_story.Narrator):
                 said.extend(f"**{self.placed(variable, False)}**" for variable in excluded)
         return self.say.join(said) if said else None
 
+    def _person_case(self, step: Step, history: Sequence[Step]) -> str:
+        needed = essential(self.model, history, step)
+        parts: list[str] = []
+        region = self.board.region_of(step.value)
+        for mark in self.board.marks:
+            if step.value not in mark.cells or mark.occupant_condition is None:
+                continue
+            sources = occupant_condition_sources(
+                mark_occupant_name(mark, self.board.region_names[region])
+            )
+            if any(sources["count"] in step.trail[index].sources for index in needed):
+                parts.append(
+                    self.say(
+                        f"mark_case.{mark.occupant_condition}",
+                        mark=mark.name.replace("_", " "),
+                        who=step.var,
+                        where=self.places.region(self.board.region_names[region]),
+                    )
+                )
+        placements: list[str] = []
+        seen = {(step.var, step.value)}
+        for index in needed:
+            inner = step.trail[index]
+            pair = inner.var, inner.value
+            if index and inner.asserted and inner.var in self.board.people and pair not in seen:
+                placements.append(
+                    self.say(
+                        "also_on" if placements else "then_on",
+                        who=inner.var,
+                        square=self.places.square(inner.value),
+                    )
+                )
+                seen.add(pair)
+        if placements:
+            parts.append(self.say.join(placements))
+        origins = {
+            label for source in step.sources for label in self.source_origins.get(source, ())
+        }
+        broken = [origin for origin in self.compilation.origins if origin.label in origins]
+        if len(broken) == 1 and broken[0].kind == "clue" and self.say.numbered:
+            parts.append(self.say("breaks" if parts else "breaks_first", n=broken[0].number))
+        else:
+            parts.append(
+                self.say("generic.breaks", source=self.names(step.sources))
+                if step.sources
+                else self.say("generic.breaks_unknown")
+            )
+        return self.say(
+            "cannot",
+            who=step.var,
+            squares=self.places.square(step.value),
+            chain=", ".join(parts),
+        )
+
+    def _mark_case_deduction(self, inference: Inference, history: Sequence[Step]) -> str | None:
+        visible = [step for step in inference.steps if step.var in self.visible]
+        if len(visible) != 1 or visible[0].asserted or visible[0].var not in self.board.people:
+            return None
+        (step,) = visible
+        for source in step.sources:
+            if source not in self.mark_triggers:
+                continue
+            mark, region = self.mark_triggers[source]
+            candidates = {
+                (person, square)
+                for person, squares in self.options.items()
+                for square in squares & set(mark.cells)
+                if self.board.region_of(square) == region
+            }
+            if candidates != {(step.var, step.value)}:
+                continue
+            trigger = self.constraints[source].reified_by
+            if trigger is None:
+                continue
+            variable, value = self.model.var_of(trigger), self.model.value_of(trigger)
+            for index in range(len(history) - 1, -1, -1):
+                refutation = history[index]
+                if (
+                    refutation.var == variable
+                    and refutation.value == value
+                    and not refutation.asserted
+                    and refutation.rule == "what_if"
+                    and any(
+                        inner.asserted and (inner.var, inner.value) == (step.var, step.value)
+                        for inner in refutation.trail
+                    )
+                ):
+                    return self._person_case(
+                        replace(refutation, var=step.var, value=step.value), history[:index]
+                    )
+        return None
+
     def _what_if(self, inference: Inference, history: Sequence[Step]) -> str:
         step = next(step for step in inference.steps if step.rule == "what_if")
         broken = next(
             (self.mark_sources[source] for source in step.sources if source in self.mark_sources),
             None,
         )
-        if broken is None or step.var not in self.board.people:
+        if step.var not in self.board.people:
             return super()._what_if(inference, history)
+        if broken is None:
+            return self._person_case(step, history)
         mark, region = broken
         if mark.occupant_condition != "not_alone":
-            return super()._what_if(inference, history)
+            return self._person_case(step, history)
         trial = {person: set(cells) for person, cells in self.options.items()}
         for inner in step.trail:
             if inner.var in trial:
@@ -718,7 +815,7 @@ class _Narrator(generic_story.Narrator):
                 for square in cells
             )
         ):
-            return super()._what_if(inference, history)
+            return self._person_case(step, history)
         parts: list[str] = []
         seen: set[tuple[str, Square]] = set()
         for index in essential(self.model, history, step):
@@ -872,7 +969,11 @@ class _Narrator(generic_story.Narrator):
                         for source in evidence
                     )
                 )
-                if paragraph := (
+                if paragraph := self._mark_case_deduction(inference, history):
+                    if conclusion := self.conclusion(inference.steps):
+                        paragraph += f" {_cap(self.say('so'))} {conclusion}."
+                    paragraphs.append(paragraph)
+                elif paragraph := (
                     self._population_full(inference)
                     or self._population_tied(inference)
                     or self._population_ceiling(inference)

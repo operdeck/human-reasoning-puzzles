@@ -15,7 +15,7 @@ import pytest
 import csp
 from csp import bruteforce, cli, murdoku, sudoku
 from csp.core import Kind, Model, Solver, Step, rule_single
-from csp.proof import Move, episodes, replay, shortest
+from csp.proof import Episode, Inference, Move, episodes, replay, shortest
 from csp.puzzlefile import detect, load_board, load_board_layout
 from csp.story import (
     Story,
@@ -1290,6 +1290,10 @@ not beside Violetchi object:backpack
     ],
 )
 def test_what_if_groups_hypothetical_placements(monkeypatch, language, expected):
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import compile_statements_with_origins
+    from csp.murdoku_story import _Narrator
+
     text = """Size: 4
 Regions:
 a: room
@@ -1304,22 +1308,18 @@ Ben
 Cal
 Dee
 """
-    board, clues = load_board(text)
-    story = Story(board, clues, Wording(language))
+    text = f"Language: {language}\n" + text
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = _Narrator(text, board, compilation, numbered=True)
     trail = tuple(
         Step(person, murdoku.Square(i, i), True, "single", "")
         for i, person in enumerate(board.people)
     )
     refutation = Step("Ada", murdoku.Square(0, 0), False, "what_if", "", trail=trail)
-    state = _State(
-        {person: set(board.free) for person in board.people},
-        {person: set(board.free) for person in board.people},
-    )
-    monkeypatch.setattr("csp.story.essential", lambda *_args: list(range(len(trail))))
-
-    _, _, reason = story._what_if(refutation, state)
-
-    assert reason.startswith(expected)
+    inference = Inference("what_if", compilation.model, (refutation,), None)
+    monkeypatch.setattr("csp.murdoku_story.essential", lambda *_args: list(range(len(trail))))
+    assert expected in narrator._what_if(inference, [])
 
 
 def test_tamagotchi_combines_necessary_marks_and_narrates_the_case():
@@ -1410,6 +1410,10 @@ dir Mametchi Lovelitchi left
     ],
 )
 def test_hidden_mark_case_uses_its_only_possible_occupant(monkeypatch, language, expected):
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import compile_statements_with_origins
+    from csp.murdoku_story import _Narrator
+
     text = """Size: 3
 Regions:
 a: cafe
@@ -1425,18 +1429,17 @@ Ada
 Ben
 Cal
 Clues:
-dir Ada Ben areas = 1
+Ada dir:areas Ben = 1
 """
-    board, clues = load_board(text)
-    story = Story(board, clues, Wording(language))
-    constraint = next(
-        c
-        for c in story.model.constraints
-        if c.name == "mark social not_alone in cafe trigger count"
-    )
+    text = f"Language: {language}\n" + text
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = _Narrator(text, board, compilation, numbered=True)
+    sources = murdoku.occupant_condition_sources(murdoku.mark_occupant_name(board.marks[0], "cafe"))
+    constraint = next(c for c in compilation.model.constraints if c.name == sources["trigger"])
     assert constraint.reified_by is not None
-    var = story.model.var_of(constraint.reified_by)
-    value = story.model.value_of(constraint.reified_by)
+    var = compilation.model.var_of(constraint.reified_by)
+    value = compilation.model.value_of(constraint.reified_by)
     ada, ben = murdoku.Square(0, 0), murdoku.Square(1, 1)
     trail = (
         Step(var, value, True, "what_if", "assumed"),
@@ -1447,27 +1450,46 @@ dir Ada Ben areas = 1
             True,
             "count",
             "",
-            sources=("mark social not_alone in cafe occupant count",),
+            sources=(sources["count"],),
         ),
     )
     refutation = Step(
-        var, value, False, "what_if", "", sources=("dir Ada Ben areas = 1",), trail=trail
+        var, value, False, "what_if", "", sources=(compilation.origins[0].label,), trail=trail
     )
     before = {person: set(board.free) - {ada} for person in board.people}
     before["Ada"].add(ada)
-    options = {person: set(squares) - {ada} for person, squares in before.items()}
-    state = _State(
-        options, {p: set(squares) for p, squares in before.items()}, history=[refutation]
-    )
+    narrator.options = before
     step = Step("Ada", ada, False, "count", "", sources=(constraint.name,))
-    monkeypatch.setattr("csp.story.essential", lambda *_args: [0, 1, 2])
+    inference = Inference("count", compilation.model, (step,), None)
+    monkeypatch.setattr("csp.murdoku_story.essential", lambda *_args: [0, 1, 2])
 
-    assert story._mark_case_deduction(step, ["Ada"], before, state) == expected
+    assert narrator._mark_case_deduction(inference, [refutation]) == expected
+
+    replayed = _Narrator(text, board, compilation, numbered=True)
+    replayed.options = {person: set(squares) for person, squares in before.items()}
+    groups = [
+        Episode(Inference("what_if", compilation.model, (refutation,), None)),
+        Episode(inference),
+    ]
+    result = replayed.tell(compilation.model, groups, solved=False).markdown()
+    assert expected in result
+    assert "__" not in result
+    assert replayed.options["Ada"] == before["Ada"] - {ada}
+
+    unnumbered = _Narrator(text, board, compilation, numbered=False)
+    unnumbered.options = {person: set(squares) for person, squares in before.items()}
+    unnumbered_case = unnumbered._mark_case_deduction(inference, [refutation])
+    assert unnumbered_case is not None
+    assert ("area distance" if language == "en" else "gebiedsafstand") in unnumbered_case
+    assert "(1)" not in unnumbered_case
+    assert ("clue 1" if language == "en" else "aanwijzing 1") not in unnumbered_case
+
     before["Cal"].add(ada)
-    assert story._mark_case_deduction(step, ["Ada"], before, state) is None
+    assert narrator._mark_case_deduction(inference, [refutation]) is None
     before["Cal"].remove(ada)
-    state.history = [dataclasses.replace(refutation, trail=trail[:1])]
-    assert story._mark_case_deduction(step, ["Ada"], before, state) is None
+    assert narrator._mark_case_deduction(inference, []) is None
+    no_placement = dataclasses.replace(refutation, trail=trail[:1])
+    assert narrator._mark_case_deduction(inference, [no_placement]) is None
 
 
 @pytest.mark.parametrize(
