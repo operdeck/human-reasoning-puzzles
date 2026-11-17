@@ -55,7 +55,7 @@ from . import (
 )
 from .bruteforce import murdoku_expr as expression_brute
 from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
-from .murdoku_expression_file import is_expression_file, load_expression_board
+from .murdoku_expression_file import load_expression_board
 from .murdoku_lower import (
     ExpressionCompilation,
     compile_statements_with_origins,
@@ -66,7 +66,6 @@ from .puzzlefile import (
     detect,
     display_family,
     language_of,
-    load_board,
     load_board_layout,
     load_presentation,
 )
@@ -162,13 +161,8 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "battleships":
         model, battleships_puzzle = battleships.compile_puzzle(text)
         return Puzzle(kind, model, partial(battleships.render, battleships_puzzle))
-    if is_expression_file(text):
-        expression_board = load_expression_board(text)[0]
-        return Puzzle(kind, _expression_model(text), partial(murdoku.render, expression_board))
-    board, clues = load_board(text)
-    model = murdoku.compile_puzzle(board, clues)
-    global_counts = murdoku.global_count_conditions(board, clues)
-    return Puzzle(kind, model, partial(murdoku.render, board, global_counts=global_counts))
+    board = load_expression_board(text)[0]
+    return Puzzle(kind, _expression_model(text), partial(murdoku.render, board))
 
 
 def narrate(rule: str, steps: Sequence[Step]) -> None:
@@ -222,7 +216,7 @@ def pattern_story(
         told = sudoku_story.explain(text, start=start.clone(), fired=fired)
         if told.complete:
             return generic_story.Explanation(told.paragraphs, True)
-    if kind == "murdoku" and is_expression_file(text):
+    if kind == "murdoku":
         return murdoku_story.explain(text, start=start.clone(), fired=fired)
     return generic_story.explain(text, start.clone(), fired)
 
@@ -243,7 +237,7 @@ def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) 
 def brute_force(puzzle: Puzzle, text: str, *, expressions: bool = False) -> int:
     """Search for solutions without the engine. Exit code 0 means exactly one."""
     start = time.perf_counter()
-    if expressions or (puzzle.kind == "murdoku" and is_expression_file(text)):
+    if puzzle.kind == "murdoku":
         board, rules, clues = load_expression_board(text)
         found = expression_brute.solutions(board, clues, limit=2, rules=rules)
     else:
@@ -282,8 +276,8 @@ def make_image(
     """The picture (an `svg.Canvas`) of a puzzle of any family.
 
     `solution` is drawn in if given; `interactive` draws the variant for the
-    online game instead: cells as elements with ids, no solution. `expressions`
-    reads Murdoku in the expression grammar, including object-related count scopes.
+    online game instead: cells as elements with ids, no solution. Murdoku always
+    uses the expression grammar; `expressions` is retained for compatibility.
     """
     from . import picture
 
@@ -318,21 +312,14 @@ def make_image(
     if kind in families:
         parse, draw = families[kind]
         return draw(parse(text), solution, interactive=interactive)
-    count_scope: set[murdoku.Square] = set()
-    if expressions or (kind == "murdoku" and is_expression_file(text)):
-        board, rules, statements = load_expression_board(text)
-        count_scope = object_count_scope(board, [*rules, *statements])
-        global_counts: Sequence[murdoku.GlobalCountCondition] = ()
-    else:
-        board, clues = load_board(text)
-        global_counts = murdoku.global_count_conditions(board, clues)
+    board, rules, statements = load_expression_board(text)
+    count_scope = object_count_scope(board, [*rules, *statements])
     if solution is None and (unknown := picture.unknown_object_icons(board)):
         print(f"warning: no icon for {', '.join(unknown)}; using text labels", file=sys.stderr)
     return picture.murdoku_picture(
         board,
         solution,
         role_statuses=role_statuses,
-        global_counts=global_counts,
         count_scope=count_scope,
         interactive=interactive,
         language=language_of(text),
@@ -548,7 +535,7 @@ def _write_booklet(
         return 2
     for listed in listing:
         file, kind, text = listed.path, listed.kind, texts[listed.path]
-        told = kind == "murdoku" and (expressions or is_expression_file(text))
+        told = kind == "murdoku"
         try:
             model = _expression_model(text) if told else load(text, kind).model
         except ValueError as exc:
@@ -638,7 +625,7 @@ def _export(files: list[Path], out: Path, *, expressions: bool = False) -> int:
     for listed in collection.arrange(kinds, family_names):
         file, kind, text = listed.path, listed.kind, texts[listed.path]
         try:
-            told = kind == "murdoku" and (expressions or is_expression_file(text))
+            told = kind == "murdoku"
             model = _expression_model(text) if told else load(text, kind).model
             fired = _Fired()
             result = Solver(model.clone()).solve(on_step=fired.append_step)
@@ -705,10 +692,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--expressions",
         action="store_true",
-        help=(
-            "preview expression-language Murdoku solving, model reports, grading, "
-            "brute-force search, lint and forward-only validation"
-        ),
+        help="compatibility flag; Murdoku always uses the expression grammar",
     )
     instead = parser.add_mutually_exclusive_group()
     instead.add_argument(
@@ -885,11 +869,11 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         return 2
     text = path.read_text()
     kind = detect(text) if args.type == "auto" else args.type
-    use_expressions = args.expressions or (kind == "murdoku" and is_expression_file(text))
+    if args.expressions and kind != "murdoku":
+        parser.error("--expressions is only available for Murdoku")
+    use_expressions = kind == "murdoku"
     expression_compiled: ExpressionCompilation | None = None
     if use_expressions:
-        if kind != "murdoku":
-            parser.error("--expressions is only available for Murdoku")
         try:
             expression_board, expression_rules, expression_clues = load_expression_board(text)
             expression_statements = [*expression_rules, *expression_clues]
@@ -991,26 +975,6 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             parser.error(
                 f"unknown person {args.track_person!r}; have {', '.join(track_board.people)}"
             )
-    if args.lint or args.require_forward:
-        board, clues = load_board(text)
-        findings = _murdoku_lint(board, clues, model, text)
-        for finding in findings:
-            print(finding)
-        if not findings:
-            print("lint: no issues found")
-        if args.require_forward:
-            forward_rules = tuple(rule for rule in DEFAULT_RULES if rule.name != "what_if")
-            forward_result = Solver(model.clone(), forward_rules).solve()
-            if not forward_result.solved:
-                detail = f": {forward_result.contradiction}" if forward_result.contradiction else ""
-                print(
-                    f"lint error: puzzle does not solve using forward rules "
-                    f"without what_if{detail}",
-                    file=sys.stderr,
-                )
-                return 1
-            print("require-forward: solved without what_if")
-        return 0
     if args.grade:
         fired: list[str] = []
         result = Solver(model).solve(on_step=lambda rule, steps: fired.append(rule))
@@ -1056,9 +1020,6 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
     if args.brute_force:
         return brute_force(puzzle, text)
     if args.explain:
-        if kind == "murdoku" and expression_compiled is None:
-            print(f"\n{story.explain(text)}")
-            return 0
         explanation = pattern_story(kind, text, model)
         print(f"\n{explanation.markdown()}")
         return 0 if explanation.complete else 2

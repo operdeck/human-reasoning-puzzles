@@ -387,8 +387,8 @@ expression-native `--explain`, `--svg`/`--png`, `--export`, `--docx`/`--pdf`,
 `--nosolution`, `--interactive` and `--track-person` use the same expression model.
 `--lint` reports board and expression diagnostics, including
 impossible required relations, role-negation and relation-size warnings;
-`--require-forward` adds a forward-only solve check. `--expressions` remains an
-explicit selection when automatic detection is not wanted.
+`--require-forward` adds a forward-only solve check. `--expressions` remains a
+compatibility flag; Murdoku always uses the expression grammar.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their

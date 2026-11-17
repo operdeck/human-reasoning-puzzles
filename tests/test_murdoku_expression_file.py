@@ -112,12 +112,24 @@ def test_expression_file_reports_type_error_at_original_position():
         board_notes,
         murdoku_rules,
         explain,
+        pytest.param(lambda text: cli.load(text, "murdoku"), id="cli.load"),
     ],
 )
 def test_presentation_preserves_expression_diagnostics_without_legacy_fallback(present):
     text = TEXT.replace("Ben in columns:1", "Ben in area:unknown")
     with pytest.raises(ValueError, match=r"line 13, column 10:.*unknown"):
         present(text)
+
+
+@pytest.mark.parametrize("options,code", [([], 2), (["--expressions"], 2), (["--lint"], 1)])
+def test_cli_preserves_expression_diagnostics_without_a_language_flag(
+    tmp_path, capsys, options, code
+):
+    source = tmp_path / "invalid.txt"
+    source.write_text(TEXT.replace("Ben in columns:1", "Ben in area:unknown"))
+    assert cli.main([str(source), *options]) == code
+    error = capsys.readouterr().err
+    assert "line 13, column 10" in error and "unknown" in error
 
 
 @pytest.mark.parametrize(
