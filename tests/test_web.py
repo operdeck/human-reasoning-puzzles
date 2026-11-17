@@ -494,21 +494,6 @@ def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):
     assert "broken.txt" in capsys.readouterr().err
 
 
-def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
-    kinds = (
-        set(murdoku.FILTERS)
-        | set(murdoku.RELATIONS)
-        | set(murdoku.GROUP_CLUES)
-        | set(murdoku.ROLE_CONDITION_KINDS)
-        | {"exactly", "count", "alone_with", "only_on", "unique_attribute", "at", "on", "on_mark"}
-    )
-    assert kinds <= set(story.CONDITION_KEYS)
-    for language in ("en", "nl"):
-        for key in set(story.CONDITION_KEYS.values()):
-            assert f"cond.{key}" in story.PHRASES[language]
-            assert f"cond.{key}.name" in story.PHRASES[language]
-
-
 def test_murdoku_web_key_lists_board_symbols_only(exported):
     point = _bundle(exported, "murdoku_2_point_objects")
     assert "conditions" not in point

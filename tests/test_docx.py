@@ -508,7 +508,8 @@ def test_two_alternatives_read_as_either_or_not_both():
 
 @pytest.fixture
 def companion_attribute_puzzle():
-    return """Size: 3
+    return (
+        """Size: 3
 Regions:
 a: room
 Grid:
@@ -522,23 +523,30 @@ Hashizotchi
 Attributes:
 friend: Ichigotchi Hashizotchi
 Words:
-target.attribute: a {name}
+name.attribute: a {name}
 Clues:
-with Akumatchi attribute:friend in same area exactly 1
-"""
+count (people in area of Akumatchi) = 1 + 1 and """
+        "every ((people except Akumatchi) in area of Akumatchi) is attribute:friend\n"
+    )
 
 
 def test_attribute_target_can_be_reworded(companion_attribute_puzzle):
     text = companion_attribute_puzzle.replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
+    (paragraph,) = clue_paragraphs(text)
+    assert "people except Akumatchi that are in the area of Akumatchi" in paragraph
+    assert "is a member of a friend" in paragraph
+    assert "attribute friend" not in paragraph
+
+
+def test_companion_count_and_universal_attribute_membership_are_preserved(
+    companion_attribute_puzzle,
+):
+    (paragraph,) = clue_paragraphs(companion_attribute_puzzle)
     assert (
-        "Akumatchi shares an area with exactly one other person, and that is a friend."
-        in clue_paragraphs(text)
+        "the number of people that are in the area of Akumatchi is equal to (1 plus 1)" in paragraph
     )
-
-
-def test_attribute_everyone_has_is_not_named(companion_attribute_puzzle):
-    paragraphs = clue_paragraphs(companion_attribute_puzzle)
-    assert "Akumatchi shares an area with exactly one other person." in paragraphs
+    assert "every member of people except Akumatchi" in paragraph
+    assert "is a member of at least one of a friend" in paragraph
 
 
 @pytest.mark.parametrize(("size", "mark"), [(6, "quiet"), (9, "social"), (12, "social")])

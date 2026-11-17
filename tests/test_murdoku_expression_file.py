@@ -18,6 +18,7 @@ from csp.story import (
     board_notes,
     clue_paragraphs,
     clue_texts,
+    explain,
     figure_clues,
     global_count_texts,
     murdoku_key_items,
@@ -99,6 +100,24 @@ def test_expression_file_reports_type_error_at_original_position():
     text = TEXT.replace("Ben in columns:1", "Ben in area:unknown")
     with pytest.raises(ValueError, match=r"line 13.*unknown"):
         load_expression_board(text)
+
+
+@pytest.mark.parametrize(
+    "present",
+    [
+        clue_texts,
+        clue_paragraphs,
+        figure_clues,
+        global_count_texts,
+        board_notes,
+        murdoku_rules,
+        explain,
+    ],
+)
+def test_presentation_preserves_expression_diagnostics_without_legacy_fallback(present):
+    text = TEXT.replace("Ben in columns:1", "Ben in area:unknown")
+    with pytest.raises(ValueError, match=r"line 13, column 10:.*unknown"):
+        present(text)
 
 
 @pytest.mark.parametrize(
