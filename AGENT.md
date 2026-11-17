@@ -99,7 +99,7 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   generation with `uv run pytest -q --override-ini=addopts= -m booklet`.
   `.github/workflows/tests.yml` overrides the local default and runs every
   Python test on 3.12 and 3.13, plus all web checks, on every pull request.
-  Each Python version uses four deterministic `--shard=INDEX/4` partitions,
+  Each Python version uses eight deterministic `--shard=INDEX/8` partitions,
   including the `solutions` and `booklet` cases; their union is the full suite.
   CI prints per-test outcomes and slow-test timings.
   Local LLM-based checks that cannot run in CI, such as independent review of

@@ -1,8 +1,4 @@
-"""Parser foundations for the planned Murdoku expression language.
-
-The existing puzzle reader remains authoritative until the new language is
-implemented and the corpus has been migrated.
-"""
+"""Typed Murdoku expression syntax, validation and evaluator entrypoints."""
 
 from __future__ import annotations
 
