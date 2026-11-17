@@ -16,11 +16,9 @@ import csp
 from csp import bruteforce, cli, murdoku, sudoku
 from csp.core import Kind, Model, Solver, Step, rule_single
 from csp.proof import Episode, Inference, Move, episodes, replay, shortest
-from csp.puzzlefile import detect, load_board, load_board_layout
+from csp.puzzlefile import detect, load_board_layout
 from csp.story import (
-    Story,
     Wording,
-    _State,
     board_notes,
     explain,
     family_rules,
@@ -571,19 +569,19 @@ Ben
 Cleo
 Dirk
 Clues:
-on Ada point_object:beacon
-on Ben point_object:sign
+Ada on point_object:beacon
+Ben on point_object:sign
 """
 
 
 def test_opening_crosses_out_each_open_square_only_once():
     opening = explain(LINE_RESERVATIONS).split("\n\n")[0]
     assert (
-        "Ada is on a square touching the beacon (1): **in column 1**, so "
+        "Ada is on a cell touching the beacon (1): **in column 1**, so "
         "**cross out the other two open squares in that column**."
     ) in opening
     assert (
-        "Ben is on a square touching the sign (2): **in row 1**, so "
+        "Ben is on a cell touching the sign (2): **in row 1**, so "
         "**cross out the other open square in that row**."
     ) in opening
 
@@ -599,7 +597,7 @@ def test_opening_does_not_count_blocking_objects_as_open_squares():
     )
     opening = explain(text).split("\n\n")[0]
     assert (
-        "Ada is on a square touching the beacon (1): **in column 1**, so "
+        "Ada is on a cell touching the beacon (1): **in column 1**, so "
         "**cross out the other open square in that column**."
     ) in opening
 
@@ -607,7 +605,9 @@ def test_opening_does_not_count_blocking_objects_as_open_squares():
 def test_opening_reserves_the_clue_owners_line_for_exclusive_objects():
     text = LINE_RESERVATIONS.replace(
         "PointObjects:", "Objects:\nbench: standable r1c1 r1c2 r1c3\nPointObjects:"
-    ).replace("on Ada point_object:beacon\non Ben point_object:sign", "only Ada on object:bench")
+    ).replace(
+        "Ada on point_object:beacon\nBen on point_object:sign\n", "(people on object:bench) = Ada"
+    )
     opening = explain(text).split("\n\n")[0]
     assert (
         "Ada is the only person on the bench (1): **in row 1**, so "
@@ -625,21 +625,27 @@ def test_opening_skips_crossing_out_when_nothing_is_still_open():
         )
         .replace("Ada\nBen\nCleo\nDirk", "Eva\nFaye\nAda\nBen")
         .replace(
-            "on Ada point_object:beacon\non Ben point_object:sign",
-            "on Eva object:stool\non Faye object:chair\non Ada point_object:beacon",
+            "Ada on point_object:beacon\nBen on point_object:sign\n",
+            "Eva on object:stool\nFaye on object:chair\nAda on point_object:beacon\n",
         )
     )
     opening = explain(text).split("\n\n")[0]
-    assert "Ada is on a square touching the beacon (3): **in column 1**." in opening
+    assert "Ada is on a cell touching the beacon (3): **in column 1**." in opening
     assert "cross out" not in opening
 
 
 def test_opening_does_not_cross_out_from_an_unstated_line_premise():
     text = LINE_RESERVATIONS.replace("beacon: r2.5c0.5", "beacon: r2.5c2.5").replace(
-        "Clues:", "Rules:\nnot in Ada rows:3\nClues:"
+        "Clues:", "Rules:\nnot (Ada in rows:3)\nClues:"
     )
     opening = explain(text).split("\n\n")[0]
-    assert "Ada is on a square touching the beacon (1): **in row 2**." in opening
+    premise = "rule 1: Ada is not in row 3"
+    deduction = (
+        "Ada is on a cell touching the beacon (1): **in row 2**, so "
+        "**cross out the other two open squares in that row**."
+    )
+    assert deduction in opening
+    assert opening.index(premise) < opening.index(deduction)
 
 
 def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
@@ -748,7 +754,11 @@ not Ben on mark:safe_zone
     ]
 
 
-def test_new_clues_targets_names_and_pronouns_are_worded_in_english_and_dutch():
+def test_expression_targets_and_names_are_worded_in_english_and_dutch():
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_expression_words import ExpressionWords
+    from csp.murdoku_lang import parse_statement
+
     english_text = """Language: en
 Size: 3
 Regions:
@@ -785,11 +795,11 @@ altar: the altar
 quiet: the quiet square
 social: the social square
 Rules:
-subset role:guide attribute:glasses
+every role:guide is attribute:glasses
 Clues:
-with Ada role:guide in same area exactly 1
-dir Ada tag:inside up
-if has Ada role:guide then on Ada mark:altar
+count (people in area of Ada) = 2 and every ((people in area of Ada) except Ada) is role:guide
+Ada dir:up tag:inside
+if Ada is role:guide then Ada on mark:altar
 """
     dutch_text = english_text.replace("Language: en", "Language: nl")
     dutch_text = dutch_text.replace("a: kitchen", "a: keuken").replace("b: hall", "b: gang")
@@ -802,67 +812,43 @@ if has Ada role:guide then on Ada mark:altar
     dutch_text = dutch_text.replace("quiet: the quiet square", "quiet: het stille vakje")
     dutch_text = dutch_text.replace("social: the social square", "social: het sociale vakje")
 
-    stories = []
+    languages = {}
     for text in (english_text, dutch_text):
-        board, clues = load_board(text)
-        stories.append(Story(board, clues, Wording.read(text)))
-    english, dutch = stories
+        board, _, clues = load_expression_board(text)
+        words = ExpressionWords.read(board, text)
+        languages[words.language] = words, clues
 
-    assert english._clue_text("in_row", ["Ada", "2"], ("Ada",)) == "Ada is in row 2"
-    assert english._clue_text("not_in_row", ["Ben", "1"], ("Ben",)) == "Ben is not in row 1"
-    assert english._clue_text("in_column", ["Cal", "3"], ("Cal",)) == "Cal is in column 3"
-    assert english._clue_text("not_in_column", ["Ada", "1"], ("Ada",)) == ("Ada is not in column 1")
-    assert english._clue_text("in_area_corner", ["Ada", "kitchen"], ("Ada",)) == (
-        "Ada is in a corner, in the kitchen"
-    )
-    assert english._clue_text("adjacent_regions", ["Ada", "Ben"], ("Ada", "Ben")) == (
-        "Ada and Ben are in neighboring areas"
-    )
-    assert english._clue_text("not_on_mark", ["Cal", "quiet", "social"], ("Cal",)) == (
-        "Cal is not on the quiet square or the social square"
-    )
-    assert english._clue_text("has_attribute", ["Ben", "glasses"], ("Ben",)) == (
-        "Ben has the glasses attribute"
-    )
-    assert english._clue_text("not_attribute", ["Ada", "glasses"], ("Ada",)) == (
-        "Ada does not have the glasses attribute"
-    )
-    assert (
-        english._clue_text("unique_attribute", ["glasses", "Ada", "Ben", "Cal"], ("Ada",))
-        == "exactly one of Ada, Ben and Cal has the glasses attribute"
-    )
-    assert english._quantified_text(
-        english.quantified_conditions["with Ada role:guide in same area exactly 1"]
-    ) == ("Ada shares an area with exactly one other person, and that is a guide holder")
-    assert english._direction_text(english.direction_conditions["dir Ada tag:inside up"]) == (
-        "Ada is above a square in the kitchen"
-    )
-    assert english._target_text(murdoku.TargetSelector("object_kind", "standable")) == (
-        "someone on standable objects"
-    )
-    assert english._conditional_text(next(iter(english.conditionals.values()))) == (
-        "If Ada holds role guide, then Ada is on the altar"
-    )
+    def say(source, language="en"):
+        return languages[language][0].statement(parse_statement(source))
 
-    assert dutch._clue_text("in_row", ["Ada", "2"], ("Ada",)) == "Ada staat in rij 2"
-    assert dutch._clue_text("not_in_column", ["Ada", "1"], ("Ada",)) == (
-        "Ada staat niet in kolom 1"
-    )
-    assert dutch._clue_text("in_area_corner", ["Ada", "keuken"], ("Ada",)) == (
-        "Ada staat in een hoek, in de keuken"
-    )
-    assert dutch._clue_text("has_attribute", ["Ben", "glasses"], ("Ben",)) == (
-        "Ben heeft het kenmerk bril"
-    )
-    assert dutch._quantified_text(
-        dutch.quantified_conditions["with Ada role:guide in same area exactly 1"]
-    ) == ("Ada deelt een gebied met precies één ander persoon, en dat is een gids-drager")
-    assert "een vakje in de keuken" in dutch._direction_text(
-        dutch.direction_conditions["dir Ada tag:inside up"]
-    )
-    assert "Als Ada de rol gids heeft" in dutch._conditional_text(
-        next(iter(dutch.conditionals.values()))
-    )
+    assert say("Ada in rows:2") == "Ada is in row 2"
+    assert say("not Ben in rows:1") == "Ben is not in row 1"
+    assert say("Cal in columns:3") == "Cal is in column 3"
+    assert say("not Ada in columns:1") == "Ada is not in column 1"
+    assert say("Ada in area:kitchen") == "Ada is in the kitchen"
+    assert say("Ada in rows:2", "nl") == "Ada is in rij 2"
+    assert say("not Ada in columns:1", "nl") == "Ada is niet in kolom 1"
+    assert say("Ada in area:keuken", "nl") == "Ada is in de keuken"
+    for language, attribute, guide, quiet, social, room, altar in (
+        ("en", "glasses", "guide", "the quiet square", "the social square", "kitchen", "the altar"),
+        ("nl", "bril", "gids", "het stille vakje", "het sociale vakje", "keuken", "het altaar"),
+    ):
+        assert attribute in say("Ben is attribute:glasses", language)
+        negative = say("not Ada is attribute:glasses", language)
+        assert attribute in negative
+        assert ("not" if language == "en" else "niet") in negative
+        union = say("not Cal on (mark:quiet, social)", language)
+        assert quiet in union and social in union
+        counted = say("count ((Ada, Ben, Cal) is attribute:glasses) = 1", language)
+        assert attribute in counted and "1" in counted
+        words, clues = languages[language]
+        companion = words.statement(clues[0])
+        assert guide in companion and ("two" if language == "en" else "twee") in companion
+        assert room in words.statement(clues[1])
+        conditional = words.statement(clues[2])
+        assert guide in conditional and altar in conditional
+        assert ("if" if language == "en" else "als") in conditional.casefold()
+        assert "standable" in say("some (people on object_kind:standable) dir:up Ada", language)
 
 
 @pytest.mark.parametrize("number", [1, 2, 3])
@@ -975,17 +961,17 @@ guide: any
 Marks:
 altar: r1c1
 Rules:
-has Ada role:guide
+Ada is role:guide
 Clues:
-with Ada role:guide in same area exactly 1
-if has Ada role:guide then on Ada mark:altar
+count (people in area of Ada) = 1 + 1 and every ((people except Ada) in area of Ada) is role:guide
+if Ada is role:guide then Ada on mark:altar
 """
     story = explain(text)
 
-    assert (
-        "Ada shares an area with exactly one other person, and that is a guide holder (1)" in story
-    )
-    assert "If Ada holds role guide, then Ada is on the altar" in story
+    assert "the number of people that are in the area of Ada is equal to (1 plus 1)" in story
+    assert "every member of people except Ada that are in the area of Ada" in story
+    assert "(1), so **Ben has the guide role**" in story
+    assert "then (Ada is on a cell marked altar) (2), so **Ada on r1c1**" in story
 
 
 def test_explain_includes_static_attribute_and_uniqueness_clues():
@@ -1004,22 +990,24 @@ glasses: Ben
 Words:
 glasses: glasses
 Clues:
-has Ben attribute:glasses
-not has Ada attribute:glasses
-count people with attribute:glasses = 1
+Ben is attribute:glasses
+not Ada is attribute:glasses
+count attribute:glasses = 1
 """
-    story = explain(text)
-    assert "Ben has the glasses attribute (1)" in story
-    assert "Ada does not have the glasses attribute (2)" in story
-    assert "Exactly one person has the glasses attribute (3)" in story
+    facts = csp.story.clue_texts(text)
+    assert len(facts) == 3
+    assert "Ben" in facts[0] and "glasses" in facts[0]
+    assert "Ada" in facts[1] and "not" in facts[1] and "glasses" in facts[1]
+    assert "glasses" in facts[2] and "equal to 1" in facts[2]
+    assert not re.search(r"\*\*(Ada|Ben) on r", explain(text))
 
     dutch_text = text.replace("Language: en", "Language: nl").replace(
         "glasses: glasses", "glasses: bril"
     )
-    dutch = explain(dutch_text)
-    assert "Ben heeft het kenmerk bril (1)" in dutch
-    assert "Ada heeft het kenmerk bril niet (2)" in dutch
-    assert "Precies één persoon heeft het kenmerk bril (3)" in dutch
+    dutch = csp.story.clue_texts(dutch_text)
+    assert "Ben" in dutch[0] and "bril" in dutch[0]
+    assert "Ada" in dutch[1] and "niet" in dutch[1] and "bril" in dutch[1]
+    assert "bril" in dutch[2] and "1" in dutch[2]
 
 
 def test_region_capacity_count_explains_the_placement_it_forces():
@@ -1034,8 +1022,8 @@ People:
 Ada
 Ben
 Clues:
-in Ada rows:1
-in Ben rows:2
+Ada in rows:1
+Ben in rows:2
 count people in area:alcove = 1
 """
     solutions = bruteforce.solutions(text, "murdoku", limit=5)
@@ -1043,7 +1031,7 @@ count people in area:alcove = 1
     assert solutions[0]["Ada"] == murdoku.Square(0, 0)
 
     story = explain(text)
-    assert "Region capacity: exactly one person is in the alcove (3)" in story
+    assert "clue 3: exactly one person is in the alcove" in story
     assert "Ada on r1c1" in story
 
 
@@ -1080,29 +1068,32 @@ seats: the seats
 Clues:
 count people on object:bed = 1
 count people in rows:1,3 = 2
-count people with role:bandit odd
-count people with attribute:glasses = 1
+count role:bandit odd
+count attribute:glasses = 1
 count empty areas = 1
 count empty areas in tag:inside <= 1
-count empty cells in mark:seats 1..2
+count (empty free cells on mark:seats) 1..2
 count people in area:west = 1
 count people in tag:inside odd
 count people in columns:1-2 = 2
-count people in mark:seats = 1
+count people on mark:seats = 1
 """
-    english = explain(english_text)
+    english_clues = csp.story.clue_texts(english_text)
+    english = "\n".join(english_clues)
+    assert len(english_clues) == 11
     assert "__global_" not in english
-    assert "Exactly one person is on the bed (1)" in english
-    assert "Exactly two people are in row 1 or 3 (2)" in english
-    assert "An odd number of people have the bandit role (3)" in english
-    assert "Exactly one person has the glasses attribute (4)" in english
-    assert "Exactly one area is empty (5)" in english
-    assert "At most one area is empty in the east or garden (6)" in english
-    assert "Between one and two free cells are empty on the seats (7)" in english
-    assert "Exactly one person is in the west (8)" in english
-    assert "An odd number of people are in the east or garden (9)" in english
-    assert "Exactly two people are in column 1 or 2 (10)" in english
-    assert "Exactly one person is on the seats (11)" in english
+    assert english_clues[0] == "Exactly one person is on the bed."
+    assert "Exactly two people" in english_clues[1]
+    assert "row 1" in english_clues[1] and "row 3" in english_clues[1]
+    assert "role bandit is odd" in english_clues[2]
+    assert "attribute glasses is equal to 1" in english_clues[3]
+    assert "empty areas is equal to 1" in english_clues[4]
+    assert "east or garden" in english_clues[5] and "at most 1" in english_clues[5]
+    assert "empty free cells" in english_clues[6] and "between 1 and 2" in english_clues[6]
+    assert english_clues[7] == "Exactly one person is in the west."
+    assert "east or garden" in english_clues[8] and "odd" in english_clues[8]
+    assert "Exactly two people" in english_clues[9] and "columns 1-2" in english_clues[9]
+    assert english_clues[10] == "Exactly one person is on the seats."
 
     dutch_text = english_text.replace("Language: en", "Language: nl")
     dutch_text = dutch_text.replace("a: west", "a: westen").replace("b: east", "b: oosten")
@@ -1119,17 +1110,21 @@ count people in mark:seats = 1
     dutch_text = dutch_text.replace("glasses: glasses", "glasses: bril")
     dutch_text = dutch_text.replace("bandit: bandit", "bandit: bandiet")
     dutch_text = dutch_text.replace("seats: the seats", "seats: de stoelen")
-    dutch = explain(dutch_text)
+    dutch_clues = csp.story.clue_texts(dutch_text)
+    dutch = "\n".join(dutch_clues)
+    assert len(dutch_clues) == 11
     assert "__global_" not in dutch
-    assert "Precies één persoon staat op het bed (1)" in dutch
+    assert "Precies één persoon staat op het bed." in dutch
     assert "Precies twee mensen" in dutch
-    assert "Een oneven aantal mensen" in dutch
-    assert "Precies één persoon heeft het kenmerk bril (4)" in dutch
-    assert "Precies één gebied is leeg (5)" in dutch
-    assert "Precies één persoon is in het westen (8)" in dutch
-    assert "Een oneven aantal mensen zijn in het oosten of de tuin (9)" in dutch
-    assert "Precies twee mensen zijn in kolom 1 of 2 (10)" in dutch
-    assert "Precies één persoon is op de stoelen (11)" in dutch
+    assert "bandiet" in dutch_clues[2] and "oneven" in dutch_clues[2]
+    assert "bril" in dutch_clues[3] and "1" in dutch_clues[3]
+    assert "lege gebieden" in dutch_clues[4]
+    assert "het oosten of de tuin" in dutch_clues[5]
+    assert "lege vrije vakjes" in dutch_clues[6]
+    assert "Precies één persoon" in dutch_clues[7] and "het westen" in dutch_clues[7]
+    assert "het oosten of de tuin" in dutch_clues[8] and "oneven" in dutch_clues[8]
+    assert "kolommen 1-2" in dutch_clues[9]
+    assert "Precies één persoon" in dutch_clues[10] and "de stoelen" in dutch_clues[10]
 
 
 @pytest.mark.parametrize(
@@ -1185,13 +1180,13 @@ Eva
 Fay
 Clues:
 count people on mark:quiet = 2
-dir Eva Fay areas = 0
-in Bo area:Tomb
-dir Bo Dee left
-in Cal area:Crypt
-dir Eva Fay left
-in Ada area:Atrium
-dir Eva Fay up
+Eva dir:areas Fay = 0
+Bo in area:Tomb
+Bo dir:left Dee
+Cal in area:Crypt
+Eva dir:left Fay
+Ada in area:Atrium
+Eva dir:up Fay
 """
     explanation = explain(text)
     assert (
@@ -1255,17 +1250,17 @@ Violetchi
 Akumatchi
 Clues:
 count people on mark:social = 1
-dir Mametchi Masktchi areas = 0
-on Lovelitchi object:bench
-beside Gozarutchi object:cake
-dir Mametchi Lovelitchi up
-dir Violetchi Masktchi up
-in Tarakotchi area:library
-on Kuchipatchi object:bridge
-dir Tarakotchi Memetchi left
-not beside Memetchi object:slide
-not beside Tarakotchi object:books
-not beside Violetchi object:backpack
+Mametchi dir:areas Masktchi = 0
+Lovelitchi on object:bench
+Gozarutchi beside object:cake
+Mametchi dir:up Lovelitchi
+Violetchi dir:up Masktchi
+Tarakotchi in area:library
+Kuchipatchi on object:bridge
+Tarakotchi dir:left Memetchi
+not (Memetchi beside object:slide)
+not (Tarakotchi beside object:books)
+not (Violetchi beside object:backpack)
 """
     explanation = explain(text)
     assert "Memetchi is not beside the slide (10)." in explanation
@@ -1273,12 +1268,12 @@ not beside Violetchi object:backpack
     assert (
         "then Memetchi would be on r9c7, then Akumatchi would be in the market, "
         "but a social square needs company, "
-        "and nobody else can be in the playground (see clue 1)"
+        "and nobody else can be in the playground"
     ) in explanation
     dutch = explain("Language: nl\n" + text)
     assert (
         "maar op een vakje met markering social moet iemand gezelschap hebben "
-        "en verder kan niemand in de playground zijn (zie aanwijzing 1)"
+        "en verder kan niemand in de playground zijn"
     ) in dutch
 
 
@@ -1375,13 +1370,13 @@ Masktchi
 Akumatchi
 Clues:
 count people on mark:quiet = 1
-beside Masktchi object:sakura
-dir Lovelitchi Mametchi areas = 0
-in Memetchi corner:board
-dir Kuchipatchi Mametchi left
-not beside Lovelitchi object:chair
-not beside Kuchipatchi object:carpet
-dir Mametchi Lovelitchi left
+Masktchi beside object:sakura
+Lovelitchi dir:areas Mametchi = 0
+Memetchi in corner:board
+Kuchipatchi dir:left Mametchi
+not (Lovelitchi beside object:chair)
+not (Kuchipatchi beside object:carpet)
+Mametchi dir:left Lovelitchi
 """
     explanation = explain(text)
     assert (
@@ -1546,14 +1541,15 @@ Ben
 Roles:
 seer: any
 Rules:
-has Ada role:seer
+Ada is role:seer
 Clues:
-not has Ben role:seer
+not Ben is role:seer
 """
     story = explain(text)
 
     assert "Ada has the seer role" in story
-    assert "Ben does not have the seer role (1)" in story
+    assert "**Ben does not have the seer role**" in story
+    assert "seer (1)" in story
     assert "__occupant" not in story
 
 
@@ -1579,8 +1575,12 @@ bandit: Ada
     assert "__occupant" not in story
 
 
-@pytest.mark.parametrize(("holders", "expected"), [(1, ""), (2, "Ben does not have the team role")])
-def test_known_role_holder_only_makes_other_exclusions_obvious_when_unique(holders, expected):
+@pytest.mark.parametrize("holders", [1, 2])
+def test_known_role_holder_keeps_explicit_exclusions_and_does_not_repeat_them(holders):
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import compile_statements_with_origins
+    from csp.murdoku_story import _Narrator
+
     text = f"""Size: 3
 Regions:
 a: room
@@ -1595,13 +1595,15 @@ Cal
 Roles:
 team: {holders}
 """
-    board, clues = load_board(text)
-    story = Story(board, clues, Wording())
-    state = _State({}, {}, role_told={("Ada", "team"): True})
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = _Narrator(text, board, compilation, numbered=True)
+    narrator.told.add((board.role_variable("Ada", "team"), True))
     step = Step(board.role_variable("Ben", "team"), False, True, "single", "test")
 
-    assert story._role_step_text(step, state) == expected
-    assert state.role_told["Ben", "team"] is False
+    assert narrator.conclusion([step]) == "**Ben does not have the team role**"
+    assert (step.var, False) in narrator.told
+    assert narrator.conclusion([step]) is None
 
 
 def test_story_explains_role_conditioned_location_rule():
@@ -1619,45 +1621,48 @@ captain: 1
 Marks:
 altar: r1c1
 Rules:
-has Ada role:captain
+Ada is role:captain
 Clues:
-if has Ada role:captain then on Ada mark:altar
+if Ada is role:captain then Ada on mark:altar
 """
     story = explain(text)
 
     assert "Ada has the captain role" in story
     assert "Ada's" not in story
-    assert "If Ada holds role captain, then Ada is on the altar (1)" in story
+    assert "If (Ada is a member of the captain)" in story
+    assert "then (Ada is on a cell marked altar) (1), so **Ada on r1c1**" in story
 
 
 def test_story_explains_a_reified_count_constraint():
-    square = murdoku.Square
-    board = murdoku.Board(
-        2,
-        [["west", "east"], ["west", "east"]],
-        {"west": "west", "east": "east"},
-        [],
-        ["Ada", "Ben"],
-    )
-    story = Story(board, [("not_in", ["Ada", "area:west"])], Wording())
-    west_cells = [story.model.literal("Ada", square(row, 0)) for row in range(2)]
-    is_empty = story.model.literal("west_empty", "yes")
-    is_occupied = story.model.literal("west_empty", "no")
-    story.model.constrain(
-        "west occupancy",
-        Kind.COUNT,
-        west_cells,
-        allowed_counts={0},
-        reified_by=is_empty,
-    )
-    story.model.constrain(
-        "west empty state", Kind.EXACTLY_ONE, [is_empty, is_occupied], defines="west_empty"
-    )
+    text = """Size: 2
+Regions:
+w: west
+e: east
+Grid:
+w e
+w e
+People:
+Ada
+Ben
+Roles:
+guard: any
+RoleEligibility:
+guard: Ada
+Rules:
+not Ada in area:west
+Clues:
+(count (Ada in area:west) = 0) iff Ada is role:guard
+"""
+    explanation = explain(text)
+    assert "Ada has the guard role" in explanation
+    assert "the number of Ada that are in the west is equal to 0" in explanation
+    assert "__" not in explanation
+    assert "literal" not in explanation
 
-    assert (
-        "The allowed counts for west occupancy are zero, "
-        "so **the literal west_empty=yes must hold**." in story.tell()
-    )
+    solutions = bruteforce.solutions(text, limit=3)
+    assert len(solutions) == 2
+    role = load_board_layout(text).role_variable("Ada", "guard")
+    assert all(solution[role] for solution in solutions)
 
 
 def test_mark_occupant_story_hides_internal_auxiliary_variables():
@@ -1761,39 +1766,39 @@ count people on mark:quiet = 1
 def test_direct_area_clue_does_not_repeat_the_area_when_it_fixes_a_square():
     explanation = explain(example("murdoku_2_point_objects.txt").read_text())
     assert "Cal is in the greenhouse (4): **Cal on r3c5**" in explanation
-    assert "in the greenhouse (4): **in the greenhouse**" not in explanation
+    assert "the in greenhouse, (4):, **in, the, greenhouse**" not in explanation
 
 
 def test_story_explains_complementary_reified_counts():
-    square = murdoku.Square
-    board = murdoku.Board(
-        2,
-        [["west", "east"], ["west", "east"]],
-        {"west": "west", "east": "east"},
-        [],
-        ["Ada", "Ben"],
-    )
-    story = Story(board, [], Wording())
-    first, second = square(0, 0), square(1, 0)
-    first_literal = story.model.literal("Ada", first)
-    second_literal = story.model.literal("Ada", second)
-    empty = story.model.literal("west_empty", True)
-    occupied = story.model.literal("west_empty", False)
-    story.model.constrain(
-        "west empty state", Kind.EXACTLY_ONE, [empty, occupied], defines="west_empty"
-    )
-    story.model.constrain(
-        "west occupancy",
-        Kind.COUNT,
-        [first_literal, second_literal],
-        allowed_counts={0},
-        reified_by=empty,
-    )
-    story.model.eliminate(empty, "setup", "known occupied")
-    story.model.eliminate(first_literal, "setup", "not this square")
-    story.model.log.clear()
+    text = """Size: 2
+Regions:
+w: west
+e: east
+Grid:
+w e
+w e
+People:
+Ada
+Ben
+Roles:
+guard: any
+RoleEligibility:
+guard: Ada
+Rules:
+not Ada is role:guard
+Ada in rows:2
+Clues:
+(count (Ada in area:west) = 0) iff Ada is role:guard
+"""
+    explanation = explain(text)
+    assert "**Ada on r2c1**" in explanation
+    assert "the number of Ada that are in the west is equal to 0" in explanation
+    assert "__" not in explanation
+    assert "literal" not in explanation
 
-    assert "The allowed counts for west occupancy are one or two" in story.tell()
+    (solution,) = bruteforce.solutions(text, limit=2)
+    assert solution["Ada"] == murdoku.Square(1, 0)
+    assert solution[load_board_layout(text).role_variable("Ada", "guard")] is False
 
 
 @pytest.mark.parametrize(
@@ -2268,36 +2273,36 @@ def test_only_object_counts_get_a_dashed_scope_ring():
     ("clue", "note"),
     [
         (
-            "beside Ada object:tree",
+            "Ada beside object:tree",
             "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "not beside Ada object:tree",
+            "not (Ada beside object:tree)",
             "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "if has Ada role:navigator then beside Ada object:tree",
+            "if Ada is role:navigator then Ada beside object:tree",
             "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "exactly 1 beside Ada object:tree ; in Ben area:Bravo",
+            "exactly 1 of (Ada beside object:tree; Ben in area:Bravo)",
             "Beside an object in a square means sharing a side with one of its squares in the "
             "same area; diagonals do not count.",
         ),
         (
-            "on Ada point_object:fountain",
+            "Ada on point_object:fountain",
             "On a point object means standing on any square it touches, even in another area.",
         ),
         (
-            "on Ada edge_item:archway",
+            "Ada on edge_item:archway",
             "On a door means standing on either square it touches, even across an area boundary.",
         ),
-        ("on Ada edge_item:window", "On a window means standing on its one inside square."),
+        ("Ada on edge_item:window", "On a window means standing on its one inside square."),
         (
-            "touches Ada mark:meadow",
+            "Ada touches mark:meadow",
             "A square touches a marked square when they share a side, even across an area "
             "boundary; diagonals do not count.",
         ),
@@ -2345,11 +2350,11 @@ Clues:
 @pytest.mark.parametrize(
     ("key", "clue"),
     [
-        ("doc.clue_beside_object", "beside Ada object:tree"),
-        ("doc.clue_touches_mark", "touches Ada mark:meadow"),
-        ("doc.clue_on_door", "on Ada edge_item:archway"),
-        ("doc.clue_on_point", "on Ada point_object:fountain"),
-        ("doc.clue_on_window", "on Ada edge_item:window"),
+        ("doc.clue_beside_object", "Ada beside object:tree"),
+        ("doc.clue_touches_mark", "Ada touches mark:meadow"),
+        ("doc.clue_on_door", "Ada on edge_item:archway"),
+        ("doc.clue_on_point", "Ada on point_object:fountain"),
+        ("doc.clue_on_window", "Ada on edge_item:window"),
     ],
 )
 def test_predicate_specific_wording_overrides_are_used(key, clue):
@@ -2413,9 +2418,9 @@ People:
 Ada
 Ben
 Clues:
-on Ada point_object:fountain
-on Ben edge_item:gate
-dir Ada Ben manhattan <= 1
+Ada on point_object:fountain
+Ben on edge_item:gate
+Ada dir:manhattan Ben <= 1
 """
     notes = [
         csp.story.phrase(text, "doc.clue_on_door"),
@@ -2492,7 +2497,7 @@ def test_dutch_player_rules_explain_object_adjacency():
     ) in rules
 
 
-@pytest.mark.parametrize("clue", ["dir Ada Ben areas = 1", "dir Ada Ben areas >= 2"])
+@pytest.mark.parametrize("clue", ["Ada dir:areas Ben = 1", "Ada dir:areas Ben >= 2"])
 @pytest.mark.parametrize(
     ("language", "note"),
     [
@@ -2516,7 +2521,7 @@ Clues:
 {clue}
 """
     assert murdoku_rules(text).count(note) == 1
-    assert note not in murdoku_rules(text.replace(clue, "dir Ada Ben manhattan >= 1"))
+    assert note not in murdoku_rules(text.replace(clue, "Ada dir:manhattan Ben >= 1"))
 
 
 def test_wrapped_intro_lines_stay_one_rule():

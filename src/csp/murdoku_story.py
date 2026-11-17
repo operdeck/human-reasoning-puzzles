@@ -18,8 +18,8 @@ from .murdoku import (
 )
 from .murdoku_eval import grounded_dependencies, holds_grounded
 from .murdoku_expression_file import load_expression_board
-from .murdoku_expression_words import ExpressionWords
-from .murdoku_lang import Atom, Count, Filter, Integer, Name, NumberComparison
+from .murdoku_expression_words import ExpressionWords, only_on
+from .murdoku_lang import Atom, Count, Filter, Integer, Name, NumberComparison, Statement, Token
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .proof import Episode, Inference, Move, episodes, essential, replay
 from .story import Places, Wording, _cap
@@ -217,7 +217,13 @@ class _Narrator(generic_story.Narrator):
         origin = next((item for item in self.compilation.origins if item.label == sources[0]), None)
         if origin is None or origin.kind != "clue":
             return None
-        dependencies = grounded_dependencies(self.board, origin.statement)
+        location = origin.statement
+        if only := only_on(origin.statement.formula, self.board.people):
+            owner, target = only
+            location = Statement(
+                Atom(owner, Token("on", owner.token.line, owner.token.column), target)
+            )
+        dependencies = grounded_dependencies(self.board, location)
         if dependencies is None or len(dependencies) != 1:
             return None
         (person,) = dependencies
@@ -267,7 +273,7 @@ class _Narrator(generic_story.Narrator):
             candidates = {
                 cell
                 for cell in previous & open_squares
-                if holds_grounded(origin.statement, self.board, {person: cell}, dependencies)
+                if holds_grounded(location, self.board, {person: cell}, dependencies)
             }
             if (region is None or explicit) and candidates and candidates <= line_squares:
                 crossed = line_squares - candidates
@@ -720,6 +726,27 @@ class _Narrator(generic_story.Narrator):
                 seen.add(pair)
         if placements:
             parts.append(self.say.join(placements))
+        trial = {person: set(squares) for person, squares in self.options.items()}
+        for inner in step.trail:
+            if inner.var in trial:
+                if inner.asserted:
+                    trial[inner.var] = {inner.value}
+                else:
+                    trial[inner.var].discard(inner.value)
+        for source in step.sources:
+            kind, index = self.board_sources.get(source, ("", None))
+            if kind in {"row", "col"} and not any(
+                (square.row if kind == "row" else square.col) == index
+                for squares in trial.values()
+                for square in squares
+            ):
+                parts.append(self.say("nobody", line=self.places.line(kind, index)))
+                return self.say(
+                    "cannot",
+                    who=step.var,
+                    squares=self.places.square(step.value),
+                    chain=", ".join(parts),
+                )
         origins = {
             label for source in step.sources for label in self.source_origins.get(source, ())
         }
@@ -774,6 +801,33 @@ class _Narrator(generic_story.Narrator):
                 ):
                     return self._person_case(
                         replace(refutation, var=step.var, value=step.value), history[:index]
+                    )
+        return None
+
+    def _mark_blocked_by_occupant(self, inference: Inference) -> str | None:
+        visible = [step for step in inference.steps if step.var in self.visible]
+        if not visible or any(step.asserted or step.var not in self.options for step in visible):
+            return None
+        for source in dict.fromkeys(source for step in visible for source in step.sources):
+            if source not in self.mark_sources:
+                continue
+            mark, region = self.mark_sources[source]
+            marked = {square for square in mark.cells if self.board.region_of(square) == region}
+            if mark.occupant_condition != "alone" or any(
+                step.value not in marked for step in visible
+            ):
+                continue
+            for person, squares in self.options.items():
+                if (
+                    squares
+                    and not squares & marked
+                    and all(self.board.region_of(square) == region for square in squares)
+                ):
+                    return self.say(
+                        "mark_blocked.alone",
+                        who=person,
+                        where=self.places.region(self.board.region_names[region]),
+                        mark=mark.name.replace("_", " "),
                     )
         return None
 
@@ -969,7 +1023,10 @@ class _Narrator(generic_story.Narrator):
                         for source in evidence
                     )
                 )
-                if paragraph := self._mark_case_deduction(inference, history):
+                if paragraph := self._mark_blocked_by_occupant(inference):
+                    self.conclusion(inference.steps)
+                    paragraphs.append(paragraph + ".")
+                elif paragraph := self._mark_case_deduction(inference, history):
                     if conclusion := self.conclusion(inference.steps):
                         paragraph += f" {_cap(self.say('so'))} {conclusion}."
                     paragraphs.append(paragraph)
