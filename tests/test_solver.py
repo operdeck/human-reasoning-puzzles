@@ -2443,7 +2443,7 @@ Clues:
     _assert_logged_steps_preserve_solutions(model, placements)
 
 
-def test_a_population_tie_is_worded_in_the_plural():
+def test_population_tie_wording_preserves_both_areas_and_the_comparison():
     from csp.story import clue_texts
 
     one = """Size: 2
@@ -2458,11 +2458,22 @@ People:
 Ada
 Ben
 Clues:
-least_populated area:Alpha
 """
-    tie = one.replace("least_populated area:Alpha", "least_populated area:Alpha area:Bravo")
-    assert clue_texts(one) == ["Het gebied met de minste mensen is Alpha."]
-    assert clue_texts(tie) == ["De gebieden met de minste mensen zijn Alpha en Bravo."]
+    one += (
+        "every ?b in (area of free cells except area:Alpha): "
+        "count (people in ?b) > count (people in area:Alpha)\n"
+    )
+    tie = one.replace(
+        "every ?b in (area of free cells except area:Alpha):",
+        "count (people in area:Bravo) = count (people in area:Alpha) and "
+        "every ?b in (area of free cells except area:Alpha,area:Bravo):",
+    )
+    assert clue_texts(one) == [
+        "Gebied Alpha heeft minder personen dan ieder ander gebied met een vrij vakje."
+    ]
+    (caption,) = clue_texts(tie)
+    assert "Alpha" in caption and "Bravo" in caption
+    assert "is gelijk aan" in caption and "is groter dan" in caption
 
 
 def test_touching_a_mark_wording_names_the_marked_set():
@@ -2483,9 +2494,9 @@ vak: het vak
 Marks:
 vak: r1c1
 Clues:
-touches Ada mark:vak
+Ada touches mark:vak
 """
-    assert clue_texts(text) == ["Ada deelt een zijde met het vak."]
+    assert clue_texts(text) == ["Ada is rakend aan een vakje met de markering het vak."]
 
 
 def test_mark_names_cells_and_conditions_are_validated():
@@ -2685,6 +2696,9 @@ on A point_object:critter
 
 
 def test_king_distance_excludes_sides_and_corners_across_areas():
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import compile_statements
+
     text = """Size: 4
 Language: nl
 Regions:
@@ -2700,17 +2714,21 @@ pot: blocking r2c2
 People:
 A
 Clues:
-dir A object:pot king >= 2
+A dir:king object:pot >= 2
 """
-    board, clues = load_board(text)
-    (condition,) = murdoku.directional_conditions(board, clues)
-    pot = murdoku.Square(1, 1)
+    board, rules, clues = load_expression_board(text)
+    model = compile_statements(board, clues, rules=rules)
     far = {(sq.row, sq.col) for sq in board.free if max(abs(sq.row - 1), abs(sq.col - 1)) >= 2}
 
     assert board.region_of(murdoku.Square(0, 2)) != board.region_of(murdoku.Square(1, 1))
-    assert {(sq.row, sq.col) for sq in board.free if condition.test(sq, pot)} == far
+    remaining = {model.value_of(literal) for literal in model.options("A")}
+    assert {(sq.row, sq.col) for sq in remaining} == far
+    assert {
+        (solution["A"].row, solution["A"].col)
+        for solution in bruteforce.solutions(text, "murdoku", limit=20)
+    } == far
     assert story.clue_texts(text) == [
-        "A en een vakje van de pot zijn minstens twee koningszetten van elkaar verwijderd."
+        "A staat op een koningsstapafstand van een vakje van de pot (afstand minstens 2)."
     ]
 
 
