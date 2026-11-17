@@ -10,7 +10,7 @@ constraints well.
 """
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -72,9 +72,12 @@ def compress(names: Sequence[str], say: Wording) -> str:
 
 
 class _Narrator:
-    def __init__(self, model: Model, say: Wording) -> None:
+    def __init__(
+        self, model: Model, say: Wording, source_words: Mapping[str, str] | None = None
+    ) -> None:
         self.model = model
         self.say = say
+        self.source_words = source_words or {}
         self.visible = set(model.variables)
         self.constraints = {c.name: c for c in model.constraints}
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
@@ -163,7 +166,9 @@ class _Narrator:
         return source
 
     def names(self, sources: Sequence[str]) -> str:
-        return self.say.join([f"*{name}*" for name in dict.fromkeys(sources)])
+        """Constraint names in italics, each with its clue's own wording when known."""
+        shown = dict.fromkeys(self.source_words.get(name, name) for name in sources)
+        return self.say.join([f"*{name}*" for name in shown])
 
     # --- singles ----------------------------------------------------------
 
@@ -381,14 +386,21 @@ def thin(start: Model, moves: Sequence[Move], budget: int = MAX_REPLAYS) -> list
     return kept
 
 
-def explain(text: str, start: Model, fired: Sequence[tuple[str, Sequence[Step]]]) -> Explanation:
+def explain(
+    text: str,
+    start: Model,
+    fired: Sequence[tuple[str, Sequence[Step]]],
+    source_words: Mapping[str, str] | None = None,
+) -> Explanation:
     """Explain a solve of any compiled model from its rule firings, shortest proof first.
 
     `start` is the compiled model before solving and `fired` what the solver
-    reported, rule by rule. `text` gives the puzzle's language.
+    reported, rule by rule. `text` gives the puzzle's language, and `source_words`
+    maps a constraint name to how its clue reads.
     """
     moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
     if replay(start, moves).solution() is not None:
         moves = thin(start, moves)
     result, groups = episodes(start, moves)
-    return _Narrator(start, Wording.read(text)).tell(start, groups, result.solution() is not None)
+    narrator = _Narrator(start, Wording.read(text), source_words)
+    return narrator.tell(start, groups, result.solution() is not None)

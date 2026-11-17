@@ -15,7 +15,7 @@ osaka: in Osaka
 fukuoka: in Fukuoka
 tokyo: in Tokyo
 nagoya: in Nagoya
-target.attribute: a {name}
+name.attribute: a {name}
 tokyo_tower: the Tokyo Tower
 
 Regions:

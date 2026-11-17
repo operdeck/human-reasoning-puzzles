@@ -6,7 +6,7 @@ Size: 6
 Language: en
 
 Words:
-target.attribute: a {name}
+name.attribute: a {name}
 Velázquez_room: in the Velázquez room
 Goya_room: in the Goya room
 egyptian_hall: in the Egyptian hall

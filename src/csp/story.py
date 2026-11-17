@@ -4568,7 +4568,7 @@ def attribute_list(text: str) -> list[tuple[str, str]]:
     """(attribute name, the people who have it) for a list beside the board."""
     board = load_board_layout(text)
     say = Wording.read(text)
-    if "target.attribute" in say.phrases:
+    if any(line.startswith("name.attribute:") for line in read_sections(text).get("Words", [])):
         return []
     out = []
     for attribute, holders in board.attributes.items():

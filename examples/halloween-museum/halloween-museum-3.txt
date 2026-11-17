@@ -29,7 +29,7 @@ headstone: a headstone
 pumpkin: the pumpkin
 counter: the shop counter
 crystal_ball: the crystal ball
-target.attribute: a {name}
+name.attribute: a {name}
 museum_bench: the bench
 
 Regions:

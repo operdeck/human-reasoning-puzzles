@@ -217,7 +217,8 @@ def pattern_story(
         told = sudoku_story.explain(text, start=start.clone(), fired=fired)
         if told.complete:
             return generic_story.Explanation(told.paragraphs, True)
-    return generic_story.explain(text, start.clone(), fired)
+    words = _source_words(text) if kind == "murdoku" and is_expression_file(text) else None
+    return generic_story.explain(text, start.clone(), fired, words)
 
 
 def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) -> tuple[str, ...]:
@@ -594,6 +595,24 @@ def _write_booklet(
         pages = "then their solutions" if solve else "without solutions"
         print(f"wrote {out} ({len(entries)} puzzles, {pages})")
     return 0
+
+
+def _source_words(text: str) -> dict[str, str]:
+    """Each clue and rule constraint's name, mapped to how its statement reads."""
+    board, rules, clues = load_expression_board(text)
+    compiled = compile_statements_with_origins(board, clues, rules=rules)
+    words = murdoku_expression_words.ExpressionWords.read(board, text)
+    found: dict[str, str] = {}
+    pairs = [
+        *((compiled.model.constraints[i].name, o) for i, o in compiled.constraint_origins.items()),
+        *((compiled.model.relations[i].name, o) for i, o in compiled.relation_origins.items()),
+    ]
+    for name, origins in pairs:
+        if origins:
+            found[name] = " and ".join(
+                f"{origin.label}: {words.statement(origin.statement)}" for origin in origins
+            )
+    return found
 
 
 def _expression_model(text: str) -> Model:
