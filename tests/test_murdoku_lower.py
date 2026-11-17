@@ -1520,6 +1520,7 @@ def test_set_target_superlatives_match_reference(board, formula):
         "some (?r in roles where Ada is ?r) is roles",
         "every (?r in roles where Ada is ?r) is roles",
         "every ?r in (?s in roles where Ada is ?s): Ada is ?r",
+        "every ?r, ?s in (?t in roles where Ada is ?t): Ben is ?r and Ben is ?s",
         pytest.param(
             "some ?r in roles: count (?s in (roles except ?r) where Ben is ?s) >= 1",
             marks=pytest.mark.solutions,

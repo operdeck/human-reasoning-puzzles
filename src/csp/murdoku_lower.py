@@ -3055,7 +3055,7 @@ def _reify_formula(
                                 board,
                                 binding_value.name,
                                 source,
-                                binding_name,
+                                f"{binding_name} {binding_value.name} member",
                                 empty_scopes,
                                 bindings,
                             )
@@ -3115,7 +3115,7 @@ def _reify_formula(
                                 entity,
                                 footprint,
                                 source,
-                                binding_name,
+                                f"{binding_name} {entity[0].value} {entity[1]} member",
                                 empty_scopes,
                                 bindings,
                             )
