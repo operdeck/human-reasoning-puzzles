@@ -120,6 +120,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "target.edge_item": "a cell touching {name}",
         "target.point_object": "a cell touching {name}",
         "target.mark": "a cell marked {name}",
+        "count.mark": "the squares marked {name}",
         "noun.the": "the {name}",
         "noun.a": "a {name}",
         "noun.an": "an {name}",
@@ -291,6 +292,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "target.edge_item": "een vakje dat {name} raakt",
         "target.point_object": "een vakje dat {name} raakt",
         "target.mark": "een vakje met de markering {name}",
+        "count.mark": "de vakjes met markering {name}",
         "noun.the": "de {name}",
         "noun.a": "een {name}",
         "noun.an": "een {name}",
@@ -974,7 +976,11 @@ class ExpressionWords:
                 namespace in {"edge_item", "point_object", "mark"}
                 and f"target.{namespace}" not in self.phrases
             ):
-                target = self._feature_name(namespace, name)
+                target = (
+                    self.names.get(name, self._phrase("count.mark", name=name.replace("_", " ")))
+                    if namespace == "mark"
+                    else self._feature_name(namespace, name)
+                )
         return self._phrase(
             "count.people.one" if count == 1 else "count.people.many",
             count=number,

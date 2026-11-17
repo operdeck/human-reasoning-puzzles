@@ -181,8 +181,14 @@ def test_unique_holder_in_a_single_tag_uses_the_authored_place_caption(board):
         ("en", "count people on object:bed = 1", "exactly one person is on a bed"),
         ("en", "count people in area:hall >= 2", "at least two people are in the hall"),
         ("en", "count people in area:hall <= 0", "at most zero people are in the hall"),
+        ("en", "count people on mark:red = 1", "exactly one person is on the squares marked red"),
         ("nl", "count people on object:bed = 2", "precies twee mensen staan op een bed"),
         ("nl", "count people on object:bed = 1", "precies één persoon staat op een bed"),
+        (
+            "nl",
+            "count people on mark:red = 1",
+            "precies één persoon staat op de vakjes met markering red",
+        ),
     ],
 )
 def test_person_count_idiom_preserves_bounds_number_and_footprint(
@@ -206,6 +212,15 @@ def test_person_count_idiom_respects_numeric_templates_and_keeps_other_counts_co
     assert targets.statement(parse_statement("count people on mark:red = 1")) == (
         "exactly one person is on the square labelled red"
     )
+
+
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_mark_count_scope_keeps_authored_names_and_templates(board, language):
+    statement = parse_statement("count people on mark:red = 1")
+    named = ExpressionWords(board, language, names={"red": "CUSTOM SQUARES"})
+    assert named.statement(statement).endswith("CUSTOM SQUARES")
+    phrased = ExpressionWords(board, language, phrases={"count.mark": "SQUARES {name}"})
+    assert phrased.statement(statement).endswith("SQUARES red")
 
 
 @pytest.mark.parametrize("language", ["en", "nl"])

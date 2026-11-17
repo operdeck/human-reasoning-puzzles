@@ -564,6 +564,8 @@ spatial relations.
 
 The six numeric modes require a measure. Superlatives accept any of those
 six modes as a metric suffix, for example `dir:furthest:rows`.
+Area distance uses the existing border graph, not a general path or
+connectivity predicate.
 `= 0` and `<= 0` are infeasible for strictly directed or diagonal gaps.
 Numeric distances can otherwise be zero where distinct entities overlap.
 A negative relation to a role does not itself forbid role membership:

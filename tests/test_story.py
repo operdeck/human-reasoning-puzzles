@@ -735,22 +735,17 @@ Ben
 Marks:
 safe_zone: r1c2
 Clues:
-on Ada mark:safe_zone
-not on Ben mark:safe_zone
+Ada on mark:safe_zone
+not Ben on mark:safe_zone
 """
-    board, clues = load_board(text)
-    english = Story(board, clues, Wording())
-    dutch = Story(board, clues, Wording("nl"))
-
-    assert english._clue_text("on", ["Ada", "mark:safe_zone"], ("Ada",)) == (
-        "Ada is on the safe zone"
-    )
-    assert english._clue_text("not_on", ["Ben", "mark:safe_zone"], ("Ben",)) == (
-        "Ben is not on the safe zone"
-    )
-    assert dutch._clue_text("on", ["Ada", "mark:safe_zone"], ("Ada",)) == (
-        "Ada zit op de safe zone"
-    )
+    assert csp.story.clue_texts(text) == [
+        "Ada is on a cell marked safe zone.",
+        "Ben is not on a cell marked safe zone.",
+    ]
+    assert csp.story.clue_texts("Language: nl\n" + text) == [
+        "Ada zit op een vakje met de markering safe zone.",
+        "Ben zit niet op een vakje met de markering safe zone.",
+    ]
 
 
 def test_new_clues_targets_names_and_pronouns_are_worded_in_english_and_dutch():
@@ -1158,11 +1153,9 @@ Ben
 Marks:
 quiet: r1c1 r2c2 ; alone
 Clues:
-count people on mark:quiet = 1
+count (people on mark:quiet) = 1
 """
-    board, clues = load_board(text)
-    story = Story(board, clues, Wording.read(text))
-    assert story.clue_texts() == [expected]
+    assert csp.story.clue_texts(text) == [expected]
 
 
 def test_what_if_explains_the_alone_mark_used_in_its_contradiction():
@@ -1491,6 +1484,10 @@ dir Ada Ben areas = 1
     ],
 )
 def test_mark_occupancy_count_is_explained_as_a_square_rule(language, expected):
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import compile_statements_with_origins
+    from csp.murdoku_story import _Narrator
+
     text = f"""Size: 2
 Language: {language}
 Regions:
@@ -1504,15 +1501,14 @@ People:
 Ada
 Ben
 """
-    board, clues = load_board(text)
-    story = Story(board, clues, Wording(language))
-    constraint = next(
-        c
-        for c in story.model.constraints
-        if c.name == "mark social not_alone in school occupant count"
-    )
-    assert story._mark_occupant_count_reason(constraint, True) == expected
-    assert "occupant count" not in story._count_name(constraint)
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = _Narrator(text, board, compilation, numbered=True)
+    mark = board.marks[0]
+    sources = murdoku.occupant_condition_sources(murdoku.mark_occupant_name(mark, "school"))
+    assert any(constraint.name == sources["count"] for constraint in compilation.model.constraints)
+    for source in sources.values():
+        assert narrator.source_words[source] == expected
 
 
 def test_story_explains_known_and_absent_roles():
@@ -1954,10 +1950,10 @@ Bob
 Cy
 Di
 Clues:
-not beside Ann object:bench
-beside Bob object:chair
-not beside Cy object:table
-beside Di object:stool
+not Ann beside object:bench
+Bob beside object:chair
+not Cy beside object:table
+Di beside object:stool
 """
 
 
@@ -1978,10 +1974,10 @@ Cy
 Attributes:
 trained: Bea
 Clues:
-dir Ann attribute:trained areas = 0
-dir Cy attribute:trained areas >= 1
-dir Ann area:east areas = 1
-dir Cy area:west areas >= 2
+Ann dir:areas attribute:trained = 0
+Cy dir:areas attribute:trained >= 1
+Ann dir:areas area:east = 1
+Cy dir:areas area:west >= 2
 """
 
 
@@ -1991,51 +1987,58 @@ dir Cy area:west areas >= 2
         (
             "en",
             [
-                "Ann and someone with the trained attribute are in the same area.",
-                "Cy and someone with the trained attribute are in different areas.",
-                "Ann and a square in the east are exactly one area border apart.",
-                "Cy and a square in the west are at least two area borders apart.",
+                "Ann is in the same area as people with attribute trained "
+                "(distinct from the subject).",
+                "Cy is at an area distance from people with attribute trained "
+                "(distinct from the subject) (distance at least 1).",
+                "Ann is at an area distance from the east "
+                "(distinct from the subject) (distance equal to 1).",
+                "Cy is at an area distance from the west "
+                "(distinct from the subject) (distance at least 2).",
             ],
         ),
         (
             "nl",
             [
-                "Ann en iemand met het kenmerk trained staan in hetzelfde gebied.",
-                "Cy en iemand met het kenmerk trained staan in verschillende gebieden.",
-                "Ann en een vakje in de east zijn precies één gebiedsgrens van elkaar verwijderd.",
-                "Cy en een vakje in de west zijn minstens twee gebiedsgrenzen "
-                "van elkaar verwijderd.",
+                "Ann staat in hetzelfde gebied als personen met eigenschap trained "
+                "(verschillend van het onderwerp).",
+                "Cy staat op een gebiedsafstand van personen met eigenschap trained "
+                "(verschillend van het onderwerp) (afstand minstens 1).",
+                "Ann staat op een gebiedsafstand van de east "
+                "(verschillend van het onderwerp) (afstand gelijk aan 1).",
+                "Cy staat op een gebiedsafstand van de west "
+                "(verschillend van het onderwerp) (afstand minstens 2).",
             ],
         ),
     ],
 )
 def test_region_relation_with_a_target_names_the_target(language, expected):
     text = REGION_TARGETS.format(lang=language)
-    assert Story(*load_board(text), Wording.read(text)).clue_texts() == expected
+    assert csp.story.clue_texts(text) == expected
 
 
 def test_beside_object_clues_use_spatial_adjacency():
-    board, _ = load_board(ON_OR_NEXT_TO.format(lang="en"))
+    board = load_board_layout(ON_OR_NEXT_TO.format(lang="en"))
     assert murdoku.next_to_covers_own_squares(board, "bench")
     assert murdoku.next_to_covers_own_squares(board, "stool"), "two touching stools"
     assert not murdoku.next_to_covers_own_squares(board, "chair"), "one square"
     assert not murdoku.next_to_covers_own_squares(board, "table"), "blocking"
     text = ON_OR_NEXT_TO.format(lang="en")
-    assert Story(*load_board(text), Wording.read(text)).clue_texts() == [
+    assert csp.story.clue_texts(text) == [
         "Ann is not beside the bench.",
         "Bob is beside the chair.",
         "Cy is not beside the table.",
         "Di is beside a stool.",
     ]
     text = ON_OR_NEXT_TO.format(lang="nl")
-    dutch = Story(*load_board(text), Wording.read(text)).clue_texts()
+    dutch = csp.story.clue_texts(text)
     assert dutch[0] == "Ann staat niet naast de bench."
     assert dutch[1] == "Bob staat naast de chair."
 
 
 def test_merged_predicates_keep_distinct_beside_and_on_meanings():
     text = ON_OR_NEXT_TO.format(lang="nl").replace(
-        "beside Bob object:chair", "not on Ann object:chair"
+        "Bob beside object:chair", "not Ann on object:chair"
     )
     paragraphs = csp.story.clue_paragraphs(text)
     assert "Ann staat niet naast de bench en zit niet op de chair." in paragraphs
@@ -2043,8 +2046,8 @@ def test_merged_predicates_keep_distinct_beside_and_on_meanings():
 
 def test_beside_and_not_on_a_multi_square_object_keep_both_meanings():
     text = ON_OR_NEXT_TO.replace(
-        "not beside Ann object:bench",
-        "beside Ann object:bench\nnot on Ann object:bench",
+        "not Ann beside object:bench",
+        "Ann beside object:bench\nnot Ann on object:bench",
     )
     english = text.format(lang="en")
     assert "Ann is beside the bench and is not on the bench." in csp.story.clue_paragraphs(english)
@@ -2052,13 +2055,13 @@ def test_beside_and_not_on_a_multi_square_object_keep_both_meanings():
     assert "Ann staat naast de bench en zit niet op de bench." in csp.story.clue_paragraphs(dutch)
 
     override = csp.story.clue_paragraphs(english, {1: "Ann is on or beside the bench."})
-    assert "Ann is on or beside the bench and is not on the bench." in override
+    assert "Ann is not on the bench. Ann is on or beside the bench." in override
 
 
 def test_beside_and_not_on_a_single_square_object_keep_both_meanings():
     text = ON_OR_NEXT_TO.replace(
-        "beside Bob object:chair",
-        "beside Bob object:chair\nnot on Bob object:chair",
+        "Bob beside object:chair",
+        "Bob beside object:chair\nnot Bob on object:chair",
     )
     bob = next(
         paragraph
@@ -2073,8 +2076,8 @@ def test_figure_clues_use_semantics_even_when_author_wording_names_someone_else(
     from csp.story import figure_clues
 
     text = ON_OR_NEXT_TO.format(lang=language).replace(
-        "not beside Ann object:bench",
-        "not beside Ann object:bench | Bob saw Ann away from the bench.",
+        "not Ann beside object:bench",
+        "not Ann beside object:bench | Bob saw Ann away from the bench.",
     )
     result = figure_clues(text)
     assert [figure.person for figure in result.figures] == ["Ann", "Bob", "Cy", "Di"]
@@ -2090,10 +2093,10 @@ def test_figure_clues_keep_combined_sources_global_clues_and_clueless_figures():
     text = (
         ON_OR_NEXT_TO.format(lang="en")
         .replace(
-            "not beside Ann object:bench",
-            "beside Ann object:bench\nnot on Ann object:bench",
+            "not Ann beside object:bench",
+            "Ann beside object:bench\nnot Ann on object:bench",
         )
-        .replace("beside Di object:stool", "count people on object:stool = 1\ndir Bob Cy up")
+        .replace("Di beside object:stool", "count (people on object:stool) = 1\nBob dir:up Cy")
     )
     result = figure_clues(text)
     assert result.figures[0].clues[0].sources == (1, 2)
