@@ -74,6 +74,12 @@ class _Narrator(generic_story.Narrator):
             )
         }
         self.statements = {}
+        self.source_origins: dict[str, tuple[str, ...]] = {
+            origin.label: (origin.label,) for origin in compilation.origins
+        }
+        self.clue_origins = {
+            origin.label for origin in compilation.origins if origin.kind == "clue"
+        }
         for origin in compilation.origins:
             label = say(f"expression.{origin.kind}", number=origin.number)
             statement = (
@@ -98,11 +104,15 @@ class _Narrator(generic_story.Narrator):
             assert literal is not None
             self.population_variables[self.model.var_of(literal)] = (literal, region, minimum)
         for index, origins in compilation.constraint_origins.items():
-            self.source_words[compilation.model.constraints[index].name] = say.join(
+            name = compilation.model.constraints[index].name
+            self.source_origins[name] = tuple(origin.label for origin in origins)
+            self.source_words[name] = say.join(
                 [self.source_words[origin.label] for origin in origins]
             )
         for index, origins in compilation.relation_origins.items():
-            self.source_words[compilation.model.relations[index].name] = say.join(
+            name = compilation.model.relations[index].name
+            self.source_origins[name] = tuple(origin.label for origin in origins)
+            self.source_words[name] = say.join(
                 [self.source_words[origin.label] for origin in origins]
             )
         for rule in board_rules(board):
@@ -142,6 +152,18 @@ class _Narrator(generic_story.Narrator):
                         b=second,
                         role=say.words.get(specification.name, specification.name),
                     )
+
+    def _because(self, sources: Sequence[str], conclusion: str) -> str:
+        origins = {origin for source in sources for origin in self.source_origins.get(source, ())}
+        if (
+            len(origins) == 1
+            and origins <= self.clue_origins
+            and all(source in self.source_origins for source in sources)
+            and "expression.by" not in self.say.phrases
+        ):
+            (origin,) = origins
+            return f"{_cap(self.statements[origin])}, {self.say('so')} {conclusion}."
+        return self.say("expression.by", sources=self.names(sources), conclusion=conclusion)
 
     def _direct(
         self, sources: tuple[str, ...], steps: Sequence[Step], open_squares: set[Square]
@@ -215,7 +237,7 @@ class _Narrator(generic_story.Narrator):
         said = f"{clue}{suffix}."
         other = self.conclusion(step for step in steps if step.var != person)
         if other:
-            said += " " + self.say("expression.by", sources=self.names(sources), conclusion=other)
+            said += " " + self._because(sources, other)
         return said
 
     def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
@@ -522,7 +544,7 @@ class _Narrator(generic_story.Narrator):
         said = []
         for person, previous in before.items():
             cells = self.options[person]
-            if person in placed:
+            if len(cells) == 1 and (person in placed or cells != previous):
                 (square,) = cells
                 if (person, square) not in self.told:
                     said.append(f"**{self.placed(person, square)}**")
@@ -531,12 +553,44 @@ class _Narrator(generic_story.Narrator):
                 said.append(
                     "**" + self.places.describe(person, cells, previous, placing=False) + "**"
                 )
-        for step in steps:
-            if step.var in self.roles:
-                value = step.value if step.asserted else not step.value
-                if (step.var, value) not in self.told:
-                    said.append(f"**{self.placed(step.var, value)}**")
-                    self.told.add((step.var, value))
+        role_updates = {
+            step.var: step.value if step.asserted else not step.value
+            for step in steps
+            if step.var in self.roles
+            and (step.var, step.value if step.asserted else not step.value) not in self.told
+        }
+        self.told.update(role_updates.items())
+        for role in self.board.roles:
+            updates = [
+                (variable, value)
+                for variable, value in role_updates.items()
+                if self.roles[variable][1] == role.name
+            ]
+            for variable, value in updates:
+                if value:
+                    said.append(f"**{self.placed(variable, value)}**")
+            excluded = [variable for variable, value in updates if not value]
+            holders = {
+                person
+                for variable, (person, name) in self.roles.items()
+                if name == role.name and (variable, True) in self.told
+            }
+            if (
+                len(excluded) > 1
+                and holders
+                and all(
+                    (self.board.role_variable(person, role.name), False) in self.told
+                    for person in self.board.people
+                    if person not in holders
+                )
+            ):
+                said.append(
+                    "**"
+                    + self.say("role_others", role=self.say.words.get(role.name, role.name))
+                    + "**"
+                )
+            else:
+                said.extend(f"**{self.placed(variable, False)}**" for variable in excluded)
         return self.say.join(said) if said else None
 
     def pattern(self, inference: Inference, history: Sequence[Step]) -> str:
@@ -551,7 +605,7 @@ class _Narrator(generic_story.Narrator):
             return ""
         if move.rule == "chains" and all(var in self.visible for var, _ in move.chain):
             return self._chain(move.chain, conclusion)
-        return self.say("expression.by", sources=self.names(move.sources), conclusion=conclusion)
+        return self._because(move.sources, conclusion)
 
     def tell(
         self, start: Model, groups: Sequence[Episode], solved: bool
@@ -567,9 +621,7 @@ class _Narrator(generic_story.Narrator):
             if direct := self._direct(sources, steps, open_squares):
                 paragraphs.append(direct)
             elif conclusion := self.conclusion(steps):
-                paragraphs.append(
-                    self.say("expression.by", sources=self.names(sources), conclusion=conclusion)
-                )
+                paragraphs.append(self._because(sources, conclusion))
         if paragraphs:
             paragraphs = [f"**{self.say('direct')}.** " + " ".join(paragraphs)]
         history = list(self.compilation.model.log)
@@ -614,13 +666,7 @@ class _Narrator(generic_story.Narrator):
                 else:
                     conclusion = self.conclusion(inference.steps)
                     if conclusion is not None:
-                        paragraphs.append(
-                            self.say(
-                                "expression.by",
-                                sources=self.names([*premises, *sources]),
-                                conclusion=conclusion,
-                            )
-                        )
+                        paragraphs.append(self._because([*premises, *sources], conclusion))
                 history.extend(inference.steps)
         if not solved:
             paragraphs.append(self.say("generic.stalled"))

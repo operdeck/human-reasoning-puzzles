@@ -346,6 +346,11 @@ a square of …", explicitly including diagonals and area boundaries; negation
 covers the whole union of target footprints. A target such as
 `people on object:…` instead names a person on the object. Exact distances
 such as `= 1` retain their metric wording, as do other bounds.
+Exact person-to-person cardinal directions name their row or column distance.
+A role with exactly one holder may use a singular name such as "the murderer";
+optional or multiple-holder roles retain set wording. Worked solutions announce
+a last candidate once, cite a single clue directly, and group remaining role
+exclusions only after every other person's role state is known.
 Simple counts of people on or in a footprint read as "exactly", "at least" or
 "at most" that many people. Other counts and arithmetic remain compositional;
 an explicit `number.compare` template overrides this idiom.

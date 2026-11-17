@@ -6,7 +6,7 @@ import pytest
 from csp import cli, generic_story, murdoku_story, story
 from csp.bruteforce import solutions
 from csp.core import Kind, Model, Solver, Step
-from csp.murdoku import Square
+from csp.murdoku import Board, RoleSpec, Square
 from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lower import compile_statements_with_origins
 from csp.proof import Inference, Move, replay
@@ -39,14 +39,14 @@ some role:guard in rows:1 | The guard is in the first row.
             "en",
             "Ada has the guard role",
             "Ben does not have the guard role",
-            "clue 2",
+            "(2)",
             "allowed number",
         ),
         (
             "nl",
             "Ada heeft de rol guard",
             "Ben heeft de rol guard niet",
-            "aanwijzing 2",
+            "(2)",
             "toegestane aantal",
         ),
     ],
@@ -87,6 +87,43 @@ def test_proof_settles_hidden_singletons_after_visible_solution():
     result = replay(model, [])
     assert result.solution() == {"Ada": "hall"}
     assert result.chosen("guard") is True
+
+
+def test_last_candidate_is_announced_once_before_the_later_assignment():
+    board, rules, clues = load_expression_board(TEXT)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = murdoku_story._Narrator(TEXT, board, compilation, numbered=True)
+    first, last = Square(0, 0), Square(0, 1)
+    narrator.options["Ada"] = {first, last}
+    assert narrator.conclusion([Step("Ada", first, False, "relations", "")]) == ("**Ada on r1c2**")
+    assert narrator.conclusion([Step("Ada", last, True, "single", "")]) is None
+
+
+@pytest.mark.parametrize("language", ["en", "nl"])
+@pytest.mark.parametrize("complete", [False, True])
+def test_role_exclusions_are_grouped_only_when_every_other_person_is_known(language, complete):
+    board = Board(
+        size=4,
+        regions=[["a"] * 4 for _ in range(4)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben", "Cleo", "Dex"],
+        roles=[RoleSpec("guard", frozenset({1}))],
+    )
+    compilation = compile_statements_with_origins(board, [])
+    narrator = murdoku_story._Narrator(f"Language: {language}", board, compilation, numbered=True)
+    narrator.told.add((board.role_variable("Ada", "guard"), True))
+    excluded = board.people[1:] if complete else board.people[1:3]
+    steps = [
+        Step(board.role_variable(person, "guard"), False, True, "count", "") for person in excluded
+    ]
+    conclusion = narrator.conclusion(steps)
+    assert conclusion is not None
+    grouped = "nobody else" if language == "en" else "niemand anders"
+    assert (grouped in conclusion) == complete
+    if not complete:
+        assert "Ben" in conclusion and "Cleo" in conclusion
+    assert narrator.conclusion(steps) is None
 
 
 @pytest.mark.parametrize(("eligible", "show"), [("Ada", False), ("Ada Ben", True)])
@@ -148,7 +185,7 @@ def test_expression_narration_names_every_placement_against_independent_solution
     assert found == expected
     assert "__" not in words
     assert "binding" not in words
-    assert "body" not in words
+    assert not re.search(r"\bbody\b", words)
     assert "intermediate" not in words
 
 
