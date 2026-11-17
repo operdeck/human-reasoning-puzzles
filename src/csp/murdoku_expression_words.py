@@ -104,6 +104,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "cmp.>": "greater than",
         "cmp.>=": "at least",
         "atom.one": "{subject} is {relation} {target}",
+        "atom.not": "{subject} is not {relation} {target}",
         "adjective.one": "{subject} is {adjective}",
         "det.some": "at least one of {subject}",
         "det.every": "every member of {subject}",
@@ -131,6 +132,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "quant.at most": "for at most {count} {variables} from {source}: {body}",
         "quant.distinct": "ordered tuples of distinct {variables}",
         "choice.exactly": "exactly {count} of ({choices}) hold",
+        "choice.either": "either {left}, or {right}, but not both",
         "choice.at least": "at least {count} of ({choices}) hold",
         "choice.at most": "at most {count} of ({choices}) hold",
         "idiom.alone": "{person} is alone in their area",
@@ -236,6 +238,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "cmp.>": "groter dan",
         "cmp.>=": "minstens",
         "atom.one": "{subject} is {relation} {target}",
+        "atom.not": "{subject} is niet {relation} {target}",
         "adjective.one": "{subject} is {adjective}",
         "det.some": "minstens een van {subject}",
         "det.every": "ieder lid van {subject}",
@@ -263,6 +266,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "quant.at most": "voor hoogstens {count} {variables} uit {source}: {body}",
         "quant.distinct": "geordende combinaties van verschillende {variables}",
         "choice.exactly": "precies {count} van ({choices}) gelden",
+        "choice.either": "of {left}, of {right}, maar niet allebei",
         "choice.at least": "minstens {count} van ({choices}) gelden",
         "choice.at most": "hoogstens {count} van ({choices}) gelden",
         "idiom.alone": "{person} is alleen in het eigen gebied",
@@ -653,6 +657,27 @@ class ExpressionWords:
                     right=self._operand(right, bindings),
                 )
             case lang.Negation(formula=formula):
+                if (
+                    "bool.not" not in self.phrases
+                    and isinstance(formula, lang.Atom)
+                    and formula.determiner is None
+                    and isinstance(formula.subject, lang.Name)
+                    and formula.subject.token.text in self.board.people
+                ):
+                    return self._phrase(
+                        "atom.not",
+                        subject=self._operand(formula.subject, bindings),
+                        relation=self._relation(
+                            formula.operator,
+                            formula.subject,
+                            formula.target,
+                            bindings,
+                            formula.measure,
+                        ),
+                        target=self._target(
+                            formula.target, formula.measure, bindings, formula.operator
+                        ),
+                    )
                 return self._phrase("bool.not", formula=self._formula(formula, bindings))
             case lang.Binary(left=left, operator=operator, right=right):
                 return self._phrase(
@@ -696,6 +721,18 @@ class ExpressionWords:
                     body=self._formula(body, scoped),
                 )
             case lang.Choice(quantifier=quantifier, count=count, choices=choices):
+                if (
+                    quantifier.text == "exactly"
+                    and count.text == "1"
+                    and len(choices) == 2
+                    and "choice.exactly" not in self.phrases
+                    and all(isinstance(choice, lang.Atom) for choice in choices)
+                ):
+                    return self._phrase(
+                        "choice.either",
+                        left=self._formula(choices[0], bindings),
+                        right=self._formula(choices[1], bindings),
+                    )
                 return self._phrase(
                     f"choice.{' '.join(quantifier.text.split())}",
                     count=count.text,

@@ -79,6 +79,61 @@ def test_common_shapes_have_idiomatic_wording(board, language, alone, only):
 
 
 @pytest.mark.parametrize(
+    ("language", "negative", "either"),
+    [
+        ("en", "Ada is not in area hall", "either Ada is in area hall"),
+        ("nl", "Ada is niet in gebied hall", "of Ada is in gebied hall"),
+    ],
+)
+def test_simple_negations_and_exclusive_alternatives_read_as_sentences(
+    board, language, negative, either
+):
+    words = ExpressionWords(board, language)
+    assert words.statement(parse_statement("not Ada in area:hall")) == negative
+    result = words.statement(parse_statement("exactly 1 of (Ada in area:hall; Ben in area:garden)"))
+    assert result.startswith(either)
+    assert ("but not both" if language == "en" else "maar niet allebei") in result
+
+
+def test_negated_quantified_or_potentially_empty_subjects_keep_their_scope(board):
+    board.roles = [RoleSpec("guard", frozenset({0, 1}))]
+    words = ExpressionWords(board, "en")
+    for source in (
+        "not some role:guard in area:hall",
+        "not every role:guard in area:hall",
+        "not role:guard in area:hall",
+    ):
+        assert words.statement(parse_statement(source)).startswith("it is not true that")
+
+
+def test_idioms_do_not_replace_explicit_boolean_or_choice_phrase_overrides(board):
+    words = ExpressionWords(
+        board,
+        "en",
+        phrases={
+            "bool.not": "NOT ({formula})",
+            "choice.exactly": "CHOOSE {count}: {choices}",
+        },
+    )
+    assert words.statement(parse_statement("not Ada in area:hall")).startswith("NOT (")
+    assert words.statement(
+        parse_statement("exactly 1 of (Ada in area:hall; Ben in area:garden)")
+    ).startswith("CHOOSE 1:")
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "at least 1 of (Ada in area:hall; Ben in area:garden)",
+        "exactly 0 of (Ada in area:hall; Ben in area:garden)",
+        "exactly 1 of (Ada in area:hall; Ben in area:garden; Ada on object:bed)",
+    ],
+)
+def test_other_choices_are_not_worded_as_an_exclusive_pair(board, source):
+    assert "either" not in ExpressionWords(board, "en").statement(parse_statement(source))
+
+
+@pytest.mark.parametrize(
     ("language", "expected"),
     [
         ("en", "Each of the areas contains someone from people holding role guard"),
