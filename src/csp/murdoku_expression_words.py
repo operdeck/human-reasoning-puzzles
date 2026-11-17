@@ -1,13 +1,13 @@
 """Compositional wording for Murdoku expression statements."""
 
 import re
-from collections.abc import Collection, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, field
 from string import Formatter
 from typing import assert_never
 
 from . import murdoku_lang as lang
-from .murdoku import Board
+from .murdoku import Board, BoardObject, CellMark, EdgeItem, PointObject
 from .murdoku_typecheck import Shape, Sort, check_formula, infer_operand
 from .puzzlefile import read_sections
 
@@ -97,6 +97,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.distinct_target": "{target} (distinct from the subject)",
         "target.object": "{name}",
         "target.object.named": "an object named {name}",
+        "target.edge_item": "a cell touching {name}",
+        "target.point_object": "a cell touching {name}",
+        "target.mark": "a cell marked {name}",
+        "noun.the": "the {name}",
+        "noun.a": "a {name}",
+        "noun.an": "an {name}",
         "cmp.=": "equal to",
         "cmp.!=": "not equal to",
         "cmp.<": "less than",
@@ -231,6 +237,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.distinct_target": "{target} (verschillend van het onderwerp)",
         "target.object": "{name}",
         "target.object.named": "een voorwerp met de naam {name}",
+        "target.edge_item": "een vakje dat {name} raakt",
+        "target.point_object": "een vakje dat {name} raakt",
+        "target.mark": "een vakje met de markering {name}",
+        "noun.the": "de {name}",
+        "noun.a": "een {name}",
+        "noun.an": "een {name}",
         "cmp.=": "gelijk aan",
         "cmp.!=": "niet gelijk aan",
         "cmp.<": "kleiner dan",
@@ -333,6 +345,23 @@ def only_on(
             ):
                 return person, occupants.target
     return None
+
+
+def feature_name(
+    name: str,
+    many: bool,
+    names: Mapping[str, str],
+    article: Callable[[str, bool], str],
+) -> str:
+    """Name one feature, using an indefinite article for repeated instances."""
+    if name in names:
+        given = names[name]
+        determiner, _, noun = given.partition(" ")
+        # Dutch adjectives may need different inflection after changing the article.
+        if many and determiner.lower() in {"the", "de", "het"} and noun and " " not in noun:
+            return article(noun, True)
+        return given
+    return article(name.replace("_", " "), many)
 
 
 @dataclass
@@ -476,11 +505,26 @@ class ExpressionWords:
         measure: lang.Measure | None,
         bindings: dict[str, Shape],
         operator: lang.Token | None = None,
+        subject: lang.Operand | None = None,
     ) -> str:
-        if isinstance(target, lang.Name) and target.token.text.startswith("object:"):
-            name = target.token.text.partition(":")[2]
+        namespace, _, name = (
+            target.token.text.partition(":") if isinstance(target, lang.Name) else ("", "", "")
+        )
+        person = (
+            subject is not None and infer_operand(self.board, subject, bindings).sort is Sort.PERSON
+        )
+        if namespace in {"edge_item", "point_object", "mark"} and person:
+            rendered = self._phrase(
+                f"target.{namespace}",
+                name=self.names.get(name, name.replace("_", " "))
+                if namespace == "mark"
+                else self._feature_name(namespace, name),
+            )
+        elif namespace == "object":
             key = "target.object" if name in self.names else "target.object.named"
-            rendered = self._phrase(key, name=self.names.get(name, name))
+            rendered = self._phrase(
+                key, name=self._feature_name(namespace, name) if name in self.names else name
+            )
         else:
             rendered = self._operand(target, bindings)
             if infer_operand(self.board, target, bindings).maximum > 1:
@@ -497,6 +541,24 @@ class ExpressionWords:
                 value=measure.value.text,
             )
         return rendered
+
+    def _feature_name(self, namespace: str, name: str) -> str:
+        by_kind: dict[str, Collection[BoardObject | EdgeItem | PointObject | CellMark]] = {
+            "object": self.board.objects,
+            "edge_item": self.board.edge_items,
+            "point_object": self.board.point_objects,
+            "mark": self.board.marks,
+        }
+        entities = by_kind[namespace]
+        many = sum(entity.name == name for entity in entities) > 1
+
+        def article(noun: str, indefinite: bool) -> str:
+            key = "the"
+            if indefinite:
+                key = "an" if self.language == "en" and noun[:1].lower() in "aeiou" else "a"
+            return self._phrase(f"noun.{key}", name=noun)
+
+        return feature_name(name, many, self.names, article)
 
     @staticmethod
     def _same_area(measure: lang.Measure | None) -> bool:
@@ -544,7 +606,7 @@ class ExpressionWords:
                     "op.filter",
                     source=self._operand(source, bindings),
                     relation=self._relation(op, source, target, bindings, measure),
-                    target=self._target(target, measure, bindings, op),
+                    target=self._target(target, measure, bindings, op, source),
                 )
             case lang.AdjectiveFilter(source=source, adjective=adjective):
                 return self._phrase(
@@ -642,7 +704,7 @@ class ExpressionWords:
                     "atom.one",
                     subject=self._determined(subject, det, bindings),
                     relation=self._relation(op, subject, target, bindings, value.measure),
-                    target=self._target(target, value.measure, bindings, op),
+                    target=self._target(target, value.measure, bindings, op, subject),
                 )
             case lang.AdjectiveAtom(subject=subject, adjective=adjective, determiner=det):
                 return self._phrase(
@@ -675,7 +737,11 @@ class ExpressionWords:
                             formula.measure,
                         ),
                         target=self._target(
-                            formula.target, formula.measure, bindings, formula.operator
+                            formula.target,
+                            formula.measure,
+                            bindings,
+                            formula.operator,
+                            formula.subject,
                         ),
                     )
                 return self._phrase("bool.not", formula=self._formula(formula, bindings))

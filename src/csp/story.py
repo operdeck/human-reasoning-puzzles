@@ -65,7 +65,7 @@ from .murdoku import (
     target_name,
 )
 from .murdoku_expression_file import is_expression_file, load_expression_board
-from .murdoku_expression_words import ExpressionWords, alone_person, only_on
+from .murdoku_expression_words import ExpressionWords, alone_person, feature_name, only_on
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_board_layout, load_presentation, read_sections
 
@@ -1565,17 +1565,15 @@ class Places:
         elif name in self.board.mark_names:
             many = False
         else:
-            many = len(_pieces(self.board.squares_of([name]))) > 1
-        if name in self.say.words:
-            said = self.say.words[name]
-            article, _, noun = said.partition(" ")
-            # "het perronbankje" names one of several benches as "een perronbankje";
-            # a phrase with an adjective keeps its wording, as Dutch inflection may change.
-            if many and article.lower() in DEFINITE and noun and " " not in noun:
-                return self._indefinite(noun)
-            return said
-        shown = name.replace("_", " ")
-        return self._indefinite(shown) if many else self.say("the", name=shown)
+            many = sum(obj.name == name for obj in self.board.objects) > 1
+        return feature_name(
+            name,
+            many,
+            self.say.words,
+            lambda noun, indefinite: (
+                self._indefinite(noun) if indefinite else self.say("the", name=noun)
+            ),
+        )
 
     def _indefinite(self, noun: str) -> str:
         """ "a bench", "an apple"; Dutch has only "een"."""
@@ -4070,7 +4068,6 @@ def _pieces(squares: set[Square]) -> list[set[Square]]:
 
 
 ARTICLES = frozenset({"the", "a", "an", "de", "het", "een"})
-DEFINITE = frozenset({"the", "de", "het"})
 NEGATIONS = frozenset({"not", "niet", "neither"})
 CONNECTORS = frozenset({"or", "of", "nor"})
 LINE_WORDS = frozenset({"row", "column", "rij", "kolom"})

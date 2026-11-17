@@ -2,7 +2,7 @@ from string import Formatter
 
 import pytest
 
-from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square
+from csp.murdoku import Board, BoardObject, CellMark, EdgeItem, PointObject, RoleSpec, Square
 from csp.murdoku_expression_words import PHRASES, ExpressionWords
 from csp.murdoku_lang import parse_statement
 
@@ -255,6 +255,52 @@ def test_object_target_wording_uses_names_without_changing_set_wording(board):
         board, names={"bed": "a bed"}, phrases={"target.object": "exactly {name}"}
     )
     assert overridden.statement(parse_statement("Ada on object:bed")) == "Ada is on exactly a bed"
+
+
+@pytest.mark.parametrize(
+    ("language", "namespace", "expected"),
+    [
+        ("en", "point_object:lamp", "Ada is on a cell touching the lamp"),
+        ("en", "edge_item:window", "Ada is on a cell touching a window"),
+        ("en", "mark:red", "Ada is on a cell marked red"),
+        ("nl", "point_object:lamp", "Ada is op een vakje dat de lamp raakt"),
+        ("nl", "edge_item:window", "Ada is op een vakje dat een raam raakt"),
+        ("nl", "mark:red", "Ada is op een vakje met de markering red"),
+    ],
+)
+def test_person_locations_describe_feature_footprints_and_repeated_instances(
+    board, language, namespace, expected
+):
+    board.point_objects = [PointObject.at("lamp", (1, 2), board.size)]
+    board.edge_items = [
+        EdgeItem("window", "window", (Square(0, 0),)),
+        EdgeItem("window", "window", (Square(0, 1),)),
+    ]
+    words = ExpressionWords(
+        board,
+        language,
+        names={"window": "the window" if language == "en" else "het raam"},
+    )
+    assert words.statement(parse_statement(f"Ada on {namespace}")) == expected
+
+
+def test_adjacent_objects_remain_separate_instances_when_naming_one_of_them(board):
+    board.objects = [
+        BoardObject("apple", "standable", (Square(0, 0),)),
+        BoardObject("apple", "standable", (Square(0, 1),)),
+    ]
+    from csp.story import Places, Wording
+
+    words = ExpressionWords(board, names={"apple": "the apple"})
+    assert words.statement(parse_statement("Ada on object:apple")) == "Ada is on an apple"
+    assert Places(board, Wording(words={"apple": "the apple"})).thing("apple") == "an apple"
+
+
+def test_non_person_targets_keep_entity_wording_not_person_location_templates(board):
+    words = ExpressionWords(board, names={"red": "red"})
+    result = words.statement(parse_statement("some object:bed on mark:red"))
+    assert "cell marked" not in result
+    assert "mark" in result
 
 
 @pytest.mark.parametrize(

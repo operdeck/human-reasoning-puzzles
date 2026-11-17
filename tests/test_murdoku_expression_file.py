@@ -175,7 +175,7 @@ def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
     assert [(clue.text, clue.sources) for clue in ben.clues] == [("A custom sentence!", (1,))]
     assert [clue.sources for clue in result.other] == [(2,)]
     assert clue_paragraphs(text, {1: "A replacement"}, expressions=clues) == [
-        "It is not true that (Ada is in rows 2).",
+        "Ada is not in rows 2.",
         "A replacement.",
         "(Ada is in rows 1) and (Ben is in columns 1).",
     ]
