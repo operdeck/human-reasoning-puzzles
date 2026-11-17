@@ -951,9 +951,6 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                     return 1
                 print("require-forward: solved without what_if")
             return 0
-        if args.show_model:
-            print(murdoku_expression_report.describe(compiled))
-            return 0
         if args.grade:
             expression_fired: list[str] = []
             expression_result = Solver(compiled.model).solve(
@@ -1047,7 +1044,12 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                 return 2
 
     if args.show_model:
-        print(f"\n{report.describe(model)}")
+        description = (
+            murdoku_expression_report.describe(expression_compiled)
+            if expression_compiled is not None
+            else report.describe(model)
+        )
+        print(f"\n{description}")
         return 0
     if args.nosolution:
         return 0
