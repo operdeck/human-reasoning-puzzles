@@ -9,11 +9,7 @@ from csp.core import Solver
 from csp.story import Wording
 from tests.examples import example
 
-EXAMPLES = sorted(
-    path
-    for path in Path(__file__).parent.parent.joinpath("examples").rglob("*.txt")
-    if puzzlefile.detect(path.read_text()) != "murdoku"
-)
+EXAMPLES = sorted(path for path in Path(__file__).parent.parent.joinpath("examples").rglob("*.txt"))
 
 
 def told(name: str) -> generic_story.Explanation:
@@ -75,5 +71,5 @@ def test_every_example_is_told_completely_with_unique_names(path):
     start = puzzle.model.clone()
     fired: list = []
     Solver(puzzle.model).solve(on_step=lambda rule, steps: fired.append((rule, steps)))
-    story = generic_story.explain(text, start, fired)
+    story = cli.pattern_story(puzzlefile.detect(text), text, start, fired)
     assert story.complete

@@ -79,6 +79,27 @@ def test_common_shapes_have_idiomatic_wording(board, language, alone, only):
 
 
 @pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Each of the areas contains someone from people holding role guard"),
+        ("nl", "In elk van de gebieden is minstens één van de personen met rol guard"),
+    ],
+)
+def test_each_area_role_rule_has_idiomatic_wording_without_a_bound_variable(
+    board, language, expected
+):
+    words = ExpressionWords(board, language)
+    statement = parse_statement("every ?a in areas: some role:guard in ?a")
+    assert words.statement(statement) == expected
+
+
+def test_area_containment_does_not_get_a_person_occupancy_idiom(board):
+    words = ExpressionWords(board, "en")
+    statement = parse_statement("every ?a in areas: some area:hall in ?a")
+    assert "someone" not in words.statement(statement)
+
+
+@pytest.mark.parametrize(
     ("language", "scope"),
     [
         ("en", "any of the objects named bed"),

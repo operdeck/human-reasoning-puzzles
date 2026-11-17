@@ -64,6 +64,7 @@ from .murdoku import (
     role_statuses,
     target_name,
 )
+from .murdoku_expression_file import is_expression_file, load_expression_board
 from .murdoku_expression_words import ExpressionWords, alone_person, only_on
 from .proof import Move, essential, replay, shortest
 from .puzzlefile import load_board, load_board_layout, load_presentation, read_sections
@@ -431,6 +432,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "use --verbose for the detailed trace.",
         "generic.givens_complete": "The givens already solve the puzzle.",
         "generic.doc_how": "How to solve it",
+        "expression.by": "By {sources}, {conclusion}.",
+        "expression.clue": "clue {number}",
+        "expression.rule": "rule {number}",
+        "expression.person": "{person} stands on one free square",
+        "expression.square": "{square} holds at most one person",
+        "expression.row": "at most one person per row",
+        "expression.column": "at most one person per column",
+        "expression.role_count": "the allowed number of people with the {role} role is {counts}",
+        "expression.role_eligibility": "the declared role candidates",
+        "expression.role_state": "{person} either has the {role} role or does not",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
         "role_has": "{who} has the {role} role",
@@ -876,6 +887,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "met --verbose zie je het technische spoor.",
         "generic.givens_complete": "De puzzel is al opgelost door wat gegeven is.",
         "generic.doc_how": "Zo los je het op",
+        "expression.by": "Door {sources} geldt: {conclusion}.",
+        "expression.clue": "aanwijzing {number}",
+        "expression.rule": "regel {number}",
+        "expression.person": "{person} staat op één vrij vakje",
+        "expression.square": "op {square} staat hoogstens één persoon",
+        "expression.row": "hoogstens één persoon per rij",
+        "expression.column": "hoogstens één persoon per kolom",
+        "expression.role_count": "het toegestane aantal personen met de rol {role} is {counts}",
+        "expression.role_eligibility": "de opgegeven kandidaten voor de rollen",
+        "expression.role_state": "{person} heeft de rol {role} wel of niet",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
         "role_has": "{who} heeft de rol {role}",
@@ -4106,6 +4127,8 @@ def figure_clues(
     text: str, *, expressions: Sequence[murdoku_lang.Statement] | None = None
 ) -> CluePresentation:
     """Shared booklet/player entries; ownership comes from syntax, never wording."""
+    if expressions is None and is_expression_file(text):
+        expressions = load_expression_board(text)[2]
     if expressions is not None:
         return _expression_figure_clues(text, expressions)
     board, _ = load_board(text)
@@ -4179,6 +4202,8 @@ def clue_paragraphs(
     clues that are not about one person come last, one paragraph each.
     `overrides` replaces the generated wording of clue numbers.
     """
+    if expressions is None and is_expression_file(text):
+        expressions = load_expression_board(text)[2]
     if expressions is not None:
         clues = [
             dataclasses.replace(clue, wording=overrides[number])
@@ -4321,6 +4346,8 @@ def board_notes(
 ) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
     board rules with author wording or global counts."""
+    if expression_rules is None and is_expression_file(text):
+        expression_rules = load_expression_board(text)[1]
     board = load_board_layout(text)
     say = Wording.read(text)
 
@@ -4462,6 +4489,8 @@ def murdoku_rules(
     sentence once, where it appears first, so the rules list reads as one rule
     rather than two conditions.
     """
+    if expression_rules is None and is_expression_file(text):
+        _, expression_rules, expression_clues = load_expression_board(text)
     presentation = load_presentation(text)
     if expression_rules is not None:
         board = load_board_layout(text)
@@ -4629,6 +4658,11 @@ def explain(text: str, numbered: bool = True) -> str:
 
     Without `numbered` it never points at clue numbers, for clues that are not numbered.
     """
+    if is_expression_file(text):
+        # Import lazily: narrators share this module's phrasebook.
+        from .murdoku_story import explain as expression_explain
+
+        return expression_explain(text, numbered=numbered).markdown()
     board, clues = load_board(text)
     say = Wording.read(text)
     story = Story(board, clues, say if numbered else say.unnumbered()).tell()

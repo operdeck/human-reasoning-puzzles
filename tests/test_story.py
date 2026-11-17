@@ -68,6 +68,16 @@ ALLOWED = {
     "proof": {"core"},
     "sudoku_story": {"core", "proof", "story", "sudoku"},
     "generic_story": {"core", "proof", "story"},
+    "murdoku_story": {
+        "generic_story",
+        "core",
+        "murdoku",
+        "murdoku_expression_file",
+        "murdoku_expression_words",
+        "murdoku_lower",
+        "proof",
+        "story",
+    },
     "murdoku": {"core"},
     "murdoku_lang": {"murdoku", "murdoku_eval"},
     "murdoku_declarations": {"murdoku", "murdoku_lang"},
@@ -87,6 +97,8 @@ ALLOWED = {
         "murdoku",
         "murdoku_lang",
         "murdoku_expression_words",
+        "murdoku_expression_file",
+        "murdoku_story",
         "puzzlefile",
         "sudoku",
         "battleships",
@@ -238,8 +250,7 @@ def test_modules_only_import_their_own_layer(module):
 
 @pytest.mark.parametrize("name", PRRRDOKUS)
 def test_shortest_proof_still_solves_and_drops_moves(name):
-    board, clues = load_board((example(name)).read_text())
-    model = murdoku.compile_puzzle(board, clues)
+    model = cli.load(example(name).read_text(), "murdoku").model
     moves = _moves(model)
     kept = shortest(model, moves)
     assert len(kept) <= len(moves)
@@ -256,11 +267,10 @@ def test_shortest_proof_drops_what_ifs_it_can_do_without():
 
 
 def test_replay_reports_each_change_like_the_solver():
-    board, clues = load_board((example("prrrdoku1.txt")).read_text())
-    model = murdoku.compile_puzzle(board, clues)
+    model = cli.load(example("prrrdoku1.txt").read_text(), "murdoku").model
     fired: list[str] = []
     replay(model, _moves(model), lambda rule, steps: fired.append(rule))
-    assert fired.count("single") == len(board.people)
+    assert fired.count("single") == len(model.variables)
     assert {"relations", "subsumption"} <= set(fired)
 
 

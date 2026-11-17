@@ -20,6 +20,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "set.cells": "cells",
         "set.objects": "objects",
         "set.roles": "roles",
+        "idiom.every_area_someone": "Each of the {areas} contains someone from {people}",
         "name.area": "area {name}",
         "name.tag": "areas tagged {name}",
         "name.object": "objects named {name}",
@@ -144,6 +145,7 @@ PHRASES: dict[str, dict[str, str]] = {
         ),
     },
     "nl": {
+        "idiom.every_area_someone": "In elk van de {areas} is minstens één van de {people}",
         "set.people": "personen",
         "set.areas": "gebieden",
         "set.rows": "rijen",
@@ -402,7 +404,7 @@ class ExpressionWords:
             text = f"{namespace}:{text}"
         kind, _, name = text.partition(":")
         key = "name.object.display" if kind == "object" and name in self.names else f"name.{kind}"
-        rendered = self.names.get(name, name)
+        rendered = self.names.get(name, name.replace("_", " "))
         if kind == "area":
             rendered = re.sub(
                 r"^(?:in|on|at|op)\s+(?:(?:the|a|an|de|het|een)\s+)?",
@@ -708,6 +710,26 @@ class ExpressionWords:
         if statement.wording is not None:
             return statement.wording
         formula = statement.formula
+        if (
+            isinstance(formula, lang.Quantified)
+            and formula.quantifier.text == "every"
+            and len(formula.variables) == 1
+            and infer_operand(self.board, formula.source, {}).sort == Sort.AREA
+            and isinstance(formula.body, lang.Atom)
+            and isinstance(formula.body.subject, lang.Name)
+            and not formula.body.subject.token.text.startswith("?")
+            and infer_operand(self.board, formula.body.subject, {}).sort == Sort.PERSON
+            and formula.body.operator.text == "in"
+            and formula.body.determiner is not None
+            and formula.body.determiner.text == "some"
+            and isinstance(formula.body.target, lang.Name)
+            and formula.body.target.token.text == formula.variables[0].text
+        ):
+            return self._phrase(
+                "idiom.every_area_someone",
+                areas=self._operand(formula.source, {}),
+                people=self._operand(formula.body.subject, {}),
+            )
         if person := alone_person(formula, self.board.people):
             return self._phrase("idiom.alone", person=self._name(person.token))
         if only := only_on(formula, self.board.people):

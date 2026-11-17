@@ -427,14 +427,14 @@ def test_expression_files_are_detected_without_a_flag(tmp_path, capsys):
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
     assert cli.main([str(puzzle), "--explain"]) == 0
-    assert "Ben = r2c1" in capsys.readouterr().out
+    assert "**Ben on r2c1**" in capsys.readouterr().out
 
 
-def test_cli_expression_explain_uses_the_generic_story(tmp_path, capsys):
+def test_cli_expression_explain_uses_murdoku_wording_over_the_generic_proof(tmp_path, capsys):
     puzzle = tmp_path / "puzzle.txt"
     puzzle.write_text(TEXT)
     assert cli.main([str(puzzle), "--expressions", "--explain"]) == 0
-    assert "Ben = r2c1" in capsys.readouterr().out
+    assert "**Ben on r2c1**" in capsys.readouterr().out
 
 
 def test_cli_expression_normal_solve_and_stalled_board(tmp_path, capsys):

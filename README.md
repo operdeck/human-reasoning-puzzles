@@ -57,8 +57,10 @@ uv run puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp
 
 `--nosolution` skips solving and writes only the puzzle: on the console, in PNG/SVG pictures, or in DOCX/PDF booklets. Existing solution files are left untouched. It cannot be combined with solving options or with `--export`, which includes an answer for checking in the [web player](#play-in-the-browser). `--export DIR` otherwise writes per puzzle a JSON bundle and interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails).
 
-Murdoku `--explain` marks conclusions in bold and says when a row or column can
-have its other open squares crossed out; booklets render the same emphasis.
+Murdoku `--explain` follows the typed clue and rule expressions, marks conclusions
+in bold, and describes remaining locations by areas, rows, columns or objects.
+It also explains role deductions, including those made after everyone is placed;
+booklets render the same emphasis.
 Sudoku explanations group singles and describe locked candidates, subsets and
 row/column patterns. Every other family, and any Sudoku step those patterns do
 not cover, gets a generic story built from the model alone: clue deductions are

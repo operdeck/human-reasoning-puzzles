@@ -32,7 +32,7 @@ from csp.core import (
     rule_wing,
 )
 from csp.proof import Move, replay
-from csp.puzzlefile import load_board, parse_square
+from csp.puzzlefile import load_board, load_board_layout, parse_square
 from tests.examples import all_examples, example
 
 pytestmark = pytest.mark.solutions
@@ -1335,8 +1335,8 @@ def test_jigsaw_boxes_must_tile_the_grid(boxes, problem):
 
 @pytest.fixture
 def prrrdoku1():
-    board, clues = load_board((example("prrrdoku1.txt")).read_text())
-    return board, murdoku.compile_puzzle(board, clues)
+    text = example("prrrdoku1.txt").read_text()
+    return load_board_layout(text), cli.load(text, "murdoku").model
 
 
 def test_people_are_the_variables(prrrdoku1):
@@ -1497,8 +1497,8 @@ def test_sparse_board_allows_empty_rows_and_columns():
 
 def test_sparse_murdoku_mystery_example_solves_unique_murderer():
     text = (example("murdoku_sparse_mystery.txt")).read_text()
-    board, clues = load_board(text)
-    model = murdoku.compile_puzzle(board, clues)
+    board = load_board_layout(text)
+    model = cli.load(text, "murdoku").model
     result = Solver(model).solve()
     (expected,) = bruteforce.solutions(text, "murdoku", limit=2)
 
@@ -1725,8 +1725,8 @@ def test_every_step_is_logged_under_its_rule_name(name):
 
 
 def _load(name):
-    board, clues = load_board((example(name)).read_text())
-    return board, murdoku.compile_puzzle(board, clues)
+    text = example(name).read_text()
+    return load_board_layout(text), cli.load(text, "murdoku").model
 
 
 def _open(board, model):
@@ -3282,8 +3282,9 @@ def test_cli_tracks_murdoku_person_candidates(capsys):
 
 @pytest.mark.parametrize("name", ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"])
 def test_prrrdokus_keep_vladimir_open_until_last(name):
-    board, clues = load_board((example(name)).read_text())
-    model = murdoku.compile_puzzle(board, clues)
+    text = example(name).read_text()
+    board = load_board_layout(text)
+    model = cli.load(text, "murdoku").model
     placements = []
     before_last = []
 
@@ -3300,7 +3301,7 @@ def test_prrrdokus_keep_vladimir_open_until_last(name):
     inspect_open_target()
 
     def on_step(rule, steps):
-        assigned = [step.var for step in steps if step.asserted]
+        assigned = [step.var for step in steps if step.asserted and step.var in board.people]
         placements.extend(assigned)
         if "Vladimir" in assigned:
             assert assigned == ["Vladimir"]
@@ -3331,8 +3332,8 @@ def test_report_describes_prrrdoku1_as_the_engine_sees_it():
     assert "7 variables, 301 literals, 64 constraints, 4 relations." in text
     assert re.search(r"each square holds at most one person\s+AT_MOST_ONE\s+43\s+7", text)
     assert "Every literal sits in exactly 4 constraints." in text
-    assert re.search(r"beside Tim object:klimwand\s+40 ruled out", text)
-    assert re.search(r"dir Otto Tjitske up = 1\s+12 of 86", text)
+    assert re.search(r"clue 1\s+40 ruled out", text)
+    assert re.search(r"clue 5\s+12 of 86", text)
     assert all(re.search(rf"\d\. {rule.name}\s", text) for rule in DEFAULT_RULES)
     assert re.search(
         r"cover2\s+Find covers whose inner constraints guarantee `2` additional\s+truths", text
