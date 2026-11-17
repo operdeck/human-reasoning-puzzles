@@ -1731,7 +1731,10 @@ class Places:
             areas.append((self.say("next_to", what=self.thing(name)), cells.__contains__))
         for name in sorted(board.mark_names):
             cells = board.mark_cells([name])
-            areas.append((self.say("on", what=self.thing(name)), cells.__contains__))
+            what = self.say.words.get(name) or self.say(
+                "global_count.mark", name=name.replace("_", " ")
+            )
+            areas.append((self.say("on", what=what), cells.__contains__))
         return areas
 
     def _region_of(self, chosen: set[Square]) -> tuple[str, Callable[[Square], bool]]:

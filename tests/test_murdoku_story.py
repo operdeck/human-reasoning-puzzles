@@ -6,7 +6,7 @@ import pytest
 from csp import cli, generic_story, murdoku_story, story
 from csp.bruteforce import solutions
 from csp.core import Kind, Model, Solver, Step
-from csp.murdoku import Board, RoleSpec, Square
+from csp.murdoku import Board, CellMark, RoleSpec, Square
 from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lower import compile_statements_with_origins
 from csp.proof import Inference, Move, replay
@@ -97,6 +97,23 @@ def test_last_candidate_is_announced_once_before_the_later_assignment():
     narrator.options["Ada"] = {first, last}
     assert narrator.conclusion([Step("Ada", first, False, "relations", "")]) == ("**Ada on r1c2**")
     assert narrator.conclusion([Step("Ada", last, True, "single", "")]) is None
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "on the squares marked red"),
+        ("nl", "op de vakjes met markering red"),
+    ],
+)
+def test_candidate_scopes_name_marked_squares_instead_of_an_imaginary_object(language, expected):
+    board, _, _ = load_expression_board(TEXT)
+    cells = (Square(0, 0), Square(1, 1))
+    board.marks.append(CellMark("red", cells))
+    places = story.Places(board, story.Wording(language))
+    assert places.where(set(cells), set(board.free)) == expected
+    places = story.Places(board, story.Wording(language, {"red": "the mat"}))
+    assert "the mat" in places.where(set(cells), set(board.free))
 
 
 @pytest.mark.parametrize(("language", "row"), [("en", "row 1"), ("nl", "rij 1")])
