@@ -354,7 +354,8 @@ limited suggestion templates and reports drafts it cannot close.
 grouped by the source expressions. `--grade` and `--brute-force` also accept
 `--expressions`. Normal console solving is also available with `--expressions`.
 `--lint --expressions` previews board and expression diagnostics, including
-impossible required relations, role-negation and relation-size warnings. Other
+impossible required relations, role-negation and relation-size warnings;
+`--require-forward` adds a forward-only solve check. Other
 main CLI operations still require the production grammar.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,

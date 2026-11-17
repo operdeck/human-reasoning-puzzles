@@ -662,7 +662,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help=(
             "preview expression-language Murdoku solving, model reports, grading, "
-            "brute-force search and lint"
+            "brute-force search, lint and forward-only validation"
         ),
     )
     instead = parser.add_mutually_exclusive_group()
@@ -776,7 +776,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     booklets = [(v, suffix) for v, suffix in ((args.docx, ".docx"), (args.pdf, ".pdf")) if v]
     if args.expressions and (
         args.explain
-        or args.require_forward
         or args.verbose
         or args.step
         or args.track_person
@@ -789,7 +788,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         parser.error(
             "--expressions currently supports only normal solves, --show-model, --grade, "
-            "--brute-force and --lint"
+            "--brute-force, --lint and --require-forward"
         )
     if args.nosolution:
         conflicts = (
@@ -861,7 +860,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
         try:
             expression_board, expression_rules, expression_clues = load_expression_board(text)
             expression_statements = [*expression_rules, *expression_clues]
-            if args.lint:
+            if args.lint or args.require_forward:
                 murdoku_expression_words.ExpressionWords.read(expression_board, text)
                 errors = murdoku_expr_lint.vacuous_errors(expression_board, expression_statements)
                 if errors:
@@ -880,10 +879,10 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                 expression_board, expression_clues, rules=expression_rules
             )
         except (ValueError, NotImplementedError) as exc:
-            prefix = "lint error in" if args.lint else "could not read"
+            prefix = "lint error in" if args.lint or args.require_forward else "could not read"
             print(f"{prefix} {path.name}: {exc}", file=sys.stderr)
-            return 1 if args.lint else 2
-        if args.lint:
+            return 1 if args.lint or args.require_forward else 2
+        if args.lint or args.require_forward:
             references = murdoku_expr_lint.referenced_roles(expression_board, expression_statements)
             findings = _murdoku_lint(expression_board, [], compiled.model, text)
             used_role_warnings = {
@@ -904,6 +903,20 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                 print(finding)
             if not findings:
                 print("lint: no issues found")
+            if args.require_forward:
+                forward_rules = tuple(rule for rule in DEFAULT_RULES if rule.name != "what_if")
+                forward_result = Solver(compiled.model.clone(), forward_rules).solve()
+                if not forward_result.solved:
+                    detail = (
+                        f": {forward_result.contradiction}" if forward_result.contradiction else ""
+                    )
+                    print(
+                        f"lint error: puzzle does not solve using forward rules "
+                        f"without what_if{detail}",
+                        file=sys.stderr,
+                    )
+                    return 1
+                print("require-forward: solved without what_if")
             return 0
         if args.show_model:
             print(murdoku_expression_report.describe(compiled))

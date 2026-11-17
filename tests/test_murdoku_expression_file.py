@@ -389,7 +389,7 @@ def test_cli_expression_model_preview_rejects_unimplemented_operations(tmp_path,
     assert error.value.code == 2
     assert (
         "--expressions currently supports only normal solves, --show-model, --grade, "
-        "--brute-force and --lint" in (capsys.readouterr().err)
+        "--brute-force, --lint and --require-forward" in (capsys.readouterr().err)
     )
 
 
@@ -444,6 +444,16 @@ def test_cli_expression_lint_rejects_impossible_relations_and_bad_wording(tmp_pa
     puzzle.write_text(TEXT + "Words:\nrel.besid: next to\n")
     assert cli.main([str(puzzle), "--expressions", "--lint"]) == 1
     assert "rel.besid" in capsys.readouterr().err
+
+
+def test_cli_expression_require_forward(tmp_path, capsys):
+    puzzle = tmp_path / "puzzle.txt"
+    puzzle.write_text(TEXT)
+    assert cli.main([str(puzzle), "--expressions", "--require-forward"]) == 0
+    assert "require-forward: solved without what_if" in capsys.readouterr().out
+    puzzle.write_text(clue_search.with_clues(TEXT, []))
+    assert cli.main([str(puzzle), "--expressions", "--require-forward"]) == 1
+    assert "does not solve using forward rules" in capsys.readouterr().err
 
 
 def test_expression_authoring_cli_rejects_unimplemented_commands(tmp_path, capsys):
