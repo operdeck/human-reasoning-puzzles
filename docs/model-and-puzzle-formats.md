@@ -333,6 +333,11 @@ they could hide a subject, target, comparison, or other part of the clue.
 Legacy `clue.*` phrase keys are rejected: move a puzzle-specific sentence to
 that statement's `| wording`. The role declaration's distinct-area rule can be
 worded with `rule.role_separation`, retaining `{a}`, `{b}` and `{role}`.
+Generated person clues describe window and point-object footprints as cells
+touching the feature, and marks as marked cells. Place captions may retain their
+preposition (`hall: on Monday` in `Words:` changes the wording, not containment).
+Clues belonging to one figure share a paragraph and retain all source numbers;
+authored sentences keep their wording rather than being shortened into predicates.
 
 ### Expression clue language
 

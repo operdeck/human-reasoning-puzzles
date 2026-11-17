@@ -4178,6 +4178,32 @@ def _expression_figure_clues(
         sentence = _expression_sentence(say, clue)
         paragraph = ClueParagraph(sentence, (number,), owner)
         (by_person[owner] if owner is not None else other).append(paragraph)
+    wording = Wording.read(text)
+    for person, paragraphs in by_person.items():
+        if len(paragraphs) < 2:
+            continue
+        shown = _cap(say.names.get(person, person))
+        predicates = []
+        extra = []
+        for paragraph in paragraphs:
+            source = clues[paragraph.sources[0] - 1]
+            if source.wording is not None or not paragraph.text.startswith(f"{shown} "):
+                extra.append(paragraph.text)
+                continue
+            rest = paragraph.text[len(shown) + 1 :].rstrip(".")
+            if rest.split(" ", 1)[0] == wording("and"):
+                extra.append(paragraph.text)
+            else:
+                predicates.append(rest)
+        parts = [f"{shown} {_merge_predicates(predicates, wording)}."] if predicates else []
+        parts.extend(extra)
+        by_person[person] = [
+            ClueParagraph(
+                " ".join(parts),
+                tuple(number for paragraph in paragraphs for number in paragraph.sources),
+                person,
+            )
+        ]
     figures = tuple(
         FigureClues(
             person,

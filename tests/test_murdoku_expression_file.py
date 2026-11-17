@@ -181,6 +181,18 @@ def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
     ]
 
 
+def test_expression_figure_clues_merge_generated_predicates_and_preserve_sources():
+    text = TEXT.replace(
+        "  Ben in columns:1 | Ben is in the first column.",
+        "  Ben in columns:1\n  not Ben in rows:1",
+    )
+    _, _, clues = load_expression_board(text)
+    ben = figure_clues(text, expressions=clues).figures[1]
+    assert [(clue.text, clue.sources) for clue in ben.clues] == [
+        ("Ben is in columns 1 and is not in rows 1.", (1, 2))
+    ]
+
+
 def test_expression_board_notes_include_generated_and_authored_rules():
     text = TEXT.replace(
         "  Ada in rows:1 | Ada stays in the first row.",

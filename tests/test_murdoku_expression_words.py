@@ -81,8 +81,8 @@ def test_common_shapes_have_idiomatic_wording(board, language, alone, only):
 @pytest.mark.parametrize(
     ("language", "negative", "either"),
     [
-        ("en", "Ada is not in area hall", "either Ada is in area hall"),
-        ("nl", "Ada is niet in gebied hall", "of Ada is in gebied hall"),
+        ("en", "Ada is not in the hall", "either Ada is in the hall"),
+        ("nl", "Ada is niet in de hall", "of Ada is in de hall"),
     ],
 )
 def test_simple_negations_and_exclusive_alternatives_read_as_sentences(
@@ -216,7 +216,7 @@ def test_wording_overrides_and_names_are_used(board):
         phrases={"rel.beside": "next to"},
     )
     assert words.statement(parse_statement("Ada beside object:bed")) == (
-        "the keeper is next to an object named bed"
+        "the keeper is next to a bed"
     )
     assert words.statement(parse_statement("Ada in area:hall | A custom clue.")) == "A custom clue."
 
@@ -241,7 +241,7 @@ def test_read_language_display_names_and_compositional_overrides(board):
         "Language: nl\nWords:\nAda: de bewaker\nrel.beside: vlak naast\n",
     )
     assert words.statement(parse_statement("Ada beside object:bed")) == (
-        "de bewaker is vlak naast een voorwerp met de naam bed"
+        "de bewaker is vlak naast een bed"
     )
 
 
@@ -306,13 +306,45 @@ def test_non_person_targets_keep_entity_wording_not_person_location_templates(bo
 @pytest.mark.parametrize(
     ("language", "display", "expected"),
     [
-        ("en", "in the hall", "Ada is in area hall"),
-        ("nl", "in de hal", "Ada is in gebied hal"),
+        ("en", "in the hall", "Ada is in the hall"),
+        ("nl", "in de hal", "Ada is in de hal"),
     ],
 )
 def test_area_names_accept_existing_location_wordings(board, language, display, expected):
     words = ExpressionWords(board, language, names={"hall": display})
     assert words.statement(parse_statement("Ada in area:hall")) == expected
+
+
+def test_area_location_keeps_its_authored_preposition_and_explicit_relation_override(board):
+    names = {"hall": "on Monday"}
+    words = ExpressionWords(board, names=names)
+    assert words.statement(parse_statement("Ada in area:hall")) == "Ada is on Monday"
+    words = ExpressionWords(board, names=names, phrases={"rel.in": "scheduled for"})
+    assert words.statement(parse_statement("Ada in area:hall")) == "Ada is scheduled for Monday"
+
+
+def test_named_person_idioms_keep_generic_scope_and_explicit_phrase_overrides(board):
+    words = ExpressionWords(board)
+    assert words.statement(parse_statement("Ada dir:furthest Ben")) == (
+        "Ada is uniquely farthest from Ben"
+    )
+    for source in ("Ada dir:furthest role:guard", "Ada dir:furthest:areas Ben"):
+        assert "every other person outside the target set" in words.statement(
+            parse_statement(source)
+        )
+    words = ExpressionWords(
+        board,
+        phrases={
+            "rel.dir.areas.same": "together with",
+            "rel.dir.furthest": "most distant from",
+            "target.object.named": "the feature named {name}",
+        },
+    )
+    assert "together with Ben" in words.statement(parse_statement("Ada dir:areas Ben = 0"))
+    assert "most distant from Ben" in words.statement(parse_statement("Ada dir:furthest Ben"))
+    assert words.statement(parse_statement("Ada on object:bed")) == (
+        "Ada is on the feature named bed"
+    )
 
 
 def test_read_rejects_misspelled_expression_phrase_keys(board):
@@ -386,17 +418,32 @@ def test_direction_wording_retains_axis_measure_and_superlative_exclusions(board
 
 
 @pytest.mark.parametrize(
-    ("language", "same", "distance", "distinct"),
+    ("language", "same", "pair", "distance", "distinct"),
     [
-        ("en", "in the same area as", "area distance", "distinct from the subject"),
-        ("nl", "in hetzelfde gebied als", "gebiedsafstand", "verschillend van het onderwerp"),
+        (
+            "en",
+            "in the same area as",
+            "Ada and Ben are in the same area",
+            "area distance",
+            "distinct from the subject",
+        ),
+        (
+            "nl",
+            "in hetzelfde gebied als",
+            "Ada en Ben staan in hetzelfde gebied",
+            "gebiedsafstand",
+            "verschillend van het onderwerp",
+        ),
     ],
 )
-def test_zero_area_distance_has_an_idiomatic_relation(board, language, same, distance, distinct):
+def test_zero_area_distance_has_an_idiomatic_relation(
+    board, language, same, pair, distance, distinct
+):
     words = ExpressionWords(board, language)
-    assert same in words.statement(parse_statement("Ada dir:areas Ben = 0"))
+    assert words.statement(parse_statement("Ada dir:areas Ben = 0")) == pair
     assert same in words.statement(parse_statement("count (people dir:areas Ada = 0) = 1"))
     assert distinct in words.statement(parse_statement("Ada dir:areas role:guard = 0"))
+    assert distinct in words.statement(parse_statement("Ada dir:areas Ada = 0"))
     assert distance not in words.statement(parse_statement("Ada dir:areas Ben = 0"))
     assert distance in words.statement(parse_statement("Ada dir:areas Ben >= 0"))
     assert distance in words.statement(parse_statement("Ada dir:areas Ben = 1"))

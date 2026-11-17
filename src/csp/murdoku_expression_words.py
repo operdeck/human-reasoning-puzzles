@@ -83,6 +83,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.areas.same": "in the same area as",
         "rel.dir.nearest": "closer than every other person outside the target set to",
         "rel.dir.furthest": "farther than every other person outside the target set from",
+        "rel.dir.furthest.person": "uniquely farthest from",
         "rel.metric": "{relation} (measured by {metric})",
         "metric.rows": "row distance",
         "metric.cols": "column distance",
@@ -139,6 +140,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "quant.distinct": "ordered tuples of distinct {variables}",
         "choice.exactly": "exactly {count} of ({choices}) hold",
         "choice.either": "either {left}, or {right}, but not both",
+        "idiom.same_area": "{first} and {second} are in the same area",
         "choice.at least": "at least {count} of ({choices}) hold",
         "choice.at most": "at most {count} of ({choices}) hold",
         "idiom.alone": "{person} is alone in their area",
@@ -223,6 +225,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.areas.same": "in hetzelfde gebied als",
         "rel.dir.nearest": "dichter dan iedere andere persoon buiten de doelverzameling bij",
         "rel.dir.furthest": "verder dan iedere andere persoon buiten de doelverzameling van",
+        "rel.dir.furthest.person": "als enige van alle figuren het verst van",
         "rel.metric": "{relation} (gemeten met {metric})",
         "metric.rows": "rijafstand",
         "metric.cols": "kolomafstand",
@@ -279,6 +282,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "quant.distinct": "geordende combinaties van verschillende {variables}",
         "choice.exactly": "precies {count} van ({choices}) gelden",
         "choice.either": "of {left}, of {right}, maar niet allebei",
+        "idiom.same_area": "{first} en {second} staan in hetzelfde gebied",
         "choice.at least": "minstens {count} van ({choices}) gelden",
         "choice.at most": "hoogstens {count} van ({choices}) gelden",
         "idiom.alone": "{person} is alleen in het eigen gebied",
@@ -456,6 +460,16 @@ class ExpressionWords:
         measure: lang.Measure | None,
     ) -> str:
         mode = operator.text
+        if (
+            mode == "in"
+            and "rel.in" not in self.phrases
+            and infer_operand(self.board, subject, bindings).sort is Sort.PERSON
+            and isinstance(target, lang.Name)
+            and target.token.text.startswith("area:")
+        ):
+            preposition, _ = self._area_location(target.token.text.partition(":")[2])
+            if preposition is not None:
+                return preposition
         if mode == "is":
             sort = infer_operand(self.board, subject, bindings).sort
             if sort != Sort.PERSON:
@@ -490,6 +504,13 @@ class ExpressionWords:
                     key += ".same"
                 elif measure and measure.comparison.text == "=" and f"{key}.exact" in PHRASES["en"]:
                     key += ".exact"
+                elif (
+                    direction == "furthest"
+                    and not metric
+                    and key not in self.phrases
+                    and self._distinct_people(subject, target)
+                ):
+                    key += ".person"
             relation = self._phrase(key)
             if metric:
                 relation = self._phrase(
@@ -513,7 +534,9 @@ class ExpressionWords:
         person = (
             subject is not None and infer_operand(self.board, subject, bindings).sort is Sort.PERSON
         )
-        if namespace in {"edge_item", "point_object", "mark"} and person:
+        if namespace == "area" and person:
+            _, rendered = self._area_location(name)
+        elif namespace in {"edge_item", "point_object", "mark"} and person:
             rendered = self._phrase(
                 f"target.{namespace}",
                 name=self.names.get(name, name.replace("_", " "))
@@ -521,9 +544,14 @@ class ExpressionWords:
                 else self._feature_name(namespace, name),
             )
         elif namespace == "object":
-            key = "target.object" if name in self.names else "target.object.named"
+            key = (
+                "target.object.named"
+                if name not in self.names and "target.object.named" in self.phrases
+                else "target.object"
+            )
             rendered = self._phrase(
-                key, name=self._feature_name(namespace, name) if name in self.names else name
+                key,
+                name=name if key == "target.object.named" else self._feature_name(namespace, name),
             )
         else:
             rendered = self._operand(target, bindings)
@@ -541,6 +569,24 @@ class ExpressionWords:
                 value=measure.value.text,
             )
         return rendered
+
+    def _area_location(self, name: str) -> tuple[str | None, str]:
+        if name in self.names:
+            phrase = self.names[name]
+            preposition, separator, noun = phrase.partition(" ")
+            if separator and preposition.lower() in {"in", "on", "at", "op"}:
+                return preposition.lower(), noun
+            return None, phrase
+        return None, self._phrase("noun.the", name=name.replace("_", " "))
+
+    def _distinct_people(self, first: lang.Operand, second: lang.Operand) -> bool:
+        return (
+            isinstance(first, lang.Name)
+            and isinstance(second, lang.Name)
+            and first.token.text in self.board.people
+            and second.token.text in self.board.people
+            and first.token.text != second.token.text
+        )
 
     def _feature_name(self, namespace: str, name: str) -> str:
         by_kind: dict[str, Collection[BoardObject | EdgeItem | PointObject | CellMark]] = {
@@ -700,6 +746,18 @@ class ExpressionWords:
             return idiom
         match value:
             case lang.Atom(subject=subject, operator=op, target=target, determiner=det):
+                if (
+                    op.text == "dir:areas"
+                    and self._same_area(value.measure)
+                    and det is None
+                    and self._distinct_people(subject, target)
+                    and "rel.dir.areas.same" not in self.phrases
+                ):
+                    return self._phrase(
+                        "idiom.same_area",
+                        first=self._operand(subject, bindings),
+                        second=self._operand(target, bindings),
+                    )
                 return self._phrase(
                     "atom.one",
                     subject=self._determined(subject, det, bindings),
