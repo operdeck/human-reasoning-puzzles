@@ -76,6 +76,36 @@ def test_role_scope_count_on_fully_blocked_object_matches_reference(board):
 
 
 @pytest.mark.parametrize(
+    "formula",
+    [
+        "no (people except Ada) in area:hall",
+        "every Ada, Ben in area:garden",
+        "no attribute:trained on object:bed",
+    ],
+)
+def test_fixed_people_restrictions_lower_without_auxiliary_variables(board, formula):
+    _assert_matches_reference(board, formula, try_lower_location)
+    model = compile_statements(board, [parse_statement(formula)])
+    assert not any(variable.startswith("__expression") for variable in model.all_variables)
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "some people in area:hall",
+        "not every people in area:hall",
+        "not no people in area:hall",
+    ],
+)
+def test_fixed_people_pattern_does_not_turn_existential_restrictions_into_universals(
+    board, formula
+):
+    statement = parse_statement(formula)
+    assert not try_lower_location(compile_puzzle(board), board, statement, "clue 1")
+    _assert_compilation_matches_reference(board, formula)
+
+
+@pytest.mark.parametrize(
     ("formula", "expected"),
     [
         ("count people on object:bed = 1", {Square(2, 0)}),

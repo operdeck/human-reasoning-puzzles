@@ -95,16 +95,9 @@ Vladimir
 Mao
 Luna
 
-# "In het water kan alleen Luna zijn" is a board rule, written out per person.
+# Only Luna may enter the water; this does not require her to be there.
 Rules:
-not (Tim in area:water)
-not (Jos in area:water)
-not (Otto in area:water)
-not (Anna in area:water)
-not (Pip in area:water)
-not (Tjitske in area:water)
-not (Vladimir in area:water)
-not (Mao in area:water)
+no (people except Luna) in area:water
 
 # Clues 1-13 from the document, plus a late-reveal clue (14).
 # Clue 15 is the question being asked.

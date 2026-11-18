@@ -464,19 +464,25 @@ def _role_selection_literals(
 
 
 def try_lower_location(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
-    """Lower a named person's static spatial relation as domain eliminations."""
+    """Lower fixed people's universal spatial restrictions as domain eliminations."""
     formula = statement.formula
     negated = isinstance(formula, lang.Negation)
     atom = formula.formula if isinstance(formula, lang.Negation) else formula
     if not (
         isinstance(atom, lang.Atom)
-        and isinstance(atom.subject, lang.Name)
-        and atom.subject.token.text in board.people
         and (
             atom.operator.text in {"in", "on", "beside", "touches"}
             or atom.operator.text.startswith("dir:")
         )
     ):
+        return False
+    named_person = isinstance(atom.subject, lang.Name) and atom.subject.token.text in board.people
+    if not named_person and (
+        negated or atom.determiner is None or atom.determiner.text not in {"every", "no"}
+    ):
+        return False
+    people = _static_people(board, atom.subject)
+    if people is None:
         return False
     check_formula(board, formula)
     cells = _static_cells(board, atom.target)
@@ -489,14 +495,16 @@ def try_lower_location(model: Model, board: Board, statement: lang.Statement, na
     )
     if atom.operator.text.startswith("dir:") and direction is None:
         return False
-    person = atom.subject.token.text
-    if person not in model.all_variables:
-        raise ValueError(f"model lacks declared variable: {person}")
     exclude = negated ^ (atom.determiner is not None and atom.determiner.text == "no")
-    for square in board.free:
-        matches = _position_matches(board, square, atom.operator.text, cells, direction)
-        if matches == exclude:
-            model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
+    for person in board.people:
+        if person not in people:
+            continue
+        if person not in model.all_variables:
+            raise ValueError(f"model lacks declared variable: {person}")
+        for square in board.free:
+            matches = _position_matches(board, square, atom.operator.text, cells, direction)
+            if matches == exclude:
+                model.eliminate(model.literal(person, square), "clue", name, sources=(name,))
     return True
 
 
