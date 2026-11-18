@@ -74,21 +74,6 @@ Use `puzzle-lab fresh`, `generate`, `rate`, `search`, and `audit` to create and 
 examples; see the [authoring workflow](.github/skills/non-murdoku-puzzle-authoring/SKILL.md).
 Murdoku retains its separate tools and skill.
 
-Calcudoku examples and Puzzle Lab generation avoid single-cell cages. Older
-files still work: a single-cell target is a clue whose digit you enter normally.
-Use optional `--grade` with `fresh` or `generate` when preserving a specific
-deduction technique, such as `--tier hard --grade cover3`.
-
-The [Battleships examples](docs/model-and-puzzle-formats.md#battleships) now use complete fleets:
-straight ships, no touching (including diagonals), line totals, and shaped
-givens. The collection has five boards: the 6x6 starter and two 8x8 boards are medium
-(`count` or `subsumption`), and two more 8x8 boards are hard (`chains`).
-*Buoys in the channel*, *Broken radio signals*, and *Fogbound convoy* each show
-water waves, unspecified `?` segments, single-cell circles, rounded ends, and
-square middles. All five need the fleet rules, not just row and column arithmetic.
-Generate another original board with
-`uv run puzzle-lab fresh battleships --size 6 --tier medium --seed 136 --output /tmp/fleet.txt`.
-
 ## A Murdoku clue language that says what you mean
 
 Murdoku clues are written in a small, typed expression language rather than a
