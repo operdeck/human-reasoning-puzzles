@@ -14,7 +14,6 @@ from .murdoku import (
     Board,
     BoardObject,
     CellMark,
-    Clue,
     EdgeItem,
     EdgeItemKind,
     ObjectKind,
@@ -219,15 +218,6 @@ def parse_square(token: str) -> Square:
     return Square(int(match[1]) - 1, int(match[2]) - 1)
 
 
-def load_board(text: str) -> tuple[Board, list[Clue]]:
-    """Read a Murdoku puzzle file into its board and its list of clues."""
-    board = load_board_layout(text)
-    section = read_sections(text)
-    keyed_clue_numbers(text)
-    board.rules = _clues(section.get("Rules", []))
-    return board, _clues(section.get("Clues", []))
-
-
 def load_board_layout(text: str) -> Board:
     """Read the fixed Murdoku layout without interpreting its rules or clues."""
     section = read_sections(text)
@@ -305,132 +295,6 @@ def load_board_layout(text: str) -> Board:
     board.backdrop = " ".join(section.get("Backdrop", [])) or None
     board.decorations = _decorations(section.get("Decorations", []))
     return board
-
-
-def _clues(lines: list[str]) -> list[Clue]:
-    """Parse canonical Murdoku clue lines into predicate and operands."""
-    return [parse_clue_line(line) for line in lines]
-
-
-def parse_clue_line(line: str) -> Clue:
-    """Parse one canonical clue or rule, excluding any `| wording` override."""
-    tokens = words(_split_clue(line)[0])
-    if not tokens:
-        raise ValueError("clue cannot be empty")
-    aliases = {
-        "for_each_area": "for each area",
-        "has_attribute": "has PERSON attribute:name",
-        "has_role": "has PERSON role:name",
-        "not_attribute": "not has PERSON attribute:name",
-        "not_beside": "not beside",
-        "not_dir": "not dir",
-        "not_in": "not in",
-        "not_on": "not on",
-        "not_role": "not has PERSON role:name",
-        "not_touches": "not touches",
-        "role_subset": "subset",
-    }
-    if tokens[0] in aliases:
-        raise ValueError(f"non-canonical clue syntax {tokens[0]!r}; use {aliases[tokens[0]]!r}")
-    if tokens[:3] == ["for", "each", "area"]:
-        kind, args = "for_each_area", tokens[3:]
-    elif tokens[:1] in (["most_populated"], ["least_populated"]):
-        kind, args = tokens[0], tokens[1:]
-    elif tokens[:2] == ["no_adjacent_occupied", "areas"]:
-        kind, args = "no_adjacent_occupied", tokens[2:]
-    elif tokens[0] == "alone":
-        kind, args = "alone", tokens[1:]
-    elif tokens[:1] == ["only"]:
-        if len(tokens) < 3 or tokens[2] != "on":
-            raise ValueError(f"only predicate must be 'only PERSON on SELECTOR': {line!r}")
-        kind, args = "only", tokens[1:2] + tokens[3:]
-    elif tokens[0] == "not":
-        if len(tokens) < 2 or tokens[1] not in (
-            "in",
-            "on",
-            "beside",
-            "touches",
-            "dir",
-            "has",
-        ):
-            raise ValueError(f"unknown negated predicate in {line!r}")
-        kind, args = f"not_{tokens[1]}", tokens[2:]
-    else:
-        kind, args = tokens[0], tokens[1:]
-    if kind in ("has", "not_has"):
-        if len(args) != 2:
-            raise ValueError(f"{kind} expects a person and role:name or attribute:name")
-        person, selector = args
-        selector_kind, separator, name = selector.partition(":")
-        if not separator or not name or selector_kind not in ("role", "attribute"):
-            raise ValueError(f"{kind} requires role:name or attribute:name, not {selector!r}")
-        prefix = "has" if kind == "has" else "not"
-        kind = f"{prefix}_role" if selector_kind == "role" else f"{prefix}_attribute"
-        args = [person, name]
-    elif kind == "subset":
-        kind = "role_subset"
-    supported = {
-        "in",
-        "on",
-        "only",
-        "beside",
-        "touches",
-        "dir",
-        "count",
-        "alone",
-        "with",
-        "exactly",
-        "if",
-        "for_each_area",
-        "most_populated",
-        "least_populated",
-        "no_adjacent_occupied",
-        "not_in",
-        "not_on",
-        "not_beside",
-        "not_touches",
-        "not_dir",
-        "has_role",
-        "not_role",
-        "has_attribute",
-        "not_attribute",
-        "role_subset",
-    }
-    if kind not in supported:
-        raise ValueError(
-            f"legacy or unknown clue syntax {kind!r}; use the canonical Murdoku grammar"
-        )
-    return kind, args
-
-
-def keyed_clue_numbers(text: str) -> set[int]:
-    """Resolve `Key:` clue references against clue text, ignoring wording and numbers."""
-    section = read_sections(text)
-    if "Key" not in section:
-        return set()
-    clues = [_split_clue(line)[0].strip() for line in section.get("Clues", [])]
-    rules = [_split_clue(line)[0].strip() for line in section.get("Rules", [])]
-    seen: set[tuple[str, str]] = set()
-    numbers: set[int] = set()
-    for line in section["Key"]:
-        kind, separator, reference = line.partition(":")
-        kind, reference = kind.strip(), reference.strip()
-        if not separator or kind not in ("clue", "rule") or not reference:
-            raise ValueError(f"bad Key entry {line!r}; expected 'clue: ...' or 'rule: ...'")
-        key = (kind, reference)
-        if key in seen:
-            raise ValueError(f"duplicate Key entry {line!r}")
-        seen.add(key)
-        entries = clues if kind == "clue" else rules
-        matches = [index for index, value in enumerate(entries, 1) if value == reference]
-        if len(matches) != 1:
-            raise ValueError(
-                f"unresolved Key {kind} {reference!r}; it must match exactly one "
-                f"{'Clues' if kind == 'clue' else 'Rules'} line, ignoring wording"
-            )
-        if kind == "clue":
-            numbers.add(matches[0])
-    return numbers
 
 
 def _split_clue(line: str) -> tuple[str, str]:

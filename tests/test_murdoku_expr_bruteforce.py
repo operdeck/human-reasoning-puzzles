@@ -171,11 +171,13 @@ def test_mark_occupant_declaration_is_not_ignored():
     assert all(Square(0, 0) not in result.values() for result in results)
 
 
-def test_legacy_board_rules_are_not_silently_ignored():
+def test_separate_expression_rules_are_not_silently_ignored():
     board = _board()
-    board.rules = [("in", ["Ada", "area:north"])]
-    with pytest.raises(ValueError, match="board rules must be migrated"):
-        solutions(board, [])
+    rule = parse_statement("Ada in area:north")
+    results = solutions(board, [], limit=10, rules=[rule])
+    assert results
+    assert all(board.region_of(result["Ada"]) == "a" for result in results)
+    assert len(results) < len(solutions(board, [], limit=10))
 
 
 @pytest.mark.parametrize(

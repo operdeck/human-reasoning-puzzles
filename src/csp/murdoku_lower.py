@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, fields, is_dataclass, replace
 from itertools import permutations
 from typing import Literal
@@ -23,7 +23,7 @@ from .murdoku import (
     _direction_test,
     _hidden_boolean,
     _target_selector,
-    compile_puzzle,
+    compile_board,
 )
 from .murdoku_typecheck import Shape, Sort, check_formula, infer_operand
 
@@ -3298,25 +3298,24 @@ def _population_pattern(
 
 
 def compile_statements(
-    board: Board, statements: Sequence[lang.Statement], *, rules: Sequence[lang.Statement] = ()
+    board: Board, statements: Iterable[lang.Statement], *, rules: Sequence[lang.Statement] = ()
 ) -> Model:
     """Compile the currently supported expression patterns for a board."""
     return compile_statements_with_origins(board, statements, rules=rules).model
 
 
 def compile_statements_with_origins(
-    board: Board, statements: Sequence[lang.Statement], *, rules: Sequence[lang.Statement] = ()
+    board: Board, statements: Iterable[lang.Statement], *, rules: Sequence[lang.Statement] = ()
 ) -> ExpressionCompilation:
     """Compile expressions and retain their structured origins outside the engine.
 
     Shared population and emptiness primitives retain every statement that
     uses them; other primitives cite the statement that emitted them.
     """
-    if board.rules:
-        raise ValueError("board rules must be migrated to expression statements first")
+    statements = tuple(statements)
     for statement in (*rules, *statements):
         check_formula(board, statement.formula)
-    model = compile_puzzle(board, [])
+    model = compile_board(board)
     empty_scopes = _EmptyScopes()
     origins = [
         *(StatementOrigin("rule", index, statement) for index, statement in enumerate(rules, 1)),

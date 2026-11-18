@@ -56,7 +56,7 @@ from .minesweeper import Puzzle as Minesweeper
 from .minesweeper import cell_name as minesweeper_cell
 from .mosaic import Puzzle as Mosaic
 from .mosaic import cell_name as mosaic_cell
-from .murdoku import Board, GlobalCountCondition, Square
+from .murdoku import Board, Square
 from .pattern import Puzzle as Pattern
 from .pattern import cell_name as pattern_cell
 from .rectangles import Puzzle as Rectangles
@@ -142,7 +142,6 @@ def murdoku_picture(
     placed: Mapping[str, Square] | None = None,
     *,
     role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
-    global_counts: Sequence[GlobalCountCondition] = (),
     count_scope: Collection[Square] = (),
     cell: int = 120,
     coordinates: bool = True,
@@ -186,7 +185,6 @@ def murdoku_picture(
             board,
             cell,
             role_statuses or {},
-            global_counts,
             show_roles,
             language,
             regions=not labels,
@@ -224,15 +222,7 @@ def murdoku_picture(
     # already part of a mark carries that mark's own cue, so ring scope only the
     # unmarked squares it counts (avoids a second, misleading ring).
     marked = {square for mark in board.marks for square in mark.cells}
-    count_scope = (
-        set(count_scope)
-        | {
-            square
-            for condition in global_counts
-            if condition.object_scope
-            for square in condition.scope_cells(board)
-        }
-    ) - marked
+    count_scope = set(count_scope) - marked
     for r in range(board.size):
         for c in range(board.size):
             sq = Square(r, c)
@@ -2247,7 +2237,6 @@ class _Legend:
         board: Board,
         cell: int,
         role_statuses: Mapping[tuple[str, str], bool | None] | None = None,
-        global_counts: Sequence[GlobalCountCondition] = (),
         show_roles: bool = True,
         language: str = "en",
         regions: bool = True,
@@ -2262,7 +2251,6 @@ class _Legend:
         self.board = board
         self.cell = cell
         self.role_statuses = role_statuses or {}
-        self.global_counts = tuple(global_counts)
         self.names = names or {}
         self.swatch = cell // 3
         self.line = int(self.swatch * 1.6)
@@ -2308,16 +2296,8 @@ class _Legend:
         self.count_size = max(10, cell // 10)
         self.count_line = int(self.count_size * 1.6)
         max_chars = max(18, int(board.size * cell / (self.count_size * 0.55)))
-        texts = (
-            count_texts
-            if count_texts is not None
-            else [condition.description for condition in self.global_counts]
-        )
-        numbers = (
-            [condition.number or index for index, condition in enumerate(self.global_counts, 1)]
-            if self.global_counts
-            else list(range(1, len(texts) + 1))
-        )
+        texts = count_texts or ()
+        numbers = range(1, len(texts) + 1)
         self.global_count_lines = [
             lines
             for number, text in (zip(numbers, texts, strict=True) if count_lines else ())

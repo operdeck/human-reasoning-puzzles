@@ -5,7 +5,7 @@ import pytest
 
 from csp.bruteforce.murdoku_expr import solutions
 from csp.core import Contradiction, Kind, Model, Solver, Step, rule_relations
-from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_puzzle
+from csp.murdoku import Board, BoardObject, CellMark, RoleSpec, Square, compile_board
 from csp.murdoku_lang import holds, parse_statement
 from csp.murdoku_lower import (
     compile_statements,
@@ -132,7 +132,7 @@ def test_object_count_scope_ignores_blocking_object_cells(board):
 
 def _assert_matches_reference(board, formula, lower, *, solve=False):
     statement = parse_statement(formula)
-    model = compile_puzzle(board, [])
+    model = compile_board(board)
     assert lower(model, board, statement, "clue 1")
     for solution in solutions(board, [], limit=1000):
         placed = {person: solution[person] for person in board.people}
@@ -250,7 +250,7 @@ def test_person_choice_lowering_matches_reference(board, formula):
 
 def test_person_choice_leaves_role_dependent_options_to_general_lowering(board):
     formula = "exactly 1 of (Ada on mark:red; Ben is role:guard)"
-    model = compile_puzzle(board, [])
+    model = compile_board(board)
     assert not try_lower_person_choice(model, board, parse_statement(formula), "clue 1")
     _assert_compilation_matches_reference(board, formula)
 
@@ -264,7 +264,7 @@ def test_person_choice_leaves_larger_relations_to_general_lowering():
         people=["Ada", "Ben", "Cy", "Dee"],
     )
     statement = parse_statement("exactly 1 of (Ada dir:left Ben; Cy dir:left Dee)")
-    model = compile_puzzle(board, [])
+    model = compile_board(board)
     before = len(model.constraints), len(model.relations), len(model.log)
     assert not try_lower_person_choice(model, board, statement, "clue 1")
     assert (len(model.constraints), len(model.relations), len(model.log)) == before
@@ -314,7 +314,7 @@ def test_occupied_cell_pair_matches_reference(board, formula):
 
 def test_impossible_occupied_cell_pair_uses_general_lowering(board):
     formula = "some (people on object:bed) dir:up (people on object:bed)"
-    model = compile_puzzle(board, [])
+    model = compile_board(board)
     assert not try_lower_occupied_cell_pair(model, board, parse_statement(formula), "clue 1")
     _assert_compilation_matches_reference(board, formula)
 
@@ -451,7 +451,7 @@ def test_lowered_person_pair_matches_reference_for_every_placement_and_role(boar
 
 
 def test_unsupported_statement_does_not_change_model(board):
-    model = compile_puzzle(board, [])
+    model = compile_board(board)
     before = (model.num_literals, len(model.constraints), len(model.relations))
     assert not try_lower_count(model, board, parse_statement("Ada in area:hall"), "clue 1")
     assert not try_lower_person_pair(model, board, parse_statement("Ada dir:nearest Ben"), "clue 2")
@@ -465,7 +465,7 @@ def test_static_empty_scope_reports_infeasible_count(board):
         objects=[BoardObject("rock", "blocking", (square,))],
         marks=[CellMark("blocked", (square,))],
     )
-    model = compile_puzzle(board, [])
+    model = compile_board(board)
     assert try_lower_count(model, board, parse_statement("count people on mark:blocked = 0"), "ok")
     with pytest.raises(ValueError, match="no feasible value on this board"):
         try_lower_count(model, board, parse_statement("count people on mark:blocked = 1"), "bad")
@@ -610,7 +610,7 @@ def test_shared_population_primitives_keep_only_using_statements():
         "count (people in ?b) > count (people in area:shed)"
     )
     compiled = compile_statements_with_origins(board, [first, second])
-    baseline = compile_puzzle(board, [])
+    baseline = compile_board(board)
     assert set(compiled.constraint_origins) == set(
         range(len(baseline.constraints), len(compiled.model.constraints))
     )

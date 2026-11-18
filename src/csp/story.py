@@ -154,7 +154,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "on_or_next_to": "on or next to {what}",
         "is": "{who} is {where}",
         "is_not": "{who} is not {where}",
-        "count": "{who} has {n} squares left",
+        "count": "{who} has {n} candidate squares left",
         "placed": "**{who} on {square}**",
         "so": "so",
         "cross_out.one": "cross out the other open square in that {line}",
@@ -596,7 +596,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "on_or_next_to": "op of naast {what}",
         "is": "{who} zit {where}",
         "is_not": "{who} zit niet {where}",
-        "count": "{who} kan nog op {n} vakjes",
+        "count": "{who} kan nog op {n} vakjes staan",
         "placed": "**{who} op {square}**",
         "so": "dus",
         "cross_out.one": "streep het andere nog open vakje in die {line} weg",
@@ -1851,8 +1851,8 @@ def clue_texts(text: str) -> list[str]:
     return [_expression_sentence(words, clue) for clue in statements]
 
 
-def global_count_texts(text: str) -> list[str]:
-    """Each global count of a Murdoku puzzle file as one plain sentence, in file order."""
+def global_count_statements(text: str) -> list[tuple[murdoku_lang.Statement, str]]:
+    """Each count-bearing Murdoku statement and its player-facing sentence, in file order."""
     board, rules, statements = load_expression_board(text)
     words = ExpressionWords.read(board, text)
 
@@ -1868,10 +1868,15 @@ def global_count_texts(text: str) -> list[str]:
         return False
 
     return [
-        _expression_sentence(words, statement)
+        (statement, _expression_sentence(words, statement))
         for statement in (*rules, *statements)
         if contains_count(statement.formula)
     ]
+
+
+def global_count_texts(text: str) -> list[str]:
+    """Each global count of a Murdoku puzzle file as one plain sentence, in file order."""
+    return [sentence for _, sentence in global_count_statements(text)]
 
 
 def _tagged_area(say: Wording, rid: str, name: str) -> str:

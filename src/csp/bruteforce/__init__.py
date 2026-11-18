@@ -34,7 +34,6 @@ from . import (
     minesweeper,
     mosaic,
     murdoku,
-    murdoku_expr,
     pattern,
     rectangles,
     starbattle,
@@ -46,19 +45,9 @@ from . import (
     undead,
 )
 
-
-def _murdoku_solutions(text: str, limit: int) -> list[dict[str, Any]]:
-    from ..murdoku_expression_file import is_expression_file, load_expression_board
-
-    if is_expression_file(text):
-        board, rules, clues = load_expression_board(text)
-        return list(murdoku_expr.solutions(board, clues, limit, rules=rules))
-    return murdoku.solutions(text, limit)
-
-
 SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "sudoku": sudoku.solutions,
-    "murdoku": _murdoku_solutions,
+    "murdoku": murdoku.solutions,
     "queens": starbattle.solutions,
     "suguru": suguru.solutions,
     "logicgrid": logicgrid.solutions,

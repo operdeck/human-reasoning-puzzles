@@ -319,7 +319,13 @@ Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are req
 Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
 
 The expression language in [#244](https://github.com/operdeck/human-reasoning-puzzles/issues/244)
-is detected automatically by the CLI, web exporter, booklet and authoring tools.
+is the only Murdoku clue grammar used by the CLI, web exporter, booklet and authoring tools.
+`load_expression_board` returns the fixed layout, rule statements and clue
+statements separately. `load_board_layout` reads only declarations;
+`compile_board` compiles those declarations, while `murdoku_lower.compile_statements`
+adds the typed expressions. The independent search evaluates those same
+expressions through the reference evaluator. There is no legacy reader,
+predicate compiler or alternate search path.
 In this language, `in` is reflexive footprint containment and `on` is reflexive overlap;
 other spatial operators require distinct entities. An `empty` cell has no
 person even if blocked; migrate the current empty-cell counts using

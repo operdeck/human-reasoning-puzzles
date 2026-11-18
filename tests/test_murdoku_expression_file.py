@@ -1,6 +1,5 @@
 import json
 from dataclasses import fields, is_dataclass
-from pathlib import Path
 from typing import get_args
 
 import pytest
@@ -12,7 +11,6 @@ from csp.murdoku import Square
 from csp.murdoku_expression_file import keyed_expression_clue_numbers, load_expression_board
 from csp.murdoku_lang import Atom, Formula, Measure, Name, Number, Operand, format_statement, holds
 from csp.murdoku_lower import compile_statements
-from csp.puzzlefile import load_board
 from csp.story import (
     attribute_list,
     board_notes,
@@ -75,7 +73,6 @@ def test_plain_clue_and_count_text_preserve_expression_wording_and_file_order():
 
 def test_expression_file_keeps_source_positions_and_separate_rules():
     board, rules, clues = load_expression_board(TEXT)
-    assert not board.rules
     assert len(rules) == len(clues) == 1
     assert rules[0].wording == "Ada stays in the first row."
     assert clues[0].wording == "Ben is in the first column."
@@ -168,14 +165,12 @@ def test_expression_file_allows_case_sensitive_non_keywords(name):
     assert name in board.people
 
 
-def test_legacy_reader_still_interprets_legacy_rules_and_clues():
+def test_removed_legacy_rules_and_clues_fail_in_the_only_reader():
     text = TEXT.replace("Ada in rows:1", "in Ada rows:1").replace(
         "Ben in columns:1", "in Ben columns:1"
     )
-    board, clues = load_board(text)
-    assert len(board.rules) == len(clues) == 1
-    assert board.rules[0] == ("in", ["Ada", "rows:1"])
-    assert clues[0] == ("in", ["Ben", "columns:1"])
+    with pytest.raises(ValueError, match=r"line 11.*in"):
+        load_expression_board(text)
 
 
 def test_layout_presentation_does_not_parse_expression_clues_as_legacy():
@@ -490,11 +485,7 @@ def test_cli_expression_svg_writes_puzzle_and_solution(tmp_path):
 
 def test_expression_files_are_detected_without_a_flag(tmp_path, capsys):
     from csp.bruteforce import solutions
-    from csp.murdoku_expression_file import is_expression_file
 
-    assert is_expression_file(TEXT)
-    assert is_expression_file(Path("examples/demo/murdoku_3_house.txt").read_text())
-    assert not is_expression_file("Size: 3\n\nClues:\n  dir A B left = 1\n")
     assert cli.load(TEXT, "murdoku").model is not None
     assert len(solutions(TEXT, "murdoku", 2)) == 1
     puzzle = tmp_path / "puzzle.txt"

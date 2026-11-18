@@ -130,8 +130,6 @@ def _roles(board: Board, placed: dict[str, Square]) -> Iterator[dict[tuple[str, 
 def _checks(
     board: Board, statements: Sequence[Statement], rules: Sequence[Statement]
 ) -> list[Statement]:
-    if board.rules:
-        raise ValueError("board rules must be migrated to expression statements first")
     checks = [*declaration_statements(board), *rules, *statements]
     for statement in checks:
         check_formula(board, statement.formula)

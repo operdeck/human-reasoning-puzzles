@@ -51,9 +51,10 @@ inspection methods, `assign`/`eliminate`). Renderers learn what changed from
 **Solving, explaining and drawing are separate layers.** `core` records
 *why* each step happened as structure on `Step` (`sources`, `scope`,
 `placing`, `trail`), never as wording. `proof` shortens a solve using only
-that and the public API. `murdoku` owns the board and what clues mean, and
-`board_rules()` is the structured meaning of its constraints — look names
-up there, never parse them. Wording (`Language:`, `Words:`, phrasebooks)
+that and the public API. `murdoku` owns the board, and `board_rules()` is the
+structured meaning of its board constraints — look names up there, never parse
+them. `murdoku_lang` defines clue semantics; `murdoku_lower` compiles the AST.
+Wording (`Language:`, `Words:`, phrasebooks)
 lives in `story` and `murdoku_expression_words`; pictures only in `picture`. Explanation concerns
 never go on `Board` or into `core`. `test_modules_only_import_their_own_layer`
 enforces the import graph.
@@ -62,7 +63,7 @@ enforces the import graph.
 
 | Boundary | Contract |
 |---|---|
-| puzzle module -> engine | `compile_puzzle(...) -> Model` |
+| puzzle module -> engine | `compile_puzzle(...) -> Model`; Murdoku uses `murdoku_lower.compile_statements(...)` over `murdoku.compile_board(...)` |
 | engine -> rules | `Rule(name, apply)`, `apply(model) -> bool`; log every deduction under `name` |
 | engine -> caller | `Solver(model, rules).solve(on_step) -> Result` |
 | progress | `on_step(rule_name, steps)` after each rule that fires |

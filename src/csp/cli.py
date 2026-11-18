@@ -54,8 +54,9 @@ from . import (
     web,
 )
 from .bruteforce import murdoku_expr as expression_brute
-from .core import DEFAULT_RULES, Contradiction, Model, Solver, Step
+from .core import DEFAULT_RULES, Contradiction, Kind, Model, Solver, Step
 from .murdoku_expression_file import load_expression_board
+from .murdoku_lang import Statement
 from .murdoku_lower import (
     ExpressionCompilation,
     compile_statements_with_origins,
@@ -161,8 +162,18 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "battleships":
         model, battleships_puzzle = battleships.compile_puzzle(text)
         return Puzzle(kind, model, partial(battleships.render, battleships_puzzle))
-    board = load_expression_board(text)[0]
-    return Puzzle(kind, _expression_model(text), partial(murdoku.render, board))
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    return Puzzle(
+        kind,
+        compilation.model,
+        partial(
+            murdoku.render,
+            board,
+            count_progress=_murdoku_count_progress(compilation, text),
+            count_scope=object_count_scope(board, (*rules, *clues)),
+        ),
+    )
 
 
 def narrate(rule: str, steps: Sequence[Step]) -> None:
@@ -355,7 +366,7 @@ def write_picture(
 
 
 def _murdoku_lint(
-    board: murdoku.Board, clues: Sequence[murdoku.Clue], model: Model, text: str = ""
+    board: murdoku.Board, statements: Sequence[Statement], model: Model, text: str = ""
 ) -> list[str]:
     findings: list[str] = []
     for name in picture.unknown_object_icons(board):
@@ -371,8 +382,6 @@ def _murdoku_lint(
     for name in sorted({name for name, _ in board.decorations}):
         if icons.object_icon(name) is None:
             findings.append(f"warning: unknown decoration icon {name}")
-    for number, other in murdoku.implied_clues(clues):
-        findings.append(f"warning: clue {number} is already implied by clue {other}")
 
     try:
         presentation = load_presentation(text)
@@ -396,39 +405,10 @@ def _murdoku_lint(
         elif not set(free_cells) & candidate_squares:
             findings.append(f"warning: unreachable area {name}; no person candidate remains")
 
-    role_references: set[str] = set()
-    role_positions = {
-        "has_role": (1,),
-        "not_role": (1,),
-        "role_in_tagged": (1,),
-        "role_not_in_tagged": (1,),
-        "role_on": (1,),
-        "role_not_on": (1,),
-        "role_next_to": (1,),
-        "role_below": (1,),
-        "sole_role_companion": (1,),
-        "role_subset": (0, 1),
-        "min_role_in_tagged": (0,),
-        "role_occupant": (0,),
-    }
-    for rule in murdoku.role_conditions(board, clues):
-        if rule.kind in ("some_role", "roleless", "at_most_one_role"):
-            role_references.update(board.role_names)
-        for position in role_positions.get(rule.kind, ()):
-            token = rule.args[position]
-            name = token.partition(":")[2] if token.startswith("role:") else token
-            if name in board.role_names:
-                role_references.add(name)
-    for target_condition in murdoku.quantified_conditions(board, clues):
-        if target_condition.selector.kind == "role":
-            role_references.add(target_condition.selector.name)
-    for count_condition in murdoku.global_count_conditions(board, clues):
-        if (
-            count_condition.kind == "people_with"
-            and count_condition.selector is not None
-            and count_condition.selector.kind == "role"
-        ):
-            role_references.add(count_condition.selector.name)
+    if text and not statements:
+        _, rules, clues = load_expression_board(text)
+        statements = [*rules, *clues]
+    role_references = murdoku_expr_lint.referenced_roles(board, statements)
     for role in board.roles:
         if (
             role.allowed_counts != frozenset(range(len(board.people) + 1))
@@ -858,6 +838,34 @@ def _expand_patterns(patterns: Sequence[str]) -> list[Path] | None:
     return found
 
 
+def _murdoku_count_progress(
+    compilation: ExpressionCompilation, text: str
+) -> tuple[tuple[str, tuple[int, ...]], ...]:
+    """Pair count-bearing statements with their lowered COUNT constraints."""
+    used_origins: set[int] = set()
+    progress = []
+    for statement, sentence in story.global_count_statements(text):
+        origin_index = next(
+            (
+                index
+                for index, origin in enumerate(compilation.origins)
+                if index not in used_origins and origin.statement == statement
+            ),
+            None,
+        )
+        if origin_index is None:
+            raise ValueError(f"count statement has no compiler origin: {sentence}")
+        used_origins.add(origin_index)
+        origin = compilation.origins[origin_index]
+        constraint_ids = tuple(
+            constraint_id
+            for constraint_id, origins in compilation.constraint_origins.items()
+            if origin in origins and compilation.model.constraints[constraint_id].kind is Kind.COUNT
+        )
+        progress.append((sentence, constraint_ids))
+    return tuple(progress)
+
+
 def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentParser) -> int:
     picture_paths = [
         path.with_suffix(suffix) if option is _PNG_DEFAULT else option
@@ -885,10 +893,13 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
                         print(f"lint error: {error}")
                     return 1
             if args.brute_force:
+                count_progress: tuple[tuple[str, tuple[int, ...]], ...] = tuple(
+                    (sentence, ()) for _, sentence in story.global_count_statements(text)
+                )
                 expression_puzzle = Puzzle(
                     "murdoku",
-                    murdoku.compile_puzzle(expression_board, []),
-                    partial(murdoku.render, expression_board),
+                    murdoku.compile_board(expression_board),
+                    partial(murdoku.render, expression_board, count_progress=count_progress),
                 )
                 print(expression_puzzle.draw("Start"))
                 return brute_force(expression_puzzle, text, expressions=True)
@@ -900,12 +911,7 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             print(f"{prefix} {path.name}: {exc}", file=sys.stderr)
             return 1 if args.lint or args.require_forward else 2
         if args.lint or args.require_forward:
-            references = murdoku_expr_lint.referenced_roles(expression_board, expression_statements)
-            findings = _murdoku_lint(expression_board, [], compiled.model, text)
-            used_role_warnings = {
-                f"warning: role {role} is declared but unused" for role in references
-            }
-            findings = [finding for finding in findings if finding not in used_role_warnings]
+            findings = _murdoku_lint(expression_board, expression_statements, compiled.model, text)
             findings.extend(
                 f"warning: {warning}"
                 for warning in murdoku_expr_lint.role_negation_warnings(
@@ -943,7 +949,17 @@ def _solve_one(args: argparse.Namespace, path: Path, parser: argparse.ArgumentPa
             print(report.grade(expression_fired) if expression_result.solved else "unsolved")
             return 0 if expression_result.solved else 1
         expression_compiled = compiled
-        puzzle = Puzzle(kind, compiled.model, partial(murdoku.render, expression_board))
+        count_progress = _murdoku_count_progress(compiled, text)
+        puzzle = Puzzle(
+            kind,
+            compiled.model,
+            partial(
+                murdoku.render,
+                expression_board,
+                count_progress=count_progress,
+                count_scope=object_count_scope(expression_board, expression_statements),
+            ),
+        )
     else:
         if (args.lint or args.require_forward) and kind != "murdoku":
             parser.error("--lint and --require-forward are only available for Murdoku")
