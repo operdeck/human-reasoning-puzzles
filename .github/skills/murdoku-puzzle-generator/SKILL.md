@@ -26,9 +26,9 @@ reasoning in the conversation or by throwaway scripts; see
    fetch another version). Record size, regions, object footprints with their
    **printed** kinds, people, board-wide rules and clues in printed order.
 3. Map each clue without changing its meaning. Before deciding one is not
-   expressible, check [Is a clue expressible?](#is-a-clue-expressible-quick-lookup)
-   and the [Supported clues](#supported-clues) table below — most "or", count,
-   special-square and victim forms are already there. If one really is not
+   expressible, follow the [recipe guide](#clue-recipe-guide) and the canonical
+   expression reference — most alternatives, counts, special-square and victim
+   forms compose from the same primitives. If one really is not
    expressible, say so and ask; a partial file must be labelled incomplete.
    Never approximate.
 4. Ask about unclear cells, names or words. Solver results may hint at a misread
@@ -177,15 +177,15 @@ its short output, and decide:
 
 Clues should read like a detective's notes, not like arithmetic.
 
-- **Prefer areas, objects and simple relations:** `in P area:name`,
-  `beside`/`not beside` an object, `on P object:name`, `dir A B areas = 0`,
-  and unnumbered `dir A B left|up`.
+- **Prefer areas, objects and simple relations:** `P in area:name`,
+  `P beside object:bench` / `not P beside object:bench`,
+  `P on object:chair`, `A dir:areas B = 0`, and `A dir:left B`.
 - **Use exact numbers sparingly**: at most one or two directional distances,
   line/area counts, or other numeric clues per puzzle, and only when they read
-  naturally. `dir A B manhattan ...` counts row-plus-column steps; `euclidean`
+  naturally. `A dir:manhattan B ...` counts row-plus-column steps; `dir:euclidean`
   is straight-line distance. The [grammar reference](../../../docs/model-and-puzzle-formats.md#murdoku)
   defines every mode and comparison.
-- Never hand out a square outright (`in P rows:n` + `in P columns:n`, or a first clue
+- Never hand out a square outright (`P in rows:2` + `P in columns:3`, or a first clue
   that pins someone) unless an easy puzzle is wanted.
 - **Multi-square objects:** someone on one selected cell may also be `beside`
   another cell of that footprint. Check generated wording against that meaning;
@@ -193,11 +193,11 @@ Clues should read like a detective's notes, not like arithmetic.
   overrides authoritative.
 - **Read every generated clue as a player would** (`clue_paragraphs`, `--docx`)
   and ask whether another reading of the sentence allows other squares. If it
-  does, fix the generated text in `src/csp/story.py` with a test; do not
+  does, fix the generated expression wording with a test; do not
   redesign the board or swap a multi-square object for single squares.
-- **Spatial selectors name cells, not occupants.** In `dir`, `object:` names
-  the object's squares even when blocking; `people_on:object:` names people.
-  A negated `king <= 1` excludes the target squares and all eight neighboring
+- **Features and their occupants are different operands.** `object:bench`
+  names the feature even when blocking; `(people on object:bench)` names its
+  occupants. `not P dir:king object:bench <= 1` excludes its footprint and all eight neighboring
   squares, including diagonals and neighbors across area borders. Keep that
   distinction explicit in generated clues.
 - Every clue must be needed: `thin` and `report` show which are not; `--lint`
@@ -240,16 +240,17 @@ Clues should read like a detective's notes, not like arithmetic.
 In a mystery the answer (murderer, victim, eater, carer) is the **last
 candidate**, deduced from board-wide rules, never told.
 
-- **No direct giveaways.** No `has P role:...` clue about the answer, and
+- **No direct giveaways.** No `P is role:murderer` clue about the answer, and
   the answer person appears in no clue (`suggest --exclude P`). Only `Rules:`
   speak about them.
 - **Encode the story as rules**, not as a hint. For example: the murderer is a
   woman (`Attributes:` + `RoleEligibility: moordenaar: attribute:vrouw`), was at
   the crime scene (`AreaTags: plaats_delict: coupe_2` +
-  `for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1`)
-  and was not alone there (`for each area in all occupied by role:moordenaar,
-  count people in that area >= 2`). Mention these rules in the `Intro:`.
-  For the classic victim pattern use `with P in same area exactly 1`.
+  `every ?a in tag:plaats_delict: some role:moordenaar in ?a`)
+  and was not alone there
+  (`every ?a in (area of role:moordenaar): count (people in ?a) >= 2`).
+  Mention these rules in the `Intro:`.
+  For the classic victim pattern use `count (people in area of P) = 2`.
 - **Exactly one answer must follow.** Check with `--brute-force` (one
   solution, one role holder) and read `--explain`: the answer should become
   known by elimination ("De moordenaar was op de plaats delict, dus …") as late
@@ -266,8 +267,8 @@ candidate**, deduced from board-wide rules, never told.
   `count people on object:<garment> = 1` rule tells the solver the square is
   occupied and pins the wearer early, so leave it out and let the `Intro:` say
   that standing on the garment means wearing it.
-- **Population clues need squares that can change area.** `most_populated`,
-  `least_populated` and `count people in area:…` constrain which *squares* are
+- **Population clues need squares that can change area.** Comparisons between
+  area populations and `count (people in area:Tokyo)` constrain which *squares* are
   used, not who stands on them, so a puzzle whose people are each anchored to a
   square implies them and `report` calls them removable. Two people swapping
   two squares never changes a count: leave a row/column whose cells straddle an
@@ -391,8 +392,8 @@ For a finished Murdoku under `examples/`, before reporting done:
   name and exactly the same members as an attribute, show the role line only.
   Keep the attribute line when roles are hidden or the membership is not
   provably identical.
-- **Selectors on both sides** of a relation clue say "somebody X ... somebody
-  Y": `dir people_on:object:badjas people_on:object:sloffen up = 1` is
+- **Filtered people on both sides** of a relation say "somebody X ... somebody
+  Y": `some (people on object:badjas) dir:up (people on object:sloffen) = 1` is
   "one bathrobe wearer is
   exactly one row above the slippers wearer". When both selectors name cells
   the engine reasons over squares, as a person would.
@@ -459,14 +460,85 @@ wording fixes through `src/csp/story.py` with regression tests. If an
 independent reviewer is unavailable, state that limitation rather than
 claiming a review was completed.
 
+## Clue recipe guide
+
+Follow the murdoku.fans transcription method: identify the **subject**, the
+**relation**, any **qualifier**, and its **scope**, then write one **yes/no
+test**. Compose; do not add a keyword.
+
+1. Decide whether each noun names people, features, cells, lines, areas or roles.
+   The person on a horse is `(people on object:horse)`, not the horse itself.
+2. Select the operands. Use a union for alternatives, a filter for a restricted
+   set, and a projection for its areas, rows or cells.
+3. Make quantities explicit. A multi-element left operand needs `some`, `every`
+   or `no`; bind `?` variables when the same entity must be reused.
+4. Preserve scope. "Not near any dish" negates the whole near relation; saying
+   "far from some dish" is weaker. "Exactly these people" needs set equality,
+   not merely a total.
+5. Test a placement that should satisfy the card and one that should not,
+   against the reference evaluator. Then run lint, uniqueness and grade checks.
+   A unique answer does not prove a faithful transcription.
+
+These are composition recipes, not additional grammar:
+
+| Printed card | Statement(s) |
+|---|---|
+| One row above an empty row | `P dir:up empty rows = 1` |
+| In a bed; the other bed is in an empty row | `P on object:bed`; `every ?b in object:bed: P on ?b or ?b in empty rows` |
+| Someone one row above her is beside a chest | `some (people beside object:chest) dir:up P = 1` |
+| Top or bottom row; the other is empty | `P in rows:1,last`; `count (people in rows:1,last) = 1` |
+| Beside a plant | `P beside object:plant` |
+| South of B; exactly one row south | `P dir:down B`; `P dir:down B = 1` |
+| Three columns west of B | `P dir:left B = 3` |
+| Northeast of B | `P dir:up+right B` |
+| On B's diagonal | `P dir:diagonal B` |
+| First column / bottom row / fifth row | `P in columns:1` / `P in rows:last` / `P in rows:5` |
+| The only person on a carpet / beside a table | `(people on object:carpet) = P` / `(people beside object:table) = P` |
+| At least two people in the dining room | `count (people in area:dining) >= 2` |
+| A and C alone together in the changing room | `(people in area:changing) = A, C` |
+| Not in water, but beside it | `not P in area:water and P beside area:water` |
+| Before or after Hole 5 in playing order | `P on object:hole4,hole6` (the author resolves the order) |
+| Not with the outlaw | `not P dir:areas role:outlaw = 0`; add `not P is role:outlaw` only if membership is also excluded |
+| With a man and the only woman on a chair; J is not on a chair | `some attribute:man dir:areas J = 0`; `count (attribute:woman on object:chair) = 1`; `some (attribute:woman on object:chair) dir:areas J = 0`; `not J on object:chair` |
+| Nearest the piano | `P dir:nearest object:piano` |
+| Between Ada and the statue in one row | `(Ada dir:left P and P dir:left object:statue) or (object:statue dir:left P and P dir:left Ada)`; `P dir:rows Ada = 0 and P dir:rows object:statue = 0` |
+| The murderer shares the victim's room, with nobody else | `(people in area of role:victim) = role:murderer, role:victim` |
+| Every woman is on a chair | `every attribute:woman on object:chair` |
+| Every woman is in a different room | `every ?p, ?q in attribute:woman: ?p dir:areas ?q >= 1` |
+| If Ada is in the kitchen, Ben is not | `if Ada in area:kitchen then not Ben in area:kitchen` |
+| Cook or Butler is on a rug, but not both | `exactly 1 of (Cook on object:rug; Butler on object:rug)` |
+| Two rooms beside the hall are empty | `count (empty areas touches area:hall) = 2` |
+| No empty row between occupied rows | `no ?r in empty rows: some occupied rows dir:up ?r and some occupied rows dir:down ?r` |
+| Someone west of the whole river | `some ?p in people: every ?c in (cells in area:river): ?p dir:left ?c` |
+
+**Worked quantifier transcription.** "Ada lies in a bed; the other bed is in
+an empty row" names bed instances, not all bed squares as one anonymous set.
+Write `Ada on object:bed`, then
+`every ?b in object:bed: Ada on ?b or ?b in empty rows`.
+The bound `?b` is reused in both alternatives. Check a layout where Ada uses
+one bed and every unused bed lies entirely in an empty row; moving another
+person into an unused bed's row must fail. If the card says "the other bed",
+first verify the board actually has two bed instances.
+
+**Worked set-equality transcription.** "Ada and Carmen are alone together in
+the changing room" is `(people in area:changing) = Ada, Carmen`.
+It both requires their presence and excludes everyone else. Check that either
+person leaving the room, or a third person entering, makes the statement false.
+`count (people in area:changing) = 2` alone would not identify the pair.
+
+For a card meaning the **strict interior of the rectangle** between Ada and a
+statue, combine horizontal between-ness with its vertical counterpart:
+`((Ada dir:left P and P dir:left object:statue) or (object:statue dir:left P and P dir:left Ada)) and ((Ada dir:up P and P dir:up object:statue) or (object:statue dir:up P and P dir:up Ada))`.
+Do not silently substitute this for inclusive edges or an aligned-row reading.
+
 ## Canonical grammar
 
 The [Murdoku section of the format guide](../../../docs/model-and-puzzle-formats.md#murdoku)
 is the single reference for file sections, selectors, clue and rule syntax,
 semantics, and migration history. The reader accepts canonical forms only;
 do not use legacy examples from old puzzles or add a second syntax summary here.
-Before treating a clue as unsupported, check the guide's predicate and selector
-tables. If no canonical form expresses it, report the gap rather than
+Before treating a clue as unsupported, compose it using the recipe above and
+the guide's operand and formula rules. If no expression captures it, report the gap rather than
 approximating the clue.
 Object, edge, point, mark, role, attribute, and area-tag semantics are defined
 there as well. Use the parser and `--lint`; never infer behavior from names or
@@ -503,10 +575,16 @@ One or two lines, true for the verified solution (check against --explain).
   Everyone appears, even without clues; global and loose clues follow under
   "Other clues" / "Overige aanwijzingen". Ownership comes from clue semantics,
   so a custom wording need not start with the owner's name.
+  Puzzle-specific `Rules:` statements join these entries too, under their
+  semantic subject or the sole named figure anchoring a compound rule;
+  otherwise they join "Other clues". Keep `Intro:` as written. The game-rules
+  panel adds semantic clarifications and the disclaimer, not another list of
+  puzzle-specific statements. Standard no-own-clues notes are hidden when a
+  figure has a displayed rule or clue, preserving the rest of the description.
 - `clue | wording` overrides one generated sentence; it must mean exactly the
   clue. Use it only where the generated text reads badly or for flavour. A
-  `Rules:` line takes `| wording` too; it is then listed with the rules in the
-  booklet and web player and used in the picture legend. Author wordings are
+  `Rules:` line takes `| wording` too; it is then listed with the figure's
+  clues (or "Other clues") in the booklet and web player and used in the picture legend. Author wordings are
   for players only: worked solutions always keep the generated text.
 - `Words:` fixes phrasing: region phrases (`moeras: in het moeras`,
   `kantoor: op kantoor`), object nouns with their article (`gras: het gras`,

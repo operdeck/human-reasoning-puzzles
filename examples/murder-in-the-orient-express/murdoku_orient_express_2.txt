@@ -138,21 +138,21 @@ Sergej
 Joeri
 
 Rules:
-for each area in all occupied by role:moordenaar, count people in that area >= 2
-for each area in tag:plaats_delict, count people in that area with role:moordenaar >= 1
+every ?p in role:moordenaar: count (people in area of ?p) >= 2
+every ?a in tag:plaats_delict: some role:moordenaar in ?a
 
 Clues:
-in Grigori area:noordperron
-in Vera area:noordperron
-in Sergej area:gangpad
-in Pjotr area:locomotief
-beside Vera object:koffer
-beside Fjodor object:koffiebar
-in Joeri area:zuidperron
-dir Irina Grigori left
-beside Tatjana object:lijk
-on Grigori object:perron_bank
-dir Tatjana Fjodor left
+Grigori in area:noordperron
+Vera in area:noordperron
+Sergej in area:gangpad
+Pjotr in area:locomotief
+Vera beside object:koffer
+Fjodor beside object:koffiebar
+Joeri in area:zuidperron
+Irina dir:left Grigori
+Tatjana beside object:lijk
+Grigori on object:perron_bank
+Tatjana dir:left Fjodor
 
 Title:
 Moord in de Oriënt Express 2: Wie is de moordenaar?
@@ -165,8 +165,8 @@ De moordenaar is een man, was in de restauratiewagen en was daar niet alleen.
 Figures:
 Fjodor: ; icon=U+1F468
 Tatjana: ; icon=U+1F469
-Boris: ; icon=U+1F9D4
-Natasja: ; icon=U+1F471
+Boris: geen eigen aanwijzingen ; icon=U+1F9D4
+Natasja: geen eigen aanwijzingen ; icon=U+1F471
 Pjotr: ; icon=U+1F9D1
 Irina: ; icon=U+1F469
 Grigori: ; icon=U+1F474

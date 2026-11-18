@@ -40,27 +40,27 @@ recorder: 3 different_regions
 RoleEligibility:
 navigator: attribute:trained
 Clues:
-on Bo edge_item:archway
-on Cal edge_item:window
-on Dee point_object:fountain
-on Dee object:bench
-on Ada mark:quiet
-dir Bo attribute:trained up
-has Cal role:navigator
-has Ada role:recorder
-has Bo role:recorder
-has Cal role:recorder
-subset role:navigator role:recorder
-if has Cal role:navigator then in Cal tag:daylight
+Bo on edge_item:archway
+Cal on edge_item:window
+Dee on point_object:fountain
+Dee on object:bench
+Ada on mark:quiet
+Bo dir:up attribute:trained
+Cal is role:navigator
+Ada is role:recorder
+Bo is role:recorder
+Cal is role:recorder
+every role:navigator is role:recorder
+if Cal is role:navigator then Cal in tag:daylight
 count people on object:bench = 1
 count people in tag:north = 2
-count people with role:navigator = 1
-count people with role:recorder = 3
-count people with attribute:trained = 2
+count role:navigator = 1
+count role:recorder = 3
+count attribute:trained = 2
 count empty areas = 1
 count empty areas in tag:west = 1
-count empty cells in mark:quiet = 1
-count empty cells in rows:1-4 = 10
+count empty free cells in mark:quiet = 1
+count empty free cells in rows:1-4 = 10
 
 # Booklet text for --docx (optional).
 Title:

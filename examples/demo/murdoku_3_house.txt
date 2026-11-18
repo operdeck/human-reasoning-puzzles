@@ -42,12 +42,12 @@ Dirk
 Eva
 
 Clues:
-exactly 1 in Ada area:study ; in Ben area:hall
-dir Ada Dirk left
-in Eva area:garden
-on Ben object:carpet
-dir Cleo Eva up
-not beside Ben object:lamp
+exactly 1 of (Ada in area:study; Ben in area:hall)
+Ada dir:left Dirk
+Eva in area:garden
+Ben on object:carpet
+Cleo dir:up Eva
+not (Ben beside object:lamp)
 
 # Booklet text for --docx (optional).
 Title:
@@ -56,6 +56,9 @@ Murdoku: The house
 Intro:
 Five people are in a house with four areas. Place each of them on a free square, one per row and one per column.
 Every clue is needed; drop one and the solution is no longer unique.
+
+Figures:
+Dirk: has no clues of his own
 
 Question:
 Where does everyone stand?

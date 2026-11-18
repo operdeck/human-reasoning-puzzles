@@ -6,7 +6,7 @@ Size: 6
 Language: en
 
 Words:
-target.attribute: a {name}
+name.attribute: a {name}
 Velázquez_room: in the Velázquez room
 Goya_room: in the Goya room
 egyptian_hall: in the Egyptian hall
@@ -93,14 +93,14 @@ Elena
 Fernando
 
 Rules:
-for each area in tag:crime_scene, count people in that area with role:murderer >= 1
+every ?a in tag:crime_scene: some role:murderer in ?a
 
 Clues:
-beside Bernardo object:painting
-in Alba area:Goya_room
-on Fernando object:sarcophagus
-beside Diego object:sauropod
-not beside Elena object:scarab
+Bernardo beside object:painting
+Alba in area:Goya_room
+Fernando on object:sarcophagus
+Diego beside object:sauropod
+not (Elena beside object:scarab)
 
 Title:
 Halloween at the Museum: The cursed dagger
@@ -113,7 +113,7 @@ The murderer is a woman and was in the room where the weapon lies.
 Figures:
 Alba: the curator ; icon=U+1F475
 Bernardo: the night guard ; icon=U+1F9D4
-Carmen: dressed as a witch ; icon=U+1F9D9
+Carmen: dressed as a witch, with no clues of their own ; icon=U+1F9D9
 Diego: dressed as a vampire ; icon=U+1F9DB
 Elena: dressed as a zombie ; icon=U+1F9DF
 Fernando: the tour guide ; icon=U+1F468

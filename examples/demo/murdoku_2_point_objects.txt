@@ -45,12 +45,12 @@ Cal
 Dee
 Eli
 Clues:
-on Ada point_object:mouse1
-on Bo point_object:fountain
-on Cal point_object:cheese
-in Cal area:Greenhouse
-on Eli point_object:cat
-not on Dee point_object:mouse2
+Ada on point_object:mouse1
+Bo on point_object:fountain
+Cal on point_object:cheese
+Cal in area:Greenhouse
+Eli on point_object:cat
+not (Dee on point_object:mouse2)
 
 # Booklet text for --docx (optional).
 Title:

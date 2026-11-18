@@ -87,20 +87,24 @@ Tatsuya
 Sora
 
 Clues:
-most_populated area:Tokyo
-least_populated area:Okinawa area:Hiroshima
-on Kaori point_object:lantaarn
-on Renji point_object:neon
-on Mizuki point_object:torii
-dir Mizuki Kaori areas = 0
-on Goro point_object:uithangbord
-in Goro area:Hiroshima
-on Tatsuya point_object:sakura
-in Hideo area:Osaka
-dir Hideo Yuki left
-dir Hideo Yuki up
-dir Nami Sora left
-dir Nami Sora up
+every ?b in (areas except area:Tokyo): count (people in ?b) < count (people in area:Tokyo)
+count (people in area:Hiroshima) = count (people in area:Okinawa) and every ?b in (area of free cells except area:Okinawa,area:Hiroshima): count (people in ?b) > count (people in area:Okinawa)
+Kaori on point_object:lantaarn
+Renji on point_object:neon
+Mizuki on point_object:torii
+Mizuki dir:areas Kaori = 0
+Goro on point_object:uithangbord
+Goro in area:Hiroshima
+Tatsuya on point_object:sakura
+Hideo in area:Osaka
+Hideo dir:left Yuki
+Hideo dir:up Yuki
+Nami dir:left Sora
+Nami dir:up Sora
+
+Figures:
+Yuki: geen eigen aanwijzingen
+Sora: geen eigen aanwijzingen
 
 Question:
 Wie heeft de jumpsuit aan?

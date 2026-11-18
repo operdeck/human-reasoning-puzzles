@@ -318,260 +318,313 @@ Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are req
 
 Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
 
-### Clue grammar specification for #238
+The expression language in [#244](https://github.com/operdeck/human-reasoning-puzzles/issues/244)
+is the only Murdoku clue grammar used by the CLI, web exporter, booklet and authoring tools.
+`load_expression_board` returns the fixed layout, rule statements and clue
+statements separately. `load_board_layout` reads only declarations;
+`compile_board` compiles those declarations, while `murdoku_lower.compile_statements`
+adds the typed expressions. The independent search evaluates those same
+expressions through the reference evaluator. There is no legacy reader,
+predicate compiler or alternate search path.
+In this language, `in` is reflexive footprint containment and `on` is reflexive overlap;
+other spatial operators require distinct entities. An `empty` cell has no
+person even if blocked; migrate the current empty-cell counts using
+`empty free cells` to retain their free-cell-only behavior. A person `is` a
+bound role entity means membership in that role.
 
-This section specifies the canonical grammar. The reader accepts canonical
-forms only; the migration table below documents how legacy forms were mapped
-and is not an alternate accepted syntax. `Rules:` and `Clues:` use the same
-predicates.
+For expression wording, `| wording` replaces one complete
+statement and `Words:` may replace an expression phrase template. Phrase
+overrides must retain all placeholders of the original template; otherwise
+they could hide a subject, target, comparison, or other part of the clue.
+Legacy `clue.*` phrase keys are rejected: move a puzzle-specific sentence to
+that statement's `| wording`. The role declaration's distinct-area rule can be
+worded with `rule.role_separation`, retaining `{a}`, `{b}` and `{role}`.
+Generated person clues describe window and point-object footprints as cells
+touching the feature, and marks as marked cells. Place captions may retain their
+preposition (`hall: on Monday` in `Words:` changes the wording, not containment).
+Clues belonging to one figure share a paragraph and retain all source numbers;
+authored sentences keep their wording rather than being shortened into predicates.
+Single numbered rows and columns use singular names. Dutch person-location
+sentences use `staat` for directions and adjacency, and `zit` for `on`;
+explicit `atom.one` and `atom.not` templates still take precedence.
+A named person's `dir:king object:… <= 1` reads as "on or directly next to
+a square of …", explicitly including diagonals and area boundaries; negation
+covers the whole union of target footprints. A target such as
+`people on object:…` instead names a person on the object. Exact distances
+such as `= 1` retain their metric wording, as do other bounds.
+Exact person-to-person cardinal directions name their row or column distance.
+A role with exactly one holder may use a singular name such as "the murderer";
+optional or multiple-holder roles retain set wording. Worked solutions announce
+a last candidate once, cite a single clue directly, and group remaining role
+exclusions only after every other person's role state is known.
+Alternative areas retain their own prepositions, with negation covering the
+whole alternative. A quantified person is named directly only when exactly one
+must exist; optional and multiple-holder domains keep their quantifiers.
+Newly reserved rows and columns are stated explicitly. Counterfactuals cite
+mark occupancy rules and their possible companions, never internal gate names.
+Placements on conditional marks state the resulting solitude or company. Once
+one marked square is occupied and an exact-one count applies, the story also
+explains why the other squares carrying that mark are empty.
+Chains cite the row, column, clue or rule that justifies each link; unnumbered
+booklets state the premise instead of referring to an absent clue number.
+Simple counts of people on or in a footprint read as "exactly", "at least" or
+"at most" that many people. Other counts and arithmetic remain compositional;
+an explicit `number.compare` template overrides this idiom.
 
-#### Selectors and predicate shape
+### Expression clue language
 
-A bare name is a person from `People:`. Every other target has an explicit
-namespace. A list of same-kind selectors means their union for location
-predicates and counts where a list is accepted. Unknown names, namespaces,
-and incompatible selector types are errors.
+The reader, reference evaluator and compiler can also be used independently.
+`python -m csp.clue_search report FILE`, `thin FILE` and `ease FILE` measure
+expression puzzles with the independent search and compiler.
+`suggest FILE --solution "Ada=r1c1 ..."` uses named-person location, line and
+direction templates. Its suggestion vocabulary remains limited: it does not
+generate arbitrary expressions or distinguish solutions differing only in roles.
+The suggestion templates exclude unions, differences,
+adjective-qualified and projected sets, filters and comprehensions; occupancy
+assertions and set comparisons; compound Boolean formulas; numeric, parity and
+range comparisons; quantifiers and choices. Its AST inventory is guarded
+against additions to the language.
+For a draft board with expression `key_clue:` entries, use
+`puzzle-lab murdoku-board SPEC --suggest`; expressions are the default. It uses the same
+limited suggestion templates and reports drafts it cannot close.
+`python -m csp FILE --show-model` shows the compiled model grouped by source
+expressions. Console solving, `--grade`, `--brute-force`, `--verbose`, `--step`,
+expression-native `--explain`, `--svg`/`--png`, `--export`, `--docx`/`--pdf`,
+`--nosolution`, `--interactive` and `--track-person` use the same expression model.
+`--lint` reports board and expression diagnostics, including
+impossible required relations, role-negation and relation-size warnings;
+`--require-forward` adds a forward-only solve check. `--expressions` remains a
+compatibility flag; Murdoku always uses the expression grammar.
 
-| Selector | Selects |
+An operand is a set of entities of one sort. Sorts are people, cells, rows,
+columns, logical areas, features and roles. A person's footprint is their
+square; a feature's footprint is its object cells, the cells touched by an
+edge or point item, or the cells of a mark. A role entity has no footprint.
+Attributes are fixed sets of people and tags are fixed sets of areas. Two
+separately declared objects remain distinct even if named alike.
+
+| Expression | Meaning |
 |---|---|
-| bare person name, `people:name1,name2`, `people:any` | One named person, a named set of people, or everyone. |
-| `attribute:name`, `role:name` | People with the fixed attribute or assigned role. |
-| `people_on:location-selector` | People occupying cells selected by a location selector, e.g. `people_on:object:bench`; use this when a relation must compare occupants rather than cells. |
-| `area:name`, `tag:name` | Cells or logical areas in one named region / one area tag. |
-| `object:name`, `object_kind:blocking\|standable` | Cells of named objects or all objects of one occupancy kind. |
-| `edge_item:name`, `point_object:name`, `mark:name` | Cells touched by an edge item, point object, or named mark. |
-| `rows:1,3-5`, `columns:2-4` | The listed one-based rows or columns. |
-| `corner:board`, `corner:area:name` | Board corners or right-angle corners of the named logical area. |
-| `adjacent_to:name`, `adjacent_to:tag:name` | Logical areas sharing a side with the named area or any area in the named tag. The source area/set is excluded; corner contact does not count. |
+| `Ada`, `people`, `areas`, `rows`, `columns`, `cells`, `objects`, `roles` | A person or a complete universe. |
+| `area:hall`, `tag:outside`, `object:bed`, `object_kind:standable` | One area, tagged areas, named object instances, or objects of a kind. |
+| `edge_item:door`, `point_object:fountain`, `mark:red` | Named feature instances. |
+| `role:guard`, `attribute:staff` | People holding a role or having an attribute. |
+| `rows:1,3-5`, `columns:last`, `corner:board` | Selected lines or board-corner cells. |
+| `area of S`, `row of S`, `column of S`, `cell of S` | Areas, lines or cells intersecting the footprints in `S`. |
+| `S, T`, `S except T` | Same-sort union and difference. `object:bed,chair` repeats the first namespace. |
+| `empty S`, `occupied S`, `free S` | Elements with the named property. |
+| `(S on T)`, `(S touches T)` | Elements of `S` related to at least one element of `T`. |
+| `(?x in S where formula)` | Elements of `S` for which the formula holds. |
 
-Use `in`, `on`, `beside`, and `touches` for location predicates. `in` tests
-membership in a region, tag, line, or selected cell set; `on` tests whether a
-person occupies a selected cell. `beside` means sharing a side within the same
-logical area. `touches` means sharing a side regardless of area boundary,
-including within one area. Neither adjacency predicate includes diagonals.
-Because an object's selected cells form one target set, a person on one cell
-of a multi-cell object can be beside another cell of that object. `not`
-negates one predicate, as in `not in Ada area:river` or
-`not touches Ada mark:water`. Use `dir Ada Ben areas = 0` for the same
-logical area and `dir Ada Ben areas >= 1` for different areas.
-`only Ada on object:bench` means Ada
-occupies one of the selected cells and no other person occupies any of them.
+`empty` and `occupied` test whether any person is on a spatial footprint;
+`free` applies to cells and means not blocked by an object. Thus an empty
+blocked cell is still empty. Use `empty free cells` to preserve the old
+empty-cell count, which counts only free squares.
 
-Pair relations use `dir A B <mode> [comparison]`. Person selectors
-(`people:`, `attribute:`, `role:`, and `people_on:`) select people;
-location selectors (`area:`, `tag:`, `object:`, `object_kind:`, `edge_item:`,
-`point_object:`, `mark:`, `rows:`, `columns:`, `corner:`, and `adjacent_to:`)
-select cells. A person selector is compared by the selected people's
-positions; if both endpoints select people, the relation is existential over
-distinct people. A location selector is compared directly by its selected
-cells. Thus a named person can be compared with a location, and two locations
-can be compared without implying that anyone occupies them. Use
-`people_on:<location-selector>` when a relation concerns the people standing
-on selected cells. Each mode succeeds when a selected endpoint pair meets it.
-The `areas` mode compares the logical areas of the selected positions or
-cells. Role and attribute selectors are valid at either endpoint.
-The accepted modes and bounds are:
+Atoms have the form `[some|every|no] S operator T`. The right side is
+existential. A determiner may be omitted only when the left side can contain
+at most one entity. `in` means footprint containment,
+`on` means footprint overlap, `beside` means a shared side in the same area,
+and `touches` means a shared side regardless of area. `is` tests membership
+or identity; a person `is` a bound role entity when they hold that role.
+Containment and overlap are reflexive; adjacency and directional operators
+exclude the same entity. Distinct entities remain distinct even when their
+footprints coincide.
+`S = T` and `S != T` compare sets of the same sort.
 
-| Mode | Meaning and accepted comparison |
+Directional operators are `dir:left`, `dir:right`, `dir:up`, `dir:down`,
+their vertical-plus-horizontal combinations, `dir:diagonal`, `dir:rows`,
+`dir:cols`, `dir:manhattan`, `dir:king`, `dir:euclidean`, `dir:areas`,
+`dir:knight`, `dir:nearest` and `dir:furthest`. An optional `= n`, `<= n`
+or `>= n` measures the gap where supported; a compound direction applies
+the measure to each axis of the same cell pair. Nearest and furthest use
+strict comparisons against other people outside the target set, so a tie
+does not satisfy the clue. Their optional metric suffix, for example
+`dir:nearest:king`, changes the distance measure.
+
+`count S` is the cardinality of `S`; comparisons accept integer arithmetic,
+`odd`, `even`, and inclusive ranges such as `1..3`. Formulas compose with
+`not`, `and`, `or`, `iff`, and `if ... then`, in that precedence order.
+Quantifiers bind `?` variables, as in `every ?p in role:guard: ?p in
+area:hall`; multiple variables bind ordered, distinct entities. Choices use
+`exactly 1 of (formula; formula)` or `at least` / `at most`. Union uses
+commas, never Boolean `and` or `or`.
+
+Area isolation can be written
+`every ?a in occupied areas: count (occupied areas touches ?a) = 0`.
+To scope the rule, replace the domain with
+`(occupied areas in tag:villages)`; occupied neighbors outside the tag still
+count. `touches` excludes an area from touching itself.
+
+The reference evaluator defines clue meaning. Expression lowering emits
+generic constraints outside `core.py`; it must agree with the evaluator and
+preserve the existing tuned patterns and grades. `Key:` entries in the new
+reader match expression structure rather than wording or source positions.
+
+#### Grammar and scope
+
+The following grammar uses `N` for a non-negative integer literal, `name`
+for a person, universe or namespaced operand from the table above, and `var`
+for an identifier prefixed with `?`. Parentheses group either operands,
+formulas or arithmetic, according to the surrounding context.
+
+```ebnf
+statement   = formula [ "|" wording ] ;
+formula     = "if" formula "then" formula | quantified | equivalence ;
+equivalence = disjunction { "iff" disjunction } [ "iff" quantified ] ;
+disjunction = conjunction { "or" conjunction } [ "or" quantified ] ;
+conjunction = negated { "and" negated } [ "and" quantified ] ;
+negated     = "not" (negated | quantified) | "(" formula ")" | atom | setcompare
+            | comparison | choice ;
+quantified  = quant var { "," var } "in" operand ":" formula ;
+quant       = det | ("exactly" | "at least" | "at most") N ;
+det         = "some" | "every" | "no" ;
+choice      = ("exactly" | "at least" | "at most") N "of"
+              "(" formula { ";" formula } ")" ;
+atom        = [ det ] operand spatial operand
+            | [ det ] operand direction operand [ measure ]
+            | [ det ] operand "is" (operand | adjective) ;
+setcompare  = operand ("=" | "!=") operand ;
+operand     = union { "except" union } ;
+union       = primary { "," (primary | range) } ;
+primary     = name | var | adjective primary | projection "of" primary
+            | "(" filtered ")" | "(" var "in" operand "where" formula ")" ;
+filtered    = operand { spatial union | direction union [ measure ]
+                     | "is" (union | adjective) } ;
+spatial     = "in" | "on" | "beside" | "touches" ;
+direction   = "dir:" mode ;
+adjective   = "empty" | "occupied" | "free" ;
+projection  = "area" | "row" | "column" | "cell" ;
+measure     = ("=" | "<=" | ">=") N ;
+number      = number_atom { ("+" | "-") number_atom } ;
+number_atom = N | "count" filtered | "(" number ")" ;
+comparison  = number ("=" | "!=" | "<" | "<=" | ">" | ">=") number
+            | number ("odd" | "even") | number N ".." N ;
+range       = N | N "-" N ;
+```
+
+Quantifiers can also occur after a Boolean connective; their body extends to
+the end of the enclosing formula. Write parentheses to narrow that body:
+`(some ?p in people: ?p in area:hall) and Ada in area:garden`.
+Multiple variables in one quantifier range over ordered tuples of distinct
+entities; a quantified count counts those tuples, not unordered groups.
+Bindings are local. Unknown, free, unused or clashing variables are errors.
+
+Use a space after the quantifier colon to distinguish it clearly from a
+namespace: `every ?p in role:guard: ?p in area:hall`. Keywords and namespaces
+are lowercase and case-sensitive. Person names are case-sensitive too and
+must not be reserved keywords.
+
+A filter keeps an element if at least one target satisfies its relation.
+Consecutive filters intersect their conditions. A measured direction inside
+a counted filter must be parenthesised, as in
+`count (people dir:up Ada = 2) >= 1`, so its measure is not mistaken for the
+count comparison. Arithmetic is left-associative; use parentheses for grouping.
+A numeric left operand selects a numeric comparison; an entity-set left
+operand selects set equality or inequality.
+
+For an empty left set, `some` is false and `every` and `no` are true.
+Without a determiner, a singleton atom asserts that its one member has a
+matching target; an empty optional role therefore does not satisfy it.
+`not some role:guard in area:hall` excludes every matching guard, whereas
+`some role:guard in area:hall` requires at least one.
+
+#### Spatial operators and measures
+
+People, cells, rows, columns, areas and features have footprints. Rows,
+columns and areas include their blocked cells; projections do not implicitly
+select occupied or free cells. `cell of S` is the union of the footprints in
+`S`; the other projections select the corresponding areas or lines that
+intersect them. Projection results are sets, so repeated results count once.
+`free` applies only to cells; `empty` and `occupied` apply to any footprinted
+sort except people.
+
+Spatial operators accept any two footprinted sorts. A witness is a pair of
+cells from their footprints, not their centres or bounding boxes. `in`
+requires containment of the complete left footprint in the right footprint;
+`on` requires a nonempty overlap. `beside` and `touches` require side-neighbour
+cells, with `beside` additionally requiring those cells to share a logical
+area. Thus a person on a multi-cell object can be beside another cell of that
+object. An area and a tag can contain the same area, but two distinct areas
+with matching footprints do not become the same entity.
+
+`is` requires matching entity sorts and tests identity/membership, not
+footprint equality. Its explicit typing exception is a person on the left
+and a role entity on the right, such as a `?r` bound from `roles`: this means
+the person holds that role. The operand `role:guard`, in contrast, is a set
+of people. Roles themselves have no footprint and cannot take part in
+spatial relations.
+
+| Mode after `dir:` | Meaning |
 |---|---|
-| `left`, `right`, `up`, `down` | Unbounded direction, or an exact positive gap: `= n`, `n >= 1`. |
-| `rows`, `cols` | Absolute row/column difference with `= n`, `<= n`, or `>= n`; `n >= 1`. `rows_apart` / `columns_apart` map to `>=`; `within_rows` / `within_columns` map to `<=`. These are per-axis bounds, not an either-axis disjunction. |
-| `manhattan` | Manhattan distance with `= n`, `<= n`, or `>= n`; `n >= 0`. |
-| `euclidean` | Straight-line distance between cell centres ("as the crow flies"; Dutch: "in vogelvlucht") with `= n`, `<= n`, or `>= n`; `n >= 0` is an integer threshold. Compare squared distances to `n²`, without rounding. |
-| `king` | Chebyshev distance with `= n`, `<= n`, or `>= n`; `n >= 0`. `king >= 2` excludes the same, side-adjacent, and diagonal-adjacent cells. |
-| `areas` | Shortest side-sharing border distance between logical areas with `= n`, `<= n`, or `>= n`; `n >= 0`. Same area is distance 0. |
-| `knight` | Exactly one chess-knight move; no comparison. |
-| `furthest` | For person endpoints only, the first is strictly farther from the second than every other person is by Manhattan distance; no comparison. |
+| `left`, `right`, `up`, `down` | A strictly directed gap on that axis; optional `= n`, `<= n` or `>= n`. |
+| One vertical plus one horizontal direction, e.g. `up+right` | Both directions hold for the same cell pair; a measure applies to both axes. |
+| `diagonal` | Both axis gaps are equal and positive; an optional measure applies to both. |
+| `rows`, `cols` | Absolute row or column separation, independent of direction. |
+| `manhattan` | The sum of the two absolute axis gaps. |
+| `king` | The greater of the two absolute axis gaps. |
+| `euclidean` | Straight-line distance; compare squared distances with `n²`, without rounding. |
+| `areas` | Shortest side-sharing border distance between logical areas; the same area has distance zero. |
+| `knight` | One chess-knight move, with no measure. |
+| `nearest`, `furthest` | Strict person superlatives, with no measure; default metric `manhattan`. |
 
-For `euclidean`, positions four columns and three rows apart have distance
-exactly 5. Non-integer distances are not rounded; an equality with an integer
-matches only when the straight-line distance is that integer. The `areas`
-mode is limited to shortest border distance between Murdoku's logical areas;
-it does not add general path or connectivity clues.
+The six numeric modes require a measure. Superlatives accept any of those
+six modes as a metric suffix, for example `dir:furthest:rows`.
+Area distance uses the existing border graph, not a general path or
+connectivity predicate.
+`= 0` and `<= 0` are infeasible for strictly directed or diagonal gaps.
+Numeric distances can otherwise be zero where distinct entities overlap.
+A negative relation to a role does not itself forbid role membership:
+same-entity exclusion still applies inside that relation.
 
-Examples:
+#### Counts, declarations and diagnostics
 
-```text
-in Ada area:gang
-on Ada object:bench
-beside Ada object:bench
-touches Ada mark:water
-dir Ada Ben left
-dir Ada Ben left = 2
-not dir Ada Ben left
-dir Ada Ben rows >= 3
-dir Ada Ben cols <= 2
-dir Ada Ben manhattan >= 4
-dir Ada Ben euclidean = 5
-dir Ada Ben king >= 2
-dir Ada Ben areas = 0
-dir Ada Ben areas >= 1
-dir Ada Ben areas = 1
-dir role:thief Ada up
-dir people_on:object:robe people_on:object:slippers up = 1
-dir Ada Ben knight
-dir Ada Ben furthest
-```
-
-#### Counts, occupancy, and role constraints
-
-Count comparisons are `= n`, `<= n`, `>= n`, `odd`, `even`, or inclusive
-`low..high`; integers are non-negative and a comparison with no feasible
-value for its selector is an error. Unscoped empty- and occupied-area counts
-cover all logical areas; do not add an `all` operand. `count people on` counts
-occupants of object, object-kind, edge-item, point-object, or mark cells.
-`count people in` counts people in a location selector's cells, optionally
-narrowed by a `role:` or `attribute:` selector. `count people with` counts
-people with one role or attribute, and `count people from` restricts the count
-to an explicit
-person set. Scope selectors after `in` can be intersected with `and`, for
-example a tag and an `adjacent_to:` selector. Empty-cell counts include only
-free cells. The canonical forms are:
+Counts do not implicitly restrict the people or spatial scope. Use a filter
+or comprehension to state that restriction:
 
 ```text
-count people on object:coat = 2
-count people in area:library = 2
-count people with role:guard = 1
-count people in area:library with role:guard >= 1
-count people from people:Ada,Ben with attribute:trained = 1
-count roles of Ada <= 1
-count empty areas = 2
-count occupied areas >= 3
-count occupied areas in tag:villages >= 3
-count empty areas in adjacent_to:river >= 1
-count occupied areas in adjacent_to:tag:square = 2
-count people in adjacent_to:river = 3
-count empty areas in tag:north_bank and adjacent_to:river >= 1
-count people in tag:north_bank and adjacent_to:river = 3
-count empty cells in mark:quiet = 1
-no_adjacent_occupied areas
-no_adjacent_occupied areas in tag:villages
+count role:guard = 2
+count (role:guard in area:hall) >= 1
+count (occupied areas in tag:villages) = 2
+count ((empty areas touches area:river) except area:river) >= 1
+count (people in (areas touches area:river)) = 3
+count (empty free cells on mark:quiet) = 1
+count (?r in roles where Ada is ?r) <= 1
 ```
 
-`count empty areas` retains the current behavior of counting areas with no
-free cells as empty. `count occupied areas` never counts an area with no free
-cells. `adjacent_to:` scopes include all distinct areas that share a side with
-the source area or tag, not the source itself. The unqualified
-`adjacent_to:name` form names an area; use `adjacent_to:tag:name` for a tag.
-When combined with `in area:` or `in tag:`, the resulting area set is their
-intersection.
-`no_adjacent_occupied areas` applies to every pair of side-sharing areas in
-scope: at most one area in each pair may contain people. Any number of people
-may share one area; areas with no free cells are not occupied. `all` is the
-default scope; with `in area:name` or `in tag:name`, check every border that
-touches at least one scoped area, even when the neighboring area is outside
-the scope.
+Empty-area counts include areas without free cells; occupied-area counts
+cannot include them. `touches` already excludes a logical area from touching
+itself, while `except` can explicitly remove an entire source tag. Boolean
+connectives combine formulas, never operand lists; use comma unions,
+`except`, filters or comprehensions for sets.
 
-Area-scoped occupancy has both area-wide and person-relative forms:
+Declarations remain data, with the following equivalent statements:
 
-```text
-alone in area:library
-alone Ada in area:library
-with role:guard in area:library
-with Ada role:guard in area:library
-with Ada role:guard in area:library exactly 2
-```
-
-`alone in area:X` requires exactly one occupant. `alone Ada in area:X`
-requires Ada to occupy X and no other person to occupy X. Area-wide
-`with role:Y in area:X` requires a role-Y occupant and at least one distinct
-co-occupant. Person-relative `with Ada role:Y in area:X exactly n` requires
-exactly `n` other occupants of X, all matching the selector; Ada must also
-occupy X. `in same area` is the unscoped form. Role implications use one
-conditional form, `if <atomic condition> then <atomic condition>`, rather
-than a separate positional verb for every role:
-
-```text
-if has Ada role:guard then in Ada tag:villages
-if has Ada role:guard then beside Ada object:gate
-```
-
-`subset selector-A selector-B` means every person matching A also matches B.
-`for each area in tag:name, count people in that area with role:name >= n`
-applies the minimum separately to every logical area in the tag. A role
-occupancy condition is scoped to each area with a matching role holder, for
-example:
-
-```text
-for each area in all occupied by role:guard, count people in that area = 1
-for each area in all occupied by role:guard, count people in that area >= 2
-```
-
-A role cardinality is expressed as `count roles of Ada <comparison>`.
-Conditional forms are one level deep; arbitrary nested Boolean expressions
-are not part of this grammar.
-
-`most_populated area:A [area:B ...]` and
-`least_populated area:A [area:B ...]` require the named areas to tie at the
-maximum or minimum. Every other usable area must be strictly less populated
-or more populated, respectively. Areas with no free cells are ignored and
-cannot be named.
-
-`exactly n <atomic clue> ; <atomic clue> ...` counts how many listed atomic
-clues hold. It remains bounded to three distinct people and does not accept
-quantified pair relations, `only`, `with`, or another count as an operand.
-Mark declarations may still end in `; alone` or `; not_alone`: when someone
-occupies a marked cell, the condition applies to the logical area containing
-that cell. This is a conditional occupancy property, not a clue predicate.
-
-#### Legacy-to-canonical mapping
-
-The migration must preserve each board's meaning, including cases where one
-legacy word had different semantics for different target kinds.
-
-| Legacy form | Canonical form |
+| Declaration | Equivalent meaning |
 |---|---|
-| `in_region P area...`, `outside P area...` | `in P area:...`, `not in P area:...` |
-| `in_tagged`, `only_in_tagged P tag...`; `not_in_tagged P tag...` | `in P tag:...`, `not in P tag:...`. `only_in_tagged` has the same membership meaning as `in_tagged`. |
-| `on`, `not_on P object...` | `on P object:...`, `not on P object:...`. |
-| `at P edge_item...` | `on P edge_item:...`. |
-| `on_mark`, `not_on_mark P mark...` | `on P mark:...`, `not on P mark:...`. |
-| `next_to`, `not_next_to P target...` | For `object`/`object_kind`, `beside` / `not beside`; for `mark`, `touches` / `not touches`; for `edge_item`/`point_object`, `on` / `not on` their touched cells. Migration resolves the old target type explicitly. |
-| `away_from P target...` | `dir P target king >= 2`. |
-| `knight_from P target...` | `dir P target knight`. |
-| `in_corner P`, `in_area_corner P area...` | `in P corner:board`, `in P corner:area:name`. |
-| `in_row` / `not_in_row`, `in_column` / `not_in_column P n` | `in P rows:n` / `not in P rows:n`, `in P columns:n` / `not in P columns:n`. |
-| `person:name` | Bare `name`. |
-| `not_in`, `not_on`, `not_beside`, `not_touches`, `not_dir` | `not in`, `not on`, `not beside`, `not touches`, `not dir`. |
-| `has_role`, `not_role`, `has_attribute`, `not_attribute` | `has PERSON role:name`, `not has PERSON role:name`, `has PERSON attribute:name`, `not has PERSON attribute:name`. |
-| `role_subset` | `subset selector-A selector-B`. |
-| `for_each_area` | `for each area ...`. |
-| `count empty areas all`, `count occupied areas all` | Omit `all`: `count empty areas = n`, `count occupied areas >= n`. |
-| `with P people:any in same area ...` | Omit `people:any`; the default is any other person: `with P in same area ...`. |
-| `same_region`, `different_region A B` | `dir A B areas = 0`, `dir A B areas >= 1`. |
-| `adjacent_regions`, `apart A B` | `dir A B areas = 1`, `dir A B areas >= 2`. |
-| `left_of`, `above A B [n]` | `dir A B left [= n]`, `dir A B up [= n]`. |
-| `within`, `at_least A B n` | `dir A B manhattan <= n`, `dir A B manhattan >= n`. |
-| `furthest A B` | `dir A B furthest`. |
-| `alone P`, `alone_with P [selector] [n]` | `alone P`; `with P selector in same area exactly n`. An omitted selector becomes `people:any`; an omitted count defaults to 1. |
-| `unique_attribute attribute P...` | `count people from people:P... with attribute:... = 1`. |
-| `some_role P`, `roleless P`, `at_most_one_role P` | `count roles of P >= 1`, `= 0`, `<= 1`. |
-| `role_in_tagged` / `role_not_in_tagged P role tag`; `role_on`, `role_not_on`, `role_next_to P role target...` | `if has P role:... then in` / `not in`, `on` / `not on`, or target-kind-specific `beside`, `touches`, or `on`. |
-| `role_below P role [n]` | `dir P role:... down [= n]`. |
-| `min_role_in_tagged role tag n` | `for each area in tag:..., count people in that area with role:... >= n`. |
-| `sole_role_companion P role` | `with P role:... in same area exactly 1`. |
-| `role_occupant role alone` / `not_alone` | For each area occupied by a holder of `role:...`, require respectively `count people in that area = 1` / `>= 2`. |
-| `only_on P object...` | `only P on object:...`. |
-| `busiest_area area...` / `quietest_area area...` | `most_populated area...` / `least_populated area...`. |
-| `count people on|in|with ...`, `count empty areas ...`, `count empty cells ...` | Keep `count`, using the corresponding typed selectors and unified comparisons above. |
-| `exactly n clue ; clue ...` | Keep the bounded `exactly` form; update each operand to the canonical atomic predicate. |
-| Legacy target aliases `cells:`, `cellset:`, `row:`, `column:` | `mark:`, `rows:`, `columns:`. Bare known person names remain people; no other bare target names are accepted. |
-| Bare non-person targets in location clues | Add the matching namespace, such as `area:`, `tag:`, `object:`, `mark:`, `edge_item:`, `point_object:`, `role:`, or `attribute:`. |
+| `Roles:` entry `guard: 3` | `count role:guard = 3` |
+| `guard: any` (or `guard: *`, or no count) | Any holder count from zero through the full cast. |
+| `guard: 3 different_regions` | The exact count and `every ?p, ?q in role:guard: ?p dir:areas ?q >= 1`. |
+| `RoleEligibility:` entry `guard: attribute:staff` | `every role:guard is attribute:staff`. Named eligible people and attributes form one union. |
+| `Marks:` entry `quiet: ... ; alone` | `every ?p in (people on mark:quiet): count (people in area of ?p) = 1` |
+| `Marks:` entry `social: ... ; not_alone` | The same per-occupant quantifier with count `>= 2`. |
 
-A relation with a selector on both sides, such as legacy
-`above object:robe object:slippers 1`, becomes
-`dir people_on:object:robe people_on:object:slippers up = 1` and remains
-existential over distinct matching people. Unlike the legacy compiler, a role
-selector is valid on either endpoint.
+Role eligibility never requires an eligible person to hold the role. Mark
+conditions apply separately in the area of each occupied marked cell;
+unoccupied marks do not force anyone into an area. Attributes are fixed
+facts, not assignments that the solver may change.
 
-Legacy `Words:` keys `doc.clue_next_to_*` are rejected. Migrate object wording
-to `doc.clue_beside_object`, mark wording to `doc.clue_touches_mark`, and door,
-point-object, or window wording to `doc.clue_on_door`, `doc.clue_on_point`, or
-`doc.clue_on_window`. The old shared `doc.clue_next_to_border` key must be
-split according to the target. Generated wording keys `clue.alone_with*` are
-now `clue.with_same_area*`, and role-area rule wording keys `role_occupant.*`
-are now `rule.role_occupancy.*`; these are presentation keys, not clue syntax.
-The `| wording` override syntax itself remains unchanged.
+Reader/type errors include unknown names or namespaces, mixed-sort unions
+or set comparisons, footprintless spatial operands, invalid variables,
+missing determiners, invalid modes/measures and infeasible count comparisons.
+Diagnostics identify the source line and column. `--lint` additionally
+rejects board-vacuous requirements, such as two people sharing a side under
+the distinct-row/column rules. It warns about an emitted relation involving
+more than three position/role variables, suggesting a split, and about
+negated role relations that may be mistaken for non-membership. Board lint
+also checks declarations, icons, reachable areas and unused roles.
+
+### Drawing details
 
 A window line may end with the wall it sits against, `top`, `bottom`, `left`
 or `right` (for example `raam: window r3c4 top`); the picture then draws a
@@ -592,14 +645,32 @@ do not repeat the figure's heading; joint subjects and custom wording retain
 names when needed. Descriptions sit in parentheses beside the name so ordinary
 clues can continue on the same line. Descriptions supplied in `Figures:` are preserved, including
 late-reveal information. Clues are attached by their semantic subject, not by
-guessing from their wording. Loose and global clues follow under **Other clues**
+guessing from their wording. Puzzle-specific `Rules:` statements appear here
+too: under their semantic subject, or the sole named figure in a compound
+statement. Loose and global rules and clues follow under **Other clues**
 (Dutch: **Overige aanwijzingen**), only when needed. Board notes explain the
 marks and area tags used by the clues; attributes, roles and objects remain
 separate under the board. The layout reserves space for wrapped descriptions,
 clueless figures and portraits, shrinking the board or omitting its backdrop
 on crowded pages. Worked solutions do not refer to clue numbers.
+The game-rules panel contains the unchanged `Intro:` (or default game rules),
+semantic clarifications such as distance and adjacency, and the general
+disclaimer, not a second list of `Rules:` statements. A standard "no clues of
+their own" / "geen eigen aanwijzingen" note is hidden when that figure has a
+displayed rule or clue; the rest of the description is preserved. The web
+player uses the same grouping and retains distinct `rule:N` and `clue:N`
+source identities. This presentation does not change compilation or solving.
+Counterfactuals name hypothetical people and placements rather than internal
+occupancy flags. A refuted mark trigger becomes a case on a person only when
+that person is its only possible occupant and the recorded trail actually
+places them there.
 Booklets use A4 pages, matching the dimensions used by the page-fit estimates.
-`Words:` lines whose name is a phrase key (see `PHRASES` in `story.py`) reword that phrase for the puzzle, e.g. `target.attribute: a {name}` ("... and that is a friend"), or `role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles are really kinds such as species. A `lint` warning flags a clue already implied by another (a person put in one region and also "not in" another).
+`Words:` lines whose name is a phrase key (see `PHRASES` in `story.py` and
+`murdoku_expression_words.py`) reword that phrase for the puzzle, e.g.
+`name.attribute: people with the {name} attribute`, or
+`role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles
+are really kinds such as species. A `lint` warning flags a clue already
+implied by another (a person put in one region and also "not in" another).
 
 Every Murdoku booklet puzzle page and web player rules panel also reminds players
 that only stated rules and clues determine what is possible: a kind or trait
@@ -609,7 +680,7 @@ reminder; do not repeat it in each puzzle's `Intro:`.
 `--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 
 * `Title:`, `Intro:` (blank lines separate paragraphs; wrapped lines are joined, and `**bold**` is allowed), `Question:`, `Reveal:` (answer text, solution file only). Before the first section block, `Intro: text` also works as a single paragraph.
-* A clue line may end in `| wording` (e.g. `above Otto Tjitske 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it every clue is worded by `story` (en/nl), e.g. `at_least Ramen Tempura 5` → "Ramen is at least five squares from Tempura." A `Rules:` line may end in `| wording` as well; that sentence is listed with the rules (booklet, web player) and in the picture legend. Worked solutions never use author wordings.
+* A clue line may end in `| wording` (e.g. `Otto dir:up Tjitske = 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it the expression phrasebook supplies English or Dutch wording, e.g. `Ramen dir:left Tempura = 5` → "Ramen is exactly five columns left of Tempura." A `Rules:` line may end in `| wording` as well; that sentence appears with the figure's clues or under **Other clues** (booklet, web player), and in the picture legend. Worked solutions use the same expression wording and overrides; they never infer clue semantics from an author's prose.
 * `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C` whose picture is vendored in `src/csp/assets/emoji/`; `--lint` warns otherwise). Without any of these it is text only. Put licensed artwork in the figures folder; the only bundled third-party images are the vendored Noto Emoji (see `src/csp/assets/NOTICE.md`).
 
 Pass a glob (quoted) such as `"examples/**/*.txt"` to put every matching puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own numbered page, after a clickable table of contents. The order comes from `collection.arrange`: Murdoku first, grouped by category — the folder below the matched files' common folder, so `examples/japanese-food/` is "Japanese food" and `demo` leads — then the other families; within a group files sort naturally (`6x6` before `12x12`). The web player's index uses the same numbers and sections.

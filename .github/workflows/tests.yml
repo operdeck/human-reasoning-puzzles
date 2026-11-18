@@ -5,12 +5,19 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         python: ["3.12", "3.13"]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -20,10 +27,11 @@ jobs:
       - run: uvx ruff check src tests benchmark
       - run: uvx ruff format --check src tests benchmark
       - run: uv run mypy src
-      - run: uv run pytest -q --override-ini=addopts=
+      - run: uv run pytest -v --override-ini=addopts= --shard=${{ matrix.shard }}/8 --tb=short --durations=20
 
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

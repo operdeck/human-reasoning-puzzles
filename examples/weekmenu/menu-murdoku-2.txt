@@ -15,10 +15,10 @@ donderdag: op donderdag
 vrijdag: op vrijdag
 zaterdag: op zaterdag
 zondag: op zondag
-target.attribute: een {name}
+name.attribute: een {name}
 role_has: {who} is {role}
 role_not: {who} is geen {role}
-clue.role_apart: {a} en {b} zijn allebei {role}, en er staat nooit meer dan één {role} op dezelfde dag
+rule.role_separation: {a} en {b} zijn allebei {role}, en er staat nooit meer dan één {role} op dezelfde dag
 
 Regions:
 donderdag: donderdag #FADFB5
@@ -67,17 +67,17 @@ Spinazie
 Vla
 
 Rules:
-with Vla in same area exactly 2
+count (people in area of Vla) = 2 + 1 | De vla deelt haar dag met precies twee andere gerechten.
 
 Clues:
-on Pasta point_object:zonnebloem
-on Pasta point_object:sierui
-not in Aardappel rows:6
-dir Pasta Rijst manhattan >= 9
-dir Kip Spinazie up = 2
-dir Aardappel Noedels left = 3
-dir Aardappel Rijst up = 1
-dir Kip Noedels areas >= 1
+Pasta on point_object:zonnebloem
+Pasta on point_object:sierui
+not (Aardappel in rows:6)
+Pasta dir:manhattan Rijst >= 9
+Kip dir:up Spinazie = 2
+Aardappel dir:left Noedels = 3
+Aardappel dir:up Rijst = 1
+Kip dir:areas Noedels >= 1
 
 # Booklet text for --docx (optional).
 Title:
@@ -90,11 +90,11 @@ De vla is het toetje. Over de vla zijn geen aanwijzingen, behalve deze: de vla z
 
 Figures:
 Aardappel: gekookt of gebakken, een zetmeelproduct ; icon=U+1F954
-Rijst: witte of zilvervliesrijst, een zetmeelproduct ; icon=U+1F35A
+Rijst: witte of zilvervliesrijst, een zetmeelproduct, zonder eigen aanwijzingen ; icon=U+1F35A
 Pasta: spaghetti of macaroni, een zetmeelproduct ; icon=U+1F35D
-Noedels: mie of ramen, een zetmeelproduct ; icon=U+1F35C
+Noedels: mie of ramen, een zetmeelproduct, zonder eigen aanwijzingen ; icon=U+1F35C
 Kip: vlees, een eiwitbron ; icon=U+1F357
-Spinazie: een groente ; icon=U+1F96C
+Spinazie: een groente, zonder eigen aanwijzingen ; icon=U+1F96C
 Vla: het toetje, zonder eigen aanwijzingen ; icon=U+1F36E
 
 Question:

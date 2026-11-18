@@ -109,28 +109,28 @@ Gabriele
 Isabella
 
 Rules:
-for each area in all occupied by role:murderer, count people in that area >= 2
-for each area in tag:crime_scene, count people in that area with role:murderer >= 1
+every ?p in role:murderer: count (people in area of ?p) >= 2
+every ?a in tag:crime_scene: some role:murderer in ?a
 
 Clues:
-in Enzo area:roof
-in Enzo rows:2
-not beside Fiorella object:corpse
-in Fiorella area:roof
-in Camillo area:room_west
-in Alessio area:room_east
-on Gabriele object:staircase
-in Gabriele area:lobby
-in Isabella area:lobby
-dir Isabella Enzo left
-dir Fiorella Gabriele up
-dir Alessio Enzo left
-on Camillo object:bed
-beside Camillo object:corpse
-beside Alessio object:vase
-beside Isabella object:reception_counter
-in Bianca area:restaurant
-on Bianca object:chair
+Enzo in area:roof
+Enzo in rows:2
+not (Fiorella beside object:corpse)
+Fiorella in area:roof
+Camillo in area:room_west
+Alessio in area:room_east
+Gabriele on object:staircase
+Gabriele in area:lobby
+Isabella in area:lobby
+Isabella dir:left Enzo
+Fiorella dir:up Gabriele
+Alessio dir:left Enzo
+Camillo on object:bed
+Camillo beside object:corpse
+Alessio beside object:vase
+Isabella beside object:reception_counter
+Bianca in area:restaurant
+Bianca on object:chair
 
 Title:
 The Murder Hotel: The west room
@@ -146,7 +146,7 @@ Figures:
 Alessio: the porter ; icon=U+1F9D4
 Bianca: the pianist ; icon=U+1F469
 Camillo: the gardener ; icon=U+1F9D1
-Donatella: the jeweler ; icon=U+1F475
+Donatella: the jeweler, with no clues of their own ; icon=U+1F475
 Enzo: the chef ; icon=U+1F468
 Fiorella: the photographer ; icon=U+1F471
 Gabriele: the architect ; icon=U+1F474

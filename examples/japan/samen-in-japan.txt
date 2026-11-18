@@ -60,15 +60,19 @@ Emi
 Fumiko
 
 Clues:
-most_populated area:Tokyo
-least_populated area:Okinawa
+every ?b in (areas except area:Tokyo): count (people in ?b) < count (people in area:Tokyo)
+every ?b in (area of free cells except area:Okinawa): count (people in ?b) > count (people in area:Okinawa)
 count people in area:Osaka = 2
-not in Aiko area:Osaka
-dir Benjiro Chiaki areas = 0
-dir Benjiro Daiki left
-not beside Benjiro object:tempel
-dir Daiki Chiaki left
-dir Emi Fumiko left
+not (Aiko in area:Osaka)
+Benjiro dir:areas Chiaki = 0
+Benjiro dir:left Daiki
+not (Benjiro beside object:tempel)
+Daiki dir:left Chiaki
+Emi dir:left Fumiko
+
+Figures:
+Chiaki: geen eigen aanwijzingen
+Fumiko: geen eigen aanwijzingen
 
 Question:
 Waar staat iedereen?

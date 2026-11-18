@@ -32,15 +32,24 @@ import multiprocessing
 import re
 import sys
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from queue import Empty
 from typing import Any
 
 from . import murdoku, report
-from .bruteforce import murdoku as brute
-from .core import DEFAULT_RULES, Solver
-from .puzzlefile import keyed_clue_numbers, load_board, parse_clue_line, parse_square
+from .bruteforce import murdoku_expr as expression_brute
+from .core import DEFAULT_RULES, Model, Solver
+from .murdoku_expression_file import (
+    keyed_expression_clue_numbers,
+    load_expression_board,
+)
+from .murdoku_lang import Name, Statement, format_statement, holds, parse_statement
+from .murdoku_lower import compile_statements
+from .puzzlefile import (
+    load_board_layout,
+    parse_square,
+)
 
 GRADES = tuple(rule.name for rule in DEFAULT_RULES)
 
@@ -58,6 +67,30 @@ SUGGEST_KINDS = (
     "dir",
 )
 EXTRA_KINDS = ("line",)
+
+# The generator intentionally proposes only simple placement clues. Keep this
+# inventory in step with the public expression AST and its guard test.
+EXPRESSION_SUGGESTED_NODES = frozenset({"Name", "Atom", "Measure", "Negation"})
+EXPRESSION_EXCLUDED_NODES = {
+    "Union": "multi-target clues are not generated",
+    "Difference": "set differences are not generated",
+    "Qualified": "adjective-qualified sets are not generated",
+    "Projection": "projected sets are not generated",
+    "Filter": "filtered sets are not generated",
+    "AdjectiveFilter": "adjective-filtered sets are not generated",
+    "Comprehension": "comprehensions are not generated",
+    "AdjectiveAtom": "occupancy assertions are not generated",
+    "SetComparison": "set comparisons are not generated",
+    "Binary": "compound Boolean clues are not generated",
+    "Integer": "arithmetic comparisons are not generated",
+    "Count": "count comparisons are not generated",
+    "Arithmetic": "arithmetic comparisons are not generated",
+    "NumberComparison": "count and arithmetic comparisons are not generated",
+    "Parity": "parity clues are not generated",
+    "NumberRange": "range clues are not generated",
+    "Quantified": "quantified clues are not generated",
+    "Choice": "choice clues are not generated",
+}
 
 _SECTION = re.compile(r"^[A-Za-z]+:\s*$")
 
@@ -115,7 +148,7 @@ def with_clues(text: str, clues: Sequence[str]) -> str:
 
 def without_mark_condition(text: str, name: str) -> str:
     """Keep a mark's cells but remove its occupancy effect for an ablation."""
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     mark = next((mark for mark in board.marks if mark.name == name), None)
     if mark is None or mark.occupant_condition is None:
         raise ValueError(f"mark {name!r} has no occupancy condition")
@@ -132,8 +165,14 @@ def without_mark_condition(text: str, name: str) -> str:
 
 
 def _measure(text: str, late_person: str | None) -> tuple[str, bool | None]:
-    board, clues = load_board(text)
-    model = murdoku.compile_puzzle(board, clues)
+    board, rules, clues = load_expression_board(text)
+    model = compile_statements(board, clues, rules=rules)
+    return _measure_model(board, model, late_person)
+
+
+def _measure_model(
+    board: murdoku.Board, model: Model, late_person: str | None
+) -> tuple[str, bool | None]:
     domains = (
         {
             person: {model.value_of(literal) for literal in model.options(person)}
@@ -171,20 +210,33 @@ def _measure(text: str, late_person: str | None) -> tuple[str, bool | None]:
     return report.grade(fired) if result.solved else "unsolved", late_last
 
 
-def _child(text: str, late_person: str | None, queue: Any, *, grading: bool) -> None:
+def _child(
+    text: str, late_person: str | None, queue: Any, *, grading: bool, expressions: bool
+) -> None:
     try:
-        queue.put(_measure(text, late_person) if grading else len(brute.solutions(text, 2)))
+        result: int | tuple[str, bool | None]
+        if grading:
+            result = _measure(text, late_person)
+        else:
+            board, rules, clues = load_expression_board(text)
+            result = len(expression_brute.solutions(board, clues, 2, rules=rules))
+        queue.put(result)
     except ValueError as error:
         queue.put(error)
 
 
-def _timed(text: str, timeout: float, late_person: str | None, *, grading: bool) -> Any:
+def _timed(
+    text: str, timeout: float, late_person: str | None, *, grading: bool, expressions: bool = False
+) -> Any:
     context: Any = multiprocessing.get_context(
         "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
     )
     queue = context.Queue()
     process = context.Process(
-        target=_child, args=(text, late_person, queue), kwargs={"grading": grading}, daemon=True
+        target=_child,
+        args=(text, late_person, queue),
+        kwargs={"grading": grading, "expressions": expressions},
+        daemon=True,
     )
     process.start()
     process.join(timeout)
@@ -206,29 +258,37 @@ def _timed(text: str, timeout: float, late_person: str | None, *, grading: bool)
     return result
 
 
-def outcome(text: str, timeout: float = 5.0, late_person: str | None = None) -> Outcome:
+def outcome(
+    text: str, timeout: float = 5.0, late_person: str | None = None, *, expressions: bool = False
+) -> Outcome:
     """Measure solutions and grade with separate timeouts for the two solvers."""
-    count = _timed(text, timeout, late_person, grading=False)
+    count = _timed(text, timeout, late_person, grading=False, expressions=expressions)
     if count is None:
         return Outcome(None, None)
-    grade = _timed(text, timeout, late_person, grading=True)
+    grade = _timed(text, timeout, late_person, grading=True, expressions=expressions)
     if grade is None:
         return Outcome(count, None)
     return Outcome(count, *grade)
 
 
-def removal_report(text: str, timeout: float = 5.0) -> list[tuple[int, str, Outcome]]:
+def removal_report(
+    text: str, timeout: float = 5.0, *, expressions: bool = False
+) -> list[tuple[int, str, Outcome]]:
     """For each clue: the outcome without it, or the current outcome if Key requires it."""
     lines = clue_lines(text)
-    keyed = keyed_clue_numbers(text)
-    current = outcome(text, timeout) if keyed else None
+    keyed = keyed_expression_clue_numbers(text)
+    current = outcome(text, timeout, expressions=expressions) if keyed else None
     return [
         (
             number,
             line,
             current
             if number in keyed and current is not None
-            else outcome(with_clues(text, lines[: number - 1] + lines[number:]), timeout),
+            else outcome(
+                with_clues(text, lines[: number - 1] + lines[number:]),
+                timeout,
+                expressions=expressions,
+            ),
         )
         for number, line in enumerate(lines, 1)
     ]
@@ -246,6 +306,8 @@ def thin(
     max_grade: str | None = None,
     timeout: float = 5.0,
     log: Callable[[str], None] = lambda _line: None,
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """Clue lines left after greedily dropping each removable clue, last clue first.
 
@@ -253,13 +315,13 @@ def thin(
     `max_grade` without it. Clue numbers in `keep` and `Key:` are never dropped.
     """
     lines = clue_lines(text)
-    kept = set(keep) | keyed_clue_numbers(text)
+    kept = set(keep) | keyed_expression_clue_numbers(text)
     alive = list(range(1, len(lines) + 1))
     for number in reversed(alive[:]):
         if number in kept:
             continue
         trial = [lines[n - 1] for n in alive if n != number]
-        result = outcome(with_clues(text, trial), timeout)
+        result = outcome(with_clues(text, trial), timeout, expressions=expressions)
         if result.good and _within(result.grade, max_grade):
             alive.remove(number)
             log(f"dropped {number}: {lines[number - 1]} ({result})")
@@ -275,20 +337,94 @@ def parse_solution(spec: str) -> dict[str, murdoku.Square]:
     return placement
 
 
-def _true_for(board: murdoku.Board, clue: str, placement: dict[str, murdoku.Square]) -> bool:
-    try:
-        parsed = [parse_clue_line(clue)]
-        checks = murdoku.conditions(board, parsed) + murdoku.directional_conditions(
-            board, parsed, include_rules=False
+def expression_candidate_clues(
+    board: murdoku.Board,
+    placement: dict[str, murdoku.Square],
+    kinds: Sequence[str] = SUGGEST_KINDS,
+    exclude: Iterable[str] = (),
+    exclude_targets: Iterable[str] = (),
+) -> list[Statement]:
+    """Generate typed, true expression clues directly from named-person templates."""
+    if set(placement) != set(board.people):
+        raise ValueError(f"placement must name exactly the people {board.people}")
+    unknown = set(kinds) - set(SUGGEST_KINDS) - set(EXTRA_KINDS)
+    if unknown:
+        raise ValueError(f"unknown clue kinds {sorted(unknown)}")
+    excluded = set(exclude)
+    people = [person for person in board.people if person not in excluded]
+    blocked_targets = set(exclude_targets)
+    areas = [
+        ("area", name)
+        for name in sorted(set(board.region_names.values()))
+        if name not in blocked_targets
+    ] + [("tag", name) for name in sorted(board.area_tags) if name not in blocked_targets]
+    areas.append(("corner", "board"))
+    features = [
+        (kind, name)
+        for kind, names in (
+            ("object", board.object_names),
+            ("mark", board.mark_names),
+            ("edge_item", board.edge_item_names),
+            ("point_object", board.point_object_names),
         )
-    except ValueError:
-        return False
-    return bool(checks) and all(
-        check.holds(board, placement, {})
-        if isinstance(check, murdoku.DirectionCondition)
-        else check.test(*(placement[p] for p in check.people))
-        for check in checks
-    )
+        for name in sorted(names)
+        if name not in blocked_targets
+    ]
+    roles = {(person, role.name): False for person in board.people for role in board.roles}
+    found: list[Statement] = []
+    seen: set[str] = set()
+
+    def add(source: str) -> None:
+        if source not in seen:
+            statement = parse_statement(source)
+            if holds(statement, board, placement, roles):
+                found.append(statement)
+                seen.add(source)
+
+    for kind in kinds:
+        if kind == "dir":
+            for person in people:
+                for other in people:
+                    if person == other:
+                        continue
+                    for mode in ("left", "right", "up", "down", "knight", "furthest"):
+                        add(f"{person} dir:{mode} {other}")
+                    for mode in ("rows", "cols", "manhattan", "euclidean", "king", "areas"):
+                        for comparison in ("=", "<=", ">="):
+                            for distance in (0, 1, 2, 3):
+                                add(f"{person} dir:{mode} {other} {comparison} {distance}")
+            continue
+        negative = kind.startswith("not ")
+        operator = kind.removeprefix("not ")
+        if operator == "line":
+            options = [
+                f"{axis}:{number}"
+                for axis in ("rows", "columns")
+                for number in range(1, board.size + 1)
+            ]
+            for person in people:
+                for target in options:
+                    add(f"{person} in {target}")
+                    add(f"not {person} in {target}")
+            continue
+        targets = areas + features if operator == "in" else features
+        if operator == "beside":
+            targets = [(namespace, name) for namespace, name in targets if namespace == "object"]
+            if not blocked_targets:
+                targets += [
+                    ("object_kind", kind)
+                    for kind in ("blocking", "standable")
+                    if any(obj.kind == kind for obj in board.objects)
+                ]
+        for person in people:
+            for namespace, name in targets:
+                prefix = "not " if negative else ""
+                add(f"{prefix}{person} {operator} {namespace}:{name}")
+    return found
+
+
+def _placement(solution: dict[str, Any], people: Sequence[str]) -> dict[str, murdoku.Square]:
+    return {person: solution[person] for person in people}
 
 
 def candidate_clues(
@@ -298,134 +434,54 @@ def candidate_clues(
     exclude: Iterable[str] = (),
     exclude_targets: Iterable[str] = (),
 ) -> list[str]:
-    """Simple clues of `kinds` that are true for `placement`, in `kinds` order.
-
-    People in `exclude` (a late-reveal person) and targets in `exclude_targets`
-    (decorative objects) appear in none of them.
-    """
-    people = [person for person in placement if person not in set(exclude)]
-    regions = sorted(set(board.region_names.values()))
-    tags = sorted(board.area_tags)
-    locations = (
-        [*(f"area:{name}" for name in regions), *(f"tag:{name}" for name in tags)]
-        + [f"object:{name}" for name in sorted(board.object_names)]
-        + [f"mark:{mark.name}" for mark in board.marks]
-        + [f"edge_item:{name}" for name in sorted(board.edge_item_names)]
-        + [f"point_object:{name}" for name in sorted(board.point_object_names)]
-        + ["corner:board"]
-        + [f"corner:area:{name}" for name in regions]
-    )
-    adjacent_locations = [f"object:{name}" for name in sorted(board.object_names)] + [
-        f"object_kind:{kind}" for kind in ("blocking", "standable")
-    ]
-    people_pairs = [(a, b) for a in people for b in people if a != b]
-    attribute_selectors = sorted(f"attribute:{name}" for name in board.attributes)
-    position_selectors = people + attribute_selectors
-    position_pairs = [(a, b) for a in position_selectors for b in position_selectors if a != b]
-    lines = range(1, board.size + 1)
-    directional = (
-        [
-            f"dir {a} {b} {mode}"
-            for a, b in position_pairs
-            for mode in ("left", "right", "up", "down", "knight")
-        ]
-        + [f"dir {a} {b} furthest" for a, b in people_pairs]
-        + [f"dir {a} {b} areas = 0" for a, b in position_pairs]
-        + [f"dir {a} {b} areas >= 1" for a, b in position_pairs]
-        + [
-            f"dir {a} {b} {mode} {comparison} {distance}"
-            for a, b in position_pairs
-            for mode, comparisons in (
-                ("rows", ("<=", ">=")),
-                ("cols", ("<=", ">=")),
-                ("manhattan", ("<=", ">=")),
-                ("euclidean", ("=",)),
-                ("king", (">=",)),
-                ("areas", ("=",)),
-            )
-            for comparison in comparisons
-            for distance in (1, 2, 3)
-        ]
-    )
-    options: dict[str, list[str]] = {
-        "in": [f"in {p} {location}" for p in people for location in locations],
-        "not in": [f"not in {p} {location}" for p in people for location in locations],
-        "line": [
-            f"{predicate} {person} {selector}"
-            for predicate in ("in", "not in")
-            for person in people
-            for selector in (
-                *(f"rows:{n}" for n in lines),
-                *(f"columns:{n}" for n in lines),
-            )
-        ],
-        "on": [
-            f"on {p} {selector}"
-            for p in people
-            for selector in locations
-            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
-        ],
-        "not on": [
-            f"not on {p} {selector}"
-            for p in people
-            for selector in locations
-            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
-        ],
-        "beside": [f"beside {p} {selector}" for p in people for selector in adjacent_locations],
-        "not beside": [
-            f"not beside {p} {selector}" for p in people for selector in adjacent_locations
-        ],
-        "touches": [
-            f"touches {p} {selector}"
-            for p in people
-            for selector in locations
-            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
-        ],
-        "not touches": [
-            f"not touches {p} {selector}"
-            for p in people
-            for selector in locations
-            if selector.split(":", 1)[0] in ("object", "mark", "edge_item", "point_object")
-        ],
-        "dir": directional,
-    }
-    if unknown := [kind for kind in kinds if kind not in options]:
-        raise ValueError(f"unknown clue kinds {unknown}; choose from {sorted(options)}")
-    targets = set(exclude_targets)
-    found = (clue for kind in kinds for clue in options.get(kind, []))
+    """True typed-expression candidates, rendered in the canonical clue language."""
     return [
-        clue
-        for clue in found
-        if not (
-            targets
-            and any(
-                targets.intersection(token.split(":"))
-                for token in clue.split("|")[0].split()
-                if ":" in token
-            )
+        format_statement(statement)
+        for statement in expression_candidate_clues(
+            board, placement, kinds, exclude, exclude_targets
         )
-        and _true_for(board, clue, placement)
     ]
 
 
-def _placement(solution: dict[str, Any], people: Sequence[str]) -> dict[str, murdoku.Square]:
-    return {person: solution[person] for person in people}
+def _expression_people(value: object, people: set[str]) -> set[str]:
+    if isinstance(value, Name):
+        return {value.token.text} & people
+    if isinstance(value, tuple):
+        return set().union(*(_expression_people(item, people) for item in value))
+    if is_dataclass(value):
+        return set().union(
+            *(_expression_people(getattr(value, field.name), people) for field in fields(value))
+        )
+    return set()
 
 
-def _mentions(people: Sequence[str], clues: Iterable[str]) -> dict[str, int]:
+def _mentions(
+    people: Sequence[str], clues: Iterable[str], *, expressions: bool = False
+) -> dict[str, int]:
     """How many of `clues` name each person."""
     counts = dict.fromkeys(people, 0)
     for clue in clues:
-        for word in set(clue.split("|")[0].split()[1:]):
+        words = _expression_people(parse_statement(clue).formula, set(people))
+        for word in words:
             if word in counts:
                 counts[word] += 1
     return counts
 
 
-def _unnamed(people: Sequence[str], clues: Iterable[str], exclude: Iterable[str]) -> list[str]:
+def _unnamed(
+    people: Sequence[str],
+    clues: Iterable[str],
+    exclude: Iterable[str],
+    *,
+    expressions: bool = False,
+) -> list[str]:
     """People outside `exclude` that none of `clues` names."""
     skip = set(exclude)
-    return [p for p, n in _mentions(people, clues).items() if not n and p not in skip]
+    return [
+        p
+        for p, n in _mentions(people, clues, expressions=expressions).items()
+        if not n and p not in skip
+    ]
 
 
 def suggest(
@@ -440,6 +496,8 @@ def suggest(
     cover: bool = False,
     exclude_targets: Iterable[str] = (),
     needs_marks: Iterable[str] = (),
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """Clues to add to `text` so that `placement` becomes its only solution.
 
@@ -462,12 +520,16 @@ def suggest(
     rival of some needed clue is skipped, so removing any one of them still
     leaves another solution.
     """
-    board, _ = load_board(text)
+    board, rules, clues = load_expression_board(text)
     unknown = set(board.people) ^ set(placement)
     if unknown:
         raise ValueError(f"--solution must place exactly the people {board.people}")
     exclude_targets = tuple(exclude_targets)
-    candidates = candidate_clues(board, placement, kinds, exclude, exclude_targets)
+    if not expression_brute.accepts(board, clues, placement, rules=rules):
+        raise ValueError("the intended placement does not satisfy the starting puzzle")
+    statements = expression_candidate_clues(board, placement, kinds, exclude, exclude_targets)
+    parsed_candidates = {format_statement(statement): statement for statement in statements}
+    candidates = list(parsed_candidates)
     lines = clue_lines(text)
     needed = sorted(set(needs))
     marks_needed = tuple(dict.fromkeys(needs_marks))
@@ -477,10 +539,37 @@ def suggest(
         raise ValueError(f"--needs names clue numbers {bad}; the puzzle has {len(lines)} clues")
     added: list[str] = []
 
+    def sampled(puzzle: str) -> list[dict[str, murdoku.Square]]:
+        trial_board, trial_rules, trial_clues = load_expression_board(puzzle, validate_keys=False)
+        found = expression_brute.sample(trial_board, trial_clues, sample, rules=trial_rules)
+        return [_placement(result, board.people) for result in found]
+
+    def accepts(puzzle: str, other: dict[str, murdoku.Square]) -> bool:
+        trial_board, trial_rules, trial_clues = load_expression_board(puzzle, validate_keys=False)
+        return expression_brute.accepts(trial_board, trial_clues, other, rules=trial_rules)
+
+    def true_for(trial_board: murdoku.Board, clue: str, other: dict[str, murdoku.Square]) -> bool:
+        roles = {
+            (person, role.name): False
+            for person in trial_board.people
+            for role in trial_board.roles
+        }
+        return holds(parsed_candidates[clue], trial_board, other, roles)
+
+    def unnamed(clue_lines: Iterable[str], excluded: Iterable[str]) -> list[str]:
+        return _unnamed(board.people, clue_lines, excluded, expressions=expressions)
+
+    def names(clue: str) -> set[str]:
+        return _expression_people(parsed_candidates[clue].formula, set(board.people))
+
+    def solution_count(puzzle: str) -> int:
+        trial_board, trial_rules, trial_clues = load_expression_board(puzzle, validate_keys=False)
+        return len(expression_brute.solutions(trial_board, trial_clues, 2, rules=trial_rules))
+
     def _reseed(person: str, added: list[str]) -> list[str]:
         # Start again from one clue about `person`, kept necessary like a needed clue.
-        named = set(board.people) - set(_unnamed(board.people, lines + added, ())) | {person}
-        for clue in (c for c in candidates if person in c.split()[1:] and c not in lines):
+        named = set(board.people) - set(unnamed(lines + added, ())) | {person}
+        for clue in (c for c in candidates if person in names(c) and c not in lines):
             seeded = with_clues(text, [*lines, clue])
             more = suggest(
                 seeded,
@@ -492,18 +581,19 @@ def suggest(
                 needs=[*needed, len(lines) + 1],
                 exclude_targets=exclude_targets,
                 needs_marks=marks_needed,
+                expressions=expressions,
             )
             trial = [clue, *more]
             completed = with_clues(text, lines + trial)
             if (
-                len(brute.solutions(completed, 2)) == 1
-                and named.isdisjoint(_unnamed(board.people, lines + trial, ()))
+                solution_count(completed) == 1
+                and named.isdisjoint(unnamed(lines + trial, ()))
                 and all(
-                    len(brute.solutions(with_clues(text, lines[: n - 1] + lines[n:] + trial))) > 1
+                    solution_count(with_clues(text, lines[: n - 1] + lines[n:] + trial)) > 1
                     for n in needed
                 )
                 and all(
-                    len(brute.solutions(without_mark_condition(completed, name), 2)) > 1
+                    solution_count(without_mark_condition(completed, name)) > 1
                     for name in marks_needed
                 )
             ):
@@ -514,14 +604,14 @@ def suggest(
 
     while True:
         current = with_clues(text, lines + added)
-        others = [_placement(found, board.people) for found in brute.sample(current, sample)]
+        others = sampled(current)
         others = [other for other in others if other != placement]
         rival_sets: list[tuple[murdoku.Board, list[dict[str, murdoku.Square]]]] = []
         for number in needed:
             without = with_clues(text, lines[: number - 1] + lines[number:] + added)
-            found = [_placement(f, board.people) for f in brute.sample(without, sample)]
+            found = sampled(without)
             rivals = [
-                other for other in found if other != placement and not brute.accepts(current, other)
+                other for other in found if other != placement and not accepts(current, other)
             ]
             if not rivals:
                 log(f"needed clue {number} is already redundant; add fewer clues first")
@@ -529,38 +619,51 @@ def suggest(
             rival_sets.append((board, rivals))
         for name in marks_needed:
             without = without_mark_condition(current, name)
-            found = [_placement(f, board.people) for f in brute.sample(without, sample)]
+            found = sampled(without)
             rivals = [
-                other for other in found if other != placement and not brute.accepts(current, other)
+                other for other in found if other != placement and not accepts(current, other)
             ]
             if not rivals:
                 log(f"no sampled rival found for mark {name}; try a larger sample or fewer clues")
                 return added
-            rival_sets.append((load_board(without)[0], rivals))
+            rival_sets.append((load_board_layout(without), rivals))
         if not others:
             if cover:
                 added = _cover(
-                    text, lines, added, candidates, board.people, exclude, needed, log, marks_needed
+                    text,
+                    lines,
+                    added,
+                    candidates,
+                    board.people,
+                    exclude,
+                    needed,
+                    log,
+                    marks_needed,
+                    expressions=expressions,
                 )
-                for person in _unnamed(board.people, lines + added, exclude):
+                for person in unnamed(lines + added, exclude):
                     added = _reseed(person, added)
-            result = outcome(with_clues(text, lines + added), timeout)
-            log(f"unique with {len(added)} added clues ({result})")
+            result = outcome(with_clues(text, lines + added), timeout, expressions=expressions)
+            if result.solutions == 1:
+                log(f"unique with {len(added)} added clues ({result})")
+            else:
+                log(f"no other sampled placements; result is {result}")
             return added
         best, best_cut, best_key = None, 0, (0, 0)
-        mentions = _mentions(board.people, lines + added)
+        mentions = _mentions(board.people, lines + added, expressions=expressions)
         for clue in candidates:
             if clue in lines or clue in added:
                 continue
             if any(
-                not any(_true_for(rival_board, clue, rival) for rival in rivals)
+                not any(true_for(rival_board, clue, rival) for rival in rivals)
                 for rival_board, rivals in rival_sets
             ):
                 continue
-            cut = sum(not _true_for(board, clue, other) for other in others)
+            cut = sum(not true_for(board, clue, other) for other in others)
             # Equal cuts (often "all sampled") go to the least-mentioned people, so
             # the clues spread over the cast instead of piling up on one person.
-            spread = -sum(mentions.get(word, 0) for word in clue.split()[1:])
+            words = names(clue)
+            spread = -sum(mentions.get(word, 0) for word in words)
             if cut and (cut, spread) > best_key:
                 best, best_cut, best_key = clue, cut, (cut, spread)
         if best is None:
@@ -583,6 +686,8 @@ def _cover(
     needed: Sequence[int],
     log: Callable[[str], None],
     marks_needed: Sequence[str] = (),
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """`added` with clues swapped so that every person outside `exclude` is named.
 
@@ -591,31 +696,42 @@ def _cover(
     lose their last clue, and each needed clue must stay necessary.
     """
 
+    def solution_count(puzzle: str) -> int:
+        board, rules, parsed = load_expression_board(puzzle, validate_keys=False)
+        return len(expression_brute.solutions(board, parsed, 2, rules=rules))
+
     def unique(clues: list[str]) -> bool:
-        return len(brute.solutions(with_clues(text, clues), 2)) == 1
+        return solution_count(with_clues(text, clues)) == 1
+
+    def named_in(clue: str) -> set[str]:
+        return _expression_people(parse_statement(clue).formula, set(people))
 
     def fine(trial: list[str]) -> bool:
-        named = {p for p, n in _mentions(people, lines + trial).items() if n}
+        named = {
+            p for p, n in _mentions(people, lines + trial, expressions=expressions).items() if n
+        }
         return (
-            named >= {p for p, n in _mentions(people, lines + added).items() if n}
+            named
+            >= {
+                p for p, n in _mentions(people, lines + added, expressions=expressions).items() if n
+            }
             and unique(lines + trial)
             and not any(unique(lines[: n - 1] + lines[n:] + trial) for n in needed)
             and all(
-                len(brute.solutions(without_mark_condition(with_clues(text, lines + trial), name)))
-                > 1
+                solution_count(without_mark_condition(with_clues(text, lines + trial), name)) > 1
                 for name in marks_needed
             )
         )
 
     skip = set(exclude)
     for person in people:
-        if person in skip or _mentions(people, lines + added)[person]:
+        if person in skip or _mentions(people, lines + added, expressions=expressions)[person]:
             continue
         swap = next(
             (
                 [*added[:i], clue, *added[i + 1 :]]
                 for clue in candidates
-                if person in clue.split()[1:]
+                if person in named_in(clue)
                 for i in reversed(range(len(added)))
                 if fine([*added[:i], clue, *added[i + 1 :]])
             ),
@@ -629,6 +745,15 @@ def _cover(
     return added
 
 
+def _count(puzzle: str, expressions: bool) -> int:
+    board, rules, clues = load_expression_board(puzzle, validate_keys=False)
+    return len(expression_brute.solutions(board, clues, 2, rules=rules))
+
+
+def _clue_names(clue: str, people: Sequence[str], expressions: bool) -> set[str]:
+    return _expression_people(parse_statement(clue).formula, set(people))
+
+
 def ease(
     text: str,
     placement: dict[str, murdoku.Square],
@@ -639,6 +764,8 @@ def ease(
     exclude: Iterable[str] = (),
     needs: Iterable[int] = (),
     needs_marks: Iterable[str] = (),
+    *,
+    expressions: bool = False,
 ) -> list[str]:
     """Clues to add to a unique `text` until its grade is at most `max_grade`.
 
@@ -649,38 +776,40 @@ def ease(
     Ties go to clues about the people named least so far. Stops within
     `max_grade` or when nothing helps.
     """
-    board, _ = load_board(text)
+    board = load_expression_board(text)[0]
     candidates = candidate_clues(board, placement, kinds, exclude)
     lines = clue_lines(text)
     needed = sorted(set(needs))
     marks_needed = tuple(dict.fromkeys(needs_marks))
     for name in marks_needed:
-        if len(brute.solutions(without_mark_condition(text, name))) < 2:
+        if _count(without_mark_condition(text, name), expressions) < 2:
             raise ValueError(f"mark {name!r} is not necessary in the starting puzzle")
     added: list[str] = []
-    current = outcome(text, timeout)
+    current = outcome(text, timeout, expressions=expressions)
     while not _within(current.grade, max_grade):
-        mentions = _mentions(board.people, lines + added)
+        mentions = _mentions(board.people, lines + added, expressions=expressions)
         best: tuple[tuple[int, int], int, str, Outcome] | None = None
         for clue in candidates:
             if clue in lines or clue in added:
                 continue
             if any(
-                len(brute.solutions(with_clues(text, [*lines[: n - 1], *lines[n:], *added, clue])))
+                _count(with_clues(text, [*lines[: n - 1], *lines[n:], *added, clue]), expressions)
                 == 1
                 for n in needed
             ):
                 continue
             trial = with_clues(text, [*lines, *added, clue])
             if any(
-                len(brute.solutions(without_mark_condition(trial, name))) == 1
+                _count(without_mark_condition(trial, name), expressions) == 1
                 for name in marks_needed
             ):
                 continue
-            result = outcome(trial, timeout)
+            result = outcome(trial, timeout, expressions=expressions)
             if not result.good or result.grade is None:
                 continue
-            spread = sum(mentions.get(word, 0) for word in clue.split()[1:])
+            spread = sum(
+                mentions.get(word, 0) for word in _clue_names(clue, board.people, expressions)
+            )
             level = GRADES.index(result.grade)
             rank = (0, -level) if _within(result.grade, max_grade) else (1, level)
             key = (rank, spread, clue, result)
@@ -697,8 +826,8 @@ def ease(
 
 def occupancy(text: str, sample: int = 400) -> tuple[int, list[tuple[str, str, int]]]:
     """(placements seen, [(object, square, times occupied)]) over the allowed placements."""
-    board, _ = load_board(text)
-    found = brute.sample(text, sample)
+    board, rules, clues = load_expression_board(text)
+    found = expression_brute.sample(board, clues, sample, rules=rules)
     used = [{found_one[person] for person in board.people} for found_one in found]
     rows = [
         (obj.name, str(square), sum(square in squares for squares in used))
@@ -714,6 +843,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("command", choices=("report", "thin", "suggest", "ease", "occupancy"))
     parser.add_argument("puzzle", type=Path)
     parser.add_argument("--timeout", type=float, default=5.0, help="seconds per trial")
+    parser.add_argument(
+        "--expressions",
+        action="store_true",
+        help="compatibility flag; clues and rules always use the expression grammar",
+    )
     parser.add_argument("--keep", type=int, nargs="*", default=[], help="thin: clue numbers")
     parser.add_argument("--max-grade", choices=GRADES, help="thin, ease: hardest grade allowed")
     parser.add_argument("--solution", help='suggest: intended placement, "Ada=r1c2 Ben=r3c4"')
@@ -762,10 +896,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             note = "  <- never" if times == 0 else "  <- always" if times == seen else ""
             print(f"{name:20} {square:6} {times:5}{note}")
         return 0
-    print(f"start: {outcome(text, args.timeout)}")
+    print(f"start: {outcome(text, args.timeout, expressions=args.expressions)}")
     if args.command == "report":
-        keyed = keyed_clue_numbers(text)
-        for number, line, result in removal_report(text, args.timeout):
+        keyed = keyed_expression_clue_numbers(text)
+        for number, line, result in removal_report(
+            text, args.timeout, expressions=args.expressions
+        ):
             if number in keyed:
                 print(f"{number:3}. {line}\n     required by Key; current puzzle: {result}")
             else:
@@ -773,8 +909,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"{number:3}. {line}\n     without it: {result}{note}")
         return 0
     if args.command == "thin":
-        kept = thin(text, args.keep, args.max_grade, args.timeout, print)
-        print(f"result: {outcome(with_clues(text, kept), args.timeout)}\nClues:")
+        kept = thin(
+            text, args.keep, args.max_grade, args.timeout, print, expressions=args.expressions
+        )
+        print(
+            f"result: {outcome(with_clues(text, kept), args.timeout, expressions=args.expressions)}"
+            "\nClues:"
+        )
         print("\n".join(kept))
         return 0
     if not args.solution:
@@ -793,6 +934,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.exclude,
             args.needs,
             args.needs_mark,
+            expressions=args.expressions,
         )
         print("Clues to add:")
         print("\n".join(added))
@@ -809,6 +951,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.cover,
         args.exclude_target,
         args.needs_mark,
+        expressions=args.expressions,
     )
     print("Clues to add:")
     print("\n".join(added))

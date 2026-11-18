@@ -51,10 +51,11 @@ inspection methods, `assign`/`eliminate`). Renderers learn what changed from
 **Solving, explaining and drawing are separate layers.** `core` records
 *why* each step happened as structure on `Step` (`sources`, `scope`,
 `placing`, `trail`), never as wording. `proof` shortens a solve using only
-that and the public API. `murdoku` owns the board and what clues mean, and
-`board_rules()` is the structured meaning of its constraints — look names
-up there, never parse them. Wording (`Language:`, `Words:`, phrasebooks)
-lives only in `story`; pictures only in `picture`. Explanation concerns
+that and the public API. `murdoku` owns the board, and `board_rules()` is the
+structured meaning of its board constraints — look names up there, never parse
+them. `murdoku_lang` defines clue semantics; `murdoku_lower` compiles the AST.
+Wording (`Language:`, `Words:`, phrasebooks)
+lives in `story` and `murdoku_expression_words`; pictures only in `picture`. Explanation concerns
 never go on `Board` or into `core`. `test_modules_only_import_their_own_layer`
 enforces the import graph.
 
@@ -62,7 +63,7 @@ enforces the import graph.
 
 | Boundary | Contract |
 |---|---|
-| puzzle module -> engine | `compile_puzzle(...) -> Model` |
+| puzzle module -> engine | `compile_puzzle(...) -> Model`; Murdoku uses `murdoku_lower.compile_statements(...)` over `murdoku.compile_board(...)` |
 | engine -> rules | `Rule(name, apply)`, `apply(model) -> bool`; log every deduction under `name` |
 | engine -> caller | `Solver(model, rules).solve(on_step) -> Result` |
 | progress | `on_step(rule_name, steps)` after each rule that fires |
@@ -99,6 +100,9 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   generation with `uv run pytest -q --override-ini=addopts= -m booklet`.
   `.github/workflows/tests.yml` overrides the local default and runs every
   Python test on 3.12 and 3.13, plus all web checks, on every pull request.
+  Each Python version uses eight deterministic `--shard=INDEX/8` partitions,
+  including the `solutions` and `booklet` cases; their union is the full suite.
+  CI prints per-test outcomes and slow-test timings.
   Local LLM-based checks that cannot run in CI, such as independent review of
   booklet or web output, may take longer but must be split into reviewable pieces.
   Run an exhaustive suite locally when an enhancement could affect puzzle
@@ -238,6 +242,13 @@ for file syntax and semantics, and
 for puzzle workflows. Keep vocabulary in the format guide; do not duplicate it
 here or accept legacy spellings.
 
+There is one meaning per word, and commas form unions. Multi-element left
+operands require an explicit determiner. The reference evaluator defines what
+an expression means; the compiler and independent brute force must agree with
+it. Lower expressions in `murdoku_lower`, never in `core.py`, and preserve the
+tuned pattern table so migration does not change grades. Compose expressions
+instead of adding a puzzle-specific keyword.
+
 Repeated `Regions:` IDs form one logical area, even when disconnected;
 `AreaTags:` are separate, overlapping sets. Every object footprint explicitly
 declares `blocking` or `standable`, is connected, and does not overlap another
@@ -275,14 +286,18 @@ generated text for language and consistency, not for solving.
 
 ## Murdoku global counts
 
-`count` clues are Murdoku vocabulary, not new engine rules. Compile them to
-`Kind.COUNT` constraints using `murdoku.global_count_conditions`, and call the
-same semantic tally from the independent brute-force solver. Reified empty
-areas/cells must be true exactly when their occupant count is zero; reuse one
-empty Boolean per logical area or cell even when tagged selectors overlap.
-Count every entry in `People:`; no subset is implicit. Count only unblocked
-free cells for empty-cell selectors. Attributes are fixed facts: an attribute
-count may reject an inconsistent model but cannot locate a person. See
+Use the [expression reference](docs/model-and-puzzle-formats.md#expression-clue-language)
+for count and occupancy meaning. The evaluator is authoritative;
+`murdoku_lower` lowers counts to generic model primitives outside `core.py`.
+Preserve the tuned count/population patterns and their grades rather than
+turning every expression into a large relation.
+
+Reified emptiness must be equivalent to zero people on the footprint,
+including blocked cells. Reuse an empty Boolean per logical area or cell
+even when tags overlap. Migrated free-cell-only counts use `empty free cells`.
+Count every entry in `People:` unless the operand explicitly selects a
+subset. Attributes are fixed facts: an attribute count may reject an
+inconsistent model but cannot locate a person. See
 `benchmark/murdoku_global_counts.py` before changing the count/chain workload.
 The text board and `--step` show true/open totals, additional demand, and
 feasible totals; active location scopes are highlighted without adding
@@ -437,17 +452,21 @@ Numbers from actual runs, not estimates:
 | `wie-doet-het-met-wie-1.txt` | solved, 23 iterations | `single` 10, `relations` 6, `subsumption` 4, `cover2` 2 |
 | `murdoku_3_house.txt` | solved, 11 iterations | `single` 5, `relations` 4, `subsumption` 1 |
 | `murdoku_sparse_mystery.txt` | solved, 5 iterations | `single` 4 |
-| `murdoku_global_counts.txt` | solved, 13 iterations | `single` 9, `count` 3 |
-| `murdoku_composition.txt` | solved, 38 iterations | `single` 20, `count` 14, `relations` 3 |
+| `murdoku_global_counts.txt` | solved, 11 iterations | `single` 8, `count` 2 |
+| `murdoku_composition.txt` | solved, 44 iterations | `single` 25, `count` 15, `relations` 3 |
 | `samen-onderweg.txt` | solved, 29 iterations | `single` 17, `count` 7, `relations` 3, `subsumption` 1 |
 | `prrrdoku1.txt` | solved, 14 iterations | `single` 7, `relations` 4, `subsumption` 2 |
-| `prrrdoku2.txt` | solved, 27 iterations | `single` 9, `relations` 14, `chains` 2, `what_if` 1 |
-| `prrrdoku3.txt` | solved, 40 iterations | `single` 9, `relations` 18, `subsumption` 5, `cover2` 2, `what_if` 5 |
+| `prrrdoku2.txt` | solved, 36 iterations | `single` 17, `count` 1, `relations` 14, `chains` 2, `what_if` 1 |
+| `prrrdoku3.txt` | solved, 242 iterations | `single` 99, `count` 63, `relations` 67, `subsumption` 5, `cover2` 2, `what_if` 5 |
 | `calcudoku_1_4x4.txt` | solved, 22 iterations | `single` 15, `relations` 6 |
 | `calcudoku_3_6x6.txt` | solved, 57 iterations | `single` 35, `relations` 21 |
 | `calcudoku_4_6x6.txt` | solved, 60 iterations | `single` 36, `relations` 20, `cover2` 3 |
 | `calcudoku_6_6x6.txt` | solved, 73 iterations | `single` 35, `relations` 30, `cover2` 4, `what_if` 3 |
 | `calcudoku_5_7x7.txt` | solved, 80 iterations | `single` 47, `relations` 26, `cover2` 4, `cover3` 2 |
+
+The Murdoku rows use expression compilation. Counts include propagation of
+hidden gates, not just human placements; migration preserves the hardest rule
+and deductive frontier, not the number of auxiliary steps.
 
 No example in `examples/` needs `rule_wing`; it is in the ladder for models
 that do, and the Norvig benchmark credits it (see `benchmark/`).
@@ -473,15 +492,15 @@ The late-reveal Prrrdokus preserve their original assignments while changing
 the board or clues so Vladimir is the final placement and her companion stays
 ambiguous until then. Puzzle 1 moves r4c2 from kampeerplek to speeltuin.
 Puzzle 2 replaces Jos's kitchen-shop location clue with
-`dir Anna Mao up = 5` and retains `dir Jos Mao manhattan >= 13`; it needs
+`Anna dir:up Mao = 5` and retains `Jos dir:manhattan Mao >= 13`; it needs
 `what_if` and keeps Vladimir last.
 Puzzle 3 moves r2c5 from Bankastraat to Helmholtzstraat, moves r1c6 and r2c6
 from Bankastraat to Klimgebied Noord to keep Bankastraat connected, and adds
-`dir Mao Otto manhattan <= 6`. `--track-person Vladimir` traces the live square and
+`Mao dir:manhattan Otto <= 6`. `--track-person Vladimir` traces the live square and
 region-overlap companion candidates; regression tests check the final
 placement, ambiguity and connected region.
 
-Prrrdoku 3 still needs `what_if` (5 firings, after 34 earlier firings). The
+Prrrdoku 3 still needs `what_if` (5 firings). The
 document's own solution argues by cases too ("Waar zit Anna?"). Its key clue,
 "Luna is furthest from Mao", is a three-person relation, which gives chains
 no weak links yet.
@@ -498,9 +517,10 @@ no weak links yet.
   solution picture and worked solution were corrected (r1c5 now in
   Helmholtzstraat); puzzle 1's worked solution listed a cross-region square
   for Tjitske and was corrected too. The answers did not change.
-- "Only Luna may stand in the water" is a board rule, written out as one
-  `not in <person> area:water` line per other person in the `Rules:` section of
-  `prrrdoku3.txt`, so clue numbers still match the document.
+- "Only Luna may stand in the water" is the board rule
+  `no (people except Luna) in area:water` in `prrrdoku3.txt`, so clue numbers
+  still match the document. Its fixed-person lowering preserves the measured
+  route without auxiliary gates.
 - `--explain` follows the solver's own route, shortened. Where the solver
   still needs `what_if` (Prrrdoku 3), the story says "X kan niet op ...:
   dan ..." rather than the document's more insightful case splits.

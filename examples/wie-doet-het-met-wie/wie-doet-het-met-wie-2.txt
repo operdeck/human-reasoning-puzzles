@@ -53,14 +53,14 @@ Noor
 Wouter
 
 Rules:
-with Wouter in same area exactly 1
+count (people in area of Wouter) = 1 + 1
 count people on object:badjas = 1
 count people on object:sloffen = 1
 
 Clues:
-on Bram object:badjas | Bram draagt slechts een badjas.
-dir people_on:object:badjas Noor left | Noor staat ergens rechts van de gast met de badjas.
-beside Eva object:tafel
+Bram on object:badjas | Bram draagt slechts een badjas.
+some (people on object:badjas) dir:left Noor | Noor staat ergens rechts van de gast met de badjas.
+Eva beside object:tafel
 
 Title:
 Murdoku: Na het tuinfeest
@@ -73,8 +73,8 @@ Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie
 Figures:
 Eva: ; icon=U+1F469
 Bram: ; icon=U+1F468
-Noor: ; icon=U+1F471
-Wouter: ; icon=U+1F9D1
+Noor: geen eigen aanwijzingen ; icon=U+1F471
+Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?

@@ -95,34 +95,27 @@ Vladimir
 Mao
 Luna
 
-# "In het water kan alleen Luna zijn" is a board rule, written out per person.
+# Only Luna may enter the water; this does not require her to be there.
 Rules:
-not in Tim area:water
-not in Jos area:water
-not in Otto area:water
-not in Anna area:water
-not in Pip area:water
-not in Tjitske area:water
-not in Vladimir area:water
-not in Mao area:water
+no (people except Luna) in area:water
 
 # Clues 1-13 from the document, plus a late-reveal clue (14).
 # Clue 15 is the question being asked.
 Clues:
-dir Tim object:klimwand,boulder knight
-in Otto area:klimgebied_noord area:klimgebied_zuid area:kantoor | Otto is in een klimgebied of op kantoor.
-on Jos object:bankje
-beside Anna object:koffer
-in Luna area:woonboot area:water
-beside Tjitske object:vuurtje | Tjitske zit nog steeds naast het vuurtje.
-dir Otto Pip areas = 0
-dir Anna Tim areas >= 2
-dir Otto Luna up
-dir Luna Jos up
-dir Tjitske Mao manhattan >= 10
-alone Luna
-dir Luna Mao furthest
-dir Mao Otto manhattan <= 6
+Tim dir:knight object:klimwand,boulder
+Otto in area:klimgebied_noord, area:klimgebied_zuid, area:kantoor | Otto is in een klimgebied of op kantoor.
+Jos on object:bankje
+Anna beside object:koffer
+Luna in area:woonboot, area:water
+Tjitske beside object:vuurtje | Tjitske zit nog steeds naast het vuurtje.
+Otto dir:areas Pip = 0
+Anna dir:areas Tim >= 2
+Otto dir:up Luna
+Luna dir:up Jos
+Tjitske dir:manhattan Mao >= 10
+count (people in area of Luna) = 1
+Luna dir:furthest Mao
+Mao dir:manhattan Otto <= 6
 
 # Booklet text for --docx (optional).
 Title:
@@ -131,6 +124,10 @@ Prrrdoku 3: Een dagje Amsterdam
 Intro:
 Zes vrienden en de katten Mao, Luna en Vladimir gaan een dagje naar Amsterdam; Vladimir komt als laatste.
 Zet iedereen op een vrij vakje, één per rij en één per kolom. Op een bankje kun je staan, andere voorwerpen blokkeren een vakje. Alleen Luna kan in het water.
+
+Figures:
+Pip: geen eigen aanwijzingen
+Vladimir: geen eigen aanwijzingen
 
 Question:
 Wie krijgt Vladimir op schoot?

@@ -21,9 +21,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import svg
-from .bruteforce import murdoku as brute
+from .bruteforce import murdoku_expr as expression_brute
 from .murdoku import Square
-from .puzzlefile import load_board
+from .murdoku_expression_file import load_expression_board
+from .murdoku_lang import parse_statement
+from .puzzlefile import load_board_layout
 
 Cell = tuple[int, int]
 Layout = tuple[tuple[int, ...], ...]
@@ -109,6 +111,7 @@ class Spec:
     seed: int = 1
     min_area: int = int(THRESHOLDS["min_area"])
     max_ratio: float = THRESHOLDS["max_ratio"]
+    expressions: bool = True
 
     def __post_init__(self) -> None:
         if not 4 <= self.size <= 12:
@@ -145,7 +148,12 @@ class Spec:
         if unknown := set(self.decor) - {obj.name for obj in self.objects}:
             raise ValueError(f"decor names unknown objects: {', '.join(sorted(unknown))}")
         for clue in self.key_clues:
-            tokens = clue.partition("|")[0].split()
+            from .clue_search import _expression_people
+
+            tokens = _expression_people(
+                parse_statement(clue).formula,
+                set(self.people) | {f"object:{name}" for name in self.decor},
+            )
             if self.late is not None and self.late in tokens:
                 raise ValueError(f"key clue {clue!r} names the late figure {self.late}")
             targets = {part for token in tokens for part in token.split(":")}
@@ -153,7 +161,7 @@ class Spec:
                 raise ValueError(f"key clue {clue!r} names decorative objects")
 
 
-def read_spec(text: str) -> Spec:
+def read_spec(text: str, *, expressions: bool = True) -> Spec:
     """A spec from `key: value` lines; `object:` and `key_clue:` may repeat.
 
     `object: bank standable x2 size 2 in Hue` asks for two standable benches of two
@@ -226,6 +234,7 @@ def read_spec(text: str) -> Spec:
         objects=tuple(objects),
         decor=tuple(values.get("decor", "").split()),
         key_clues=tuple(clues),
+        expressions=expressions,
         template=values.get("template", "auto"),
         candidates=int(values.get("candidates", 20)),
         keep=int(values.get("keep", 5)),
@@ -715,10 +724,7 @@ def draft_text(
         lines += [
             "",
             "Rules:",
-            (
-                f"with {spec.late} attribute:{spec.companion_trait} "
-                f"in same area exactly {len(spec.companions)}"
-            ),
+            f"(people in area of {spec.late}) = ({spec.late}, attribute:{spec.companion_trait})",
         ]
     chosen = spec.key_clues if clues is None else clues
     if chosen:
@@ -849,9 +855,29 @@ def _key_clue_bites(spec: Spec, base: str, legal: Sequence[Mapping[str, Square]]
     idle = []
     for clue in spec.key_clues:
         alone = draft_with_clues(base, [clue])
-        if all(brute.accepts(alone, dict(placement)) for placement in legal):
+        if all(_accepts(alone, dict(placement), spec.expressions) for placement in legal):
             idle.append(clue)
     return idle
+
+
+def _accepts(text: str, placement: dict[str, Square], expressions: bool) -> bool:
+    board, rules, clues = load_expression_board(text)
+    return expression_brute.accepts(board, clues, placement, rules=rules)
+
+
+def _sample(text: str, limit: int, expressions: bool) -> list[dict[str, Square]]:
+    board, rules, clues = load_expression_board(text)
+    sampled = expression_brute.sample(board, clues, limit, rules=rules)
+    placements = []
+    for result in sampled:
+        placement = {}
+        for person in board.people:
+            square = result[person]
+            if not isinstance(square, Square):
+                raise ValueError("expression search returned a non-square person placement")
+            placement[person] = square
+        placements.append(placement)
+    return placements
 
 
 def draft_with_clues(text: str, clues: Sequence[str]) -> str:
@@ -975,7 +1001,7 @@ def candidate(
         if taken is not None and taken(base):
             _bump(tally, "layout already in the collection")
             continue
-        legal = brute.sample(base, int(THRESHOLDS["legal_sample"]))
+        legal = _sample(base, int(THRESHOLDS["legal_sample"]), spec.expressions)
         if not legal:
             _bump(tally, "nobody fits")
             continue
@@ -988,8 +1014,8 @@ def candidate(
         full = draft_text(spec, layout, colours, objects)
         # Most bare-board placements break the late-reveal rule, but checking one is cheap;
         # searching with that rule is not, so it is the fallback.
-        fitting = [p for p in legal if brute.accepts(full, dict(p))] or brute.sample(
-            full, int(THRESHOLDS["placement_sample"])
+        fitting = [p for p in legal if _accepts(full, dict(p), spec.expressions)] or _sample(
+            full, int(THRESHOLDS["placement_sample"]), spec.expressions
         )
         if not fitting:
             _bump(tally, "late rule and key clues unsatisfiable")
@@ -1060,12 +1086,15 @@ def close(spec: Spec, item: Candidate, timeout: float = 5.0) -> Candidate:
         needs=needs,
         cover=True,
         exclude_targets=spec.decor,
+        expressions=spec.expressions,
     )
     text = clue_search.with_clues(item.text, [*spec.key_clues, *added])
     if spec.key_clues:
         key_entries = [f"clue: {clue.partition('|')[0].strip()}" for clue in spec.key_clues]
         text = f"{text.rstrip()}\n\nKey:\n" + "\n".join(key_entries) + "\n"
-    outcome = clue_search.outcome(text, timeout, late_person=spec.late or None)
+    outcome = clue_search.outcome(
+        text, timeout, late_person=spec.late or None, expressions=spec.expressions
+    )
     state = str(outcome) if outcome.good else f"not closed ({outcome})"
     if outcome.good and spec.late:
         state += ", late figure last" if outcome.late_last else ", late figure not last"
@@ -1135,7 +1164,7 @@ def write(report: Report, spec: Spec, folder: Path, pictures: bool = True) -> li
         for sheet, solved in zip(sheets, (False, True), strict=True):
             images = []
             for item in kept:
-                board, _ = load_board(item.text)
+                board = load_board_layout(item.text)
                 image = murdoku_picture(
                     board, item.placement if solved else None, language=spec.language
                 )

@@ -14,7 +14,7 @@ kobe: in Kobe
 tokyo: in Tokyo
 sapporo: in Sapporo
 kyoto: in Kyoto
-target.attribute: a {name}
+name.attribute: a {name}
 
 Regions:
 kobe: kobe #DCDCDC
@@ -48,17 +48,17 @@ Tempura
 Jos
 
 Rules:
-with Jos attribute:food in same area exactly 1
+count (people in area of Jos) = 1 + 1 and every ((people except Jos) in area of Jos) is attribute:food
 
 Clues:
-beside Ramen object:plate
-dir Tempura Tonkatsu manhattan <= 2
-in Tempura rows:4
-dir Tempura Yakitori areas >= 1
-dir Yakitori Ramen left
-in Tonkatsu area:kobe
-dir Tonkatsu Tempura up
-in Ramen columns:4
+Ramen beside object:plate
+Tempura dir:manhattan Tonkatsu <= 2
+Tempura in rows:4
+Tempura dir:areas Yakitori >= 1
+Yakitori dir:left Ramen
+Tonkatsu in area:kobe
+Tonkatsu dir:up Tempura
+Ramen in columns:4
 
 # Booklet text for --docx (optional).
 Title:
@@ -73,7 +73,7 @@ Ramen: ; icon=U+1F35C
 Yakitori: ; icon=U+1F362
 Tonkatsu: ; icon=U+1F356
 Tempura: ; icon=U+1F364
-Jos: the hungry eater ; icon=U+1F9D1
+Jos: the hungry eater, with no clues of their own ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?

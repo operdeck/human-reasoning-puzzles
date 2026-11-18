@@ -94,25 +94,25 @@ stage: on the stage
 
 Clues:
 count people on mark:social = 1 | Exactly one figure stands on a social square.
-dir Gozarutchi Violetchi up
-dir Lovelitchi Violetchi left
-dir Ichigotchi Gozarutchi left
-dir Kuchipatchi Gozarutchi areas = 0
-dir Tarakotchi Kuchipatchi up
-not beside Ichigotchi object:sakura
-dir Masktchi Lovelitchi left
-beside Kuchipatchi object:slide
-dir Masktchi Ichigotchi up
-in Ichigotchi area:garden
-dir Lovelitchi Masktchi areas = 1
-in Mametchi area:school
-in Memetchi area:market
-in Pianitchi area:playground
-in Hashizotchi area:market
-not beside Lovelitchi object:chair
-dir Hashizotchi Memetchi left
-dir Pianitchi Gozarutchi up
-in Violetchi area:stage
+Gozarutchi dir:up Violetchi
+Lovelitchi dir:left Violetchi
+Ichigotchi dir:left Gozarutchi
+Kuchipatchi dir:areas Gozarutchi = 0
+Tarakotchi dir:up Kuchipatchi
+not (Ichigotchi beside object:sakura)
+Masktchi dir:left Lovelitchi
+Kuchipatchi beside object:slide
+Masktchi dir:up Ichigotchi
+Ichigotchi in area:garden
+Lovelitchi dir:areas Masktchi = 1
+Mametchi in area:school
+Memetchi in area:market
+Pianitchi in area:playground
+Hashizotchi in area:market
+not (Lovelitchi beside object:chair)
+Hashizotchi dir:left Memetchi
+Pianitchi dir:up Gozarutchi
+Violetchi in area:stage
 
 # Booklet text for --docx (optional).
 Title:
@@ -135,7 +135,7 @@ Violetchi: ; icon=U+1F49C
 Pianitchi: ; icon=U+1F3B9
 Ichigotchi: ; icon=U+1F353
 Hashizotchi: ; icon=U+1F426
-Akumatchi: the devil ; icon=U+1F47F
+Akumatchi: the devil, with no clues of their own ; icon=U+1F47F
 
 Question:
 Which figure occupies a social square, and which figures, if any, occupy quiet squares?

@@ -9,7 +9,7 @@ import pytest
 pytest.importorskip("fontTools")
 
 from csp import cli, icons, murdoku, story, svg, web
-from csp.puzzlefile import load_board
+from csp.murdoku_expression_file import load_expression_board
 from tests.examples import EXAMPLES, example, played_examples
 
 pytestmark = pytest.mark.solutions
@@ -161,9 +161,12 @@ def test_murdoku_cards_cover_every_source_clue_once(exported):
         bundle = _bundle(exported, source.stem)
         if bundle["family"] != "murdoku":
             continue
-        board, clues = load_board(source.read_text())
+        board, rules, clues = load_expression_board(source.read_text())
         entries = bundle["clueEntries"]
-        expected = [f"clue:{number}" for number in range(1, len(clues) + 1)]
+        expected = [
+            *(f"clue:{number}" for number in range(1, len(clues) + 1)),
+            *(f"rule:{number}" for number in range(1, len(rules) + 1)),
+        ]
         actual = [source for entry in entries for source in entry["sources"]]
         assert sorted(actual) == sorted(expected), source.name
         assert [item["id"] for item in bundle["palette"]] == board.people
@@ -175,7 +178,7 @@ def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
     text = (
         example("murdoku_3_house.txt")
         .read_text()
-        .replace("Clues:\n", "Clues:\nin Ada area:study | Ben remembers Ada in the study.\n")
+        .replace("Clues:\n", "Clues:\nAda in area:study | Ben remembers Ada in the study.\n")
     )
     bundle = web._murdoku(text, {})
     entry = next(entry for entry in bundle["clueEntries"] if "clue:1" in entry["sources"])
@@ -196,6 +199,20 @@ def test_vietnam_web_groups_pork_dish_clues_with_their_travelers(number):
         assert "een vakje met een varkensvleesgerecht" in entry["text"]
         assert "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)" in entry["text"]
         assert "bún chả" not in entry["text"]
+
+
+@pytest.mark.parametrize(("number", "person"), [(1, "PhoGa"), (2, "Loempia"), (3, "RauMuong")])
+def test_vietnam_web_combines_figure_rules_with_clues(number, person):
+    text = example(f"vietnam-murdoku-{number}.txt").read_text()
+    bundle = web._murdoku(text, {})
+    entry = next(entry for entry in bundle["clueEntries"] if entry["sources"] == ["rule:1"])
+    assert entry["item"] == person
+    assert "precies twee anderen" in entry["text"]
+    assert "allebei reizigers" in entry["text"]
+    assert entry["text"] not in bundle["rules"]
+    figure = next(item for item in bundle["palette"] if item["id"] == person)
+    assert "zonder eigen aanwijzingen" not in figure["description"]
+    assert "precies twee anderen: Pippo en Swena" in " ".join(bundle["rules"])
 
 
 def test_murdoku_cell_details_describe_board_facts_without_solution():
@@ -297,6 +314,23 @@ def test_murdoku_count_details_follow_edge_and_point_scopes():
     assert archway not in details["r3c1"]
     assert all(fountain in details[cell] for cell in ("r3c1", "r3c2", "r4c1", "r4c2"))
     assert fountain not in details["r2c2"]
+
+
+def test_expression_count_hover_keeps_author_wording_on_its_own_scope():
+    text = (
+        example("murdoku_composition.txt")
+        .read_text()
+        .replace(
+            "Clues:\n",
+            "Clues:\ncount people on point_object:fountain = 1 | One guest touches the fountain!\n",
+        )
+    )
+    details = web._murdoku(text, {})["cellDetails"]
+    assert all(
+        "One guest touches the fountain!" in details[cell]
+        for cell in ("r3c1", "r3c2", "r4c1", "r4c2")
+    )
+    assert "One guest touches the fountain!" not in details["r2c2"]
 
 
 def test_murdoku_point_hovers_include_outer_edges_and_corners():
@@ -477,21 +511,6 @@ def test_export_fails_when_a_puzzle_cannot_be_exported(tmp_path, capsys):
     assert "broken.txt" in capsys.readouterr().err
 
 
-def test_every_murdoku_clue_kind_has_a_condition_in_both_languages():
-    kinds = (
-        set(murdoku.FILTERS)
-        | set(murdoku.RELATIONS)
-        | set(murdoku.GROUP_CLUES)
-        | set(murdoku.ROLE_CONDITION_KINDS)
-        | {"exactly", "count", "alone_with", "only_on", "unique_attribute", "at", "on", "on_mark"}
-    )
-    assert kinds <= set(story.CONDITION_KEYS)
-    for language in ("en", "nl"):
-        for key in set(story.CONDITION_KEYS.values()):
-            assert f"cond.{key}" in story.PHRASES[language]
-            assert f"cond.{key}.name" in story.PHRASES[language]
-
-
 def test_murdoku_web_key_lists_board_symbols_only(exported):
     point = _bundle(exported, "murdoku_2_point_objects")
     assert "conditions" not in point
@@ -543,7 +562,7 @@ def test_murdoku_web_key_keeps_text_fallbacks_for_unknown_symbols():
         .read_text()
         .replace("fountain", "unlisted_thing")
         .replace("window: window", "mystery_window: window")
-        .replace("on Cal edge_item:window", "on Cal edge_item:mystery_window")
+        .replace("Cal on edge_item:window", "Cal on edge_item:mystery_window")
     )
     key = web._murdoku(text, {})["key"]
     point = next(item for item in key if item["name"] == "Unlisted thing")
@@ -692,8 +711,9 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
 
 def test_author_wordings_reach_the_web_player(exported):
     bundle = _bundle(exported, "wie-doet-het-met-wie-1")
-    assert "Precies twee mensen staan op een badjas." in bundle["rules"]
-    assert "Precies één persoon staat op een paar sloffen." in bundle["rules"]
+    texts = [entry["text"] for entry in bundle["clueEntries"]]
+    assert "Precies twee mensen staan op een badjas." in texts
+    assert "Precies één persoon staat op een paar sloffen." in texts
     assert "Marloes heeft alleen een badjas aan." in bundle["clues"]
 
 

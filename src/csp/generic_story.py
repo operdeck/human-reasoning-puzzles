@@ -10,7 +10,7 @@ constraints well.
 """
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -71,10 +71,15 @@ def compress(names: Sequence[str], say: Wording) -> str:
     return say.join(said)
 
 
-class _Narrator:
-    def __init__(self, model: Model, say: Wording) -> None:
+class Narrator:
+    """Render a generic proof, with overridable vocabulary for a puzzle family."""
+
+    def __init__(
+        self, model: Model, say: Wording, source_words: Mapping[str, str] | None = None
+    ) -> None:
         self.model = model
         self.say = say
+        self.source_words = dict(source_words or {})
         self.visible = set(model.variables)
         self.constraints = {c.name: c for c in model.constraints}
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
@@ -163,7 +168,9 @@ class _Narrator:
         return source
 
     def names(self, sources: Sequence[str]) -> str:
-        return self.say.join([f"*{name}*" for name in dict.fromkeys(sources)])
+        """Constraint names in italics, each with its clue's own wording when known."""
+        shown = dict.fromkeys(self.source_words.get(name, name) for name in sources)
+        return self.say.join([f"*{name}*" for name in shown])
 
     # --- singles ----------------------------------------------------------
 
@@ -288,7 +295,7 @@ class _Narrator:
         more = len(shown) - len(trail)
         broken = step.sources[0] if step.sources else None
         breaks = (
-            self.say("generic.breaks", source=f"*{broken}*")
+            self.say("generic.breaks", source=self.names([broken]))
             if broken is not None
             else self.say("generic.breaks_unknown")
         )
@@ -353,7 +360,13 @@ class _Narrator:
         return Explanation(tuple(paragraphs), solved)
 
 
-def thin(start: Model, moves: Sequence[Move], budget: int = MAX_REPLAYS) -> list[Move]:
+def thin(
+    start: Model,
+    moves: Sequence[Move],
+    budget: int = MAX_REPLAYS,
+    *,
+    required_values: Mapping[str, Any] | None = None,
+) -> list[Move]:
     """Drop as many moves as still solve the puzzle, hardest rules first, in at most
     `budget` replays.
 
@@ -361,7 +374,8 @@ def thin(start: Model, moves: Sequence[Move], budget: int = MAX_REPLAYS) -> list
     puzzle fires hundreds of small clue deductions. This tries large blocks of
     one rule first and halves them, so the many unneeded clue firings usually
     go in a few replays. The budget counts replays, not seconds, so the same
-    puzzle always gets the same story.
+    puzzle always gets the same story. `required_values` also preserves facts
+    about hidden variables, such as a mystery's deduced culprit.
     """
     kept = list(moves)
     replays = 0
@@ -375,20 +389,30 @@ def thin(start: Model, moves: Sequence[Move], budget: int = MAX_REPLAYS) -> list
                 block = {id(m) for m in mine[i : i + size]}
                 fewer = [m for m in kept if id(m) not in block]
                 replays += 1
-                if replay(start, fewer).solution() is not None:
+                result = replay(start, fewer)
+                if result.solution() is not None and all(
+                    result.chosen(var) == value for var, value in (required_values or {}).items()
+                ):
                     kept = fewer
             size //= 2
     return kept
 
 
-def explain(text: str, start: Model, fired: Sequence[tuple[str, Sequence[Step]]]) -> Explanation:
+def explain(
+    text: str,
+    start: Model,
+    fired: Sequence[tuple[str, Sequence[Step]]],
+    source_words: Mapping[str, str] | None = None,
+) -> Explanation:
     """Explain a solve of any compiled model from its rule firings, shortest proof first.
 
     `start` is the compiled model before solving and `fired` what the solver
-    reported, rule by rule. `text` gives the puzzle's language.
+    reported, rule by rule. `text` gives the puzzle's language, and `source_words`
+    maps a constraint name to how its clue reads.
     """
     moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
     if replay(start, moves).solution() is not None:
         moves = thin(start, moves)
     result, groups = episodes(start, moves)
-    return _Narrator(start, Wording.read(text)).tell(start, groups, result.solution() is not None)
+    narrator = Narrator(start, Wording.read(text), source_words)
+    return narrator.tell(start, groups, result.solution() is not None)

@@ -13,8 +13,8 @@ import statistics
 import time
 
 from csp.core import DEFAULT_RULES, Solver
-from csp.murdoku import compile_puzzle
-from csp.puzzlefile import load_board
+from csp.murdoku_expression_file import load_expression_board
+from csp.murdoku_lower import compile_statements
 
 COUNT_RULES = tuple(rule for rule in DEFAULT_RULES if rule.name in ("single", "count"))
 COUNT_CHAIN_RULES = tuple(
@@ -62,11 +62,12 @@ def puzzle_text(size: int) -> str:
             "count people in tag:north >= 1",
             f"count people in rows:1-{half} >= 2",
             f"count people in columns:1-{half} >= 2",
-            f"count people with role:guide 1..{len(people)}",
-            f"count people with attribute:glasses = {len(glasses)}",
-            "count empty areas all >= 1",
-            "count empty areas in tag:north <= 2",
-            "count empty cells in mark:focus 1..4",
+            f"count role:guide >= 1 and count role:guide <= {len(people)}",
+            f"count attribute:glasses = {len(glasses)}",
+            "count empty areas >= 1",
+            "count (empty areas in tag:north) <= 2",
+            "count (empty free cells in mark:focus) >= 1 "
+            "and count (empty free cells in mark:focus) <= 4",
             "",
         ]
     )
@@ -82,11 +83,11 @@ def measure(size: int, runs: int) -> tuple[float, float, float, float, int, int]
     text = puzzle_text(size)
     for _ in range(runs):
         start = time.perf_counter()
-        board, clues = load_board(text)
+        board, rules, clues = load_expression_board(text)
         parsing.append((time.perf_counter() - start) * 1000)
 
         start = time.perf_counter()
-        model = compile_puzzle(board, clues)
+        model = compile_statements(board, clues, rules=rules)
         compiling.append((time.perf_counter() - start) * 1000)
         constraints = len(model.constraints)
         literals = model.num_literals

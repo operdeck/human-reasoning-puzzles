@@ -49,9 +49,9 @@ Lotte
 Wouter
 
 Clues:
-on Ingrid object:chair
-beside Joost object:tree
-on Lotte object:bed
+Ingrid on object:chair
+Joost beside object:tree
+Lotte on object:bed
 
 # Booklet text for --docx (optional).
 Title:
@@ -61,6 +61,9 @@ Intro:
 Three suspects and a victim stand in a small house. Place everyone on a free square, one per row and one per column.
 Objects block their square, except a chair or a bed: you can stand on those.
 Wouter, the victim, is placed last and was alone with his murderer.
+
+Figures:
+Wouter: has no clues of his own
 
 Question:
 Who is the only other person in Wouter's room: who did it?

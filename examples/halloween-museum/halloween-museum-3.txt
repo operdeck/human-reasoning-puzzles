@@ -29,7 +29,7 @@ headstone: a headstone
 pumpkin: the pumpkin
 counter: the shop counter
 crystal_ball: the crystal ball
-target.attribute: a {name}
+name.attribute: a {name}
 museum_bench: the bench
 
 Regions:
@@ -118,17 +118,17 @@ Gonzalo
 Hugo
 
 Rules:
-for each area in tag:crime_scene, count people in that area with role:murderer >= 1
+every ?a in tag:crime_scene: some role:murderer in ?a
 
 Clues:
-in Hugo area:El_Greco_room
-in Bernardo area:dinosaur_hall
-in Elena area:armoury
-dir Carmen Elena up
-dir Bernardo Diego left
-beside Alba object:amphora
-dir Bernardo Fernando up
-beside Diego object:sauropod
+Hugo in area:El_Greco_room
+Bernardo in area:dinosaur_hall
+Elena in area:armoury
+Carmen dir:up Elena
+Bernardo dir:left Diego
+Alba beside object:amphora
+Bernardo dir:up Fernando
+Diego beside object:sauropod
 
 Title:
 Halloween at the Museum: The candlestick
@@ -144,8 +144,8 @@ Bernardo: the night guard ; icon=U+1F9D4
 Carmen: dressed as a witch ; icon=U+1F9D9
 Diego: dressed as a vampire ; icon=U+1F9DB
 Elena: dressed as a zombie ; icon=U+1F9DF
-Fernando: the tour guide ; icon=U+1F468
-Gonzalo: the restorer ; icon=U+1F474
+Fernando: the tour guide, with no clues of their own ; icon=U+1F468
+Gonzalo: the restorer, with no clues of their own ; icon=U+1F474
 Hugo: dressed as a skeleton ; icon=U+1F480
 
 Question:

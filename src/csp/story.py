@@ -1,10 +1,8 @@
-"""Murdoku solutions written out the way a person would explain them.
+"""Shared Murdoku wording, clue presentation and worked-solution entry point.
 
-`proof` decides *what* to say: a short replay of the solver's own
-deductions. This module only decides *how*: one paragraph per placement (or
-run of placements), people's options described by region, row, column or
-the things on the board wherever that is exact, square numbers only when
-they are few.
+`murdoku_story` narrates the expression compiler's structured proof origins.
+This module provides its phrasebook and spatial wording, and presents the
+same typed clues to booklet and player consumers.
 
 Wording comes from two optional sections of the puzzle file:
 
@@ -19,53 +17,22 @@ Everything here reads the public `Model` API, `Step` provenance and
 
 import dataclasses
 import re
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass, field
-from itertools import combinations, groupby
-from typing import Any, Literal
+from itertools import combinations
+from typing import Any
 
-from . import battleships, minesweeper, starbattle, sudoku
-from .core import Constraint, Kind, Model, Solver, Step
+from . import battleships, minesweeper, murdoku_lang, starbattle, sudoku
 from .murdoku import (
-    AREA_POPULATION,
-    COUNTING,
-    FILTERS,
-    POPULATION_FAMILY,
-    AreaIsolationCondition,
-    AreaOccupancyCondition,
-    AreaPopulationCondition,
     Board,
     CellMark,
-    Clue,
-    Condition,
-    ConditionalCondition,
-    DirectionCondition,
-    GlobalCountCondition,
-    QuantifiedCondition,
-    RoleCondition,
     Square,
-    TargetSelector,
-    area_isolation_conditions,
-    area_occupancy_conditions,
-    area_population_conditions,
-    board_rules,
-    compile_puzzle,
-    conditional_conditions,
-    conditions,
-    counted,
-    directional_conditions,
-    global_count_conditions,
-    global_count_unit_prefix,
-    line_indices,
-    mark_occupant_name,
     next_to_covers_own_squares,
-    quantified_conditions,
-    role_conditions,
-    role_statuses,
     target_name,
 )
-from .proof import Move, essential, replay, shortest
-from .puzzlefile import load_board, load_presentation, read_sections
+from .murdoku_expression_file import load_expression_board
+from .murdoku_expression_words import NUMBERS, ExpressionWords, alone_person, feature_name, only_on
+from .puzzlefile import load_board_layout, load_presentation, read_sections
 
 LEGACY_WORD_KEYS = {
     "doc.clue_next_to_object": "doc.clue_beside_object",
@@ -187,7 +154,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "on_or_next_to": "on or next to {what}",
         "is": "{who} is {where}",
         "is_not": "{who} is not {where}",
-        "count": "{who} has {n} squares left",
+        "count": "{who} has {n} candidate squares left",
         "placed": "**{who} on {square}**",
         "so": "so",
         "cross_out.one": "cross out the other open square in that {line}",
@@ -430,10 +397,22 @@ PHRASES: dict[str, dict[str, str]] = {
         "use --verbose for the detailed trace.",
         "generic.givens_complete": "The givens already solve the puzzle.",
         "generic.doc_how": "How to solve it",
+        "expression.by": "By {sources}, {conclusion}.",
+        "expression.clue": "clue {number}",
+        "expression.rule": "rule {number}",
+        "expression.person": "{person} stands on one free square",
+        "expression.square": "{square} holds at most one person",
+        "expression.row": "at most one person per row",
+        "expression.column": "at most one person per column",
+        "expression.role_count": "the allowed number of people with the {role} role is {counts}",
+        "expression.role_eligibility": "the declared role candidates",
+        "rule.role_separation": "there is at most one {role} per area ({a}, {b})",
+        "expression.role_state": "{person} either has the {role} role or does not",
         "literal_true": "the literal {literal} must hold",
         "literal_false": "the literal {literal} cannot hold",
         "role_has": "{who} has the {role} role",
         "role_not": "{who} does not have the {role} role",
+        "role_others": "nobody else has the {role} role",
         "role_some": "{who} has at least one role",
         "roleless": "{who} has no roles",
         "role_at_most_one": "{who} has at most one role",
@@ -617,7 +596,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "on_or_next_to": "op of naast {what}",
         "is": "{who} zit {where}",
         "is_not": "{who} zit niet {where}",
-        "count": "{who} kan nog op {n} vakjes",
+        "count": "{who} kan nog op {n} vakjes staan",
         "placed": "**{who} op {square}**",
         "so": "dus",
         "cross_out.one": "streep het andere nog open vakje in die {line} weg",
@@ -875,10 +854,22 @@ PHRASES: dict[str, dict[str, str]] = {
         "met --verbose zie je het technische spoor.",
         "generic.givens_complete": "De puzzel is al opgelost door wat gegeven is.",
         "generic.doc_how": "Zo los je het op",
+        "expression.by": "Door {sources} geldt: {conclusion}.",
+        "expression.clue": "aanwijzing {number}",
+        "expression.rule": "regel {number}",
+        "expression.person": "{person} staat op één vrij vakje",
+        "expression.square": "op {square} staat hoogstens één persoon",
+        "expression.row": "hoogstens één persoon per rij",
+        "expression.column": "hoogstens één persoon per kolom",
+        "expression.role_count": "het toegestane aantal personen met de rol {role} is {counts}",
+        "expression.role_eligibility": "de opgegeven kandidaten voor de rollen",
+        "rule.role_separation": "er is hoogstens één {role} per gebied ({a}, {b})",
+        "expression.role_state": "{person} heeft de rol {role} wel of niet",
         "literal_true": "de letterlijke keuze {literal} moet gelden",
         "literal_false": "de letterlijke keuze {literal} kan niet gelden",
         "role_has": "{who} heeft de rol {role}",
         "role_not": "{who} heeft de rol {role} niet",
+        "role_others": "niemand anders heeft de rol {role}",
         "role_some": "{who} heeft minstens één rol",
         "roleless": "{who} heeft geen rollen",
         "role_at_most_one": "{who} heeft hoogstens één rol",
@@ -1206,60 +1197,6 @@ FAMILY_RULES = {
 }
 
 # Which explanation (`cond.<key>` in PHRASES) covers each Murdoku clue kind.
-CONDITION_KEYS = {
-    "in_region": "in_region",
-    "outside": "in_region",
-    "in_tagged": "in_tagged",
-    "not_in_tagged": "in_tagged",
-    "only_in_tagged": "in_tagged",
-    "next_to": "next_to",
-    "not_next_to": "next_to",
-    "away_from": "away_from",
-    "at": "at",
-    "on_mark": "on_mark",
-    "not_on_mark": "on_mark",
-    "has_attribute": "attribute",
-    "not_attribute": "attribute",
-    "unique_attribute": "attribute",
-    "has_role": "role",
-    "not_role": "role",
-    "some_role": "role",
-    "roleless": "role",
-    "at_most_one_role": "role",
-    "role_subset": "role",
-    "role_in_tagged": "role",
-    "role_not_in_tagged": "role",
-    "min_role_in_tagged": "role",
-    "role_occupant": "role",
-    "role_on": "role",
-    "role_not_on": "role",
-    "role_next_to": "role",
-    "role_below": "role",
-    "sole_role_companion": "role",
-    "knight_from": "knight_from",
-    "on": "on",
-    "not_on": "on",
-    "only_on": "only_on",
-    "in_corner": "in_corner",
-    "in_row": "in_line",
-    "not_in_row": "in_line",
-    "in_column": "in_line",
-    "not_in_column": "in_line",
-    "in_area_corner": "in_area_corner",
-    "same_region": "same_region",
-    "different_region": "same_region",
-    "apart": "apart",
-    "adjacent_regions": "adjacent_regions",
-    "alone_with": "alone_with",
-    "left_of": "left_of",
-    "above": "above",
-    "within": "distance",
-    "at_least": "distance",
-    "alone": "alone",
-    "furthest": "furthest",
-    "exactly": "exactly",
-    "count": "count",
-}
 
 CONDITION_PHRASES = {
     "en": {
@@ -1413,13 +1350,6 @@ CONDITION_PHRASES = {
 for _language, _entries in CONDITION_PHRASES.items():
     PHRASES[_language].update(_entries)
 
-NUMBERS = {
-    "en": ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
-           "ten", "eleven", "twelve"],
-    "nl": ["nul", "één", "twee", "drie", "vier", "vijf", "zes", "zeven", "acht", "negen",
-           "tien", "elf", "twaalf"],
-}  # fmt: skip
-
 MAX_LISTED = 3  # squares named outright alongside, or instead of, a description
 
 # What a relation's other people are worth mentioning for: their rows, columns or regions.
@@ -1448,9 +1378,8 @@ class Wording:
     def read(cls, text: str) -> "Wording":
         """The `Language:` and `Words:` sections of a puzzle file, and `Rules:` wordings.
 
-        A rule line may end in `| wording`, like a clue. That sentence is shown
-        to players (booklet and web rules, picture legend) but never used in
-        worked solutions, which keep the generated wording.
+        A rule line may end in `| wording`, like a clue. Keep that sentence with
+        its rule so renderers can preserve the author's wording.
         """
         section = read_sections(text)
         language = section.get("Language", ["en"])[0]
@@ -1541,17 +1470,15 @@ class Places:
         elif name in self.board.mark_names:
             many = False
         else:
-            many = len(_pieces(self.board.squares_of([name]))) > 1
-        if name in self.say.words:
-            said = self.say.words[name]
-            article, _, noun = said.partition(" ")
-            # "het perronbankje" names one of several benches as "een perronbankje";
-            # a phrase with an adjective keeps its wording, as Dutch inflection may change.
-            if many and article.lower() in DEFINITE and noun and " " not in noun:
-                return self._indefinite(noun)
-            return said
-        shown = name.replace("_", " ")
-        return self._indefinite(shown) if many else self.say("the", name=shown)
+            many = sum(obj.name == name for obj in self.board.objects) > 1
+        return feature_name(
+            name,
+            many,
+            self.say.words,
+            lambda noun, indefinite: (
+                self._indefinite(noun) if indefinite else self.say("the", name=noun)
+            ),
+        )
 
     def _indefinite(self, noun: str) -> str:
         """ "a bench", "an apple"; Dutch has only "een"."""
@@ -1656,6 +1583,41 @@ class Places:
     def placed(self, who: str, square: Square) -> str:
         return self.say("placed", who=who, square=self.square(square))
 
+    def blockers(
+        self, gone: set[Square], placed: dict[str, Square], *, max_people: int = 2
+    ) -> list[str] | None:
+        """Name announced row/column occupiers that cover every excluded square."""
+        takers: dict[str, set[Square]] = {}
+        order = {person: index for index, person in enumerate(placed)}
+        for square in gone:
+            for person, there in placed.items():
+                if there.row == square.row or there.col == square.col:
+                    takers.setdefault(person, set()).add(square)
+        chosen: list[str] = []
+        left = set(gone)
+        while left:
+            best = max(
+                takers, key=lambda person: (len(takers[person] & left), order[person]), default=None
+            )
+            if best is None or not takers[best] & left:
+                return None
+            chosen.append(best)
+            left -= takers[best]
+        if len(chosen) > max_people:
+            return None
+        said = []
+        for person in chosen:
+            there = placed[person]
+            covered = takers[person] & gone
+            if all(square.row == there.row for square in covered):
+                line = self.line("row", there.row)
+            elif all(square.col == there.col for square in covered):
+                line = self.line("col", there.col)
+            else:
+                line = self.say.join([self.line("row", there.row), self.line("col", there.col)])
+            said.append(self.say("takes_line", who=person, line=line))
+        return said
+
     def _areas(self) -> list[tuple[str, Callable[[Square], bool]]]:
         board = self.board
         areas: list[tuple[str, Callable[[Square], bool]]] = []
@@ -1680,7 +1642,10 @@ class Places:
             areas.append((self.say("next_to", what=self.thing(name)), cells.__contains__))
         for name in sorted(board.mark_names):
             cells = board.mark_cells([name])
-            areas.append((self.say("on", what=self.thing(name)), cells.__contains__))
+            what = self.say.words.get(name) or self.say(
+                "global_count.mark", name=name.replace("_", " ")
+            )
+            areas.append((self.say("on", what=what), cells.__contains__))
         return areas
 
     def _region_of(self, chosen: set[Square]) -> tuple[str, Callable[[Square], bool]]:
@@ -1700,2342 +1665,13 @@ class Places:
         ]
 
 
-@dataclass
-class _State:
-    """Where everyone can still be, who is placed (in order), and what the
-    reader has been told about the rest."""
-
-    options: dict[str, set[Square]]
-    told: dict[str, set[Square]]
-    placed: dict[str, Square] = field(default_factory=dict)
-    order: list[str] = field(default_factory=list)
-    history: list[Step] = field(default_factory=list)
-    announced: list[str] = field(default_factory=list)  # placed in bold so far, in order
-    role_told: dict[tuple[str, str], bool] = field(default_factory=dict)
-
-    def announce(self, person: str) -> None:
-        if person not in self.announced:
-            self.announced.append(person)
-
-    def apply(self, steps: Sequence[Step]) -> None:
-        for step in steps:
-            self.history.append(step)
-            if step.var not in self.options:
-                continue
-            if step.asserted:
-                self.options[step.var] = {step.value}
-                self.placed[step.var] = step.value
-                self.order.append(step.var)
-            else:
-                self.options[step.var].discard(step.value)
-
-
-class Story:
-    """Writes the explanation of one solved Murdoku."""
-
-    def __init__(self, board: Board, clues: Sequence[Clue], say: Wording) -> None:
-        self.board = board
-        self.clues = tuple(clues)
-        say = say.for_people(board.people)
-        self.say = say
-        self.places = Places(board, say)
-        self.about = {rule.name: rule.about for rule in board_rules(board)}
-        # A clue can compile to several predicates; the first names its subject.
-        primary_conditions: dict[tuple[str, int | None], Condition] = {}
-        for condition in conditions(board, self.clues):
-            if condition.kind == "only" and condition.people[0] != condition.args[0]:
-                continue
-            primary_conditions.setdefault((condition.label, condition.number), condition)
-        self.conditions = {label: condition for (label, _), condition in primary_conditions.items()}
-        self.role_conditions: dict[str, RoleCondition] = {
-            rule.label: rule for rule in role_conditions(board, self.clues)
-        }
-        self.quantified_conditions: dict[str, QuantifiedCondition] = {
-            condition.label: condition for condition in quantified_conditions(board, self.clues)
-        }
-        self.global_counts: dict[str, GlobalCountCondition] = {
-            condition.label: condition for condition in global_count_conditions(board, self.clues)
-        }
-        self.population_conditions = area_population_conditions(board, self.clues)
-        self.direction_conditions: dict[str, DirectionCondition] = {
-            condition.label: condition for condition in directional_conditions(board, self.clues)
-        }
-        self.area_occupancies: dict[str, AreaOccupancyCondition] = {
-            condition.label: condition for condition in area_occupancy_conditions(board, self.clues)
-        }
-        self.area_isolations: dict[str, AreaIsolationCondition] = {
-            condition.label: condition for condition in area_isolation_conditions(board, self.clues)
-        }
-        self.conditionals: dict[str, ConditionalCondition] = {
-            condition.label: condition for condition in conditional_conditions(board, self.clues)
-        }
-        self.role_variables = {
-            board.role_variable(person, role.name): (person, role.name)
-            for role in board.roles
-            for person in board.people
-        }
-        self.model = compile_puzzle(board, self.clues)
-        self.auxiliary_variables = (
-            set(self.model.all_variables) - set(self.board.people) - set(self.role_variables)
-        )
-        self.global_empty_units = self._global_empty_unit_variables()
-
-    def _global_empty_unit_variables(self) -> dict[str, tuple[str, str | Square]]:
-        units: dict[str, tuple[str, str | Square]] = {}
-        for condition in self.global_counts.values():
-            if condition.kind == "empty_areas":
-                targets: Iterable[tuple[Literal["area", "cell"], str | Square]] = (
-                    ("area", region) for region in condition.regions(self.board)
-                )
-            elif condition.kind == "empty_cells":
-                targets = (("cell", square) for square in sorted(condition.cells(self.board)))
-            else:
-                continue
-            for kind, unit in targets:
-                prefix = (
-                    "__" + global_count_unit_prefix("area", str(unit))
-                    if kind == "area"
-                    else "__" + global_count_unit_prefix("cell", str(unit))
-                )
-                variable = next(
-                    (
-                        name
-                        for name in self.model.all_variables
-                        if name == prefix or name.startswith(prefix + "_")
-                    ),
-                    None,
-                )
-                if variable is not None:
-                    units[variable] = (kind, unit)
-        return units
-
-    def tell(self) -> str:
-        start = self.model.clone()
-        compiled = list(self.model.log)
-        moves: list[Move] = []
-        role_moves: set[int] = set()
-
-        def collect(rule: str, steps: Sequence[Step]) -> None:
-            if (move := Move.of(rule, steps)) is not None:
-                moves.append(move)
-                if any(
-                    step.var in self.role_variables
-                    or step.var.startswith("__role_")
-                    or any("role" in source for source in step.sources)
-                    or self._global_count_for_sources(step.sources) is not None
-                    for step in steps
-                ):
-                    role_moves.add(id(move))
-
-        solved = self.model.clone()
-        Solver(solved).solve(on_step=collect)
-        firings: list[tuple[str, Sequence[Step]]] = []
-        necessary = shortest(
-            start, moves, required=(move for move in moves if id(move) in role_moves)
-        )
-        replay(
-            start,
-            necessary,
-            lambda rule, steps: firings.append((rule, steps)),
-        )
-
-        options = {p: {start.value_of(lit) for lit in start.options(p)} for p in self.board.people}
-        state = _State(options, {p: set(s) for p, s in options.items()})
-        state.history = compiled
-        opening = self._opening(compiled, state)
-        consequences = self._mark_placement_consequences(state.announced, state)
-        paragraphs = [" ".join([opening, *consequences])]
-        sentences: list[str] = []
-        placed: list[str] = []
-        mark = len(state.announced)  # who the current bullet has placed starts here
-        refuted: list[tuple[str, Square, str]] = []  # what_ifs waiting to be said together
-        for i, (rule, steps) in enumerate(firings):
-            if rule == "what_if":
-                step = steps[0]
-                if step.var in self.board.people:
-                    refuted.append(self._what_if(step, state))
-                else:
-                    state.apply(steps)
-                    if step.var in self.global_empty_units:
-                        sentences.append(f"{self._global_empty_unit_text(step)}.")
-                    elif step.var in self.role_variables and (
-                        text := self._role_step_text(step, state)
-                    ):
-                        sentences.append(f"{_cap(text)}.")
-            else:
-                sentences += self._refuted(refuted)
-                refuted = []
-                previously_announced = len(state.announced)
-                said = self._firing(rule, steps, state)
-                if said:
-                    sentences.append(said)
-                    sentences.extend(
-                        self._mark_placement_consequences(
-                            state.announced[previously_announced:], state
-                        )
-                    )
-                    if rule == "single" and steps[0].asserted and steps[0].var in self.board.people:
-                        placed.append(steps[0].var)
-            last = i + 1 == len(firings)
-            if placed and (last or firings[i + 1][0] != "single"):
-                named = state.announced[mark:]
-                lead = self.say.join(named)
-                if last and len(named) > 3:
-                    lead = self.say("the_rest")
-                paragraphs.append(f"**{lead}.** {' '.join(self._merged(sentences))}")
-                sentences, placed = [], []
-                mark = len(state.announced)
-        sentences += self._refuted(refuted)
-        if sentences:
-            paragraphs.append(" ".join(self._merged(sentences)))
-        paragraphs.extend(self._final_role_reveals(solved, state))
-        return "\n\n".join(f"- {p}" for p in paragraphs)
-
-    def _mark_placement_consequences(self, people: Sequence[str], state: _State) -> list[str]:
-        consequences = []
-        for person in people:
-            if len(state.options[person]) != 1:
-                continue
-            square = next(iter(state.options[person]))
-            where = self.places.region(self.board.region_names[self.board.region_of(square)])
-            for mark in self.board.marks:
-                if square in mark.cells and mark.occupant_condition is not None:
-                    consequences.append(
-                        self.say(
-                            f"mark_placed.{mark.occupant_condition}",
-                            who=person,
-                            mark=mark.name.replace("_", " "),
-                            where=where,
-                        )
-                        + "."
-                    )
-                    if len(mark.cells) > 1 and any(
-                        condition.kind == "people_on"
-                        and condition.selector is not None
-                        and condition.selector.kind == "mark"
-                        and condition.selector.name == mark.name
-                        and condition.comparison == "="
-                        and condition.operands == (1,)
-                        for condition in self.global_counts.values()
-                    ):
-                        consequences.append(
-                            self.say("mark_count_filled", mark=mark.name.replace("_", " ")) + "."
-                        )
-        return consequences
-
-    def _final_role_reveals(self, model: Model, state: _State) -> list[str]:
-        """Close the explanation with a role identity inferred from solved positions."""
-        statuses = role_statuses(self.board, model)
-        holders = [
-            (person, role.name)
-            for role in self.board.roles
-            for person in self.board.people
-            if statuses[person, role.name] is True
-            and state.role_told.get((person, role.name)) is not True
-        ]
-        reveals: list[str] = []
-        for person, role in holders:
-            condition = next(
-                (
-                    candidate
-                    for candidate in reversed(tuple(self.quantified_conditions.values()))
-                    if candidate.selector.kind == "role" and candidate.selector.name == role
-                ),
-                None,
-            )
-            name = self.say.words.get(role) or role.replace("_", " ")
-            outcome = _emphasize(self.say("role_has", who=person, role=name))
-            if condition is not None:
-                clue = _cap(self._quantified_text(condition)) + self._quantified_ref(condition)
-                reveals.append(f"{clue}, {self.say('so')} {outcome}.")
-            else:
-                reveals.append(f"{_cap(outcome)}.")
-            state.role_told[person, role] = True
-        return reveals
-
-    def _merged(self, sentences: Sequence[str]) -> list[str]:
-        """Say a reason once when consecutive sentences draw several conclusions from it."""
-        so = f", {self.say('so')} "
-        out: list[str] = []
-        premise: str | None = None
-        outcomes: list[str] = []
-
-        def flush() -> None:
-            if premise is not None:
-                out.append(f"{premise}{so}{self.say.join(outcomes)}.")
-
-        for sentence in sentences:
-            head, found, tail = sentence.partition(so)
-            if found and tail.endswith(".") and so not in tail:
-                if head == premise:
-                    outcomes.append(tail[:-1])
-                    continue
-                flush()
-                premise, outcomes = head, [tail[:-1]]
-                continue
-            flush()
-            premise, outcomes = None, []
-            out.append(sentence)
-        flush()
-        return out
-
-    # --- paragraphs and sentences ------------------------------------------
-
-    def _opening(self, compiled: Sequence[Step], state: _State) -> str:
-        """Each clue about one person, with where that leaves them right after it."""
-        said: list[str] = []
-        seen_sources: set[str] = set()
-        left = {p: set(self.places.free) for p in self.board.people}
-        visible = {p: set(self.places.free) for p in self.board.people}
-        open_squares = set(self.places.free)
-        placed: set[str] = set()
-        for label, group in groupby(compiled, key=lambda s: s.sources[0]):
-            seen_sources.add(label)
-            steps = list(group)
-            for step in steps:
-                if step.var in left:
-                    left[step.var].discard(step.value)
-            role_rule = self.role_conditions.get(label)
-            if role_rule is not None:
-                text = self._role_condition_text(role_rule)
-                said.append(f"{_cap(text)}{self._role_ref(role_rule)}.")
-                if role_rule.kind in ("has_role", "not_role"):
-                    person, role = role_rule.args
-                    state.role_told[person, role] = role_rule.kind == "has_role"
-                continue
-            quantified = self.quantified_conditions.get(label)
-            if quantified is not None:
-                said.append(
-                    f"{_cap(self._quantified_text(quantified))}{self._quantified_ref(quantified)}."
-                )
-                continue
-            condition = self.conditions.get(label)
-            if condition is None:
-                for step in steps:
-                    if step.var in self.role_variables:
-                        text = self._role_step_text(step, state)
-                        if text:
-                            said.append(f"{_cap(text)}.")
-                continue
-            if condition.number is None:
-                continue
-            (person,) = condition.people
-            previous_region = self.places.common_region(visible[person])
-            visible[person] = {sq for sq in visible[person] if condition.test(sq)}
-            squares = left[person]
-            region = self.places.common_region(squares) if squares else None
-            clue = _cap(self._clue(condition))
-            where: str | None
-            line: tuple[str, int] | None = None
-            if len(squares) == 1:
-                square = min(squares)
-                location = self.places.placed(person, square)
-                where = (
-                    f"{_emphasize(region)}: {location}"
-                    if region and region != previous_region and region not in clue
-                    else location
-                )
-                state.announce(person)
-                placed.add(person)
-                open_squares = {
-                    sq for sq in open_squares if sq.row != square.row and sq.col != square.col
-                }
-            else:
-                line = self.places.common_line(squares)
-                line_where = self.say("in", what=self.places.line(*line)) if line else None
-                where = region or line_where
-                if where and (where in clue or where == previous_region):
-                    where = ""
-                if (
-                    condition.kind in ("in_row", "in_column")
-                    and where is not None
-                    and where in clue
-                ):
-                    where = ""
-                if where is None and condition.kind not in ("in_region", "outside"):
-                    where = self.places.where(squares, self.places.free)
-                    same_edge = (
-                        condition.kind == "next_to"
-                        and len(condition.args) == 2
-                        and target_name(condition.args[1]) in self.board.edge_item_names
-                        and where == self.say("at", what=self.places.thing(condition.args[1]))
-                    )
-                    if where is not None and (where in clue or same_edge):
-                        where = ""
-                if where:
-                    where = _emphasize(where)
-            suffix = f": {where}" if where else ""
-            if line and person not in placed:
-                kind, index = line
-                explicit = (kind, condition.kind) in {("row", "in_row"), ("col", "in_column")}
-                line_squares = {
-                    sq for sq in open_squares if (sq.row if kind == "row" else sq.col) == index
-                }
-                candidates = visible[person] & open_squares
-                if (region is None or explicit) and candidates and candidates <= line_squares:
-                    crossed = line_squares - candidates
-                    if crossed:
-                        open_squares -= crossed
-                        key = "cross_out.one" if len(crossed) == 1 else "cross_out.many"
-                        instruction = self.say(
-                            key, n=self.say.number(len(crossed)), line=self.say(f"cross_out.{kind}")
-                        )
-                        suffix += f", {self.say('so')} {_emphasize(instruction)}"
-            said.append(f"{clue} ({condition.number}){suffix}.")
-        for number, (kind, args) in enumerate(self.clues, 1):
-            if kind not in ("has_attribute", "not_attribute", "unique_attribute"):
-                continue
-            label = " ".join((kind, *args))
-            if label not in seen_sources:
-                said.append(f"{_cap(self._clue_text(kind, args, args[:1]))} ({number}).")
-        said.extend(
-            f"{_cap(self._global_count_text(condition))}{self._global_count_ref(condition)}."
-            for condition in self.global_counts.values()
-        )
-        return f"**{self.say('direct')}.** {' '.join(said)}"
-
-    def _firing(self, rule: str, steps: Sequence[Step], state: _State) -> str:
-        before = {p: set(s) for p, s in state.options.items()}
-        state.apply(steps)
-        if steps and all(self._fixed_role(step) for step in steps):
-            return ""
-        role_sentences = [
-            text
-            for step in steps
-            if step.var in self.role_variables and step.placing is None
-            if (text := self._role_step_text(step, state))
-        ]
-        if role_sentences:
-            role_outcome = self.say.join([_emphasize(text) for text in role_sentences])
-            global_condition = self._global_count_for_sources(
-                source for step in steps for source in step.sources
-            )
-            if global_condition is not None:
-                clue = self._global_count_reason(global_condition) + self._global_count_ref(
-                    global_condition
-                )
-                return f"{_cap(clue)}, {self.say('so')} {role_outcome}."
-            quantified_condition = next(
-                (
-                    target_condition
-                    for step in steps
-                    for source in step.sources
-                    if (target_condition := self._quantified_condition_for_source(source))
-                    is not None
-                ),
-                None,
-            )
-            if quantified_condition is not None:
-                clue = _cap(self._quantified_text(quantified_condition)) + self._quantified_ref(
-                    quantified_condition
-                )
-                return f"{clue}, {self.say('so')} {role_outcome}."
-            changed = [p for p in self.board.people if state.options[p] != before[p]]
-            if not changed and (reason := self._role_step_reason(steps)):
-                return f"{_cap(reason)}, {self.say('so')} {role_outcome}."
-            if changed:
-                return (
-                    f"{role_outcome}, {self.say('so')} "
-                    + self._outcome(changed, before, state)
-                    + "."
-                )
-            return f"{_cap(role_outcome)}."
-        if rule == "single":
-            if steps[0].var in self.auxiliary_variables:
-                if (
-                    global_condition := self._global_count_for_sources(steps[0].sources)
-                ) is not None:
-                    changed = [p for p in self.board.people if state.options[p] != before[p]]
-                    return self._global_count_deduction(
-                        global_condition, steps[0], changed, before, state
-                    )
-                if steps[0].var in self.global_empty_units:
-                    return self._global_empty_unit_text(steps[0])
-                return ""
-            source = steps[0].sources[0] if steps[0].sources else ""
-            constraint = next((c for c in self.model.constraints if c.name == source), None)
-            if constraint is not None and constraint.kind is Kind.COUNT:
-                changed = [p for p in self.board.people if state.options[p] != before[p]]
-                return self._count(steps[0], changed, before, state)
-            if steps[0].var in self.role_variables:
-                return ""
-            if steps[0].var not in self.board.people:
-                return self._literal_text(steps[0], asserted=True)
-            return self._placement(steps[0], state)
-        changed = [p for p in self.board.people if state.options[p] != before[p]]
-        if rule == "count":
-            return self._count(steps[0], changed, before, state)
-        if rule == "relations":
-            outcome = self._outcome(changed, before, state)
-            return self._relation(steps[0], before, changed, outcome)
-        if rule == "chains":
-            return self._chain(steps[0], changed, before, state)
-        if rule == "wing":
-            return self._wing(steps[0], changed, before, state)
-        return self._cover(steps[0], changed, before, state)
-
-    def _chain(
-        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
-    ) -> str:
-        """'If A is not on a, then B is on b, then ... so A on a or Z on z; either way ...'"""
-        if any(
-            who not in self.board.people or not isinstance(at, Square) for who, at in step.chain
-        ):
-            if not changed:
-                return ""
-            outcome = self._outcome(changed, before, state)
-            source = step.sources[0] if step.sources else None
-            if source is not None and (
-                self._direction_condition_for_source(source) is not None
-                or source in self.conditions
-                or self._role_condition_for_source(source) is not None
-                or self._quantified_condition_for_source(source) is not None
-                or source in self.conditionals
-            ):
-                return self._relation(step, before, changed, outcome)
-            return _cap(self.say("chain_hidden", outcome=outcome))
-        square = self.places.square
-        (who, at), *rest = step.chain
-        parts = [self.say("chain_if", who=who, square=square(at))]
-        for i, (who, at) in enumerate(rest):
-            key = "chain_on" if i % 2 == 0 else "chain_off"
-            why = self._link_reason(step.sources[i]) if i < len(step.sources) else ""
-            parts.append(self.say(key, who=who, square=square(at)) + why)
-        (first, a), (last, z) = step.chain[0], step.chain[-1]
-        ends = self.say.join(
-            [
-                self.say("is", who=first, where=self.say("on", what=square(a))),
-                self.say("is", who=last, where=self.say("on", what=square(z))),
-            ],
-            "or",
-        )
-        outcome_parts = []
-        for p in changed:
-            gone = self.places.squares(before[p] - state.options[p])
-            outcome_parts.append(
-                _emphasize(self.say("is_not", who=p, where=self.say("on", what=gone)))
-            )
-            state.told[p] -= before[p] - state.options[p]
-            if len(state.options[p]) == 1 and p not in state.announced:
-                state.announce(p)
-                outcome_parts.append(self.places.placed(p, min(state.options[p])))
-        so = self.say("chain_so", ends=ends, outcome=self.say.join(outcome_parts))
-        if len(step.chain) == 2:
-            return _cap(self.say("chain_either", ends=ends, outcome=self.say.join(outcome_parts)))
-        return f"{', '.join(parts)}. {so}"
-
-    def _wing(
-        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
-    ) -> str:
-        """'One of A on a, B on b or C on c; either way D is not on d.'"""
-        square = self.places.square
-        z = step.chain[0][1]
-        parts = [
-            self.say("is", who=who, where=self.say("on", what=square(z))) for who, _ in step.chain
-        ]
-        ends = self.say.join(parts, "or")
-        outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
-        return _cap(self.say("chain_so", ends=ends, outcome=outcome))
-
-    def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
-        """The region and minimum represented by a reified population count."""
-        if (
-            constraint.kind is not Kind.COUNT
-            or constraint.family != POPULATION_FAMILY
-            or constraint.reified_by is None
-            or not constraint.allowed_counts
-        ):
-            return None
-        count = min(constraint.allowed_counts)
-        if count < 1 or constraint.allowed_counts != frozenset(
-            range(count, len(constraint.literals) + 1)
-        ):
-            return None
-        regions: set[str] = set()
-        for literal in constraint.literals:
-            square = self.model.value_of(literal)
-            if self.model.var_of(literal) not in self.board.people or not isinstance(
-                square, Square
-            ):
-                return None
-            regions.add(self.board.region_of(square))
-        return (next(iter(regions)), count) if len(regions) == 1 else None
-
-    def _count_name(self, constraint: Constraint) -> str:
-        """A count constraint's name as the player reads it, not as the engine spells it."""
-        if (level := self._population_level(constraint)) is not None:
-            region, count = level
-            key = "count.population_reason_one" if count == 1 else "count.population_reason"
-            return self.say(key, area=self.board.region_names[region], count=self.say.number(count))
-        if (scope := self._mark_occupant_count_scope(constraint)) is not None:
-            mark, region_name = scope
-            return self.say(
-                "count.mark_occupant.name",
-                mark=mark.name.replace("_", " "),
-                where=self.places.region(region_name),
-            )
-        return constraint.name
-
-    def _mark_occupant_count_scope(self, constraint: Constraint) -> tuple[CellMark, str] | None:
-        for mark in self.board.marks:
-            if mark.occupant_condition is None:
-                continue
-            for region in {self.board.region_of(square) for square in mark.cells}:
-                region_name = self.board.region_names[region]
-                if constraint.name == mark_occupant_name(mark, region_name) + " occupant count":
-                    return mark, region_name
-        return None
-
-    def _mark_occupant_count_reason(
-        self, constraint: Constraint, active: bool | None
-    ) -> str | None:
-        """Explain a mark's area-occupancy count using the marked-square rule."""
-        if active is not True:
-            return None
-        if (scope := self._mark_occupant_count_scope(constraint)) is None:
-            return None
-        mark, region_name = scope
-        condition = mark.occupant_condition
-        assert condition is not None
-        return self.say(
-            f"count.mark_occupant.{condition}",
-            mark=mark.name.replace("_", " "),
-            where=self.places.region(region_name),
-        )
-
-    def _population_comparison(
-        self, more: Constraint, fewer: Constraint, state: _State
-    ) -> AreaPopulationCondition | None:
-        """Find the clue behind an observed strict population implication."""
-        higher = self._population_level(more)
-        lower = self._population_level(fewer)
-        if (
-            higher is None
-            or lower is None
-            or higher[1] != lower[1] + 1
-            or more.reified_by is None
-            or fewer.reified_by is None
-        ):
-            return None
-        more_var = self.model.var_of(more.reified_by)
-        more_value = self.model.value_of(more.reified_by)
-        fewer_choice = (self.model.var_of(fewer.reified_by), self.model.value_of(fewer.reified_by))
-        for step in state.history:
-            if (
-                step.asserted
-                or step.var != more_var
-                or step.value == more_value
-                or step.placing != fewer_choice
-            ):
-                continue
-            eliminated = self.model.literal(step.var, step.value)
-            if any(
-                source.name in step.sources
-                and source.kind is Kind.AT_MOST_ONE
-                and set(source.literals) == {eliminated, fewer.reified_by}
-                for source in self.model.constraints
-            ):
-                break
-        else:
-            return None
-        more_region, fewer_region = higher[0], lower[0]
-        return next(
-            (
-                condition
-                for condition in self.population_conditions
-                if (
-                    condition.kind == "busiest_area"
-                    and more_region in condition.regions
-                    and fewer_region not in condition.regions
-                )
-                or (
-                    condition.kind == "quietest_area"
-                    and fewer_region in condition.regions
-                    and more_region not in condition.regions
-                )
-            ),
-            None,
-        )
-
-    def _population_evidence(
-        self,
-        levels: Sequence[tuple[str, int, Constraint]],
-        before: dict[str, set[Square]],
-        state: _State,
-    ) -> list[str] | None:
-        """Explain the area floors from known people and recorded comparisons."""
-        sentences: list[str] = []
-        known: dict[str, tuple[int, Constraint]] = {}
-        pending: list[tuple[str, int, Constraint]] = []
-        for region, count, constraint in levels:
-            people = [
-                person
-                for person in self.board.people
-                if before[person]
-                and state.told[person]
-                and all(self.board.region_of(square) == region for square in before[person])
-                and all(self.board.region_of(square) == region for square in state.told[person])
-            ]
-            if len(people) < count:
-                pending.append((region, count, constraint))
-                continue
-            key = "count.population_person" if count == 1 else "count.population_people"
-            text = self.say(
-                key,
-                people=self.say.join(people[:count]),
-                where=self.places.region(self.board.region_names[region]),
-                count=self.say.number(count),
-            )
-            sentences.append(f"{_cap(text)}.")
-            known[region] = (count, constraint)
-
-        while pending:
-            progress = False
-            for item in pending[:]:
-                region, count, constraint = item
-                for lower_count, lower_constraint in known.values():
-                    if count != lower_count + 1:
-                        continue
-                    comparison = self._population_comparison(constraint, lower_constraint, state)
-                    if comparison is None:
-                        continue
-                    clue = self._clue_text(comparison.kind, comparison.tokens, ())
-                    if comparison.number is not None and self.say.numbered:
-                        clue += f" ({comparison.number})"
-                    minimum = self.say(
-                        "count.population_minimum",
-                        count=self.say.number(count),
-                        where=self.places.region(self.board.region_names[region]),
-                    )
-                    sentences.append(f"{_cap(clue)}, {self.say('so')} {_emphasize(minimum)}.")
-                    known[region] = (count, constraint)
-                    pending.remove(item)
-                    progress = True
-                    break
-            if not progress:
-                return None
-        return sentences
-
-    def _population_full(
-        self,
-        step: Step,
-        constraint: Constraint,
-        known: bool | None,
-        before: dict[str, set[Square]],
-        state: _State,
-    ) -> str | None:
-        """'Osaka and Tokyo already hold all five people' when that empties an area.
-
-        The count step refutes "an area holds at least one person". If the
-        constraints that bounded it account for everybody, say so, which is
-        the argument a person makes instead of quoting allowed totals.
-        """
-        target = self._population_level(constraint)
-        if known is not False or target is None or target[1] != 1:
-            return None
-        levels: list[tuple[str, int, Constraint]] = []
-        for name in step.sources[1:]:
-            found = [
-                (other, level)
-                for other in self.model.constraints
-                if other.name == name and (level := self._population_level(other)) is not None
-            ]
-            if len(found) == 1:
-                other, (region, count) = found[0]
-                levels.append((region, count, other))
-        regions = [region for region, _, _ in levels]
-        total = sum(count for _, count, _ in levels)
-        if (
-            len(levels) < 2
-            or len(set(regions)) != len(regions)
-            or target[0] in regions
-            or total != len(self.board.people)
-        ):
-            return None
-        empty = _emphasize(
-            self.say(
-                "global_count.area_empty",
-                where=self.places.region(self.board.region_names[target[0]]),
-            )
-        )
-        if (evidence := self._population_evidence(levels, before, state)) is not None:
-            together = self.say("count.population_all", n=self.say.number(total))
-            return " ".join([*evidence, f"{_cap(together)}, {self.say('so')} {empty}."])
-        parts = [
-            self.say(
-                "count.population_reason_one" if count == 1 else "count.population_reason",
-                area=self.board.region_names[region],
-                count=self.say.number(count),
-            )
-            for region, count, _ in levels
-        ]
-        reason = self.say(
-            "count.population_full", areas=self.say.join(parts), n=self.say.number(total)
-        )
-        return f"{_cap(reason)}, {self.say('so')} {empty}."
-
-    def _population_tied_single(
-        self,
-        constraint: Constraint,
-        known: bool | None,
-        changed: list[str],
-        before: dict[str, set[Square]],
-        state: _State,
-    ) -> str | None:
-        """Explain a tied area's sole occupant from already announced placements."""
-        target = self._population_level(constraint)
-        if known is not False or target is None or target[1] != 2 or not changed:
-            return None
-        target_region = target[0]
-        target_cells = {sq for sq in self.board.free if self.board.region_of(sq) == target_region}
-        if any(
-            len(state.options[p]) <= 1 or not (before[p] - state.options[p]) <= target_cells
-            for p in changed
-        ):
-            return None
-        announced = {p: state.placed[p] for p in state.announced if p in state.placed}
-        occupants = [p for p, sq in announced.items() if self.board.region_of(sq) == target_region]
-        if len(occupants) != 1:
-            return None
-        (target_person,) = occupants
-        for comparison in self.population_conditions:
-            if target_region not in comparison.regions:
-                continue
-            for source_region in comparison.regions:
-                if source_region == target_region:
-                    continue
-                people = [
-                    p for p, sq in announced.items() if self.board.region_of(sq) == source_region
-                ]
-                if len(people) != 1:
-                    continue
-                (source_person,) = people
-                source_cells = {
-                    sq for sq in self.board.free if self.board.region_of(sq) == source_region
-                }
-                others = source_cells - {announced[source_person]}
-                blockers = self._blockers(None, others, state, max_people=3, announced_only=True)
-                if not blockers:
-                    continue
-                source_where = self.places.region(self.board.region_names[source_region])
-                target_where = self.places.region(self.board.region_names[target_region])
-                reason = self.say(
-                    "count.population_blocked", blockers=self.say.join(blockers), where=source_where
-                )
-                source_only = self.say(
-                    "count.population_only", who=source_person, where=source_where
-                )
-                target_only = self.say(
-                    "count.population_only", who=target_person, where=target_where
-                )
-                clue = _cap(self._clue_text(comparison.kind, comparison.tokens, ()))
-                if comparison.number is not None and self.say.numbered:
-                    clue += f" ({comparison.number})"
-                for person in self.board.people:
-                    if person != source_person:
-                        state.told[person] -= source_cells
-                    if person != target_person:
-                        state.told[person] -= target_cells
-                return (
-                    f"{_cap(reason)}, {self.say('so')} {_emphasize(source_only)}. "
-                    f"{clue}, {self.say('so')} {_emphasize(target_only)}."
-                )
-        return None
-
-    def _count(
-        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
-    ) -> str:
-        if (global_condition := self._global_count_for_sources(step.sources)) is not None:
-            return self._global_count_deduction(global_condition, step, changed, before, state)
-        if step.var in self.global_empty_units:
-            return self._global_empty_unit_text(step)
-        if step.var in self.auxiliary_variables:
-            return ""
-        if (reason := self._mark_blocked_by_occupant(step, changed, before, state)) is not None:
-            return f"{_cap(reason)}."
-        if (reason := self._mark_case_deduction(step, changed, before, state)) is not None:
-            return reason
-        if step.sources and (
-            target_condition := self._quantified_condition_for_source(step.sources[0])
-        ):
-            clue = _cap(self._quantified_text(target_condition)) + self._quantified_ref(
-                target_condition
-            )
-            outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
-            return f"{clue}, {self.say('so')} {outcome}."
-        constraint = next(c for c in self.model.constraints if c.name == step.sources[0])
-        allowed = constraint.allowed_counts
-        known: bool | None = None
-        if constraint.reified_by is not None:
-            var = self.model.var_of(constraint.reified_by)
-            value = self.model.value_of(constraint.reified_by)
-            known = next(
-                (
-                    item.asserted
-                    for item in reversed(state.history)
-                    if item.var == var and item.value == value
-                ),
-                None,
-            )
-            if known is None:
-                if self.model.is_true(constraint.reified_by):
-                    known = True
-                elif self.model.is_false(constraint.reified_by):
-                    known = False
-            if known is False:
-                allowed = frozenset(range(len(constraint.literals) + 1)) - allowed
-        counts = self.say.join([self.say.number(n) for n in sorted(allowed)], "or")
-        population_full = self._population_full(step, constraint, known, before, state)
-        if population_full is not None:
-            return population_full
-        tied_single = self._population_tied_single(constraint, known, changed, before, state)
-        if tied_single is not None:
-            return tied_single
-        level = self._population_level(constraint)
-        if level is not None and known is False:
-            region, minimum = level
-            maximum = minimum - 1
-            key = (
-                "count.population_at_most_zero"
-                if maximum == 0
-                else "count.population_at_most_one"
-                if maximum == 1
-                else "count.population_at_most"
-            )
-            reason = self.say(
-                key,
-                where=self.places.region(self.board.region_names[region]),
-                count=self.say.number(maximum),
-            )
-        elif (mark_reason := self._mark_occupant_count_reason(constraint, known)) is not None:
-            reason = mark_reason
-        else:
-            reason = self._role_area_reason(constraint, allowed) or self.say(
-                "count_reason", name=self._count_name(constraint), counts=counts
-            )
-        outcome = self._outcome(changed, before, state) if changed else self._literal_text(step)
-        return f"{_cap(reason)}, {self.say('so')} {outcome}."
-
-    def _mark_case_deduction(
-        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
-    ) -> str | None:
-        """Tell a refuted mark trigger as a case on its only possible occupant."""
-        for mark in self.board.marks:
-            if mark.occupant_condition is None:
-                continue
-            for region in {self.board.region_of(square) for square in mark.cells}:
-                name = mark_occupant_name(mark, self.board.region_names[region]) + " trigger count"
-                if name not in step.sources:
-                    continue
-                candidates = {
-                    (person, square)
-                    for person in self.board.people
-                    for square in before[person] & set(mark.cells)
-                    if self.board.region_of(square) == region
-                }
-                if len(candidates) != 1:
-                    continue
-                person, square = next(iter(candidates))
-                if changed != [person] or before[person] - state.options[person] != {square}:
-                    continue
-                constraint = next(c for c in self.model.constraints if c.name == name)
-                if constraint.reified_by is None:
-                    continue
-                var = self.model.var_of(constraint.reified_by)
-                value = self.model.value_of(constraint.reified_by)
-                for index in range(len(state.history) - 1, -1, -1):
-                    refutation = state.history[index]
-                    if (
-                        refutation.var != var
-                        or refutation.value != value
-                        or refutation.asserted
-                        or refutation.rule != "what_if"
-                        or not any(
-                            inner.asserted and inner.var == person and inner.value == square
-                            for inner in refutation.trail
-                        )
-                    ):
-                        continue
-                    options = {
-                        p: {self.model.value_of(lit) for lit in self.model.options(p)}
-                        for p in self.board.people
-                    }
-                    trial_state = _State(
-                        options, {p: set(squares) for p, squares in options.items()}
-                    )
-                    trial_state.apply(state.history[:index])
-                    hypothetical = dataclasses.replace(refutation, var=person, value=square)
-                    explanation = self._refuted([self._what_if(hypothetical, trial_state)])[0]
-                    state.told[person].discard(square)
-                    return explanation
-        return None
-
-    def _mark_blocked_by_occupant(
-        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
-    ) -> str | None:
-        """A known occupant who cannot use an alone-mark excludes the mark in their area."""
-        for mark in self.board.marks:
-            if mark.occupant_condition != "alone":
-                continue
-            for region in {self.board.region_of(square) for square in mark.cells}:
-                region_name = self.board.region_names[region]
-                source = mark_occupant_name(mark, region_name) + " trigger count"
-                if source not in step.sources:
-                    continue
-                marked = {sq for sq in mark.cells if self.board.region_of(sq) == region}
-                if not changed or any(before[p] - state.options[p] - marked for p in changed):
-                    continue
-                occupant = next(
-                    (
-                        p
-                        for p in self.board.people
-                        if state.told[p]
-                        and all(self.board.region_of(sq) == region for sq in state.told[p])
-                        and not state.told[p] & marked
-                    ),
-                    None,
-                )
-                if occupant is None:
-                    continue
-                for person in changed:
-                    state.told[person] -= before[person] - state.options[person]
-                return self.say(
-                    "mark_blocked.alone",
-                    who=occupant,
-                    where=self.places.region(region_name),
-                    mark=mark.name.replace("_", " "),
-                )
-        return None
-
-    def _role_step_reason(self, steps: Sequence[Step]) -> str | None:
-        """Why a role became known: its source clue or the role count behind its constraint."""
-        by_name = {c.name: c for c in self.model.constraints}
-        for step in steps:
-            for source in step.sources:
-                if (rule := self._role_condition_for_source(source)) is not None:
-                    return self._role_condition_text(rule) + self._role_ref(rule)
-                if step.var in self.role_variables:
-                    _, role = self.role_variables[step.var]
-                    direction = self._direction_condition_for_source(source)
-                    if direction is not None and any(
-                        selector.kind == "role" and selector.name == role
-                        for selector in (direction.first, direction.second)
-                    ):
-                        text = self._direction_text(direction)
-                        if direction.number is not None:
-                            text += f" ({direction.number})"
-                        return text
-                constraint = by_name.get(source)
-                if constraint is None or step.var not in self.role_variables:
-                    continue
-                _, role = self.role_variables[step.var]
-                name = self.say.words.get(role) or role.replace("_", " ")
-                if constraint.family == "role cardinality" and constraint.allowed_counts == {1}:
-                    return self.say("role_only_one", role=name)
-                if constraint.family == "role area membership":
-                    rule = next(
-                        (
-                            r
-                            for r in self.role_conditions.values()
-                            if r.kind == "min_role_in_tagged" and r.args[0] == role
-                        ),
-                        None,
-                    )
-                    if rule is not None:
-                        return self._role_condition_text(rule) + self._role_ref(rule)
-        return None
-
-    def _role_area_reason(self, constraint: Any, allowed: frozenset[int]) -> str | None:
-        """'Ada has role guide and is therefore in the hall', for a hidden role-and-area count.
-
-        Such a count holds a role-membership literal followed by the squares of
-        one area; the person, role and area are read from those literals.
-        """
-        if constraint.family != "role area membership" or len(constraint.literals) < 2:
-            return None
-        first, square = constraint.literals[0], self.model.value_of(constraint.literals[1])
-        held = self.role_variables.get(self.model.var_of(first))
-        if held is None or not isinstance(square, Square):
-            return None
-        person, role = held
-        area = self.places.region(self.board.region_names[self.board.region_of(square)])
-        role_name = self.say.words.get(role) or role.replace("_", " ")
-        key = "role_area_in" if allowed == {2} else "role_area_out"
-        return self.say(key, who=person, role=role_name, area=area)
-
-    def _global_count_for_sources(self, sources: Iterable[str]) -> GlobalCountCondition | None:
-        for source in sources:
-            for label, condition in self.global_counts.items():
-                if source == label or source.startswith(label + " "):
-                    return condition
-        return None
-
-    @staticmethod
-    def _global_count_ref(condition: GlobalCountCondition) -> str:
-        return "" if condition.number is None else f" ({condition.number})"
-
-    def _global_count_quantity(self, condition: GlobalCountCondition) -> str:
-        comparison = condition.comparison
-        if comparison == "=":
-            return self.say("global_count.exact", n=self.say.number(condition.operands[0]))
-        if comparison == "<=":
-            return self.say("global_count.at_most", n=self.say.number(condition.operands[0]))
-        if comparison == ">=":
-            return self.say("global_count.at_least", n=self.say.number(condition.operands[0]))
-        if comparison in ("odd", "even"):
-            return self.say(f"global_count.{comparison}")
-        low, high = condition.operands
-        return self.say("global_count.range", low=self.say.number(low), high=self.say.number(high))
-
-    def _global_count_where(self, condition: GlobalCountCondition) -> str:
-        selector = condition.selector
-        if selector is None:
-            return ""
-        if selector.kind in ("union", "intersection"):
-            if (
-                selector.kind == "union"
-                and selector.parts
-                and all(
-                    part.kind in ("rows", "columns") and part.kind == selector.parts[0].kind
-                    for part in selector.parts
-                )
-            ):
-                kind = selector.parts[0].kind
-                line_kind = "row" if kind == "rows" else "col"
-                indices = [
-                    index
-                    for part in selector.parts
-                    for index in line_indices(part.name, self.board.size)
-                ]
-                lines = self.places.lines(line_kind, indices, "or")
-                return self.say("in", what=lines)
-            conjunction = "or" if selector.kind == "union" else "and"
-            return self.say.join(
-                [self._global_count_where_selector(part) for part in selector.parts], conjunction
-            )
-        return self._global_count_where_selector(selector)
-
-    def _global_count_where_selector(self, selector: TargetSelector) -> str:
-        if selector.kind in ("area", "tag"):
-            regions = (
-                self.board.area_ids([selector.name])
-                if selector.kind == "area"
-                else self.board.tagged_region_ids([selector.name])
-            )
-            return self.places.regions(regions)
-        if selector.kind == "rows":
-            lines = self.places.lines("row", line_indices(selector.name, self.board.size), "or")
-            return self.say("in", what=lines)
-        if selector.kind == "columns":
-            lines = self.places.lines("col", line_indices(selector.name, self.board.size), "or")
-            return self.say("in", what=lines)
-        return self.say("on", what=self._global_count_target(selector))
-
-    def _global_count_target(self, selector: TargetSelector) -> str:
-        if selector.kind == "mark":
-            return self.say.words.get(selector.name) or self.say(
-                "global_count.mark", name=selector.name.replace("_", " ")
-            )
-        return self.places.thing(selector.name)
-
-    def _global_count_text(self, condition: GlobalCountCondition) -> str:
-        quantity = self._global_count_quantity(condition)
-        singular = (condition.comparison in ("=", "<=", ">=") and condition.operands == (1,)) or (
-            condition.comparison == "range" and condition.operands == (1, 1)
-        )
-        if condition.kind.startswith("people_"):
-            noun = (
-                ("person" if singular else "people")
-                if self.say.language == "en"
-                else ("persoon" if singular else "mensen")
-            )
-            verb = (
-                ("is" if singular else "are")
-                if self.say.language == "en"
-                else ("is" if singular else "zijn")
-            )
-        elif condition.kind == "empty_areas":
-            noun = (
-                ("area" if singular else "areas")
-                if self.say.language == "en"
-                else ("gebied" if singular else "gebieden")
-            )
-            verb = (
-                ("is" if singular else "are")
-                if self.say.language == "en"
-                else ("is" if singular else "zijn")
-            )
-        else:
-            noun = (
-                ("free cell" if singular else "free cells")
-                if self.say.language == "en"
-                else ("vrij vakje" if singular else "vrije vakjes")
-            )
-            verb = (
-                ("is" if singular else "are")
-                if self.say.language == "en"
-                else ("is" if singular else "zijn")
-            )
-
-        if condition.kind == "people_on":
-            assert condition.selector is not None
-            if condition.selector.kind == "object_kind":
-                labels = {
-                    "en": {"blocking": "blocking", "standable": "standable"},
-                    "nl": {"blocking": "blokkerende", "standable": "begaanbare"},
-                }
-                kind_label = labels[self.say.language][condition.selector.name]
-                target = self.say("global_count.object_kind", kind=kind_label)
-            else:
-                target = self._global_count_target(condition.selector)
-            on_verb = verb if self.say.language == "en" else ("staat" if singular else "staan")
-            return self.say(
-                "global_count.people_on",
-                quantity=quantity,
-                noun=noun,
-                verb=on_verb,
-                target=target,
-            )
-        if condition.kind == "people_in":
-            return self.say(
-                "global_count.people_in",
-                quantity=quantity,
-                noun=noun,
-                verb=verb,
-                where=self._global_count_where(condition),
-            )
-        if condition.kind == "people_with":
-            assert condition.selector is not None
-            name = self.say.words.get(
-                condition.selector.name, condition.selector.name.replace("_", " ")
-            )
-            if condition.selector.kind == "role":
-                target = f"the {name} role" if self.say.language == "en" else f"de rol {name}"
-            else:
-                target = (
-                    f"the {name} attribute" if self.say.language == "en" else f"het kenmerk {name}"
-                )
-            return self.say(
-                "global_count.people_with",
-                quantity=quantity,
-                noun=noun,
-                have=("has" if singular else "have")
-                if self.say.language == "en"
-                else ("heeft" if singular else "hebben"),
-                target=target,
-            )
-        where = self._global_count_where(condition)
-        if condition.kind == "empty_areas":
-            if condition.comparison == "=" and condition.operands == (0,):
-                return self.say("global_count.no_empty_areas", where=f" {where}" if where else "")
-            return self.say(
-                "global_count.empty_areas",
-                quantity=quantity,
-                noun=noun,
-                verb=verb,
-                where=f" {where}" if where else "",
-            )
-        if condition.comparison == "=" and condition.operands == (0,):
-            return self.say("global_count.no_empty_cells", where=where)
-        return self.say(
-            "global_count.empty_cells",
-            quantity=quantity,
-            noun=noun,
-            verb=verb,
-            where=where,
-        )
-
-    def _global_count_reason(self, condition: GlobalCountCondition) -> str:
-        text = self._global_count_text(condition)
-        area_capacity = condition.kind == "empty_areas" or (
-            condition.kind == "people_in"
-            and condition.selector is not None
-            and condition.selector.kind in ("area", "tag")
-        )
-        return f"{self.say('global_count.capacity')}: {text}" if area_capacity else text
-
-    def _global_count_deduction(
-        self,
-        condition: GlobalCountCondition,
-        step: Step,
-        changed: list[str],
-        before: dict[str, set[Square]],
-        state: _State,
-    ) -> str:
-        clue = _cap(self._global_count_reason(condition)) + self._global_count_ref(condition)
-        if step.var in self.global_empty_units:
-            outcome = self._global_empty_unit_text(step)
-        elif changed:
-            outcome = self._outcome(changed, before, state)
-        else:
-            outcome = self._literal_text(step)
-        return f"{clue}, {self.say('so')} {outcome}."
-
-    def _global_empty_unit_text(self, step: Step) -> str:
-        kind, unit = self.global_empty_units[step.var]
-        is_empty = step.value if step.asserted else not step.value
-        if kind == "area":
-            where = self.places.region(self.board.region_names[str(unit)])
-            return _emphasize(
-                self.say(
-                    "global_count.area_empty" if is_empty else "global_count.area_occupied",
-                    where=where,
-                )
-            )
-        assert isinstance(unit, Square)
-        return _emphasize(
-            self.say(
-                "global_count.cell_empty" if is_empty else "global_count.cell_occupied",
-                square=self.places.square(unit),
-            )
-        )
-
-    def _link_reason(self, source: str) -> str:
-        """' (row 8)' or ' (7)' after a chain link; nothing when it is one person
-        or one square, which the sentence already makes plain."""
-        if source in self.conditions:
-            return self._ref(self.conditions[source])
-        if (quantified := self._quantified_condition_for_source(source)) is not None:
-            return self._quantified_ref(quantified)
-        kind, what = self.about.get(source, ("", None))
-        if kind in ("row", "col"):
-            return f" ({self.places.line(kind, what)})"
-        return ""
-
-    def _outcome(self, people: Sequence[str], before: dict[str, set[Square]], state: _State) -> str:
-        """Where `people` can be now, out of where they could be `before`."""
-        for p in people:
-            state.told[p] = set(state.options[p])
-            if len(state.options[p]) == 1:
-                state.announce(p)
-        return self.say.join(
-            [_emphasize(self.places.describe(p, state.options[p], before[p])) for p in people]
-        )
-
-    def _relation(
-        self, step: Step, before: dict[str, set[Square]], changed: list[str], outcome: str
-    ) -> str:
-        """The clue, where the other people involved were known to be, and the upshot."""
-        source = step.sources[0]
-        if (role_rule := self._role_condition_for_source(source)) is not None:
-            clue = _cap(self._role_condition_text(role_rule))
-            return f"{clue}, {self.say('so')} {outcome}." if outcome else f"{clue}."
-        if (quantified := self._quantified_condition_for_source(source)) is not None:
-            if not outcome:  # only the clue's hidden witness variables changed
-                return ""
-            clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
-            return f"{clue}, {self.say('so')} {outcome}."
-        if (direction := self._direction_condition_for_source(source)) is not None:
-            if not outcome:
-                return ""
-            clue = _cap(self._direction_text(direction))
-            if direction.number is not None:
-                clue += f" ({direction.number})"
-            return f"{clue}, {self.say('so')} {outcome}."
-        if (conditional := self.conditionals.get(source)) is not None:
-            if not outcome:
-                return ""
-            clue = _cap(self._conditional_text(conditional))
-            if conditional.number is not None:
-                clue += f" ({conditional.number})"
-            return f"{clue}, {self.say('so')} {outcome}."
-        if source not in self.conditions and (apart := self._role_apart(source)) is not None:
-            return f"{_cap(apart)}, {self.say('so')} {outcome}." if outcome else f"{_cap(apart)}."
-        condition = self.conditions[source]
-        clue = _cap(self._clue(condition)) + self._ref(condition)
-        aspect = ASPECT.get(condition.kind)
-        evidence = [
-            self.places.roughly(p, before[p], aspect)
-            if aspect
-            else self.places.describe(p, before[p], self.places.free, placing=False)
-            for p in condition.people
-            if p not in changed and before[p] != self.places.free
-        ]
-        if evidence:
-            return f"{clue}. {_cap(self.say.join(evidence))}, {self.say('so')} {outcome}."
-        return f"{clue}, {self.say('so')} {outcome}."
-
-    def _cover(
-        self, step: Step, changed: list[str], before: dict[str, set[Square]], state: _State
-    ) -> str:
-        """Some people fill some rows (or columns), or some rows only fit some people."""
-        if (condition := self._global_count_for_sources(step.sources)) is not None:
-            return self._global_count_deduction(condition, step, changed, before, state)
-        quantified = next(
-            (
-                found
-                for source in step.sources
-                if (found := self._quantified_condition_for_source(source)) is not None
-            ),
-            None,
-        )
-        if quantified is not None and changed:
-            clue = _cap(self._quantified_text(quantified)) + self._quantified_ref(quantified)
-            return f"{clue}, {self.say('so')} {self._outcome(changed, before, state)}."
-        inner = [self.about.get(name, ("constraint", name)) for name in step.sources]
-        outer = [self.about.get(name, ("constraint", name)) for name in step.scope]
-        kinds_in = {k for k, _ in inner}
-        kinds_out = {k for k, _ in outer}
-        if (
-            len(kinds_in) == 1
-            and kinds_in <= {"person", "row", "col"}
-            and len(kinds_out) == 1
-            and kinds_out <= {"row", "col"}
-        ):
-            ((kind_in,), (kind,)) = (kinds_in, kinds_out)
-            where = self.say("in", what=self.places.lines(kind, [i for _, i in outer], "or"))
-            many = "_many" if len(inner) > 1 else "_one"
-            if kind_in == "person":
-                text = self.say(
-                    "can_only" + many, who=self.say.join([p for _, p in inner]), where=where
-                )
-            else:
-                lines = self.places.lines(kind_in, [i for _, i in inner])
-                text = self.say("filled_only" + many, lines=lines, where=where)
-            text = f"{_cap(text)}, {_emphasize(self.say('nobody_else'))}"
-            # Being shut out of those lines goes without saying; only news is worth a word.
-            news = [p for p in changed if len(state.options[p]) <= MAX_LISTED]
-            if news:
-                return f"{text}: {self._outcome(news, before, state)}."
-            return f"{text}."
-        outcome = self._outcome(changed, before, state)
-        if kinds_out == {"person"} and len(kinds_in) == 1 and kinds_in <= {"row", "col"}:
-            (kind,) = kinds_in
-            lines = self.places.lines(kind, [i for _, i in inner])
-            key = "only_one" if len(inner) == 1 else "only_many"
-            text = self.say(key, lines=lines, who=self.say.join([p for _, p in outer]))
-            return f"{_cap(text)}, {self.say('so')} {outcome}."
-        return f"{_cap(outcome)}."
-
-    def _placement(self, step: Step, state: _State) -> str:
-        who, square = step.var, step.value
-        if who in state.announced:
-            return ""
-        state.announce(who)
-        placed = self.places.placed(who, square)
-        kind, what = self.about[step.sources[0]]
-        gone = state.told[who] - {square}
-        state.told[who] = {square}
-        if kind in ("row", "col"):
-            text = self.say("only_one", lines=self.places.line(kind, what), who=who)
-            return f"{_cap(text)}: {placed}."
-        reasons = self._blockers(who, gone, state)
-        if reasons is None:
-            text = self.say("only_left", who=who, square=self.places.square(square))
-            return f"{_cap(text)}: {placed}."
-        if reasons:
-            return f"{_cap(self.say.join(reasons))}, {self.say('so')} {placed}."
-        return f"{placed}."
-
-    def _blockers(
-        self,
-        who: str | None,
-        gone: set[Square],
-        state: _State,
-        *,
-        max_people: int = 2,
-        announced_only: bool = False,
-    ) -> list[str] | None:
-        """Who took the squares the reader still had for `who`, fewest people
-        first; None if that takes more than `max_people`."""
-        takers: dict[str, set[Square]] = {}
-        for sq in gone:
-            for other, there in state.placed.items():
-                if (
-                    other != who
-                    and (not announced_only or other in state.announced)
-                    and (there.row == sq.row or there.col == sq.col)
-                ):
-                    takers.setdefault(other, set()).add(sq)
-        chosen: list[str] = []
-        left = set(gone)
-        while left:
-            best = max(
-                takers, key=lambda p: (len(takers[p] & left), state.order.index(p)), default=None
-            )
-            if best is None or not takers[best] & left:
-                return None
-            chosen.append(best)
-            left -= takers[best]
-        if len(chosen) > max_people:
-            return None
-        said = []
-        for other in chosen:
-            there = state.placed[other]
-            covered = takers[other] & gone
-            if all(sq.row == there.row for sq in covered):
-                line = self.places.line("row", there.row)
-            elif all(sq.col == there.col for sq in covered):
-                line = self.places.line("col", there.col)
-            else:
-                line = self.say.join(
-                    [self.places.line("row", there.row), self.places.line("col", there.col)]
-                )
-            said.append(self.say("takes_line", who=other, line=line))
-        return said
-
-    def _what_if(self, step: Step, state: _State) -> tuple[str, Square, str]:
-        """Who could not be where, and the chain of events that rules it out."""
-        who, square = step.var, step.value
-        needed = essential(self.model, state.history, step)
-        before = {p: set(options) for p, options in state.options.items()}
-        trial = _State({p: set(options) for p, options in before.items()}, {})
-        trial.apply(step.trail)
-        state.apply([step])
-        state.told[who].discard(square)
-        parts: list[str] = []
-        placements: list[str] = []
-        refs: list[int] = []
-        region = self.board.region_of(square)
-        region_name = self.board.region_names[region]
-        for mark in self.board.marks:
-            if square not in mark.cells or mark.occupant_condition is None:
-                continue
-            mark_source = mark_occupant_name(mark, region_name) + " occupant count"
-            if any(mark_source in step.trail[j].sources for j in needed):
-                parts.append(
-                    self.say(
-                        f"mark_case.{mark.occupant_condition}",
-                        mark=mark.name.replace("_", " "),
-                        who=who,
-                        where=self.places.region(region_name),
-                    )
-                )
-        for j in needed:
-            inner = step.trail[j]
-            if (
-                inner.asserted
-                and j > 0
-                and inner.var in self.board.people
-                and (inner.var, inner.value) != (who, square)
-            ):
-                key = "also_on" if placements else "then_on"
-                placements.append(
-                    self.say(key, who=inner.var, square=self.places.square(inner.value))
-                )
-            for name in inner.sources:
-                condition = self.conditions.get(name)
-                if condition is not None and condition.number is not None:
-                    refs.append(condition.number)
-                global_count = self.global_counts.get(name)
-                if global_count is not None and global_count.number is not None:
-                    refs.append(global_count.number)
-        if placements:
-            parts.append(self.say.join(placements))
-        parts.append(self._broken(step, first=not parts, before=before, trial=trial))
-        source = step.sources[0] if step.sources else None
-        broken = self.conditions.get(source) if source else None
-        broken_global = self._global_count_for_sources(step.sources)
-        other = None
-        if source is not None and broken is None and broken_global is None:
-            other = self._quantified_condition_for_source(
-                source
-            ) or self._role_condition_for_source(source)
-        broken_number = (
-            broken.number
-            if broken is not None
-            else broken_global.number
-            if broken_global is not None
-            else other.number
-            if other is not None
-            else None
-        )
-        cited = sorted(set(refs) - {broken_number})
-        if not cited or not self.say.numbered:
-            return who, square, ", ".join(parts)
-        listed = self.say.join([str(n) for n in cited])
-        explained = (
-            broken is not None
-            or other is not None
-            or (broken_global is None and source not in self.about)
-        )
-        ref_key = "clue_reference.one" if len(cited) == 1 else "clue_reference.many"
-        ref = self.say(ref_key, refs=listed) if explained else listed
-        return who, square, f"{', '.join(parts)} ({ref})"
-
-    def _refuted(self, refuted: Sequence[tuple[str, Square, str]]) -> list[str]:
-        """Consecutive what_ifs, one sentence per person and reason."""
-        sentences: list[str] = []
-        previous = None
-        for (who, chain), group in groupby(refuted, key=lambda r: (r[0], r[2])):
-            squares = self.places.squares([sq for _, sq, _ in group])
-            key = "nor" if who == previous else "cannot"
-            sentences.append(self.say(key, who=who, squares=squares, chain=chain))
-            previous = who
-        return sentences
-
-    def _broken(
-        self, step: Step, first: bool, before: dict[str, set[Square]], trial: _State
-    ) -> str:
-        """The contradiction a what_if ran into."""
-        source = step.sources[0] if step.sources else None
-        suffix = "_first" if first else ""
-        for mark in self.board.marks:
-            if mark.occupant_condition != "not_alone":
-                continue
-            for region in {self.board.region_of(square) for square in mark.cells}:
-                region_name = self.board.region_names[region]
-                if source != mark_occupant_name(mark, region_name) + " occupant count":
-                    continue
-                occupants = [
-                    item.var
-                    for item in step.trail
-                    if item.asserted
-                    and item.var in self.board.people
-                    and item.value in mark.cells
-                    and self.board.region_of(item.value) == region
-                ]
-                if (
-                    occupants
-                    and all(trial.options.values())
-                    and all(
-                        self.board.region_of(square) != region
-                        for person in self.board.people
-                        if person != occupants[0]
-                        for square in trial.options[person]
-                    )
-                ):
-                    contradiction = self.say(
-                        "mark_breaks.not_alone",
-                        mark=mark.name.replace("_", " "),
-                        where=self.places.region(region_name),
-                    )
-                    possible_companions = [
-                        person
-                        for person in self.board.people
-                        if person != occupants[0]
-                        and any(self.board.region_of(square) == region for square in before[person])
-                    ]
-                    if len(possible_companions) == 1:
-                        companion = possible_companions[0]
-                        elsewhere = {
-                            self.board.region_of(square) for square in trial.options[companion]
-                        }
-                        if len(elsewhere) == 1:
-                            (other_region,) = elsewhere
-                            reason = self.say(
-                                "then_in",
-                                who=companion,
-                                where=self.places.region(self.board.region_names[other_region]),
-                            )
-                            return f"{reason}, {contradiction}"
-                    return contradiction
-        if (global_count := self._global_count_for_sources(step.sources)) is not None:
-            return self.say("global_count.breaks", clue=self._global_count_text(global_count))
-        if source is not None and source in self.conditions:
-            clue_condition = self.conditions[source]
-            if clue_condition.number is not None and self.say.numbered:
-                return self.say(f"breaks{suffix}", n=clue_condition.number)
-            if quoted := self._clue(clue_condition):
-                return self.say(f"breaks_said{suffix}", clue=_cap(quoted))
-            if clue_condition.number is None:
-                return self.say(f"breaks_rule{suffix}")
-            return self.say(f"breaks{suffix}", n=clue_condition.number)
-        if (
-            source is not None
-            and (direction_condition := self._direction_condition_for_source(source)) is not None
-        ):
-            if direction_condition.number is not None and self.say.numbered:
-                return self.say(f"breaks{suffix}", n=direction_condition.number)
-            return self.say(
-                f"breaks_said{suffix}", clue=_cap(self._direction_text(direction_condition))
-            )
-        if source is not None and source in self.area_occupancies:
-            occupancy = self.area_occupancies[source]
-            if occupancy.number is not None and self.say.numbered:
-                return self.say(f"breaks{suffix}", n=occupancy.number)
-            return self.say(f"breaks_said{suffix}", clue=_cap(self._area_occupancy_text(occupancy)))
-        if source is not None and source in self.area_isolations:
-            isolation = self.area_isolations[source]
-            if isolation.number is not None and self.say.numbered:
-                return self.say(f"breaks{suffix}", n=isolation.number)
-            return self.say(f"breaks_said{suffix}", clue=_cap(self._area_isolation_text(isolation)))
-        if source is not None and source in self.conditionals:
-            conditional = self.conditionals[source]
-            if conditional.number is not None and self.say.numbered:
-                return self.say(f"breaks{suffix}", n=conditional.number)
-            return self.say(f"breaks_said{suffix}", clue=_cap(self._conditional_text(conditional)))
-        if source in self.about:
-            kind, what = self.about[source]
-            if kind == "person":
-                return self.say("nowhere", who=what)
-            placed = [s for s in step.trail if s.asserted and not isinstance(s.value, bool)]
-            inside = [s.var for s in placed if self._in(kind, what, s.value)]
-            if kind == "square":
-                where = self.say("on", what=self.places.square(what))
-                return self.say("both", who=self.say.join(inside), where=where)
-            if len(inside) > 1:
-                where = self.say("in", what=self.places.line(kind, what))
-                return self.say("both", who=self.say.join(inside), where=where)
-            return self.say("nobody", line=self.places.line(kind, what))
-        suffix = "_first" if first else ""
-        rule = None
-        if source is not None:
-            rule = self._quantified_condition_for_source(source) or self._role_condition_for_source(
-                source
-            )
-        if rule is not None and rule.number is not None and self.say.numbered:
-            return self.say(f"breaks{suffix}", n=rule.number)
-        said: str | None = None
-        if isinstance(rule, QuantifiedCondition):
-            said = self._quantified_text(rule)
-        elif rule is not None:
-            said = self._role_condition_text(rule)
-        elif source is not None:
-            said = self._role_apart(source)
-        if said:
-            return self.say(f"breaks_said{suffix}", clue=_cap(said))
-        if rule is not None and rule.number is None:
-            return self.say(f"breaks_rule{suffix}")
-        return self.say("breaks_first_plain" if first else "breaks_plain")
-
-    @staticmethod
-    def _in(kind: str, what: Any, sq: Square) -> bool:
-        return bool({"row": sq.row, "col": sq.col, "square": sq}[kind] == what)
-
-    # --- clues ---------------------------------------------------------------
-
-    def clue_texts(self) -> list[str]:
-        """Every numbered clue as one human-readable sentence, in clue order."""
-        said: dict[int, str] = {}
-        for basic_condition in conditions(self.board, self.clues):
-            if basic_condition.number is not None:
-                said.setdefault(basic_condition.number, self._clue(basic_condition))
-        for quantified in self.quantified_conditions.values():
-            if quantified.number is not None:
-                said.setdefault(quantified.number, self._quantified_text(quantified))
-        for rule in self.role_conditions.values():
-            if rule.number is not None:
-                said.setdefault(rule.number, self._role_condition_text(rule))
-        for count in self.global_counts.values():
-            if count.number is not None:
-                said.setdefault(count.number, self._global_count_text(count))
-        for direction_condition in self.direction_conditions.values():
-            if direction_condition.number is not None:
-                said.setdefault(
-                    direction_condition.number, self._direction_text(direction_condition)
-                )
-        for occupancy in self.area_occupancies.values():
-            if occupancy.number is not None:
-                said.setdefault(occupancy.number, self._area_occupancy_text(occupancy))
-        for isolation in self.area_isolations.values():
-            if isolation.number is not None:
-                said.setdefault(isolation.number, self._area_isolation_text(isolation))
-        for conditional in self.conditionals.values():
-            if conditional.number is not None:
-                said.setdefault(conditional.number, self._conditional_text(conditional))
-        out = []
-        for number, (kind, args) in enumerate(self.clues, 1):
-            text = said.get(number) or self._clue_text(kind, args, args[:1])
-            out.append(f"{_cap(text)}.")
-        return out
-
-    def _clue(self, condition: Condition) -> str:
-        return self._clue_text(condition.kind, condition.args, condition.people)
-
-    def _fixed_role(self, step: Step) -> bool:
-        """A role fact the booklet figure list gives: ineligible, or all eligible hold it."""
-        if self.say.numbered or step.var not in self.role_variables:
-            return False
-        person, role = self.role_variables[step.var]
-        present = step.value if step.asserted else not step.value
-        spec = next((r for r in self.board.roles if r.name == role), None)
-        if spec is None or spec.eligible_people is None:
-            return False
-        eligible = person in spec.eligible_people
-        if not present:
-            return not eligible
-        return eligible and spec.allowed_counts == {len(spec.eligible_people)}
-
-    def _literal_text(self, step: Step, asserted: bool | None = None) -> str:
-        """A fixed literal in words; role memberships read as "X is (not) the role"."""
-        holds = step.asserted if asserted is None else asserted
-        if step.var in self.role_variables:
-            person, role = self.role_variables[step.var]
-            present = step.value if holds else not step.value
-            name = self.say.words.get(role) or role.replace("_", " ")
-            return _emphasize(
-                self.say("role_has" if present else "role_not", who=person, role=name)
-            )
-        return _emphasize(
-            self.say("literal_true" if holds else "literal_false", literal=step.literal)
-        )
-
-    def _role_step_text(self, step: Step, state: _State) -> str:
-        person, role = self.role_variables[step.var]
-        present = step.value if step.asserted else not step.value
-        key = (person, role)
-        if state.role_told.get(key) == present:
-            return ""
-        state.role_told[key] = present
-        if self._fixed_role(step):
-            return ""
-        spec = next((candidate for candidate in self.board.roles if candidate.name == role), None)
-        if (
-            not present
-            and spec is not None
-            and max(spec.allowed_counts) <= 1
-            and any(
-                known and other_role == role and other_person != person
-                for (other_person, other_role), known in state.role_told.items()
-            )
-        ):
-            return ""
-        name = self.say.words.get(role) or role.replace("_", " ")
-        return self.say("role_has" if present else "role_not", who=person, role=name)
-
-    def _role_apart(self, source: str) -> str | None:
-        """The text for a different_regions role step, labelled "A and B role in ..."."""
-        for role in self.board.roles:
-            if role.different_regions and source.endswith(f" {role.name} in different regions"):
-                a, _, b = source.removesuffix(f" {role.name} in different regions").partition(
-                    " and "
-                )
-                name = self.say.words.get(role.name) or role.name.replace("_", " ")
-                return self.say("clue.role_apart", role=name, a=a, b=b)
-        return None
-
-    def _role_condition_for_source(self, source: str) -> RoleCondition | None:
-        if source in self.role_conditions:
-            return self.role_conditions[source]
-        return next(
-            (
-                rule
-                for label, rule in sorted(
-                    self.role_conditions.items(), key=lambda pair: len(pair[0]), reverse=True
-                )
-                if source.startswith(label + " ")
-            ),
-            None,
-        )
-
-    def _pronoun(self, person: str, form: str) -> str:
-        pronouns = self.board.pronouns.get(person)
-        if pronouns is None:
-            return {"subject": "they", "object": "them", "possessive": "their"}[form]
-        return {
-            "subject": pronouns.subject,
-            "object": pronouns.object,
-            "possessive": pronouns.possessive,
-        }[form]
-
-    def _membership_text(self, token: str) -> str:
-        kind, separator, name = token.partition(":")
-        if not separator:
-            kind, name = "role", token
-        if kind == "role":
-            return self.say("target.role", name=self.say.words.get(name, name.replace("_", " ")))
-        if kind == "attribute":
-            return self.say(
-                "target.attribute", name=self.say.words.get(name, name.replace("_", " "))
-            )
-        return name
-
-    def _role_condition_text(self, rule: RoleCondition) -> str:
-        kind, args = rule.kind, rule.args
-
-        def role(name: str) -> str:
-            return self.say.words.get(name) or name.replace("_", " ")
-
-        if kind in ("has_role", "not_role"):
-            return self.say(
-                "role_has" if kind == "has_role" else "role_not",
-                who=args[0],
-                role=role(args[1]),
-            )
-        if kind in ("some_role", "roleless", "at_most_one_role"):
-            key = {
-                "some_role": "role_some",
-                "roleless": "roleless",
-                "at_most_one_role": "role_at_most_one",
-            }[kind]
-            return self.say(key, who=args[0])
-        if kind == "role_subset":
-            return self.say(
-                "role_subset",
-                left=self._membership_text(args[0]),
-                right=self._membership_text(args[1]),
-            )
-        if kind in ("role_in_tagged", "role_not_in_tagged"):
-            area = self.places.regions(self.board.tagged_region_ids([args[2]]))
-            return self.say(kind, who=args[0], role=role(args[1]), area=area)
-        if kind == "min_role_in_tagged":
-            area = self.places.regions(self.board.tagged_region_ids([args[1]]))
-            role_def = next((r for r in self.board.roles if r.name == args[0]), None)
-            if args[2] == "1" and role_def is not None and role_def.allowed_counts == {1}:
-                key = "min_role_in_tagged_one_unique"
-            else:
-                key = "min_role_in_tagged_one" if args[2] == "1" else "min_role_in_tagged"
-            return self.say(
-                key,
-                n=self.say.number(int(args[2])),
-                role=role(args[0]),
-                area=area,
-            )
-        if kind in ("role_on", "role_not_on", "role_next_to"):
-            what = self.say.join([self._role_target_name(name) for name in args[2:]], "or")
-            if kind == "role_next_to" and next_to_covers_own_squares(self.board, *args[2:]):
-                kind = "role_on_or_next_to"
-            return self.say(
-                kind,
-                who=args[0],
-                role=role(args[1]),
-                things=what,
-                subject=self._pronoun(args[0], "subject"),
-            )
-        if kind == "role_below":
-            if len(args) == 4:
-                key = "role_below_n"
-                return self.say(
-                    key,
-                    who=args[0],
-                    role=role(args[1]),
-                    n=self.say.number(int(args[3])),
-                )
-            return self.say("role_below", who=args[0], role=role(args[1]))
-        if kind == "sole_role_companion":
-            return self.say(
-                kind,
-                who=args[0],
-                role=role(args[1]),
-                possessive=self._pronoun(args[0], "possessive"),
-            )
-        return self.say(f"rule.role_occupancy.{args[1]}", role=role(args[0]))
-
-    def _role_target_name(self, name: str) -> str:
-        if name in ("blocking", "standable"):
-            labels = {
-                "en": {"blocking": "blocking objects", "standable": "standable objects"},
-                "nl": {"blocking": "blokkerende objecten", "standable": "begaanbare objecten"},
-            }
-            return labels[self.say.language][name]
-        return self.places.thing(name)
-
-    @staticmethod
-    def _role_ref(rule: RoleCondition) -> str:
-        return "" if rule.number is None else f" ({rule.number})"
-
-    def _location_noun(self, token: str) -> str:
-        kind, separator, name = token.partition(":")
-        if not separator:
-            raise ValueError(f"location selector must be typed: {token!r}")
-        if kind in ("object", "mark", "edge_item", "point_object"):
-            return self.places.thing(name)
-        if kind == "object_kind":
-            labels = {
-                "en": {"blocking": "blocking objects", "standable": "standable objects"},
-                "nl": {"blocking": "blokkerende objecten", "standable": "begaanbare objecten"},
-            }
-            return labels[self.say.language][name]
-        if kind in ("area", "tag"):
-            ids = (
-                self.board.area_ids(name.split(","))
-                if kind == "area"
-                else self.board.tagged_region_ids(name.split(","))
-            )
-            return self.places.regions(ids)
-        raise ValueError(f"selector {token!r} is not a location noun")
-
-    def _location_where(self, token: str) -> str:
-        kind, _, name = token.partition(":")
-        if kind in ("area", "tag"):
-            return self._location_noun(token)
-        if kind in ("rows", "columns"):
-            line_kind = "row" if kind == "rows" else "col"
-            line = self.places.lines(line_kind, line_indices(name, self.board.size), "or")
-            return self.say("location.in_line", line=line)
-        if kind == "corner":
-            if name == "board":
-                return (
-                    "in a corner of the grid" if self.say.language == "en" else "in een rasterhoek"
-                )
-            area = self._location_noun(name)
-            return (
-                f"in a corner of {area}" if self.say.language == "en" else f"in een hoek van {area}"
-            )
-        if kind in ("object", "object_kind", "mark"):
-            return (
-                f"on {self._location_noun(token)}"
-                if self.say.language == "en"
-                else f"op {self._location_noun(token)}"
-            )
-        raise ValueError(f"selector {token!r} is not valid with 'in'")
-
-    def _location_predicate_text(self, kind: str, person: str, token: str) -> str:
-        selector_kind = token.partition(":")[0]
-        if kind in ("in", "not_in"):
-            where = self._location_where(token)
-            return self.say(f"clue.{kind}", a=person, where=where)
-        thing = self._location_noun(token)
-        if kind in ("on", "not_on") and selector_kind in ("edge_item", "point_object"):
-            thing = self.say("location.touched_by", thing=thing)
-        if kind == "only":
-            return self.say("clue.only_on", a=person, things=thing)
-        return self.say(f"clue.{kind}", a=person, things=thing)
-
-    def _direction_text(self, condition: DirectionCondition) -> str:
-        first = self._target_text(condition.first, cells=not condition.first_is_people)
-        second = self._target_text(condition.second, cells=not condition.second_is_people)
-        mode = condition.mode
-        if (
-            mode == "king"
-            and condition.comparison == "<="
-            and condition.distance == 1
-            and condition.first.kind == "person"
-            and not condition.second_is_people
-        ):
-            key = "clue.dir_not_near_cell" if condition.negated else "clue.dir_near_cell"
-            return self.say(key, a=first, b=second)
-        if mode == "furthest":
-            text = self.say("clue.furthest_all", a=first, b=second)
-        elif mode == "knight":
-            text = self.say("clue.dir_knight", a=first, b=second)
-        elif mode == "areas" and condition.comparison == "=" and condition.distance == 0:
-            text = self.say("clue.dir_same_area", a=first, b=second)
-        elif mode == "areas" and condition.comparison == ">=" and condition.distance == 1:
-            text = self.say("clue.dir_different_areas", a=first, b=second)
-        elif mode in ("left", "right", "up", "down"):
-            directions = {
-                "en": {"left": "left of", "right": "right of", "up": "above", "down": "below"},
-                "nl": {"left": "links van", "right": "rechts van", "up": "boven", "down": "onder"},
-            }[self.say.language]
-            if condition.comparison is None:
-                text = self.say("clue.dir_direction", a=first, b=second, direction=directions[mode])
-            else:
-                unit = "column" if mode in ("left", "right") else "row"
-                if condition.distance != 1:
-                    unit += "s"
-                if self.say.language == "nl":
-                    unit = {
-                        "column": "kolom",
-                        "columns": "kolommen",
-                        "row": "rij",
-                        "rows": "rijen",
-                    }[unit]
-                text = self.say(
-                    "clue.dir_exact",
-                    a=first,
-                    b=second,
-                    n=self.say.number(condition.distance or 0),
-                    unit=unit,
-                    direction=directions[mode],
-                )
-        else:
-            comparison = {
-                "=": "exactly" if self.say.language == "en" else "precies",
-                "<=": "at most" if self.say.language == "en" else "hoogstens",
-                ">=": "at least" if self.say.language == "en" else "minstens",
-            }[condition.comparison or "="]
-            unit_key = {
-                "rows": ("row", "rows", "rij", "rijen"),
-                "cols": ("column", "columns", "kolom", "kolommen"),
-                "manhattan": (
-                    "Manhattan step",
-                    "Manhattan steps",
-                    "Manhattanstap",
-                    "Manhattanstappen",
-                ),
-                "euclidean": (
-                    "straight-line square",
-                    "straight-line squares",
-                    "vakje in vogelvlucht",
-                    "vakjes in vogelvlucht",
-                ),
-                "king": ("king move", "king moves", "koningszet", "koningszetten"),
-                "areas": ("area border", "area borders", "gebiedsgrens", "gebiedsgrenzen"),
-            }[mode]
-            singular, plural = unit_key[:2] if self.say.language == "en" else unit_key[2:]
-            unit = singular if condition.distance == 1 else plural
-            text = self.say(
-                "clue.dir_distance",
-                a=first,
-                b=second,
-                comparison=comparison,
-                n=self.say.number(condition.distance or 0),
-                unit=unit,
-            )
-        if not condition.negated:
-            return text
-        return self.say("clue.dir_not", relation=text)
-
-    def _area_occupancy_text(self, condition: AreaOccupancyCondition) -> str:
-        region_name = self.board.region_names[next(iter(self.board.area_ids([condition.area])))]
-        region = self.say("area.name", name=region_name.replace("_", " "))
-        if condition.kind == "alone":
-            if condition.person is None:
-                return self.say("clue.alone_area_any", where=region)
-            return self.say("clue.alone_area", a=condition.person, where=region)
-        assert condition.membership is not None
-        membership = self._target_text(condition.membership)
-        if condition.person is None:
-            return self.say("clue.with_area", where=region, membership=membership)
-        role_or_attribute = (
-            f"{condition.membership.kind} {condition.membership.name.replace('_', ' ')}"
-        )
-        return self.say(
-            "clue.with_area_person",
-            a=condition.person,
-            where=region,
-            n=self.say.number(condition.companions or 1),
-            membership=role_or_attribute,
-        )
-
-    def _area_isolation_text(self, condition: AreaIsolationCondition) -> str:
-        scope = ""
-        if condition.selector is not None:
-            selector = condition.selector
-            if selector.kind == "area":
-                where = self.places.regions(self.board.area_ids([selector.name]))
-            else:
-                where = self.say.words.get(selector.name, selector.name.replace("_", " "))
-            scope = f" in {where}"
-        return self.say("clue.area_isolation", scope=scope)
-
-    def _conditional_text(self, condition: ConditionalCondition) -> str:
-        predicate = self._location_predicate_text(
-            "not_" + condition.predicate if condition.negated else condition.predicate,
-            condition.person,
-            f"{condition.selector.kind}:{condition.selector.name}",
-        )
-        role = self.say.words.get(condition.role, condition.role.replace("_", " "))
-        return self.say("clue.conditional", a=condition.person, role=role, predicate=predicate)
-
-    def _clue_text(self, kind: str, args: Sequence[str], people: Sequence[str]) -> str:
-        if kind in ("dir", "not_dir"):
-            (condition,) = directional_conditions(
-                self.board, [(kind, list(args))], include_rules=False
-            )
-            return self._direction_text(condition)
-        if kind in (
-            "in",
-            "not_in",
-            "on",
-            "not_on",
-            "beside",
-            "not_beside",
-            "touches",
-            "not_touches",
-        ):
-            person, *selectors = args
-            texts = [
-                self._location_predicate_text(kind, person, selector) for selector in selectors
-            ]
-            return self.say.join(texts, "or")
-        if kind == "only":
-            person, selector = args
-            return self._location_predicate_text(kind, person, selector)
-        if kind in AREA_POPULATION:
-            names = [token.partition(":")[2] or token for token in args]
-            regions = sorted(self.board.area_ids(names))
-            listed = self.say.join([self.board.region_names[region] for region in regions])
-            phrase_kind = {
-                "most_populated": "busiest_area",
-                "least_populated": "quietest_area",
-            }.get(kind, kind)
-            # One named area reads as "the area with the fewest people is X"; a tie
-            # names several, so the sentence has to be plural.
-            key = f"clue.{phrase_kind}" if len(regions) == 1 else f"clue.{phrase_kind}_tie"
-            return self.say(key, areas=listed)
-        if kind == COUNTING:
-            n, parts = counted(args)
-            if n == 1 and len(parts) == 2:
-                (k1, a1), (k2, a2) = parts
-                first = self._clue_text(k1, a1, a1[: 1 if k1 in FILTERS else 2])
-                second = self._clue_text(k2, a2, a2[: 1 if k2 in FILTERS else 2])
-                return self.say("clue.either", first=first, second=second)
-            listed = "; ".join(
-                self._clue_text(k, rest, rest[: 1 if k in FILTERS else 2]) for k, rest in parts
-            )
-            return self.say("clue.exactly", n=self.say.number(n), list=listed)
-        if kind == "furthest":
-            return self.say("clue.furthest_all", a=args[0], b=args[1])
-        fields: dict[str, Any] = dict(zip("abc", people, strict=False))
-        line_clues = ("in_row", "not_in_row", "in_column", "not_in_column")
-        has_filter_args = kind in FILTERS or kind == "only_on" or kind in line_clues
-        rest = args[1:] if has_filter_args else ()
-        if kind in ("in_region", "outside"):
-            fields["where"] = self.places.where_regions(rest)
-        elif kind in ("in_tagged", "not_in_tagged", "only_in_tagged"):
-            fields["where"] = self.places.regions(self.board.tagged_region_ids(rest))
-        elif kind in ("in_row", "not_in_row"):
-            fields["line"] = self.places.line("row", int(args[1]) - 1)
-        elif kind in ("in_column", "not_in_column"):
-            fields["line"] = self.places.line("col", int(args[1]) - 1)
-        elif kind == "in_area_corner":
-            fields["where"] = (
-                self.places.regions(self.board.area_ids(rest))
-                if rest
-                else ("within an area" if self.say.language == "en" else "binnen een gebied")
-            )
-        elif kind in ("has_attribute", "not_attribute"):
-            fields["attribute"] = self.say.words.get(args[1], args[1].replace("_", " "))
-        elif kind == "unique_attribute":
-            fields["people"] = self.say.join(list(args[1:]))
-            fields["attribute"] = self.say.words.get(args[0], args[0].replace("_", " "))
-        elif rest:
-            fields["things"] = self.say.join([self.places.thing(t) for t in rest], "or")
-        if kind == "only_on":
-            fields["a"] = args[0]
-        if kind == "left_of" and len(args) > 2:
-            distance = int(args[2])
-            fields["n"] = self.say.number(distance)
-            kind = "left_of_one" if distance == 1 else "left_of_n"
-        if kind == "above" and len(args) > 2:
-            n = int(args[2])
-            kind = "above_n"
-            fields["rows"] = (
-                self.say("one_row") if n == 1 else self.say("n_rows", n=self.say.number(n))
-            )
-        elif kind in ("within", "at_least"):
-            fields["n"] = self.say.number(int(args[2]))
-        if kind in ("next_to", "not_next_to") and next_to_covers_own_squares(self.board, *rest):
-            kind = kind.replace("next_to", "on_or_next_to")
-        return self.say(f"clue.{kind}", **fields)
-
-    def _target_text(self, selector: TargetSelector, *, cells: bool = False) -> str:
-        prefix = "cell_target" if cells else "target"
-        if selector.kind == "person":
-            return selector.name
-        if selector.kind == "union":
-            return self.say.join(
-                [self._target_text(part, cells=cells) for part in selector.parts], "or"
-            )
-        if selector.kind == "people":
-            return self.say("target.people", people=self.say.join(selector.name.split(",")))
-        if selector.kind == "anyone":
-            return self.say("target.anyone")
-        if selector.kind == "attribute":
-            name = self.say.words.get(selector.name, selector.name.replace("_", " "))
-            return self.say("target.attribute", name=name)
-        if selector.kind == "role":
-            name = self.say.words.get(selector.name, selector.name.replace("_", " "))
-            role = next((r for r in self.board.roles if r.name == selector.name), None)
-            if role is not None and role.allowed_counts == {1}:
-                return self.say("target.unique_role", name=name)
-            return self.say("target.role", name=name)
-        if selector.kind in ("area", "tag"):
-            ids = (
-                self.board.area_ids([selector.name])
-                if selector.kind == "area"
-                else self.board.tagged_region_ids([selector.name])
-            )
-            return self.say(f"{prefix}.area", where=self.places.regions(ids))
-        if selector.kind == "people_on":
-            return self.say("target.people_on", what=self._location_noun(selector.name))
-        if selector.kind == "object_kind":
-            names = {
-                "en": {"blocking": "blocking objects", "standable": "standable objects"},
-                "nl": {"blocking": "blokkerende objecten", "standable": "begaanbare objecten"},
-            }
-            return self.say(f"{prefix}.kind", what=names[self.say.language][selector.name])
-        what = self.places.thing(selector.name)
-        if selector.kind in ("object", "mark"):
-            return self.say(f"{prefix}.on", what=what)
-        if selector.kind == "edge_item":
-            return self.say(f"{prefix}.at", what=what)
-        return self.say(f"{prefix}.corner", what=what)
-
-    def _quantified_text(self, condition: QuantifiedCondition) -> str:
-        target = (
-            "" if condition.selector.kind == "anyone" else self._target_text(condition.selector)
-        )
-        if condition.kind == "alone_with":
-            selector = condition.selector
-            others = set(self.board.people) - {condition.subject}
-            n = condition.companions
-            anyone = selector.kind == "anyone" or (
-                selector.kind == "attribute"
-                and others <= self.board.attributes.get(selector.name, frozenset())
-            )
-            if n != 1:
-                count = self.say.number(n)
-                if anyone:
-                    return self.say("clue.with_same_area_anyone_n", a=condition.subject, n=count)
-                return self.say(
-                    "clue.with_same_area_n", a=condition.subject, n=count, target=target
-                )
-            if anyone:
-                return self.say("clue.with_same_area_anyone", a=condition.subject)
-            return self.say("clue.with_same_area", a=condition.subject, target=target)
-        subject = (
-            condition.subject
-            if condition.subject_selector is None
-            else self._target_text(condition.subject_selector)
-        )
-        fields: dict[str, Any] = {"a": subject, "b": target}
-        if condition.kind == "above" and condition.rest:
-            rows = int(condition.rest[0])
-            fields["rows"] = self.say("one_row") if rows == 1 else self.say("n_rows", n=rows)
-            return self.say("clue.above_n", **fields)
-        if condition.kind == "left_of" and condition.rest:
-            distance = int(condition.rest[0])
-            fields["n"] = self.say.number(distance)
-            return self.say("clue.left_of_one" if distance == 1 else "clue.left_of_n", **fields)
-        if condition.kind in ("within", "at_least") and condition.rest:
-            fields["n"] = self.say.number(int(condition.rest[0]))
-        if condition.kind in ("same_region", "different_region", "apart", "adjacent_regions"):
-            return self.say(f"clue.{condition.kind}_target", a=subject, target=target)
-        return self.say(f"clue.{condition.kind}", **fields)
-
-    def _quantified_condition_for_source(self, source: str) -> QuantifiedCondition | None:
-        return next(
-            (
-                condition
-                for label, condition in sorted(
-                    self.quantified_conditions.items(), key=lambda pair: len(pair[0]), reverse=True
-                )
-                if source == label or source.startswith(label + " ")
-            ),
-            None,
-        )
-
-    def _direction_condition_for_source(self, source: str) -> DirectionCondition | None:
-        return next(
-            (
-                condition
-                for label, condition in sorted(
-                    self.direction_conditions.items(), key=lambda pair: len(pair[0]), reverse=True
-                )
-                if source == label or source.startswith(label + " ")
-            ),
-            None,
-        )
-
-    @staticmethod
-    def _quantified_ref(condition: QuantifiedCondition) -> str:
-        return "" if condition.number is None else f" ({condition.number})"
-
-    def _ref(self, condition: Condition) -> str:
-        return "" if condition.number is None else f" ({condition.number})"
-
-
-def _emphasize(text: str) -> str:
-    return f"**{text.replace('**', '')}**" if text else ""
-
-
 def _cap(text: str) -> str:
     if text.startswith("**"):
         return "**" + _cap(text[2:])
     return text[:1].upper() + text[1:]
 
 
-def _pieces(squares: set[Square]) -> list[set[Square]]:
-    """`squares` split into side-by-side pieces, such as the separate benches."""
-    left, pieces = set(squares), []
-    while left:
-        piece, todo = set(), [left.pop()]
-        while todo:
-            sq = todo.pop()
-            piece.add(sq)
-            near = {s for s in left if abs(s.row - sq.row) + abs(s.col - sq.col) == 1}
-            left -= near
-            todo += near
-        pieces.append(piece)
-    return pieces
-
-
 ARTICLES = frozenset({"the", "a", "an", "de", "het", "een"})
-DEFINITE = frozenset({"the", "de", "het"})
 NEGATIONS = frozenset({"not", "niet", "neither"})
 CONNECTORS = frozenset({"or", "of", "nor"})
 LINE_WORDS = frozenset({"row", "column", "rij", "kolom"})
@@ -4074,14 +1710,17 @@ def _merge_predicates(predicates: Sequence[str], say: Wording) -> str:
 
 @dataclass(frozen=True)
 class ClueParagraph:
-    """A canonical paragraph with its source clue numbers and semantic owner."""
+    """A player-facing paragraph with clue or rule source numbers and semantic owner."""
 
     text: str
     sources: tuple[int, ...]
     person: str | None
+    rule_sources: tuple[int, ...] = ()
 
     @property
     def id(self) -> str:
+        if self.rule_sources:
+            return "rule:" + ",".join(map(str, self.rule_sources))
         return "clue:" + ",".join(map(str, self.sources))
 
 
@@ -4101,136 +1740,193 @@ class CluePresentation:
     other: tuple[ClueParagraph, ...]
 
 
-def figure_clues(text: str) -> CluePresentation:
-    """Shared booklet/player entries; ownership comes from syntax, never wording."""
-    board, _ = load_board(text)
+def figure_clues(
+    text: str,
+    *,
+    expressions: Sequence[murdoku_lang.Statement] | None = None,
+    expression_rules: Sequence[murdoku_lang.Statement] | None = None,
+) -> CluePresentation:
+    """Shared booklet/player entries for all puzzle-specific clues and rules."""
+    if expressions is None or expression_rules is None:
+        _, rules, clues = load_expression_board(text)
+        expressions = clues if expressions is None else expressions
+        expression_rules = rules if expression_rules is None else expression_rules
+    return _expression_figure_clues(text, expressions, expression_rules)
+
+
+def _expression_sentence(words: ExpressionWords, statement: murdoku_lang.Statement) -> str:
+    sentence = _cap(words.statement(statement).strip())
+    return sentence if sentence.endswith((".", "!", "?")) else sentence + "."
+
+
+def _expression_figure_clues(
+    text: str,
+    clues: Sequence[murdoku_lang.Statement],
+    rules: Sequence[murdoku_lang.Statement],
+) -> CluePresentation:
+    board = load_board_layout(text)
     presentation = load_presentation(text)
-    say = Wording.read(text).for_people(board.people)
-    paragraphs = _clue_paragraphs(text, presentation.clue_text, semantic=True)
+    say = ExpressionWords.read(board, text)
+    by_person: dict[str, list[ClueParagraph]] = {person: [] for person in board.people}
+    other: list[ClueParagraph] = []
+    for number, clue in enumerate(clues, 1):
+        formula = clue.formula
+        while isinstance(formula, murdoku_lang.Negation):
+            formula = formula.formula
+        owner = _expression_clue_owner(formula, by_person)
+        sentence = _expression_sentence(say, clue)
+        paragraph = ClueParagraph(sentence, (number,), owner)
+        (by_person[owner] if owner is not None else other).append(paragraph)
+    wording = Wording.read(text)
+    for person, paragraphs in by_person.items():
+        if len(paragraphs) < 2:
+            continue
+        shown = _cap(say.names.get(person, person))
+        predicates = []
+        extra = []
+        for paragraph in paragraphs:
+            source = clues[paragraph.sources[0] - 1]
+            if source.wording is not None or not paragraph.text.startswith(f"{shown} "):
+                extra.append(paragraph.text)
+                continue
+            rest = paragraph.text[len(shown) + 1 :].rstrip(".")
+            if rest.split(" ", 1)[0] == wording("and"):
+                extra.append(paragraph.text)
+            else:
+                predicates.append(rest)
+        parts = [f"{shown} {_merge_predicates(predicates, wording)}."] if predicates else []
+        parts.extend(extra)
+        by_person[person] = [
+            ClueParagraph(
+                " ".join(parts),
+                tuple(number for paragraph in paragraphs for number in paragraph.sources),
+                person,
+            )
+        ]
+    for number, rule in enumerate(rules, 1):
+        owner = _expression_rule_owner(rule.formula, board.people)
+        paragraph = ClueParagraph(_expression_sentence(say, rule), (), owner, (number,))
+        (by_person[owner] if owner is not None else other).append(paragraph)
     figures = tuple(
         FigureClues(
             person,
-            _cap(say.people.get(person, person)),
-            presentation.figures[person].description if person in presentation.figures else "",
-            tuple(clue for clue in paragraphs if clue.person == person),
+            _cap(say.names.get(person, person)),
+            _figure_description(
+                presentation.figures[person].description if person in presentation.figures else "",
+                bool(by_person[person]),
+            ),
+            tuple(by_person[person]),
         )
         for person in board.people
     )
-    return CluePresentation(figures, tuple(clue for clue in paragraphs if clue.person is None))
+    return CluePresentation(figures, tuple(other))
 
 
-def clue_paragraphs(text: str, overrides: dict[int, str] | None = None) -> list[str]:
+def _figure_description(description: str, has_clues: bool) -> str:
+    if not has_clues:
+        return description
+    return re.sub(
+        r"(?:, )?(?:(?:with |has )?no clues of (?:their|his|her) own"
+        r"|(?:zonder eigen|geen eigen) aanwijzingen)$",
+        "",
+        description,
+    ).rstrip(", ")
+
+
+def _expression_rule_owner(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
+    """Use a semantic subject, or the sole named figure anchoring a compound rule."""
+    if isinstance(formula, murdoku_lang.Negation):
+        return _expression_rule_owner(formula.formula, people)
+    if owner := _expression_clue_owner(formula, people):
+        return owner
+
+    def named_people(value: object) -> set[str]:
+        if isinstance(value, murdoku_lang.Name):
+            return {value.token.text} & set(people)
+        if isinstance(value, tuple):
+            return set().union(*(named_people(item) for item in value))
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
+            return set().union(
+                *(named_people(getattr(value, item.name)) for item in dataclasses.fields(value))
+            )
+        return set()
+
+    names = named_people(formula)
+    return next(iter(names)) if len(names) == 1 else None
+
+
+def _expression_clue_owner(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
+    if isinstance(formula, (murdoku_lang.Atom, murdoku_lang.AdjectiveAtom)) and isinstance(
+        formula.subject, murdoku_lang.Name
+    ):
+        name = formula.subject.token.text
+        return name if name in people else None
+    if person := alone_person(formula, people):
+        return person.token.text
+    if only := only_on(formula, people):
+        return only[0].token.text
+    return None
+
+
+def clue_paragraphs(
+    text: str,
+    overrides: dict[int, str] | None = None,
+    *,
+    expressions: Sequence[murdoku_lang.Statement] | None = None,
+) -> list[str]:
     """The clues grouped per person, one paragraph each, in the order of the people.
 
     What a clue says about its first person is folded into that person's sentence;
     clues that are not about one person come last, one paragraph each.
     `overrides` replaces the generated wording of clue numbers.
     """
-    return [paragraph.text for paragraph in _clue_paragraphs(text, overrides)]
-
-
-def _clue_paragraphs(
-    text: str, overrides: dict[int, str] | None = None, *, semantic: bool = False
-) -> list[ClueParagraph]:
-    board, clues = load_board(text)
-    story = Story(board, clues, Wording.read(text))
-    texts = story.clue_texts()
-    combined: dict[int, str] = {}
-    combined_sources: dict[int, tuple[int, ...]] = {}
-    skipped: set[int] = set()
-    for number, (kind, args) in enumerate(clues, 1):
-        if number in skipped or number in (overrides or {}) or kind != "next_to" or len(args) != 2:
-            continue
-        person, thing = args
-        if not next_to_covers_own_squares(board, thing):
-            continue
-        for other_number, (other_kind, other_args) in enumerate(clues, 1):
-            if (
-                other_number == number
-                or other_number in skipped
-                or other_number in (overrides or {})
-                or other_kind != "not_on"
-                or other_args != [person, thing]
-            ):
-                continue
-            first = min(number, other_number)
-            text = story.say(
-                "clue.beside_but_not_on",
-                a=person,
-                things=story.places.thing(thing),
-            )
-            combined[first] = f"{_cap(text)}."
-            combined_sources[first] = tuple(sorted((number, other_number)))
-            skipped.update((number, other_number))
-            break
-    shown = {p: _cap(story.say.people.get(p, p)) for p in board.people}
-    owners = sorted(board.people, key=lambda p: len(shown[p]), reverse=True)
-    predicates: dict[str, list[str]] = {person: [] for person in board.people}
-    extra: dict[str, list[str]] = {person: [] for person in board.people}
-    sources: dict[str, list[int]] = {person: [] for person in board.people}
-    loose: list[ClueParagraph] = []
-    for number, generated in enumerate(texts, 1):
-        if number in skipped and number not in combined:
-            continue
-        sentence = (overrides or {}).get(number, combined.get(number, generated))
-        numbers = combined_sources.get(number, (number,))
-        kind, args = clues[number - 1]
-        if semantic:
-            owner = args[0] if args and args[0] in board.people else None
-            if kind in (
-                "count",
-                "busiest_area",
-                "quietest_area",
-                "unique_attribute",
-                "role_subset",
-                "role_occupant",
-                "min_role_in_tagged",
-            ):
-                owner = None
-            if kind == COUNTING:
-                subjects = {a[0] for _, a in counted(args)[1] if a}
-                owner = next(iter(subjects)) if len(subjects) == 1 else None
-                if owner not in board.people:
-                    owner = None
-        else:
-            owner = next((p for p in owners if sentence.startswith(f"{shown[p]} ")), None)
-        if owner is None:
-            loose.append(ClueParagraph(sentence, numbers, None))
-            continue
-        sources[owner].extend(numbers)
-        if not sentence.startswith(f"{shown[owner]} "):
-            extra[owner].append(sentence)
-            continue
-        rest = sentence[len(shown[owner]) + 1 :].rstrip(".")
-        if rest.split(" ", 1)[0] in (story.say("and"),):
-            extra[owner].append(sentence)
-        else:
-            predicates[owner].append(rest)
-    out = []
-    for person in board.people:
-        parts = []
-        if predicates[person]:
-            parts.append(f"{shown[person]} {_merge_predicates(predicates[person], story.say)}.")
-        parts.extend(extra[person])
-        if parts:
-            out.append(ClueParagraph(" ".join(parts), tuple(sorted(sources[person])), person))
-    return out + loose
+    if expressions is None:
+        expressions = load_expression_board(text)[2]
+    clues = [
+        dataclasses.replace(clue, wording=overrides[number])
+        if overrides is not None and number in overrides
+        else clue
+        for number, clue in enumerate(expressions, 1)
+    ]
+    entries = figure_clues(text, expressions=clues, expression_rules=())
+    return [clue.text for figure in entries.figures for clue in figure.clues] + [
+        clue.text for clue in entries.other
+    ]
 
 
 def clue_texts(text: str) -> list[str]:
     """The numbered clues of a Murdoku puzzle file in plain language."""
-    board, clues = load_board(text)
-    return Story(board, clues, Wording.read(text)).clue_texts()
+    board, _, statements = load_expression_board(text)
+    words = ExpressionWords.read(board, text)
+    return [_expression_sentence(words, clue) for clue in statements]
+
+
+def global_count_statements(text: str) -> list[tuple[murdoku_lang.Statement, str]]:
+    """Each count-bearing Murdoku statement and its player-facing sentence, in file order."""
+    board, rules, statements = load_expression_board(text)
+    words = ExpressionWords.read(board, text)
+
+    def contains_count(value: object) -> bool:
+        if isinstance(value, murdoku_lang.Count):
+            return True
+        if isinstance(value, tuple):
+            return any(contains_count(item) for item in value)
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
+            return any(
+                contains_count(getattr(value, item.name)) for item in dataclasses.fields(value)
+            )
+        return False
+
+    return [
+        (statement, _expression_sentence(words, statement))
+        for statement in (*rules, *statements)
+        if contains_count(statement.formula)
+    ]
 
 
 def global_count_texts(text: str) -> list[str]:
     """Each global count of a Murdoku puzzle file as one plain sentence, in file order."""
-    board, clues = load_board(text)
-    told = Story(board, clues, Wording.read(text))
-    return [
-        told.say.rules.get(condition.description) or _cap(told._global_count_text(condition))
-        for condition in global_count_conditions(board, clues)
-    ]
+    return [sentence for _, sentence in global_count_statements(text)]
 
 
 def _tagged_area(say: Wording, rid: str, name: str) -> str:
@@ -4252,10 +1948,14 @@ def mark_note(mark: CellMark, say: Wording) -> str:
     return say(key, abbr=mark.name[:2].upper(), name=name)
 
 
-def board_notes(text: str) -> list[str]:
+def board_notes(
+    text: str, *, expression_rules: Sequence[murdoku_lang.Statement] | None = None
+) -> list[str]:
     """Plain sentences for what the board picture only abbreviates: area tags, marks, and
     board rules with author wording or global counts."""
-    board, clues = load_board(text)
+    if expression_rules is None:
+        expression_rules = load_expression_board(text)[1]
+    board = load_board_layout(text)
     say = Wording.read(text)
 
     def name(raw: str) -> str:
@@ -4276,13 +1976,8 @@ def board_notes(text: str) -> list[str]:
             )
         )
     notes.extend(mark_note(mark, say) for mark in board.marks)
-    notes.extend(f"{wording}." for wording in say.rules.values())
-    told = Story(board, clues, say)
-    notes.extend(
-        f"{_cap(told._global_count_text(condition))}."
-        for condition in global_count_conditions(board, clues)
-        if condition.number is None and condition.description not in say.rules
-    )
+    words = ExpressionWords.read(board, text)
+    notes.extend(_expression_sentence(words, rule) for rule in expression_rules)
     return notes
 
 
@@ -4293,7 +1988,7 @@ def murdoku_key_items(text: str) -> list[tuple[str, str, str]]:
     text; regions are labelled on the board, and marks, roles and attributes are
     stated in the rules or listed beside it.
     """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     say = Wording.read(text)
     out: list[tuple[str, str, str]] = []
     for name in sorted(board.edge_item_names | board.point_object_names):
@@ -4313,88 +2008,108 @@ def murdoku_key(text: str) -> list[tuple[str, str]]:
     return [(label, name) for _, label, name in murdoku_key_items(text)]
 
 
-def murdoku_rules(text: str) -> list[str]:
+def _expression_rule_notes(
+    board: Board, statements: Sequence[murdoku_lang.Statement], say: Wording
+) -> list[str]:
+    notes: list[str] = []
+
+    def target_names(value: object) -> set[str]:
+        if isinstance(value, murdoku_lang.Name):
+            return {value.token.text}
+        if isinstance(value, tuple):
+            return {name for item in value for name in target_names(item)}
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
+            return {
+                name
+                for item in dataclasses.fields(value)
+                for name in target_names(getattr(value, item.name))
+            }
+        return set()
+
+    def visit(value: object) -> None:
+        if isinstance(value, (murdoku_lang.Atom, murdoku_lang.Filter)):
+            operator = value.operator.text
+            names = target_names(value.target)
+            kinds = {name.partition(":")[0] for name in names}
+            features = {name.rsplit(":", 1)[-1] for name in names} & board.edge_item_names
+            if operator == "beside" and (
+                "objects" in names or bool(kinds & {"object", "object_kind"})
+            ):
+                notes.append(say("doc.clue_beside_object"))
+            if operator == "touches" and "mark" in kinds:
+                notes.append(say("doc.clue_touches_mark"))
+            if operator == "on":
+                if "point_object" in kinds:
+                    notes.append(say("doc.clue_on_point"))
+                if "edge_item" in kinds:
+                    edge_kinds = {board.edge_item_kind(name) for name in features}
+                    if "door" in edge_kinds:
+                        notes.append(say("doc.clue_on_door"))
+                    if "window" in edge_kinds:
+                        notes.append(say("doc.clue_on_window"))
+            if operator.startswith("dir:"):
+                modes = operator.split(":")[1:]
+                if "manhattan" in modes:
+                    notes.append(say("doc.clue_distance"))
+                if "euclidean" in modes:
+                    notes.append(say("doc.clue_euclidean_distance"))
+                if "areas" in modes:
+                    notes.append(say("doc.clue_neighboring_areas"))
+        if isinstance(value, tuple):
+            for item in value:
+                visit(item)
+        elif dataclasses.is_dataclass(value) and not isinstance(value, type):
+            for item in dataclasses.fields(value):
+                visit(getattr(value, item.name))
+
+    for statement in statements:
+        visit(statement.formula)
+    return list(dict.fromkeys(notes))
+
+
+def murdoku_rules(
+    text: str,
+    *,
+    expression_rules: Sequence[murdoku_lang.Statement] | None = None,
+    expression_clues: Sequence[murdoku_lang.Statement] = (),
+) -> list[str]:
     """The rules a Murdoku player reads before starting, in the author's order.
 
     The `Intro:` paragraphs (or the standard rules when a file has none), what
     the board picture only abbreviates, the clue semantics the short clue text
     leaves implicit, and the note that a figure's story detail is not a clue.
+    Puzzle-specific `Rules:` statements belong in `figure_clues`, not here.
 
-    One constraint can be said twice: an author may write a rule's sentence in
-    the intro *and* as that rule's `| wording`, and both land here. Say such a
-    sentence once, where it appears first, so the rules list reads as one rule
-    rather than two conditions.
+    Preserve the intro and deduplicate matching semantic clarifications rather
+    than repeating them as separate bullets.
     """
-    board, clues = load_board(text)
+    if expression_rules is None:
+        _, expression_rules, expression_clues = load_expression_board(text)
     presentation = load_presentation(text)
-    entries = [*board.rules, *clues]
-    entries += [part for kind, args in entries if kind == COUNTING for part in counted(args)[1]]
-    kinds = {kind for kind, _ in entries}
-    targets_by_predicate: dict[str, set[str]] = {
-        "beside": set(),
-        "touches": set(),
-        "on": set(),
-    }
-    for kind, args in entries:
-        predicate = kind.removeprefix("not_")
-        if predicate == "only":
-            predicate = "on"
-        if predicate in targets_by_predicate:
-            targets_by_predicate[predicate].update(token.rsplit(":", 1)[-1] for token in args[1:])
-    for condition in conditional_conditions(board, clues):
-        if condition.predicate in targets_by_predicate:
-            targets_by_predicate[condition.predicate].add(
-                condition.selector.name.rsplit(":", 1)[-1]
-            )
-    beside_targets = targets_by_predicate["beside"]
-    touches_targets = targets_by_predicate["touches"]
-    on_targets = targets_by_predicate["on"]
-    clue_notes = []
+    board = load_board_layout(text)
     say = Wording.read(text)
-    # Intro keywords may describe a different target or omit a necessary detail.
-    if beside_targets & (board.object_names | {"blocking", "standable"}):
-        clue_notes.append(say("doc.clue_beside_object"))
-    if touches_targets & board.mark_names:
-        clue_notes.append(say("doc.clue_touches_mark"))
-    if any(board.edge_item_kind(name) == "door" for name in on_targets & board.edge_item_names):
-        clue_notes.append(say("doc.clue_on_door"))
-    if on_targets & board.point_object_names:
-        clue_notes.append(say("doc.clue_on_point"))
-    if any(board.edge_item_kind(name) == "window" for name in on_targets & board.edge_item_names):
-        clue_notes.append(say("doc.clue_on_window"))
-    if kinds & {"within", "at_least", "furthest"}:
-        clue_notes.append(phrase(text, "doc.clue_distance"))
-    if any(kind == "dir" and len(args) > 2 and args[2] == "manhattan" for kind, args in entries):
-        clue_notes.append(say("doc.clue_distance"))
-    if any(kind == "dir" and len(args) > 2 and args[2] == "euclidean" for kind, args in entries):
-        clue_notes.append(say("doc.clue_euclidean_distance"))
-    if "dir" in kinds and any(
-        kind == "dir" and len(args) > 2 and args[2] == "areas" for kind, args in entries
-    ):
-        clue_notes.append(phrase(text, "doc.clue_neighboring_areas"))
-    if "away_from" in kinds:
-        clue_notes.append(phrase(text, "doc.clue_away_from"))
-    said = [
-        *(presentation.intro or [phrase(text, "doc.rules")]),
-        *board_notes(text),
-        *clue_notes,
-        phrase(text, "doc.murdoku_note"),
-    ]
-    intro_count = len(presentation.intro) if presentation.intro else 1
-    intro_items = said[:intro_count]
+    return _unique_player_rules(
+        presentation.intro or [say("doc.rules")],
+        [
+            *board_notes(text, expression_rules=()),
+            *_expression_rule_notes(board, [*expression_rules, *expression_clues], say),
+            say("doc.murdoku_note"),
+        ],
+    )
+
+
+def _unique_player_rules(intro_items: list[str], notes: list[str]) -> list[str]:
     # An intro paragraph may already contain a board rule or mark note; do not
     # print that same sentence again as a separate bullet.
     kept = intro_items + [
-        item
-        for item in said[intro_count:]
-        if not any(item in paragraph for paragraph in intro_items)
+        item for item in notes if not any(item in paragraph for paragraph in intro_items)
     ]
     return list(dict.fromkeys(kept))
 
 
 def role_list(text: str) -> list[tuple[str, str]]:
     """(role name, plain description) for each role, for a list beside the board."""
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     say = Wording.read(text)
     if "role_has" in say.phrases:
         return []
@@ -4420,9 +2135,9 @@ def role_list(text: str) -> list[tuple[str, str]]:
 
 def attribute_list(text: str) -> list[tuple[str, str]]:
     """(attribute name, the people who have it) for a list beside the board."""
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     say = Wording.read(text)
-    if "target.attribute" in say.phrases:
+    if any(line.startswith("name.attribute:") for line in read_sections(text).get("Words", [])):
         return []
     out = []
     for attribute, holders in board.attributes.items():
@@ -4437,7 +2152,7 @@ def object_list(text: str) -> list[tuple[str, str, bool]]:
 
     `boom1` and `boom2` are one type, `boom`; the type is what `icons.object_icon` finds.
     """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     words = Wording.read(text).words
     out: dict[str, tuple[str, str, bool]] = {}
     for obj in board.objects:
@@ -4455,41 +2170,12 @@ def phrase(text: str, key: str) -> str:
     return Wording.read(text)(key)
 
 
-def condition_list(text: str) -> list[tuple[str, str]]:
-    """(name, plain meaning) of each kind of condition the puzzle's clues and rules use.
-
-    Only the kinds used appear, in the order they are first used; clues inside
-    `exactly` count too.
-    """
-    board, clues = load_board(text)
-    say = Wording.read(text)
-    keys: list[str] = []
-
-    def visit(kind: str, args: Sequence[str]) -> None:
-        key = CONDITION_KEYS.get(kind)
-        if key is not None and key not in keys:
-            keys.append(key)
-        if kind == COUNTING:
-            for inner_kind, inner_args in counted(args)[1]:
-                visit(inner_kind, inner_args)
-
-    for kind, args in [*board.rules, *clues]:
-        visit(kind, args)
-    return [(say(f"cond.{key}.name"), say(f"cond.{key}")) for key in keys]
-
-
 def explain(text: str, numbered: bool = True) -> str:
     """The worked solution of a Murdoku puzzle file, as Markdown bullets.
 
     Without `numbered` it never points at clue numbers, for clues that are not numbered.
     """
-    board, clues = load_board(text)
-    say = Wording.read(text)
-    story = Story(board, clues, say if numbered else say.unnumbered()).tell()
-    story = re.sub(
-        r"((?:^- |\. |^- \*\*|\. \*\*))([a-z])",
-        lambda m: m.group(1) + m.group(2).upper(),
-        story,
-        flags=re.MULTILINE,
-    )
-    return story if numbered else re.sub(r" \(\d+\)", "", story)
+    # Import lazily: narrators share this module's phrasebook.
+    from .murdoku_story import explain as expression_explain
+
+    return expression_explain(text, numbered=numbered).markdown()

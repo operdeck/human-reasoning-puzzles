@@ -145,7 +145,7 @@ def _replay(
         return changed
 
     def settle() -> None:
-        while model.solution() is None and run("single", rule_single):
+        while run("single", rule_single):
             pass
 
     settle()

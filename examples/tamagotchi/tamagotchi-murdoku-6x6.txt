@@ -40,11 +40,11 @@ Akumatchi
 
 Clues:
 count people on mark:quiet = 1 | Exactly one figure stands on a quiet square.
-on Mametchi object:chair
-beside Masktchi object:sakura
-in Memetchi corner:board
-in Kuchipatchi area:fountain_plaza
-not beside Lovelitchi object:carpet
+Mametchi on object:chair
+Masktchi beside object:sakura
+Memetchi in corner:board
+Kuchipatchi in area:fountain_plaza
+not (Lovelitchi beside object:carpet)
 
 # Booklet text for --docx (optional).
 Title:
@@ -61,7 +61,7 @@ Kuchipatchi: ; icon=U+1F425
 Memetchi: ; icon=U+1F338
 Lovelitchi: ; icon=U+1F496
 Masktchi: ; icon=U+1F3AD
-Akumatchi: the devil ; icon=U+1F47F
+Akumatchi: the devil, with no clues of their own ; icon=U+1F47F
 
 Question:
 Where does Akumatchi go, and who enjoys a quiet square?

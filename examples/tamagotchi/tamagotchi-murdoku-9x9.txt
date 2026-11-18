@@ -56,17 +56,17 @@ Akumatchi
 
 Clues:
 count people on mark:social = 1 | Exactly one figure stands on a social square.
-dir Mametchi Masktchi areas = 0
-on Lovelitchi object:bench
-beside Gozarutchi object:cake
-dir Mametchi Lovelitchi up
-dir Violetchi Masktchi up
-in Tarakotchi area:library
-on Kuchipatchi object:bridge
-dir Tarakotchi Memetchi left
-not beside Memetchi object:slide
-not beside Tarakotchi object:books
-not beside Violetchi object:backpack
+Mametchi dir:areas Masktchi = 0
+Lovelitchi on object:bench
+Gozarutchi beside object:cake
+Mametchi dir:up Lovelitchi
+Violetchi dir:up Masktchi
+Tarakotchi in area:library
+Kuchipatchi on object:bridge
+Tarakotchi dir:left Memetchi
+not (Memetchi beside object:slide)
+not (Tarakotchi beside object:books)
+not (Violetchi beside object:backpack)
 
 # Booklet text for --docx (optional).
 Title:
@@ -83,10 +83,10 @@ Kuchipatchi: ; icon=U+1F425
 Memetchi: ; icon=U+1F338
 Lovelitchi: ; icon=U+1F496
 Tarakotchi: ; icon=U+1F913
-Masktchi: ; icon=U+1F3AD
+Masktchi: no clues of their own ; icon=U+1F3AD
 Gozarutchi: ; icon=U+1F977
 Violetchi: ; icon=U+1F49C
-Akumatchi: the devil ; icon=U+1F47F
+Akumatchi: the devil, with no clues of their own ; icon=U+1F47F
 
 Question:
 Where is Akumatchi, and who else is in that area?

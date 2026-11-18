@@ -13,7 +13,6 @@ thitkho: de thịt kho
 phalau: de phá lấu
 tunnel: de Vietcongtunnel
 kruk: de kruk
-clue.with_same_area_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
 
 Regions:
 a: Hanoi #F4CBC3
@@ -48,15 +47,15 @@ Attributes:
 reiziger: Pippo Swena
 
 Rules:
-with PhoGa attribute:reiziger in same area exactly 2
+count (people in area of PhoGa) = 2 + 1 and every ((people except PhoGa) in area of PhoGa) is attribute:reiziger | De phở gà deelt een gebied met precies twee anderen, en dat zijn allebei reizigers.
 
 Clues:
-not dir Pippo object:buncha,thitkho,phalau king <= 1 | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
-not dir Swena object:buncha,thitkho,phalau king <= 1 | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
-dir Lan Khoa up
-beside Khoa object:thitkho
-not beside Pippo object:kruk
-dir Swena Pippo up
+not (Pippo dir:king object:buncha,thitkho,phalau <= 1) | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+not (Swena dir:king object:buncha,thitkho,phalau <= 1) | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+Lan dir:up Khoa
+Khoa beside object:thitkho
+not (Pippo beside object:kruk)
+Swena dir:up Pippo
 
 # Booklet text for --docx (optional).
 Title:
@@ -71,7 +70,7 @@ Pippo: oma 1 ; icon=U+1F475
 Swena: oma 2 ; icon=U+1F475-1F3FF
 Lan: ; icon=U+1F469
 Khoa: ; icon=U+1F468
-PhoGa: kippensoep met rijstnoedels ; icon=U+1F35C
+PhoGa: kippensoep met rijstnoedels, zonder eigen aanwijzingen ; icon=U+1F35C
 
 Question:
 Waar vinden Pippo en Swena hun phở gà?

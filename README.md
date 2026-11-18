@@ -10,7 +10,9 @@ Queens and Star Battle to Zebra grids and custom Murdoku mystery series. An expl
 constraint engine powers the solver, which solves the way a person would, with named
 deduction rules rather than search; Puzzle Lab helps create and validate new
 puzzles from seeds and specifications, while dedicated Murdoku tools turn loose
-clues and board sketches into original mysteries.
+clues and board sketches into original mysteries. A powerful
+[Murdoku clue language](#a-murdoku-clue-language-that-says-what-you-mean) expresses
+complex relations between people, areas and objects.
 
 **For players:** [Murdoku](https://operdeck.github.io/human-reasoning-puzzles/murdoku/), Sudoku, Queens, Kakuro,
 Akari and more run in the browser, with notes and auto-marking. **For developers:** a
@@ -55,8 +57,11 @@ uv run puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp
 
 `--nosolution` skips solving and writes only the puzzle: on the console, in PNG/SVG pictures, or in DOCX/PDF booklets. Existing solution files are left untouched. It cannot be combined with solving options or with `--export`, which includes an answer for checking in the [web player](#play-in-the-browser). `--export DIR` otherwise writes per puzzle a JSON bundle and interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails).
 
-Murdoku `--explain` marks conclusions in bold and says when a row or column can
-have its other open squares crossed out; booklets render the same emphasis.
+Murdoku `--explain` follows the typed clue and rule expressions, marks conclusions
+in bold, and describes remaining locations by areas, rows, columns or objects.
+It also explains role deductions, including those made after everyone is placed,
+and population arguments: known occupants, the busiest or tied quietest areas,
+and why another area must be empty. Booklets render the same emphasis.
 Sudoku explanations group singles and describe locked candidates, subsets and
 row/column patterns. Every other family, and any Sudoku step those patterns do
 not cover, gets a generic story built from the model alone: clue deductions are
@@ -68,6 +73,28 @@ For [collection and grading notes](docs/puzzle-collection.md), or the [model rul
 Use `puzzle-lab fresh`, `generate`, `rate`, `search`, and `audit` to create and validate non-Murdoku
 examples; see the [authoring workflow](.github/skills/non-murdoku-puzzle-authoring/SKILL.md).
 Murdoku retains its separate tools and skill.
+
+## A Murdoku clue language that says what you mean
+
+Murdoku clues are written in a small, typed expression language rather than a
+fixed list of clue shapes. Sets of people, areas, rows, objects and marks
+combine freely, so a clue can chain several relations. Every clue is parsed,
+type-checked and checked by an independent brute force, and the solver explains it
+in plain words.
+
+> The person on a horse stands in an area next to the area of whoever is on the
+> traveller square.
+
+```
+some (people on object:horse) in (areas touches (area of (people on mark:traveller)))
+```
+
+Read it inside out: `people on mark:traveller` is whoever stands on the
+traveller square, `area of …` is the area they are in, `areas touches …` are the
+areas sharing a side with it, and the outer `in` asks that the horse rider is in
+one of them. Counting, quantifiers (`every ?a in tag:crime_scene: some role:murderer in ?a`),
+roles, directions and arithmetic combine the same way; see
+[Model and puzzle formats](docs/model-and-puzzle-formats.md#murdoku).
 
 ## A first Murdoku case
 

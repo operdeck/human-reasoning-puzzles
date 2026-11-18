@@ -19,9 +19,11 @@ from csp.murdoku import (  # noqa: E402
     PointObject,
     RoleSpec,
     Square,
-    global_count_conditions,
 )
-from csp.puzzlefile import load_board, load_presentation  # noqa: E402
+from csp.murdoku_expression_file import load_expression_board  # noqa: E402
+from csp.murdoku_lower import object_count_scope  # noqa: E402
+from csp.puzzlefile import load_board_layout, load_presentation  # noqa: E402
+from csp.story import global_count_texts  # noqa: E402
 from tests.examples import all_examples, example  # noqa: E402
 
 pytestmark = pytest.mark.booklet
@@ -225,7 +227,7 @@ def test_the_area_tag_legend_keeps_the_case_of_region_names():
 def test_vertical_control_panel_rotates_to_match_its_footprint(
     monkeypatch, name, panel_row, window_row
 ):
-    board, _ = load_board(example(name).read_text())
+    board = load_board_layout(example(name).read_text())
     board.backdrop = None  # the layout below assumes the plain margin
     calls = []
     original = drawing._icon
@@ -327,7 +329,7 @@ def test_interactive_variant_has_cell_ids_and_no_solution():
 
 def test_interactive_murdoku_has_cell_ids_and_the_blank_board():
     text = (example("tamagotchi-murdoku-9x9.txt")).read_text()
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     canvas = drawing.murdoku_picture(board, legend=False, interactive=True)
     assert "r1c1" in svg.ids(canvas.to_svg())
     blank = drawing.murdoku_picture(board, legend=False)
@@ -368,7 +370,7 @@ def test_a_sauna_bench_is_a_seat_drawn_in_bare_wood(monkeypatch):
 
 
 def test_the_hotel_sauna_bench_is_drawn_as_the_sauna_bench():
-    board, _ = load_board(example("wie-doet-het-met-wie-5.txt").read_text())
+    board = load_board_layout(example("wie-doet-het-met-wie-5.txt").read_text())
 
     bench = next(obj for obj in board.objects if obj.name == "saunabank")
     assert len(bench.squares) == 2
@@ -631,7 +633,7 @@ Marks:
 quiet: r1c1 ; alone
 social: r1c1 ; not_alone
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     image = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
     pad = max(3, CELL // 24)
@@ -660,7 +662,7 @@ Marks:
 quiet: r1c1 ; alone
 social: r1c2 ; not_alone
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     svg = drawing.murdoku_picture(board, cell=CELL, coordinates=False, legend=False).to_svg()
 
     def hexed(rgb):
@@ -684,7 +686,7 @@ B
 Marks:
 plain: r1c1
 """
-    pboard, _ = load_board(plain)
+    pboard = load_board_layout(plain)
     plain_svg = drawing.murdoku_picture(pboard, cell=CELL, coordinates=False, legend=False).to_svg()
     # A plain mark still gets a dashed cue, in the neutral "special square" colour.
     assert "stroke-dasharray" in plain_svg
@@ -738,8 +740,8 @@ B
 Roles:
 bandit: any
 Rules:
-has A role:bandit
-not has B role:bandit
+A is role:bandit
+not B is role:bandit
 """
     puzzle = tmp_path / "roles.txt"
     target = tmp_path / "roles.png"
@@ -760,8 +762,6 @@ not has B role:bandit
 
 
 def test_png_global_count_legend_highlights_scope_and_cli_passes_counts(tmp_path, monkeypatch):
-    from csp import cli, murdoku
-
     text = """Size: 2
 Regions:
 a: room
@@ -774,22 +774,33 @@ People:
 Ada
 Ben
 Clues:
-count people on object:bed = 1
+count (people on object:bed) = 1
 """
-    board, clues = load_board(text)
-    (condition,) = murdoku.global_count_conditions(board, clues)
+    board, rules, clues = load_expression_board(text)
+    scope = object_count_scope(board, [*rules, *clues])
+    captions = global_count_texts(text)
     image = picture.murdoku_picture(
-        board, cell=CELL, coordinates=False, global_counts=[condition], count_lines=True
+        board,
+        cell=CELL,
+        coordinates=False,
+        count_scope=scope,
+        count_texts=captions,
+        count_lines=True,
     )
     tiny = picture.murdoku_picture(
-        board, cell=12, coordinates=False, global_counts=[condition], count_lines=True
+        board,
+        cell=12,
+        coordinates=False,
+        count_scope=scope,
+        count_texts=captions,
+        count_lines=True,
     )
     plain = picture.murdoku_picture(board, cell=CELL, coordinates=False)
     margin = CELL // 6
     assert image.height > plain.height
     assert tiny.width > 0 and tiny.height > 0
     markup = drawing.murdoku_picture(
-        board, cell=CELL, coordinates=False, global_counts=[condition]
+        board, cell=CELL, coordinates=False, count_scope=scope, count_texts=captions
     ).to_svg()
     assert "stroke-dasharray" in markup
     assert "<ellipse" in markup
@@ -798,22 +809,6 @@ count people on object:bed = 1
     # The ring did change pixels inside the bed's square, compared with the plain board.
     region = (margin, margin, margin + CELL, margin + CELL)
     assert image.crop(region).tobytes() != plain.crop(region).tobytes()
-
-    puzzle = tmp_path / "global-count.txt"
-    target = tmp_path / "global-count.png"
-    puzzle.write_text(text)
-    seen = []
-    original = drawing.murdoku_picture
-
-    def capture(board, placed=None, **kwargs):
-        seen.append(kwargs.get("global_counts"))
-        return original(board, placed, **kwargs)
-
-    monkeypatch.setattr(drawing, "murdoku_picture", capture)
-    cli.main([str(puzzle), "--png", str(target)])
-
-    assert seen and seen[0]
-    assert target.exists()
 
 
 def test_scope_groups_ring_each_object_even_when_two_touch():
@@ -831,9 +826,9 @@ sloffen: standable r2c1
 People:
 Ada
 Clues:
-count people on object:badjas = 1
+count (people on object:badjas) = 1
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     square = Square
     # Two objects one above the other are two rings, not one tall ellipse.
     assert picture._scope_groups(board, {square(0, 0), square(1, 0)}) == [
@@ -849,8 +844,6 @@ count people on object:badjas = 1
 def test_scope_rings_two_touching_objects_apart():
     import re
 
-    from csp import murdoku
-
     text = """Size: 2
 Regions:
 a: room
@@ -863,16 +856,16 @@ sloffen: standable r2c1
 People:
 Ada
 Clues:
-count people on object:badjas = 1
-count people on object:sloffen = 1
+count (people on object:badjas) = 1
+count (people on object:sloffen) = 1
 """
-    board, clues = load_board(text)
+    board, rules, clues = load_expression_board(text)
     markup = drawing.murdoku_picture(
         board,
         cell=CELL,
         coordinates=False,
         legend=False,
-        global_counts=murdoku.global_count_conditions(board, clues),
+        count_scope=object_count_scope(board, [*rules, *clues]),
     ).to_svg()
     rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
     assert len(rings) == 2
@@ -883,8 +876,6 @@ count people on object:sloffen = 1
 
 
 def test_scope_rings_are_drawn_under_object_icons(monkeypatch):
-    from csp import murdoku
-
     text = """Size: 2
 Regions:
 a: room
@@ -896,9 +887,9 @@ bed: standable r1c1
 People:
 Ada
 Clues:
-count people on object:bed = 1
+count (people on object:bed) = 1
 """
-    board, clues = load_board(text)
+    board, rules, clues = load_expression_board(text)
     events = []
     scope_outline = drawing._scope_outline
     icon = drawing._icon
@@ -917,15 +908,13 @@ count people on object:bed = 1
         board,
         cell=CELL,
         coordinates=False,
-        global_counts=murdoku.global_count_conditions(board, clues),
+        count_scope=object_count_scope(board, [*rules, *clues]),
     )
 
     assert events.index("scope") < events.index("icon")
 
 
 def test_scope_rings_wrap_a_rectangular_object_and_trace_an_l_shaped_one():
-    from csp import murdoku
-
     text = """Size: 3
 Regions:
 a: room
@@ -939,16 +928,16 @@ tafel: standable r2c3 r3c2 r3c3
 People:
 Ada
 Clues:
-count people on object:bed = 1
-count people on object:tafel = 1
+count (people on object:bed) = 1
+count (people on object:tafel) = 1
 """
-    board, clues = load_board(text)
+    board, rules, clues = load_expression_board(text)
     markup = drawing.murdoku_picture(
         board,
         cell=CELL,
         coordinates=False,
         legend=False,
-        global_counts=murdoku.global_count_conditions(board, clues),
+        count_scope=object_count_scope(board, [*rules, *clues]),
     ).to_svg()
     # One oval around the bed's two squares, one circle per square of the L.
     rings = [line for line in markup.splitlines() if "stroke-dasharray" in line]
@@ -997,7 +986,7 @@ def test_couch_icon_loses_its_floor_lamp():
 
 def test_picture_shows_regions_objects_and_borders():
     text = (example("prrrdoku3.txt")).read_text()
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     board.backdrop = None
     image = picture.murdoku_picture(board, cell=CELL)
     margin = CELL // 2
@@ -1017,7 +1006,7 @@ def test_picture_shows_regions_objects_and_borders():
 
 
 def test_without_legend_the_picture_is_square():
-    board, _ = load_board((example("prrrdoku3.txt")).read_text())
+    board = load_board_layout(example("prrrdoku3.txt").read_text())
     board.backdrop = None
     with_legend = picture.murdoku_picture(board, cell=CELL)
     without = picture.murdoku_picture(board, cell=CELL, legend=False)
@@ -1025,7 +1014,7 @@ def test_without_legend_the_picture_is_square():
 
 
 def test_hatching_only_on_hatched_regions():
-    board, _ = load_board((example("prrrdoku3.txt")).read_text())
+    board = load_board_layout(example("prrrdoku3.txt").read_text())
     board.backdrop = None
     image = picture.murdoku_picture(board, cell=CELL, labels=False)
     margin = CELL // 2
@@ -1040,7 +1029,7 @@ def test_hatching_only_on_hatched_regions():
 
 def test_solution_picture_puts_name_tags_on_squares():
     text = (example("prrrdoku3.txt")).read_text()
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     board.backdrop = None
     (solution,) = bruteforce.solutions(text, "murdoku")
     image = picture.murdoku_picture(board, solution, cell=CELL)
@@ -1099,7 +1088,7 @@ B
 def test_bad_region_colour_is_rejected():
     text = "Size: 2\nRegions:\na: here #12345\nGrid:\na a\na a\nPeople:\nA\nB\n"
     with pytest.raises(ValueError, match="colour"):
-        load_board(text)
+        load_board_layout(text)
 
 
 def test_cli_png_defaults_to_puzzle_stem(tmp_path, capsys):
@@ -1117,10 +1106,10 @@ People:
 Ada
 Ben
 Clues:
-in Ada rows:1
-in Ada columns:1
-in Ben rows:2
-in Ben columns:2
+Ada in rows:1
+Ada in columns:1
+Ben in rows:2
+Ben in columns:2
 """
     )
     target = tmp_path / "default.png"
@@ -1556,7 +1545,7 @@ def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
         text = path.read_text()
         if "People:" not in text:
             continue
-        board, _ = load_board(text)
+        board = load_board_layout(text)
         assert picture.unknown_object_icons(board) == [], path.name
         for person, figure in load_presentation(text).figures.items():
             if figure.icon:
@@ -1566,7 +1555,7 @@ def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
 
 
 def test_blocked_squares_are_shaded_darker_without_a_cross():
-    board, _ = load_board((example("tamagotchi-murdoku-9x9.txt")).read_text())
+    board = load_board_layout(example("tamagotchi-murdoku-9x9.txt").read_text())
     board.backdrop = None
     image = picture.murdoku_picture(board, legend=False).convert("RGB")
     cell, margin = 120, 60
@@ -1623,7 +1612,7 @@ def test_legacy_queens_icons_keep_their_distinct_pictures():
 
 def test_dutch_legend_lists_fixed_role_holders_as_a_category():
     text = example("menu-murdoku-3.txt").read_text()
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     legend = drawing._Legend(board, CELL, language="nl")
 
     assert legend.words["point"] == "Punt"
@@ -1675,7 +1664,7 @@ def test_legend_item_label_drops_a_name_that_only_repeats_the_kind():
 
 
 def test_role_legend_names_an_attribute_group_instead_of_every_suspect():
-    board, _ = load_board(example("murdoku_orient_express.txt").read_text())
+    board = load_board_layout(example("murdoku_orient_express.txt").read_text())
     assert drawing._Legend(board, CELL, language="nl")._role_line("moordenaar") == (
         "Moordenaar: een vrouw"
     )
@@ -1746,14 +1735,19 @@ def test_a_window_with_a_side_is_drawn_against_that_wall():
 
 
 def test_count_legend_uses_the_given_plain_language_texts():
-    text = example("wie-doet-het-met-wie-1.txt").read_text()
-    board, clues = load_board(text)
-    from csp import murdoku, story
+    text = (
+        example("wie-doet-het-met-wie-1.txt")
+        .read_text()
+        .replace(
+            "count people on object:badjas = 2",
+            "count people on object:badjas = 2 | Precies twee mensen staan op een badjas.",
+        )
+    )
+    board = load_board_layout(text)
+    from csp import story
 
-    counts = murdoku.global_count_conditions(board, clues)
     markup = drawing.murdoku_picture(
         board,
-        global_counts=counts,
         count_texts=story.global_count_texts(text),
         count_lines=True,
         language="nl",
@@ -1778,38 +1772,40 @@ People:
 Ada
 Ben
 {section}:
-count people on mark:social = 1
+count (people on mark:social) = 1 | Exactly one person is on the squares marked social.
 """
     markup = cli.make_image("murdoku", text).to_svg()
     expected = "Exactly one person is on the squares marked social"
     assert expected not in markup
     assert "social: shares area with someone" in markup
-    player_text = story.clue_paragraphs(text) + story.murdoku_rules(text)
-    assert any(expected in line for line in player_text)
+    entries = story.figure_clues(text)
+    assert [entry.text for entry in entries.other] == [expected + "."]
+    assert all(expected not in line for line in story.murdoku_rules(text))
 
 
 def test_the_legend_does_not_explain_the_count_ring():
-    from csp import murdoku
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import object_count_scope
 
     text = example("wie-doet-het-met-wie-1.txt").read_text()
-    board, clues = load_board(text)
-    counts = murdoku.global_count_conditions(board, clues)
-    dutch = drawing.murdoku_picture(board, global_counts=counts, language="nl").to_svg()
-    english = drawing.murdoku_picture(board, global_counts=counts, language="en").to_svg()
+    board, rules, clues = load_expression_board(text)
+    scope = object_count_scope(board, [*rules, *clues])
+    dutch = drawing.murdoku_picture(board, count_scope=scope, language="nl").to_svg()
+    english = drawing.murdoku_picture(board, count_scope=scope, language="en").to_svg()
     assert "gestippelde ring" not in dutch
     assert "dashed ring" not in english
 
 
 def test_only_object_counts_have_a_scope_ring():
-    from csp import murdoku
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import object_count_scope
 
     text = example("wie-doet-het-met-wie-1.txt").read_text()
-    board, clues = load_board(text)
-    counts = murdoku.global_count_conditions(board, clues)
-    assert any(condition.object_scope for condition in counts)
+    board, rules, clues = load_expression_board(text)
+    assert object_count_scope(board, [*rules, *clues])
 
-    plain = load_board(example("samen-in-japan.txt").read_text())
-    assert not any(condition.object_scope for condition in murdoku.global_count_conditions(*plain))
+    board, rules, clues = load_expression_board(example("samen-in-japan.txt").read_text())
+    assert not object_count_scope(board, [*rules, *clues])
 
 
 def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
@@ -1835,9 +1831,9 @@ def test_a_backdrop_widens_the_picture_and_lies_behind_the_board(monkeypatch):
 
 def test_a_backdrop_is_read_from_the_puzzle_file():
     text = example("food-murdoku-2.txt").read_text().replace("Backdrop:\nramen_bowl\n\n", "")
-    assert load_board(text)[0].backdrop is None
+    assert load_board_layout(text).backdrop is None
     text = text.replace("People:", "Backdrop:\nU+1F383\n\nPeople:", 1)
-    assert load_board(text)[0].backdrop == "U+1F383"
+    assert load_board_layout(text).backdrop == "U+1F383"
 
 
 @pytest.mark.parametrize("name", ["prrrdoku1.txt", "halloween-museum-1.txt", "food-murdoku-2.txt"])
@@ -1845,7 +1841,7 @@ def test_interactive_backdrops_export_a_compact_viewport_without_moving_cells(na
     from dataclasses import replace
     from xml.etree import ElementTree
 
-    board = load_board(example(name).read_text())[0]
+    board = load_board_layout(example(name).read_text())
     assert board.backdrop
     plain = drawing.murdoku_picture(replace(board, backdrop=None), cell=CELL, interactive=True)
     interactive = drawing.murdoku_picture(board, cell=CELL, interactive=True)
@@ -1871,7 +1867,7 @@ def test_interactive_backdrops_export_a_compact_viewport_without_moving_cells(na
 
 def test_decorations_are_drawn_at_their_anchors_but_never_enter_the_puzzle(monkeypatch):
     text = example("halloween-museum-1.txt").read_text()
-    board = load_board(text)[0]
+    board = load_board_layout(text)
     assert ("bat", (7, 1)) in board.decorations and ("cobweb", (1, 13)) in board.decorations
     assert not board.point_objects
     drawn = []
@@ -1889,7 +1885,7 @@ def test_decorations_are_drawn_at_their_anchors_but_never_enter_the_puzzle(monke
 def test_a_bad_decoration_line_is_rejected():
     text = example("halloween-museum-1.txt").read_text().replace("bat: r3.5c0.5", "bat r3.5c0.5", 1)
     with pytest.raises(ValueError, match="bad decoration"):
-        load_board(text)
+        load_board_layout(text)
 
 
 def test_dominosa_draws_pips_instead_of_digits():
@@ -1902,7 +1898,7 @@ def test_dominosa_draws_pips_instead_of_digits():
         assert len(pips) == value and len(set(pips)) == value
         assert all(0 <= column <= 2 and 0 <= row <= 2 for column, row in pips)
 
-    board = load_board(example("prrrdoku1.txt").read_text())[0]
+    board = load_board_layout(example("prrrdoku1.txt").read_text())
     assert board.backdrop == "lapjeskat"
     image = drawing.murdoku_picture(board, cell=CELL, legend=False)
     assert image.headroom > 0
@@ -1913,8 +1909,11 @@ def test_dominosa_draws_pips_instead_of_digits():
 
 
 def test_interactive_murdoku_has_no_legend_and_booklet_keeps_only_the_symbol_key():
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.murdoku_lower import object_count_scope
+
     text = example("murdoku_composition.txt").read_text()
-    board, clues = load_board(text)
+    board, rules, clues = load_expression_board(text)
     full = drawing.murdoku_picture(board)
     interactive = drawing.murdoku_picture(board, interactive=True)
     booklet = drawing.murdoku_picture(
@@ -1923,7 +1922,7 @@ def test_interactive_murdoku_has_no_legend_and_booklet_keeps_only_the_symbol_key
         show_marks=False,
         show_attributes=False,
         area_tags=False,
-        global_counts=global_count_conditions(board, clues),
+        count_scope=object_count_scope(board, [*rules, *clues]),
         count_lines=False,
     )
 

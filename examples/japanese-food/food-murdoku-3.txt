@@ -16,7 +16,7 @@ sapporo: in Sapporo
 sendai: in Sendai
 tokyo: in Tokyo
 nagoya: in Nagoya
-target.attribute: a {name}
+name.attribute: a {name}
 
 Regions:
 fukuoka: fukuoka #CBE6B9
@@ -57,18 +57,18 @@ Sushi
 Jos
 
 Rules:
-with Jos attribute:food in same area exactly 1
+count (people in area of Jos) = 1 + 1 and every ((people except Jos) in area of Jos) is attribute:food | Jos shares an area with exactly two other dishes.
 
 Clues:
-dir Gyoza Okonomiyaki manhattan >= 5
-in Tonkatsu rows:1
-in Okonomiyaki columns:1
-dir Gyoza Sushi up
-dir Sushi Yakitori manhattan >= 8
-dir Gyoza Tempura areas >= 1
-dir Okonomiyaki Yakitori manhattan <= 3
-in Tempura rows:3
-in Sushi rows:6
+Gyoza dir:manhattan Okonomiyaki >= 5
+Tonkatsu in rows:1
+Okonomiyaki in columns:1
+Gyoza dir:up Sushi
+Sushi dir:manhattan Yakitori >= 8
+Gyoza dir:areas Tempura >= 1
+Okonomiyaki dir:manhattan Yakitori <= 3
+Tempura in rows:3
+Sushi in rows:6
 
 # Booklet text for --docx (optional).
 Title:
@@ -80,12 +80,12 @@ Place every figure on a free square, one per row and one per column. Squares wit
 
 Figures:
 Tonkatsu: ; icon=U+1F356
-Yakitori: ; icon=U+1F362
+Yakitori: no clues of their own ; icon=U+1F362
 Tempura: ; icon=U+1F364
 Okonomiyaki: ; icon=U+1F95E
 Gyoza: ; icon=U+1F95F
 Sushi: ; icon=U+1F363
-Jos: the hungry eater ; icon=U+1F9D1
+Jos: the hungry eater, with no clues of their own ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?

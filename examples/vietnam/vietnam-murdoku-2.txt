@@ -15,7 +15,6 @@ chaolong: de cháo lòng
 thitkho: de thịt kho
 phalau: de phá lấu
 tunnel: de Vietcongtunnel
-clue.with_same_area_n: {a} deelt een gebied met precies {n} anderen, en dat zijn allebei reizigers
 
 Regions:
 a: Hanoi #F4CBC3
@@ -53,15 +52,15 @@ Attributes:
 reiziger: Pippo Swena
 
 Rules:
-with Loempia attribute:reiziger in same area exactly 2
+count (people in area of Loempia) = 2 + 1 and every ((people except Loempia) in area of Loempia) is attribute:reiziger | De loempia deelt een gebied met precies twee anderen, en dat zijn allebei reizigers.
 
 Clues:
-not dir Pippo object:buncha,chaolong,thitkho,phalau king <= 1 | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
-not dir Swena object:buncha,chaolong,thitkho,phalau king <= 1 | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
-beside Minh object:thitkho
-beside Tuan object:buncha
-in Linh area:Hanoi
-dir Pippo Swena up
+not (Pippo dir:king object:buncha,chaolong,thitkho,phalau <= 1) | Pippo staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+not (Swena dir:king object:buncha,chaolong,thitkho,phalau <= 1) | Swena staat niet op of direct naast een vakje met een varkensvleesgerecht (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen).
+Minh beside object:thitkho
+Tuan beside object:buncha
+Linh in area:Hanoi
+Pippo dir:up Swena
 
 # Booklet text for --docx (optional).
 Title:
@@ -77,7 +76,7 @@ Swena: oma 2 ; icon=U+1F475-1F3FF
 Linh: ; icon=U+1F469
 Minh: ; icon=U+1F474
 Tuan: ; icon=U+1F468
-Loempia: chả giò, knapperig gefrituurd ; icon=loempia
+Loempia: chả giò, knapperig gefrituurd, zonder eigen aanwijzingen ; icon=loempia
 
 Question:
 Waar vinden Pippo en Swena hun loempia?

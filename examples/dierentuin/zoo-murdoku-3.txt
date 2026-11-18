@@ -16,7 +16,7 @@ bergen: in de bergen
 jungle: in de jungle
 weide: in de weide
 moeras: in het moeras
-target.attribute: een {name}
+name.attribute: een {name}
 role_has: {who} is een {role}
 role_not: {who} is geen {role}
 Tijger: de tijger
@@ -69,18 +69,18 @@ Alpensteenbok
 Verzorger
 
 Rules:
-alone Tijger
-for each area in all occupied by role:aap, count people in that area >= 2
-with Verzorger attribute:dier in same area exactly 1
+count (people in area of Tijger) = 1
+every ?p in role:aap: count (people in area of ?p) >= 2
+count (people in area of Verzorger) = 1 + 1 and every ((people except Verzorger) in area of Verzorger) is attribute:dier
 
 Clues:
-in Gibbon area:moeras
-beside Tijger object:boomstam
-in Capibara rows:4
-dir Makaak Gibbon up
-dir Capibara Alpensteenbok manhattan <= 3
-dir Capibara Makaak manhattan <= 3
-dir Capibara Gibbon left
+Gibbon in area:moeras
+Tijger beside object:boomstam
+Capibara in rows:4
+Makaak dir:up Gibbon
+Capibara dir:manhattan Alpensteenbok <= 3
+Capibara dir:manhattan Makaak <= 3
+Capibara dir:left Gibbon
 
 # Booklet text for --docx (optional).
 Title:
@@ -96,8 +96,8 @@ Tijger: altijd alleen in zijn verblijf ; icon=U+1F405
 Makaak: een aap, nooit alleen ; icon=U+1F412
 Gibbon: een aap, nooit alleen ; icon=U+1F9A7
 Capibara: ; icon=U+1F9AB
-Alpensteenbok: ; icon=U+1F410
-Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
+Alpensteenbok: geen eigen aanwijzingen ; icon=U+1F410
+Verzorger: wordt als laatste geplaatst, zonder eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?

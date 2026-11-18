@@ -191,7 +191,7 @@ def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_point
     text = (
         source.read_text()
         .replace("PointObjects:", "EdgeItems:\ngate: door r1c3 r1c4\nPointObjects:")
-        .replace("Clues:\n", "Clues:\non Ada edge_item:gate\ndir Ada Bo manhattan <= 2\n")
+        .replace("Clues:\n", "Clues:\nAda on edge_item:gate\nAda dir:manhattan Bo <= 2\n")
         .replace(
             "\n\nQuestion:",
             "\nThe distance is a mystery; take your first steps into the garden.\n\nQuestion:",
@@ -214,7 +214,7 @@ def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_point
 def test_missing_figure_image_falls_back_to_text(tmp_path):
     base = (example("prrrdoku1.txt")).read_text()
     source = base.replace(
-        "Figures:\nVladimir: de poes die iemand op schoot zoekt",
+        "Figures:\nVladimir: de poes die iemand op schoot zoekt, zonder eigen aanwijzingen",
         "Figures:\nVladimir: de poes ; image=missing.png",
     )
     out = tmp_path / "x.docx"
@@ -254,7 +254,10 @@ def test_figure_image_is_embedded(tmp_path):
     source = (
         (example("prrrdoku1.txt"))
         .read_text()
-        .replace("Vladimir: de poes die iemand op schoot zoekt", "Vladimir: poes ; image=v.png")
+        .replace(
+            "Vladimir: de poes die iemand op schoot zoekt, zonder eigen aanwijzingen",
+            "Vladimir: poes ; image=v.png",
+        )
     )
     out = tmp_path / "x.docx"
     write_docx(source, out, tmp_path)
@@ -298,14 +301,28 @@ def test_full_booklet_generates_for_every_published_puzzle(tmp_path, capsys):
 
 
 def test_inline_wording_does_not_change_the_puzzle():
-    from csp.puzzlefile import load_board
+    from csp.murdoku_expression_file import load_expression_board
 
-    plain = (
-        (example("prrrdoku1.txt"))
-        .read_text()
-        .replace(" | Otto zit precies één rij boven Tjitske.", "")
-    )
-    assert load_board(plain) == load_board((example("prrrdoku1.txt")).read_text())
+    source = example("prrrdoku1.txt").read_text()
+    plain = source.replace(" | Otto zit precies één rij boven Tjitske.", "")
+    board, rules, clues = load_expression_board(plain)
+    original_board, original_rules, original_clues = load_expression_board(source)
+    assert board == original_board
+    assert [statement.formula for statement in (*rules, *clues)] == [
+        statement.formula for statement in (*original_rules, *original_clues)
+    ]
+
+
+def test_direct_booklet_entry_detects_expressions_and_generates_its_solution_story(tmp_path):
+    from csp.bruteforce import solutions
+
+    source = example("murdoku_3_house.txt")
+    text = source.read_text()
+    (solution,) = solutions(text, "murdoku", limit=2)
+    output = tmp_path / "house.docx"
+    write_booklet([Entry(text, source, solution)], output)
+    rendered = _text(output)
+    assert all(f"{person} on {square}" in rendered for person, square in solution.items())
 
 
 def _media(path):
@@ -494,7 +511,8 @@ def test_two_alternatives_read_as_either_or_not_both():
 
 @pytest.fixture
 def companion_attribute_puzzle():
-    return """Size: 3
+    return (
+        """Size: 3
 Regions:
 a: room
 Grid:
@@ -508,23 +526,30 @@ Hashizotchi
 Attributes:
 friend: Ichigotchi Hashizotchi
 Words:
-target.attribute: a {name}
+name.attribute: a {name}
 Clues:
-with Akumatchi attribute:friend in same area exactly 1
-"""
+count (people in area of Akumatchi) = 1 + 1 and """
+        "every ((people except Akumatchi) in area of Akumatchi) is attribute:friend\n"
+    )
 
 
 def test_attribute_target_can_be_reworded(companion_attribute_puzzle):
     text = companion_attribute_puzzle.replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
+    (paragraph,) = clue_paragraphs(text)
+    assert "people except Akumatchi that are in the area of Akumatchi" in paragraph
+    assert "is a member of a friend" in paragraph
+    assert "attribute friend" not in paragraph
+
+
+def test_companion_count_and_universal_attribute_membership_are_preserved(
+    companion_attribute_puzzle,
+):
+    (paragraph,) = clue_paragraphs(companion_attribute_puzzle)
     assert (
-        "Akumatchi shares an area with exactly one other person, and that is a friend."
-        in clue_paragraphs(text)
+        "the number of people that are in the area of Akumatchi is equal to (1 plus 1)" in paragraph
     )
-
-
-def test_attribute_everyone_has_is_not_named(companion_attribute_puzzle):
-    paragraphs = clue_paragraphs(companion_attribute_puzzle)
-    assert "Akumatchi shares an area with exactly one other person." in paragraphs
+    assert "every member of people except Akumatchi" in paragraph
+    assert "is a member of at least one of a friend" in paragraph
 
 
 @pytest.mark.parametrize(("size", "mark"), [(6, "quiet"), (9, "social"), (12, "social")])
@@ -562,25 +587,30 @@ def test_zoo_roles_are_not_called_roles():
     assert "is geen aap" in explain(_read("zoo-murdoku-1"))
 
 
-def test_no_example_has_an_implied_clue():
-    from csp.murdoku import implied_clues
-    from csp.puzzlefile import detect, load_board
+def test_examples_print_all_and_only_their_explicit_numbered_clues():
+    from csp.murdoku_expression_file import load_expression_board
+    from csp.puzzlefile import detect
+    from csp.story import figure_clues
 
     for path in all_examples():
         text = path.read_text()
         if detect(text) == "murdoku":
-            assert not implied_clues(load_board(text)[1]), path.name
+            _, _, clues = load_expression_board(text)
+            printed = figure_clues(text)
+            paragraphs = [clue for figure in printed.figures for clue in figure.clues] + list(
+                printed.other
+            )
+            assert {number for clue in paragraphs for number in clue.sources} == set(
+                range(1, len(clues) + 1)
+            ), path.name
 
 
 def _lint_output(text):
-    from csp.cli import _murdoku_lint
-    from csp.core import Model  # noqa: F401
-    from csp.murdoku import compile_puzzle
-    from csp.puzzlefile import load_board
+    from csp.cli import _murdoku_lint, load
+    from csp.puzzlefile import load_board_layout
 
-    board, clues = load_board(text)
-    model = compile_puzzle(board, clues)
-    return "\n".join(_murdoku_lint(board, clues, model, text))
+    board = load_board_layout(text)
+    return "\n".join(_murdoku_lint(board, [], load(text, "murdoku").model, text))
 
 
 def test_zoo_puzzles_have_no_one_person_role():
@@ -642,7 +672,9 @@ def test_booklet_combines_each_figure_description_and_clues_without_numbers(tmp_
     rows = document.tables[0].rows
     assert len(rows) == 7
     assert rows[0].cells[1].text == "Tim staat naast de klimwand."
-    assert rows[-1].cells[1].text == "Vladimir (de poes die iemand op schoot zoekt)"
+    assert rows[-1].cells[1].text == (
+        "Vladimir (de poes die iemand op schoot zoekt, zonder eigen aanwijzingen)"
+    )
     assert rows[-1].cells[1].paragraphs[0].runs[0].bold
     # Joint subjects retain both names without repeating the heading.
     assert rows[3].cells[1].text == "Anna en Jos staan in hetzelfde gebied."
@@ -651,7 +683,7 @@ def test_booklet_combines_each_figure_description_and_clues_without_numbers(tmp_
 def test_booklet_keeps_semantic_custom_clues_with_their_figure(tmp_path):
     source = example("murdoku_3_house.txt")
     text = source.read_text().replace(
-        "dir Ada Dirk left", "dir Ada Dirk left | The person to Dirk's left is Ada."
+        "Ada dir:left Dirk", "Ada dir:left Dirk | The person to Dirk's left is Ada."
     )
     out = tmp_path / "custom.docx"
     write_docx(text, out, source.parent)
@@ -683,9 +715,29 @@ def test_booklet_uses_display_names_and_keeps_late_reveal_descriptions(tmp_path)
     out = tmp_path / "zoo.docx"
     write_docx(source.read_text(), out, source.parent)
     rows = Document(str(out)).tables[0].rows
-    assert rows[0].cells[1].text == "De leeuw (altijd alleen in zijn verblijf) is in de savanne."
-    assert rows[-1].cells[1].text == "De verzorger (wordt als laatste geplaatst)"
+    assert rows[0].cells[1].text == (
+        "De leeuw (altijd alleen in zijn verblijf) is in de savanne.\n"
+        "Staat alleen in zijn verblijf."
+    )
+    assert rows[-1].cells[1].text == (
+        "De verzorger (wordt als laatste geplaatst) deelt een verblijf met precies één dier."
+    )
     assert rows[3].cells[1].text == "De kameel staat links van de berggorilla."
+
+
+def test_vietnam_booklet_combines_figure_rule_with_its_description(tmp_path):
+    source = example("vietnam-murdoku-3.txt")
+    out = tmp_path / "vietnam.docx"
+    write_docx(source.read_text(), out, source.parent)
+    document = Document(str(out))
+    rules = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]
+    assert any("precies twee anderen: Pippo en Swena" in rule for rule in rules)
+    assert not any("allebei reizigers" in rule for rule in rules)
+    assert document.tables[0].rows[-1].cells[1].text == (
+        "De rau muống (rau muống xào, waterspinazie met knoflook) "
+        "deelt een gebied met precies twee anderen, en dat zijn allebei reizigers."
+    )
+    assert "zonder eigen aanwijzingen" not in document.tables[0].rows[-1].cells[1].text
 
 
 def test_booklet_global_clues_are_separate_and_each_shown_once(tmp_path):
@@ -742,6 +794,26 @@ def test_booklet_page_has_the_space_used_by_its_fit_estimates(tmp_path):
     assert (section.page_width - section.left_margin - section.right_margin) / Cm(1) == (
         pytest.approx(TEXT_WIDTH_CM, abs=0.01)
     )
+
+
+def test_dense_puzzle_compacts_rules_without_dropping_them_or_the_question(tmp_path):
+    from csp.story import murdoku_rules
+
+    sizes = []
+    for name in ("murder-hotel-2.txt", "murdoku_1_first_case.txt"):
+        source = example(name)
+        text = source.read_text()
+        output = tmp_path / f"{source.stem}.docx"
+        write_docx(text, output, source.parent)
+        document = Document(str(output))
+        bullets = [p for p in document.paragraphs if p.style.name == "List Bullet"]
+        assert [p.text for p in bullets] == murdoku_rules(text)
+        assert load_presentation(text).question in _text(output)
+        normal = document.styles["Normal"].font.size.pt
+        sizes.append(
+            {run.font.size.pt if run.font.size else normal for p in bullets for run in p.runs}
+        )
+    assert max(sizes[0]) < min(sizes[1])
 
 
 def test_board_notes_name_the_areas_of_a_tag():
@@ -931,7 +1003,8 @@ def test_an_object_with_several_pieces_is_named_indefinitely_despite_its_words()
 
 
 def test_english_uses_an_before_a_vowel_for_one_of_several_objects():
-    from csp.story import Places, Wording, load_board
+    from csp.puzzlefile import load_board_layout
+    from csp.story import Places, Wording
 
     text = """Size: 3
 Language: en
@@ -951,7 +1024,7 @@ bench: standable r3c1
 Words:
 bench: the bench
 """
-    board, _ = load_board(text)
+    board = load_board_layout(text)
     places = Places(board, Wording.read(text))
     assert places.thing("apple") == "an apple"
     assert places.thing("bench") == "a bench"
@@ -970,18 +1043,20 @@ def test_a_booklet_page_too_full_for_the_backdrop_leaves_it_out(name, kept, tmp_
     used = []
     original = docx_export._picture_stream
 
-    def record(text, solution, role_statuses, backdrop=True):
+    def record(text, solution, role_statuses, backdrop=True, expressions=False):
         used.append(backdrop)
-        return original(text, solution, role_statuses, backdrop)
+        return original(text, solution, role_statuses, backdrop, expressions)
 
     monkeypatch.setattr(docx_export, "_picture_stream", record)
     write_docx(example(name).read_text(), tmp_path / "b.docx", tmp_path)
     assert used[-1] is kept
 
 
-def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
+@pytest.mark.parametrize("expressions", [False, True])
+def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch, expressions):
     import csp.docx_export as docx_export
     import csp.picture as picture
+    from csp.puzzlefile import load_board_layout
 
     seen = {}
     original = picture.murdoku_picture
@@ -991,8 +1066,9 @@ def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch):
         return original(board, placed, **kwargs)
 
     monkeypatch.setattr(picture, "murdoku_picture", capture)
-    docx_export._picture_stream(example("wie-doet-het-met-wie-1.txt").read_text(), None, None)
-    assert seen["global_counts"]
+    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    docx_export._picture_stream(text, None, None, expressions=expressions)
+    assert seen["count_scope"] == load_board_layout(text).squares_of(["badjas", "sloffen"])
     # The page states the counts itself, so the picture leaves those lines out.
     assert seen["count_lines"] is False
 
