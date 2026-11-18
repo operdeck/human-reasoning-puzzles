@@ -1475,7 +1475,12 @@ Ada dir:areas Ben = 1
     unnumbered.options = {person: set(squares) for person, squares in before.items()}
     unnumbered_case = unnumbered._mark_case_deduction(inference, [refutation])
     assert unnumbered_case is not None
-    assert ("area distance" if language == "en" else "gebiedsafstand") in unnumbered_case
+    distance_caption = (
+        "Ada and Ben are exactly one area boundary apart"
+        if language == "en"
+        else "Ada en Ben zijn precies één gebiedsgrens van elkaar verwijderd"
+    )
+    assert distance_caption in unnumbered_case
     assert "(1)" not in unnumbered_case
     assert ("clue 1" if language == "en" else "aanwijzing 1") not in unnumbered_case
 
