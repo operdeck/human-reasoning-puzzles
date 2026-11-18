@@ -751,8 +751,13 @@ class _Narrator(generic_story.Narrator):
             label for source in step.sources for label in self.source_origins.get(source, ())
         }
         broken = [origin for origin in self.compilation.origins if origin.label in origins]
-        if len(broken) == 1 and broken[0].kind == "clue" and self.say.numbered:
-            parts.append(self.say("breaks" if parts else "breaks_first", n=broken[0].number))
+        if len(broken) == 1 and broken[0].kind == "clue":
+            parts.append(
+                self.say(
+                    "breaks_said" if parts else "breaks_said_first",
+                    clue=self.statements[broken[0].label],
+                )
+            )
         else:
             parts.append(
                 self.say("generic.breaks", source=self.names(step.sources))
@@ -919,13 +924,7 @@ class _Narrator(generic_story.Narrator):
             return f" ({self.places.line(kind, value)})"
         origins = set(self.source_origins.get(source, ()))
         labels = [
-            (
-                str(origin.number)
-                if origin.kind == "clue"
-                else self.say("expression.rule", number=origin.number)
-            )
-            if self.say.numbered
-            else self.statements[origin.label]
+            self.statements[origin.label]
             for origin in self.compilation.origins
             if origin.label in origins
         ]

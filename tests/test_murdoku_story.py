@@ -117,6 +117,70 @@ def test_candidate_scopes_name_marked_squares_instead_of_an_imaginary_object(lan
     assert "the mat" in places.where(set(cells), set(board.free))
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Ada has five candidate squares left"),
+        ("nl", "Ada kan nog op vijf vakjes staan"),
+    ],
+)
+def test_large_candidate_sets_are_described_as_possible_locations(language, expected):
+    text = """Size: 3
+Regions:
+a: room
+Grid:
+a a a
+a a a
+a a a
+People:
+Ada
+"""
+    board, _, _ = load_expression_board(text)
+    chosen = {
+        Square(0, 0),
+        Square(0, 1),
+        Square(1, 2),
+        Square(2, 0),
+        Square(2, 2),
+    }
+
+    assert story.Places(board, story.Wording(language)).describe(
+        "Ada", chosen, set(board.free)
+    ) == (expected)
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("food-murdoku-3.txt", ("Jos shares an area with exactly two other dishes",)),
+        ("menu-murdoku-2.txt", ("De vla deelt haar dag met precies twee andere gerechten",)),
+        ("menu-murdoku-3.txt", ("De vla deelt haar dag met precies twee andere gerechten",)),
+        ("wie-doet-het-met-wie-1.txt", ("Wouter deelt een kamer met precies één andere gast",)),
+        (
+            "zoo-murdoku-1.txt",
+            (
+                "De leeuw staat alleen in zijn verblijf",
+                "De verzorger deelt een verblijf met precies één dier",
+            ),
+        ),
+        (
+            "zoo-murdoku-2.txt",
+            (
+                "De tijger staat alleen in zijn verblijf",
+                "Geen aap staat alleen in zijn verblijf",
+            ),
+        ),
+    ],
+)
+def test_complex_example_rules_use_player_facing_wording(name, expected):
+    text = murdoku_story.explain(example(name).read_text()).markdown()
+
+    assert all(phrase in text for phrase in expected)
+    assert "every member of people" not in text
+    assert "het aantal personen die in het gebied" not in text
+    assert "?p" not in text
+
+
 @pytest.mark.parametrize(("language", "row"), [("en", "row 1"), ("nl", "rij 1")])
 @pytest.mark.parametrize("numbered", [True, False])
 def test_chain_link_reasons_use_board_metadata_and_expression_origins(language, row, numbered):
@@ -133,7 +197,9 @@ def test_chain_link_reasons_use_board_metadata_and_expression_origins(language, 
         if origin in compilation.constraint_origins.get(index, ())
     )
     reason = narrator._link_reason(source)
-    assert reason == (" (2)" if numbered else " (The guard is in the first row)")
+    assert reason == (
+        " (The guard is in the first row (2))" if numbered else " (The guard is in the first row)"
+    )
     assert "__" not in reason
 
 

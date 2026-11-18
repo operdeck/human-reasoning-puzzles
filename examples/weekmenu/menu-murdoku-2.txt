@@ -67,7 +67,7 @@ Spinazie
 Vla
 
 Rules:
-count (people in area of Vla) = 2 + 1
+count (people in area of Vla) = 2 + 1 | De vla deelt haar dag met precies twee andere gerechten.
 
 Clues:
 Pasta on point_object:zonnebloem

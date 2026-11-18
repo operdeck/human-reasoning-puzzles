@@ -1394,13 +1394,15 @@ Mametchi dir:left Lovelitchi
         (
             "en",
             "**Ada cannot be on r1c1**: the square is marked social, so Ada would have "
-            "company in the cafe, then Ben would be on r2c2, which clue 1 does not allow.",
+            "company in the cafe, then Ben would be on r2c2, which goes against "
+            "\u2018Ada and Ben are exactly one area boundary apart (1)\u2019.",
         ),
         (
             "nl",
             "**Ada kan niet op r1k1**: het vakje heeft markering social, dus Ada zou "
             "samen met iemand zijn in de cafe, dan zou Ben op r2k2 zitten, "
-            "en dat mag niet volgens aanwijzing 1.",
+            "en dat strookt niet met \u2018Ada en Ben zijn precies één gebiedsgrens van elkaar "
+            "verwijderd (1)\u2019.",
         ),
     ],
 )

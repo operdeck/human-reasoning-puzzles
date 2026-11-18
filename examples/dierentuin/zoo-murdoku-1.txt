@@ -65,9 +65,9 @@ Kameel
 Verzorger
 
 Rules:
-count (people in area of Leeuw) = 1
-every ?p in role:aap: count (people in area of ?p) >= 2
-count (people in area of Verzorger) = 1 + 1 and every ((people except Verzorger) in area of Verzorger) is attribute:dier
+count (people in area of Leeuw) = 1 | De leeuw staat alleen in zijn verblijf.
+every ?p in role:aap: count (people in area of ?p) >= 2 | Geen aap staat alleen in zijn verblijf.
+count (people in area of Verzorger) = 1 + 1 and every ((people except Verzorger) in area of Verzorger) is attribute:dier | De verzorger deelt een verblijf met precies één dier.
 
 Clues:
 Makaak in area:bergen

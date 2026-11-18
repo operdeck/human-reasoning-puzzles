@@ -57,7 +57,7 @@ Sushi
 Jos
 
 Rules:
-count (people in area of Jos) = 1 + 1 and every ((people except Jos) in area of Jos) is attribute:food
+count (people in area of Jos) = 1 + 1 and every ((people except Jos) in area of Jos) is attribute:food | Jos shares an area with exactly two other dishes.
 
 Clues:
 Gyoza dir:manhattan Okonomiyaki >= 5
