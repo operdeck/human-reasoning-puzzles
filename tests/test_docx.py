@@ -214,7 +214,7 @@ def test_murdoku_booklet_keeps_door_and_distance_rules_when_intro_mentions_point
 def test_missing_figure_image_falls_back_to_text(tmp_path):
     base = (example("prrrdoku1.txt")).read_text()
     source = base.replace(
-        "Figures:\nVladimir: de poes die iemand op schoot zoekt",
+        "Figures:\nVladimir: de poes die iemand op schoot zoekt, zonder eigen aanwijzingen",
         "Figures:\nVladimir: de poes ; image=missing.png",
     )
     out = tmp_path / "x.docx"
@@ -254,7 +254,10 @@ def test_figure_image_is_embedded(tmp_path):
     source = (
         (example("prrrdoku1.txt"))
         .read_text()
-        .replace("Vladimir: de poes die iemand op schoot zoekt", "Vladimir: poes ; image=v.png")
+        .replace(
+            "Vladimir: de poes die iemand op schoot zoekt, zonder eigen aanwijzingen",
+            "Vladimir: poes ; image=v.png",
+        )
     )
     out = tmp_path / "x.docx"
     write_docx(source, out, tmp_path)
@@ -669,7 +672,9 @@ def test_booklet_combines_each_figure_description_and_clues_without_numbers(tmp_
     rows = document.tables[0].rows
     assert len(rows) == 7
     assert rows[0].cells[1].text == "Tim staat naast de klimwand."
-    assert rows[-1].cells[1].text == "Vladimir (de poes die iemand op schoot zoekt)"
+    assert rows[-1].cells[1].text == (
+        "Vladimir (de poes die iemand op schoot zoekt, zonder eigen aanwijzingen)"
+    )
     assert rows[-1].cells[1].paragraphs[0].runs[0].bold
     # Joint subjects retain both names without repeating the heading.
     assert rows[3].cells[1].text == "Anna en Jos staan in hetzelfde gebied."
@@ -711,7 +716,9 @@ def test_booklet_uses_display_names_and_keeps_late_reveal_descriptions(tmp_path)
     write_docx(source.read_text(), out, source.parent)
     rows = Document(str(out)).tables[0].rows
     assert rows[0].cells[1].text == "De leeuw (altijd alleen in zijn verblijf) is in de savanne."
-    assert rows[-1].cells[1].text == "De verzorger (wordt als laatste geplaatst)"
+    assert rows[-1].cells[1].text == (
+        "De verzorger (wordt als laatste geplaatst, zonder eigen aanwijzingen)"
+    )
     assert rows[3].cells[1].text == "De kameel staat links van de berggorilla."
 
 
