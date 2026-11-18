@@ -771,6 +771,26 @@ def test_booklet_page_has_the_space_used_by_its_fit_estimates(tmp_path):
     )
 
 
+def test_dense_puzzle_compacts_rules_without_dropping_them_or_the_question(tmp_path):
+    from csp.story import murdoku_rules
+
+    sizes = []
+    for name in ("murder-hotel-2.txt", "murdoku_1_first_case.txt"):
+        source = example(name)
+        text = source.read_text()
+        output = tmp_path / f"{source.stem}.docx"
+        write_docx(text, output, source.parent)
+        document = Document(str(output))
+        bullets = [p for p in document.paragraphs if p.style.name == "List Bullet"]
+        assert [p.text for p in bullets] == murdoku_rules(text)
+        assert load_presentation(text).question in _text(output)
+        normal = document.styles["Normal"].font.size.pt
+        sizes.append(
+            {run.font.size.pt if run.font.size else normal for p in bullets for run in p.runs}
+        )
+    assert max(sizes[0]) < min(sizes[1])
+
+
 def test_board_notes_name_the_areas_of_a_tag():
     from csp.story import board_notes
 

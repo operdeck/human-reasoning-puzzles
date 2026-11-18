@@ -420,6 +420,8 @@ def _murdoku_title(entry: Entry) -> str:
 
 
 def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | None = None) -> None:
+    from docx.shared import Pt
+
     if entry.kind != "murdoku":
         _add_generic(
             document, entry, _puzzle_title(entry), new_page, solved=False, bookmark=bookmark
@@ -432,8 +434,6 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     _, rule_statements, clue_statements = load_expression_board(text)
     rules = murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
     clues = figure_clues(text, expressions=clue_statements)
-    for line in rules:
-        _runs(document.add_paragraph(style="List Bullet"), line)
     _, aspect = _picture_stream(text, None, None, expressions=entry.expressions)
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)
@@ -447,6 +447,12 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     if not backdrop:
         _, aspect = _picture_stream(text, None, None, backdrop=False, expressions=entry.expressions)
         width = _puzzle_board_width(aspect, 0, 0, rules_lines, figures_cm)
+    for line in rules:
+        paragraph = document.add_paragraph(style="List Bullet")
+        _runs(paragraph, line)
+        if small:
+            for run in paragraph.runs:
+                run.font.size = Pt(9)
     _puzzle_board(document, entry, width, backdrop)
     _board_lists(document, text)
     _figure_clues(document, text, clues, presentation, entry.path, small)

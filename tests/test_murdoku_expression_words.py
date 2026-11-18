@@ -635,7 +635,68 @@ def test_zero_area_distance_has_an_idiomatic_relation(
     assert distinct in words.statement(parse_statement("Ada dir:areas Ada = 0"))
     assert distance not in words.statement(parse_statement("Ada dir:areas Ben = 0"))
     assert distance in words.statement(parse_statement("Ada dir:areas Ben >= 0"))
-    assert distance in words.statement(parse_statement("Ada dir:areas Ben = 1"))
+    assert distinct not in words.statement(parse_statement("Ada dir:areas Ben = 1"))
+
+
+@pytest.mark.parametrize(
+    ("language", "formula", "expected"),
+    [
+        ("en", "Ada dir:areas Ben = 1", "Ada and Ben are exactly one area boundary apart"),
+        (
+            "nl",
+            "Ada dir:areas Ben >= 2",
+            "Ada en Ben zijn minstens twee gebiedsgrenzen van elkaar verwijderd",
+        ),
+        (
+            "en",
+            "Ada dir:manhattan Ben <= 6",
+            "Ada and Ben are at most six side-steps apart",
+        ),
+        (
+            "nl",
+            "Ada dir:manhattan Ben >= 10",
+            "Ada en Ben zijn minstens tien Manhattanstappen van elkaar verwijderd",
+        ),
+    ],
+)
+def test_named_person_distance_pairs_read_naturally(board, language, formula, expected):
+    assert ExpressionWords(board, language).statement(parse_statement(formula)) == expected
+
+
+def test_distance_idiom_preserves_author_relation_templates_and_potential_self_targets(board):
+    words = ExpressionWords(board, phrases={"rel.dir.areas": "CUSTOM"})
+    assert "CUSTOM" in words.statement(parse_statement("Ada dir:areas Ben >= 2"))
+    sentence = ExpressionWords(board).statement(parse_statement("Ada dir:areas role:guard = 1"))
+    assert "distinct from the subject" in sentence
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "nobody except Ada is in the hall"),
+        ("nl", "niemand behalve Ada is in de hall"),
+    ],
+)
+def test_no_people_except_preserves_the_exception_without_requiring_its_presence(
+    board, language, expected
+):
+    statement = parse_statement("no (people except Ada) in area:hall")
+    assert ExpressionWords(board, language).statement(statement) == expected
+    words = ExpressionWords(board, language, phrases={"det.no": "NONE OF {subject}"})
+    assert "NONE OF" in words.statement(statement)
+
+
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_knight_object_union_names_feature_squares_instead_of_raw_object_sets(board, language):
+    board.objects.append(BoardObject("chair", "standable", (Square(2, 2),)))
+    sentence = ExpressionWords(board, language).statement(
+        parse_statement("Ada dir:knight object:bed,chair")
+    )
+    assert (
+        "a square of a bed or a square of the chair"
+        if language == "en"
+        else "een vakje van een bed of een vakje van de chair"
+    ) in sentence
 
 
 def test_determiner_and_direction_phrase_overrides_compose(board):

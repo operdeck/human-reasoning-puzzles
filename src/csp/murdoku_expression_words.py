@@ -140,6 +140,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "det.some": "at least one of {subject}",
         "det.every": "every member of {subject}",
         "det.no": "no member of {subject}",
+        "det.no_except": "nobody except {subject}",
         "set.equal": "{left} and {right} are the same set",
         "set.not_equal": "{left} and {right} are different sets",
         "number.count": "the number of {operand}",
@@ -172,6 +173,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.same_area": "{first} and {second} are in the same area",
         "idiom.location.or": "{left} or {right}",
         "idiom.direction": "exactly {count} {unit} {direction}",
+        "idiom.distance": "{first} and {second} are {comparison} {count} {unit} apart",
+        "unit.areas.one": "area boundary",
+        "unit.areas.many": "area boundaries",
+        "unit.manhattan.one": "side-step",
+        "unit.manhattan.many": "side-steps",
         "unit.row.one": "row",
         "unit.row.many": "rows",
         "unit.column.one": "column",
@@ -312,6 +318,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "det.some": "minstens een van {subject}",
         "det.every": "ieder lid van {subject}",
         "det.no": "geen lid van {subject}",
+        "det.no_except": "niemand behalve {subject}",
         "set.equal": "{left} en {right} zijn dezelfde verzameling",
         "set.not_equal": "{left} en {right} zijn verschillende verzamelingen",
         "number.count": "het aantal {operand}",
@@ -344,6 +351,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.same_area": "{first} en {second} staan in hetzelfde gebied",
         "idiom.location.or": "{left} of {right}",
         "idiom.direction": "precies {count} {unit} {direction}",
+        "idiom.distance": (
+            "{first} en {second} zijn {comparison} {count} {unit} van elkaar verwijderd"
+        ),
+        "unit.areas.one": "gebiedsgrens",
+        "unit.areas.many": "gebiedsgrenzen",
+        "unit.manhattan.one": "Manhattanstap",
+        "unit.manhattan.many": "Manhattanstappen",
         "unit.row.one": "rij",
         "unit.row.many": "rijen",
         "unit.column.one": "kolom",
@@ -608,7 +622,7 @@ class ExpressionWords:
             relation = self._phrase(f"rel.{mode}")
         return relation
 
-    def _king_target(
+    def _cell_target(
         self, target: lang.Operand, bindings: dict[str, Shape], namespace: str | None = None
     ) -> str | None:
         if isinstance(target, lang.Name):
@@ -628,7 +642,7 @@ class ExpressionWords:
             )
             parts: list[str] = []
             for item in target.items:
-                rendered = self._king_target(item, bindings, inherited)
+                rendered = self._cell_target(item, bindings, inherited)
                 if rendered is None:
                     return None
                 parts.append(rendered)
@@ -722,6 +736,37 @@ class ExpressionWords:
             target=self._target(atom.target, None, bindings, atom.operator, atom.subject),
         )
 
+    def _distance_pair(self, atom: lang.Atom, bindings: dict[str, Shape]) -> str | None:
+        mode = atom.operator.text.removeprefix("dir:")
+        comparisons = {"=": "count.exactly", ">=": "count.at_least", "<=": "count.at_most"}
+        if (
+            not atom.operator.text.startswith("dir:")
+            or mode not in {"areas", "manhattan"}
+            or atom.determiner is not None
+            or atom.measure is None
+            or atom.measure.comparison.text not in comparisons
+            or int(atom.measure.value.text) < 1
+            or not self._distinct_people(atom.subject, atom.target)
+            or {
+                "atom.one",
+                f"rel.dir.{mode}",
+                "rel.measure",
+                "rel.distinct_target",
+                f"cmp.{atom.measure.comparison.text}",
+            }.intersection(self.phrases)
+        ):
+            return None
+        count = int(atom.measure.value.text)
+        numbers = NUMBERS[self.language]
+        return self._phrase(
+            "idiom.distance",
+            first=self._operand(atom.subject, bindings),
+            second=self._operand(atom.target, bindings),
+            comparison=self._phrase(comparisons[atom.measure.comparison.text]),
+            count=numbers[count] if count < len(numbers) else str(count),
+            unit=self._phrase(f"unit.{mode}.{'one' if count == 1 else 'many'}"),
+        )
+
     def _near_king(
         self, atom: lang.Atom, bindings: dict[str, Shape], *, negated: bool = False
     ) -> str | None:
@@ -736,7 +781,7 @@ class ExpressionWords:
             or {"rel.dir.king", "rel.measure"}.intersection(self.phrases)
         ):
             return None
-        target = self._king_target(atom.target, bindings)
+        target = self._cell_target(atom.target, bindings)
         if target is None:
             return None
         clause = self._phrase(
@@ -760,13 +805,13 @@ class ExpressionWords:
         )
         shape = infer_operand(self.board, subject, bindings) if subject is not None else None
         person = shape is not None and shape.sort is Sort.PERSON
-        king_target = (
-            self._king_target(target, bindings)
-            if person and operator and operator.text == "dir:king"
+        cell_target = (
+            self._cell_target(target, bindings)
+            if person and operator and operator.text in {"dir:king", "dir:knight"}
             else None
         )
-        if king_target is not None:
-            rendered = king_target
+        if cell_target is not None:
+            rendered = cell_target
         elif namespace == "area" and person:
             _, rendered = self._area_location(name)
         elif (
@@ -800,7 +845,11 @@ class ExpressionWords:
             rendered = self._operand(target, bindings)
             if infer_operand(self.board, target, bindings).maximum > 1:
                 rendered = self._phrase("rel.any_target", target=rendered)
-        if operator and operator.text == "dir:areas":
+        if (
+            operator
+            and operator.text == "dir:areas"
+            and (subject is None or not self._distinct_people(subject, target))
+        ):
             rendered = self._phrase("rel.distinct_target", target=rendered)
         if measure and not (operator and operator.text == "dir:areas" and self._same_area(measure)):
             rendered = self._phrase(
@@ -943,6 +992,15 @@ class ExpressionWords:
     def _determined(
         self, subject: lang.Operand, determiner: lang.Token | None, bindings: dict[str, Shape]
     ) -> str:
+        if (
+            determiner is not None
+            and determiner.text == "no"
+            and "det.no" not in self.phrases
+            and isinstance(subject, lang.Difference)
+            and isinstance(subject.left, lang.Name)
+            and subject.left.token.text == "people"
+        ):
+            return self._phrase("det.no_except", subject=self._operand(subject.right, bindings))
         rendered = self._operand(subject, bindings)
         return self._phrase(f"det.{determiner.text}", subject=rendered) if determiner else rendered
 
@@ -1057,6 +1115,8 @@ class ExpressionWords:
         if isinstance(value, lang.Atom) and (idiom := self._area_union(value, bindings)):
             return idiom
         if isinstance(value, lang.Atom) and (idiom := self._exact_direction(value, bindings)):
+            return idiom
+        if isinstance(value, lang.Atom) and (idiom := self._distance_pair(value, bindings)):
             return idiom
         if isinstance(value, lang.Atom) and (idiom := self._near_king(value, bindings)):
             return idiom
