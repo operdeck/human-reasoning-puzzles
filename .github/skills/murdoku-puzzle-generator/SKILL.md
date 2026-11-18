@@ -575,10 +575,16 @@ One or two lines, true for the verified solution (check against --explain).
   Everyone appears, even without clues; global and loose clues follow under
   "Other clues" / "Overige aanwijzingen". Ownership comes from clue semantics,
   so a custom wording need not start with the owner's name.
+  Puzzle-specific `Rules:` statements join these entries too, under their
+  semantic subject or the sole named figure anchoring a compound rule;
+  otherwise they join "Other clues". Keep `Intro:` as written. The game-rules
+  panel adds semantic clarifications and the disclaimer, not another list of
+  puzzle-specific statements. Standard no-own-clues notes are hidden when a
+  figure has a displayed rule or clue, preserving the rest of the description.
 - `clue | wording` overrides one generated sentence; it must mean exactly the
   clue. Use it only where the generated text reads badly or for flavour. A
-  `Rules:` line takes `| wording` too; it is then listed with the rules in the
-  booklet and web player and used in the picture legend. Author wordings are
+  `Rules:` line takes `| wording` too; it is then listed with the figure's
+  clues (or "Other clues") in the booklet and web player and used in the picture legend. Author wordings are
   for players only: worked solutions always keep the generated text.
 - `Words:` fixes phrasing: region phrases (`moeras: in het moeras`,
   `kantoor: op kantoor`), object nouns with their article (`gras: het gras`,

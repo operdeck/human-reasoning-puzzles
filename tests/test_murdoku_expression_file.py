@@ -194,7 +194,7 @@ def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
         "  not Ada in rows:2",
     )
     board, _, clues = load_expression_board(text)
-    result = figure_clues(text, expressions=clues)
+    result = figure_clues(text, expressions=clues, expression_rules=())
     assert [figure.person for figure in result.figures] == board.people
     ada, ben = result.figures
     assert [clue.sources for clue in ada.clues] == [(3,)]
@@ -238,7 +238,11 @@ def test_expression_player_presentation_uses_dutch_wording():
     _, rules, clues = load_expression_board(text)
     entries = figure_clues(text, expressions=clues)
     assert entries.figures[1].clues[0].text == "Ben is in kolom 1."
-    assert "Ada is in rij 1." in murdoku_rules(text, expression_rules=rules, expression_clues=clues)
+    assert entries.figures[0].clues[0].text == "Ada is in rij 1."
+    assert entries.figures[0].clues[0].id == "rule:1"
+    assert "Ada is in rij 1." not in murdoku_rules(
+        text, expression_rules=rules, expression_clues=clues
+    )
 
 
 def test_expression_figure_name_override_preserves_person_identity():
@@ -260,10 +264,56 @@ def test_expression_figure_clues_recognize_alone_and_only_on_idioms():
     )
     text += "Objects:\nchair: standable r1c1\n"
     _, _, clues = load_expression_board(text)
-    entries = figure_clues(text, expressions=clues)
+    entries = figure_clues(text, expressions=clues, expression_rules=())
     assert [clue.sources for clue in entries.figures[0].clues] == [(1,)]
     assert [clue.sources for clue in entries.figures[1].clues] == [(2,)]
     assert [clue.sources for clue in entries.other] == [(3,)]
+
+
+@pytest.mark.parametrize(
+    ("language", "description", "expected"),
+    [
+        ("en", "a visitor, with no clues of their own", "a visitor"),
+        ("nl", "een bezoeker, zonder eigen aanwijzingen", "een bezoeker"),
+        ("en", "has no clues of his own", ""),
+        ("nl", "geen eigen aanwijzingen", ""),
+    ],
+)
+def test_figure_rules_replace_clueless_notes_but_preserve_descriptions(
+    language, description, expected
+):
+    text = f"Language: {language}\n" + TEXT + f"Figures:\nAda: {description}\n"
+    ada = figure_clues(text).figures[0]
+    assert ada.description == expected
+    assert ada.clues[0].text == "Ada stays in the first row."
+    assert ada.clues[0].rule_sources == (1,)
+    assert ada.clues[0].sources == ()
+    assert ada.clues[0].id == "rule:1"
+    # Asking for numbered clues only must not add rules or hide a valid note.
+    assert figure_clues(text, expression_rules=()).figures[0].description == description
+    assert clue_paragraphs(text) == ["Ben is in the first column."]
+
+
+def test_compound_figure_and_global_rules_keep_distinct_sources():
+    text = TEXT.replace(
+        "  Ada in rows:1 | Ada stays in the first row.",
+        "  count (people in area of Ada) = 2 and not Ada in rows:2"
+        " | The visitor shares an area with one other person.\n"
+        "  count empty areas = 0 | All areas are occupied.\n"
+        "  Ada dir:up Ben and Ben in columns:1 | Two separate facts.",
+    )
+    entries = figure_clues(text)
+    ada = entries.figures[0]
+    assert [clue.text for clue in ada.clues] == [
+        "The visitor shares an area with one other person."
+    ]
+    assert ada.clues[0].id == "rule:1"
+    assert [(clue.text, clue.id, clue.rule_sources) for clue in entries.other] == [
+        ("All areas are occupied.", "rule:2", (2,)),
+        ("Two separate facts.", "rule:3", (3,)),
+    ]
+    rules = murdoku_rules(text)
+    assert not any("All areas" in rule or "visitor shares" in rule for rule in rules)
 
 
 def test_expression_player_rules_use_ast_for_notes_and_deduplicate_intro():

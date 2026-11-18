@@ -2179,7 +2179,8 @@ def test_a_rule_the_intro_already_says_is_listed_once():
     assert sum(wouter in rule for rule in rules) == 1
     # The intro says it first, so that copy stays; the remaining rules keep their order.
     assert wouter in rules[0]
-    assert rules[1:4] == [
+    entries = csp.story.figure_clues(example("wie-doet-het-met-wie-5.txt").read_text())
+    assert [clue.text for clue in entries.other if clue.rule_sources] == [
         "Precies twee mensen staan op een badjas.",
         "Precies één persoon staat op een paar sloffen.",
         "Precies één persoon staat op een bril.",
@@ -2198,8 +2199,9 @@ def test_intro_sentences_keep_their_own_order_when_none_repeat_a_rule():
         "Wouter wordt als laatste geplaatst en is alleen in een kamer met degene "
         "met wie hij het doet." in rules[0]
     )
-    assert "Wouter" in rules[1]
-    assert rules[2:5] == [
+    entries = csp.story.figure_clues(example("wie-doet-het-met-wie-4.txt").read_text())
+    assert any("Wouter" in clue.text for figure in entries.figures for clue in figure.clues)
+    assert [clue.text for clue in entries.other if clue.rule_sources] == [
         "Precies twee mensen staan op een badjas.",
         "Precies één persoon staat op een paar sloffen.",
         "Precies één persoon staat op een bril.",

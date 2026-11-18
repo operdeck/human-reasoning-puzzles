@@ -161,9 +161,12 @@ def test_murdoku_cards_cover_every_source_clue_once(exported):
         bundle = _bundle(exported, source.stem)
         if bundle["family"] != "murdoku":
             continue
-        board, _, clues = load_expression_board(source.read_text())
+        board, rules, clues = load_expression_board(source.read_text())
         entries = bundle["clueEntries"]
-        expected = [f"clue:{number}" for number in range(1, len(clues) + 1)]
+        expected = [
+            *(f"clue:{number}" for number in range(1, len(clues) + 1)),
+            *(f"rule:{number}" for number in range(1, len(rules) + 1)),
+        ]
         actual = [source for entry in entries for source in entry["sources"]]
         assert sorted(actual) == sorted(expected), source.name
         assert [item["id"] for item in bundle["palette"]] == board.people
@@ -196,6 +199,20 @@ def test_vietnam_web_groups_pork_dish_clues_with_their_travelers(number):
         assert "een vakje met een varkensvleesgerecht" in entry["text"]
         assert "(ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)" in entry["text"]
         assert "bún chả" not in entry["text"]
+
+
+@pytest.mark.parametrize(("number", "person"), [(1, "PhoGa"), (2, "Loempia"), (3, "RauMuong")])
+def test_vietnam_web_combines_figure_rules_with_clues(number, person):
+    text = example(f"vietnam-murdoku-{number}.txt").read_text()
+    bundle = web._murdoku(text, {})
+    entry = next(entry for entry in bundle["clueEntries"] if entry["sources"] == ["rule:1"])
+    assert entry["item"] == person
+    assert "precies twee anderen" in entry["text"]
+    assert "allebei reizigers" in entry["text"]
+    assert entry["text"] not in bundle["rules"]
+    figure = next(item for item in bundle["palette"] if item["id"] == person)
+    assert "zonder eigen aanwijzingen" not in figure["description"]
+    assert "precies twee anderen: Pippo en Swena" in " ".join(bundle["rules"])
 
 
 def test_murdoku_cell_details_describe_board_facts_without_solution():
@@ -694,8 +711,9 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
 
 def test_author_wordings_reach_the_web_player(exported):
     bundle = _bundle(exported, "wie-doet-het-met-wie-1")
-    assert "Precies twee mensen staan op een badjas." in bundle["rules"]
-    assert "Precies één persoon staat op een paar sloffen." in bundle["rules"]
+    texts = [entry["text"] for entry in bundle["clueEntries"]]
+    assert "Precies twee mensen staan op een badjas." in texts
+    assert "Precies één persoon staat op een paar sloffen." in texts
     assert "Marloes heeft alleen een badjas aan." in bundle["clues"]
 
 

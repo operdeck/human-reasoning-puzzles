@@ -433,7 +433,7 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
     _, rule_statements, clue_statements = load_expression_board(text)
     rules = murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
-    clues = figure_clues(text, expressions=clue_statements)
+    clues = figure_clues(text, expressions=clue_statements, expression_rules=rule_statements)
     _, aspect = _picture_stream(text, None, None, expressions=entry.expressions)
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)

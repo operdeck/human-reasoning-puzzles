@@ -645,12 +645,21 @@ do not repeat the figure's heading; joint subjects and custom wording retain
 names when needed. Descriptions sit in parentheses beside the name so ordinary
 clues can continue on the same line. Descriptions supplied in `Figures:` are preserved, including
 late-reveal information. Clues are attached by their semantic subject, not by
-guessing from their wording. Loose and global clues follow under **Other clues**
+guessing from their wording. Puzzle-specific `Rules:` statements appear here
+too: under their semantic subject, or the sole named figure in a compound
+statement. Loose and global rules and clues follow under **Other clues**
 (Dutch: **Overige aanwijzingen**), only when needed. Board notes explain the
 marks and area tags used by the clues; attributes, roles and objects remain
 separate under the board. The layout reserves space for wrapped descriptions,
 clueless figures and portraits, shrinking the board or omitting its backdrop
 on crowded pages. Worked solutions do not refer to clue numbers.
+The game-rules panel contains the unchanged `Intro:` (or default game rules),
+semantic clarifications such as distance and adjacency, and the general
+disclaimer, not a second list of `Rules:` statements. A standard "no clues of
+their own" / "geen eigen aanwijzingen" note is hidden when that figure has a
+displayed rule or clue; the rest of the description is preserved. The web
+player uses the same grouping and retains distinct `rule:N` and `clue:N`
+source identities. This presentation does not change compilation or solving.
 Counterfactuals name hypothetical people and placements rather than internal
 occupancy flags. A refuted mark trigger becomes a case on a person only when
 that person is its only possible occupant and the recorded trail actually
@@ -671,7 +680,7 @@ reminder; do not repeat it in each puzzle's `Intro:`.
 `--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 
 * `Title:`, `Intro:` (blank lines separate paragraphs; wrapped lines are joined, and `**bold**` is allowed), `Question:`, `Reveal:` (answer text, solution file only). Before the first section block, `Intro: text` also works as a single paragraph.
-* A clue line may end in `| wording` (e.g. `Otto dir:up Tjitske = 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it the expression phrasebook supplies English or Dutch wording, e.g. `Ramen dir:left Tempura = 5` → "Ramen is exactly five columns left of Tempura." A `Rules:` line may end in `| wording` as well; that sentence is listed with the rules (booklet, web player) and in the picture legend. Worked solutions use the same expression wording and overrides; they never infer clue semantics from an author's prose.
+* A clue line may end in `| wording` (e.g. `Otto dir:up Tjitske = 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it the expression phrasebook supplies English or Dutch wording, e.g. `Ramen dir:left Tempura = 5` → "Ramen is exactly five columns left of Tempura." A `Rules:` line may end in `| wording` as well; that sentence appears with the figure's clues or under **Other clues** (booklet, web player), and in the picture legend. Worked solutions use the same expression wording and overrides; they never infer clue semantics from an author's prose.
 * `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C` whose picture is vendored in `src/csp/assets/emoji/`; `--lint` warns otherwise). Without any of these it is text only. Put licensed artwork in the figures folder; the only bundled third-party images are the vendored Noto Emoji (see `src/csp/assets/NOTICE.md`).
 
 Pass a glob (quoted) such as `"examples/**/*.txt"` to put every matching puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own numbered page, after a clickable table of contents. The order comes from `collection.arrange`: Murdoku first, grouped by category — the folder below the matched files' common folder, so `examples/japanese-food/` is "Japanese food" and `demo` leads — then the other families; within a group files sort naturally (`6x6` before `12x12`). The web player's index uses the same numbers and sections.

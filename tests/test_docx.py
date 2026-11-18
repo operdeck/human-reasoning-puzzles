@@ -715,11 +715,29 @@ def test_booklet_uses_display_names_and_keeps_late_reveal_descriptions(tmp_path)
     out = tmp_path / "zoo.docx"
     write_docx(source.read_text(), out, source.parent)
     rows = Document(str(out)).tables[0].rows
-    assert rows[0].cells[1].text == "De leeuw (altijd alleen in zijn verblijf) is in de savanne."
+    assert rows[0].cells[1].text == (
+        "De leeuw (altijd alleen in zijn verblijf) is in de savanne.\n"
+        "Staat alleen in zijn verblijf."
+    )
     assert rows[-1].cells[1].text == (
-        "De verzorger (wordt als laatste geplaatst, zonder eigen aanwijzingen)"
+        "De verzorger (wordt als laatste geplaatst) deelt een verblijf met precies één dier."
     )
     assert rows[3].cells[1].text == "De kameel staat links van de berggorilla."
+
+
+def test_vietnam_booklet_combines_figure_rule_with_its_description(tmp_path):
+    source = example("vietnam-murdoku-3.txt")
+    out = tmp_path / "vietnam.docx"
+    write_docx(source.read_text(), out, source.parent)
+    document = Document(str(out))
+    rules = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]
+    assert any("precies twee anderen: Pippo en Swena" in rule for rule in rules)
+    assert not any("allebei reizigers" in rule for rule in rules)
+    assert document.tables[0].rows[-1].cells[1].text == (
+        "De rau muống (rau muống xào, waterspinazie met knoflook) "
+        "deelt een gebied met precies twee anderen, en dat zijn allebei reizigers."
+    )
+    assert "zonder eigen aanwijzingen" not in document.tables[0].rows[-1].cells[1].text
 
 
 def test_booklet_global_clues_are_separate_and_each_shown_once(tmp_path):

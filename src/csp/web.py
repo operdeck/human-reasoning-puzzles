@@ -276,7 +276,7 @@ def _murdoku(
                 count_details.append(
                     (scope, caption if caption is not None else words.statement(statement))
                 )
-    entries = figure_clues(text, expressions=clue_statements)
+    entries = figure_clues(text, expressions=clue_statements, expression_rules=rule_statements)
     say = Wording.read(text)
     palette = []
     for entry in entries.figures:
@@ -343,7 +343,10 @@ def _murdoku(
             {
                 "id": clue.id,
                 "text": clue.text,
-                "sources": [f"clue:{number}" for number in clue.sources],
+                "sources": [
+                    *(f"clue:{number}" for number in clue.sources),
+                    *(f"rule:{number}" for number in clue.rule_sources),
+                ],
                 **({"item": clue.person} if clue.person is not None else {}),
             }
             for clue in (

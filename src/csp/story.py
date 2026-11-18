@@ -1710,14 +1710,17 @@ def _merge_predicates(predicates: Sequence[str], say: Wording) -> str:
 
 @dataclass(frozen=True)
 class ClueParagraph:
-    """A canonical paragraph with its source clue numbers and semantic owner."""
+    """A player-facing paragraph with clue or rule source numbers and semantic owner."""
 
     text: str
     sources: tuple[int, ...]
     person: str | None
+    rule_sources: tuple[int, ...] = ()
 
     @property
     def id(self) -> str:
+        if self.rule_sources:
+            return "rule:" + ",".join(map(str, self.rule_sources))
         return "clue:" + ",".join(map(str, self.sources))
 
 
@@ -1738,12 +1741,17 @@ class CluePresentation:
 
 
 def figure_clues(
-    text: str, *, expressions: Sequence[murdoku_lang.Statement] | None = None
+    text: str,
+    *,
+    expressions: Sequence[murdoku_lang.Statement] | None = None,
+    expression_rules: Sequence[murdoku_lang.Statement] | None = None,
 ) -> CluePresentation:
-    """Shared booklet/player entries; ownership comes from syntax, never wording."""
-    if expressions is None:
-        expressions = load_expression_board(text)[2]
-    return _expression_figure_clues(text, expressions)
+    """Shared booklet/player entries for all puzzle-specific clues and rules."""
+    if expressions is None or expression_rules is None:
+        _, rules, clues = load_expression_board(text)
+        expressions = clues if expressions is None else expressions
+        expression_rules = rules if expression_rules is None else expression_rules
+    return _expression_figure_clues(text, expressions, expression_rules)
 
 
 def _expression_sentence(words: ExpressionWords, statement: murdoku_lang.Statement) -> str:
@@ -1752,7 +1760,9 @@ def _expression_sentence(words: ExpressionWords, statement: murdoku_lang.Stateme
 
 
 def _expression_figure_clues(
-    text: str, clues: Sequence[murdoku_lang.Statement]
+    text: str,
+    clues: Sequence[murdoku_lang.Statement],
+    rules: Sequence[murdoku_lang.Statement],
 ) -> CluePresentation:
     board = load_board_layout(text)
     presentation = load_presentation(text)
@@ -1793,16 +1803,56 @@ def _expression_figure_clues(
                 person,
             )
         ]
+    for number, rule in enumerate(rules, 1):
+        owner = _expression_rule_owner(rule.formula, board.people)
+        paragraph = ClueParagraph(_expression_sentence(say, rule), (), owner, (number,))
+        (by_person[owner] if owner is not None else other).append(paragraph)
     figures = tuple(
         FigureClues(
             person,
             _cap(say.names.get(person, person)),
-            presentation.figures[person].description if person in presentation.figures else "",
+            _figure_description(
+                presentation.figures[person].description if person in presentation.figures else "",
+                bool(by_person[person]),
+            ),
             tuple(by_person[person]),
         )
         for person in board.people
     )
     return CluePresentation(figures, tuple(other))
+
+
+def _figure_description(description: str, has_clues: bool) -> str:
+    if not has_clues:
+        return description
+    return re.sub(
+        r"(?:, )?(?:(?:with |has )?no clues of (?:their|his|her) own"
+        r"|(?:zonder eigen|geen eigen) aanwijzingen)$",
+        "",
+        description,
+    ).rstrip(", ")
+
+
+def _expression_rule_owner(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
+    """Use a semantic subject, or the sole named figure anchoring a compound rule."""
+    if isinstance(formula, murdoku_lang.Negation):
+        return _expression_rule_owner(formula.formula, people)
+    if owner := _expression_clue_owner(formula, people):
+        return owner
+
+    def named_people(value: object) -> set[str]:
+        if isinstance(value, murdoku_lang.Name):
+            return {value.token.text} & set(people)
+        if isinstance(value, tuple):
+            return set().union(*(named_people(item) for item in value))
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
+            return set().union(
+                *(named_people(getattr(value, item.name)) for item in dataclasses.fields(value))
+            )
+        return set()
+
+    names = named_people(formula)
+    return next(iter(names)) if len(names) == 1 else None
 
 
 def _expression_clue_owner(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
@@ -1838,7 +1888,7 @@ def clue_paragraphs(
         else clue
         for number, clue in enumerate(expressions, 1)
     ]
-    entries = figure_clues(text, expressions=clues)
+    entries = figure_clues(text, expressions=clues, expression_rules=())
     return [clue.text for figure in entries.figures for clue in figure.clues] + [
         clue.text for clue in entries.other
     ]
@@ -2028,11 +2078,10 @@ def murdoku_rules(
     The `Intro:` paragraphs (or the standard rules when a file has none), what
     the board picture only abbreviates, the clue semantics the short clue text
     leaves implicit, and the note that a figure's story detail is not a clue.
+    Puzzle-specific `Rules:` statements belong in `figure_clues`, not here.
 
-    One constraint can be said twice: an author may write a rule's sentence in
-    the intro *and* as that rule's `| wording`, and both land here. Say such a
-    sentence once, where it appears first, so the rules list reads as one rule
-    rather than two conditions.
+    Preserve the intro and deduplicate matching semantic clarifications rather
+    than repeating them as separate bullets.
     """
     if expression_rules is None:
         _, expression_rules, expression_clues = load_expression_board(text)
@@ -2042,7 +2091,7 @@ def murdoku_rules(
     return _unique_player_rules(
         presentation.intro or [say("doc.rules")],
         [
-            *board_notes(text, expression_rules=expression_rules),
+            *board_notes(text, expression_rules=()),
             *_expression_rule_notes(board, [*expression_rules, *expression_clues], say),
             say("doc.murdoku_note"),
         ],
