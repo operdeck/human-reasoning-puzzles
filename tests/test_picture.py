@@ -1778,8 +1778,9 @@ count (people on mark:social) = 1 | Exactly one person is on the squares marked 
     expected = "Exactly one person is on the squares marked social"
     assert expected not in markup
     assert "social: shares area with someone" in markup
-    player_text = story.clue_paragraphs(text) + story.murdoku_rules(text)
-    assert any(expected in line for line in player_text)
+    entries = story.figure_clues(text)
+    assert [entry.text for entry in entries.other] == [expected + "."]
+    assert all(expected not in line for line in story.murdoku_rules(text))
 
 
 def test_the_legend_does_not_explain_the_count_ring():
