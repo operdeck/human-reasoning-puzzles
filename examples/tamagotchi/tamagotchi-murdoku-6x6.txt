@@ -61,7 +61,7 @@ Kuchipatchi: ; icon=U+1F425
 Memetchi: ; icon=U+1F338
 Lovelitchi: ; icon=U+1F496
 Masktchi: ; icon=U+1F3AD
-Akumatchi: the devil ; icon=U+1F47F
+Akumatchi: the devil, with no clues of their own ; icon=U+1F47F
 
 Question:
 Where does Akumatchi go, and who enjoys a quiet square?

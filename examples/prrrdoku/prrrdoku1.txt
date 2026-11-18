@@ -75,7 +75,7 @@ Zeven vrienden bezoeken het park. Zet iedereen op een vrij vakje; Vladimir komt 
 Geen twee mensen staan in dezelfde rij of kolom. Voorwerpen blokkeren een vakje.
 
 Figures:
-Vladimir: de poes die iemand op schoot zoekt
+Vladimir: de poes die iemand op schoot zoekt, zonder eigen aanwijzingen
 
 Question:
 Wie krijgt Vladimir op schoot?

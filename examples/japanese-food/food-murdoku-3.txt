@@ -80,12 +80,12 @@ Place every figure on a free square, one per row and one per column. Squares wit
 
 Figures:
 Tonkatsu: ; icon=U+1F356
-Yakitori: ; icon=U+1F362
+Yakitori: no clues of their own ; icon=U+1F362
 Tempura: ; icon=U+1F364
 Okonomiyaki: ; icon=U+1F95E
 Gyoza: ; icon=U+1F95F
 Sushi: ; icon=U+1F363
-Jos: the hungry eater ; icon=U+1F9D1
+Jos: the hungry eater, with no clues of their own ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?

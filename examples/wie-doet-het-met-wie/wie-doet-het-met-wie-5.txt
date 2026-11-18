@@ -107,7 +107,7 @@ Sven: ; icon=U+1F9D4
 Karin: ; icon=U+1F475
 Hanneke: ; icon=U+1F471
 Jeroen: ; icon=U+1F474
-Wouter: ; icon=U+1F9D1
+Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?

@@ -165,8 +165,8 @@ De moordenaar is een man, was in de restauratiewagen en was daar niet alleen.
 Figures:
 Fjodor: ; icon=U+1F468
 Tatjana: ; icon=U+1F469
-Boris: ; icon=U+1F9D4
-Natasja: ; icon=U+1F471
+Boris: geen eigen aanwijzingen ; icon=U+1F9D4
+Natasja: geen eigen aanwijzingen ; icon=U+1F471
 Pjotr: ; icon=U+1F9D1
 Irina: ; icon=U+1F469
 Grigori: ; icon=U+1F474

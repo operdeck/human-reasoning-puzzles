@@ -135,7 +135,7 @@ Violetchi: ; icon=U+1F49C
 Pianitchi: ; icon=U+1F3B9
 Ichigotchi: ; icon=U+1F353
 Hashizotchi: ; icon=U+1F426
-Akumatchi: the devil ; icon=U+1F47F
+Akumatchi: the devil, with no clues of their own ; icon=U+1F47F
 
 Question:
 Which figure occupies a social square, and which figures, if any, occupy quiet squares?

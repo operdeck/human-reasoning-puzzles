@@ -85,6 +85,10 @@ Intro:
 Zes vrienden en de katten Mao, Luna en Vladimir in een groter park; Vladimir komt als laatste.
 Zet iedereen op een vrij vakje, één per rij en één per kolom. Voorwerpen blokkeren een vakje.
 
+Figures:
+Vladimir: geen eigen aanwijzingen
+Mao: geen eigen aanwijzingen
+
 Question:
 Wie krijgt Vladimir op schoot?
 

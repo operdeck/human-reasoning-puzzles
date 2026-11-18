@@ -73,7 +73,7 @@ Ramen: ; icon=U+1F35C
 Yakitori: ; icon=U+1F362
 Tonkatsu: ; icon=U+1F356
 Tempura: ; icon=U+1F364
-Jos: the hungry eater ; icon=U+1F9D1
+Jos: the hungry eater, with no clues of their own ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?

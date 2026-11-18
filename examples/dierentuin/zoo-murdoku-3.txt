@@ -96,8 +96,8 @@ Tijger: altijd alleen in zijn verblijf ; icon=U+1F405
 Makaak: een aap, nooit alleen ; icon=U+1F412
 Gibbon: een aap, nooit alleen ; icon=U+1F9A7
 Capibara: ; icon=U+1F9AB
-Alpensteenbok: ; icon=U+1F410
-Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
+Alpensteenbok: geen eigen aanwijzingen ; icon=U+1F410
+Verzorger: wordt als laatste geplaatst, zonder eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?

@@ -102,6 +102,10 @@ Hideo dir:up Yuki
 Nami dir:left Sora
 Nami dir:up Sora
 
+Figures:
+Yuki: geen eigen aanwijzingen
+Sora: geen eigen aanwijzingen
+
 Question:
 Wie heeft de jumpsuit aan?
 

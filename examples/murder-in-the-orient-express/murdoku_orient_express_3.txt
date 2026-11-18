@@ -164,11 +164,11 @@ De moordenaar is een vrouw, was in coupé 3 en was daar alleen.
 Figures:
 Dragomir: ; icon=U+1F9D4
 Bogdan: ; icon=U+1F468
-Svetlana: ; icon=U+1F475
-Mikhail: ; icon=U+1F9D1
+Svetlana: geen eigen aanwijzingen ; icon=U+1F475
+Mikhail: geen eigen aanwijzingen ; icon=U+1F9D1
 Anastasia: ; icon=U+1F469
 Vladimir: ; icon=U+1F474
-Katarina: ; icon=U+1F471
+Katarina: geen eigen aanwijzingen ; icon=U+1F471
 Ludmila: ; icon=U+1F469
 Igor: ; icon=U+1F468
 Olga: ; icon=U+1F471

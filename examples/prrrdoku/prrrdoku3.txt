@@ -125,6 +125,10 @@ Intro:
 Zes vrienden en de katten Mao, Luna en Vladimir gaan een dagje naar Amsterdam; Vladimir komt als laatste.
 Zet iedereen op een vrij vakje, één per rij en één per kolom. Op een bankje kun je staan, andere voorwerpen blokkeren een vakje. Alleen Luna kan in het water.
 
+Figures:
+Pip: geen eigen aanwijzingen
+Vladimir: geen eigen aanwijzingen
+
 Question:
 Wie krijgt Vladimir op schoot?
 

@@ -84,10 +84,10 @@ Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie
 
 Figures:
 Sanne: ; icon=U+1F469
-Pieter: ; icon=U+1F468
+Pieter: geen eigen aanwijzingen ; icon=U+1F468
 Femke: ; icon=U+1F471
 Daan: ; icon=U+1F9D4
-Wouter: ; icon=U+1F9D1
+Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?

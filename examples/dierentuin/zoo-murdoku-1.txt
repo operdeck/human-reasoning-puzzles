@@ -92,7 +92,7 @@ Leeuw: altijd alleen in zijn verblijf ; icon=U+1F981
 Makaak: een aap, nooit alleen ; icon=U+1F412
 Berggorilla: een aap, nooit alleen ; icon=U+1F98D
 Kameel: ; icon=U+1F42B
-Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
+Verzorger: wordt als laatste geplaatst, zonder eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?

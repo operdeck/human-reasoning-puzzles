@@ -73,8 +73,8 @@ Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie
 Figures:
 Eva: ; icon=U+1F469
 Bram: ; icon=U+1F468
-Noor: ; icon=U+1F471
-Wouter: ; icon=U+1F9D1
+Noor: geen eigen aanwijzingen ; icon=U+1F471
+Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?

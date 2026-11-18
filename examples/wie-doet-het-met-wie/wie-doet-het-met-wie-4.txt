@@ -94,7 +94,7 @@ Bas: ; icon=U+1F468
 Esther: ; icon=U+1F475
 Kees: ; icon=U+1F474
 Inge: ; icon=U+1F471
-Wouter: ; icon=U+1F9D1
+Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?

@@ -98,7 +98,7 @@ Makaak: een aap, nooit alleen ; icon=U+1F412
 Gibbon: een aap, nooit alleen ; icon=U+1F9A7
 Nijlpaard: ; icon=U+1F99B
 Neushoorn: ; icon=U+1F98F
-Verzorger: wordt als laatste geplaatst ; icon=U+1F9D1
+Verzorger: wordt als laatste geplaatst, zonder eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 De verzorger is alleen met precies één dier, en dat dier bijt hem. Welk dier is het?

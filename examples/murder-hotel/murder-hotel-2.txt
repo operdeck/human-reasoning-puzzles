@@ -149,7 +149,7 @@ Figures:
 Lorenzo: the concierge ; icon=U+1F468
 Lucia: the violinist ; icon=U+1F469
 Matteo: the florist ; icon=U+1F9D1
-Sofia: the novelist ; icon=U+1F471
+Sofia: the novelist, with no clues of their own ; icon=U+1F471
 Paolo: the waiter ; icon=U+1F9D4
 Giulia: the translator ; icon=U+1F469
 Raffaele: the tailor ; icon=U+1F474

@@ -61,5 +61,9 @@ Haru dir:up Jun
 Haru dir:left Isamu
 not (Haru beside object:torii)
 
+Figures:
+Isamu: geen eigen aanwijzingen
+Jun: geen eigen aanwijzingen
+
 Question:
 Waar staat iedereen?

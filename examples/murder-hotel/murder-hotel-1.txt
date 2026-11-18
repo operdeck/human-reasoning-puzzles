@@ -146,7 +146,7 @@ Figures:
 Alessio: the porter ; icon=U+1F9D4
 Bianca: the pianist ; icon=U+1F469
 Camillo: the gardener ; icon=U+1F9D1
-Donatella: the jeweler ; icon=U+1F475
+Donatella: the jeweler, with no clues of their own ; icon=U+1F475
 Enzo: the chef ; icon=U+1F468
 Fiorella: the photographer ; icon=U+1F471
 Gabriele: the architect ; icon=U+1F474

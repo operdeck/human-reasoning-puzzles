@@ -85,8 +85,8 @@ Figures:
 Marloes: ; icon=U+1F469
 Bas: ; icon=U+1F468
 Cato: ; icon=U+1F471
-Daan: ; icon=U+1F474
-Wouter: ; icon=U+1F9D1
+Daan: geen eigen aanwijzingen ; icon=U+1F474
+Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?

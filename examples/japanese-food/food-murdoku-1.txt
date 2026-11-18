@@ -82,7 +82,7 @@ Okonomiyaki: ; icon=U+1F95E
 Mochi: ; icon=U+1F361
 Sushi: ; icon=U+1F363
 Tonkatsu: ; icon=U+1F356
-Jos: the hungry eater ; icon=U+1F9D1
+Jos: the hungry eater, with no clues of their own ; icon=U+1F9D1
 
 Question:
 What is Jos going to eat today?

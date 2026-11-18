@@ -89,7 +89,7 @@ Mai: ; icon=U+1F475
 Hoa: ; icon=U+1F469
 Duc: ; icon=U+1F468
 Quang: ; icon=U+1F9D1
-RauMuong: rau muống xào, waterspinazie met knoflook ; icon=U+1F96C
+RauMuong: rau muống xào, waterspinazie met knoflook, zonder eigen aanwijzingen ; icon=U+1F96C
 
 Question:
 Waar vinden Pippo en Swena hun rau muống xào?

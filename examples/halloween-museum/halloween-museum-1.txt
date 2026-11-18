@@ -113,7 +113,7 @@ The murderer is a woman and was in the room where the weapon lies.
 Figures:
 Alba: the curator ; icon=U+1F475
 Bernardo: the night guard ; icon=U+1F9D4
-Carmen: dressed as a witch ; icon=U+1F9D9
+Carmen: dressed as a witch, with no clues of their own ; icon=U+1F9D9
 Diego: dressed as a vampire ; icon=U+1F9DB
 Elena: dressed as a zombie ; icon=U+1F9DF
 Fernando: the tour guide ; icon=U+1F468
