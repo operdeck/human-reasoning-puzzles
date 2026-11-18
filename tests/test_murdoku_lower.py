@@ -101,7 +101,7 @@ def test_fixed_people_pattern_does_not_turn_existential_restrictions_into_univer
     board, formula
 ):
     statement = parse_statement(formula)
-    assert not try_lower_location(compile_puzzle(board), board, statement, "clue 1")
+    assert not try_lower_location(compile_statements(board, []), board, statement, "clue 1")
     _assert_compilation_matches_reference(board, formula)
 
 

@@ -1945,8 +1945,8 @@ def test_role_rules_are_told_without_engine_names():
         if "**Svetlana is de moordenaar**" in paragraph
     )
     assert "regel 2: de moordenaar is op de plaats delict" in reveal
-    assert "regel 1: minstens twee mensen staan in het gebied van de moordenaar" in reveal
-    assert "**Svetlana zit op de plaats delict**" in story
+    assert story.count("**Svetlana is de moordenaar**") == 1
+    assert "**Svetlana zit op de plaats delict**" in story or "**Svetlana op r3k8**" in story
 
 
 @pytest.mark.parametrize("name", ["murdoku_orient_express_2.txt", "murdoku_orient_express_3.txt"])

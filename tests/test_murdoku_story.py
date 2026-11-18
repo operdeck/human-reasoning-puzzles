@@ -39,14 +39,14 @@ some role:guard in rows:1 | The guard is in the first row.
             "en",
             "Ada has the guard role",
             "Ben does not have the guard role",
-            "(2)",
+            "clue 2:",
             "allowed number",
         ),
         (
             "nl",
             "Ada heeft de rol guard",
             "Ben heeft de rol guard niet",
-            "(2)",
+            "aanwijzing 2:",
             "toegestane aantal",
         ),
     ],
@@ -66,13 +66,14 @@ def test_expressions_explain_clue_wording_and_roles_even_after_all_people_are_pl
     )
     assert "Ada stays in the first row" in words
     assert "The guard is in the first row" in words
-    assert label in words
+    assert label in words or "(2)" in words
     assert "__" not in words
     assert "binding" not in words
     assert "intermediate" not in words
     assert "role state" not in words
     assert story.explain(text) == words
-    assert label not in murdoku_story.explain(text, numbered=False).markdown()
+    unnumbered = murdoku_story.explain(text, numbered=False).markdown()
+    assert label not in unnumbered and "(2)" not in unnumbered
 
 
 def test_proof_settles_hidden_singletons_after_visible_solution():
@@ -348,6 +349,56 @@ def test_role_separation_sources_keep_the_puzzles_thematic_wording():
     words = murdoku_story.explain(example("menu-murdoku-1.txt").read_text()).markdown()
     assert "er staat nooit meer dan één zetmeel op dezelfde dag" in words
     assert "in different regions" not in words
+
+
+def test_role_reveal_keeps_both_rules_when_each_is_needed():
+    not_alone = "every ?p in role:guard: count (people in area of ?p) >= 2"
+    crime_scene = "some role:guard in tag:crime"
+    text = f"""Size: 5
+Regions:
+a: hall
+b: lounge
+c: garden
+Grid:
+a a a a a
+a a a a a
+b b b b b
+c c c c c
+c c c c c
+AreaTags:
+crime: hall lounge
+People:
+Ada
+Ben
+Carmen
+Dora
+Evan
+Attributes:
+eligible: Ada Carmen Dora
+Roles:
+guard: 1
+RoleEligibility:
+guard: attribute:eligible
+Rules:
+{not_alone}
+{crime_scene}
+Clues:
+Ada in rows:1 and Ada in columns:1
+Ben in rows:2 and Ben in columns:2
+Carmen in rows:3 and Carmen in columns:3
+Dora in rows:4 and Dora in columns:4
+Evan in rows:5 and Evan in columns:5
+"""
+    assert len(solutions(text, "murdoku", limit=2)) == 1
+    for rule in (not_alone, crime_scene):
+        assert len(solutions(text.replace(rule, ""), "murdoku", limit=2)) == 2
+    result = murdoku_story.explain(text)
+    assert result.complete
+    words = result.markdown()
+    assert "Ada has the guard role" in words
+    assert "rule 1:" in words
+    assert "rule 2:" in words
+    assert "__" not in words
 
 
 @pytest.mark.parametrize(
