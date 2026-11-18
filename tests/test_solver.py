@@ -3467,7 +3467,7 @@ def test_show_model_reports_empty_domain(tmp_path, capsys):
     puzzle = tmp_path / "repro.txt"
     puzzle.write_text(
         "Size: 2\nRegions:\na: room\nGrid:\na a\na a\nPeople:\nAda\nBen\n"
-        "Clues:\nin Ada rows:1\nnot in Ada rows:1\n"
+        "Clues:\nAda in rows:1\nnot Ada in rows:1\n"
     )
     assert cli.main([str(puzzle), "--show-model"]) == 0
     out = capsys.readouterr().out

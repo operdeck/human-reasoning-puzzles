@@ -740,8 +740,8 @@ B
 Roles:
 bandit: any
 Rules:
-has A role:bandit
-not has B role:bandit
+A is role:bandit
+not B is role:bandit
 """
     puzzle = tmp_path / "roles.txt"
     target = tmp_path / "roles.png"
@@ -1106,10 +1106,10 @@ People:
 Ada
 Ben
 Clues:
-in Ada rows:1
-in Ada columns:1
-in Ben rows:2
-in Ben columns:2
+Ada in rows:1
+Ada in columns:1
+Ben in rows:2
+Ben in columns:2
 """
     )
     target = tmp_path / "default.png"
