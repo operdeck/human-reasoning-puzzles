@@ -650,7 +650,7 @@ def test_zero_area_distance_has_an_idiomatic_relation(
         (
             "en",
             "Ada dir:manhattan Ben <= 6",
-            "Ada and Ben are at most six side-steps apart",
+            "Ada and Ben are at most six steps apart",
         ),
         (
             "nl",
