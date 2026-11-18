@@ -20,8 +20,10 @@ from csp.murdoku_lower import (
     try_lower_person_choice,
     try_lower_person_pair,
     try_lower_role_atom,
+    try_lower_role_scope,
     try_lower_role_target,
 )
+from tests.examples import example
 
 
 @pytest.fixture
@@ -40,6 +42,37 @@ def board():
         ],
         roles=[RoleSpec("guard", frozenset({0, 1, 2}))],
     )
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "some role:guard in area:hall",
+        "some role:guard on object:bed",
+        "every ?a in areas: some role:guard in ?a",
+        "every ?a in tag:outside: some role:guard in ?a",
+    ],
+)
+def test_role_scope_count_pattern_matches_every_reference_assignment(board, formula):
+    _assert_matches_reference(board, formula, try_lower_role_scope, solve=True)
+
+
+def test_role_scope_pattern_preserves_published_halloween_grade():
+    from csp.cli import load
+    from csp.report import grade
+
+    puzzle = load(example("halloween-museum-2.txt").read_text(), "murdoku")
+    fired = []
+    result = Solver(puzzle.model).solve(on_step=lambda rule, steps: fired.append(rule))
+    assert result.solved
+    assert grade(fired) == "subsumption"
+
+
+def test_role_scope_count_on_fully_blocked_object_matches_reference(board):
+    board = replace(
+        board, objects=[*board.objects, BoardObject("wall", "blocking", (Square(0, 0),))]
+    )
+    _assert_compilation_matches_reference(board, "count (role:guard on object:wall) = 0")
 
 
 @pytest.mark.parametrize(

@@ -444,16 +444,21 @@ def _role_selection_literals(
 ) -> list[int]:
     literals = []
     for person in board.people:
-        variable, selected, _ = _hidden_boolean(
+        _, selected, _ = _hidden_boolean(
             model, "expression_role_scope", f"{name} {person} selected", "Murdoku expression"
         )
-        model.relate(
-            f"{name} {person} selection",
-            (person, board.role_variable(person, role), variable),
-            lambda square, has_role, selected, squares=squares: (
-                selected == (has_role and square in squares)
-            ),
-        )
+        locations = [model.literal(person, square) for square in board.free if square in squares]
+        if locations:
+            model.constrain(
+                f"{name} {person} selection",
+                Kind.COUNT,
+                [model.literal(board.role_variable(person, role), True), *locations],
+                allowed_counts={2},
+                reified_by=selected,
+                family="Murdoku expression",
+            )
+        else:
+            model.eliminate(selected, "clue", name, sources=(name,))
         literals.append(selected)
     return literals
 
@@ -1102,6 +1107,55 @@ def try_lower_count(model: Model, board: Board, statement: lang.Statement, name:
         allowed_counts=permitted,
         family="Murdoku expression",
     )
+    return True
+
+
+def try_lower_role_scope(model: Model, board: Board, statement: lang.Statement, name: str) -> bool:
+    """Keep existential role occupancy on the tuned reified-count path."""
+    formula = statement.formula
+    atom = formula.body if isinstance(formula, lang.Quantified) else formula
+    if not (
+        isinstance(atom, lang.Atom)
+        and atom.determiner is not None
+        and atom.determiner.text == "some"
+        and isinstance(atom.subject, lang.Name)
+        and atom.subject.token.text.startswith("role:")
+        and atom.measure is None
+    ):
+        return False
+    targets: list[lang.Operand]
+    if isinstance(formula, lang.Quantified):
+        if not (
+            formula.quantifier.text == "every"
+            and len(formula.variables) == 1
+            and isinstance(atom.target, lang.Name)
+            and atom.target.token.text == formula.variables[0].text
+            and (regions := _static_area_ids(board, formula.source)) is not None
+        ):
+            return False
+        if any(
+            list(board.region_names.values()).count(board.region_names[region]) > 1
+            for region in regions
+        ):
+            return False
+        targets = [
+            lang.Name(replace(atom.target.token, text=f"area:{board.region_names[region]}"))
+            for region in board.region_names
+            if region in regions
+        ]
+    else:
+        targets = [atom.target]
+    operands = [lang.Filter(atom.subject, atom.operator, target) for target in targets]
+    if any(_role_scope(board, operand) is None for operand in operands):
+        return False
+    check_formula(board, formula)
+    for index, operand in enumerate(operands, 1):
+        count = lang.NumberComparison(
+            lang.Count(operand),
+            replace(atom.operator, text=">="),
+            lang.Integer(replace(atom.operator, text="1")),
+        )
+        try_lower_count(model, board, lang.Statement(count), f"{name} scope {index}")
     return True
 
 
@@ -3321,6 +3375,7 @@ def compile_statements_with_origins(
                 try_lower_person_pair,
                 try_lower_person_choice,
                 try_lower_role_target,
+                try_lower_role_scope,
                 try_lower_area_companions,
                 try_lower_occupied_cell_pair,
                 try_lower_count,
