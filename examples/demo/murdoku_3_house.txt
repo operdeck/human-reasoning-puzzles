@@ -58,7 +58,7 @@ Five people are in a house with four areas. Place each of them on a free square,
 Every clue is needed; drop one and the solution is no longer unique.
 
 Figures:
-Dirk: no clues of his own, so placed last
+Dirk: has no clues of his own
 
 Question:
 Where does everyone stand?
