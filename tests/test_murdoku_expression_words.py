@@ -655,7 +655,7 @@ def test_zero_area_distance_has_an_idiomatic_relation(
         (
             "nl",
             "Ada dir:manhattan Ben >= 10",
-            "Ada en Ben zijn minstens tien Manhattanstappen van elkaar verwijderd",
+            "Ada en Ben zijn minstens tien stappen van elkaar verwijderd",
         ),
     ],
 )
