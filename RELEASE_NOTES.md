@@ -3,6 +3,7 @@
 ## Unreleased
 
 **New**
+* Documentation refactor (#247): a shorter README, dedicated CLI, Murdoku grammar and web-interface pages, a compact agent-facing collection reference, and both authoring skills split into short entry points with on-demand `references/` files.
 * Worked solutions for every family: `--explain` and booklet solutions no longer stop at Murdoku and Sudoku. A new generic narrator (`generic_story`) tells any solve from the compiled model alone, with no per-family code: clue deductions are grouped per puzzle rule ("By *each number once per column*, …"), cells are named in row or column runs ("r2c4–r2c6 yes"), and chains ("If r5c4 ≠ 4, then r2c4 = 4, so …"), combined rules and what-ifs ("Suppose r2c2 = 6. Then … would follow, but *9+ cage …* fails") read as short arguments. A deterministic thinning pass keeps only the moves the proof needs. Sudoku keeps its own patterns and falls back to the generic story where they stop, so `sudoku_33` now explains its chains instead of exiting with a gap. Battleships' technical trace is replaced too.
     * Binairo triples and Akari sight lines had duplicate constraint names (horizontal and vertical shared one), which broke proof replay; they are now named by their cell range, and a test keeps names unique in every example.
     * Known gap: constraint family names are still English in Dutch prose; no Dutch non-Murdoku example exists yet.

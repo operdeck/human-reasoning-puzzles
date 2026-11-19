@@ -231,12 +231,12 @@ What it cannot do is *name* a shape: matching says which cells repeat, never wha
 an icon depicts. Ask for one example cell per kind or for the lists, and never
 invent a cell to make a clue parse — a placeholder board is fine only when the
 file header says so. Scans and derived images stay in the git-ignored
-`proprietary puzzles/`. The skill's [Reading a scan](.github/skills/murdoku-puzzle-generator/SKILL.md#reading-a-scan)
+`proprietary puzzles/`. The skill's [Reading a scan](.github/skills/murdoku-puzzle-generator/references/reading-a-scan.md)
 section has the full workflow and the traps.
 
 ## Murdoku format and occupancy
 
-Use the [canonical Murdoku grammar](docs/model-and-puzzle-formats.md#murdoku)
+Use the [canonical Murdoku grammar](docs/murdoku-grammar.md)
 for file syntax and semantics, and
 [the Murdoku authoring skill](.github/skills/murdoku-puzzle-generator/SKILL.md)
 for puzzle workflows. Keep vocabulary in the format guide; do not duplicate it
@@ -286,7 +286,7 @@ generated text for language and consistency, not for solving.
 
 ## Murdoku global counts
 
-Use the [expression reference](docs/model-and-puzzle-formats.md#expression-clue-language)
+Use the [expression reference](docs/murdoku-grammar.md#expression-clue-language)
 for count and occupancy meaning. The evaluator is authoritative;
 `murdoku_lower` lowers counts to generic model primitives outside `core.py`.
 Preserve the tuned count/population patterns and their grades rather than

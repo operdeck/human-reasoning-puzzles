@@ -1,6 +1,6 @@
 # Model and Puzzle File Formats
 
-This guide describes the solver's generic model, the rule ladder, and the file formats accepted by each puzzle family. Browse the [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/) or read the [collection and grading notes](puzzle-collection.md).
+This guide describes the solver's generic model, the rule ladder, and the file formats accepted by each puzzle family. Browse the [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/); Murdoku clues have their own [clue grammar](murdoku-grammar.md).
 
 ## Generic model
 
@@ -314,315 +314,15 @@ These are Sudoku files (`Givens:`, optionally `Boxes:` for a 6×6 jigsaw) with o
 
 ## Murdoku
 
-Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are required. Optional sections include `Rules:`, numbered `Clues:`, `AreaTags:`, `Objects:`, `EdgeItems:`, `PointObjects:`, `Marks:`, `Roles:`, `RoleEligibility:`, `Attributes:`, `Pronouns:`, `Hatched:`, `Backdrop:`, and `Words:`. `Backdrop:` names one icon (a catalogue name or `U+XXXX`) drawn large and faint behind the board, reaching a little past it; it is decoration only and never changes the puzzle. Original backdrops such as `lapjeskat` (a tortoiseshell cat), `ramen_bowl` and `tamagotchi` stick out above the board (ears, steam, a key ring); the picture grows to make room. On a booklet page too full for it the backdrop is left out. `Decorations:` lines such as `bat: r0.5c3.5 r6.5c1` draw small icons at point-object anchors (half steps, also on the board edge); unlike `PointObjects:` they are pictures only: no clue can name them and the legend and object lists leave them out. See [`tests/puzzles/murdoku_composition.txt`](../tests/puzzles/murdoku_composition.txt) for a neutral composition and the grammar specification below.
+Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are required. Optional sections include `Rules:`, numbered `Clues:`, `AreaTags:`, `Objects:`, `EdgeItems:`, `PointObjects:`, `Marks:`, `Roles:`, `RoleEligibility:`, `Attributes:`, `Pronouns:`, `Hatched:`, `Backdrop:`, and `Words:`. `Backdrop:` names one icon (a catalogue name or `U+XXXX`) drawn large and faint behind the board, reaching a little past it; it is decoration only and never changes the puzzle. Original backdrops such as `lapjeskat` (a tortoiseshell cat), `ramen_bowl` and `tamagotchi` stick out above the board (ears, steam, a key ring); the picture grows to make room. On a booklet page too full for it the backdrop is left out. `Decorations:` lines such as `bat: r0.5c3.5 r6.5c1` draw small icons at point-object anchors (half steps, also on the board edge); unlike `PointObjects:` they are pictures only: no clue can name them and the legend and object lists leave them out. See [`tests/puzzles/murdoku_composition.txt`](../tests/puzzles/murdoku_composition.txt) for a neutral composition and [Murdoku clue grammar](murdoku-grammar.md) for the clues and rules.
 
 Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
 
-The expression language in [#244](https://github.com/operdeck/human-reasoning-puzzles/issues/244)
-is the only Murdoku clue grammar used by the CLI, web exporter, booklet and authoring tools.
-`load_expression_board` returns the fixed layout, rule statements and clue
-statements separately. `load_board_layout` reads only declarations;
-`compile_board` compiles those declarations, while `murdoku_lower.compile_statements`
-adds the typed expressions. The independent search evaluates those same
-expressions through the reference evaluator. There is no legacy reader,
-predicate compiler or alternate search path.
-In this language, `in` is reflexive footprint containment and `on` is reflexive overlap;
-other spatial operators require distinct entities. An `empty` cell has no
-person even if blocked; migrate the current empty-cell counts using
-`empty free cells` to retain their free-cell-only behavior. A person `is` a
-bound role entity means membership in that role.
+### Clue language
 
-For expression wording, `| wording` replaces one complete
-statement and `Words:` may replace an expression phrase template. Phrase
-overrides must retain all placeholders of the original template; otherwise
-they could hide a subject, target, comparison, or other part of the clue.
-Legacy `clue.*` phrase keys are rejected: move a puzzle-specific sentence to
-that statement's `| wording`. The role declaration's distinct-area rule can be
-worded with `rule.role_separation`, retaining `{a}`, `{b}` and `{role}`.
-Generated person clues describe window and point-object footprints as cells
-touching the feature, and marks as marked cells. Place captions may retain their
-preposition (`hall: on Monday` in `Words:` changes the wording, not containment).
-Clues belonging to one figure share a paragraph and retain all source numbers;
-authored sentences keep their wording rather than being shortened into predicates.
-Single numbered rows and columns use singular names. Dutch person-location
-sentences use `staat` for directions and adjacency, and `zit` for `on`;
-explicit `atom.one` and `atom.not` templates still take precedence.
-A named person's `dir:king object:… <= 1` reads as "on or directly next to
-a square of …", explicitly including diagonals and area boundaries; negation
-covers the whole union of target footprints. A target such as
-`people on object:…` instead names a person on the object. Exact distances
-such as `= 1` retain their metric wording, as do other bounds.
-Exact person-to-person cardinal directions name their row or column distance.
-A role with exactly one holder may use a singular name such as "the murderer";
-optional or multiple-holder roles retain set wording. Worked solutions announce
-a last candidate once, cite a single clue directly, and group remaining role
-exclusions only after every other person's role state is known.
-Alternative areas retain their own prepositions, with negation covering the
-whole alternative. A quantified person is named directly only when exactly one
-must exist; optional and multiple-holder domains keep their quantifiers.
-Newly reserved rows and columns are stated explicitly. Counterfactuals cite
-mark occupancy rules and their possible companions, never internal gate names.
-Placements on conditional marks state the resulting solitude or company. Once
-one marked square is occupied and an exact-one count applies, the story also
-explains why the other squares carrying that mark are empty.
-Chains cite the row, column, clue or rule that justifies each link; unnumbered
-booklets state the premise instead of referring to an absent clue number.
-Simple counts of people on or in a footprint read as "exactly", "at least" or
-"at most" that many people. Other counts and arithmetic remain compositional;
-an explicit `number.compare` template overrides this idiom.
-
-### Expression clue language
-
-The reader, reference evaluator and compiler can also be used independently.
-`python -m csp.clue_search report FILE`, `thin FILE` and `ease FILE` measure
-expression puzzles with the independent search and compiler.
-`suggest FILE --solution "Ada=r1c1 ..."` uses named-person location, line and
-direction templates. Its suggestion vocabulary remains limited: it does not
-generate arbitrary expressions or distinguish solutions differing only in roles.
-The suggestion templates exclude unions, differences,
-adjective-qualified and projected sets, filters and comprehensions; occupancy
-assertions and set comparisons; compound Boolean formulas; numeric, parity and
-range comparisons; quantifiers and choices. Its AST inventory is guarded
-against additions to the language.
-For a draft board with expression `key_clue:` entries, use
-`puzzle-lab murdoku-board SPEC --suggest`; expressions are the default. It uses the same
-limited suggestion templates and reports drafts it cannot close.
-`python -m csp FILE --show-model` shows the compiled model grouped by source
-expressions. Console solving, `--grade`, `--brute-force`, `--verbose`, `--step`,
-expression-native `--explain`, `--svg`/`--png`, `--export`, `--docx`/`--pdf`,
-`--nosolution`, `--interactive` and `--track-person` use the same expression model.
-`--lint` reports board and expression diagnostics, including
-impossible required relations, role-negation and relation-size warnings;
-`--require-forward` adds a forward-only solve check. `--expressions` remains a
-compatibility flag; Murdoku always uses the expression grammar.
-
-An operand is a set of entities of one sort. Sorts are people, cells, rows,
-columns, logical areas, features and roles. A person's footprint is their
-square; a feature's footprint is its object cells, the cells touched by an
-edge or point item, or the cells of a mark. A role entity has no footprint.
-Attributes are fixed sets of people and tags are fixed sets of areas. Two
-separately declared objects remain distinct even if named alike.
-
-| Expression | Meaning |
-|---|---|
-| `Ada`, `people`, `areas`, `rows`, `columns`, `cells`, `objects`, `roles` | A person or a complete universe. |
-| `area:hall`, `tag:outside`, `object:bed`, `object_kind:standable` | One area, tagged areas, named object instances, or objects of a kind. |
-| `edge_item:door`, `point_object:fountain`, `mark:red` | Named feature instances. |
-| `role:guard`, `attribute:staff` | People holding a role or having an attribute. |
-| `rows:1,3-5`, `columns:last`, `corner:board` | Selected lines or board-corner cells. |
-| `area of S`, `row of S`, `column of S`, `cell of S` | Areas, lines or cells intersecting the footprints in `S`. |
-| `S, T`, `S except T` | Same-sort union and difference. `object:bed,chair` repeats the first namespace. |
-| `empty S`, `occupied S`, `free S` | Elements with the named property. |
-| `(S on T)`, `(S touches T)` | Elements of `S` related to at least one element of `T`. |
-| `(?x in S where formula)` | Elements of `S` for which the formula holds. |
-
-`empty` and `occupied` test whether any person is on a spatial footprint;
-`free` applies to cells and means not blocked by an object. Thus an empty
-blocked cell is still empty. Use `empty free cells` to preserve the old
-empty-cell count, which counts only free squares.
-
-Atoms have the form `[some|every|no] S operator T`. The right side is
-existential. A determiner may be omitted only when the left side can contain
-at most one entity. `in` means footprint containment,
-`on` means footprint overlap, `beside` means a shared side in the same area,
-and `touches` means a shared side regardless of area. `is` tests membership
-or identity; a person `is` a bound role entity when they hold that role.
-Containment and overlap are reflexive; adjacency and directional operators
-exclude the same entity. Distinct entities remain distinct even when their
-footprints coincide.
-`S = T` and `S != T` compare sets of the same sort.
-
-Directional operators are `dir:left`, `dir:right`, `dir:up`, `dir:down`,
-their vertical-plus-horizontal combinations, `dir:diagonal`, `dir:rows`,
-`dir:cols`, `dir:manhattan`, `dir:king`, `dir:euclidean`, `dir:areas`,
-`dir:knight`, `dir:nearest` and `dir:furthest`. An optional `= n`, `<= n`
-or `>= n` measures the gap where supported; a compound direction applies
-the measure to each axis of the same cell pair. Nearest and furthest use
-strict comparisons against other people outside the target set, so a tie
-does not satisfy the clue. Their optional metric suffix, for example
-`dir:nearest:king`, changes the distance measure.
-
-`count S` is the cardinality of `S`; comparisons accept integer arithmetic,
-`odd`, `even`, and inclusive ranges such as `1..3`. Formulas compose with
-`not`, `and`, `or`, `iff`, and `if ... then`, in that precedence order.
-Quantifiers bind `?` variables, as in `every ?p in role:guard: ?p in
-area:hall`; multiple variables bind ordered, distinct entities. Choices use
-`exactly 1 of (formula; formula)` or `at least` / `at most`. Union uses
-commas, never Boolean `and` or `or`.
-
-Area isolation can be written
-`every ?a in occupied areas: count (occupied areas touches ?a) = 0`.
-To scope the rule, replace the domain with
-`(occupied areas in tag:villages)`; occupied neighbors outside the tag still
-count. `touches` excludes an area from touching itself.
-
-The reference evaluator defines clue meaning. Expression lowering emits
-generic constraints outside `core.py`; it must agree with the evaluator and
-preserve the existing tuned patterns and grades. `Key:` entries in the new
-reader match expression structure rather than wording or source positions.
-
-#### Grammar and scope
-
-The following grammar uses `N` for a non-negative integer literal, `name`
-for a person, universe or namespaced operand from the table above, and `var`
-for an identifier prefixed with `?`. Parentheses group either operands,
-formulas or arithmetic, according to the surrounding context.
-
-```ebnf
-statement   = formula [ "|" wording ] ;
-formula     = "if" formula "then" formula | quantified | equivalence ;
-equivalence = disjunction { "iff" disjunction } [ "iff" quantified ] ;
-disjunction = conjunction { "or" conjunction } [ "or" quantified ] ;
-conjunction = negated { "and" negated } [ "and" quantified ] ;
-negated     = "not" (negated | quantified) | "(" formula ")" | atom | setcompare
-            | comparison | choice ;
-quantified  = quant var { "," var } "in" operand ":" formula ;
-quant       = det | ("exactly" | "at least" | "at most") N ;
-det         = "some" | "every" | "no" ;
-choice      = ("exactly" | "at least" | "at most") N "of"
-              "(" formula { ";" formula } ")" ;
-atom        = [ det ] operand spatial operand
-            | [ det ] operand direction operand [ measure ]
-            | [ det ] operand "is" (operand | adjective) ;
-setcompare  = operand ("=" | "!=") operand ;
-operand     = union { "except" union } ;
-union       = primary { "," (primary | range) } ;
-primary     = name | var | adjective primary | projection "of" primary
-            | "(" filtered ")" | "(" var "in" operand "where" formula ")" ;
-filtered    = operand { spatial union | direction union [ measure ]
-                     | "is" (union | adjective) } ;
-spatial     = "in" | "on" | "beside" | "touches" ;
-direction   = "dir:" mode ;
-adjective   = "empty" | "occupied" | "free" ;
-projection  = "area" | "row" | "column" | "cell" ;
-measure     = ("=" | "<=" | ">=") N ;
-number      = number_atom { ("+" | "-") number_atom } ;
-number_atom = N | "count" filtered | "(" number ")" ;
-comparison  = number ("=" | "!=" | "<" | "<=" | ">" | ">=") number
-            | number ("odd" | "even") | number N ".." N ;
-range       = N | N "-" N ;
-```
-
-Quantifiers can also occur after a Boolean connective; their body extends to
-the end of the enclosing formula. Write parentheses to narrow that body:
-`(some ?p in people: ?p in area:hall) and Ada in area:garden`.
-Multiple variables in one quantifier range over ordered tuples of distinct
-entities; a quantified count counts those tuples, not unordered groups.
-Bindings are local. Unknown, free, unused or clashing variables are errors.
-
-Use a space after the quantifier colon to distinguish it clearly from a
-namespace: `every ?p in role:guard: ?p in area:hall`. Keywords and namespaces
-are lowercase and case-sensitive. Person names are case-sensitive too and
-must not be reserved keywords.
-
-A filter keeps an element if at least one target satisfies its relation.
-Consecutive filters intersect their conditions. A measured direction inside
-a counted filter must be parenthesised, as in
-`count (people dir:up Ada = 2) >= 1`, so its measure is not mistaken for the
-count comparison. Arithmetic is left-associative; use parentheses for grouping.
-A numeric left operand selects a numeric comparison; an entity-set left
-operand selects set equality or inequality.
-
-For an empty left set, `some` is false and `every` and `no` are true.
-Without a determiner, a singleton atom asserts that its one member has a
-matching target; an empty optional role therefore does not satisfy it.
-`not some role:guard in area:hall` excludes every matching guard, whereas
-`some role:guard in area:hall` requires at least one.
-
-#### Spatial operators and measures
-
-People, cells, rows, columns, areas and features have footprints. Rows,
-columns and areas include their blocked cells; projections do not implicitly
-select occupied or free cells. `cell of S` is the union of the footprints in
-`S`; the other projections select the corresponding areas or lines that
-intersect them. Projection results are sets, so repeated results count once.
-`free` applies only to cells; `empty` and `occupied` apply to any footprinted
-sort except people.
-
-Spatial operators accept any two footprinted sorts. A witness is a pair of
-cells from their footprints, not their centres or bounding boxes. `in`
-requires containment of the complete left footprint in the right footprint;
-`on` requires a nonempty overlap. `beside` and `touches` require side-neighbour
-cells, with `beside` additionally requiring those cells to share a logical
-area. Thus a person on a multi-cell object can be beside another cell of that
-object. An area and a tag can contain the same area, but two distinct areas
-with matching footprints do not become the same entity.
-
-`is` requires matching entity sorts and tests identity/membership, not
-footprint equality. Its explicit typing exception is a person on the left
-and a role entity on the right, such as a `?r` bound from `roles`: this means
-the person holds that role. The operand `role:guard`, in contrast, is a set
-of people. Roles themselves have no footprint and cannot take part in
-spatial relations.
-
-| Mode after `dir:` | Meaning |
-|---|---|
-| `left`, `right`, `up`, `down` | A strictly directed gap on that axis; optional `= n`, `<= n` or `>= n`. |
-| One vertical plus one horizontal direction, e.g. `up+right` | Both directions hold for the same cell pair; a measure applies to both axes. |
-| `diagonal` | Both axis gaps are equal and positive; an optional measure applies to both. |
-| `rows`, `cols` | Absolute row or column separation, independent of direction. |
-| `manhattan` | The sum of the two absolute axis gaps. |
-| `king` | The greater of the two absolute axis gaps. |
-| `euclidean` | Straight-line distance; compare squared distances with `n²`, without rounding. |
-| `areas` | Shortest side-sharing border distance between logical areas; the same area has distance zero. |
-| `knight` | One chess-knight move, with no measure. |
-| `nearest`, `furthest` | Strict person superlatives, with no measure; default metric `manhattan`. |
-
-The six numeric modes require a measure. Superlatives accept any of those
-six modes as a metric suffix, for example `dir:furthest:rows`.
-Area distance uses the existing border graph, not a general path or
-connectivity predicate.
-`= 0` and `<= 0` are infeasible for strictly directed or diagonal gaps.
-Numeric distances can otherwise be zero where distinct entities overlap.
-A negative relation to a role does not itself forbid role membership:
-same-entity exclusion still applies inside that relation.
-
-#### Counts, declarations and diagnostics
-
-Counts do not implicitly restrict the people or spatial scope. Use a filter
-or comprehension to state that restriction:
-
-```text
-count role:guard = 2
-count (role:guard in area:hall) >= 1
-count (occupied areas in tag:villages) = 2
-count ((empty areas touches area:river) except area:river) >= 1
-count (people in (areas touches area:river)) = 3
-count (empty free cells on mark:quiet) = 1
-count (?r in roles where Ada is ?r) <= 1
-```
-
-Empty-area counts include areas without free cells; occupied-area counts
-cannot include them. `touches` already excludes a logical area from touching
-itself, while `except` can explicitly remove an entire source tag. Boolean
-connectives combine formulas, never operand lists; use comma unions,
-`except`, filters or comprehensions for sets.
-
-Declarations remain data, with the following equivalent statements:
-
-| Declaration | Equivalent meaning |
-|---|---|
-| `Roles:` entry `guard: 3` | `count role:guard = 3` |
-| `guard: any` (or `guard: *`, or no count) | Any holder count from zero through the full cast. |
-| `guard: 3 different_regions` | The exact count and `every ?p, ?q in role:guard: ?p dir:areas ?q >= 1`. |
-| `RoleEligibility:` entry `guard: attribute:staff` | `every role:guard is attribute:staff`. Named eligible people and attributes form one union. |
-| `Marks:` entry `quiet: ... ; alone` | `every ?p in (people on mark:quiet): count (people in area of ?p) = 1` |
-| `Marks:` entry `social: ... ; not_alone` | The same per-occupant quantifier with count `>= 2`. |
-
-Role eligibility never requires an eligible person to hold the role. Mark
-conditions apply separately in the area of each occupied marked cell;
-unoccupied marks do not force anyone into an area. Attributes are fixed
-facts, not assignments that the solver may change.
-
-Reader/type errors include unknown names or namespaces, mixed-sort unions
-or set comparisons, footprintless spatial operands, invalid variables,
-missing determiners, invalid modes/measures and infeasible count comparisons.
-Diagnostics identify the source line and column. `--lint` additionally
-rejects board-vacuous requirements, such as two people sharing a side under
-the distinct-row/column rules. It warns about an emitted relation involving
-more than three position/role variables, suggesting a split, and about
-negated role relations that may be mistaken for non-membership. Board lint
-also checks declarations, icons, reachable areas and unused roles.
+Murdoku clues and rules use the typed expression language. The complete
+grammar, wording rules and diagnostics are in
+[Murdoku clue grammar](murdoku-grammar.md); the declarations below stay here.
 
 ### Drawing details
 
@@ -714,51 +414,13 @@ In the Murdoku picture, blocked squares are shaded clearly darker than their reg
 
 ## CLI and validation
 
-The type is detected from the file's sections; `--type` overrides it. `--show-model`, `--verbose`, `--step`, `--grade`, `--brute-force`, `--svg`, and `--png` use the same generic engine for every family. `--explain` supports every family (Murdoku and Sudoku have their own narrators, the rest use `generic_story`); `--track-person`, `--lint`, and `--require-forward` are Murdoku-specific.
+Every command-line option, the grading semantics and the developer checks are in
+[CLI options and validation](cli.md).
 
-```bash
-uv run csp examples/<family-example>.txt --show-model
-uv run csp examples/<family-example>.txt --brute-force
-uv run csp examples/<family-example>.txt --grade
-uv run csp examples/<family-example>.txt --svg board.svg
-uv run csp examples/<family-example>.txt --png board.png
-uv run puzzle-lab rate examples/<family-example>.txt --json
-uv run puzzle-lab search examples --family tango --tier hard
-uv run puzzle-lab search examples --tier hard --deductive
-uv run puzzle-lab audit examples
-uv run puzzle-lab generate examples/tents_1_8x8.txt --tier medium \
-  --seed 42 --attempts 100 --output /tmp/tents-medium.txt
-uv run puzzle-lab fresh tango --size 8 --tier medium --open-share 0.6 \
-  --seed 26 --output /tmp/tango-medium.txt
-```
+## Web interface
 
-`puzzle-lab` is the repository-native non-Murdoku authoring tool. It rates a
-puzzle only when the deductive solver completes it and independent search
-confirms a unique solution; `search` applies the same checks across files.
-`generate` searches reproducible family-aware variants and refuses to write a
-candidate that misses the requested tier; it keeps the seed's solution.
-Both `generate` and `fresh` accept optional `--grade` for exact technique
-coverage as well as a tier, for example `--tier hard --grade cover3`.
-If no candidate matches both requirements, they fail without writing a file.
-`search` reports every rated puzzle's `deductive` field — whether the ladder
-closes it without `what_if` — and `--deductive` keeps only the ones it does.
-`fresh` builds a brand-new board and solution for Binairo, Tango, Suguru,
-Minesweeper, Akari, Sudoku, Futoshiki, Calcudoku, Kakurasu, Star Battle
-(including the one-star Queens presentation), and Tents, then removes givens
-while the solution stays unique. Battleships
-builds a non-touching fleet on 4x4, 6x6, 8x8 or 10x10, derives its line totals,
-and removes shaped givens while the answer stays unique.
-Use `--stars 1` for the Queens presentation, or `--stars 2` (the default on
-boards of size 8 and larger) for a multi-star Star Battle.
-Boards with under a quarter of their cells open rate `trivial`. `audit`
-reports examples that share a solution or a layout (up to rotation,
-reflection and renamed regions) and gallery sections that are not listed from
-easier to harder. Tiers are estimates tied to this
-solver's rule ladder, not universal human-difficulty guarantees. Report gaps
-where a family's current solver cannot support a trustworthy tier. Murdoku
-continues to use its separate tools and skill.
-
-For a new family, add a parser/compiler, an independent backtracker in `src/csp/bruteforce/`, CLI and kind registration, a renderer (pieces as `icons.REGISTRY` entries) and picture test, small and larger unique examples, example soundness coverage, README/AGENT/skill documentation, and a line in the module-layer test. Use existing generic primitives; a new engine constraint requires a separate design issue.
+`web/`, `--export` bundles, the bundle schema and the player ground rules are in
+[Web interface](web-interface.md).
 
 ## Source layout
 
@@ -795,21 +457,6 @@ Continuous integration runs the same gates on Python 3.12 and 3.13. The tests ch
 
 Pictures have one renderer: `picture.py` draws every family on an `svg.Canvas`, and every other format derives from it. `--svg [FILE]` writes it (needs `uv sync --extra svg` for fonttools, which turns text into paths from the bundled Noto Sans subset, so output does not depend on installed fonts); `--png [FILE]` rasterises it with resvg (`uv sync --extra png`, no system libraries); `--docx` embeds the PNG. Each has three variants: blank, solution (the `-solution` file), and with `--svg --interactive` the blank board with a transparent `<rect id="r<row>c<col>" class="cell">` over every cell (r1c1 top left) for an app to fill in; the interactive variant never writes a solution picture.
 
-### Web bundles (`--export`)
-
-Peer groups may include a localized `description` of the rule they implement.
-The generic player uses these groups to explain conflicting placements or pencil
-marks by naming the other occupied cell, without consulting the hidden solution.
-It still allows mistakes; this feedback does not reject or correct placements.
-Players can disable this feedback with the Warnings toggle beside Auto-mark.
-Warnings default to on, including for previously saved games; each puzzle saves
-the choice independently of auto-mark, and clearing the board preserves it.
-
-`--export DIR` writes, per puzzle, `<stem>.svg` (the interactive board) and `<stem>.json`, plus `DIR/index.json` (`schema`, `license`, and one entry per puzzle with `id`, `number`, `section`, `title`, `family`, `familyLabel`, `size`, `grade`, `deductive`, `playable`, in reading order). `number` and `section` (bundles carry them too) come from `collection.arrange`, as in the booklet. A bundle holds `size` `[rows, cols]`; `palette` (items with `id`, `label`, `symbol`, optional `svg` and `description`); `placement` (`perItem` or `perCell`, and `blocked` cells); `autoMark` (`default`, `mark` — `cross` or, for Akari, `light` — and `onPlace` scopes: `row`, `col`, `region`, `neighbors4`, `neighbors8`, `king`, `knight`, `peers`, each optionally `whenFull: n`); `regions` when a scope needs them; `peers`, the groups of cells that hold a palette item at most once (each `cells`, plus `items` when it binds only some items), read by `web.peers()` from the model's at-most-one and exactly-one constraints, so the player needs no family rules for them; `notes: true` when the player offers pencil marks (digit families); `givens` and `solution` (cell id to palette id); and the reading text: `rules`, `clues`, `key` (`name`, `text`: the door/window/point symbols), `question`, `reveal` (the booklet's `Reveal:` text, which the player shows after "Solved!" or "Opgelost!"), `headings`, `attributes`, `roles`, `language`, `license`. `deductive` is `false` exactly for the puzzles no deduction path closes — the ones graded `what_if` — so an app can flag the beyond-deduction frontier. Families the player cannot yet play have `playable: false` and an `unsupported` reason. Murdoku `key` lists only the board symbols whose meaning is not in the rules; marks, roles, attributes, area tags and the dashed count ring are stated in the rules, listed separately or drawn on the board, and the picture legend underneath a booklet board is the same compact key. The player draws the same grey cross over a palette item that `placement.perItem: 1` shows as already on the board, but only while auto-mark is on; items that may appear more than once (`placement.perCell` boards such as Minesweeper or Star Battle) are never crossed.
-
-Each Murdoku `key` entry also includes the corresponding board symbol as `svg`. If windows with one name use both wall panes and separate icons, the key shows both.
-
-Pieces come from the icon registry in `icons.py`: each `Icon` has a name, a Unicode `symbol` used by the text boards (★ star, ▲ tent, ♣ tree, ✱ mine, ● bulb, ■ wall/shaded, ●/○ Binairo) and either an original vector shape or a vendored Noto Emoji. Murdoku objects and figure `icon=` names are looked up in `icons.CATALOGUE` (Dutch names plus English synonyms, or `U+<code>`); unknown or unvendored icons fall back to a text label and `--lint` warns. All artwork is vendored under `src/csp/assets/` at pinned commits with its licences (`NOTICE.md`); rendering never uses the network. To add a picture, add the name to `CATALOGUE` and run `uv run python scripts/vendor_emoji.py U+<code>`; `scripts/subset_font.py` rebuilds the font subset.
 
 ## Further engine work
 
