@@ -7,299 +7,103 @@ argument-hint: "Attach a puzzle image or specify a theme, size, clues, constrain
 # Murdoku Puzzle Assistant
 
 You prepare the file; the solver verifies it. Never call a puzzle verified on
-reasoning alone. Follow `AGENT.md` (branching, originality) and never overwrite
-an existing file. This skill is Murdoku-only: for other families use
+reasoning alone. Follow `AGENT.md` (branching, originality) and never overwrite an
+existing file. This skill is Murdoku-only; for other families use
 `docs/model-and-puzzle-formats.md` and never approximate them as Murdoku.
 
 **Let the repo do the searching.** Placements, uniqueness, clue thinning and
-grades are computed by repo tools (`uv run csp ...`, `csp.clue_search`), not by
-reasoning in the conversation or by throwaway scripts; see
-[Repo tools first](#repo-tools-first).
+grades come from repo tools (`uv run csp ...`, `csp.clue_search`), not from
+reasoning in the conversation or throwaway scripts.
+
+Clue and rule syntax: [Murdoku clue grammar](../../../docs/murdoku-grammar.md).
+File sections: [Model and puzzle formats](../../../docs/model-and-puzzle-formats.md#murdoku).
+Load these only when needed:
+[Reading a scan](references/reading-a-scan.md),
+[Fair clues and mysteries](references/fair-clues.md),
+[Clue recipes](references/clue-recipes.md),
+[Theme and pictures](references/theme-and-pictures.md),
+[Booklet and review](references/booklet-and-review.md).
 
 ## Workflows
 
+Detailed steps and traps: [workflow notes](references/workflow.md); file placement and full validation: [where files go](references/where-files-go.md), [validation notes](references/validation.md).
+
 **Transcribe an image** (photo or scan of an existing puzzle):
 
-1. First establish the user may reproduce it; a supplied image or ignored folder
-   is not permission. If unclear, stop and ask.
-2. Read the actual image at full resolution (zoom or crop; not OCR alone; never
-   fetch another version). Record size, regions, object footprints with their
-   **printed** kinds, people, board-wide rules and clues in printed order.
-3. Map each clue without changing its meaning. Before deciding one is not
-   expressible, follow the [recipe guide](#clue-recipe-guide) and the canonical
-   expression reference — most alternatives, counts, special-square and victim
-   forms compose from the same primitives. If one really is not
-   expressible, say so and ask; a partial file must be labelled incomplete.
+1. Establish that the user may reproduce it; a supplied image or ignored folder is
+   not permission. If unclear, stop and ask.
+2. Read the actual image at full resolution and record size, regions, objects with
+   their printed kinds, people, rules and clues in printed order; follow
+   [Reading a scan](references/reading-a-scan.md).
+3. Map every clue without changing its meaning. Compose it from the
+   [clue recipes](references/clue-recipes.md) and the grammar reference before
+   deciding it is unsupported; if it truly is, ask and label the file incomplete.
    Never approximate.
 4. Ask about unclear cells, names or words. Solver results may hint at a misread
-   but must not silently pick between readings. Do not alter clues to force
-   uniqueness or a grade; report what `--brute-force`/`--grade` say.
-5. Default path: git-ignored `proprietary puzzles/`. Keep transcriptions and
-   source images out of `examples/`, docs and commits.
-6. If the source shows a solution, cross-check it against the clues; report
-   disagreements instead of editing. A person on an object proves it standable;
-   an empty icon proves nothing.
+   but must not silently choose; do not alter clues to force uniqueness or a grade.
+5. Keep the transcription and source images in git-ignored `proprietary puzzles/`,
+   never in `examples/`, docs or commits.
+6. Cross-check a printed solution against the clues and report disagreements. A
+   person on an object proves it standable; an empty icon proves nothing.
 
 **Build from constraints** (original puzzle):
 
-1. Split the request into hard constraints (people, board facts, clue meanings,
-   size, features) and choices (theme, wording, grade); state the defaults you
-   chose. Accept plain-language clues; ask only when ambiguity blocks you.
-2. Use `N` people on an `N`×`N` board so every row and column holds exactly
-   one person. If a board must have fewer people, say in the `Intro:` which
-   lines stay empty and why; never leave it unexplained.
-3. Design the intended assignment first, then the board (areas, objects,
-   doors) around it, then the clues: let `csp.clue_search suggest` propose
-   them and `thin` remove the unneeded ones (see [Repo tools first](#repo-tools-first)).
-   Follow [Fair clues](#fair-clues) and, for a mystery,
-   [Late-reveal mysteries](#late-reveal-mysteries).
-   For a fresh board, start from `uv run puzzle-lab murdoku-board SPEC` (see
-   `specs/murdoku/vietnam-6x6.txt`): a short spec of size, areas, people, the
-   late figure with companions, objects and key clues gives ranked drafts
-   with an intended placement, contact sheets and a report of rejections.
-   Use `--avoid examples` to skip layouts already in the collection, including
-   rotated, mirrored or region-renamed copies. `--suggest` closes each kept
-   draft with `clue_search suggest` (late figure excluded, key clues kept
-   necessary, every other figure named via `--cover`, and `decor:` objects
-   omitted from clue suggestions) and reports clue count, grade and whether the
-   late figure is resolved last. Pick a draft that closes at the target grade
-   and passes the late-reveal check; a roomy late-figure area often lets a
-   companion and the late figure swap and never closes. An object line ending
-   in `across` (a tunnel, a bridge) straddles one border between exactly two
-   areas. Pick one, then thin and check as above.
-4. Render the puzzle and solution PNGs and get an independent, image-based
-   critique from another LLM (see [Independent visual critique](#independent-visual-critique)).
-   Review the suggestions against the user's constraints; incorporate useful
-   changes and rerender.
-5. Add the booklet text ([Booklet text](#booklet-text)) once the clues are final,
-   then run [Validation](#validation) and the [completion checklist](#completion-checklist).
+1. Split hard constraints (people, board facts, clue meanings, size, features) from
+   choices (theme, wording, grade); state the defaults you chose and ask only when
+   ambiguity blocks you.
+2. Use `N` people on an `N`×`N` board so every row and column holds exactly one. If
+   the board needs fewer people, say in `Intro:` which lines stay empty and why.
+3. Design the intended assignment, then the board, then the clues. Use
+   `csp.clue_search suggest`/`thin` and `uv run puzzle-lab murdoku-board SPEC`
+   (`--avoid examples`, `--suggest`); follow
+   [Fair clues and mysteries](references/fair-clues.md) and
+   [Theme and pictures](references/theme-and-pictures.md).
+4. Render the puzzle and solution PNGs and get an independent image critique; see
+   [Booklet and review](references/booklet-and-review.md).
+5. Add the booklet text last, then run [Validation](#validation) and the
+   [completion checklist](#completion-checklist).
 6. Never copy a published board, clue set, story or solution.
 7. If requirements conflict, explain instead of dropping one.
 
-When both are given, transcribe first, then build a separate derived puzzle.
-
-## Reading a scan
-
-Transcribing starts with pixels, and the pixels are the hard part. `csp.scan`
-(`uv sync --extra scan`; the solver itself needs neither numpy nor opencv) does
-the measuring; this is the order to do it in, and the traps that each cost a day
-when you meet them alone.
-
-Start with the CLI rather than with code:
-
-```bash
-# grid, pitches, tiles and a labelled contact sheet
-uv run python -m csp.scan PAGE.png --size 10 --tiles /tmp/cells --sheet /tmp/sheet.png
-# which cells repeat one example, and what the page says
-uv run python -m csp.scan PAGE.png --seed r3c5 --top 12
-uv run python -m csp.scan PAGE.png --ocr --ocr-language nl+en
-```
-
-1. **Text first, and OCR is not optional.** `scan.ocr(path)` returns `(text, box)`
-   lines with normalised boxes (origin bottom-left) through macOS Vision (pyobjc)
-   or pytesseract elsewhere (its words are grouped back into lines, so both
-   backends answer the same thing). Pass `language="nl+en"` to `ocr` or
-   `--ocr-language nl+en` to the CLI to select Dutch and English; tesseract needs
-   the corresponding `nld` and `eng` language data installed. Without a language,
-   Vision uses both while tesseract uses its default (typically English).
-   Whole-page OCR reads the big labels; the small
-   hand script on the figure cards needs a **2–5x zoom crop per band or per
-   column**, or it hands back fragments ("as nog een" for "Was nog een"). Crop with
-   a rectangle in the same normalised coordinates and OCR the crop.
-2. **A photographed page is not a uniform grid, and it is not axis-aligned.** Pitch
-   varies by ten per cent across one spread (260 px to 320 px measured), so an
-   assumed pitch drifts a whole cell over ten columns. Detect the lines instead:
-   `scan.find_grid` thresholds, isolates long dark runs by morphology, clusters
-   them, and fits `size + 1` candidates to each axis. It **refuses** (with advice)
-   when no grid fits, several grids fit, or the page is tilted by more than two
-   degrees. It does not deskew, so crop and rotate the board upright first. The
-   detection is heuristic: compare `Grid.x`/`Grid.y` and their differences against
-   the original image before trusting anything downstream.
-3. **Normalise before comparing.** `scan.tiles` resizes each cell to
-   `scan.CELL_TILE`; the printed icon scales with its cell, so raw crops never
-   compare across the board.
-4. **Match icons; do not try to classify them.** `scan.rank_cells(tiles, seed)`
-   ranks all cells against one example, masked to the icon by `scan.icon_mask` and
-   searched over a few pixels of offset. Unmasked correlation ranks *floors*: two
-   tables on different floors score worse than a table and a chair sharing one
-   floor. Repeated stamps (board symbols, identical icons) rank cleanly at the top;
-   hand-varied drawings (a carpet spanning five cells, a chair drawn at two angles)
-   do not — say so rather than guessing.
-5. **Measurement cannot name a shape.** Colour histograms, connected components and
-   template matching tell you *which cells repeat*, never *what a shape is*. Ask for
-   one example cell per kind, or for the lists of object and mark cells. Never
-   invent a cell so that the clues parse: a placeholder board labelled as such in
-   the header is acceptable, a silent guess is not.
-6. **Hand a person a contact sheet.** `scan.contact_sheet(tiles, path)` writes every
-   tile with its cell name — the fastest review loop with the user ("r5c3 is a
-   chair, r7c2 is not").
-7. **Watch the page edges.** Book scans are cropped at the gutter as often as not:
-   the first letters of a card and the start of a global clue go missing. Report
-   which words are missing instead of reconstructing them, and record it in the
-   file header.
-8. **Never commit a scan.** Scans, crops and contact sheets stay in the git-ignored
-   `proprietary puzzles/`. Tests for this module draw their own board
-   (`tests/test_scan.py`); no proprietary pixel enters the repository.
+When both an image and a request are given, transcribe first, then build a
+separate derived puzzle.
 
 ## Repo tools first
 
-Agent tokens are expensive and the solver is fast. Search with the repo, read
-its short output, and decide:
-
 | Need | Tool |
 |---|---|
-| parse, solution count, grade, issues | `uv run csp FILE --show-model`, `--brute-force`, `--grade`, `--lint` |
+| parse, solutions, grade, issues | `uv run csp FILE --show-model`, `--brute-force`, `--grade`, `--lint` |
 | worked solution, reveal order | `uv run csp FILE --explain` |
-| a person's live squares while solving | `uv run csp FILE --track-person P` |
-| clues that make an intended placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` |
-| ... while clue N (the theme's key clue) stays necessary | add `--needs N` to `suggest` (several numbers: each stays necessary) |
-| ... while marked-cell occupancy rules stay necessary | add `--needs-mark quiet social` to `suggest` or `ease` (one or more mark names) |
-| ... so every figure (outside `--exclude`) gets a clue | add `--cover` to `suggest` |
-| which object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
-| drop unneeded clues within a grade | `uv run python -m csp.clue_search thin FILE --max-grade G` |
-| which clues are redundant | `uv run python -m csp.clue_search report FILE` |
-| draft boards (areas, objects, colours, intended placement) from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--suggest` adds closing clues and checks the late reveal; `--avoid examples` skips existing layouts; `decor: tunnel` omits an object from clue suggestions) |
-| pictures, booklet | `--png`, `--docx` (`--nosolution` for the puzzle only, no solve) |
-| read a scan: text, grid, cell tiles, which cells repeat an icon | `uv run python -m csp.scan PAGE --size N --tiles DIR --sheet FILE --seed r3c5 --ocr` (`uv sync --extra scan`; see [Reading a scan](#reading-a-scan)) |
+| a person's live squares | `uv run csp FILE --track-person P` |
+| clues that make a placement unique | `uv run python -m csp.clue_search suggest FILE --solution "..."` (`--needs N`, `--needs-mark quiet`, `--cover`) |
+| object squares the allowed placements use | `uv run python -m csp.clue_search occupancy FILE` |
+| drop or report redundant clues | `uv run python -m csp.clue_search thin FILE --max-grade G`; `report FILE` |
+| draft boards from a spec | `uv run puzzle-lab murdoku-board SPEC` (`--avoid examples`, `--suggest`) |
+| pictures, booklet | `--png`, `--docx` (`--nosolution` skips solving) |
+| read a scan | `uv run python -m csp.scan PAGE --size N --tiles DIR --sheet FILE --seed r3c5 --ocr` |
 | new emoji | `uv run python scripts/vendor_emoji.py U+XXXX` |
 
-- Do not solve, enumerate placements or test clue subsets by hand or with
-  one-off code in `/tmp`. If a search you need is missing, add it to the repo
-  as a reusable, tested option (for example in `src/csp/clue_search.py` or the
-  `csp` CLI), document it here, and ship it in its own commit or PR.
-- Run tools with a timeout and do not re-run a long command to see more output;
-  read its saved output instead. Prefer `tail`/`grep` over whole outputs.
-- When a tool reveals an engine problem (a crash, English engine words in Dutch
-  prose, an awkward generated sentence), fix it in `src/csp/` with a test
-  rather than working around it in the puzzle.
-
-## Fair clues
-
-Clues should read like a detective's notes, not like arithmetic.
-
-- **Prefer areas, objects and simple relations:** `P in area:name`,
-  `P beside object:bench` / `not P beside object:bench`,
-  `P on object:chair`, `A dir:areas B = 0`, and `A dir:left B`.
-- **Use exact numbers sparingly**: at most one or two directional distances,
-  line/area counts, or other numeric clues per puzzle, and only when they read
-  naturally. `A dir:manhattan B ...` counts row-plus-column steps; `dir:euclidean`
-  is straight-line distance. The [grammar reference](../../../docs/model-and-puzzle-formats.md#murdoku)
-  defines every mode and comparison.
-- Never hand out a square outright (`P in rows:2` + `P in columns:3`, or a first clue
-  that pins someone) unless an easy puzzle is wanted.
-- **Multi-square objects:** someone on one selected cell may also be `beside`
-  another cell of that footprint. Check generated wording against that meaning;
-  use `on` when occupancy itself is intended. Keep explicit `| wording`
-  overrides authoritative.
-- **Read every generated clue as a player would** (`clue_paragraphs`, `--docx`)
-  and ask whether another reading of the sentence allows other squares. If it
-  does, fix the generated expression wording with a test; do not
-  redesign the board or swap a multi-square object for single squares.
-- **Features and their occupants are different operands.** `object:bench`
-  names the feature even when blocking; `(people on object:bench)` names its
-  occupants. `not P dir:king object:bench <= 1` excludes its footprint and all eight neighboring
-  squares, including diagonals and neighbors across area borders. Keep that
-  distinction explicit in generated clues.
-- Every clue must be needed: `thin` and `report` show which are not; `--lint`
-  flags implied and redundant clues.
-- **The theme's key clue must do work.** Global counts and greedy suggestions
-  easily make a themed clue (the bathrobe/slippers clue, a stated trait)
-  redundant. Check it with `report`; if it is removable, rebuild the other
-  clues with `suggest --needs N`, or drop clues that `report` shows are fully
-  redundant until the themed fact is needed. A fact stated in the intro must
-  be needed too.
-- **Decoys raise the grade.** Extra items let a key clue fit more than one
-  pair of squares; even an impossible pair (both squares in one column) can
-  force `what_if`. For an easy puzzle, place decoys so the key clue fits
-  exactly one pair, and read `--explain` to see which step is hard.
-- Do not name the answer of a "who wears it?" puzzle in a clue: leave `on`
-  out of `suggest --kinds` when it would hand out the item's owner.
-- **Decoys must be usable.** A decoy on a square no allowed placement can use
-  changes nothing, and the key clue is then redundant from the start. Take the
-  decoy squares from another legal placement of the people (solve the board
-  without items and clues), then confirm with `occupancy` that every item
-  square is sometimes used. Also check that some placement breaks the key
-  clue; a clue that every item pairing satisfies can never matter.
-- **Easing a garment puzzle:** deciding which of two identical items is worn
-  is case analysis (`what_if`). Name one wearer directly ("Daan heeft een
-  zonnebril op") or pair a person with an item ("Noor staat rechts van de gast
-  met de badjas") to bring the grade down while the key clue stays needed.
-- **A rule can be the key fact.** To keep a board rule necessary (Wouter's
-  partner wears a bathrobe), move it into the clues while searching, run
-  `suggest --needs` on it, then move it back to `Rules:`.
-- **Declutter.** Standable objects no clue mentions never change the
-  solution, and many blocking objects are interchangeable; remove clutter that
-  is not part of the theme, re-checking uniqueness, grade and key clues after
-  each removal. Keep the objects that carry the series' story.
-- Every person except the late-reveal one gets at least one clue.
-- Ground clues in the board's story: the clock on the platform, the bench in
-  the coupé, the window of the locomotive.
-
-## Late-reveal mysteries
-
-In a mystery the answer (murderer, victim, eater, carer) is the **last
-candidate**, deduced from board-wide rules, never told.
-
-- **No direct giveaways.** No `P is role:murderer` clue about the answer, and
-  the answer person appears in no clue (`suggest --exclude P`). Only `Rules:`
-  speak about them.
-- **Encode the story as rules**, not as a hint. For example: the murderer is a
-  woman (`Attributes:` + `RoleEligibility: moordenaar: attribute:vrouw`), was at
-  the crime scene (`AreaTags: plaats_delict: coupe_2` +
-  `every ?a in tag:plaats_delict: some role:moordenaar in ?a`)
-  and was not alone there
-  (`every ?a in (area of role:moordenaar): count (people in ?a) >= 2`).
-  Mention these rules in the `Intro:`.
-  For the classic victim pattern use `count (people in area of P) = 2`.
-- **Exactly one answer must follow.** Check with `--brute-force` (one
-  solution, one role holder) and read `--explain`: the answer should become
-  known by elimination ("De moordenaar was op de plaats delict, dus …") as late
-  as possible, ideally with the last placements. Until then the person keeps
-  ≥ 2 live squares and ≥ 2 companion candidates (`--track-person P`).
-- **Hide the answer in pictures.** The puzzle legend never names the holder:
-  when the open candidates share an attribute it says so ("Moordenaar: een
-  vrouw"); only the solution picture names them. Check with `--png`. Figure
-  descriptions must not hint at the role.
-- **"Who wears it?" is the same shape.** A standable garment with no clue of its
-  own answers it: put the garment on the square of the person with no clues and
-  check with `--explain` that this person is placed last, so the `Reveal:`
-  ("Sora heeft de jumpsuit aan.") is the final deduction. A
-  `count people on object:<garment> = 1` rule tells the solver the square is
-  occupied and pins the wearer early, so leave it out and let the `Intro:` say
-  that standing on the garment means wearing it.
-- **Population clues need squares that can change area.** Comparisons between
-  area populations and `count (people in area:Tokyo)` constrain which *squares* are
-  used, not who stands on them, so a puzzle whose people are each anchored to a
-  square implies them and `report` calls them removable. Two people swapping
-  two squares never changes a count: leave a row/column whose cells straddle an
-  area border (a staircase border is ideal) and re-run `report`, which must say
-  "several" for each population clue you want load-bearing.
+- Do not solve or test clue subsets by hand or with one-off `/tmp` code. Add a
+  reusable, tested repo option instead, document it here, and ship it separately.
+- Run tools with a timeout and read saved output rather than re-running a long
+  command; prefer `tail`/`grep`.
+- Fix engine or wording problems in `src/csp/` with a test, not in the puzzle.
+- `suggest` only proposes simple named-person location, line and direction
+  templates. Author unions, projections, counts, quantifiers and set comparisons
+  from the [clue recipes](references/clue-recipes.md), then lint and brute-force.
 
 ## Where files go
 
-- `examples/<category>/` for played puzzles. The folder is the category shown
-  in the web player and the `--docx` booklet (kebab-case, e.g. `japanese-food`,
-  `dierentuin`). Pick an existing category or add one; `demo/` holds small
-  showcase boards. `--docx "examples/**/*.txt"` numbers puzzles in a fixed order.
-- `tests/puzzles/` for test-only puzzles that are not meant to be played.
-- New examples need `uv run pytest -q` to pass (tests look them up with
-  `tests/examples.py` `example(name)`, so file names must be unique).
-- Keep tests quick: run `pytest --durations=10` after adding one. Tests of the
-  search tools (`suggest`, `thin`, `report`) use the smallest puzzle that shows
-  the behaviour and a small `sample`; build the whole booklet in one test only.
-  When a test is slow, profile before trimming it: the cause may be a hot spot
-  in shared code (as with recomputed count cells in brute force).
-- One canonical file per puzzle: never leave a second copy elsewhere, and
-  never commit generated `.png` or `.docx` files.
-- List new examples in `docs/puzzle-collection.md` (Murdoku overview, with size
-  and grade). Re-export the web collection and check its category, number, and
-  puzzle link. The index shows one representative thumbnail per Murdoku
-  category/series, not an image per puzzle or one for all Murdoku. Each row
-  pairs that unsolved `static` SVG with compact links in one or two columns;
-  do not add a separate manual gallery or a solution preview.
-- Keep a puzzle PR focused: engine, icon and wording changes the puzzle needs
-  may come along (with tests); unrelated refactors and skill rewrites go in
-  their own PR.
+- `examples/<category>/` for played puzzles; the folder is the category in the web
+  player and booklet. Use an existing category or add one; `demo/` holds showcase
+  boards.
+- `tests/puzzles/` for test-only puzzles; new examples need unique names because
+  tests look them up by file name.
+- Write new examples and their size/grade into `docs/puzzle-collection.md`;
+  re-export the web collection and check its category, number and link.
+- One canonical file per puzzle; never commit generated `.png` or `.docx` files.
+- Keep a puzzle PR focused; engine, icon and wording fixes may come along with
+  tests, but unrelated refactors and skill rewrites go in their own PR.
 
 ## Validation
 
@@ -307,36 +111,26 @@ Run from the repo root, one option at a time:
 
 ```bash
 uv run csp FILE --show-model   # parses and compiles
-uv run csp FILE --brute-force  # 0, 1 or many solutions; generated puzzles need exactly 1, in < 5 s
-uv run csp FILE --grade        # hardest deduction rule used, or "unsolved"
-uv run csp FILE --lint         # missing icons, unknown figures, implied/redundant clues, unused roles
-uv run csp FILE --png /tmp/x.png   # look at puzzle and -solution picture
+uv run csp FILE --brute-force  # 0, 1 or many; generated puzzles need 1, in < 5 s
+uv run csp FILE --grade        # hardest rule used, or "unsolved"
+uv run csp FILE --lint         # declarations, expressions, icons, roles, redundancy
+uv run csp FILE --png /tmp/x.png   # look at the puzzle and -solution picture
 ```
 
-- Give each uniqueness check and grading solve (also in clue-thinning loops)
-  a separate hard timeout of a few seconds; treat a timeout as "not good
-  enough", never wait minutes.
-- Uniqueness is relative to the implemented clue semantics; it proves neither a
-  correct transcription nor faithful wording. Grades are this solver's ladder
-  (`single` < `count` < `relations` < `subsumption` < `cover2` < `cover3` <
-  `chains` < `what_if`), not universal difficulty. `--require-forward` forbids
-  `what_if`.
-- `--track-person P` shows a person's live squares and companion candidates.
-- `count` also uses whole variables confined to a counted area and reserves the
-  shared capacity of disjoint areas in one family. A puzzle like
-  `examples/japan/samen-onderweg.txt` needs no `what_if`: Mio on the bank and
-  Keiko beside the lantern give Osaka two, the busiest clue gives Tokyo three,
-  and five travellers leave Okinawa empty. When a population clue grades
-  `what_if`, check whether that capacity argument should close it before adding
-  decoys or loosening clues.
-- `--brute-force` must finish in < 5 s for a generated puzzle; if not, add
-  clues or shrink the board. `clue_search` runs every solve with `--timeout`.
-- For a transcription, `--brute-force` and `--grade` are diagnostics: report
-  them and compare with the image; never change clues to force a result.
-- Report path, parse result, solution count, actual grade, intended solution and
-  open doubts. Do not claim a grade `--grade` did not print. Never weaken
-  checks or change clue semantics to make a puzzle pass; engine fixes come
-  with a test (see [Repo tools first](#repo-tools-first)).
+- Give each uniqueness or grading solve a hard timeout of a few seconds; a timeout
+  is "not good enough", never wait minutes.
+- Uniqueness is relative to clue semantics; it proves neither a correct
+  transcription nor faithful wording. `--brute-force` uses the reference evaluator,
+  independently of the lowering the solver uses; a disagreement is a compiler bug:
+  fix `murdoku_lower` with a test, not the puzzle.
+- Grades are this solver's ladder (`single` < `count` < `relations` <
+  `subsumption` < `cover2` < `cover3` < `chains` < `what_if`).
+  `--require-forward` forbids `what_if`.
+- `--lint` reports unknown names, mixed-sort unions, bad modes or measures,
+  infeasible counts, impossible relations and legacy forms with line and column.
+  Fix the expression; never add a second reader.
+- For a transcription, report `--brute-force` and `--grade` as diagnostics and
+  compare with the image; never change clues to force a result.
 
 ### Completion checklist
 
@@ -344,300 +138,11 @@ For a finished Murdoku under `examples/`, before reporting done:
 
 - `--brute-force`: exactly one solution; `--grade`: the target (or the actual
   grade, reported as such); `--lint`: no issues.
-- Clues thinned (`clue_search thin`); few exact-number clues; no giveaway.
-- For a mystery: `--explain` reveals the answer by the rules, late.
-- `--png` looked at (puzzle and solution), independently critiqued, and useful
-  visual suggestions considered; `--docx` page check for booklet text. Look at
-  the pages themselves: `--pdf FILE` (via Word) and `pdftoppm -png` give images.
-- The picture legend and booklet rules show no engine syntax (`count people
-  on object:...`); author wordings appear on player pages, never in solutions.
-- The themed key clue is necessary (`report`), and the series order follows
-  `--grade`; report any conflict with the requested order instead of hiding it.
-- An independent clue review used only player-facing material; each clue was
-  restated as a constraint, alternate readings were checked, and solvability
-  findings were verified against the source and rendered clue count.
-- `docs/puzzle-collection.md` updated; `uv run pytest -q` and `ruff` pass.
-- Report path, solution, grade and any open doubts.
-
-## Theme, objects and pictures
-
-- **Objects fit the theme and their region.** A savanne has acacias, baobabs and
-  grass; mountains have rocks, a hut, a waterfall; a Japanese restaurant has
-  tatami, zaisu and plates; a garden has a park bench. Check every object
-  against the region it sits in.
-- **Region colours mean something and stay consistent** across a series
-  (desert sandy yellow, swamp green-brown, mountains grey-white, water blue,
-  forest green). Keep neighbours distinguishable. Use plain region names
-  ("Garden", not "Green garden"); a name that does mention a colour must match
-  its background (`tests/test_solver.py` checks this).
-- **Order a numbered series by measured difficulty.** Run `--grade` on every
-  candidate and place simpler puzzles before harder ones, numbering the files
-  in that order (`zoo-murdoku-1`, `-2`, ...; unnumbered series such as `demo`
-  use `murdoku_1_first_case`). Update all numbered links, tests, pictures,
-  booklet references and story titles ("the first case") when inserting or
-  swapping a puzzle. Compare solved
-  boards across the series too: avoid repeating the same placement pattern or
-  a trivially rotated/reflected layout. `uv run puzzle-lab audit examples`
-  checks both for the whole collection. Every series gets the same measured
-  difficulty-order check; do not hardcode category exemptions. Report a
-  story-order conflict rather than silently bypassing the audit or renumbering
-  an owner-authored story without approval.
-- **Items whose owner must be deduced lie on the board.** When the puzzle is
-  "who wears the bathrobe?", draw the items as standable objects at fixed
-  squares (more items than wearers) and state the totals as `Rules:` counts
-  (`count people on object:badjas = 2`). Standing on the square means wearing
-  it. Use `Attributes:` only for traits the player is told up front; the
-  legend then lists the holders with the trait's icon.
-- Avoid duplicate category lines in the legend: when a fixed role has the same
-  name and exactly the same members as an attribute, show the role line only.
-  Keep the attribute line when roles are hidden or the membership is not
-  provably identical.
-- **Filtered people on both sides** of a relation say "somebody X ... somebody
-  Y": `some (people on object:badjas) dir:up (people on object:sloffen) = 1` is
-  "one bathrobe wearer is
-  exactly one row above the slippers wearer". When both selectors name cells
-  the engine reasons over squares, as a person would.
-- **Backdrops and decorations** are cosmetic (`Backdrop:` one icon behind the
-  board, `Decorations:` icons at anchors); they never change the solution.
-  Give a series one backdrop. Only a thin ring around the board shows, so pick
-  pictures recognisable by their outline: fork and knife at the sides, a
-  locomotive's smoke and wheels, a lion's mane. Faces, logos, box contents and
-  plain convex shapes (egg, bento, a white bathrobe) read as blobs. When no
-  emoji works, draw an original SVG with `bounds` (the part behind the board)
-  so ears, steam or a key ring stick out above it (see `TORTIE_CAT`). Keep
-  eyes and stems off the coordinate line, and get an independent visual review
-  of the whole set.
-- If a visualization or authoring step is useful beyond one puzzle, prefer a
-  shared renderer, helper, `clue_search` option or skill improvement over a
-  puzzle-specific workaround.
-- The picture labels each region with its name and draws standable objects
-  faint; blocking squares are shaded darker. The booklet and web player list
-  the puzzle's objects with icon and standable/blocking. You need not add these.
-- **Icons:** every object, point object, edge item and figure needs a real
-  picture; `--lint` reports "missing icon"/"unknown icon".
-  1. Reuse a `CATALOGUE` name in `src/csp/icons.py`, or add the Dutch name and
-     English synonyms there. Figures may use `icon=U+XXXX`.
-  2. Vendor new emoji only with `uv run python scripts/vendor_emoji.py U+XXXX`
-     (pinned Noto commit; commit the SVG and `bounds.json`). No third-party art.
-  3. If no emoji fits, draw an original SVG in `icons.py`, register it in
-     `REGISTRY` and map names in `OBJECT_ICONS` (see `tatami`, `bench`).
-  4. Render and look: the icon must read at cell size and on dark shading.
-     Multi-square objects are stretched across the footprint; names in
-     `picture.SEAT_NAMES` (benches) keep proportions instead.
-
-## Independent visual critique
-
-For every newly authored board or substantial layout/theme change, ask a
-second, image-capable LLM to inspect the rendered puzzle and solution PNGs.
-Provide the actual images (not only the puzzle text or file paths) and the
-user's hard layout constraints. Ask for actionable feedback on circulation,
-area boundaries, floor/room coherence, object-to-area fit, icon legibility,
-and consistency across a series.
-
-Treat this critique as suggestions, not authority. Check each point against
-the requested design and puzzle rules before changing anything; for example,
-do not add lift stops on guest-room floors if the user specified otherwise.
-Apply useful suggestions, rerender, and inspect the revised images yourself.
-If no independent image-capable reviewer is available, state that limitation
-instead of presenting a text-only review as visual feedback.
-
-## Independent clue review
-
-For every newly authored puzzle, ask a fresh, independent LLM/session to review
-only the player-facing puzzle. Give it the intro, legend, numbered rendered
-clues, question, and either the player-facing web puzzle or puzzle-only DOCX
-pages. Do not provide the puzzle definition, source file, solution, solution
-image, answer, or author solving notes; omit a `Reveal:` that names the answer.
-The reviewer must restate each clue as a constraint, flag plausible alternate
-readings, and assess whether and how the puzzle can be solved from the supplied
-material. Ask it to identify missing or ambiguous clues without guessing at
-hidden source details.
-
-Treat review findings as hypotheses. If the reviewer reports a missing clue or
-an unsolvable puzzle, verify the source clue list and count the rendered clue
-lines before accepting the finding, then check it against the solver. Route
-wording fixes through `src/csp/story.py` with regression tests. If an
-independent reviewer is unavailable, state that limitation rather than
-claiming a review was completed.
-
-## Clue recipe guide
-
-Follow the murdoku.fans transcription method: identify the **subject**, the
-**relation**, any **qualifier**, and its **scope**, then write one **yes/no
-test**. Compose; do not add a keyword.
-
-1. Decide whether each noun names people, features, cells, lines, areas or roles.
-   The person on a horse is `(people on object:horse)`, not the horse itself.
-2. Select the operands. Use a union for alternatives, a filter for a restricted
-   set, and a projection for its areas, rows or cells.
-3. Make quantities explicit. A multi-element left operand needs `some`, `every`
-   or `no`; bind `?` variables when the same entity must be reused.
-4. Preserve scope. "Not near any dish" negates the whole near relation; saying
-   "far from some dish" is weaker. "Exactly these people" needs set equality,
-   not merely a total.
-5. Test a placement that should satisfy the card and one that should not,
-   against the reference evaluator. Then run lint, uniqueness and grade checks.
-   A unique answer does not prove a faithful transcription.
-
-These are composition recipes, not additional grammar:
-
-| Printed card | Statement(s) |
-|---|---|
-| One row above an empty row | `P dir:up empty rows = 1` |
-| In a bed; the other bed is in an empty row | `P on object:bed`; `every ?b in object:bed: P on ?b or ?b in empty rows` |
-| Someone one row above her is beside a chest | `some (people beside object:chest) dir:up P = 1` |
-| Top or bottom row; the other is empty | `P in rows:1,last`; `count (people in rows:1,last) = 1` |
-| Beside a plant | `P beside object:plant` |
-| South of B; exactly one row south | `P dir:down B`; `P dir:down B = 1` |
-| Three columns west of B | `P dir:left B = 3` |
-| Northeast of B | `P dir:up+right B` |
-| On B's diagonal | `P dir:diagonal B` |
-| First column / bottom row / fifth row | `P in columns:1` / `P in rows:last` / `P in rows:5` |
-| The only person on a carpet / beside a table | `(people on object:carpet) = P` / `(people beside object:table) = P` |
-| At least two people in the dining room | `count (people in area:dining) >= 2` |
-| A and C alone together in the changing room | `(people in area:changing) = A, C` |
-| Not in water, but beside it | `not P in area:water and P beside area:water` |
-| Before or after Hole 5 in playing order | `P on object:hole4,hole6` (the author resolves the order) |
-| Not with the outlaw | `not P dir:areas role:outlaw = 0`; add `not P is role:outlaw` only if membership is also excluded |
-| With a man and the only woman on a chair; J is not on a chair | `some attribute:man dir:areas J = 0`; `count (attribute:woman on object:chair) = 1`; `some (attribute:woman on object:chair) dir:areas J = 0`; `not J on object:chair` |
-| Nearest the piano | `P dir:nearest object:piano` |
-| Between Ada and the statue in one row | `(Ada dir:left P and P dir:left object:statue) or (object:statue dir:left P and P dir:left Ada)`; `P dir:rows Ada = 0 and P dir:rows object:statue = 0` |
-| The murderer shares the victim's room, with nobody else | `(people in area of role:victim) = role:murderer, role:victim` |
-| Every woman is on a chair | `every attribute:woman on object:chair` |
-| Every woman is in a different room | `every ?p, ?q in attribute:woman: ?p dir:areas ?q >= 1` |
-| If Ada is in the kitchen, Ben is not | `if Ada in area:kitchen then not Ben in area:kitchen` |
-| Cook or Butler is on a rug, but not both | `exactly 1 of (Cook on object:rug; Butler on object:rug)` |
-| Two rooms beside the hall are empty | `count (empty areas touches area:hall) = 2` |
-| No empty row between occupied rows | `no ?r in empty rows: some occupied rows dir:up ?r and some occupied rows dir:down ?r` |
-| Someone west of the whole river | `some ?p in people: every ?c in (cells in area:river): ?p dir:left ?c` |
-
-**Worked quantifier transcription.** "Ada lies in a bed; the other bed is in
-an empty row" names bed instances, not all bed squares as one anonymous set.
-Write `Ada on object:bed`, then
-`every ?b in object:bed: Ada on ?b or ?b in empty rows`.
-The bound `?b` is reused in both alternatives. Check a layout where Ada uses
-one bed and every unused bed lies entirely in an empty row; moving another
-person into an unused bed's row must fail. If the card says "the other bed",
-first verify the board actually has two bed instances.
-
-**Worked set-equality transcription.** "Ada and Carmen are alone together in
-the changing room" is `(people in area:changing) = Ada, Carmen`.
-It both requires their presence and excludes everyone else. Check that either
-person leaving the room, or a third person entering, makes the statement false.
-`count (people in area:changing) = 2` alone would not identify the pair.
-
-For a card meaning the **strict interior of the rectangle** between Ada and a
-statue, combine horizontal between-ness with its vertical counterpart:
-`((Ada dir:left P and P dir:left object:statue) or (object:statue dir:left P and P dir:left Ada)) and ((Ada dir:up P and P dir:up object:statue) or (object:statue dir:up P and P dir:up Ada))`.
-Do not silently substitute this for inclusive edges or an aligned-row reading.
-
-## Canonical grammar
-
-The [Murdoku section of the format guide](../../../docs/model-and-puzzle-formats.md#murdoku)
-is the single reference for file sections, selectors, clue and rule syntax,
-semantics, and migration history. The reader accepts canonical forms only;
-do not use legacy examples from old puzzles or add a second syntax summary here.
-Before treating a clue as unsupported, compose it using the recipe above and
-the guide's operand and formula rules. If no expression captures it, report the gap rather than
-approximating the clue.
-Object, edge, point, mark, role, attribute, and area-tag semantics are defined
-there as well. Use the parser and `--lint`; never infer behavior from names or
-pictures.
-
-## Booklet text
-
-Presentation only; the solver ignores it. Add it last, in the puzzle's
-`Language:` (`en`/`nl`), after `Clues:`:
-
-The DOCX/PDF booklet and web player automatically remind players that only the
-stated rules and clues determine what is possible; a kind or trait matters only
-when a rule or clue explicitly uses it. Do not duplicate this note in each
-puzzle's `Intro:`.
-
-```
-Title:
-Japanese Food Murdoku 6x6: Five dishes, one wolverine
-Intro:
-2-3 lines of story and rules (puzzle and solution must each fit one page).
-Figures:
-Name: meaningful description ; icon=U+1F35C
-Question:
-One sentence; the late-reveal person is asked about here, never in Clues:.
-Reveal:
-One or two lines, true for the verified solution (check against --explain).
-```
-
-- No numbers like "0" in titles; the booklet numbers puzzles.
-- Figures: give everyone an icon. Leave the description empty (`Name: ; icon=...`)
-  rather than a role-only filler like "a suspect", "the victim" or "een dier".
-  The booklet combines portraits, bold names, descriptions and unnumbered clues
-  under "The figures and their clues" / "De figuren en hun aanwijzingen".
-  Everyone appears, even without clues; global and loose clues follow under
-  "Other clues" / "Overige aanwijzingen". Ownership comes from clue semantics,
-  so a custom wording need not start with the owner's name.
-  Puzzle-specific `Rules:` statements join these entries too, under their
-  semantic subject or the sole named figure anchoring a compound rule;
-  otherwise they join "Other clues". Keep `Intro:` as written. The game-rules
-  panel adds semantic clarifications and the disclaimer, not another list of
-  puzzle-specific statements. Standard no-own-clues notes are hidden when a
-  figure has a displayed rule or clue, preserving the rest of the description.
-- `clue | wording` overrides one generated sentence; it must mean exactly the
-  clue. Use it only where the generated text reads badly or for flavour. A
-  `Rules:` line takes `| wording` too; it is then listed with the figure's
-  clues (or "Other clues") in the booklet and web player and used in the picture legend. Author wordings are
-  for players only: worked solutions always keep the generated text.
-- `Words:` fixes phrasing: region phrases (`moeras: in het moeras`,
-  `kantoor: op kantoor`), object nouns with their article (`gras: het gras`,
-  `bed: het bed`; the Dutch default is "de"), and `role_has`, `role_not`,
-  `target.attribute` so roles that are really kinds read naturally
-  ("Makaak is een aap"). Dutch region phrases are lower case. Give people that
-  are things or animals a display name with article (`Leeuw: de leeuw`).
-- Keep descriptions useful and concise; avoid repeating clues, roles or rules.
-  Preserve supplied information, especially meaningful late-reveal descriptions,
-  when changing presentation. A `Reveal:` names the answer, checked against the solve
-  (e.g. the late-reveal companion); never point to text that is not printed.
-- A series (same folder) shares one title pattern; each puzzle gets its own
-  subtitle and its own `Reveal:`.
-- Mystery questions and reveals must identify the requested role explicitly
-  ("Who is the murderer?", "Carmen is the murderer"), not rely on an action
-  such as "struck with" that can confuse attacker and victim. Explain the
-  answer using the encoded trait and crime-scene rules. Never infer a named
-  victim from room-sharing alone: name one only when the puzzle explicitly
-  establishes that identity. Review the whole series for the same ambiguity
-  and check the wording reaches both the web verdict and booklet solution.
-- Check `uv run csp FILE --docx /tmp/check.docx` (needs `uv sync --extra docx`):
-  one page per puzzle and solution, correct Dutch de/het, legible board. Add
-  `--nosolution` to read only the puzzle pages of a puzzle the rules do not
-  close yet. Never commit `.docx` files. Format details: `docs/model-and-puzzle-formats.md`.
-
-### Feeding lessons back
-
-When an authoring session uncovers something general (a pitfall, a missing
-tool option, a wording rule), add it to this skill and, if it applies to all
-families, to the non-Murdoku skill, in the same PR. Fix the cause in code with
-a test (`clue_search`, `story.py`, `picture.py`) rather than working around it
-in one puzzle. Keep account names, tokens and other machine-local setup out of
-the repository.
-
-### Booklet review
-
-After significant changes (new puzzles, a series, `story.py` wording), build the
-whole booklet, `uv run csp "examples/*/*.txt" --docx /tmp/booklet.docx`, extract
-its text (python-docx, including table cells) and read all of it as a player
-would. Do not solve; check presentation: spelling and de/het, capitals, names
-with articles, consistent titles and subtitles, reveals present and correct,
-no repeated or empty sentences ("…, ."), no raw clue numbers in solutions, no
-facts already given by the figure list. Fix generic prose in `src/csp/story.py`
-(with a test) and one-off wording in the puzzle file (`Words:`, `| wording`).
-Check portrait rows as well: no cast member or supplied description is lost,
-clues sit with their semantic owner, ordinary sentences do not repeat the name
-heading, and global clues are printed exactly once. Inspect rendered short and
-dense pages, including long descriptions and figures without clues; fitting
-estimates and DOCX text checks alone are not a visual page review.
-
-Watch the articles in particular. An object, window, door or point object that
-occurs more than once should be named indefinitely ("een treinbank", "a bench"; "het perronbankje" is
-ambiguous when there are two). English picks "a"/"an" from the first letter,
-so "hour" gets "a" and "unicorn" gets "an", both wrong. When the pattern is general, fix
-it in `story.py` with a test; for a single odd word, use a `Words:` alias or a
-`| wording` override.
+- Clues thinned; few exact-number clues; no giveaway.
+- For a mystery, `--explain` reveals the answer by the rules, late.
+- `--png` looked at and independently critiqued; `--docx` page check read.
+- Legend and rules show no engine syntax; authored wording in the solution is
+  faithful and does not reveal the answer.
+- The key clue is necessary, series order follows `--grade`, and
+  `docs/puzzle-collection.md` is updated; `uv run pytest -q` and `ruff` pass.
+- Report the path, solution, grade and open doubts.
