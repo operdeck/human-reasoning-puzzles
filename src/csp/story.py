@@ -1839,10 +1839,16 @@ def _expression_rule_owner(formula: murdoku_lang.Formula, people: Collection[str
         return _expression_rule_owner(formula.formula, people)
     if owner := _expression_clue_owner(formula, people):
         return owner
+    return _sole_named_person(formula, people)
+
+
+def _sole_named_person(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
+    """The only figure named anywhere in a compound formula, if there is exactly one."""
+    known = set(people)
 
     def named_people(value: object) -> set[str]:
         if isinstance(value, murdoku_lang.Name):
-            return {value.token.text} & set(people)
+            return {value.token.text} & known
         if isinstance(value, tuple):
             return set().union(*(named_people(item) for item in value))
         if dataclasses.is_dataclass(value) and not isinstance(value, type):
@@ -1855,17 +1861,67 @@ def _expression_rule_owner(formula: murdoku_lang.Formula, people: Collection[str
     return next(iter(names)) if len(names) == 1 else None
 
 
+def _anchored_person(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
+    """The sole person anchoring a compound clue, in tiers: subject, projection, direction target.
+
+    A bare mention such as the right side of `(people on object:chair) != Ada` is not
+    an anchor: that clue compares an occupancy set with a person and stays global.
+    """
+    known = set(people)
+    subjects: set[str] = set()
+    projections: set[str] = set()
+    direction_targets: set[str] = set()
+
+    def walk(value: object) -> None:
+        if isinstance(value, (murdoku_lang.Atom, murdoku_lang.AdjectiveAtom)):
+            if isinstance(value.subject, murdoku_lang.Name):
+                name = value.subject.token.text
+                if name in known:
+                    subjects.add(name)
+            if (
+                isinstance(value, murdoku_lang.Atom)
+                and value.operator.text.startswith("dir:")
+                and isinstance(value.target, murdoku_lang.Name)
+            ):
+                name = value.target.token.text
+                if name in known:
+                    direction_targets.add(name)
+        if isinstance(value, murdoku_lang.Projection) and isinstance(
+            value.operand, murdoku_lang.Name
+        ):
+            name = value.operand.token.text
+            if name in known:
+                projections.add(name)
+        if isinstance(value, tuple):
+            for item in value:
+                walk(item)
+        elif dataclasses.is_dataclass(value) and not isinstance(value, type):
+            for item in dataclasses.fields(value):
+                walk(getattr(value, item.name))
+
+    walk(formula)
+    for names in (subjects, projections, direction_targets):
+        if len(names) == 1:
+            return next(iter(names))
+        if len(names) > 1:
+            return None
+    return None
+
+
 def _expression_clue_owner(formula: murdoku_lang.Formula, people: Collection[str]) -> str | None:
+    if isinstance(formula, murdoku_lang.Negation):
+        return _expression_clue_owner(formula.formula, people)
     if isinstance(formula, (murdoku_lang.Atom, murdoku_lang.AdjectiveAtom)) and isinstance(
         formula.subject, murdoku_lang.Name
     ):
         name = formula.subject.token.text
-        return name if name in people else None
+        if name in people:
+            return name
     if person := alone_person(formula, people):
         return person.token.text
     if only := only_on(formula, people):
         return only[0].token.text
-    return None
+    return _anchored_person(formula, people)
 
 
 def clue_paragraphs(

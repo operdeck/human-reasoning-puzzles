@@ -2143,6 +2143,32 @@ def test_figure_clues_keep_combined_sources_global_clues_and_clueless_figures():
     assert sorted(n for clue in paragraphs for n in clue.sources) == list(range(1, 7))
 
 
+def test_figure_clues_attach_a_compound_clue_naming_one_person():
+    from csp.story import figure_clues
+
+    text = ON_OR_NEXT_TO.format(lang="en").replace(
+        "Di beside object:stool",
+        "count (people in area of Di) = 1 + 1",
+    )
+    result = figure_clues(text)
+    di = next(figure for figure in result.figures if figure.person == "Di")
+    assert [clue.sources for clue in di.clues] == [(4,)]
+    assert result.other == ()
+
+
+def test_figure_clues_attach_a_compound_direction_clue_naming_the_target():
+    from csp.story import figure_clues
+
+    text = ON_OR_NEXT_TO.format(lang="en").replace(
+        "Di beside object:stool",
+        "some (people beside object:bench) dir:up Di = 1",
+    )
+    result = figure_clues(text)
+    di = next(figure for figure in result.figures if figure.person == "Di")
+    assert [clue.sources for clue in di.clues] == [(4,)]
+    assert result.other == ()
+
+
 def test_count_rules_and_author_garment_clues_use_expression_wording():
     from csp.story import board_notes, clue_paragraphs, global_count_texts
 
