@@ -5,102 +5,20 @@
 [![Play the puzzles](https://img.shields.io/badge/%E2%96%B6%20Play%20the%20puzzles-online-2ea44f?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/)
 [![Play Murdoku online](https://img.shields.io/badge/%F0%9F%94%8E%20Play%20Murdoku-murder%20mysteries-8957e5?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/murdoku/)
 
-Explore a growing collection of playable and printable puzzles, from Sudoku,
-Queens and Star Battle to Zebra grids and custom Murdoku mystery series. An explainable
-constraint engine powers the solver, which solves the way a person would, with named
-deduction rules rather than search; Puzzle Lab helps create and validate new
-puzzles from seeds and specifications, while dedicated Murdoku tools turn loose
-clues and board sketches into original mysteries. A powerful
-[Murdoku clue language](#a-murdoku-clue-language-that-says-what-you-mean) expresses
-complex relations between people, areas and objects.
+Explore playable and printable puzzles, from Sudoku, Queens and Star Battle to
+Zebra grids and Murdoku mystery series. An explainable constraint engine solves the
+way a person would with named deduction rules; Puzzle Lab creates and validates
+puzzles, and a [typed Murdoku clue language](#a-murdoku-clue-language-that-says-what-you-mean)
+expresses complex relations between people, areas and objects.
 
-**For players:** [Murdoku](https://operdeck.github.io/human-reasoning-puzzles/murdoku/), Sudoku, Queens, Kakuro,
-Akari and more run in the browser, with notes and auto-marking. **For developers:** a
-Python 3.12 constraint-propagation engine, a puzzle generator and difficulty grader, and a
-TypeScript + Vite player, all Apache-2.0.
-
-## Credits
-
-**Murdoku is [Manuel Garand](https://murdoku.com)'s invention, not this project's.** He is
-a puzzle maker from Montréal, and his Murdoku books (Lannoo in Dutch, Union Square & Co.
-in English) are the real thing, so buy one and solve it with pen and paper. The Murdoku puzzles here are
-the author's own, some of them written with AI help; they are an homage, not a
-replacement. Murdoku is a trademark of Digivoid Studios Inc., and this project is not
-affiliated with it.
-
-A credit also appears under every Murdoku board in the player, on the home page and the
-Murdoku landing page, on each Murdoku puzzle's own page, and in front of a generated
-`--docx` booklet that contains Murdoku cases. The Sudoku, Queens, Kakuro and other
-families get their own puzzles only.
-
-## Quick start
-
-Requires Python 3.12+. Run directly with `uv`:
-
-```bash
-uv run csp examples/sudoku_1_4x4.txt
-uv run csp examples/sudoku_17_9x9_pointing.txt --explain
-uv run csp examples/demo/murdoku_1_first_case.txt --explain
-uv run csp examples/queens_6_4x4.txt --show-model
-uv run csp examples/logicgrid_1_3x3.txt --brute-force
-uv run csp examples/akari_1_6x6.txt --svg akari.svg
-uv run csp examples/battleships_1_6x6_fleet.txt --explain
-uv run puzzle-lab rate examples/queens_1_4x4.txt
-uv run puzzle-lab search examples --family tango --tier hard
-uv run puzzle-lab fresh starbattle --size 7 --stars 1 --tier easy --output /tmp/queens.txt
-uv run puzzle-lab fresh kakurasu --size 8 --tier medium --seed 226 --output /tmp/kakurasu.txt
-```
-
-`--grade` reports the hardest deduction used. `--show-model` explains the compiled constraints. `--brute-force` checks uniqueness. `--explain` writes a worked solution for every family, told by the rules a person would use; `--svg [FILE]` draws the puzzle (and, once solved, the solution) as SVG with `uv sync --extra svg`; `--png` rasterises that same picture with `uv sync --extra png`, and `--svg --interactive` writes only the blank board, with cell ids for an app. Pictures use bundled icons and font only ([licences](src/csp/assets/NOTICE.md)), never the network.
-
-`--docx [FILE]` writes an editable Word booklet for one puzzle of any family, or for a glob such as `"examples/**/*.txt"` (puzzles first, then their solutions with the solved board and solving steps; needs `uv sync --extra docx`). Without puzzle files, `--docx` takes every Murdoku in `examples/` (not the test puzzles) and writes `booklet.docx`. `--pdf [FILE]` works the same way but writes a PDF (default `booklet.pdf` without puzzle files), converting that Word booklet with LibreOffice or, on macOS, Microsoft Word or Pages.
-
-`--nosolution` skips solving and writes only the puzzle: on the console, in PNG/SVG pictures, or in DOCX/PDF booklets. Existing solution files are left untouched. It cannot be combined with solving options or with `--export`, which includes an answer for checking in the [web player](#play-in-the-browser). `--export DIR` otherwise writes per puzzle a JSON bundle and interactive board, plus an `index.json` (needs `uv sync --extra svg`; exits non-zero if any puzzle fails).
-
-Murdoku `--explain` follows the typed clue and rule expressions, marks conclusions
-in bold, and describes remaining locations by areas, rows, columns or objects.
-It also explains role deductions, including those made after everyone is placed,
-and population arguments: known occupants, the busiest or tied quietest areas,
-and why another area must be empty. Booklets render the same emphasis.
-Sudoku explanations group singles and describe locked candidates, subsets and
-row/column patterns. Every other family, and any Sudoku step those patterns do
-not cover, gets a generic story built from the model alone: clue deductions are
-grouped per puzzle rule, cells are named in runs ("r2c4–r2c6 yes"), and chains,
-combined rules and what-ifs are told as short arguments.
-
-Browse the full [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/).
-For [collection and grading notes](docs/puzzle-collection.md), or the [model rules and file formats](docs/model-and-puzzle-formats.md), see the detail guides.
-Use `puzzle-lab fresh`, `generate`, `rate`, `search`, and `audit` to create and validate non-Murdoku
-examples; see the [authoring workflow](.github/skills/non-murdoku-puzzle-authoring/SKILL.md).
-Murdoku retains its separate tools and skill.
-
-## A Murdoku clue language that says what you mean
-
-Murdoku clues are written in a small, typed expression language rather than a
-fixed list of clue shapes. Sets of people, areas, rows, objects and marks
-combine freely, so a clue can chain several relations. Every clue is parsed,
-type-checked and checked by an independent brute force, and the solver explains it
-in plain words.
-
-> The person on a horse stands in an area next to the area of whoever is on the
-> traveller square.
-
-```
-some (people on object:horse) in (areas touches (area of (people on mark:traveller)))
-```
-
-Read it inside out: `people on mark:traveller` is whoever stands on the
-traveller square, `area of …` is the area they are in, `areas touches …` are the
-areas sharing a side with it, and the outer `in` asks that the horse rider is in
-one of them. Counting, quantifiers (`every ?a in tag:crime_scene: some role:murderer in ?a`),
-roles, directions and arithmetic combine the same way; see
-[Model and puzzle formats](docs/model-and-puzzle-formats.md#murdoku).
+**For players:** Murdoku, Sudoku, Queens, Kakuro, Akari and more run in the browser with
+notes and auto-marking. **For developers:** a Python 3.12 constraint engine, generator,
+grader and TypeScript + Vite player, Apache-2.0.
 
 ## A first Murdoku case
 
-Four people on a 4 × 4 floor plan with three rooms. Everyone stands in a
-different row and column. Trees, bushes, tables, and cabinets block cells;
-chairs and the bed are standable.
+Four people on a 4 × 4 floor plan with three rooms, one per row and column.
+Trees, bushes, tables and cabinets block cells; chairs and the bed are standable.
 
 <table>
 <tr><td><img src="docs/images/murdoku_1_first_case.png" width="230" alt="Murdoku first case"></td><td>
@@ -117,28 +35,58 @@ murderer.
 </td></tr>
 </table>
 
-For every playable example, see the [puzzle index](https://operdeck.github.io/human-reasoning-puzzles/). For
-the complete syntax and supported rules, see [Model and puzzle formats](docs/model-and-puzzle-formats.md).
-
 <details>
 <summary>Show the worked solution</summary>
 
 - **The direct clues.** Ingrid is on a chair (1). Joost is next to the tree (2):
-  **on the patio**: **Joost on r1c1**. Lotte is on the bed (3):
-  **in the guest room**.
+  **beside** means in the same area, and only r1c1 is free on the patio, so
+  **Joost on r1c1**. Lotte is on the bed (3): **in the guest room**.
 
 - **Lotte, Ingrid and Wouter.** Joost takes column 1, so **Lotte on r4c2**.
   Lotte takes row 4 and Joost takes column 1, so **Ingrid on r3c4**. Only r2c3
-  is left for Wouter: **Wouter on r2c3**.
-
-**Ingrid did it**: she shares the sitting room with Wouter.
+  is left for Wouter: **Wouter on r2c3**. **Ingrid did it**: she shares the
+  sitting room with Wouter.
 
 <img src="docs/images/murdoku_1_first_case-solution.png" width="230" alt="Murdoku solution">
 </details>
 
-## A few examples
+## Credits
 
-The solver handles very different kinds of logic. Here are a few; [browse and play the full collection](https://operdeck.github.io/human-reasoning-puzzles/) or read the [collection and grading notes](docs/puzzle-collection.md).
+**Murdoku is [Manuel Garand](https://murdoku.com)'s invention, not this project's.** He is a puzzle maker from Montréal, and his Murdoku books (Lannoo in Dutch, Union Square & Co. in English) are the real thing, so buy one and solve it with pen and paper. The puzzles here are the author's own, some written with AI help; they are an homage, not a replacement. Murdoku is a trademark of Digivoid Studios Inc., and this project is not affiliated with it.
+
+## Quick start
+
+Requires Python 3.12+. Run directly with `uv`:
+
+```bash
+uv run csp examples/sudoku_1_4x4.txt
+uv run csp examples/demo/murdoku_1_first_case.txt --explain
+uv run csp examples/queens_6_4x4.txt --show-model
+uv run csp examples/akari_1_6x6.txt --svg akari.svg
+uv run puzzle-lab rate examples/queens_1_4x4.txt
+uv run puzzle-lab fresh starbattle --size 7 --stars 1 --tier easy --output /tmp/queens.txt
+```
+
+`--explain` writes a worked solution, `--grade` prints the hardest deduction used, `--show-model` explains the compiled model, `--brute-force` checks uniqueness, and `--svg`/`--png` draw the puzzle and its solution. Every other option is in [CLI options](docs/cli.md); generation, rating and validation are in the [non-Murdoku authoring skill](.github/skills/non-murdoku-puzzle-authoring/SKILL.md), Murdoku has its own skill, and file formats are in [Model and puzzle formats](docs/model-and-puzzle-formats.md).
+
+## A Murdoku clue language that says what you mean
+
+Murdoku clues are typed expressions over people, areas, rows, objects and marks,
+so one clue can chain several relations. Each clue is type-checked, checked by an
+independent brute force, and explained by the solver.
+
+> The person on a horse stands in an area next to the area of whoever is on the
+> traveller square.
+
+```
+some (people on object:horse) in (areas touches (area of (people on mark:traveller)))
+```
+
+Read it inside out: the traveller's area, then the areas sharing a side with it;
+the outer `in` asks that the horse rider is in one of them. See
+[Murdoku clue grammar](docs/murdoku-grammar.md).
+
+## A few examples
 
 <table>
 <tr>
@@ -152,8 +100,6 @@ The solver handles very different kinds of logic. Here are a few; [browse and pl
 <td><strong><a href="examples/akari_1_6x6.txt">Light Up / Akari</a></strong><br>Light every open cell without bulbs seeing each other.<br><img src="docs/images/akari_1_6x6-solution.png" width="150" alt="Solved Akari puzzle"></td>
 </tr>
 </table>
-
-The newest families come from Simon Tatham's puzzle collection and compile to the same few constraint types, with no change to the engine:
 
 <table>
 <tr>
@@ -180,55 +126,11 @@ The newest families come from Simon Tatham's puzzle collection and compile to th
 
 ## Play in the browser
 
-`web/` is a small TypeScript + Vite player for every example, published to [GitHub Pages](https://operdeck.github.io/human-reasoning-puzzles/)
-by `.github/workflows/pages.yml` on each push to `main` (repository Settings → Pages →
-Source: GitHub Actions). Python stays the single source of truth: the player knows no
-puzzle family, it only reads the bundles from `--export`. The index shows one
-representative unsolved board preview per puzzle group (including each Murdoku
-series), with compact puzzle links in one or two columns beside it. Select a
-puzzle title to open its player.
-On phones, Murdoku boards omit the decorative backdrop and expand across the
-available width. Desktop boards, booklet pictures and landing-page previews
-keep their backdrops.
-Locally (Node 22.12 or later):
-
-```sh
-uv sync --extra svg
-cd web && npm install
-npm run export   # writes web/public/puzzles
-npm run dev      # or: npm test, npm run build
-```
-
-`npm run build` also prerenders a static page per puzzle, a Murdoku landing page,
-`sitemap.xml` and `robots.txt` over the player, so search engines see real pages
-(`web/scripts/prerender.mjs`). The one-time repository topics, site verification and
-sitemap submission that go with it are in [discoverability notes](docs/discoverability.md).
-Opening a puzzle's own page starts the player directly; its static picture and
-play link remain available when JavaScript is disabled.
-
-Place a piece with a click or tap (or arrow keys and Space, or the piece's number key),
-cross off a square with right-click, long-press or the Cross tool, and undo with Ctrl+Z.
-Auto-mark crosses the squares a placement rules out (in Akari it lights what a bulb sees),
-and crosses out the palette buttons of the pieces already on the board — grey, like the
-auto-marked squares. Pieces a board may hold more than once (mines, stars) keep their button.
-Digit puzzles take pencil marks: the Notes tool (key N) writes small digits, and auto-mark
-hides any that a placed peer rules out. Progress is kept in the browser.
-Murdoku's figure cards bring portraits, descriptions, clues and placement status
-together, and replace the figure buttons under the board: select a card to place
-that figure, and with auto-mark on a placed figure's portrait is crossed out
-(or a cross appears beside its name when it has no portrait).
-References to figures in the puzzle text are bold.
-Figures without clues remain in the cast, and global clues have their own
-section. Existing placements and marks carry over. Hover over a Murdoku cell,
-or move to it with the arrow keys, to read its area, objects and their count
-rules, marked-cell rules and any figure you have placed there. The Case details
-tab keeps objects, board symbols, roles and attributes available together,
-including on touchscreens. Point objects have their own hover, including the
-part of an icon outside the grid.
-Conflicting placements or notes show the other cell and, when available, the
-exported rule name; mistakes remain editable rather than being silently refused.
-The Warnings toggle controls this feedback independently of Auto-mark. It is on
-by default, and its setting is saved with each puzzle's progress.
+`web/` is a TypeScript + Vite player for every example, published to
+[GitHub Pages](https://operdeck.github.io/human-reasoning-puzzles/) by
+`.github/workflows/pages.yml` on pushes to `main`. Python is the single source of
+truth; the player reads `--export` bundles. See [Web interface](docs/web-interface.md)
+for setup, controls, notes, warnings and ground rules.
 
 ## Licence
 

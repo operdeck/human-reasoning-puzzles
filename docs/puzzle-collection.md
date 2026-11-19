@@ -1,277 +1,130 @@
 # Puzzle collection and grading
 
-Browse and play every published puzzle in the
+Reference for puzzle authors and agents. Players: use the
 [web puzzle index](https://operdeck.github.io/human-reasoning-puzzles/).
-Its representative group thumbnails, category sections, sizes, and deduction grades
-replace the former documentation gallery. This guide keeps the authoring,
-collection, and grading notes; the index is the visual inventory.
 
-The checked-in example files are original, generated, or owner-authored. Published Sudoku, newspaper, and book puzzles are not transcribed here. Every tracked example is checked for a unique brute-force solution, engine agreement, and per-step soundness by the test suite.
+Every tracked example is original, generated or owner-authored, with a unique
+brute-force solution and engine agreement checked by the tests. Full commands
+are in [CLI options](cli.md); syntax is in
+[Model and puzzle formats](model-and-puzzle-formats.md).
 
-`puzzle-lab audit` applies difficulty-order checks to every series without
-category exemptions. *Wie doet het met wie* currently reports an ordering
-conflict: puzzle 1 needs `cover2`, while puzzles 2 and 3 need `subsumption`.
-Its existing story numbering is retained; the audit reports the conflict
-rather than hiding it. This does not change the shared web/booklet display
-order: Murdoku still comes first, with Demo leading its categories.
+`puzzle-lab audit` checks difficulty order for every series without exemptions.
+*Wie doet het met wie* reports a conflict (puzzle 1 needs `cover2`; 2 and 3
+`subsumption`), retaining its numbering. Murdoku still leads, Demo first.
 
 ## Quick commands
 
 ```bash
-uv run csp examples/sudoku_1_4x4.txt
-uv run csp examples/queens_6_4x4.txt --show-model
 uv run csp examples/demo/murdoku_1_first_case.txt --explain
+uv run csp examples/queens_6_4x4.txt --show-model
 uv run csp examples/logicgrid_1_3x3.txt --brute-force
-uv run csp examples/akari_1_6x6.txt --png
 ```
 
-For each family example below, add `--png FILE.png` to write the puzzle image and a solved image named `FILE-solution.png`. Add `--nosolution` to skip solving and write only the puzzle image.
+## Murdoku
 
-## First Murdoku case
+Core syntax and feature cases: `murdoku_1_first_case`, `murdoku_3_house`,
+`murdoku_2_point_objects`, `murdoku_sparse_mystery` (roles and one companion),
+`murdoku_global_counts` and `murdoku_composition` (all board features); the two
+test files live in `tests/puzzles/`, the rest in `examples/demo/`.
 
-Four people are placed on a 4 × 4 floor plan with three rooms. Trees, bushes, tables, and cabinets block cells; chairs and a bed are standable. The clues put Ingrid on a chair, Joost next to the tree, and Lotte on the bed. Wouter, the victim, occupies the last free square and is alone with Ingrid in the sitting room. The Dutch series also has a distinct 4 × 4 garden-party puzzle: [`wie-doet-het-met-wie-2.txt`](../examples/wie-doet-het-met-wie/wie-doet-het-met-wie-2.txt).
+- Japanese food: `food-murdoku-2` 5×5 `chains`; `food-murdoku-1` 6×6 `subsumption`; `food-murdoku-3` 7×7 `what_if`.
+- Japan: `samen-in-japan` 6×6 `cover2` (busiest, quietest and exact count); `samen-onderweg` and `samen-in-de-blauwe-bladeren` use population arguments too.
+- Zoo: `zoo-murdoku-1` 5×5 `relations`; `zoo-murdoku-2` 6×6 `subsumption`; `zoo-murdoku-3` 6×6 `cover2`.
+- Menu: `menu-murdoku-1` 6×6 `relations`; `menu-murdoku-2` 7×7 `subsumption`; `menu-murdoku-3` 8×8 `what_if`.
+- Vietnam: `vietnam-murdoku-1` 5×5 `relations`; `vietnam-murdoku-2` 6×6 `subsumption`; `vietnam-murdoku-3` 7×7 `cover2`. Each has a tunnel straddling a city border; the dish is placed last.
+- Tamagotchi: `tamagotchi-murdoku-6x6` `subsumption`; `-9x9` and `-12x12` `what_if`.
+- Murder Hotel: `murder-hotel-1` 8×8 `relations`; `-2` 9×9 and `-3` 10×10 `subsumption`.
+- Halloween at the Museum: `-1` 6×6 and `-2` 7×7 `subsumption`; `-3` 8×8 `cover2`.
+- Orient Express: `murdoku_orient_express` 8×8 `relations`; `_2` 10×10 `subsumption`; `_3` 10×10 `chains`.
+- Wie doet het met wie: `-1` 5×5 `cover2`; `-2` 4×4 and `-3` 5×5 `subsumption`; `-4` 6×6 and `-5` 7×7 `cover2`.
+- Owner-authored: `prrrdoku1` and `prrrdoku2`; `prrrdoku3` needs `what_if`.
 
-Murdoku examples live in category folders under `examples/` (for example `japanese-food/`, `dierentuin/`, `tamagotchi/`); the folder name is the category shown in the web player and the booklet, which groups and numbers the puzzles in a fixed order. Test-only puzzles live in `tests/puzzles/`. The files [`murdoku_1_first_case.txt`](../examples/demo/murdoku_1_first_case.txt), [`murdoku_3_house.txt`](../examples/demo/murdoku_3_house.txt), [`murdoku_sparse_mystery.txt`](../tests/puzzles/murdoku_sparse_mystery.txt), [`murdoku_global_counts.txt`](../tests/puzzles/murdoku_global_counts.txt), [`murdoku_composition.txt`](../tests/puzzles/murdoku_composition.txt), and [`murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt) cover the core clue syntax, relation reasoning, roles, global counts, composition of board features, and objects on grid points. The Tamagotchi series starts with [`tamagotchi-murdoku-6x6.txt`](../examples/tamagotchi/tamagotchi-murdoku-6x6.txt) (grade `subsumption`), where quiet squares make their occupants alone in their area, then [`tamagotchi-murdoku-9x9.txt`](../examples/tamagotchi/tamagotchi-murdoku-9x9.txt) (grade `what_if`), where social squares require company. The final [`tamagotchi-murdoku-12x12.txt`](../examples/tamagotchi/tamagotchi-murdoku-12x12.txt) (grade `what_if`) combines both kinds of square and says exactly one social square is occupied. The three Japanese-food puzzles [`food-murdoku-2.txt`](../examples/japanese-food/food-murdoku-2.txt) (5×5, grade `chains`), [`food-murdoku-1.txt`](../examples/japanese-food/food-murdoku-1.txt) (6×6, `subsumption`) and [`food-murdoku-3.txt`](../examples/japanese-food/food-murdoku-3.txt) (7×7, needs `what_if`) use Japanese dishes as suspects and Japanese cities as areas. The Japan-themed [`samen-in-japan.txt`](../examples/japan/samen-in-japan.txt) (6×6, grade `cover2`) uses all three population clues — Tokyo is the busiest area, Okinawa the quietest, and Osaka holds exactly two people — and leans the rest on a bonsai, a temple, a sushi bar and a tatami mat. Every clue is needed, so none of the population statements can be inferred without it. Its companion, [`samen-onderweg.txt`](../examples/japan/samen-onderweg.txt) (5×5, grade `subsumption`), keeps both area comparisons: `most_populated area:Tokyo` is load-bearing and `least_populated area:Okinawa` is kept, with the rest on four objects — a torii, a cherry blossom, a lantern and a bank — so nobody starts pinned to a single square. It is the count rule's showcase: Mio on the bank and Keiko beside the lantern put two people in Osaka, the busiest-area clue then gives Tokyo three, and those five leave Okinawa empty — no case split needed. The series grows with [`samen-in-de-blauwe-bladeren.txt`](../examples/japan/samen-in-de-blauwe-bladeren.txt) (9×9, grade `relations`): five places, `most_populated area:Tokyo` and the quietest tie `least_populated area:Okinawa area:Hiroshima`, which is what keeps Yuki, Nami and Sora out of Okinawa. It asks one question instead of the whole grid — *who wears the yellow jumpsuit?* — and Sora has no clues, is placed last and stands on it, so the answer is the final deduction. The street is dressed for a Kill Bill evening: a katana of Hanzo steel, the yellow jumpsuit, a yellow van, a pink neon sign, a kanji signboard, a lantern on the top edge, a torii on the left edge and a cherry blossom on the bottom edge.
+## Verified non-Murdoku difficulty
 
-The three Dutch zoo puzzles [`zoo-murdoku-1.txt`](../examples/dierentuin/zoo-murdoku-1.txt) (5×5, grade `relations`), [`zoo-murdoku-2.txt`](../examples/dierentuin/zoo-murdoku-2.txt) (6×6, `subsumption`) and [`zoo-murdoku-3.txt`](../examples/dierentuin/zoo-murdoku-3.txt) (6×6, `cover2`) put animals in biomes with matching objects and colours. The three Dutch menu puzzles [`menu-murdoku-1.txt`](../examples/weekmenu/menu-murdoku-1.txt) (6×6, grade `relations`), [`menu-murdoku-2.txt`](../examples/weekmenu/menu-murdoku-2.txt) (7×7, `subsumption`) and [`menu-murdoku-3.txt`](../examples/weekmenu/menu-murdoku-3.txt) (8×8, needs `what_if`) put foods on the days of the week, with sunflowers and ornamental onions on grid points; the vla has no clues of its own and shares its day with exactly two other foods (`with Vla in same area exactly 2`). The three Dutch Vietnam puzzles [`vietnam-murdoku-1.txt`](../examples/vietnam/vietnam-murdoku-1.txt) (5×5, grade `relations`), [`vietnam-murdoku-2.txt`](../examples/vietnam/vietnam-murdoku-2.txt) (6×6, `subsumption`) and [`vietnam-murdoku-3.txt`](../examples/vietnam/vietnam-murdoku-3.txt) (7×7, `cover2`) follow two backpackers, Pippo and Swena, through Vietnamese cities in search of one dish. Both keep away from every pork and offal dish, also diagonally (`dir ... king >= 2`); the dish has no clues of its own and shares its city with exactly the two travellers (`with ... attribute:reiziger in same area exactly 2`). In each puzzle, the dish remains in multiple squares with both travellers as companion candidates until all other figures are placed, making the dish the final placement. Each board has a Vietcong tunnel, a blocking object whose two squares straddle a city border. The boards were drafted with `puzzle-lab murdoku-board --suggest` from `specs/murdoku/vietnam-*.txt`, where the tunnel is declared `across` and `decor`. The Dutch series *Wie doet het met wie?* starts with [`wie-doet-het-met-wie-1.txt`](../examples/wie-doet-het-met-wie/wie-doet-het-met-wie-1.txt) (5×5 sleepover, grade `cover2`): three bathrobes and three pairs of slippers lie at fixed squares, global counts say two guests stand on a bathrobe and one on slippers, and the clue "one bathrobe wearer is exactly one row above the slippers wearer" (`dir people_on:object:badjas people_on:object:sloffen up = 1`) is needed to find who. It continues with [`wie-doet-het-met-wie-2.txt`](../examples/wie-doet-het-met-wie/wie-doet-het-met-wie-2.txt) (4×4 garden party, `subsumption`), [`wie-doet-het-met-wie-3.txt`](../examples/wie-doet-het-met-wie/wie-doet-het-met-wie-3.txt) (5×5 beach with sunglasses, `subsumption`), [`wie-doet-het-met-wie-4.txt`](../examples/wie-doet-het-met-wie/wie-doet-het-met-wie-4.txt) (6×6 house with a standable 2×2 double bed and glasses, `cover2`) and [`wie-doet-het-met-wie-5.txt`](../examples/wie-doet-het-met-wie/wie-doet-het-met-wie-5.txt) (7×7 hotel, `cover2`, where Wouter's partner wears a bathrobe: `with Wouter object:badjas in same area exactly 1`). Every puzzle in the series puts bathrobes, slippers and (from the beach on) glasses on fixed squares, gives the number of wearers as rules, and needs a garment clue to find who wears what. Wouter has no clues, is placed last and is alone with exactly one other person (`with Wouter in same area exactly 1`). The owner-authored Dutch puzzles are [`prrrdoku1.txt`](../examples/prrrdoku/prrrdoku1.txt), [`prrrdoku2.txt`](../examples/prrrdoku/prrrdoku2.txt), and [`prrrdoku3.txt`](../examples/prrrdoku/prrrdoku3.txt). The Dutch series *Moord in de Oriënt Express* puts the suspects in a train and on its platforms: [`murdoku_orient_express.txt`](../examples/murder-in-the-orient-express/murdoku_orient_express.txt) (8×8, grade `relations`), [`murdoku_orient_express_2.txt`](../examples/murder-in-the-orient-express/murdoku_orient_express_2.txt) (10×10 with a restaurant car, `subsumption`) and [`murdoku_orient_express_3.txt`](../examples/murder-in-the-orient-express/murdoku_orient_express_3.txt) (10×10, `chains`). On the 10×10 boards a row of rails (nobody can stand there) separates each platform from the train, and gangplanks lead to the doors. No clue names the murderer: the rules fix their sex, the crime scene and whether they were alone there, and the murderer is the last suspect left.
+Tiers come from `puzzle-lab search examples --tier <easy|medium|hard>`. Every
+file is deductively solved with a unique independent solution; tiers are this
+solver's estimate. `none` marks a coverage gap, not a hidden board. Binairo and
+Tango are separate because Tango adds relation signs and forbids identical rows
+and columns. Cosmetic pieces do not create another family.
 
-## Murder Hotel
+- Sudoku: easy sudoku_5_9x9 (single); medium sudoku_21_9x9_naked_pair (cover2); hard sudoku_33_9x9_chains (chains).
+- Calcudoku: easy calcudoku_1_4x4 (relations); medium calcudoku_3_6x6 (relations); hard calcudoku_5_7x7 (cover3).
+- Futoshiki: easy futoshiki_1_5x5 (single); medium futoshiki_2_5x5 (relations); hard futoshiki_3_5x5 (chains).
+- Tectonic / Suguru: easy suguru_1_4x4 (single); medium none; hard suguru_2_8x8 (chains).
+- Queens / Star Battle: easy Queens: queens_1_4x4, queens_2_5x5 (single); Star Battle: starbattle_1_8x8 (count); medium Queens: queens_3_7x7, queens_4_8x8 (subsumption), queens_5_9x9 (cover2); Star Battle: starbattle_2_8x8 (cover2); hard Queens: queens_6_4x4 (chains); Star Battle: starbattle_3_12x12 (cover3).
+- Zebra logic grid: easy logicgrid_1_3x3 (relations); medium logicgrid_2_6x6 (relations); hard none.
+- Binairo / Takuzu: easy binairo_1_8x8 (relations); medium binairo_2_8x8 (subsumption); hard binairo_3_4x4 (what_if).
+- Tango: easy tango_1_8x8 (relations); medium tango_3_8x8 (relations); hard tango_4_4x4 (what_if).
+- Tents and Trees: easy tents_1_8x8 (single); medium tents_2_8x8 (cover2); hard tents_3_4x4 (what_if).
+- Minesweeper-style: easy none; medium minesweeper_1_8x8 (subsumption); hard minesweeper_4_8x8 (cover3).
+- Light Up / Akari: easy none; medium akari_1_6x6 (subsumption); hard akari_2_8x8 (chains).
+- Kakurasu: easy kakurasu_1_4x4 (relations); medium kakurasu_2_8x8 (relations); hard none.
+- Battleships: easy none; medium battleships_1_6x6_fleet, battleships_2_8x8_fleet (count); battleships_3_8x8_fleet (subsumption); hard battleships_4_8x8_fleet, battleships_5_8x8_fleet (chains).
+- Towers: easy towers_1_4x4 (relations); medium towers_2_5x5, towers_3_6x6 (relations); hard towers_4_5x5 (chains).
+- Mosaic: easy mosaic_1_5x5 (count); medium mosaic_2_5x5 (subsumption), mosaic_3_6x6 (cover2); hard mosaic_4_8x8 (cover3).
+- Dominosa: easy dominosa_1_5x6 (single); medium dominosa_2_6x7 (subsumption), dominosa_3_7x8 (cover2); hard dominosa_4_6x7 (cover3), dominosa_5_7x8 (chains).
+- Rectangles: easy rectangles_1_5x5, rectangles_2_9x9 (single); medium rectangles_3_9x9, rectangles_4_14x14 (subsumption); hard rectangles_5_9x9 (cover3), rectangles_6_9x9 (chains).
+- Magnets: easy magnets_1_4x4 (relations); medium magnets_2_6x6 (relations), magnets_3_6x6 (cover2); hard magnets_4_6x6 (cover3).
+- Undead: easy undead_1_4x4, undead_2_4x4, undead_3_4x4, undead_4_4x4 (relations); medium undead_5_5x5 (relations); hard undead_6_5x5 (what_if).
+- Pattern (nonogram): easy pattern_1_4x4 (relations); medium pattern_2_8x8, pattern_3_12x12 (relations); hard pattern_4_10x10 (what_if).
+- Map (four colouring): easy map_1_6x6, map_2_9x9 (single); medium none; hard map_3_9x9, map_4_12x12 (chains).
+- Thermometers: easy thermometers_1_4x4 (count); medium thermometers_2_5x5, thermometers_3_8x8 (relations); hard thermometers_4_6x6, thermometers_5_8x8 (chains).
+- Kakuro: easy kakuro_1_4x4, kakuro_2_5x5 (relations); medium kakuro_3_7x7 (relations); hard none.
+- Hidato: easy hidato_1_4x4 (relations); medium hidato_2_5x5 (relations), hidato_3_6x6 (cover2); hard hidato_4_5x5, hidato_5_7x7 (chains).
+- Numbrix: easy numbrix_1_4x4 (relations); medium numbrix_2_5x5, numbrix_3_6x6 (relations); hard numbrix_4_5x5, numbrix_5_6x6 (chains).
+- Killer Sudoku: easy killer_1_4x4 (relations); medium killer_2_6x6 (relations), killer_3_4x4 (subsumption), killer_4_6x6 (cover2); hard killer_5_6x6 (what_if).
+- Arrow Sudoku: easy arrow_1_4x4 (relations); medium arrow_2_6x6 (relations); hard arrow_3_4x4 (chains), arrow_4_6x6 (what_if).
+- Even/Odd Sudoku: easy evenodd_1_4x4 (single), evenodd_2_4x4 (relations); medium evenodd_3_6x6 (relations), evenodd_4_6x6 (cover2); hard evenodd_5_9x9 (cover3).
+- Sandwich Sudoku: easy sandwich_1_4x4 (single), sandwich_2_4x4 (relations); medium sandwich_3_6x6 (relations); hard sandwich_4_4x4 (chains).
+- Skyscraper Sudoku: easy skyscrapersudoku_1_4x4 (relations); medium skyscrapersudoku_2_6x6 (relations); hard skyscrapersudoku_3_6x6 (what_if).
 
-The English Murder Hotel trilogy gives the guests Italian names and moves the mystery through the roof terrace, restaurant, guest rooms, and lobby. Each board has a guest corridor with doors into the room wings, a main staircase connecting the Lobby, guest corridor, and Restaurant, and a one-column lift along the east side that stops only at the Lobby and Restaurant. A street-side vestibule opens into the Lobby. The first two puzzles use a conventional crime-scene mystery; the final puzzle leaves the murderer as a separate role and asks the solver to identify the guest at the deduced position. Its body is at the base of the lift shaft. The 8×8 opener is grade `relations`; the 9×9 and 10×10 puzzles are grade `subsumption`. See [`murder-hotel-1.txt`](../examples/murder-hotel/murder-hotel-1.txt), [`murder-hotel-2.txt`](../examples/murder-hotel/murder-hotel-2.txt), and [`murder-hotel-3.txt`](../examples/murder-hotel/murder-hotel-3.txt).
-
-## Halloween at the Museum
-
-The English Halloween at the Museum series sets three costume-party murders in one museum, with a Spanish cast and painter rooms (Velázquez, Goya, El Greco) next to the armoury, the Egyptian and dinosaur halls and the gift shop. Every puzzle shares one rule: the murderer was in the room where the weapon lies. Each puzzle narrows the suspects with a trait (a woman, a guest in costume, a member of staff), and the murderer appears in no clue. The cursed dagger (6×6) and the crossbow (7×7) are grade `subsumption`; the candlestick (8×8) is grade `cover2`. See [`halloween-museum-1.txt`](../examples/halloween-museum/halloween-museum-1.txt), [`halloween-museum-2.txt`](../examples/halloween-museum/halloween-museum-2.txt), and [`halloween-museum-3.txt`](../examples/halloween-museum/halloween-museum-3.txt).
-
-## Verified non-Murdoku difficulty examples
-
-These tiers come from `puzzle-lab search examples --tier <easy|medium|hard>`.
-Every listed file is deductively solved by the repository solver and has a
-unique solution under independent search. The tier is an estimate for this
-solver, not a universal measure of human difficulty. `—` marks a coverage gap:
-the current generator/rule ladder has not produced a trustworthy example for
-that family and tier, so no candidate is promoted by hand. Binairo and Tango
-are listed separately because Tango adds relation signs (and, unlike the printed
-game, this engine's Tango also forbids identical rows and columns — its rule text
-says so, because removing the rule would make most Tango examples ambiguous).
-Cosmetic piece changes do not create another family or gallery section.
-
-| Puzzle type | Easy | Medium | Hard |
-|---|---|---|---|
-| Sudoku | [`sudoku_5_9x9.txt`](../examples/sudoku_5_9x9.txt) (`single`) | [`sudoku_21_9x9_naked_pair.txt`](../examples/sudoku_21_9x9_naked_pair.txt) (`cover2`) | [`sudoku_33_9x9_chains.txt`](../examples/sudoku_33_9x9_chains.txt) (`chains`) |
-| Calcudoku | [`calcudoku_1_4x4.txt`](../examples/calcudoku_1_4x4.txt) (`relations`) | [`calcudoku_3_6x6.txt`](../examples/calcudoku_3_6x6.txt) (`relations`) | [`calcudoku_5_7x7.txt`](../examples/calcudoku_5_7x7.txt) (`cover3`) |
-| Futoshiki | [`futoshiki_1_5x5.txt`](../examples/futoshiki_1_5x5.txt) (`single`) | [`futoshiki_2_5x5.txt`](../examples/futoshiki_2_5x5.txt) (`relations`) | [`futoshiki_3_5x5.txt`](../examples/futoshiki_3_5x5.txt) (`chains`) |
-| Tectonic / Suguru | [`suguru_1_4x4.txt`](../examples/suguru_1_4x4.txt) (`single`) | — | [`suguru_2_8x8.txt`](../examples/suguru_2_8x8.txt) (`chains`) |
-| Queens / Star Battle | Queens: [`queens_1_4x4.txt`](../examples/queens_1_4x4.txt), [`queens_2_5x5.txt`](../examples/queens_2_5x5.txt) (`single`); Star Battle: [`starbattle_1_8x8.txt`](../examples/starbattle_1_8x8.txt) (`count`) | Queens: [`queens_3_7x7.txt`](../examples/queens_3_7x7.txt), [`queens_4_8x8.txt`](../examples/queens_4_8x8.txt) (`subsumption`), [`queens_5_9x9.txt`](../examples/queens_5_9x9.txt) (`cover2`); Star Battle: [`starbattle_2_8x8.txt`](../examples/starbattle_2_8x8.txt) (`cover2`) | Queens: [`queens_6_4x4.txt`](../examples/queens_6_4x4.txt) (`chains`); Star Battle: [`starbattle_3_12x12.txt`](../examples/starbattle_3_12x12.txt) (`cover3`) |
-| Zebra logic grid | [`logicgrid_1_3x3.txt`](../examples/logicgrid_1_3x3.txt) (`relations`) | [`logicgrid_2_6x6.txt`](../examples/logicgrid_2_6x6.txt) (`relations`) | — |
-| Binairo / Takuzu | [`binairo_1_8x8.txt`](../examples/binairo_1_8x8.txt) (`relations`) | [`binairo_2_8x8.txt`](../examples/binairo_2_8x8.txt) (`subsumption`) | [`binairo_3_4x4.txt`](../examples/binairo_3_4x4.txt) (`what_if`) |
-| Tango | [`tango_1_8x8.txt`](../examples/tango_1_8x8.txt) (`relations`) | [`tango_3_8x8.txt`](../examples/tango_3_8x8.txt) (`relations`) | [`tango_4_4x4.txt`](../examples/tango_4_4x4.txt) (`what_if`) |
-| Tents and Trees | [`tents_1_8x8.txt`](../examples/tents_1_8x8.txt) (`single`) | [`tents_2_8x8.txt`](../examples/tents_2_8x8.txt) (`cover2`) | [`tents_3_4x4.txt`](../examples/tents_3_4x4.txt) (`what_if`) |
-| Minesweeper-style | — | [`minesweeper_1_8x8.txt`](../examples/minesweeper_1_8x8.txt) (`subsumption`) | [`minesweeper_4_8x8.txt`](../examples/minesweeper_4_8x8.txt) (`cover3`) |
-| Light Up / Akari | — | [`akari_1_6x6.txt`](../examples/akari_1_6x6.txt) (`subsumption`) | [`akari_2_8x8.txt`](../examples/akari_2_8x8.txt) (`chains`) |
-| Kakurasu | [`kakurasu_1_4x4.txt`](../examples/kakurasu_1_4x4.txt) (`relations`) | [`kakurasu_2_8x8.txt`](../examples/kakurasu_2_8x8.txt) (`relations`) | — |
-| Battleships | — | [`battleships_1_6x6_fleet.txt`](../examples/battleships_1_6x6_fleet.txt), [`battleships_2_8x8_fleet.txt`](../examples/battleships_2_8x8_fleet.txt) (`count`); [`battleships_3_8x8_fleet.txt`](../examples/battleships_3_8x8_fleet.txt) (`subsumption`) | [`battleships_4_8x8_fleet.txt`](../examples/battleships_4_8x8_fleet.txt), [`battleships_5_8x8_fleet.txt`](../examples/battleships_5_8x8_fleet.txt) (`chains`) |
-| Towers | [`towers_1_4x4.txt`](../examples/towers_1_4x4.txt) (`relations`) | [`towers_2_5x5.txt`](../examples/towers_2_5x5.txt), [`towers_3_6x6.txt`](../examples/towers_3_6x6.txt) (`relations`) | [`towers_4_5x5.txt`](../examples/towers_4_5x5.txt) (`chains`) |
-| Mosaic | [`mosaic_1_5x5.txt`](../examples/mosaic_1_5x5.txt) (`count`) | [`mosaic_2_5x5.txt`](../examples/mosaic_2_5x5.txt) (`subsumption`), [`mosaic_3_6x6.txt`](../examples/mosaic_3_6x6.txt) (`cover2`) | [`mosaic_4_8x8.txt`](../examples/mosaic_4_8x8.txt) (`cover3`) |
-| Dominosa | [`dominosa_1_5x6.txt`](../examples/dominosa_1_5x6.txt) (`single`) | [`dominosa_2_6x7.txt`](../examples/dominosa_2_6x7.txt) (`subsumption`), [`dominosa_3_7x8.txt`](../examples/dominosa_3_7x8.txt) (`cover2`) | [`dominosa_4_6x7.txt`](../examples/dominosa_4_6x7.txt) (`cover3`), [`dominosa_5_7x8.txt`](../examples/dominosa_5_7x8.txt) (`chains`) |
-| Rectangles | [`rectangles_1_5x5.txt`](../examples/rectangles_1_5x5.txt), [`rectangles_2_9x9.txt`](../examples/rectangles_2_9x9.txt) (`single`) | [`rectangles_3_9x9.txt`](../examples/rectangles_3_9x9.txt), [`rectangles_4_14x14.txt`](../examples/rectangles_4_14x14.txt) (`subsumption`) | [`rectangles_5_9x9.txt`](../examples/rectangles_5_9x9.txt) (`cover3`), [`rectangles_6_9x9.txt`](../examples/rectangles_6_9x9.txt) (`chains`) |
-| Magnets | [`magnets_1_4x4.txt`](../examples/magnets_1_4x4.txt) (`relations`) | [`magnets_2_6x6.txt`](../examples/magnets_2_6x6.txt) (`relations`), [`magnets_3_6x6.txt`](../examples/magnets_3_6x6.txt) (`cover2`) | [`magnets_4_6x6.txt`](../examples/magnets_4_6x6.txt) (`cover3`) |
-| Undead | [`undead_1_4x4.txt`](../examples/undead_1_4x4.txt), [`undead_2_4x4.txt`](../examples/undead_2_4x4.txt), [`undead_3_4x4.txt`](../examples/undead_3_4x4.txt), [`undead_4_4x4.txt`](../examples/undead_4_4x4.txt) (`relations`) | [`undead_5_5x5.txt`](../examples/undead_5_5x5.txt) (`relations`) | [`undead_6_5x5.txt`](../examples/undead_6_5x5.txt) (`what_if`) |
-| Pattern (nonogram) | [`pattern_1_4x4.txt`](../examples/pattern_1_4x4.txt) (`relations`) | [`pattern_2_8x8.txt`](../examples/pattern_2_8x8.txt), [`pattern_3_12x12.txt`](../examples/pattern_3_12x12.txt) (`relations`) | [`pattern_4_10x10.txt`](../examples/pattern_4_10x10.txt) (`what_if`) |
-| Map (four colouring) | [`map_1_6x6.txt`](../examples/map_1_6x6.txt), [`map_2_9x9.txt`](../examples/map_2_9x9.txt) (`single`) | — | [`map_3_9x9.txt`](../examples/map_3_9x9.txt), [`map_4_12x12.txt`](../examples/map_4_12x12.txt) (`chains`) |
-| Thermometers | [`thermometers_1_4x4.txt`](../examples/thermometers_1_4x4.txt) (`count`) | [`thermometers_2_5x5.txt`](../examples/thermometers_2_5x5.txt), [`thermometers_3_8x8.txt`](../examples/thermometers_3_8x8.txt) (`relations`) | [`thermometers_4_6x6.txt`](../examples/thermometers_4_6x6.txt), [`thermometers_5_8x8.txt`](../examples/thermometers_5_8x8.txt) (`chains`) |
-| Kakuro | [`kakuro_1_4x4.txt`](../examples/kakuro_1_4x4.txt), [`kakuro_2_5x5.txt`](../examples/kakuro_2_5x5.txt) (`relations`) | [`kakuro_3_7x7.txt`](../examples/kakuro_3_7x7.txt) (`relations`) | — |
-| Hidato | [`hidato_1_4x4.txt`](../examples/hidato_1_4x4.txt) (`relations`) | [`hidato_2_5x5.txt`](../examples/hidato_2_5x5.txt) (`relations`), [`hidato_3_6x6.txt`](../examples/hidato_3_6x6.txt) (`cover2`) | [`hidato_4_5x5.txt`](../examples/hidato_4_5x5.txt), [`hidato_5_7x7.txt`](../examples/hidato_5_7x7.txt) (`chains`) |
-| Numbrix | [`numbrix_1_4x4.txt`](../examples/numbrix_1_4x4.txt) (`relations`) | [`numbrix_2_5x5.txt`](../examples/numbrix_2_5x5.txt), [`numbrix_3_6x6.txt`](../examples/numbrix_3_6x6.txt) (`relations`) | [`numbrix_4_5x5.txt`](../examples/numbrix_4_5x5.txt), [`numbrix_5_6x6.txt`](../examples/numbrix_5_6x6.txt) (`chains`) |
-| Killer Sudoku | [`killer_1_4x4.txt`](../examples/killer_1_4x4.txt) (`relations`) | [`killer_2_6x6.txt`](../examples/killer_2_6x6.txt) (`relations`), [`killer_3_4x4.txt`](../examples/killer_3_4x4.txt) (`subsumption`), [`killer_4_6x6.txt`](../examples/killer_4_6x6.txt) (`cover2`) | [`killer_5_6x6.txt`](../examples/killer_5_6x6.txt) (`what_if`) |
-| Arrow Sudoku | [`arrow_1_4x4.txt`](../examples/arrow_1_4x4.txt) (`relations`) | [`arrow_2_6x6.txt`](../examples/arrow_2_6x6.txt) (`relations`) | [`arrow_3_4x4.txt`](../examples/arrow_3_4x4.txt) (`chains`), [`arrow_4_6x6.txt`](../examples/arrow_4_6x6.txt) (`what_if`) |
-| Even/Odd Sudoku | [`evenodd_1_4x4.txt`](../examples/evenodd_1_4x4.txt) (`single`), [`evenodd_2_4x4.txt`](../examples/evenodd_2_4x4.txt) (`relations`) | [`evenodd_3_6x6.txt`](../examples/evenodd_3_6x6.txt) (`relations`), [`evenodd_4_6x6.txt`](../examples/evenodd_4_6x6.txt) (`cover2`) | [`evenodd_5_9x9.txt`](../examples/evenodd_5_9x9.txt) (`cover3`) |
-| Sandwich Sudoku | [`sandwich_1_4x4.txt`](../examples/sandwich_1_4x4.txt) (`single`), [`sandwich_2_4x4.txt`](../examples/sandwich_2_4x4.txt) (`relations`) | [`sandwich_3_6x6.txt`](../examples/sandwich_3_6x6.txt) (`relations`) | [`sandwich_4_4x4.txt`](../examples/sandwich_4_4x4.txt) (`chains`) |
-| Skyscraper Sudoku | [`skyscrapersudoku_1_4x4.txt`](../examples/skyscrapersudoku_1_4x4.txt) (`relations`) | [`skyscrapersudoku_2_6x6.txt`](../examples/skyscrapersudoku_2_6x6.txt) (`relations`) | [`skyscrapersudoku_3_6x6.txt`](../examples/skyscrapersudoku_3_6x6.txt) (`what_if`) |
-
-The most visible gaps are Tectonic/Suguru, counts-only Battleships and logic
-grids; Kakurasu is represented at easy and medium but has no hard example yet.
-In particular, the existing 8 × 8 Suguru file is trivial, and is intentionally
-excluded. These gaps require stronger family-specific deduction or generation
-support before a harder human-like example can be claimed.
-
-## The newer families: what the ladder reaches
-
-Towers, Mosaic, Dominosa, Rectangles, Magnets, Undead, Pattern and Map were added
-without changing `core.py`. Each file shows the rungs its boards exercise; a rule
-that never fires on a family's boards is not claimed. Measured with
-`puzzle-lab sweep` over several hundred fresh boards per family:
-
-- **Mosaic and Dominosa** reach the whole ladder, from `single` or `count` up to
-  `cover3` and `chains`, and so do their hard boards, without `what_if`.
-- **Magnets** reaches `cover3` on 6 × 6 boards; larger boards tend to be unique but beyond
-  the ladder, so none ship.
-- **Towers** is relation-checked: each clue is propagated on its own line, so 4 × 4 boards
-  are easy and 5 × 5 and 6 × 6 boards are `relations`. A `chains` board turns up in about
-  one of a hundred 5 × 5 boards; the rest of the hard boards close only with `what_if`.
-- **Undead and Pattern** have no board between `relations` and `what_if` in the sweeps, so
-  their hard boards (`undead_6_5x5`, `pattern_4_10x10`) are beyond deduction and flagged.
-- **Rectangles**: random partitions reach only `single` and `subsumption`, so its hard
-  boards come from `puzzle-lab fresh rectangles --tier hard` (module `csp.climb`), which
-  starts from a unique board and moves numbers, merges and splits pieces, keeping only
-  unique, ladder-solved boards whose hardest rule does not fall, until the grade is hard.
-  Two of six seeds on 9 × 9 reached `cover3` and `chains`; the rest needed `what_if`.
-- **Map** has no medium board, and cannot have one on this engine: its rules are pairwise
-  `AT_MOST_ONE` constraints, so `subsumption` and `cover2` find nothing to combine and the
-  ladder goes from `single` straight to `chains`. A walk over several hundred unique boards
-  visited only `single`. The cell is `—` and stays so until a core rule changes that.
-- Relation-only boards of 16 or fewer variables rate easy, as for Kakurasu and Tango, so
-  the 4 × 4 boards of Towers, Magnets, Undead and Pattern are easy even though their grade
-  is `relations`.
-
-### Added for issue #80
-
-Thermometers, Kakuro, Hidato, Numbrix and the Killer, Arrow, Even/Odd, Sandwich and
-Skyscraper Sudoku variants are the families of #80 that need no change to `core.py`:
-
-- **Thermometers** reaches `count`, `relations` and `chains` (mercury relations are small),
-  and most hard boards on 5 × 5 and larger need `what_if`; the shipped hard boards use `chains`.
-- **Kakuro** only reaches `relations` in the sweeps: its distinct-sum runs are propagated well
-  by the relation rule on its own, so it has easy and medium boards and no hard one. Runs are
-  capped at five cells (four in the gallery) because each run enumerates every digit
-  combination; 8 × 8 and 9 × 9 boards that are also unique did not come out of the builder.
-- **Hidato and Numbrix** are modelled with one variable per number, so a board of K cells has
-  K variables over K cells; they reach `relations`, `cover2` and `chains`. Their 4 × 4 boards
-  are the easy ones; Numbrix has no `cover2` board.
-- **Sudoku variants** share `sudoku.Rule`. Even/Odd reaches `single` to `cover3` (also on
-  9 × 9), Killer `relations` to `cover2`, Arrow and Sandwich `relations` and `chains`,
-  Skyscraper Sudoku `relations`. Their hard boards that only close with `what_if` (`killer_5_6x6`,
-  `arrow_4_6x6`, `skyscrapersudoku_3_6x6`) are beyond deduction and flagged. Sandwich and
-  Skyscraper lines are relations over a whole row or column, so they stop at 6 × 6; the
-  9 × 9 versions need a core rule for sums and visibility over a long line (#46, #50).
-  The 4 × 4 boards of these variants are drawn from only 288 grids, so the audit's
-  shared-solution check chooses between candidate boards.
-
-Every one-star Queens region has at least two cells. The easy 4 × 4 and 5 × 5 and the
-medium 9 × 9 have one visible given queen each; the other three boards have
-no givens. The starter queens are explicit clues, not single-cell regions
-that silently give away a placement.
+Most visible gaps: Tectonic/Suguru, counts-only Battleships and logic grids;
+Kakurasu has easy and medium but no hard example. The 8×8 Suguru file is
+intentionally excluded; a harder example needs stronger deduction or generation.
 
 ## Rule-focused examples
 
-The five Battleships boards progress from medium (`count`, then `subsumption`)
-to hard (`chains`), without `what_if`. Three 8×8 boards demonstrate every
-symbol described by the player rules: *Buoys in the channel* (medium, seed
-1510), *Broken radio signals* (medium, seed 1513), and *Fogbound convoy* (hard,
-seed 1511). Each includes water waves, an unspecified `?` segment, a single-cell
-circle, rounded ends, and square middles. They retain only 7–8 givens on 64
-cells, have independently verified unique solutions, and still need fleet
-rules. Explicit water includes a cell outside zero-total rows and columns.
-Adding these boards renumbered the existing *Open-water search* from
-`battleships_2_8x8_fleet.txt` to `battleships_4_8x8_fleet.txt`; its board and
-grade are unchanged.
-
-The six Calcudoku examples contain no single-cell cages. All cages are
-connected and have at least two cells; each board has one independently
-verified solution. The sequence retains two easy 4 × 4s (`relations`),
-a medium 6 × 6 (`relations`), a medium 6 × 6 (`cover2`), a hard 7 × 7
-(`cover3`) and a fiendish 6 × 6 (`what_if`). The last fallback remains
-reserved for that explicitly fiendish example. Legacy files with one-cell
-cages remain playable: their target digits must be entered, not silently
-locked as invisible givens.
-
-`what_if` is the ladder's fallback, so the examples that need it are exactly the
-ones no deduction path closes: this collection's beyond-deduction frontier.
-15 of the 194 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
-`tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`, `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`,
-`food-murdoku-3`, `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3`,
-`tamagotchi-murdoku-9x9` and
-`tamagotchi-murdoku-12x12`. `puzzle-lab rate`
-reports them as `deductive: false`, the web index and puzzle pages badge them,
-and a test pins the list, which only moves when the ladder does.
-
-Seventeen hard 9 × 9 Sudoku boards from the owner's earlier Java solver ([`operdeck/sudoku`](https://github.com/operdeck/sudoku)) — its own boards, not the Norvig/MagicTour `top95` it also runs — join the set as `sudoku_9_9x9` … `sudoku_34_9x9` (five of them the NRC four-box variant). They span `single` to `chains` and every one closes by deduction, so the Sudoku section still runs easiest to hardest.
-
-The standard Sudoku set exercises `single`, `subsumption`, `cover2`, `cover3`, and `chains`. The one-star Queens display progresses from `single` through `subsumption` and `cover2` to `chains`; the multi-star Star Battle examples have irregular regions and grade `cover2` (8 × 8, two stars), `chains` (10 × 10, two stars) and `cover3` (12 × 12, three stars), and a two-star board cannot be smaller than 8 × 8, nor a three-star board smaller than 12 × 12; the logic grids and weighted Kakurasu examples exercise `relations`; the count-oriented examples exercise `count`. Run `--grade` for the exact grade of any individual example.
-
-| Family | Small example | Larger example |
-|---|---|---|
-| Sudoku relations | `sudoku_16_4x4_kropki_consecutive_thermometers.txt` | `sudoku_7_9x9_kropki_consecutive_thermometers.txt` |
-| Anti-knight Sudoku | `sudoku_2_4x4_anti_knight.txt` | `sudoku_3_9x9_anti_knight.txt` |
-| Anti-king Sudoku | `sudoku_32_6x6_anti_king.txt` | `sudoku_4_9x9_anti_king.txt` |
-| Tectonic / Suguru | `suguru_1_4x4.txt` | `suguru_2_8x8.txt` |
-| Queens / Star Battle | Queens (`Stars: 1`): `queens_1_4x4.txt`, `queens_2_5x5.txt`, `queens_6_4x4.txt`; Star Battle: `starbattle_2_8x8.txt` | Queens: `queens_3_7x7.txt`, `queens_4_8x8.txt`, `queens_5_9x9.txt`; Star Battle: `starbattle_4_10x10.txt`, `starbattle_3_12x12.txt` |
-| Zebra-style logic grids | `logicgrid_1_3x3.txt` | `logicgrid_2_6x6.txt` |
-| Binairo / Takuzu | `binairo_3_4x4.txt` | `binairo_2_8x8.txt` |
-| Tango | `tango_2_4x4.txt` | `tango_3_8x8.txt` |
-| Tents and Trees | `tents_3_4x4.txt` | `tents_1_8x8.txt` |
-| Minesweeper-style | `minesweeper_2_5x5.txt` | `minesweeper_3_8x8.txt` |
-| Light Up / Akari | `akari_1_6x6.txt` | `akari_2_8x8.txt` |
-| Kakurasu | `kakurasu_1_4x4.txt` | `kakurasu_2_8x8.txt` |
-| Battleships | `battleships_1_6x6_fleet.txt` | `battleships_2_8x8_fleet.txt`, `battleships_3_8x8_fleet.txt`, `battleships_4_8x8_fleet.txt`, `battleships_5_8x8_fleet.txt` |
-| Towers | `towers_1_4x4.txt` | `towers_3_6x6.txt` |
-| Mosaic | `mosaic_1_5x5.txt` | `mosaic_4_8x8.txt` |
-| Dominosa | `dominosa_1_5x6.txt` | `dominosa_5_7x8.txt` |
-| Rectangles | `rectangles_1_5x5.txt` | `rectangles_4_14x14.txt` |
-| Magnets | `magnets_1_4x4.txt` | `magnets_4_6x6.txt` |
-| Undead | `undead_1_4x4.txt` | `undead_6_5x5.txt` |
-| Pattern (nonogram) | `pattern_1_4x4.txt` | `pattern_3_12x12.txt` |
-| Map (four colouring) | `map_1_6x6.txt` | `map_4_12x12.txt` |
+- Battleships: five boards, medium `count`/`subsumption` to hard `chains`, never `what_if`; three 8×8 boards exercise every player symbol.
+- Calcudoku: six boards with no single-cell cages; two 4×4 `relations`, two 6×6 (`relations`, `cover2`), one 7×7 `cover3`, one 6×6 `what_if`.
+- Newer families: Mosaic and Dominosa reach `cover3`/`chains`; Magnets `cover3` on 6×6; Towers mostly `relations`; Rectangles hard boards come from `puzzle-lab fresh rectangles --tier hard`; Undead and Pattern have no board between `relations` and `what_if`; Map has no medium board because its pairwise `AT_MOST_ONE` rules jump from `single` to `chains`. Relation-only boards of 16 or fewer variables rate easy.
+- Thermometers reaches `chains`; Kakuro stops at `relations`; Hidato/Numbrix reach `chains`; Even/Odd reaches `cover3`, Killer `cover2`, Arrow and Sandwich `chains`, Skyscraper `relations`.
 
 ## Existing families
 
-| Puzzle | Rules | Example coverage |
-|---|---|---|
-| Sudoku | Every row, column and box holds each digit once (jigsaw, NRC and X variants change the boxes). | `sudoku_1_4x4`, easy, pointing, naked/hidden pairs, X-Wing, Swordfish, chains, Jigsaw, NRC, X-Sudoku |
-| Calcudoku | No repeats in a row or column; each cage's digits combine to its target with its operation. | 4×4 easy, 6×6 medium/hard/fiendish, and 7×7 hard |
-| Futoshiki | No repeats in a row or column; every inequality sign between neighbouring cells holds. | 5×5 with no givens and eight inequality signs |
-| Towers | Each height once per row and column; an edge clue counts the visible towers. | 4×4 to 6×6, `relations` and `chains` |
-| Mosaic | Colour cells black or white; a number counts the black cells in its 3×3 window. | 5×5 to 8×8, `count` to `cover3` |
-| Dominosa | Cover the grid with dominoes, every pair of numbers used once. | 5×6 to 7×8, `single` to `chains` |
-| Rectangles | Divide the grid into rectangles, each with one number equal to its area. | 5×5 to 14×14, `single` to `chains` |
-| Magnets | Each domino is a magnet or neutral; line counts per pole; touching poles differ. | 4×4 and 6×6, `relations` to `cover3` |
-| Undead | Monsters in every empty cell, counted along sight lines that bend at mirrors. | 4×4 (four boards) and 5×5, `relations` and `what_if` |
-| Pattern | Fill cells to match the run lengths of each row and column. | 4×4 to 12×12, `relations` and `what_if` |
-| Map | Four-colour the regions so neighbours differ. | 6×6 to 12×12, `single` and `chains` |
-| Murdoku | Place each person on a free square, at most one per row and column, so all clues hold; the murderer is alone with the victim. | `murdoku_1_first_case`, `wie-doet-het-met-wie-1/2/3/4/5`, `murdoku_3_house`, `murdoku_sparse_mystery`, `murdoku_global_counts`, `murdoku_composition`, `food-murdoku-2/2/3`, `zoo-murdoku-1/2/3`, `tamagotchi-murdoku-6x6/9x9/12x12`, `vietnam-murdoku-1/2/3`, and owner-authored `prrrdoku1-3` |
+- Sudoku: Every row, column and box holds each digit once (jigsaw, NRC and X variants change the boxes). Examples: sudoku_1_4x4, easy, pointing, naked/hidden pairs, X-Wing, Swordfish, chains, Jigsaw, NRC, X-Sudoku.
+- Calcudoku: No repeats in a row or column; each cage's digits combine to its target with its operation. Examples: 4×4 easy, 6×6 medium/hard/fiendish, and 7×7 hard.
+- Futoshiki: No repeats in a row or column; every inequality sign between neighbouring cells holds. Examples: 5×5 with no givens and eight inequality signs.
+- Towers: Each height once per row and column; an edge clue counts the visible towers. Examples: 4×4 to 6×6, relations and chains.
+- Mosaic: Colour cells black or white; a number counts the black cells in its 3×3 window. Examples: 5×5 to 8×8, count to cover3.
+- Dominosa: Cover the grid with dominoes, every pair of numbers used once. Examples: 5×6 to 7×8, single to chains.
+- Rectangles: Divide the grid into rectangles, each with one number equal to its area. Examples: 5×5 to 14×14, single to chains.
+- Magnets: Each domino is a magnet or neutral; line counts per pole; touching poles differ. Examples: 4×4 and 6×6, relations to cover3.
+- Undead: Monsters in every empty cell, counted along sight lines that bend at mirrors. Examples: 4×4 (four boards) and 5×5, relations and what_if.
+- Pattern: Fill cells to match the run lengths of each row and column. Examples: 4×4 to 12×12, relations and what_if.
+- Map: Four-colour the regions so neighbours differ. Examples: 6×6 to 12×12, single and chains.
 
-The graded Sudoku and Calcudoku examples are generated; newspaper puzzles are not copied. `prrrdoku1-3` are based on the owner's Dutch puzzle documents, with adjustments to preserve the intended solution and late reveal. Private screenshot transcriptions are excluded from this repository.
+The graded Sudoku and Calcudoku examples are generated; newspaper puzzles are
+not copied. `prrrdoku1-3` are based on the owner's Dutch documents, adjusted to
+preserve the intended solution and late reveal. Private scan transcriptions are
+excluded.
 
-## External corpora
+## Known gaps and frontier
 
-Published Sudoku collections arrive through `uv run python -m benchmark.fetch
---source all` (or one source by name), which downloads into `benchmark/.cache/`
-and samples from there. Puzzle data is test input, never content: the cache is
-git-ignored, and only code is committed.
+Known gaps: no medium Map board; hard Undead and Pattern are beyond deduction.
+15 of the 194 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
+`tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`,
+`killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`, `food-murdoku-3`,
+`menu-murdoku-3`, `prrrdoku2`, `prrrdoku3`, `tamagotchi-murdoku-9x9` and
+`tamagotchi-murdoku-12x12`. `puzzle-lab rate` reports them as
+`deductive: false`; the web index badges them, and a test pins the list.
 
-| Source | Puzzles | Solutions | Own rating |
-|---|---|---|---|
-| `norvig` | 156 (easy50, top95, hardest) | derived with the brute force | no |
-| `sudoku-extreme` | 400 000+ (`sapientinc` on Hugging Face) | shipped | yes |
+## External corpora and benchmark
 
-`--count` sets rows per bucket and `--bucket none|group|rating` spreads a sample
-over the dataset's own grouping instead of taking whatever comes first. A row is
-dropped and counted when its answer contradicts its own givens, or when it has
-no answer and the brute force finds no unique one, so a broken row never reads
-as a solver failure. `manifest.json` records every URL, byte size, sha256 and
-UTC time, and every sample says which file hashes, bucket, size and seed built
-it; a sample already on disk is reused until `--force` (proving the hardest of
-Norvig's puzzles unique takes the brute force minutes, once).
-
-### Ranking alignment
-
-`sudoku-extreme` rates every puzzle with a backtracking count, median 17 over
-its 422 786 rows, 26% of them at rating <= 3. That is where the ladder stops: on
-a 500-puzzle sample from the whole source it solves 128 of the 131 puzzles rated
-0 to 3, 5 of the 126 rated 4 to 16, and none of the 243 rated 17 or over. Its
-grade so tracks the source's rating across the easy block and saturates above
-it, and counting every rated row mostly measures how much easy material a sample
-happens to hold: +0.69 on that draw, but +0.15 on one spread evenly over the
-rating scale (`--bucket rating --count 2`, 482 puzzles, 9 solved). The cap moves
-it as well, because `timeout` is the last grade in `grades_for`: that even sample
-reports +0.39 at `--timeout 5` and +0.15 at `--timeout 30`, since more puzzles
-land in the strongest grade. So `bench.py` correlates over the puzzles it solved
-and says how many it left out; on the 133 solved of that 500 that reads grade
-+0.90, `iterations` +0.77, ms +0.84, where counting the rest in reads as
-`iterations` -0.55 because a puzzle that gives up early spends little.
-Validating the grade as a human-scale rater needs puzzles inside the ladder's
-own reach, which this corpus mostly is not.
-
-## Cross-family benchmark
-
-`uv run python benchmark/families.py --runs 3 --seed 42` measures parser, CLI load/compile, deduction solve, and independent brute-force times for every listed small/larger family example. The seed shuffles execution order; the checked-in, unique example files are fixed. The benchmark stops if an example is no longer unique or the engine disagrees with brute force.
+`uv run python -m benchmark.fetch --source all` downloads Sudoku corpora into the
+ignored `benchmark/.cache/`; `--count` and `--bucket none|group|rating` sample,
+`--force` refetches, and `manifest.json` records hashes and seeds. Puzzle data is
+test input, never content. `sudoku-extreme` rates with a backtracking count; this
+ladder tracks only the easy block and saturates above, so `bench.py` correlates
+over the puzzles it solved and states how many it omitted. See `benchmark/`.
+`uv run python benchmark/families.py --runs 3 --seed 42` measures parse, load,
+deduction and brute-force times for the listed examples and stops on disagreement.

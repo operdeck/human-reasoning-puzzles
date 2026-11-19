@@ -57,6 +57,9 @@ def test_calcudoku_examples_have_no_single_cell_cages(path):
         "README.md",
         "docs/puzzle-collection.md",
         "docs/model-and-puzzle-formats.md",
+        "docs/cli.md",
+        "docs/murdoku-grammar.md",
+        "docs/web-interface.md",
         "docs/discoverability.md",
     ),
 )
