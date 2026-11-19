@@ -40,9 +40,9 @@ no puzzle files) and without puzzle files include every Murdoku in `examples/`.
 
 ## `puzzle-lab`
 
-A non-Murdoku authoring tool. `rate` trusts a puzzle only when deduction
-finishes it and independent search confirms one solution. Every command accepts
-`-h/--help`.
+`puzzle-lab` authors non-Murdoku puzzles; `murdoku-board` drafts Murdoku boards.
+`rate` trusts a puzzle only when deduction finishes it and independent search
+confirms one solution. Every command accepts `-h/--help`.
 
 ### `rate`
 
