@@ -19,7 +19,7 @@ Words:
 terras: op het terras
 schoenenhok: in het schoenenhok
 keuken: in de keuken
-stube: in de eetzaal
+stube: in de stube
 drooghok: in het drooghok
 kamer_n: in de kleine kamer noord
 kamer_z: in de kleine kamer zuid
