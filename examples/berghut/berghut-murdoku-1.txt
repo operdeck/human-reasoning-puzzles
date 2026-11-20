@@ -1,0 +1,194 @@
+# In de berghut 1 - "De koude douche" (10x10)
+#
+# Hütte Adlerhorst, eerste herfstnacht. Tien stamgasten, één storm. De laatste
+# aankomst is doorweekt en moet onder de koude buitendouche; over haar staat
+# geen enkele aanwijzing.
+#
+# Oplossing: Greta r1c1, Siegfried r2c8, Ute r3c6, Reinhart r4c5,
+# Waltraud r5c7, Hannelore r6c2, Brunhild r7c9, Gerhard r8c10,
+# Wolfgang r9c3, Gunter r10c4.
+# Greta staat op de buitendouche; de drie bikkels zijn Ute, Reinhart en
+# Waltraud op de stoelen rond de bikkeltafel.
+#
+# Sleutelclues: Gunter/Hannelore minstens drie rijen; Siegfried/Brunhild
+# hoogstens twee kolommen (touwpartners).
+
+Size: 10
+Language: nl
+
+Words:
+terras: op het terras
+schoenen: in de schoenenruimte
+keuken: in de keuken
+stube: in de eetzaal
+droog: in de droogkamer
+kamer_n: in de kleine kamer noord
+kamer_z: in de kleine kamer zuid
+lager: in het matrassenlager
+was: in het washok
+buitendouche: de koude buitendouche
+terrasbank: de terrasbank
+houtstapel: de houtstapel
+bergschoen: de bergschoenen
+helm: de helm
+touw: het touw
+rugzak: de rugzak
+stoel: een bikkelstoel
+fornuis: het fornuis
+aanrecht: het aanrecht
+pan: de pan
+krat: de krat
+tafel: de bikkeltafel
+kachel: de kachel
+stinksokken: de stinksokken
+spiegel: de spiegel
+bed: het bed
+kast: de kast
+koffer: de koffer
+emmer: de emmer
+name.attribute: een {name}
+
+Regions:
+terras: terras #D9E2EA
+schoenen: schoenen #C9B79C
+keuken: keuken #F2DCC0
+stube: stube #E8D5B5
+droog: droog #CFE0EE
+kamer_n: kamer_n #E3CFC0
+kamer_z: kamer_z #D8D2F0
+lager: lager #DCE8D2
+was: was #C8D8CB
+
+Grid:
+terras terras terras terras terras terras terras terras terras terras
+schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
+keuken keuken keuken keuken stube stube stube stube droog droog
+keuken keuken keuken keuken stube stube stube stube droog droog
+keuken keuken keuken keuken stube stube stube stube droog droog
+kamer_n kamer_n kamer_n lager lager lager lager lager droog droog
+kamer_n kamer_n kamer_n lager lager lager lager lager droog droog
+kamer_z kamer_z lager lager lager lager lager lager was was
+kamer_z kamer_z lager lager lager lager lager lager was was
+kamer_z kamer_z lager lager lager lager lager lager was was
+
+Objects:
+buitendouche: standable r1c1
+terrasbank: standable r1c5 r1c6
+houtstapel: blocking r1c9 r1c10
+bergschoen: blocking r2c1 r2c2
+stoel: standable r2c3
+helm: blocking r2c4
+touw: blocking r2c7
+rugzak: blocking r2c9
+fornuis: blocking r3c2
+pan: blocking r3c4
+aanrecht: blocking r4c1 r4c2
+krat: blocking r5c1
+tafel: blocking r4c6
+stoel: standable r3c5
+stoel: standable r3c6
+stoel: standable r3c7
+stoel: standable r4c5
+stoel: standable r4c7
+stoel: standable r5c5
+stoel: standable r5c6
+stoel: standable r5c7
+kachel: blocking r3c8
+stinksokken: blocking r4c8
+spiegel: blocking r3c10
+stinksokken: blocking r5c9 r5c10
+touw: blocking r6c10
+bed: standable r6c1 r6c2
+kast: blocking r7c3
+bed: standable r8c1 r8c2
+kast: blocking r10c1
+bed: standable r6c5 r6c6
+bed: standable r7c4 r7c5
+kast: blocking r6c8 r7c8
+bed: standable r8c7 r8c8
+bed: standable r9c5 r9c6
+helm: blocking r9c8
+bed: standable r10c4 r10c5
+koffer: blocking r10c6
+touw: blocking r10c8
+spiegel: blocking r8c9
+emmer: blocking r9c10
+kast: blocking r10c10
+
+People:
+Greta
+Brunhild
+Hannelore
+Ute
+Waltraud
+Gunter
+Reinhart
+Gerhard
+Siegfried
+Wolfgang
+
+Rules:
+count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op een bikkelstoel.
+no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
+count (people on object:buitendouche) = 1 | Precies één iemand staat onder de koude buitendouche.
+
+Clues:
+Gunter dir:rows Hannelore >= 3 | Gunter en Hannelore liggen minstens drie rijen uit elkaar; verder draagt zijn gesnurk niet.
+Siegfried dir:cols Brunhild <= 2 | De touwpartners Siegfried en Brunhild blijven ook binnen twee kolommen van elkaar.
+Siegfried in area:schoenen
+Ute in area:stube
+Reinhart in area:stube
+Waltraud in area:stube
+Hannelore in area:kamer_n
+Hannelore on object:bed
+Gerhard in area:was
+Gunter on object:bed
+Reinhart dir:up Waltraud | Reinhart zit boven Waltraud aan de bikkeltafel.
+not (Ute beside object:kachel) | Ute zit niet naast de kachel; die heeft ze de hele dag al gestookt.
+Ute dir:up Reinhart | Ute zit boven Reinhart, aan de kant van de koude deur.
+Gerhard dir:up Wolfgang | Gerhard ligt boven Wolfgang.
+
+Key:
+clue: Gunter dir:rows Hannelore >= 3
+clue: Siegfried dir:cols Brunhild <= 2
+
+Backdrop:
+U+1F3D4
+
+Title:
+In de berghut 1: De koude douche
+
+Intro:
+De eerste herfststorm jaagt tien stamgasten naar Hütte Adlerhorst. Buiten raast de wind; binnen ruikt het naar natte wol, kaiserschmarrn en sokken. De laatste aankomst is doorweekt en moet eerst onder de koude buitendouche.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn standable; de andere meubels blokkeren. Er zitten vanavond precies drie mensen op een bikkelstoel. Niemand wil naast de stinksokken zitten.
+
+Figures:
+Greta: de materiaalvrouw ; icon=U+1F469
+Brunhild: de touwpartner van Siegfried ; icon=U+1F9D1
+Hannelore: de lichte slaper ; icon=U+1F471
+Ute: de kokkin van dienst ; icon=U+1F475
+Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
+Gunter: de man die snorkt als een gletsjer ; icon=U+1F468
+Reinhart: de weerman zonder bereik ; icon=U+1F468
+Gerhard: de koukleum met de muts op ; icon=U+1F474
+Siegfried: de bergführer met de rode helm ; icon=U+1F9D4
+Wolfgang: de man met de pickel ; icon=U+1F468
+
+Pronouns:
+Greta: zij haar haar
+Brunhild: zij haar haar
+Hannelore: zij haar haar
+Ute: zij haar haar
+Waltraud: zij haar haar
+Gunter: hij hem zijn
+Reinhart: hij hem zijn
+Gerhard: hij hem zijn
+Siegfried: hij hem zijn
+Wolfgang: hij hem zijn
+
+Question:
+Wie staat er nog onder de koude buitendouche?
+
+Reveal:
+Greta, de materiaalvrouw, staat onder de koude buitendouche: zij kwam als laatste aan en mocht pas naar binnen als ze schoon was.
+
