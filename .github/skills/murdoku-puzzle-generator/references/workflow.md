@@ -77,8 +77,8 @@ When both are given, transcribe first, then build a separate derived puzzle.
 - **Give `clue_search` time.** `outcome` runs two solver workers, so a
   `--timeout 1` reports "timeout" on puzzles the CLI solves in under a second.
   Use five seconds or more for grading and thinning.
-- **Quantified-filter wording leaks `?a`.** Avoid
-  `(?a in areas where count (people in ?a) = 2)` in player clues until the
-  wording is fixed; name the room or state the count instead.
+- **Quantified filters use natural-language references.** A bound variable
+  such as `?a` in `(?a in areas where count (people in ?a) = 2)` is rendered
+  as "that area" / "dat gebied", not as parser syntax.
 
 ## Reading a scan

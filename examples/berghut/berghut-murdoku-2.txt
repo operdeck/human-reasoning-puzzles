@@ -18,10 +18,10 @@ Language: nl
 
 Words:
 terras: op het terras
-schoenen: in de schoenenruimte
+schoenenhok: in het schoenenhok
 keuken: in de keuken
 stube: in de eetzaal
-droog: in de droogkamer
+drooghok: in het drooghok
 kamer_n: in de tweepersoonskamer
 kamer_z: in de kleine kamer zuid
 lager: in het matrassenlager
@@ -49,10 +49,10 @@ avondmens: avondmens
 
 Regions:
 terras: terras #D9E2EA
-schoenen: schoenen #C9B79C
+schoenen: schoenenhok #C9B79C
 keuken: keuken #F2DCC0
 stube: stube #E8D5B5
-droog: droog #CFE0EE
+droog: drooghok #CFE0EE
 kamer_n: kamer_n #E3CFC0
 kamer_z: kamer_z #D8D2F0
 lager: lager #DCE8D2
@@ -169,9 +169,9 @@ RoleEligibility:
 schuldige: attribute:avondmens
 
 Clues:
-Gunter dir:rows Siegfried <= 2 | Gunter en Siegfried deden samen de afwas en blijven binnen twee rijen van elkaar.
-Hannelore dir:cols Gunter = 3 | Hannelore en Gunter kunnen elkaar niet luchten: precies drie kolommen ertussen.
-Brunhild in area:schoenen
+Gunter dir:rows Siegfried <= 2 | Het verschil tussen de rijnummers van Gunter en Siegfried is hoogstens twee.
+Hannelore dir:cols Gunter = 3 | Het verschil tussen de kolomnummers van Hannelore en Gunter is precies drie.
+Brunhild in area:schoenenhok
 Brunhild on object:stoel
 Gerhard in area:lager
 Ute in area:keuken
@@ -194,7 +194,7 @@ In de berghut 2: De kachel
 
 Intro:
 De tweede nacht in Hütte Adlerhorst. De slaapzaal ligt boven; de eetzaal en de keuken liggen beneden. De koude stoel staat weer in de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In de tweepersoonskamer slapen precies twee mensen.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In de tweepersoonskamer slapen precies twee mensen.
 De schuldige is een avondmens en zat naast de kachel.
 
 Figures:

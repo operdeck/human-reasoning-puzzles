@@ -49,7 +49,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "op.except": "{left} except {right}",
         "op.filter": "{source} that are {relation} {target}",
         "op.adjective_filter": "{source} that are {adjective}",
-        "op.comprehension": "{variable} in {source} where {condition}",
+        "op.comprehension": "{source} where {condition}",
+        "variable.person": "that person",
+        "variable.area": "that area",
+        "variable.row": "that row",
+        "variable.column": "that column",
+        "variable.cell": "that square",
+        "variable.feature": "that feature",
+        "variable.role": "that role",
         "op.projection": "{kind} overlapping {operand}",
         "projection.area": "areas",
         "projection.area.person": "the area of {operand}",
@@ -225,7 +232,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "op.except": "{left} behalve {right}",
         "op.filter": "{source} die {relation} {target} zijn",
         "op.adjective_filter": "{source} die {adjective} zijn",
-        "op.comprehension": "{variable} in {source} waarvoor {condition}",
+        "op.comprehension": "{source} waarvoor geldt: {condition}",
+        "variable.person": "die persoon",
+        "variable.area": "dat gebied",
+        "variable.row": "die rij",
+        "variable.column": "die kolom",
+        "variable.cell": "dat vakje",
+        "variable.feature": "dat voorwerp",
+        "variable.role": "die rol",
         "op.projection": "{kind} die {operand} overlappen",
         "projection.area": "gebieden",
         "projection.area.person": "het gebied van {operand}",
@@ -965,11 +979,15 @@ class ExpressionWords:
             case lang.Comprehension(variable=variable, source=source, condition=condition):
                 shape = infer_operand(self.board, source, bindings)
                 scoped = {**bindings, variable.text: Shape(shape.sort, 1, 1)}
+                variable_name = self.names.get(
+                    variable.text, self._phrase(f"variable.{shape.sort.value}")
+                )
+                scoped_words = replace(self, names={**self.names, variable.text: variable_name})
                 return self._phrase(
                     "op.comprehension",
-                    variable=variable.text,
+                    variable=variable_name,
                     source=self._operand(source, bindings),
-                    condition=self._formula(condition, scoped),
+                    condition=scoped_words._formula(condition, scoped),
                 )
             case _:
                 assert_never(value)

@@ -255,6 +255,23 @@ def test_every_construct_has_compositional_wording(board, language, source):
 
 
 @pytest.mark.parametrize(
+    ("language", "reference", "source_phrase"),
+    [
+        ("en", "that area", "areas where"),
+        ("nl", "dat gebied", "gebieden waarvoor geldt:"),
+    ],
+)
+def test_comprehension_filter_uses_a_natural_bound_variable_reference(
+    board, language, reference, source_phrase
+):
+    statement = parse_statement("count (?a in areas where count (people in ?a) = 2) = 1")
+    wording = ExpressionWords(board, language).statement(statement)
+    assert "?a" not in wording
+    assert reference in wording
+    assert source_phrase in wording
+
+
+@pytest.mark.parametrize(
     ("language", "alone", "only"),
     [
         ("en", "Ada is alone in their area", "Ada is the only person on"),
