@@ -159,7 +159,7 @@ Attributes:
 topganger: Greta Siegfried Ute Wolfgang
 
 Clues:
-Gunter dir:rows Waltraud >= 3 | Het verschil tussen de rijnummers van Gunter en Waltraud is minstens drie; Waltraud wil niet naast het gesnurk zijn.
+Gunter dir:rows Waltraud >= 3
 Hannelore dir:cols Brunhild >= 4
 Gerhard in area:terras
 Gerhard in columns:8
