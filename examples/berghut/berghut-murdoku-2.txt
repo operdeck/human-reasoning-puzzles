@@ -29,7 +29,7 @@ was: in het washok
 douche: de koude buitendouche
 terrasbank: de terrasbank
 hout: de houtstapel
-bergschoen: de bergschoenen
+bergschoen: een paar bergschoenen
 helm: de helm
 touw: het touw
 rugzak: de rugzak
