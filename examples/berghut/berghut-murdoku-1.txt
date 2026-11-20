@@ -44,7 +44,6 @@ stinksokken: de stinksokken
 spiegel: de spiegel
 bed: het bed
 kast: de kast
-koffer: de koffer
 emmer: de emmer
 
 Regions:
@@ -110,7 +109,7 @@ bed: standable r8c7 r8c8
 bed: standable r9c5 r9c6
 helm: blocking r9c8
 bed: standable r10c4 r10c5
-koffer: blocking r10c6
+krat: blocking r10c6
 touw: blocking r10c8
 spiegel: blocking r8c9
 emmer: blocking r9c10

@@ -43,7 +43,6 @@ stinksokken: de stinksokken
 spiegel: de spiegel
 bed: het bed
 kast: de kast
-koffer: de koffer
 emmer: de emmer
 topganger: topganger
 
