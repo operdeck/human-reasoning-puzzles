@@ -354,6 +354,24 @@ STANDABLE_OPACITY = 0.55
 SCOPE_OPACITY = 0.7
 
 
+def _region_components(squares: set[Square]) -> Iterable[set[Square]]:
+    remaining = squares.copy()
+    while remaining:
+        seed = min(remaining)
+        remaining.remove(seed)
+        component = {seed}
+        pending = [seed]
+        while pending:
+            sq = pending.pop()
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                neighbor = Square(sq.row + dr, sq.col + dc)
+                if neighbor in remaining:
+                    remaining.remove(neighbor)
+                    component.add(neighbor)
+                    pending.append(neighbor)
+        yield component
+
+
 def _region_labels(
     canvas: Canvas,
     board: Board,
@@ -361,7 +379,7 @@ def _region_labels(
     cell: int,
     occupied: set[Square] | None = None,
 ) -> None:
-    """A small name tag in each region, at the top of its first free square.
+    """A small name tag in each connected part of a region.
 
     Squares with an object, a mark, a top-wall window, a point object near their top edge or
     a placed person are passed over when the region has another; a long name may run on
@@ -385,34 +403,33 @@ def _region_labels(
     size = max(8, cell // 7)
     pad = max(2, cell // 24)
     for rid, name in board.region_names.items():
-        squares = sorted(
+        squares = {
             Square(r, c)
             for r in range(board.size)
             for c in range(board.size)
             if board.region_of(Square(r, c)) == rid
-        )
-        if not squares:
-            continue
-        sq = min(
-            squares,
-            key=lambda s: (s in taken or s in board.blocked, s in crowded, s in occupied, s),
-        )
+        }
         text = _upper_first(name.replace("_", " "))
-        x0, y0, x1, _ = box(sq)
-        right = Square(sq.row, sq.col + 1)
         wide = canvas.textlength(text, size) > cell - 4 * pad
-        if wide and right in squares and right not in taken and right not in board.blocked:
-            x1 = box(right)[2]
-        tag = (x0 + pad, y0 + pad, x1 - pad, y0 + pad + int(size * 1.5))
-        with canvas.group(opacity=0.9, class_name="area-label"):
-            canvas.rounded_rectangle(
-                tag,
-                radius=max(2, cell // 16),
-                fill=WHITE,
-                outline=_darker(fills[rid], 0.6),
-                width=max(1, cell // 60),
+        for component in _region_components(squares):
+            sq = min(
+                component,
+                key=lambda s: (s in taken or s in board.blocked, s in crowded, s in occupied, s),
             )
-        _centred_text(canvas, text, tag, size, INK, max_width=tag[2] - tag[0] - 2 * pad)
+            x0, y0, x1, _ = box(sq)
+            right = Square(sq.row, sq.col + 1)
+            if wide and right in component and right not in taken and right not in board.blocked:
+                x1 = box(right)[2]
+            tag = (x0 + pad, y0 + pad, x1 - pad, y0 + pad + int(size * 1.5))
+            with canvas.group(opacity=0.9, class_name="area-label"):
+                canvas.rounded_rectangle(
+                    tag,
+                    radius=max(2, cell // 16),
+                    fill=WHITE,
+                    outline=_darker(fills[rid], 0.6),
+                    width=max(1, cell // 60),
+                )
+            _centred_text(canvas, text, tag, size, INK, max_width=tag[2] - tag[0] - 2 * pad)
 
 
 BACKDROP_REACH = 0.08  # how far a backdrop reaches past each board side, in board sides

@@ -125,16 +125,16 @@ door: door r5c8 r6c8
 door: door r7c1 r8c1
 door: door r8c3 r8c4
 door: door r8c7 r8c8
-window: window r2c10 right
+window: window r2c11 right
 window: window r4c1 left
 window: window r5c1 left
-window: window r6c10 right
+window: window r6c11 right
 window: window r7c1 left
-window: window r7c10 right
+window: window r7c11 right
 window: window r9c1 left
-window: window r9c10 right
-window: window r10c1 bottom
-window: window r10c7 bottom
+window: window r9c11 right
+window: window r11c1 bottom
+window: window r11c7 bottom
 
 People:
 Greta

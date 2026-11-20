@@ -318,6 +318,9 @@ Murdoku uses named sections: `Size:`, `Regions:`, `Grid:`, and `People:` are req
 
 Every object footprint must be declared `blocking` or `standable`; its name/icon never determines occupancy. Doors list two side-sharing cells in different areas. Windows list one inside cell. Point objects sit on a grid point given as a half-step anchor such as `fountain: r2.5c2.5`: whole numbers are cell centres and `.5` values grid lines, with `0.5` and `N+0.5` the outer edges. An interior vertex touches four cells, a vertex on the outer edge or the middle of an inner cell side two, and a board corner or the middle of an outer cell side one. A cell centre or a point off the board is an error. See [`examples/demo/murdoku_2_point_objects.txt`](../examples/demo/murdoku_2_point_objects.txt). Marks overlap freely and do not occupy cells. Roles overlap unless explicitly constrained. Attributes are fixed person facts.
 
+Disconnected parts of the same region each receive a name tag on the board,
+but remain one logical area for clues and rules.
+
 ### Clue language
 
 Murdoku clues and rules use the typed expression language. The complete

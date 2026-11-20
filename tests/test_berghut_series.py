@@ -149,3 +149,16 @@ def test_berghut_series_covers_every_axis_form():
 def test_berghut_layouts_differ():
     layouts = [audit.layout_key(_text(name), "murdoku") for name in FILES]
     assert len(set(layouts)) == len(FILES)
+
+
+def test_berghut_3_windows_are_on_outside_walls():
+    board = load_board_layout(_text("berghut-murdoku-3.txt"))
+    for window in (item for item in board.edge_items if item.kind == "window"):
+        (square,) = window.cells
+        edge = {
+            "top": square.row == 0,
+            "bottom": square.row == board.size - 1,
+            "left": square.col == 0,
+            "right": square.col == board.size - 1,
+        }
+        assert window.side is not None and edge[window.side], window

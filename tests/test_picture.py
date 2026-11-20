@@ -1619,6 +1619,15 @@ def test_dutch_legend_lists_fixed_role_holders_as_a_category():
     assert legend._role_line("eiwit") == "Eiwit: Vis, Bonen (niet meer dan 1 hiervan per gebied)"
 
 
+def test_diagonally_separated_parts_of_a_region_each_get_a_name_tag():
+    board = Board(2, [["a", "b"], ["b", "a"]], {"a": "here", "b": "there"}, [], ["A", "B"])
+
+    markup = drawing.murdoku_picture(board, cell=CELL).to_svg()
+
+    assert markup.count('aria-label="Here"') == 2
+    assert markup.count('aria-label="There"') == 2
+
+
 def test_region_names_are_tagged_on_puzzle_and_solution_away_from_people():
     board = Board(2, [["a", "b"], ["a", "b"]], {"a": "here", "b": "there"}, [], ["A", "B"])
 
