@@ -274,6 +274,57 @@ SNOW_MOUNTAIN = (
     '<path d="M30 86 L34 78"/><path d="M70 86 L66 78"/>'
     "</g>"
 )
+# A mattress on the floor seen from above: ticking, two seams and a pillow.
+MATTRESS = (
+    '<rect x="6" y="10" width="88" height="80" rx="8" fill="#e8e2d2"'
+    ' stroke="#8a7f6a" stroke-width="3"/>'
+    '<path d="M6 38H94M6 62H94" stroke="#c9bda4" stroke-width="3"/>'
+    '<rect x="14" y="18" width="34" height="18" rx="6" fill="#f7f3e8"'
+    ' stroke="#8a7f6a" stroke-width="2"/>'
+)
+# A steel gear locker: vents, a handle and a kick plate.
+LOCKER = (
+    '<rect x="18" y="8" width="64" height="84" rx="4" fill="#9fb0bd"'
+    ' stroke="#47535d" stroke-width="3"/>'
+    '<g stroke="#6c7d8a" stroke-width="2">'
+    '<path d="M28 20H72M28 28H72M28 36H72"/>'
+    "</g>"
+    '<rect x="62" y="46" width="5" height="14" rx="2" fill="#47535d"/>'
+    '<rect x="24" y="76" width="52" height="8" rx="2" fill="#6c7d8a"/>'
+)
+# A wooden shelf with book spines, for a hut reading corner.
+BOOKSHELF = (
+    '<rect x="8" y="8" width="84" height="84" rx="3" fill="#a9743f"'
+    ' stroke="#5a3b1e" stroke-width="3"/>'
+    '<rect x="14" y="14" width="72" height="30" fill="#e8dcc3"/>'
+    '<rect x="14" y="50" width="72" height="30" fill="#e8dcc3"/>'
+    '<g stroke="#5a3b1e" stroke-width="1">'
+    '<rect x="18" y="18" width="6" height="22" fill="#b84a3c"/>'
+    '<rect x="25" y="20" width="5" height="20" fill="#3f6f8f"/>'
+    '<rect x="31" y="17" width="7" height="23" fill="#d9a441"/>'
+    '<rect x="39" y="21" width="5" height="19" fill="#5c7a4a"/>'
+    '<rect x="45" y="18" width="6" height="22" fill="#7a4a6a"/>'
+    '<rect x="52" y="22" width="5" height="18" fill="#b84a3c"/>'
+    '<rect x="58" y="19" width="6" height="21" fill="#3f6f8f"/>'
+    '<rect x="65" y="21" width="5" height="19" fill="#d9a441"/>'
+    '<rect x="71" y="18" width="6" height="22" fill="#5c7a4a"/>'
+    '<rect x="18" y="54" width="6" height="22" fill="#3f6f8f"/>'
+    '<rect x="25" y="56" width="5" height="20" fill="#d9a441"/>'
+    '<rect x="31" y="53" width="7" height="23" fill="#b84a3c"/>'
+    '<rect x="39" y="55" width="5" height="21" fill="#7a4a6a"/>'
+    '<rect x="45" y="54" width="6" height="22" fill="#5c7a4a"/>'
+    '<rect x="52" y="57" width="5" height="19" fill="#3f6f8f"/>'
+    '<rect x="58" y="54" width="6" height="22" fill="#b84a3c"/>'
+    '<rect x="65" y="56" width="5" height="20" fill="#d9a441"/>'
+    '<rect x="71" y="54" width="6" height="22" fill="#7a4a6a"/>'
+    "</g>"
+    '<path d="M8 46H92" stroke="#5a3b1e" stroke-width="3"/>'
+)
+ROUND_TABLE = (
+    '<circle cx="50" cy="50" r="40" fill="#c98d52" stroke="#6b4423" stroke-width="4"/>'
+    '<circle cx="50" cy="50" r="30" fill="none" stroke="#a9743f" stroke-width="2"/>'
+    '<path d="M22 50H78M50 22V78" stroke="#a9743f" stroke-width="2" opacity="0.6"/>'
+)
 TONGUE = "#e86a7e"
 STAIRCASE = (
     '<path d="M12 84h19V66h19V48h19V30h19V12" fill="none" stroke="currentColor"'
@@ -790,6 +841,10 @@ REGISTRY: dict[str, Icon] = {
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
         Icon("dirty_socks", "\U0001f9e6", "dirty socks", markup=DIRTY_SOCKS),
         Icon("snow_mountain", "\U0001f3d4", "snow mountain", markup=SNOW_MOUNTAIN),
+        Icon("mattress", "\U0001f6cf", "mattress", markup=MATTRESS),
+        Icon("locker", "\U0001f5c4", "locker", markup=LOCKER),
+        Icon("round_table", "\u25cb", "round table", markup=ROUND_TABLE),
+        Icon("bookshelf", "\U0001f4da", "bookshelf", markup=BOOKSHELF),
         Icon(
             "non_la",
             "\U0001f452",
@@ -837,6 +892,10 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "sloffen": "slippers", "slippers": "slippers",
                 "stinksokken": "dirty_socks", "sokken": "dirty_socks", "socks": "dirty_socks",
                 "sneeuwberg": "snow_mountain", "snow_mountain": "snow_mountain",
+                "matras": "mattress", "mattress": "mattress",
+                "locker": "locker", "kluis": "locker",
+                "rondetafel": "round_table", "round_table": "round_table",
+                "boekenkast": "bookshelf", "bookshelf": "bookshelf",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
                 "lijk": "corpse", "corpse": "corpse",

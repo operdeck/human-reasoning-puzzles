@@ -77,6 +77,12 @@ Read this when choosing objects, colours, icons, backdrops or series order.
   so design its recognisable parts against the outer edges (a snow ridge along
   the top, a glacier snout at the bottom) and judge it from the rendered ring,
   not the full drawing. `SNOW_MOUNTAIN` is the berghut example.
+- **Vary the furniture inside a series.** Keep the footprint and the
+  blocking/standable kind so the model and grades stay put, and change the
+  object names and icons: beds vs. floor mattresses vs. double beds, cabinets
+  vs. bookshelves vs. lockers, chairs vs. stools, square vs. round table. Check
+  every clue that names an object (`on object:bed`) when renaming it. The
+  berghut series does this per puzzle.
 - **Give rooms doors and windows even when no clue uses them.** A door sits on
   a boundary between two areas (`door: door r2c5 r3c5`); a window sits on an
   outer wall (`window: window r3c1 left`). They are inert for solving but make

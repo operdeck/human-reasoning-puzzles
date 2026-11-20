@@ -73,12 +73,12 @@ Objects:
 buitendouche: standable r1c1
 terrasbank: standable r1c5 r1c6
 houtstapel: blocking r1c9 r1c10
-bergschoen: blocking r2c1
-bergschoen: blocking r2c2
+rugzak: blocking r2c1
+helm: blocking r2c2
 stoel: standable r2c3
-helm: blocking r2c4
-touw: blocking r2c7
-rugzak: blocking r2c9
+bergschoen: blocking r2c4
+bergschoen: blocking r2c7
+touw: blocking r2c9
 fornuis: blocking r3c2
 pan: blocking r3c4
 aanrecht: blocking r4c1 r4c2

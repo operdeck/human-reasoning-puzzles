@@ -42,8 +42,8 @@ tafel: de bikkeltafel
 kachel: de kachel
 stinksokken: de stinksokken
 spiegel: de spiegel
-bed: het bed
-kast: de kast
+matras: het matras
+boekenkast: de boekenkast
 emmer: de emmer
 avondmens: avondmens
 
@@ -74,22 +74,22 @@ Objects:
 douche: standable r1c1
 terrasbank: standable r1c5 r1c6
 hout: blocking r1c9 r1c10
-bergschoen: blocking r2c1
+helm: blocking r2c1
 bergschoen: blocking r2c2
 stoel: standable r2c3
-helm: blocking r2c4
+rugzak: blocking r2c4
 touw: blocking r2c7
-rugzak: blocking r2c9
-bed: standable r3c1 r3c2
-kast: blocking r3c3
-bed: standable r3c5 r3c6
-bed: standable r4c3 r4c4
-kast: blocking r4c1
-bed: standable r5c1 r5c2
-kast: blocking r5c3
-bed: standable r5c5 r5c6
-bed: standable r3c7 r3c8
-kast: blocking r5c7
+bergschoen: blocking r2c9
+matras: standable r3c1 r3c2
+boekenkast: blocking r3c3
+matras: standable r3c5 r3c6
+matras: standable r4c3 r4c4
+boekenkast: blocking r4c1
+matras: standable r5c1 r5c2
+boekenkast: blocking r5c3
+matras: standable r5c5 r5c6
+matras: standable r3c7 r3c8
+boekenkast: blocking r5c7
 stinksokken: blocking r4c9
 stinksokken: blocking r4c10
 touw: blocking r6c10
@@ -108,16 +108,16 @@ stoel: standable r8c4
 stoel: standable r8c5
 stoel: standable r8c6
 kachel: blocking r6c7
-kast: blocking r6c8
+boekenkast: blocking r6c8
 stinksokken: blocking r7c7
-bed: standable r9c1 r9c2
-kast: blocking r10c3
+matras: standable r9c1 r9c2
+boekenkast: blocking r10c3
 spiegel: blocking r9c4
 emmer: blocking r10c5
-kast: blocking r9c6
-bed: standable r9c7 r9c8
+boekenkast: blocking r9c6
+matras: standable r9c7 r9c8
 helm: blocking r10c6
-bed: standable r10c9 r10c10
+matras: standable r10c9 r10c10
 
 EdgeItems:
 door: door r1c8 r2c8
@@ -175,8 +175,8 @@ Brunhild in area:schoenen
 Brunhild on object:stoel
 Gerhard in area:lager
 Ute in area:keuken
-Hannelore on object:bed
-Waltraud beside object:bed
+Hannelore on object:matras
+Waltraud beside object:matras
 Hannelore in rows:3
 Greta in columns:1
 Siegfried in columns:10
