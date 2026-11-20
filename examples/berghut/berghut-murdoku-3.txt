@@ -174,7 +174,7 @@ clue: Gunter dir:rows Waltraud >= 3
 clue: Hannelore dir:cols Brunhild >= 4
 
 Backdrop:
-U+1F3D4
+sneeuwberg
 
 Title:
 In de berghut 3: De bikkels

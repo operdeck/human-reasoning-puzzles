@@ -171,7 +171,7 @@ clue: Gunter dir:rows Hannelore >= 3
 clue: Siegfried dir:cols Brunhild <= 2
 
 Backdrop:
-U+1F3D4
+sneeuwberg
 
 Title:
 In de berghut 1: De koude douche

@@ -256,6 +256,24 @@ DIRTY_SOCKS = (
     '<path d="M60 10Q65 4 70 10"/><path d="M68 18Q73 12 78 18"/>'
     "</g>"
 )
+# A snow-capped massif with a glacier snout, drawn as a backdrop: the summit
+# and snowfield show in the strip around the board, the rock body stays behind it.
+SNOW_MOUNTAIN = (
+    '<rect width="100" height="100" fill="#dcebf5"/>'
+    '<path d="M0 100 L0 55 L16 34 L34 52 L50 8 L66 52 L84 34 L100 55 L100 100 Z"'
+    ' fill="#f4f9fc" stroke="#b9cfdd" stroke-width="1"/>'
+    '<path d="M20 100 L30 68 L40 78 L50 34 L60 78 L70 68 L80 100 Z"'
+    ' fill="#9aa9b7" opacity="0.55"/>'
+    '<path d="M50 8 L60 42 L54 39 L50 52 L46 39 L40 42 Z" fill="#ffffff"'
+    ' stroke="#c8d8e4" stroke-width="1"/>'
+    '<path d="M22 0 L32 12 L40 3 L50 15 L60 3 L68 12 L78 0 Z" fill="#ffffff"'
+    ' stroke="#b9cfdd" stroke-width="1" stroke-linejoin="round"/>'
+    '<g fill="none" stroke="#8fc0dc" stroke-width="1.4">'
+    '<path d="M2 62 L10 58"/><path d="M90 58 L98 62"/>'
+    '<path d="M8 96 Q24 88 42 94"/><path d="M58 94 Q76 88 92 96"/>'
+    '<path d="M30 86 L34 78"/><path d="M70 86 L66 78"/>'
+    "</g>"
+)
 TONGUE = "#e86a7e"
 STAIRCASE = (
     '<path d="M12 84h19V66h19V48h19V30h19V12" fill="none" stroke="currentColor"'
@@ -771,6 +789,7 @@ REGISTRY: dict[str, Icon] = {
         ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
         Icon("dirty_socks", "\U0001f9e6", "dirty socks", markup=DIRTY_SOCKS),
+        Icon("snow_mountain", "\U0001f3d4", "snow mountain", markup=SNOW_MOUNTAIN),
         Icon(
             "non_la",
             "\U0001f452",
@@ -817,6 +836,7 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "tunnel": "tunnel",
                 "sloffen": "slippers", "slippers": "slippers",
                 "stinksokken": "dirty_socks", "sokken": "dirty_socks", "socks": "dirty_socks",
+                "sneeuwberg": "snow_mountain", "snow_mountain": "snow_mountain",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
                 "lijk": "corpse", "corpse": "corpse",

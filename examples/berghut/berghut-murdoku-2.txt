@@ -187,7 +187,7 @@ clue: Gunter dir:rows Siegfried <= 2
 clue: Hannelore dir:cols Gunter = 3
 
 Backdrop:
-U+1F3D4
+sneeuwberg
 
 Title:
 In de berghut 2: De kachel
