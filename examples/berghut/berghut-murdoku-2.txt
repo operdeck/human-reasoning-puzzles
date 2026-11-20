@@ -90,7 +90,8 @@ kast: blocking r5c3
 bed: standable r5c5 r5c6
 bed: standable r3c7 r3c8
 kast: blocking r5c7
-stinksokken: blocking r4c9 r4c10
+stinksokken: blocking r4c9
+stinksokken: blocking r4c10
 touw: blocking r6c10
 spiegel: blocking r3c10
 fornuis: blocking r6c2

@@ -95,7 +95,8 @@ stoel: standable r5c7
 kachel: blocking r3c8
 stinksokken: blocking r4c8
 spiegel: blocking r3c10
-stinksokken: blocking r5c9 r5c10
+stinksokken: blocking r5c9
+stinksokken: blocking r5c10
 touw: blocking r6c10
 bed: standable r6c1 r6c2
 kast: blocking r7c3
