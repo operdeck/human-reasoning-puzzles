@@ -1,6 +1,6 @@
 # In de berghut 2 - "De kachel" (10x10)
 #
-# Hütte Adlerhorst, tweede nacht. De slaapzaal ligt boven, de eetzaal en keuken
+# Hütte Adlerhorst, tweede nacht. De slaapzaal is boven, de eetzaal en keuken
 # beneden; de koude stoel staat weer in de tocht bij de deur. Om drie uur is de
 # kachel uit en is het in de hut ijskoud. Iemand vergat de laatste ronde hout —
 # en zat daarbij naast de kachel.
@@ -38,7 +38,7 @@ fornuis: het fornuis
 aanrecht: het aanrecht
 pan: de pan
 krat: de krat
-tafel: de bikkeltafel
+tafel: de stamtafel
 kachel: de kachel
 stinksokken: de stinksokken
 spiegel: de spiegel
@@ -169,8 +169,8 @@ RoleEligibility:
 schuldige: attribute:avondmens
 
 Clues:
-Gunter dir:rows Siegfried <= 2 | Het verschil tussen de rijnummers van Gunter en Siegfried is hoogstens twee.
-Hannelore dir:cols Gunter = 3 | Het verschil tussen de kolomnummers van Hannelore en Gunter is precies drie.
+Gunter dir:rows Siegfried <= 2
+Hannelore dir:cols Gunter = 3
 Brunhild in area:schoenenhok
 Brunhild on object:stoel
 Gerhard in area:lager
@@ -193,8 +193,8 @@ Title:
 In de berghut 2: De kachel
 
 Intro:
-De tweede nacht in Hütte Adlerhorst. De slaapzaal ligt boven; de eetzaal en de keuken liggen beneden. De koude stoel staat weer in de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In de tweepersoonskamer slapen precies twee mensen.
+De tweede nacht in Hütte Adlerhorst. De slaapzaal is boven; de eetzaal en de keuken zijn beneden. Een, koude, stoel staat weer op de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de stamtafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In de tweepersoonskamer slapen precies twee mensen.
 De schuldige is een avondmens en zat naast de kachel.
 
 Figures:
