@@ -674,6 +674,17 @@ def test_zero_area_distance_has_an_idiomatic_relation(
             "Ada dir:manhattan Ben >= 10",
             "Ada en Ben zijn minstens tien stappen van elkaar verwijderd",
         ),
+        ("en", "Ada dir:rows Ben = 1", "Ada and Ben are exactly one row apart"),
+        (
+            "nl",
+            "Ada dir:cols Ben <= 2",
+            "Ada en Ben zijn hoogstens twee kolommen van elkaar verwijderd",
+        ),
+        (
+            "nl",
+            "Ada dir:rows Ben >= 3",
+            "Ada en Ben zijn minstens drie rijen van elkaar verwijderd",
+        ),
     ],
 )
 def test_named_person_distance_pairs_read_naturally(board, language, formula, expected):
@@ -685,6 +696,8 @@ def test_distance_idiom_preserves_author_relation_templates_and_potential_self_t
     assert "CUSTOM" in words.statement(parse_statement("Ada dir:areas Ben >= 2"))
     sentence = ExpressionWords(board).statement(parse_statement("Ada dir:areas role:guard = 1"))
     assert "distinct from the subject" in sentence
+    axis_words = ExpressionWords(board, "nl", phrases={"rel.dir.cols": "CUSTOM"})
+    assert "CUSTOM" in axis_words.statement(parse_statement("Ada dir:cols Ben <= 2"))
 
 
 @pytest.mark.parametrize(

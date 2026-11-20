@@ -39,6 +39,8 @@ covers the whole union of target footprints. A target such as
 `people on object:…` instead names a person on the object. Exact distances
 such as `= 1` retain their metric wording, as do other bounds.
 Exact person-to-person cardinal directions name their row or column distance.
+For two named people, positive `dir:rows` and `dir:cols` bounds say how many
+rows or columns apart they are, without implying a direction or alignment.
 A role with exactly one holder may use a singular name such as "the murderer";
 optional or multiple-holder roles retain set wording. Worked solutions announce
 a last candidate once, cite a single clue directly, and group remaining role

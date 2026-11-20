@@ -752,10 +752,11 @@ class ExpressionWords:
 
     def _distance_pair(self, atom: lang.Atom, bindings: dict[str, Shape]) -> str | None:
         mode = atom.operator.text.removeprefix("dir:")
+        units = {"areas": "areas", "manhattan": "manhattan", "rows": "row", "cols": "column"}
         comparisons = {"=": "count.exactly", ">=": "count.at_least", "<=": "count.at_most"}
         if (
             not atom.operator.text.startswith("dir:")
-            or mode not in {"areas", "manhattan"}
+            or mode not in units
             or atom.determiner is not None
             or atom.measure is None
             or atom.measure.comparison.text not in comparisons
@@ -778,7 +779,7 @@ class ExpressionWords:
             second=self._operand(atom.target, bindings),
             comparison=self._phrase(comparisons[atom.measure.comparison.text]),
             count=numbers[count] if count < len(numbers) else str(count),
-            unit=self._phrase(f"unit.{mode}.{'one' if count == 1 else 'many'}"),
+            unit=self._phrase(f"unit.{units[mode]}.{'one' if count == 1 else 'many'}"),
         )
 
     def _near_king(
