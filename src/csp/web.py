@@ -37,6 +37,7 @@ from .story import (
     murdoku_key_items,
     murdoku_rules,
     object_list,
+    object_position_text,
     phrase,
     role_list,
 )
@@ -401,7 +402,7 @@ def _murdoku_cell_details(
                 lines.append(line)
 
     for obj in board.objects:
-        condition = say("doc.standable" if obj.kind == "standable" else "doc.blocking")
+        condition = object_position_text(say, obj.name, obj.kind == "standable")
         add(obj.squares, say("web.cell_object", name=places.thing(obj.name), condition=condition))
     for item in board.edge_items:
         add(item.cells, say("web.cell_touch", name=places.thing(item.name)))
@@ -436,12 +437,13 @@ def _murdoku_point_details(board: Board, text: str) -> list[dict[str, Any]]:
 
 
 def _objects(text: str) -> list[dict[str, Any]]:
-    """Each kind of object with its picture and whether figures may stand on it."""
+    """Each kind of object with its picture and how figures may occupy its squares."""
+    say = Wording.read(text)
     out = []
     for kind, label, standable in object_list(text):
         entry = {
             "name": label,
-            "text": phrase(text, "doc.standable" if standable else "doc.blocking"),
+            "text": object_position_text(say, kind, standable),
         }
         icon = icons.object_icon(kind)
         if icon is not None and (picture := icons.to_svg(icon)):

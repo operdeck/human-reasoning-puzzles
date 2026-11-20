@@ -254,6 +254,21 @@ def test_murdoku_cell_details_use_dutch_and_author_wording():
     assert "Touches: the mouse on the top edge" in points["r1c5"]
 
 
+@pytest.mark.parametrize(
+    ("name", "cell", "label", "caption"),
+    [
+        ("berghut-murdoku-1.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
+        ("berghut-murdoku-1.txt", "r1c4", "Terrasbank", "hier kun je op zitten"),
+        ("berghut-murdoku-3.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
+    ],
+)
+def test_berghut_object_position_text_matches_details_and_board(name, cell, label, caption):
+    bundle = web._murdoku(example(name).read_text(), {})
+    assert next(item["text"] for item in bundle["objects"] if item["name"] == label) == caption
+    details = bundle["cellDetails"][cell]
+    assert any(line.startswith("Voorwerp: ") and line.endswith(f"({caption})") for line in details)
+
+
 def test_murdoku_cell_details_include_object_count_rules_on_each_matching_object():
     text = example("wie-doet-het-met-wie-4.txt").read_text()
     details = web._murdoku(text, {})["cellDetails"]
