@@ -269,6 +269,12 @@ def test_berghut_object_position_text_matches_details_and_board(name, cell, labe
     assert any(line.startswith("Voorwerp: ") and line.endswith(f"({caption})") for line in details)
 
 
+def test_berghut_cell_labels_keep_the_authored_article_for_repeated_objects():
+    details = web._murdoku(example("berghut-murdoku-1.txt").read_text(), {})["cellDetails"]
+    for cell in ("r4c7", "r5c8", "r5c9"):
+        assert "Voorwerp: de stinksokken (hier kan niemand staan)" in details[cell]
+
+
 def test_murdoku_cell_details_include_object_count_rules_on_each_matching_object():
     text = example("wie-doet-het-met-wie-4.txt").read_text()
     details = web._murdoku(text, {})["cellDetails"]

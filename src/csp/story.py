@@ -1465,14 +1465,15 @@ class Places:
     def region(self, name: str) -> str:
         return self.say.words.get(name) or self.say("region", name=name.replace("_", " "))
 
-    def thing(self, name: str) -> str:
+    def thing(self, name: str, *, as_label: bool = False) -> str:
+        """Name a feature; a cell label names the kind, not one of its instances."""
         name = target_name(name)
-        if name in self.board.edge_item_names:
+        if as_label or name in self.board.mark_names:
+            many = False
+        elif name in self.board.edge_item_names:
             many = sum(item.name == name for item in self.board.edge_items) > 1
         elif name in self.board.point_object_names:
             many = sum(point.name == name for point in self.board.point_objects) > 1
-        elif name in self.board.mark_names:
-            many = False
         else:
             many = sum(obj.name == name for obj in self.board.objects) > 1
         return feature_name(

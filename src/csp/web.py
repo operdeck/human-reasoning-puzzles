@@ -403,7 +403,8 @@ def _murdoku_cell_details(
 
     for obj in board.objects:
         condition = object_position_text(say, obj.name, obj.kind == "standable")
-        add(obj.squares, say("web.cell_object", name=places.thing(obj.name), condition=condition))
+        name = places.thing(obj.name, as_label=True)
+        add(obj.squares, say("web.cell_object", name=name, condition=condition))
     for item in board.edge_items:
         add(item.cells, say("web.cell_touch", name=places.thing(item.name)))
     for point in board.point_objects:
