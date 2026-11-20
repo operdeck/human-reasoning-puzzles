@@ -37,7 +37,7 @@ test files live in `tests/puzzles/`, the rest in `examples/demo/`.
 - Halloween at the Museum: `-1` 6×6 and `-2` 7×7 `subsumption`; `-3` 8×8 `cover2`.
 - Orient Express: `murdoku_orient_express` 8×8 `relations`; `_2` 10×10 `subsumption`; `_3` 10×10 `chains`.
 - Wie doet het met wie: `-1` 5×5 `cover2`; `-2` 4×4 and `-3` 5×5 `subsumption`; `-4` 6×6 and `-5` 7×7 `cover2`.
-- Berghut: `berghut-murdoku-1` 9×9 and `-2` 10×10 `relations`; `-3` 11×11 `subsumption`. The puzzles have nine, ten and eleven guests respectively. Each has a necessary `dir:rows`/`dir:cols` key clue; together they cover `>=` and `<=` on both axes plus one exact bound. Three different hut floor plans and a different interior in each: single beds, cabinets and chairs vs. floor mattresses and bookshelves vs. double beds, lockers, stools and a round table. Eight seats around the one-cell bikkeltafel plus a ninth cold seat in the boot room; the non-clued entrance objects are arranged differently per puzzle.
+- Berghut: `berghut-murdoku-1` 9×9 and `-2` 10×10 `relations`; `-3` 11×11 `subsumption`. The puzzles have nine, ten and eleven guests respectively. Each has a necessary `dir:rows`/`dir:cols` key clue; together they cover `>=` and `<=` on both axes plus one exact bound. Three different hut floor plans and a different interior in each: single beds, cabinets and chairs vs. floor mattresses and bookshelves vs. 2×2 double beds, lockers, a bench and stools around a round table. Eight seats around the one-cell bikkeltafel plus a ninth cold seat in the boot room; the non-clued entrance objects are arranged differently per puzzle.
 - Owner-authored: `prrrdoku1` and `prrrdoku2`; `prrrdoku3` needs `what_if`.
 
 ## Verified non-Murdoku difficulty

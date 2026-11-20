@@ -27,6 +27,7 @@ lager: in het matrassenlager
 was: in het washok
 douche: de koude buitendouche
 terrasbank: de terrasbank
+bank: de zitbank
 hout: de houtstapel
 bergschoen: de bergschoenen
 helm: de helm
@@ -73,14 +74,14 @@ kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
 Objects:
 douche: standable r1c1
 terrasbank: standable r1c5 r1c6
-hout: blocking r1c9 r1c10
+hout: blocking r1c10 r1c11
 touw: blocking r2c1
 bergschoen: blocking r2c2
 kruk: standable r2c3
 helm: blocking r2c4
 rugzak: blocking r2c7
 bergschoen: blocking r2c9
-tweepersoonsbed: standable r3c1 r3c2
+tweepersoonsbed: standable r3c1 r3c2 r4c1 r4c2
 locker: blocking r3c4
 bed: standable r3c5 r3c6
 bed: standable r4c4 r4c5
@@ -88,7 +89,7 @@ bed: standable r5c6 r5c7
 locker: blocking r5c3
 stinksokken: blocking r4c9
 stinksokken: blocking r4c10
-spiegel: blocking r3c10
+spiegel: blocking r3c11
 touw: blocking r5c10
 spiegel: blocking r6c1
 emmer: blocking r7c2
@@ -107,13 +108,13 @@ kruk: standable r9c6
 kruk: standable r10c4
 kruk: standable r10c5
 kruk: standable r10c6
-tweepersoonsbed: standable r8c1 r8c2
-locker: blocking r10c3
-bed: standable r8c9 r8c10
+tweepersoonsbed: standable r8c1 r8c2 r9c1 r9c2
+locker: blocking r11c3
+bank: standable r11c5 r11c6
 bed: standable r9c8 r9c9
-helm: blocking r10c10
-
 bed: standable r10c8 r10c9
+helm: blocking r10c11
+bed: standable r11c8 r11c9
 EdgeItems:
 door: door r1c8 r2c8
 door: door r2c3 r3c3
@@ -169,7 +170,7 @@ Hannelore in rows:4
 Brunhild in area:keuken
 Reinhart in area:stube
 Reinhart in columns:10
-Greta touches object:aanrecht | Greta zit direct naast het aanrecht; een muur ertussen telt ook.
+Greta dir:manhattan object:aanrecht = 1 | Op de plattegrond ligt Greta’s vakje één stap van het aanrecht: horizontaal of verticaal, niet schuin.
 not (Greta beside object:rondetafel)
 Siegfried in rows:9
 
@@ -188,7 +189,7 @@ In de berghut 3: De bikkels
 
 Intro:
 De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de elf kiezen een kruk aan de koude kant in plaats van een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde stamtafel, de koude kruk in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen topgangers mogen op een bikkelkruk zitten.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde stamtafel, de koude kruk in het schoenenhok, de bedden, de zitbank, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen topgangers mogen op een bikkelkruk zitten.
 
 Figures:
 Greta: de materiaalvrouw, haalde vandaag de top ; icon=U+1F469

@@ -2218,7 +2218,7 @@ def object_position_text(say: Wording, name: str, standable: bool) -> str:
     kind = object_kind(name)
     if kind in {"buitendouche", "douche", "shower"}:
         return say("doc.stand_under")
-    if kind == "terrasbank":
+    if kind in {"bank", "terrasbank"}:
         return say("doc.sit_on")
     return say("doc.standable")
 

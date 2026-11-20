@@ -162,3 +162,14 @@ def test_berghut_3_windows_are_on_outside_walls():
             "right": square.col == board.size - 1,
         }
         assert window.side is not None and edge[window.side], window
+
+
+def test_berghut_3_double_beds_cover_two_by_two_squares():
+    board = load_board_layout(_text("berghut-murdoku-3.txt"))
+    beds = [obj for obj in board.objects if obj.name == "tweepersoonsbed"]
+    assert len(beds) == 2
+    for bed in beds:
+        rows = {sq.row for sq in bed.squares}
+        cols = {sq.col for sq in bed.squares}
+        assert len(bed.squares) == 4 and len(rows) == len(cols) == 2
+        assert max(rows) - min(rows) == max(cols) - min(cols) == 1

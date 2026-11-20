@@ -260,6 +260,7 @@ def test_murdoku_cell_details_use_dutch_and_author_wording():
         ("berghut-murdoku-1.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
         ("berghut-murdoku-1.txt", "r1c4", "Terrasbank", "hier kun je op zitten"),
         ("berghut-murdoku-3.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
+        ("berghut-murdoku-3.txt", "r11c5", "Zitbank", "hier kun je op zitten"),
     ],
 )
 def test_berghut_object_position_text_matches_details_and_board(name, cell, label, caption):
