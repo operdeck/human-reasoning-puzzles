@@ -138,7 +138,7 @@ no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
 count (people on object:buitendouche) = 1 | Precies één iemand staat onder de koude buitendouche.
 
 Clues:
-Gunter dir:rows Hannelore >= 3 | Het verschil tussen de rijnummers van Gunter en Hannelore is minstens drie; verder reikt zijn gesnurk niet.
+Gunter dir:rows Hannelore >= 3
 Siegfried dir:cols Brunhild <= 2
 Siegfried in area:schoenenhok
 Ute in area:stube
