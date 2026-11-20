@@ -1,13 +1,13 @@
 # In de berghut 1 - "De koude douche" (9x9)
 #
 # Hütte Adlerhorst, eerste herfstnacht. Negen stamgasten, één storm. De laatste
-# aankomst is doorweekt en moet onder de koude buitendouche; over haar staat
+# stinkt als een Yeti en moet onder de koude buitendouche; over deze persoon staat
 # geen enkele aanwijzing.
 #
 # Oplossing: Greta r1c1, Siegfried r2c7, Ute r3c5, Reinhart r4c4,
 # Waltraud r5c6, Hannelore r6c2, Brunhild r7c8, Gerhard r8c9, Gunter r9c3.
-# Greta staat op de buitendouche; de drie bikkels zijn Ute, Reinhart en
-# Waltraud op de stoelen rond de bikkeltafel.
+# Greta staat onder de buitendouche; de drie bikkels zijn Ute, Reinhart en
+# Waltraud op de stoelen rond de stamtafel.
 #
 # Sleutelclues: Gunter/Hannelore minstens drie rijen; Siegfried/Brunhild
 # hoogstens twee kolommen (touwpartners).
@@ -37,7 +37,7 @@ fornuis: het fornuis
 aanrecht: het aanrecht
 pan: de pan
 krat: de krat
-tafel: de bikkeltafel
+tafel: de stamtafel
 kachel: de kachel
 stinksokken: de stinksokken
 spiegel: de spiegel
@@ -139,7 +139,7 @@ count (people on object:buitendouche) = 1 | Precies één iemand staat onder de 
 
 Clues:
 Gunter dir:rows Hannelore >= 3 | Het verschil tussen de rijnummers van Gunter en Hannelore is minstens drie; verder reikt zijn gesnurk niet.
-Siegfried dir:cols Brunhild <= 2 | Het verschil tussen de kolomnummers van Siegfried en Brunhild is hoogstens twee.
+Siegfried dir:cols Brunhild <= 2 | Siegfried en Brunhild staan niet meer dan twee kolommen van elkaar.
 Siegfried in area:schoenenhok
 Ute in area:stube
 Reinhart in area:stube
@@ -148,9 +148,9 @@ Hannelore in area:kamer_n
 Hannelore on object:bed
 Gerhard in area:was
 Gunter on object:bed
-Reinhart dir:up Waltraud | Reinhart staat op een rij boven die van Waltraud; ze hoeven niet direct boven elkaar te staan.
-not (Ute beside object:kachel) | Ute zit niet naast de kachel; ze heeft hem de hele dag al gestookt.
-Ute dir:up Reinhart | Ute staat op een rij boven die van Reinhart, aan de kant van de tochtdeur; ze hoeft niet direct boven hem te staan.
+Reinhart dir:up Waltraud
+not (Ute beside object:kachel)
+Ute dir:up Reinhart
 
 Key:
 clue: Gunter dir:rows Hannelore >= 3
@@ -164,7 +164,7 @@ In de berghut 1: De koude douche
 
 Intro:
 De eerste herfststorm jaagt negen stamgasten naar Hütte Adlerhorst. Buiten raast de wind; binnen ruikt het naar natte wol, Kaiserschmarrn en stinksokken. De laatste die binnenkomt, is doorweekt en moet eerst onder de koude buitendouche.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten vanavond precies drie mensen op de bikkelstoelen. Niemand wil naast de stinksokken zitten.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de stamtafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten vanavond precies drie mensen op de bikkelstoelen. Niemand wil naast de stinksokken zitten.
 
 Figures:
 Greta: de materiaalvrouw ; icon=U+1F469
