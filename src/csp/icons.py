@@ -731,6 +731,36 @@ SHAPES = {
 }
 
 # name, Unicode fallback, label, and either a vendored emoji or the drawing.
+BEANIE_PORTRAIT = (
+    '<path d="M17 94c2-15 15-24 33-24s31 9 33 24" fill="#34526d"/>'
+    '<ellipse cx="50" cy="55" rx="26" ry="31" fill="#edb982"/>'
+    '<path d="M24 49c-2-26 8-38 26-38s28 12 26 38H24Z" fill="#277b84"/>'
+    '<circle cx="50" cy="12" r="8" fill="#277b84"/>'
+    '<rect x="21" y="38" width="58" height="14" rx="5" fill="#19545f"/>'
+    '<path d="M32 42v6m12-6v6m12-6v6m12-6v6" stroke="#55a3a6" stroke-width="2"/>'
+    '<path d="M34 57l10-2m12 0l10 2" stroke="#82644d" stroke-width="3" stroke-linecap="round"/>'
+    '<g fill="#322a27"><circle cx="40" cy="62" r="2.5"/><circle cx="60" cy="62" r="2.5"/></g>'
+    '<path d="M37 73c6 4 20 4 26 0" fill="none" stroke="#fff1df" stroke-width="5"'
+    ' stroke-linecap="round"/>'
+)
+
+CLIMBING_HELMET_PORTRAIT = (
+    '<path d="M14 94c4-16 17-24 36-24s32 8 36 24" fill="#38745e"/>'
+    '<ellipse cx="50" cy="55" rx="27" ry="32" fill="#d89c67"/>'
+    '<path d="M23 45l5 23 10 14m39-37-5 23-10 14" fill="none" stroke="#343641"'
+    ' stroke-width="5" stroke-linecap="round"/>'
+    '<path d="M26 64c8 2 12 5 24 5s16-3 24-5c0 14-9 24-24 24S26 78 26 64Z"'
+    ' fill="#5a382b"/>'
+    '<path d="M17 44C17 24 30 10 50 10s33 14 33 34c-19 6-47 6-66 0Z" fill="#d63131"/>'
+    '<path d="M30 28l7-5m13-4h5m8 4l7 5" stroke="#782029" stroke-width="4"'
+    ' stroke-linecap="round"/>'
+    '<path d="M16 43c22 5 46 5 68 0" fill="none" stroke="#a51f29" stroke-width="7"'
+    ' stroke-linecap="round"/>'
+    '<g fill="#322a27"><circle cx="40" cy="57" r="2.5"/><circle cx="60" cy="57" r="2.5"/></g>'
+    '<path d="M44 76q6 4 12 0" fill="none" stroke="#f4c18c" stroke-width="3"'
+    ' stroke-linecap="round"/>'
+)
+
 REGISTRY: dict[str, Icon] = {
     icon.name: icon
     for icon in (
@@ -841,6 +871,13 @@ REGISTRY: dict[str, Icon] = {
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
         Icon("dirty_socks", "\U0001f9e6", "dirty socks", markup=DIRTY_SOCKS),
         Icon("snow_mountain", "\U0001f3d4", "snow mountain", markup=SNOW_MOUNTAIN),
+        Icon("beanie_portrait", "\U0001f474", "person in a beanie", markup=BEANIE_PORTRAIT),
+        Icon(
+            "climbing_helmet_portrait",
+            "\U0001f9d4",
+            "person in a red climbing helmet",
+            markup=CLIMBING_HELMET_PORTRAIT,
+        ),
         Icon("mattress", "\U0001f6cf", "mattress", markup=MATTRESS),
         Icon("locker", "\U0001f5c4", "locker", markup=LOCKER),
         Icon("round_table", "\u25cb", "round table", markup=ROUND_TABLE),
@@ -892,6 +929,8 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "sloffen": "slippers", "slippers": "slippers",
                 "stinksokken": "dirty_socks", "sokken": "dirty_socks", "socks": "dirty_socks",
                 "sneeuwberg": "snow_mountain", "snow_mountain": "snow_mountain",
+                "beanie_portrait": "beanie_portrait",
+                "climbing_helmet_portrait": "climbing_helmet_portrait",
                 "matras": "mattress", "mattress": "mattress",
                 "locker": "locker", "kluis": "locker",
                 "rondetafel": "round_table", "round_table": "round_table",

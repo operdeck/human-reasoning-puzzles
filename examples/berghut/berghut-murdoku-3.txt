@@ -198,8 +198,8 @@ Ute: de kokkin van dienst, haalde vandaag de top ; icon=U+1F475
 Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
 Gunter: de man die snurkt als een yeti ; icon=U+1F468
 Reinhart: de weerman zonder bereik ; icon=U+1F468
-Gerhard: de koukleum met de muts op ; icon=U+1F474
-Siegfried: de bergführer met de rode helm, haalde vandaag de top ; icon=U+1F9D4
+Gerhard: de koukleum met de muts op ; icon=beanie_portrait
+Siegfried: de bergführer met de rode helm, haalde vandaag de top ; icon=climbing_helmet_portrait
 Wolfgang: de man met de pickel, haalde vandaag de top ; icon=U+1F468
 
 Sepp: de nieuwste gast ; icon=U+1F468
