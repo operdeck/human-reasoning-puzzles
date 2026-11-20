@@ -139,7 +139,7 @@ count (people on object:buitendouche) = 1 | Precies één iemand staat onder de 
 
 Clues:
 Gunter dir:rows Hannelore >= 3 | Het verschil tussen de rijnummers van Gunter en Hannelore is minstens drie; verder reikt zijn gesnurk niet.
-Siegfried dir:cols Brunhild <= 2 | Siegfried en Brunhild staan niet meer dan twee kolommen van elkaar.
+Siegfried dir:cols Brunhild <= 2
 Siegfried in area:schoenenhok
 Ute in area:stube
 Reinhart in area:stube
