@@ -1,0 +1,192 @@
+# In de berghut 3 - "De bikkels" (10x10)
+#
+# Hütte Adlerhorst, laatste nacht. De wind draait, de kachel brandt, en drie van
+# de tien kiezen een stoel bij de koude deur in plaats van een bed. Alleen wie
+# vandaag de top haalde, is een echte bikkel.
+#
+# Oplossing: Gerhard r1c8, Wolfgang r2c3, Gunter r3c7, Hannelore r4c1,
+# Ute r5c2, Brunhild r6c5, Reinhart r7c10, Greta r8c4, Siegfried r9c6,
+# Waltraud r10c9. De drie bikkels zijn Greta, Siegfried en Wolfgang; Ute haalde
+# ook de top, maar zat niet op een bikkelstoel.
+#
+# Sleutelclues: Gunter/Waltraud minstens drie rijen; Hannelore/Brunhild minstens
+# vier kolommen.
+
+Size: 10
+Language: nl
+
+Words:
+terras: op het terras
+schoenen: in de schoenenruimte
+keuken: in de keuken
+stube: in de eetzaal
+droog: in de droogkamer
+kamer_n: in de kleine kamer noord
+kamer_z: in de kleine kamer zuid
+lager: in het matrassenlager
+was: in het washok
+douche: de koude buitendouche
+terrasbank: de terrasbank
+hout: de houtstapel
+bergschoen: de bergschoenen
+helm: de helm
+touw: het touw
+rugzak: de rugzak
+stoel: een bikkelstoel
+fornuis: het fornuis
+aanrecht: het aanrecht
+pan: de pan
+krat: de krat
+tafel: de bikkeltafel
+kachel: de kachel
+stinksokken: de stinksokken
+spiegel: de spiegel
+bed: het bed
+kast: de kast
+koffer: de koffer
+emmer: de emmer
+topgehaald: de top gehaald
+
+Regions:
+terras: terras #D9E2EA
+schoenen: schoenen #C9B79C
+keuken: keuken #F2DCC0
+stube: stube #E8D5B5
+droog: droog #CFE0EE
+kamer_n: kamer_n #E3CFC0
+kamer_z: kamer_z #D8D2F0
+lager: lager #DCE8D2
+was: was #C8D8CB
+
+Grid:
+terras terras terras terras terras terras terras terras terras terras
+schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
+kamer_z kamer_z kamer_z lager lager lager lager droog droog droog
+kamer_z kamer_z kamer_z lager lager lager lager droog droog droog
+kamer_z kamer_z kamer_z lager lager lager lager droog droog droog
+was was keuken keuken keuken keuken stube stube stube stube
+was was keuken keuken keuken keuken stube stube stube stube
+kamer_n kamer_n kamer_n stube stube stube stube lager lager lager
+kamer_n kamer_n kamer_n stube stube stube stube lager lager lager
+kamer_n kamer_n kamer_n stube stube stube stube lager lager lager
+
+Objects:
+douche: standable r1c1
+terrasbank: standable r1c5 r1c6
+hout: blocking r1c9 r1c10
+bergschoen: blocking r2c1 r2c2
+stoel: standable r2c3
+helm: blocking r2c4
+touw: blocking r2c7
+rugzak: blocking r2c9
+bed: standable r3c1 r3c2
+kast: blocking r3c4
+bed: standable r3c5 r3c6
+bed: standable r4c4 r4c5
+bed: standable r5c6 r5c7
+kast: blocking r5c3
+stinksokken: blocking r4c9 r4c10
+spiegel: blocking r3c10
+touw: blocking r5c10
+spiegel: blocking r6c1
+emmer: blocking r7c2
+fornuis: blocking r6c3
+pan: blocking r6c6
+aanrecht: blocking r7c4 r7c5
+krat: blocking r7c3
+kachel: blocking r6c7
+stinksokken: blocking r7c7
+tafel: blocking r9c5
+stoel: standable r8c4
+stoel: standable r8c5
+stoel: standable r8c6
+stoel: standable r9c4
+stoel: standable r9c6
+stoel: standable r10c4
+stoel: standable r10c5
+stoel: standable r10c6
+bed: standable r8c1 r8c2
+kast: blocking r10c3
+bed: standable r8c9 r8c10
+bed: standable r9c8 r9c9
+helm: blocking r10c10
+
+People:
+Greta
+Brunhild
+Hannelore
+Ute
+Waltraud
+Gunter
+Reinhart
+Gerhard
+Siegfried
+Wolfgang
+
+Rules:
+count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op een bikkelstoel.
+no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
+no (people except attribute:topgehaald) on object:stoel | Alleen wie de top haalde, is een echte bikkel.
+
+Attributes:
+topgehaald: Greta Siegfried Ute Wolfgang
+
+Clues:
+Gunter dir:rows Waltraud >= 3 | Gunter en Waltraud liggen minstens drie rijen uit elkaar; zij wil niet naast het gesnurk zitten.
+Hannelore dir:cols Brunhild >= 4 | Hannelore en Brunhild hielden radiocontact: minstens vier kolommen van elkaar.
+Gerhard in area:terras
+Gerhard in columns:8
+Wolfgang in area:schoenen
+Gunter in area:lager
+Gunter in rows:3
+Hannelore in rows:4
+Brunhild in area:keuken
+Reinhart in area:stube
+Greta in rows:8
+Greta in columns:4
+Siegfried in rows:9
+
+Key:
+clue: Gunter dir:rows Waltraud >= 3
+clue: Hannelore dir:cols Brunhild >= 4
+
+Backdrop:
+U+1F3D4
+
+Title:
+In de berghut 3: De bikkels
+
+Intro:
+De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de tien kiezen een stoel bij de koude deur in plaats van een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn standable; de andere meubels blokkeren. Er zitten precies drie mensen op een bikkelstoel en niemand wil naast de stinksokken zitten. Alleen wie de top haalde, mag op een bikkelstoel zitten.
+
+Figures:
+Greta: de materiaalvrouw ; icon=U+1F469
+Brunhild: de touwpartner van Siegfried ; icon=U+1F9D1
+Hannelore: de lichte slaper ; icon=U+1F471
+Ute: de kokkin van dienst ; icon=U+1F475
+Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
+Gunter: de man die snorkt als een gletsjer ; icon=U+1F468
+Reinhart: de weerman zonder bereik ; icon=U+1F468
+Gerhard: de koukleum met de muts op ; icon=U+1F474
+Siegfried: de bergführer met de rode helm ; icon=U+1F9D4
+Wolfgang: de man met de pickel ; icon=U+1F468
+
+Pronouns:
+Greta: zij haar haar
+Brunhild: zij haar haar
+Hannelore: zij haar haar
+Ute: zij haar haar
+Waltraud: zij haar haar
+Gunter: hij hem zijn
+Reinhart: hij hem zijn
+Gerhard: hij hem zijn
+Siegfried: hij hem zijn
+Wolfgang: hij hem zijn
+
+Question:
+Wie haalde de top maar zat niet op een bikkelstoel?
+
+Reveal:
+Ute haalde de top, maar zat niet op een bikkelstoel: Greta, Siegfried en Wolfgang waren de drie echte bikkels.
+

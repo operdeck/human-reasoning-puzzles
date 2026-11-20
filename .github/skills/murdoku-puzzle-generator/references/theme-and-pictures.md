@@ -65,3 +65,7 @@ Read this when choosing objects, colours, icons, backdrops or series order.
   4. Render and look: the icon must read at cell size and on dark shading.
      Multi-square objects are stretched across the footprint; names in
      `picture.SEAT_NAMES` (benches) keep proportions instead.
+- **Alpine hut vocabulary** is registered in `CATALOGUE`: `buitendouche`,
+  `terrasbank`, `houtstapel`/`hout`, `kachel`, `pan`, `krat`, `rugzak`,
+  `bergschoen`, `helm`, `touw` and `stinksokken`, plus a `counter` alias for
+  `aanrecht`. Reuse them instead of adding one-off names.
