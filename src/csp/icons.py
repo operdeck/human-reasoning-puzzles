@@ -912,7 +912,7 @@ CATALOGUE: dict[str, str] = {
     # Alpine hut
     "buitendouche": "1f6bf", "outdoor_shower": "1f6bf",
     "terrasbank": "1f6cb", "terrace_bench": "1f6cb",
-    "houtstapel": "1fab5", "woodpile": "1fab5",
+    "houtstapel": "1fab5", "woodpile": "1fab5", "hout": "1fab5", "wood": "1fab5",
     "kachel": "1f525", "heater": "1f525", "masonry_heater": "1f525",
     "pan": "1f372", "cooking_pot": "1f372",
     "krat": "1f9fa", "crate": "1f9fa",

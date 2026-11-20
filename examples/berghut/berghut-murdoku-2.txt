@@ -1,0 +1,207 @@
+# In de berghut 2 - "De kachel" (10x10)
+#
+# Hütte Adlerhorst, tweede nacht. De slaapzaal ligt boven, de eetzaal en keuken
+# beneden; de koude stoel staat weer in de tocht bij de deur. Om drie uur is de
+# kachel uit en is het in de hut ijskoud. Iemand vergat de laatste ronde hout —
+# en zat daarbij naast de kachel.
+#
+# Oplossing: Greta r1c1, Brunhild r2c3, Hannelore r3c7, Waltraud r4c8,
+# Gerhard r5c5, Reinhart r6c6, Gunter r7c4, Ute r8c2, Siegfried r9c10,
+# Wolfgang r10c9. Reinhart is de kachelschurk: de enige avondmens naast de
+# kachel.
+#
+# Sleutelclues: Gunter/Siegfried hoogstens twee rijen; Hannelore/Gunter minstens
+# drie kolommen.
+
+Size: 10
+Language: nl
+
+Words:
+terras: op het terras
+schoenen: in de schoenenruimte
+keuken: in de keuken
+stube: in de eetzaal
+droog: in de droogkamer
+kamer_n: in de tweepersoonskamer
+kamer_z: in de kleine kamer zuid
+lager: in het matrassenlager
+was: in het washok
+douche: de koude buitendouche
+terrasbank: de terrasbank
+hout: de houtstapel
+bergschoen: de bergschoenen
+helm: de helm
+touw: het touw
+rugzak: de rugzak
+stoel: een bikkelstoel
+fornuis: het fornuis
+aanrecht: het aanrecht
+pan: de pan
+krat: de krat
+tafel: de bikkeltafel
+kachel: de kachel
+stinksokken: de stinksokken
+spiegel: de spiegel
+bed: het bed
+kast: de kast
+koffer: de koffer
+emmer: de emmer
+avondmens: een avondmens
+role_has: {who} is de {role}
+role_not: {who} is niet de {role}
+
+Regions:
+terras: terras #D9E2EA
+schoenen: schoenen #C9B79C
+keuken: keuken #F2DCC0
+stube: stube #E8D5B5
+droog: droog #CFE0EE
+kamer_n: kamer_n #E3CFC0
+kamer_z: kamer_z #D8D2F0
+lager: lager #DCE8D2
+was: was #C8D8CB
+
+Grid:
+terras terras terras terras terras terras terras terras terras terras
+schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
+lager lager lager lager lager lager kamer_n kamer_n droog droog
+lager lager lager lager lager lager kamer_n kamer_n droog droog
+lager lager lager lager lager lager kamer_n kamer_n droog droog
+keuken keuken keuken stube stube stube stube stube droog droog
+keuken keuken keuken stube stube stube stube stube droog droog
+keuken keuken keuken stube stube stube stube stube droog droog
+kamer_z kamer_z kamer_z was was lager lager lager lager lager
+kamer_z kamer_z kamer_z was was lager lager lager lager lager
+
+Objects:
+douche: standable r1c1
+terrasbank: standable r1c5 r1c6
+hout: blocking r1c9 r1c10
+bergschoen: blocking r2c1 r2c2
+stoel: standable r2c3
+helm: blocking r2c4
+touw: blocking r2c7
+rugzak: blocking r2c9
+bed: standable r3c1 r3c2
+kast: blocking r3c3
+bed: standable r3c5 r3c6
+bed: standable r4c3 r4c4
+kast: blocking r4c1
+bed: standable r5c1 r5c2
+kast: blocking r5c3
+bed: standable r5c5 r5c6
+bed: standable r3c7 r3c8
+kast: blocking r5c7
+stinksokken: blocking r4c9 r4c10
+touw: blocking r6c10
+spiegel: blocking r3c10
+fornuis: blocking r6c2
+pan: blocking r6c1
+aanrecht: blocking r7c1 r7c2
+krat: blocking r8c1
+tafel: blocking r7c5
+stoel: standable r6c4
+stoel: standable r6c5
+stoel: standable r6c6
+stoel: standable r7c4
+stoel: standable r7c6
+stoel: standable r8c4
+stoel: standable r8c5
+stoel: standable r8c6
+kachel: blocking r6c7
+kast: blocking r6c8
+stinksokken: blocking r7c7
+bed: standable r9c1 r9c2
+kast: blocking r10c3
+spiegel: blocking r9c4
+emmer: blocking r10c5
+kast: blocking r9c6
+bed: standable r9c7 r9c8
+helm: blocking r10c6
+bed: standable r10c9 r10c10
+
+People:
+Greta
+Brunhild
+Hannelore
+Ute
+Waltraud
+Gunter
+Reinhart
+Gerhard
+Siegfried
+Wolfgang
+
+Rules:
+count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op een bikkelstoel.
+no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
+count (people in area:kamer_n) = 2 | In de tweepersoonskamer liggen precies twee mensen.
+every ?p in role:kachelschurk: ?p beside object:kachel | De kachelschurk zat naast de kachel.
+
+Attributes:
+avondmens: Brunhild Reinhart Waltraud
+
+Roles:
+kachelschurk: 1
+
+RoleEligibility:
+kachelschurk: attribute:avondmens
+
+Clues:
+Gunter dir:rows Siegfried <= 2 | Gunter en Siegfried deden samen de afwas en blijven binnen twee rijen van elkaar.
+Hannelore dir:cols Gunter >= 3 | Hannelore en Gunter kunnen elkaar niet luchten: minstens drie kolommen ertussen.
+Brunhild in area:schoenen
+Brunhild on object:stoel
+Gerhard in area:lager
+Ute in area:keuken
+Hannelore on object:bed
+Waltraud beside object:bed
+Hannelore in columns:7
+Greta in columns:1
+Siegfried in columns:10
+Wolfgang in columns:9
+
+Key:
+clue: Gunter dir:rows Siegfried <= 2
+clue: Hannelore dir:cols Gunter >= 3
+
+Backdrop:
+U+1F3D4
+
+Title:
+In de berghut 2: De kachel
+
+Intro:
+De tweede nacht in Hütte Adlerhorst. De slaapzaal ligt boven, de eetzaal en de keuken beneden; de koude stoel staat weer in de tocht bij de deur. Om drie uur is de kachel uit en is het in de hut ijskoud.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn standable; de andere meubels blokkeren. Er zitten precies drie mensen op een bikkelstoel en niemand wil naast de stinksokken zitten. In de tweepersoonskamer liggen precies twee mensen.
+De kachelschurk is een avondmens en zat naast de kachel.
+
+Figures:
+Greta: de materiaalvrouw ; icon=U+1F469
+Brunhild: de touwpartner van Siegfried ; icon=U+1F9D1
+Hannelore: de lichte slaper ; icon=U+1F471
+Ute: de kokkin van dienst ; icon=U+1F475
+Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
+Gunter: de man die snorkt als een gletsjer ; icon=U+1F468
+Reinhart: de weerman zonder bereik ; icon=U+1F468
+Gerhard: de koukleum met de muts op ; icon=U+1F474
+Siegfried: de bergführer met de rode helm ; icon=U+1F9D4
+Wolfgang: de man met de pickel ; icon=U+1F468
+
+Pronouns:
+Greta: zij haar haar
+Brunhild: zij haar haar
+Hannelore: zij haar haar
+Ute: zij haar haar
+Waltraud: zij haar haar
+Gunter: hij hem zijn
+Reinhart: hij hem zijn
+Gerhard: hij hem zijn
+Siegfried: hij hem zijn
+Wolfgang: hij hem zijn
+
+Question:
+Wie heeft de kachel laten uitgaan?
+
+Reveal:
+Reinhart, de avondmens die naast de kachel zat, heeft de kachel laten uitgaan.
