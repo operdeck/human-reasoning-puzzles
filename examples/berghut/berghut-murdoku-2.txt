@@ -171,8 +171,8 @@ schuldige: attribute:avondmens
 Clues:
 Gunter dir:rows Siegfried <= 2
 Hannelore dir:cols Gunter = 3
-Brunhild in area:schoenenhok
-Brunhild on object:stoel
+Brunhild beside object:bergschoen
+Brunhild dir:left Hannelore
 Gerhard in area:lager
 Ute in area:keuken
 Hannelore on object:matras

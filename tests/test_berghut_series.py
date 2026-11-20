@@ -2,13 +2,16 @@
 
 import re
 from collections.abc import Iterator
+from itertools import permutations
 
 import pytest
 
 from csp import audit, clue_search
 from csp.bruteforce import murdoku as murdoku_brute
+from csp.murdoku_eval import grounded_dependencies, holds_grounded
 from csp.murdoku_expression_file import keyed_expression_clue_numbers
 from csp.murdoku_lang import Atom, Binary, Formula, Name, parse_statement
+from csp.puzzlefile import load_board_layout
 from tests.examples import example
 
 FILES = (
@@ -107,6 +110,30 @@ def test_berghut_clues_do_not_give_both_coordinates(name):
             fixed_axes.setdefault(person, set()).add(axis)
     giveaways = sorted(person for person, axes in fixed_axes.items() if len(axes) == 2)
     assert not giveaways, f"{name} gives both coordinates for {', '.join(giveaways)}"
+
+
+def test_berghut_2_brunhilds_clues_do_not_pin_her_to_one_square():
+    text = _text("berghut-murdoku-2.txt")
+    board = load_board_layout(text)
+    people = {"Brunhild", "Hannelore"}
+    clues = [
+        (clue, deps)
+        for line in clue_search.clue_lines(text)
+        if (deps := grounded_dependencies(board, clue := parse_statement(line)))
+        and "Brunhild" in deps
+    ]
+    assert clues and all(deps <= people for _, deps in clues)
+    candidates = {
+        first
+        for first, second in permutations(board.free, 2)
+        if first.row != second.row
+        and first.col != second.col
+        and all(
+            holds_grounded(clue, board, {"Brunhild": first, "Hannelore": second}, deps)
+            for clue, deps in clues
+        )
+    }
+    assert len(candidates) > 1
 
 
 def test_berghut_series_covers_every_axis_form():
