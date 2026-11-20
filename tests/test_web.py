@@ -270,6 +270,16 @@ def test_berghut_object_position_text_matches_details_and_board(name, cell, labe
     assert any(line.startswith("Voorwerp: ") and line.endswith(f"({caption})") for line in details)
 
 
+def test_berghut_cell_details_localize_standard_doors_and_windows():
+    text = example("berghut-murdoku-3.txt").read_text()
+    details = web._murdoku(text, {})["cellDetails"]
+    assert all("Raakt: een deur" in details[cell] for cell in ("r1c8", "r2c8"))
+    assert "Raakt: een raam" in details["r2c11"]
+
+    custom = web._murdoku(text.replace("Words:\n", "Words:\ndoor: de houten deur\n"), {})
+    assert "Raakt: de houten deur" in custom["cellDetails"]["r1c8"]
+
+
 def test_berghut_cell_labels_keep_the_authored_article_for_repeated_objects():
     details = web._murdoku(example("berghut-murdoku-1.txt").read_text(), {})["cellDetails"]
     for cell in ("r4c7", "r5c8", "r5c9"):

@@ -46,6 +46,8 @@ play link remain available when JavaScript is disabled.
   objects, board symbols, roles and attributes together. References to figures
   are bold. Object tooltips use the object name as a label, keeping any article
   supplied by the puzzle author even when the object occurs in multiple cells.
+  The standard `door` and `window` symbols are localized in Dutch tooltips
+  unless the author supplies a name in `Words:`.
 - **Family boundary:** family knowledge lives in `src/csp/web.py`, not in
   TypeScript. After changing `web/`, run `npx tsc --noEmit` and `npm test`.
 

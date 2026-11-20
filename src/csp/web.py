@@ -406,7 +406,10 @@ def _murdoku_cell_details(
         name = places.thing(obj.name, as_label=True)
         add(obj.squares, say("web.cell_object", name=name, condition=condition))
     for item in board.edge_items:
-        add(item.cells, say("web.cell_touch", name=places.thing(item.name)))
+        name = places.thing(item.name)
+        if item.name == item.kind and item.name not in say.words:
+            name = say(f"web.cell_{item.kind}", name=name)
+        add(item.cells, say("web.cell_touch", name=name))
     for point in board.point_objects:
         add(point.cells, say("web.cell_touch", name=places.thing(point.name)))
     for mark in board.marks:
