@@ -1,18 +1,18 @@
-# In de berghut 3 - "De bikkels" (10x10)
+# In de berghut 3 - "De bikkels" (11x11)
 #
 # Hütte Adlerhorst, laatste nacht. De wind draait, de kachel brandt, en drie van
-# de tien kiezen een kruk bij de koude deur in plaats van een bed. Alleen wie
+# de elf kiezen een kruk bij de koude deur in plaats van een bed. Alleen wie
 # vandaag de top haalde, is een echte bikkel.
 #
 # Oplossing: Gerhard r1c8, Wolfgang r2c3, Gunter r3c7, Hannelore r4c1,
 # Ute r5c2, Brunhild r6c5, Reinhart r7c10, Greta r8c4, Siegfried r9c6,
-# Waltraud r10c9. De drie bikkels zijn Greta, Siegfried en Wolfgang; Ute haalde
-# ook de top, maar zat niet op een bikkelkruk.
+# Sepp r10c9, Waltraud r11c11. De drie bikkels zijn Greta, Siegfried en
+# Wolfgang; Ute haalde ook de top, maar zat niet op een bikkelkruk.
 #
 # Sleutelclues: Gunter/Waltraud minstens drie rijen; Hannelore/Brunhild minstens
 # vier kolommen.
 
-Size: 10
+Size: 11
 Language: nl
 
 Words:
@@ -59,17 +59,17 @@ lager: lager #DCE8D2
 was: was #C8D8CB
 
 Grid:
-terras terras terras terras terras terras terras terras terras terras
-schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
-kamer_z kamer_z kamer_z lager lager lager lager droog droog droog
-kamer_z kamer_z kamer_z lager lager lager lager droog droog droog
-kamer_z kamer_z kamer_z lager lager lager lager droog droog droog
-was was keuken keuken keuken keuken stube stube stube stube
-was was keuken keuken keuken keuken stube stube stube stube
-kamer_n kamer_n kamer_n stube stube stube stube lager lager lager
-kamer_n kamer_n kamer_n stube stube stube stube lager lager lager
-kamer_n kamer_n kamer_n stube stube stube stube lager lager lager
-
+terras terras terras terras terras terras terras terras terras terras terras
+schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
+kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
+kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
+kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
+was was keuken keuken keuken keuken stube stube stube stube stube
+was was keuken keuken keuken keuken stube stube stube stube stube
+kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
+kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
+kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
+kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
 Objects:
 douche: standable r1c1
 terrasbank: standable r1c5 r1c6
@@ -113,6 +113,7 @@ bed: standable r8c9 r8c10
 bed: standable r9c8 r9c9
 helm: blocking r10c10
 
+bed: standable r10c8 r10c9
 EdgeItems:
 door: door r1c8 r2c8
 door: door r2c3 r3c3
@@ -147,6 +148,7 @@ Gerhard
 Siegfried
 Wolfgang
 
+Sepp
 Rules:
 count (people on object:kruk) = 3 | Er zitten vanavond precies drie mensen op de bikkelkrukken.
 no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
@@ -166,10 +168,14 @@ Gunter in rows:3
 Hannelore in rows:4
 Brunhild in area:keuken
 Reinhart in area:stube
+Reinhart in columns:10
 Greta in rows:8
 Greta in columns:4
 Siegfried in rows:9
 
+Sepp on object:bed | Sepp ligt op een bed.
+Sepp in rows:10
+Waltraud in columns:11
 Key:
 clue: Gunter dir:rows Waltraud >= 3
 clue: Hannelore dir:cols Brunhild >= 4
@@ -181,7 +187,7 @@ Title:
 In de berghut 3: De bikkels
 
 Intro:
-De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de tien kiezen een kruk aan de koude kant in plaats van een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
+De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de elf kiezen een kruk aan de koude kant in plaats van een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
 Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde bikkeltafel, de koude kruk in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen wie vandaag de top haalde, mag op een bikkelkruk zitten; andere topgangers kunnen ook een bed kiezen.
 
 Figures:
@@ -196,6 +202,7 @@ Gerhard: de koukleum met de muts op ; icon=U+1F474
 Siegfried: de bergführer met de rode helm, haalde vandaag de top ; icon=U+1F9D4
 Wolfgang: de man met de pickel, haalde vandaag de top ; icon=U+1F468
 
+Sepp: de nieuwste gast ; icon=U+1F468
 Pronouns:
 Greta: zij haar haar
 Brunhild: zij haar haar
@@ -208,6 +215,7 @@ Gerhard: hij hem zijn
 Siegfried: hij hem zijn
 Wolfgang: hij hem zijn
 
+Sepp: hij hem zijn
 Question:
 Wie haalde de top maar zat niet op een bikkelkruk?
 

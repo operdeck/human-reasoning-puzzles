@@ -1,4 +1,4 @@
-"""The berghut series: three 10x10 Murdokus with axis-distance key clues."""
+"""The berghut series: 9x9, 10x10 and 11x11 Murdokus with axis-distance key clues."""
 
 import re
 
@@ -20,10 +20,23 @@ ANSWERS = {
     "berghut-murdoku-3.txt": "Ute",
 }
 TIMEOUT = 15
+SIZES_AND_GUESTS = (
+    ("berghut-murdoku-1.txt", 9),
+    ("berghut-murdoku-2.txt", 10),
+    ("berghut-murdoku-3.txt", 11),
+)
 
 
 def _text(name: str) -> str:
     return example(name).read_text()
+
+
+@pytest.mark.parametrize(("name", "size"), SIZES_AND_GUESTS)
+def test_berghut_board_size_matches_guest_count(name, size):
+    text = _text(name)
+    assert re.search(rf"(?m)^Size: {size}$", text), name
+    people = text.split("People:", 1)[1].split("\nRules:", 1)[0]
+    assert sum(bool(line.strip()) for line in people.splitlines()) == size, name
 
 
 def _without_key_clues(text: str) -> str:
