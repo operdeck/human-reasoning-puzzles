@@ -694,19 +694,15 @@ def test_named_person_distance_pairs_read_naturally(board, language, formula, ex
 @pytest.mark.parametrize(
     ("language", "name", "expected"),
     [
-        ("en", "the counter", "Ada is one square away from the counter"),
-        ("nl", "het aanrecht", "Ada staat op één vakje afstand van het aanrecht"),
+        ("en", "the counter", "Ada is in a square that shares a side with the counter"),
+        ("nl", "het aanrecht", "Ada staat op een vakje dat een zijde deelt met het aanrecht"),
     ],
 )
 def test_one_orthogonal_step_from_an_object_reads_naturally(board, language, name, expected):
     board.objects.append(BoardObject("counter", "blocking", (Square(0, 1), Square(0, 2))))
     statement = parse_statement("Ada dir:manhattan object:counter = 1")
     words = ExpressionWords(board, language, names={"counter": name})
-    suffix = {
-        "en": " (not diagonally; walls do not count as extra steps)",
-        "nl": " (niet schuin; een muur telt niet als extra stap)",
-    }
-    assert words.statement(statement) == expected + suffix[language]
+    assert words.statement(statement) == expected
     custom = ExpressionWords(board, language, phrases={"rel.dir.manhattan": "CUSTOM"})
     assert "CUSTOM" in custom.statement(statement)
 

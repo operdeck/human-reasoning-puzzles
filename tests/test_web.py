@@ -270,10 +270,15 @@ def test_berghut_object_position_text_matches_details_and_board(name, cell, labe
     assert any(line.startswith("Voorwerp: ") and line.endswith(f"({caption})") for line in details)
 
 
-def test_berghut_3_greta_clue_uses_plain_adjacency():
+def test_berghut_3_counter_stays_in_the_kitchen_and_clue_describes_a_shared_side():
     bundle = web._murdoku(example("berghut-murdoku-3.txt").read_text(), {})
-    expected = "Greta staat naast het aanrecht en staat niet naast de ronde stamtafel."
+    expected = (
+        "Greta staat op een vakje dat een zijde deelt met het aanrecht "
+        "en staat niet naast de ronde stamtafel."
+    )
     assert expected in bundle["clues"]
+    for cell in ("r7c4", "r7c5"):
+        assert "Gebied: Keuken" in bundle["cellDetails"][cell]
 
 
 def test_berghut_cell_details_localize_standard_doors_and_windows():

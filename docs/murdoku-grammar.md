@@ -38,8 +38,8 @@ a square of …", explicitly including diagonals and area boundaries; negation
 covers the whole union of target footprints. A target such as
 `people on object:…` instead names a person on the object. Exact `dir:king`
 distances and other bounds retain their metric wording. A named person's
-`dir:manhattan object:… = 1` reads as one square away, not diagonally and
-without counting walls as extra steps.
+`dir:manhattan object:… = 1` reads as sharing a side with the object on the
+grid, even when that side is an area boundary.
 Exact person-to-person cardinal directions name their row or column distance.
 For two named people, positive `dir:rows` and `dir:cols` bounds say how many
 rows or columns apart they are, without implying a direction or alignment.

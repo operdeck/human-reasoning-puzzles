@@ -66,7 +66,7 @@ kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
 kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
 kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
 was was keuken keuken keuken keuken stube stube stube stube stube
-was was keuken stube stube keuken stube stube stube stube stube
+was was keuken keuken keuken keuken stube stube stube stube stube
 kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
 kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
 kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
@@ -170,7 +170,7 @@ Hannelore in rows:4
 Brunhild in area:keuken
 Reinhart in area:stube
 Reinhart in columns:10
-Greta beside object:aanrecht
+Greta dir:manhattan object:aanrecht = 1
 not (Greta beside object:rondetafel)
 Siegfried in rows:9
 

@@ -96,8 +96,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.rows": "at a row distance from",
         "rel.dir.cols": "at a column distance from",
         "rel.dir.manhattan": "at a side-step distance from",
-        "rel.dir.manhattan.one": "one square away from",
-        "idiom.manhattan.one": "{clause} (not diagonally; walls do not count as extra steps)",
+        "rel.dir.manhattan.one": "in a square that shares a side with",
         "rel.dir.king": "at a king-step distance from",
         "rel.dir.king.near": "on or directly next to",
         "idiom.king.near": "{clause} (including diagonals and across area boundaries)",
@@ -281,8 +280,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.rows": "op een rijafstand van",
         "rel.dir.cols": "op een kolomafstand van",
         "rel.dir.manhattan": "op een zijstapafstand van",
-        "rel.dir.manhattan.one": "op één vakje afstand van",
-        "idiom.manhattan.one": "{clause} (niet schuin; een muur telt niet als extra stap)",
+        "rel.dir.manhattan.one": "op een vakje dat een zijde deelt met",
         "rel.dir.king": "op een koningsstapafstand van",
         "rel.dir.king.near": "op of direct naast",
         "idiom.king.near": "{clause} (ook schuin, en dit geldt zelfs over gebiedsgrenzen heen)",
@@ -800,13 +798,12 @@ class ExpressionWords:
             or {"atom.one", "rel.dir.manhattan", "rel.measure", "cmp.="}.intersection(self.phrases)
         ):
             return None
-        clause = self._phrase(
+        return self._phrase(
             self._atom_key(atom, bindings),
             subject=self._operand(atom.subject, bindings),
             relation=self._phrase("rel.dir.manhattan.one"),
             target=self._target(atom.target, None, bindings, atom.operator, atom.subject),
         )
-        return self._phrase("idiom.manhattan.one", clause=clause)
 
     def _near_king(
         self, atom: lang.Atom, bindings: dict[str, Shape], *, negated: bool = False
