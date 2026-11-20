@@ -1,6 +1,6 @@
 # In de berghut 2 - "De kachel" (10x10)
 #
-# Hütte Adlerhorst, tweede nacht. De slaapzaal is boven, de eetzaal en keuken
+# Hütte Adlerhorst, tweede nacht. De slaapzaal is boven, de stube en keuken
 # beneden; de koude stoel staat weer in de tocht bij de deur. Om drie uur is de
 # kachel uit en is het in de hut ijskoud. Iemand vergat de laatste ronde hout —
 # en zat daarbij naast de kachel.
@@ -20,7 +20,7 @@ Words:
 terras: op het terras
 schoenenhok: in het schoenenhok
 keuken: in de keuken
-stube: in de eetzaal
+stube: in de stube
 drooghok: in het drooghok
 Kamer_Noord: in Kamer Noord
 Kamer_Zuid: in Kamer Zuid
@@ -193,7 +193,7 @@ Title:
 In de berghut 2: De kachel
 
 Intro:
-De tweede nacht in Hütte Adlerhorst. De slaapzaal is boven; de eetzaal en de keuken zijn beneden. Een, koude, stoel staat weer op de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
+De tweede nacht in Hütte Adlerhorst. De slaapzaal is boven; de stube en de keuken zijn beneden. Een, koude, stoel staat weer op de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
 Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de stamtafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In Kamer Noord slapen precies twee mensen.
 De schuldige is een avondmens en zat naast de kachel.
 
