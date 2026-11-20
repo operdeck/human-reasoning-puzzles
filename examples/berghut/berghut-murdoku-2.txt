@@ -7,7 +7,7 @@
 #
 # Oplossing: Greta r1c1, Brunhild r2c3, Hannelore r3c7, Waltraud r4c8,
 # Gerhard r5c5, Reinhart r6c6, Gunter r7c4, Ute r8c2, Siegfried r9c10,
-# Wolfgang r10c9. Reinhart is de kachelschurk: de enige avondmens naast de
+# Wolfgang r10c9. Reinhart is de schuldige: de enige avondmens naast de
 # kachel.
 #
 # Sleutelclues: Gunter/Siegfried hoogstens twee rijen; Hannelore/Gunter precies
@@ -46,9 +46,7 @@ bed: het bed
 kast: de kast
 koffer: de koffer
 emmer: de emmer
-avondmens: een avondmens
-role_has: {who} is de {role}
-role_not: {who} is niet de {role}
+avondmens: avondmens
 
 Regions:
 terras: terras #D9E2EA
@@ -133,19 +131,19 @@ Siegfried
 Wolfgang
 
 Rules:
-count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op een bikkelstoel.
+count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op de bikkelstoelen.
 no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
-count (people in area:kamer_n) = 2 | In de tweepersoonskamer liggen precies twee mensen.
-every ?p in role:kachelschurk: ?p beside object:kachel | De kachelschurk zat naast de kachel.
+count (people in area:kamer_n) = 2 | In de tweepersoonskamer slapen precies twee mensen.
+every ?p in role:schuldige: ?p beside object:kachel | De schuldige zat naast de kachel.
 
 Attributes:
 avondmens: Brunhild Reinhart Waltraud
 
 Roles:
-kachelschurk: 1
+schuldige: 1
 
 RoleEligibility:
-kachelschurk: attribute:avondmens
+schuldige: attribute:avondmens
 
 Clues:
 Gunter dir:rows Siegfried <= 2 | Gunter en Siegfried deden samen de afwas en blijven binnen twee rijen van elkaar.
@@ -172,18 +170,18 @@ Title:
 In de berghut 2: De kachel
 
 Intro:
-De tweede nacht in Hütte Adlerhorst. De slaapzaal ligt boven, de eetzaal en de keuken beneden; de koude stoel staat weer in de tocht bij de deur. Om drie uur is de kachel uit en is het in de hut ijskoud.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn standable; de andere meubels blokkeren. Er zitten precies drie mensen op een bikkelstoel en niemand wil naast de stinksokken zitten. In de tweepersoonskamer liggen precies twee mensen.
-De kachelschurk is een avondmens en zat naast de kachel.
+De tweede nacht in Hütte Adlerhorst. De slaapzaal ligt boven; de eetzaal en de keuken liggen beneden. De koude stoel staat weer in de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In de tweepersoonskamer slapen precies twee mensen.
+De schuldige is een avondmens en zat naast de kachel.
 
 Figures:
 Greta: de materiaalvrouw ; icon=U+1F469
-Brunhild: de touwpartner van Siegfried ; icon=U+1F9D1
+Brunhild: de touwpartner van Siegfried, een avondmens ; icon=U+1F9D1
 Hannelore: de lichte slaper ; icon=U+1F471
 Ute: de kokkin van dienst ; icon=U+1F475
-Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
+Waltraud: de nachtbraker met de zaklamp, een avondmens ; icon=U+1F469
 Gunter: de man die snorkt als een gletsjer ; icon=U+1F468
-Reinhart: de weerman zonder bereik ; icon=U+1F468
+Reinhart: de weerman zonder bereik, een avondmens ; icon=U+1F468
 Gerhard: de koukleum met de muts op ; icon=U+1F474
 Siegfried: de bergführer met de rode helm ; icon=U+1F9D4
 Wolfgang: de man met de pickel ; icon=U+1F468

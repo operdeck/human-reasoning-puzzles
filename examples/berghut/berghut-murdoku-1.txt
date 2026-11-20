@@ -46,7 +46,6 @@ bed: het bed
 kast: de kast
 koffer: de koffer
 emmer: de emmer
-name.attribute: een {name}
 
 Regions:
 terras: terras #D9E2EA
@@ -128,12 +127,12 @@ Siegfried
 Wolfgang
 
 Rules:
-count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op een bikkelstoel.
+count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op de bikkelstoelen.
 no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
 count (people on object:buitendouche) = 1 | Precies één iemand staat onder de koude buitendouche.
 
 Clues:
-Gunter dir:rows Hannelore >= 3 | Gunter en Hannelore liggen minstens drie rijen uit elkaar; verder draagt zijn gesnurk niet.
+Gunter dir:rows Hannelore >= 3 | Gunter en Hannelore liggen minstens drie rijen uit elkaar; verder reikt zijn gesnurk niet.
 Siegfried dir:cols Brunhild <= 2 | De touwpartners Siegfried en Brunhild blijven ook binnen twee kolommen van elkaar.
 Siegfried in area:schoenen
 Ute in area:stube
@@ -144,9 +143,9 @@ Hannelore on object:bed
 Gerhard in area:was
 Gunter on object:bed
 Reinhart dir:up Waltraud | Reinhart zit boven Waltraud aan de bikkeltafel.
-not (Ute beside object:kachel) | Ute zit niet naast de kachel; die heeft ze de hele dag al gestookt.
-Ute dir:up Reinhart | Ute zit boven Reinhart, aan de kant van de koude deur.
-Gerhard dir:up Wolfgang | Gerhard ligt boven Wolfgang.
+not (Ute beside object:kachel) | Ute zit niet naast de kachel; ze heeft hem de hele dag al gestookt.
+Ute dir:up Reinhart | Ute zit boven Reinhart, aan de kant van de tochtdeur.
+Gerhard dir:up Wolfgang | Gerhard staat boven Wolfgang.
 
 Key:
 clue: Gunter dir:rows Hannelore >= 3
@@ -159,8 +158,8 @@ Title:
 In de berghut 1: De koude douche
 
 Intro:
-De eerste herfststorm jaagt tien stamgasten naar Hütte Adlerhorst. Buiten raast de wind; binnen ruikt het naar natte wol, kaiserschmarrn en sokken. De laatste aankomst is doorweekt en moet eerst onder de koude buitendouche.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn standable; de andere meubels blokkeren. Er zitten vanavond precies drie mensen op een bikkelstoel. Niemand wil naast de stinksokken zitten.
+De eerste herfststorm jaagt tien stamgasten naar Hütte Adlerhorst. Buiten raast de wind; binnen ruikt het naar natte wol, Kaiserschmarrn en stinksokken. De laatste die binnenkomt, is doorweekt en moet eerst onder de koude buitendouche.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de bikkeltafel, de koude stoel in de schoenenruimte, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten vanavond precies drie mensen op de bikkelstoelen. Niemand wil naast de stinksokken zitten.
 
 Figures:
 Greta: de materiaalvrouw ; icon=U+1F469
