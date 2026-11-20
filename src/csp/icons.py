@@ -239,6 +239,92 @@ SLIPPERS = (
     '<path d="M20 53Q31 43 42 53M59 53Q70 43 81 53" fill="none" stroke="#fff4cf"'
     ' stroke-width="5" stroke-linecap="round"/>'
 )
+# One unwashed hiking sock: ribbed cuff, brown and green stains and a hole.
+# Drawn instead of the clean Noto socks so the drying-room joke reads; two
+# single sock cells together look like a pair on the line.
+DIRTY_SOCKS = (
+    '<g stroke="#3d372c" stroke-width="4" stroke-linejoin="round">'
+    '<path d="M26 10H50V58L68 68Q80 74 78 85Q76 96 64 94L36 90Q26 89 26 80Z" fill="#d9d1be"/>'
+    "</g>"
+    '<g stroke="#aaa08a" stroke-width="2.2">'
+    '<path d="M29 17H47M29 24H47"/>'
+    "</g>"
+    '<ellipse cx="38" cy="48" rx="8" ry="10" fill="#8a6a3a" opacity="0.75"/>'
+    '<path d="M30 70Q42 62 54 72Q46 82 34 80Z" fill="#6f7a45" opacity="0.8"/>'
+    '<ellipse cx="44" cy="31" rx="3.6" ry="4.6" fill="#3d372c"/>'
+    '<g fill="none" stroke="#7c8452" stroke-width="2.8" stroke-linecap="round">'
+    '<path d="M60 10Q65 4 70 10"/><path d="M68 18Q73 12 78 18"/>'
+    "</g>"
+)
+# A snow-capped massif with a glacier snout, drawn as a backdrop: the summit
+# and snowfield show in the strip around the board, the rock body stays behind it.
+SNOW_MOUNTAIN = (
+    '<rect width="100" height="100" fill="#dcebf5"/>'
+    '<path d="M0 100 L0 55 L16 34 L34 52 L50 8 L66 52 L84 34 L100 55 L100 100 Z"'
+    ' fill="#f4f9fc" stroke="#b9cfdd" stroke-width="1"/>'
+    '<path d="M20 100 L30 68 L40 78 L50 34 L60 78 L70 68 L80 100 Z"'
+    ' fill="#9aa9b7" opacity="0.55"/>'
+    '<path d="M50 8 L60 42 L54 39 L50 52 L46 39 L40 42 Z" fill="#ffffff"'
+    ' stroke="#c8d8e4" stroke-width="1"/>'
+    '<path d="M22 0 L32 12 L40 3 L50 15 L60 3 L68 12 L78 0 Z" fill="#ffffff"'
+    ' stroke="#b9cfdd" stroke-width="1" stroke-linejoin="round"/>'
+    '<g fill="none" stroke="#8fc0dc" stroke-width="1.4">'
+    '<path d="M2 62 L10 58"/><path d="M90 58 L98 62"/>'
+    '<path d="M8 96 Q24 88 42 94"/><path d="M58 94 Q76 88 92 96"/>'
+    '<path d="M30 86 L34 78"/><path d="M70 86 L66 78"/>'
+    "</g>"
+)
+# A mattress on the floor seen from above: ticking, two seams and a pillow.
+MATTRESS = (
+    '<rect x="6" y="10" width="88" height="80" rx="8" fill="#e8e2d2"'
+    ' stroke="#8a7f6a" stroke-width="3"/>'
+    '<path d="M6 38H94M6 62H94" stroke="#c9bda4" stroke-width="3"/>'
+    '<rect x="14" y="18" width="34" height="18" rx="6" fill="#f7f3e8"'
+    ' stroke="#8a7f6a" stroke-width="2"/>'
+)
+# A steel gear locker: vents, a handle and a kick plate.
+LOCKER = (
+    '<rect x="18" y="8" width="64" height="84" rx="4" fill="#9fb0bd"'
+    ' stroke="#47535d" stroke-width="3"/>'
+    '<g stroke="#6c7d8a" stroke-width="2">'
+    '<path d="M28 20H72M28 28H72M28 36H72"/>'
+    "</g>"
+    '<rect x="62" y="46" width="5" height="14" rx="2" fill="#47535d"/>'
+    '<rect x="24" y="76" width="52" height="8" rx="2" fill="#6c7d8a"/>'
+)
+# A wooden shelf with book spines, for a hut reading corner.
+BOOKSHELF = (
+    '<rect x="8" y="8" width="84" height="84" rx="3" fill="#a9743f"'
+    ' stroke="#5a3b1e" stroke-width="3"/>'
+    '<rect x="14" y="14" width="72" height="30" fill="#e8dcc3"/>'
+    '<rect x="14" y="50" width="72" height="30" fill="#e8dcc3"/>'
+    '<g stroke="#5a3b1e" stroke-width="1">'
+    '<rect x="18" y="18" width="6" height="22" fill="#b84a3c"/>'
+    '<rect x="25" y="20" width="5" height="20" fill="#3f6f8f"/>'
+    '<rect x="31" y="17" width="7" height="23" fill="#d9a441"/>'
+    '<rect x="39" y="21" width="5" height="19" fill="#5c7a4a"/>'
+    '<rect x="45" y="18" width="6" height="22" fill="#7a4a6a"/>'
+    '<rect x="52" y="22" width="5" height="18" fill="#b84a3c"/>'
+    '<rect x="58" y="19" width="6" height="21" fill="#3f6f8f"/>'
+    '<rect x="65" y="21" width="5" height="19" fill="#d9a441"/>'
+    '<rect x="71" y="18" width="6" height="22" fill="#5c7a4a"/>'
+    '<rect x="18" y="54" width="6" height="22" fill="#3f6f8f"/>'
+    '<rect x="25" y="56" width="5" height="20" fill="#d9a441"/>'
+    '<rect x="31" y="53" width="7" height="23" fill="#b84a3c"/>'
+    '<rect x="39" y="55" width="5" height="21" fill="#7a4a6a"/>'
+    '<rect x="45" y="54" width="6" height="22" fill="#5c7a4a"/>'
+    '<rect x="52" y="57" width="5" height="19" fill="#3f6f8f"/>'
+    '<rect x="58" y="54" width="6" height="22" fill="#b84a3c"/>'
+    '<rect x="65" y="56" width="5" height="20" fill="#d9a441"/>'
+    '<rect x="71" y="54" width="6" height="22" fill="#7a4a6a"/>'
+    "</g>"
+    '<path d="M8 46H92" stroke="#5a3b1e" stroke-width="3"/>'
+)
+ROUND_TABLE = (
+    '<circle cx="50" cy="50" r="40" fill="#c98d52" stroke="#6b4423" stroke-width="4"/>'
+    '<circle cx="50" cy="50" r="30" fill="none" stroke="#a9743f" stroke-width="2"/>'
+    '<path d="M22 50H78M50 22V78" stroke="#a9743f" stroke-width="2" opacity="0.6"/>'
+)
 TONGUE = "#e86a7e"
 STAIRCASE = (
     '<path d="M12 84h19V66h19V48h19V30h19V12" fill="none" stroke="currentColor"'
@@ -645,6 +731,36 @@ SHAPES = {
 }
 
 # name, Unicode fallback, label, and either a vendored emoji or the drawing.
+BEANIE_PORTRAIT = (
+    '<path d="M17 94c2-15 15-24 33-24s31 9 33 24" fill="#34526d"/>'
+    '<ellipse cx="50" cy="55" rx="26" ry="31" fill="#edb982"/>'
+    '<path d="M24 49c-2-26 8-38 26-38s28 12 26 38H24Z" fill="#277b84"/>'
+    '<circle cx="50" cy="12" r="8" fill="#277b84"/>'
+    '<rect x="21" y="38" width="58" height="14" rx="5" fill="#19545f"/>'
+    '<path d="M32 42v6m12-6v6m12-6v6m12-6v6" stroke="#55a3a6" stroke-width="2"/>'
+    '<path d="M34 57l10-2m12 0l10 2" stroke="#82644d" stroke-width="3" stroke-linecap="round"/>'
+    '<g fill="#322a27"><circle cx="40" cy="62" r="2.5"/><circle cx="60" cy="62" r="2.5"/></g>'
+    '<path d="M37 73c6 4 20 4 26 0" fill="none" stroke="#fff1df" stroke-width="5"'
+    ' stroke-linecap="round"/>'
+)
+
+CLIMBING_HELMET_PORTRAIT = (
+    '<path d="M14 94c4-16 17-24 36-24s32 8 36 24" fill="#38745e"/>'
+    '<ellipse cx="50" cy="55" rx="27" ry="32" fill="#d89c67"/>'
+    '<path d="M23 45l5 23 10 14m39-37-5 23-10 14" fill="none" stroke="#343641"'
+    ' stroke-width="5" stroke-linecap="round"/>'
+    '<path d="M26 64c8 2 12 5 24 5s16-3 24-5c0 14-9 24-24 24S26 78 26 64Z"'
+    ' fill="#5a382b"/>'
+    '<path d="M17 44C17 24 30 10 50 10s33 14 33 34c-19 6-47 6-66 0Z" fill="#d63131"/>'
+    '<path d="M30 28l7-5m13-4h5m8 4l7 5" stroke="#782029" stroke-width="4"'
+    ' stroke-linecap="round"/>'
+    '<path d="M16 43c22 5 46 5 68 0" fill="none" stroke="#a51f29" stroke-width="7"'
+    ' stroke-linecap="round"/>'
+    '<g fill="#322a27"><circle cx="40" cy="57" r="2.5"/><circle cx="60" cy="57" r="2.5"/></g>'
+    '<path d="M44 76q6 4 12 0" fill="none" stroke="#f4c18c" stroke-width="3"'
+    ' stroke-linecap="round"/>'
+)
+
 REGISTRY: dict[str, Icon] = {
     icon.name: icon
     for icon in (
@@ -753,6 +869,19 @@ REGISTRY: dict[str, Icon] = {
             bounds=(0, 22, 100, 122),
         ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
+        Icon("dirty_socks", "\U0001f9e6", "dirty socks", markup=DIRTY_SOCKS),
+        Icon("snow_mountain", "\U0001f3d4", "snow mountain", markup=SNOW_MOUNTAIN),
+        Icon("beanie_portrait", "\U0001f474", "person in a beanie", markup=BEANIE_PORTRAIT),
+        Icon(
+            "climbing_helmet_portrait",
+            "\U0001f9d4",
+            "person in a red climbing helmet",
+            markup=CLIMBING_HELMET_PORTRAIT,
+        ),
+        Icon("mattress", "\U0001f6cf", "mattress", markup=MATTRESS),
+        Icon("locker", "\U0001f5c4", "locker", markup=LOCKER),
+        Icon("round_table", "\u25cb", "round table", markup=ROUND_TABLE),
+        Icon("bookshelf", "\U0001f4da", "bookshelf", markup=BOOKSHELF),
         Icon(
             "non_la",
             "\U0001f452",
@@ -798,11 +927,20 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "loempia": "loempia", "spring_roll": "loempia",
                 "tunnel": "tunnel",
                 "sloffen": "slippers", "slippers": "slippers",
+                "stinksokken": "dirty_socks", "sokken": "dirty_socks", "socks": "dirty_socks",
+                "sneeuwberg": "snow_mountain", "snow_mountain": "snow_mountain",
+                "beanie_portrait": "beanie_portrait",
+                "climbing_helmet_portrait": "climbing_helmet_portrait",
+                "matras": "mattress", "mattress": "mattress",
+                "locker": "locker", "kluis": "locker",
+                "rondetafel": "round_table", "round_table": "round_table",
+                "boekenkast": "bookshelf", "bookshelf": "bookshelf",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
                 "lijk": "corpse", "corpse": "corpse",
                 "staircase": "staircase", "stairs": "staircase",
                 "reception_counter": "counter", "counter": "counter",
+                "aanrecht": "counter", "kitchen_counter": "counter",
                 "table": "table", "tafel": "table",
                 "elevator_car": "elevator", "wall": "wall",
                 "rails": "rails", "spoor": "rails", "track": "rails",
@@ -908,6 +1046,17 @@ CATALOGUE: dict[str, str] = {
     "knuffel": "1f9f8", "teddy": "1f9f8", "teddy_bear": "1f9f8",
     "bal": "26bd", "ball": "26bd", "voetbal": "26bd", "football": "26bd",
     "emmer": "1faa3", "bucket": "1faa3",
+    # Alpine hut
+    "buitendouche": "1f6bf", "outdoor_shower": "1f6bf",
+    "terrasbank": "1f6cb", "terrace_bench": "1f6cb",
+    "houtstapel": "1fab5", "woodpile": "1fab5", "hout": "1fab5", "wood": "1fab5",
+    "kachel": "1f525", "heater": "1f525", "masonry_heater": "1f525",
+    "pan": "1f372", "cooking_pot": "1f372",
+    "krat": "1f9fa", "crate": "1f9fa",
+    "rugzak": "1f392", "hiking_backpack": "1f392",
+    "bergschoen": "1f97e", "bergschoenen": "1f97e", "hiking_boot": "1f97e",
+    "helm": "26d1", "helmet": "26d1", "rescue_helmet": "26d1",
+    "touw": "1faa2", "rope": "1faa2", "knot": "1faa2",
     # museum and Halloween
     "sarcofaag": "26b0", "sarcophagus": "26b0", "doodskist": "26b0", "coffin": "26b0",
     "dinosaurus": "1f996", "dinosaur": "1f996", "t_rex": "1f996", "trex": "1f996",

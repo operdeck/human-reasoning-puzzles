@@ -60,4 +60,25 @@ Read this for the detailed transcription and build steps and their traps.
 
 When both are given, transcribe first, then build a separate derived puzzle.
 
+## Series traps found while authoring
+
+- **A series needs genuinely different `Grid:` sections.** `audit.layout_key`
+  compares the region grid up to rotation, reflection and region renaming, so a
+  mirrored or relabelled board still counts as the same layout. Change the room
+  plan, not just the objects.
+- **Seats in a ring.** `k` people need `k` distinct rows and `k` distinct
+  columns. Eight chairs around a one-cell table form a 3x3 ring, so three
+  bikkels would fill all three rows and columns; add a ninth chair elsewhere
+  (the cold stool in the boot room) to keep the set a deduction rather than a
+  line consequence.
+- **`thin --max-grade G` is the grade tool.** Without it, thinning can turn a
+  `relations` puzzle into `cover3`; with it, clues stay as long as the puzzle
+  remains unique, solved and at or below `G`.
+- **Give `clue_search` time.** `outcome` runs two solver workers, so a
+  `--timeout 1` reports "timeout" on puzzles the CLI solves in under a second.
+  Use five seconds or more for grading and thinning.
+- **Quantified filters use natural-language references.** A bound variable
+  such as `?a` in `(?a in areas where count (people in ?a) = 2)` is rendered
+  as "that area" / "dat gebied", not as parser syntax.
+
 ## Reading a scan

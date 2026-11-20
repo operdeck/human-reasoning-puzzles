@@ -49,7 +49,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "op.except": "{left} except {right}",
         "op.filter": "{source} that are {relation} {target}",
         "op.adjective_filter": "{source} that are {adjective}",
-        "op.comprehension": "{variable} in {source} where {condition}",
+        "op.comprehension": "{source} where {condition}",
+        "variable.person": "that person",
+        "variable.area": "that area",
+        "variable.row": "that row",
+        "variable.column": "that column",
+        "variable.cell": "that square",
+        "variable.feature": "that feature",
+        "variable.role": "that role",
         "op.projection": "{kind} overlapping {operand}",
         "projection.area": "areas",
         "projection.area.person": "the area of {operand}",
@@ -89,6 +96,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.rows": "at a row distance from",
         "rel.dir.cols": "at a column distance from",
         "rel.dir.manhattan": "at a side-step distance from",
+        "rel.dir.manhattan.one": "in a square that shares a side with",
         "rel.dir.king": "at a king-step distance from",
         "rel.dir.king.near": "on or directly next to",
         "idiom.king.near": "{clause} (including diagonals and across area boundaries)",
@@ -225,7 +233,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "op.except": "{left} behalve {right}",
         "op.filter": "{source} die {relation} {target} zijn",
         "op.adjective_filter": "{source} die {adjective} zijn",
-        "op.comprehension": "{variable} in {source} waarvoor {condition}",
+        "op.comprehension": "{source} waarvoor geldt: {condition}",
+        "variable.person": "die persoon",
+        "variable.area": "dat gebied",
+        "variable.row": "die rij",
+        "variable.column": "die kolom",
+        "variable.cell": "dat vakje",
+        "variable.feature": "dat voorwerp",
+        "variable.role": "die rol",
         "op.projection": "{kind} die {operand} overlappen",
         "projection.area": "gebieden",
         "projection.area.person": "het gebied van {operand}",
@@ -265,6 +280,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.rows": "op een rijafstand van",
         "rel.dir.cols": "op een kolomafstand van",
         "rel.dir.manhattan": "op een zijstapafstand van",
+        "rel.dir.manhattan.one": "op een vakje dat een zijde deelt met",
         "rel.dir.king": "op een koningsstapafstand van",
         "rel.dir.king.near": "op of direct naast",
         "idiom.king.near": "{clause} (ook schuin, en dit geldt zelfs over gebiedsgrenzen heen)",
@@ -738,10 +754,11 @@ class ExpressionWords:
 
     def _distance_pair(self, atom: lang.Atom, bindings: dict[str, Shape]) -> str | None:
         mode = atom.operator.text.removeprefix("dir:")
+        units = {"areas": "areas", "manhattan": "manhattan", "rows": "row", "cols": "column"}
         comparisons = {"=": "count.exactly", ">=": "count.at_least", "<=": "count.at_most"}
         if (
             not atom.operator.text.startswith("dir:")
-            or mode not in {"areas", "manhattan"}
+            or mode not in units
             or atom.determiner is not None
             or atom.measure is None
             or atom.measure.comparison.text not in comparisons
@@ -764,7 +781,28 @@ class ExpressionWords:
             second=self._operand(atom.target, bindings),
             comparison=self._phrase(comparisons[atom.measure.comparison.text]),
             count=numbers[count] if count < len(numbers) else str(count),
-            unit=self._phrase(f"unit.{mode}.{'one' if count == 1 else 'many'}"),
+            unit=self._phrase(f"unit.{units[mode]}.{'one' if count == 1 else 'many'}"),
+        )
+
+    def _one_step_from_object(self, atom: lang.Atom, bindings: dict[str, Shape]) -> str | None:
+        if (
+            atom.operator.text != "dir:manhattan"
+            or atom.determiner is not None
+            or not isinstance(atom.subject, lang.Name)
+            or atom.subject.token.text not in self.board.people
+            or not isinstance(atom.target, lang.Name)
+            or not atom.target.token.text.startswith("object:")
+            or atom.measure is None
+            or atom.measure.comparison.text != "="
+            or int(atom.measure.value.text) != 1
+            or {"atom.one", "rel.dir.manhattan", "rel.measure", "cmp.="}.intersection(self.phrases)
+        ):
+            return None
+        return self._phrase(
+            self._atom_key(atom, bindings),
+            subject=self._operand(atom.subject, bindings),
+            relation=self._phrase("rel.dir.manhattan.one"),
+            target=self._target(atom.target, None, bindings, atom.operator, atom.subject),
         )
 
     def _near_king(
@@ -965,11 +1003,15 @@ class ExpressionWords:
             case lang.Comprehension(variable=variable, source=source, condition=condition):
                 shape = infer_operand(self.board, source, bindings)
                 scoped = {**bindings, variable.text: Shape(shape.sort, 1, 1)}
+                variable_name = self.names.get(
+                    variable.text, self._phrase(f"variable.{shape.sort.value}")
+                )
+                scoped_words = replace(self, names={**self.names, variable.text: variable_name})
                 return self._phrase(
                     "op.comprehension",
-                    variable=variable.text,
+                    variable=variable_name,
                     source=self._operand(source, bindings),
-                    condition=self._formula(condition, scoped),
+                    condition=scoped_words._formula(condition, scoped),
                 )
             case _:
                 assert_never(value)
@@ -1117,6 +1159,8 @@ class ExpressionWords:
         if isinstance(value, lang.Atom) and (idiom := self._exact_direction(value, bindings)):
             return idiom
         if isinstance(value, lang.Atom) and (idiom := self._distance_pair(value, bindings)):
+            return idiom
+        if isinstance(value, lang.Atom) and (idiom := self._one_step_from_object(value, bindings)):
             return idiom
         if isinstance(value, lang.Atom) and (idiom := self._near_king(value, bindings)):
             return idiom

@@ -255,6 +255,23 @@ def test_every_construct_has_compositional_wording(board, language, source):
 
 
 @pytest.mark.parametrize(
+    ("language", "reference", "source_phrase"),
+    [
+        ("en", "that area", "areas where"),
+        ("nl", "dat gebied", "gebieden waarvoor geldt:"),
+    ],
+)
+def test_comprehension_filter_uses_a_natural_bound_variable_reference(
+    board, language, reference, source_phrase
+):
+    statement = parse_statement("count (?a in areas where count (people in ?a) = 2) = 1")
+    wording = ExpressionWords(board, language).statement(statement)
+    assert "?a" not in wording
+    assert reference in wording
+    assert source_phrase in wording
+
+
+@pytest.mark.parametrize(
     ("language", "alone", "only"),
     [
         ("en", "Ada is alone in their area", "Ada is the only person on"),
@@ -657,10 +674,37 @@ def test_zero_area_distance_has_an_idiomatic_relation(
             "Ada dir:manhattan Ben >= 10",
             "Ada en Ben zijn minstens tien stappen van elkaar verwijderd",
         ),
+        ("en", "Ada dir:rows Ben = 1", "Ada and Ben are exactly one row apart"),
+        (
+            "nl",
+            "Ada dir:cols Ben <= 2",
+            "Ada en Ben zijn hoogstens twee kolommen van elkaar verwijderd",
+        ),
+        (
+            "nl",
+            "Ada dir:rows Ben >= 3",
+            "Ada en Ben zijn minstens drie rijen van elkaar verwijderd",
+        ),
     ],
 )
 def test_named_person_distance_pairs_read_naturally(board, language, formula, expected):
     assert ExpressionWords(board, language).statement(parse_statement(formula)) == expected
+
+
+@pytest.mark.parametrize(
+    ("language", "name", "expected"),
+    [
+        ("en", "the counter", "Ada is in a square that shares a side with the counter"),
+        ("nl", "het aanrecht", "Ada staat op een vakje dat een zijde deelt met het aanrecht"),
+    ],
+)
+def test_one_orthogonal_step_from_an_object_reads_naturally(board, language, name, expected):
+    board.objects.append(BoardObject("counter", "blocking", (Square(0, 1), Square(0, 2))))
+    statement = parse_statement("Ada dir:manhattan object:counter = 1")
+    words = ExpressionWords(board, language, names={"counter": name})
+    assert words.statement(statement) == expected
+    custom = ExpressionWords(board, language, phrases={"rel.dir.manhattan": "CUSTOM"})
+    assert "CUSTOM" in custom.statement(statement)
 
 
 def test_distance_idiom_preserves_author_relation_templates_and_potential_self_targets(board):
@@ -668,6 +712,8 @@ def test_distance_idiom_preserves_author_relation_templates_and_potential_self_t
     assert "CUSTOM" in words.statement(parse_statement("Ada dir:areas Ben >= 2"))
     sentence = ExpressionWords(board).statement(parse_statement("Ada dir:areas role:guard = 1"))
     assert "distinct from the subject" in sentence
+    axis_words = ExpressionWords(board, "nl", phrases={"rel.dir.cols": "CUSTOM"})
+    assert "CUSTOM" in axis_words.statement(parse_statement("Ada dir:cols Ben <= 2"))
 
 
 @pytest.mark.parametrize(

@@ -77,6 +77,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "web.cell_tag": "Area tag: {name}",
         "web.cell_object": "Object: {name} ({condition})",
         "web.cell_touch": "Touches: {name}",
+        "web.cell_door": "{name}",
+        "web.cell_window": "{name}",
         "web.cell_figure": "Figure",
         "web.extras": "Case details",
         "doc.area_tag": "The {tag} are {areas}.",
@@ -116,6 +118,8 @@ PHRASES: dict[str, dict[str, str]] = {
             "it, in any area."
         ),
         "doc.standable": "you can stand on it",
+        "doc.stand_under": "you can stand under it",
+        "doc.sit_on": "you can sit on it",
         "doc.blocking": "nobody can stand here",
         "doc.standable_group": "Standable",
         "doc.blocking_group": "Blocking",
@@ -514,6 +518,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "web.cell_tag": "Gebiedsgroep: {name}",
         "web.cell_object": "Voorwerp: {name} ({condition})",
         "web.cell_touch": "Raakt: {name}",
+        "web.cell_door": "een deur",
+        "web.cell_window": "een raam",
         "web.cell_figure": "Figuur",
         "web.extras": "Bijzonderheden",
         "doc.area_tag": "{Tag}: {areas}.",
@@ -557,6 +563,8 @@ PHRASES: dict[str, dict[str, str]] = {
             "mee delen, in welk gebied dan ook."
         ),
         "doc.standable": "hier kun je op staan",
+        "doc.stand_under": "hier kun je onder staan",
+        "doc.sit_on": "hier kun je op zitten",
         "doc.blocking": "hier kan niemand staan",
         "doc.standable_group": "Begaanbaar",
         "doc.blocking_group": "Blokkerend",
@@ -1461,14 +1469,15 @@ class Places:
     def region(self, name: str) -> str:
         return self.say.words.get(name) or self.say("region", name=name.replace("_", " "))
 
-    def thing(self, name: str) -> str:
+    def thing(self, name: str, *, as_label: bool = False) -> str:
+        """Name a feature; a cell label names the kind, not one of its instances."""
         name = target_name(name)
-        if name in self.board.edge_item_names:
+        if as_label or name in self.board.mark_names:
+            many = False
+        elif name in self.board.edge_item_names:
             many = sum(item.name == name for item in self.board.edge_items) > 1
         elif name in self.board.point_object_names:
             many = sum(point.name == name for point in self.board.point_objects) > 1
-        elif name in self.board.mark_names:
-            many = False
         else:
             many = sum(obj.name == name for obj in self.board.objects) > 1
         return feature_name(
@@ -2203,6 +2212,21 @@ def attribute_list(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def object_kind(name: str) -> str:
+    return name.lower().rstrip("0123456789").rstrip("_")
+
+
+def object_position_text(say: Wording, name: str, standable: bool) -> str:
+    if not standable:
+        return say("doc.blocking")
+    kind = object_kind(name)
+    if kind in {"buitendouche", "douche", "shower"}:
+        return say("doc.stand_under")
+    if kind in {"bank", "terrasbank"}:
+        return say("doc.sit_on")
+    return say("doc.standable")
+
+
 def object_list(text: str) -> list[tuple[str, str, bool]]:
     """(object type, name to show, standable) for each kind of object on the board.
 
@@ -2212,7 +2236,7 @@ def object_list(text: str) -> list[tuple[str, str, bool]]:
     words = Wording.read(text).words
     out: dict[str, tuple[str, str, bool]] = {}
     for obj in board.objects:
-        kind = obj.name.lower().rstrip("0123456789").rstrip("_")
+        kind = object_kind(obj.name)
         said = words.get(obj.name) or words.get(kind)
         bare = re.sub(r"^(the|a|an|de|het|een) ", "", said) if said else ""
         # Keep the article before an adjective: "het zachte tapijt", not "zachte tapijt".

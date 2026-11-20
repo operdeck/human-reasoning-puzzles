@@ -65,3 +65,26 @@ Read this when choosing objects, colours, icons, backdrops or series order.
   4. Render and look: the icon must read at cell size and on dark shading.
      Multi-square objects are stretched across the footprint; names in
      `picture.SEAT_NAMES` (benches) keep proportions instead.
+- **Alpine hut vocabulary** is registered in `CATALOGUE`: `buitendouche`,
+  `terrasbank`, `houtstapel`/`hout`, `kachel`, `pan`, `krat`, `rugzak`,
+  `bergschoen`, `helm`, `touw` and `stinksokken`, plus a `counter` alias for
+  `aanrecht`. Reuse them instead of adding one-off names.
+- **Draw the story detail when the emoji is too clean.** `DIRTY_SOCKS` is an
+  original SVG (ribbed cuff, brown and green stains, holes, stink curls) mapped
+  through `OBJECT_ICONS`; the clean Noto socks read as new. Use one sock per
+  cell so two single cells look like a pair on the line.
+- **Only the backdrop's ring shows.** A backdrop is stretched behind the board,
+  so design its recognisable parts against the outer edges (a snow ridge along
+  the top, a glacier snout at the bottom) and judge it from the rendered ring,
+  not the full drawing. `SNOW_MOUNTAIN` is the berghut example.
+- **Vary the furniture inside a series.** Keep the footprint and the
+  blocking/standable kind so the model and grades stay put, and change the
+  object names and icons: beds vs. floor mattresses vs. double beds, cabinets
+  vs. bookshelves vs. lockers, chairs vs. stools, square vs. round table. Check
+  every clue that names an object (`on object:bed`) when renaming it. The
+  berghut series does this per puzzle.
+- **Give rooms doors and windows even when no clue uses them.** A door sits on
+  a boundary between two areas (`door: door r2c5 r3c5`); a window sits on an
+  outer wall (`window: window r3c1 left`). They are inert for solving but make
+  the floor plan readable; choose cells a person could plausibly walk through
+  or look out of.

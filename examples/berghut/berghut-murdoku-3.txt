@@ -1,0 +1,226 @@
+# In de berghut 3 - "De bikkels" (11x11)
+#
+# Hütte Adlerhorst, laatste nacht. De wind draait en de kachel brandt; drie van
+# de elf verkiezen een bikkelkruk boven een bed. Alleen wie
+# vandaag de top haalde, is een echte bikkel.
+#
+# Oplossing: Gerhard r1c8, Wolfgang r2c3, Gunter r3c7, Hannelore r4c1,
+# Ute r5c2, Brunhild r6c5, Reinhart r7c10, Greta r8c4, Siegfried r9c6,
+# Sepp r10c9, Waltraud r11c11. De drie bikkels zijn Greta, Siegfried en
+# Wolfgang; Ute haalde ook de top, maar zat niet op een bikkelkruk.
+#
+# Sleutelclues: Gunter/Waltraud minstens drie rijen; Hannelore/Brunhild minstens
+# vier kolommen.
+
+Size: 11
+Language: nl
+
+Words:
+terras: op het terras
+schoenenhok: in het schoenenhok
+keuken: in de keuken
+stube: in de stube
+drooghok: in het drooghok
+Kamer_Noord: in Kamer Noord
+Kamer_Zuid: in Kamer Zuid
+lager: in het matrassenlager
+was: in het washok
+douche: de koude buitendouche
+terrasbank: de terrasbank
+bank: de zitbank
+hout: de houtstapel
+bergschoen: de bergschoenen
+helm: de helm
+touw: het touw
+rugzak: de rugzak
+kruk: een bikkelkruk
+fornuis: het fornuis
+aanrecht: het aanrecht
+pan: de pan
+krat: de krat
+rondetafel: de ronde stamtafel
+kachel: de kachel
+stinksokken: de stinksokken
+spiegel: de spiegel
+bed: het bed
+tweepersoonsbed: het tweepersoonsbed
+locker: de locker
+emmer: de emmer
+topganger: topganger
+
+Regions:
+terras: terras #D9E2EA
+schoenen: schoenenhok #C9B79C
+keuken: keuken #F2DCC0
+stube: stube #E8D5B5
+droog: drooghok #CFE0EE
+kamer_n: Kamer_Noord #D8D2F0
+kamer_z: Kamer_Zuid #E3CFC0
+lager: lager #DCE8D2
+was: was #C8D8CB
+
+Grid:
+terras terras terras terras terras terras terras terras terras terras terras
+schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
+kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
+kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
+kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
+was was keuken keuken keuken keuken stube stube stube stube stube
+was was keuken keuken keuken keuken stube stube stube stube stube
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+Objects:
+douche: standable r1c1
+terrasbank: standable r1c5 r1c6
+hout: blocking r1c10 r1c11
+touw: blocking r2c1
+bergschoen: blocking r2c2
+kruk: standable r2c3
+helm: blocking r2c4
+rugzak: blocking r2c7
+bergschoen: blocking r2c9
+tweepersoonsbed: standable r3c1 r3c2 r4c1 r4c2
+locker: blocking r3c4
+bed: standable r3c5 r3c6
+bed: standable r4c4 r4c5
+bed: standable r5c6 r5c7
+locker: blocking r5c3
+stinksokken: blocking r4c9
+stinksokken: blocking r4c10
+spiegel: blocking r3c11
+touw: blocking r5c10
+spiegel: blocking r6c1
+emmer: blocking r7c2
+fornuis: blocking r6c3
+pan: blocking r6c6
+aanrecht: blocking r7c4 r7c5
+krat: blocking r7c3
+kachel: blocking r6c7
+stinksokken: blocking r7c7
+rondetafel: blocking r9c5
+kruk: standable r8c4
+kruk: standable r8c5
+kruk: standable r8c6
+kruk: standable r9c4
+kruk: standable r9c6
+kruk: standable r10c4
+kruk: standable r10c5
+kruk: standable r10c6
+tweepersoonsbed: standable r8c1 r8c2 r9c1 r9c2
+locker: blocking r11c3
+bank: standable r11c5 r11c6
+bed: standable r9c8 r9c9
+bed: standable r10c8 r10c9
+helm: blocking r10c11
+bed: standable r11c8 r11c9
+EdgeItems:
+door: door r1c8 r2c8
+door: door r2c3 r3c3
+door: door r2c5 r3c5
+door: door r2c8 r3c8
+door: door r5c2 r6c2
+door: door r5c4 r6c4
+door: door r5c8 r6c8
+door: door r7c1 r8c1
+door: door r8c3 r8c4
+door: door r8c7 r8c8
+window: window r2c11 right
+window: window r4c1 left
+window: window r5c1 left
+window: window r6c11 right
+window: window r7c1 left
+window: window r7c11 right
+window: window r9c1 left
+window: window r9c11 right
+window: window r11c1 bottom
+window: window r11c7 bottom
+
+People:
+Greta
+Brunhild
+Hannelore
+Ute
+Waltraud
+Gunter
+Reinhart
+Gerhard
+Siegfried
+Wolfgang
+
+Sepp
+Rules:
+count (people on object:kruk) = 3 | Er zitten vanavond precies drie mensen op de bikkelkrukken.
+no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
+no (people except attribute:topganger) on object:kruk | Alleen topgangers mogen op een bikkelkruk zitten.
+
+Attributes:
+topganger: Greta Siegfried Ute Wolfgang
+
+Clues:
+Gunter dir:rows Waltraud >= 3
+Hannelore dir:cols Brunhild >= 4
+Gerhard in area:terras
+Gerhard in columns:8
+Wolfgang in area:schoenenhok
+Gunter in area:lager
+Gunter in rows:3
+Hannelore in rows:4
+Brunhild in area:keuken
+Reinhart in area:stube
+Reinhart in columns:10
+Greta dir:manhattan object:aanrecht = 1
+not (Greta beside object:rondetafel)
+Siegfried in rows:9
+
+Sepp on object:bed
+Sepp in rows:10
+Waltraud in columns:11
+Key:
+clue: Gunter dir:rows Waltraud >= 3
+clue: Hannelore dir:cols Brunhild >= 4
+
+Backdrop:
+sneeuwberg
+
+Title:
+In de berghut 3: De bikkels
+
+Intro:
+De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de elf verkiezen een bikkelkruk boven een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde stamtafel, de koude kruk in het schoenenhok, de bedden, de zitbank, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen topgangers mogen op een bikkelkruk zitten.
+
+Figures:
+Greta: de materiaalvrouw, haalde vandaag de top ; icon=U+1F469
+Brunhild: de touwpartner van Siegfried ; icon=U+1F9D1
+Hannelore: de lichte slaper ; icon=U+1F471
+Ute: de kokkin van dienst, haalde vandaag de top ; icon=U+1F475
+Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
+Gunter: de man die snurkt als een yeti ; icon=U+1F468
+Reinhart: de weerman zonder bereik ; icon=U+1F468
+Gerhard: de koukleum met de muts op ; icon=beanie_portrait
+Siegfried: de bergführer met de rode helm, haalde vandaag de top ; icon=climbing_helmet_portrait
+Wolfgang: de man met de pickel, haalde vandaag de top ; icon=U+1F468
+
+Sepp: de nieuwste gast ; icon=U+1F468
+Pronouns:
+Greta: zij haar haar
+Brunhild: zij haar haar
+Hannelore: zij haar haar
+Ute: zij haar haar
+Waltraud: zij haar haar
+Gunter: hij hem zijn
+Reinhart: hij hem zijn
+Gerhard: hij hem zijn
+Siegfried: hij hem zijn
+Wolfgang: hij hem zijn
+
+Sepp: hij hem zijn
+
+Question:
+Wie haalde de top maar zat niet op een bikkelkruk?
+
+Reveal:
+Ute haalde de top, maar zat niet op een bikkelkruk: Greta, Siegfried en Wolfgang waren de drie echte bikkels.
+

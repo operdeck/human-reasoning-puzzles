@@ -1,0 +1,228 @@
+# In de berghut 2 - "De kachel" (10x10)
+#
+# Hütte Adlerhorst, tweede nacht. De slaapzaal is boven, de stube en keuken
+# beneden; de koude stoel staat weer in de tocht bij de deur. Om drie uur is de
+# kachel uit en is het in de hut ijskoud. Iemand vergat de laatste ronde hout —
+# en zat daarbij naast de kachel.
+#
+# Oplossing: Greta r1c1, Brunhild r2c3, Hannelore r3c7, Waltraud r4c8,
+# Gerhard r5c5, Reinhart r6c6, Gunter r7c4, Ute r8c2, Siegfried r9c10,
+# Wolfgang r10c9. Reinhart is de schuldige: de enige avondmens naast de
+# kachel.
+#
+# Sleutelclues: Gunter/Siegfried hoogstens twee rijen; Hannelore/Gunter precies
+# drie kolommen.
+
+Size: 10
+Language: nl
+
+Words:
+terras: op het terras
+schoenenhok: in het schoenenhok
+keuken: in de keuken
+stube: in de stube
+drooghok: in het drooghok
+Kamer_Noord: in Kamer Noord
+Kamer_Zuid: in Kamer Zuid
+lager: in het matrassenlager
+was: in het washok
+douche: de koude buitendouche
+terrasbank: de terrasbank
+hout: de houtstapel
+bergschoen: een paar bergschoenen
+helm: de helm
+touw: het touw
+rugzak: de rugzak
+stoel: een bikkelstoel
+fornuis: het fornuis
+aanrecht: het aanrecht
+pan: de pan
+krat: de krat
+tafel: de stamtafel
+kachel: de kachel
+stinksokken: de stinksokken
+spiegel: de spiegel
+matras: het matras
+boekenkast: de boekenkast
+emmer: de emmer
+avondmens: avondmens
+
+Regions:
+terras: terras #D9E2EA
+schoenen: schoenenhok #C9B79C
+keuken: keuken #F2DCC0
+stube: stube #E8D5B5
+droog: drooghok #CFE0EE
+kamer_n: Kamer_Noord #E3CFC0
+kamer_z: Kamer_Zuid #D8D2F0
+lager: lager #DCE8D2
+was: was #C8D8CB
+
+Grid:
+terras terras terras terras terras terras terras terras terras terras
+schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
+lager lager lager lager lager lager kamer_n kamer_n droog droog
+lager lager lager lager lager lager kamer_n kamer_n droog droog
+lager lager lager lager lager lager kamer_n kamer_n droog droog
+keuken keuken keuken stube stube stube stube stube droog droog
+keuken keuken keuken stube stube stube stube stube droog droog
+keuken keuken keuken stube stube stube stube stube droog droog
+kamer_z kamer_z kamer_z was was lager lager lager lager lager
+kamer_z kamer_z kamer_z was was lager lager lager lager lager
+
+Objects:
+douche: standable r1c1
+terrasbank: standable r1c5 r1c6
+hout: blocking r1c9 r1c10
+helm: blocking r2c1
+bergschoen: blocking r2c2
+stoel: standable r2c3
+rugzak: blocking r2c4
+touw: blocking r2c7
+bergschoen: blocking r2c9
+matras: standable r3c1 r3c2
+boekenkast: blocking r3c3
+matras: standable r3c5 r3c6
+matras: standable r4c3 r4c4
+boekenkast: blocking r4c1
+matras: standable r5c1 r5c2
+boekenkast: blocking r5c3
+matras: standable r5c5 r5c6
+matras: standable r3c7 r3c8
+boekenkast: blocking r5c7
+stinksokken: blocking r4c9
+stinksokken: blocking r4c10
+touw: blocking r6c10
+spiegel: blocking r3c10
+fornuis: blocking r6c2
+pan: blocking r6c1
+aanrecht: blocking r7c1 r7c2
+krat: blocking r8c1
+tafel: blocking r7c5
+stoel: standable r6c4
+stoel: standable r6c5
+stoel: standable r6c6
+stoel: standable r7c4
+stoel: standable r7c6
+stoel: standable r8c4
+stoel: standable r8c5
+stoel: standable r8c6
+kachel: blocking r6c7
+boekenkast: blocking r6c8
+stinksokken: blocking r7c7
+matras: standable r9c1 r9c2
+boekenkast: blocking r10c3
+spiegel: blocking r9c4
+emmer: blocking r10c5
+boekenkast: blocking r9c6
+matras: standable r9c7 r9c8
+helm: blocking r10c6
+matras: standable r10c9 r10c10
+
+EdgeItems:
+door: door r1c8 r2c8
+door: door r2c6 r3c6
+door: door r4c6 r4c7
+door: door r5c4 r6c4
+door: door r5c8 r5c9
+door: door r6c3 r6c4
+door: door r7c8 r7c9
+door: door r8c3 r9c3
+door: door r8c9 r9c9
+door: door r9c3 r9c4
+window: window r2c10 right
+window: window r3c1 left
+window: window r5c10 right
+window: window r7c1 left
+window: window r8c10 right
+window: window r10c1 bottom
+window: window r10c2 bottom
+window: window r10c4 bottom
+window: window r10c7 bottom
+window: window r10c8 bottom
+
+People:
+Greta
+Brunhild
+Hannelore
+Ute
+Waltraud
+Gunter
+Reinhart
+Gerhard
+Siegfried
+Wolfgang
+
+Rules:
+count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op de bikkelstoelen.
+no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
+count (people in area:Kamer_Noord) = 2 | In Kamer Noord slapen precies twee mensen.
+every ?p in role:schuldige: ?p beside object:kachel | De schuldige zat naast de kachel.
+
+Attributes:
+avondmens: Brunhild Reinhart Waltraud
+
+Roles:
+schuldige: 1
+
+RoleEligibility:
+schuldige: attribute:avondmens
+
+Clues:
+Gunter dir:rows Siegfried <= 2
+Hannelore dir:cols Gunter = 3
+Brunhild beside object:bergschoen
+Brunhild dir:left Hannelore
+Gerhard in area:lager
+Ute in area:keuken
+Hannelore on object:matras
+Waltraud beside object:matras
+Hannelore in rows:3
+Greta in columns:1
+Siegfried in columns:10
+Wolfgang in columns:9
+
+Key:
+clue: Gunter dir:rows Siegfried <= 2
+clue: Hannelore dir:cols Gunter = 3
+
+Backdrop:
+sneeuwberg
+
+Title:
+In de berghut 2: De kachel
+
+Intro:
+De tweede nacht in Hütte Adlerhorst. De slaapzaal is boven; de stube en de keuken zijn beneden. Een, koude, stoel staat weer op de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de stamtafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In Kamer Noord slapen precies twee mensen.
+De schuldige is een avondmens en zat naast de kachel.
+
+Figures:
+Greta: de materiaalvrouw ; icon=U+1F469
+Brunhild: de touwpartner van Siegfried, een avondmens ; icon=U+1F9D1
+Hannelore: de lichte slaper ; icon=U+1F471
+Ute: de kokkin van dienst ; icon=U+1F475
+Waltraud: de nachtbraker met de zaklamp, een avondmens ; icon=U+1F469
+Gunter: de man die snurkt als een yeti ; icon=U+1F468
+Reinhart: de weerman zonder bereik, een avondmens ; icon=U+1F468
+Gerhard: de koukleum met de muts op ; icon=beanie_portrait
+Siegfried: de bergführer met de rode helm ; icon=climbing_helmet_portrait
+Wolfgang: de man met de pickel ; icon=U+1F468
+
+Pronouns:
+Greta: zij haar haar
+Brunhild: zij haar haar
+Hannelore: zij haar haar
+Ute: zij haar haar
+Waltraud: zij haar haar
+Gunter: hij hem zijn
+Reinhart: hij hem zijn
+Gerhard: hij hem zijn
+Siegfried: hij hem zijn
+Wolfgang: hij hem zijn
+
+Question:
+Wie heeft de kachel laten uitgaan?
+
+Reveal:
+Reinhart, de avondmens die naast de kachel zat, heeft de kachel laten uitgaan.

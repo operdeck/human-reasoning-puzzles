@@ -36,9 +36,13 @@ explicit `atom.one` and `atom.not` templates still take precedence.
 A named person's `dir:king object:… <= 1` reads as "on or directly next to
 a square of …", explicitly including diagonals and area boundaries; negation
 covers the whole union of target footprints. A target such as
-`people on object:…` instead names a person on the object. Exact distances
-such as `= 1` retain their metric wording, as do other bounds.
+`people on object:…` instead names a person on the object. Exact `dir:king`
+distances and other bounds retain their metric wording. A named person's
+`dir:manhattan object:… = 1` reads as sharing a side with the object on the
+grid, even when that side is an area boundary.
 Exact person-to-person cardinal directions name their row or column distance.
+For two named people, positive `dir:rows` and `dir:cols` bounds say how many
+rows or columns apart they are, without implying a direction or alignment.
 A role with exactly one holder may use a singular name such as "the murderer";
 optional or multiple-holder roles retain set wording. Worked solutions announce
 a last candidate once, cite a single clue directly, and group remaining role

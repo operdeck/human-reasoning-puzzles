@@ -254,6 +254,49 @@ def test_murdoku_cell_details_use_dutch_and_author_wording():
     assert "Touches: the mouse on the top edge" in points["r1c5"]
 
 
+@pytest.mark.parametrize(
+    ("name", "cell", "label", "caption"),
+    [
+        ("berghut-murdoku-1.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
+        ("berghut-murdoku-1.txt", "r1c4", "Terrasbank", "hier kun je op zitten"),
+        ("berghut-murdoku-3.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
+        ("berghut-murdoku-3.txt", "r11c5", "Zitbank", "hier kun je op zitten"),
+    ],
+)
+def test_berghut_object_position_text_matches_details_and_board(name, cell, label, caption):
+    bundle = web._murdoku(example(name).read_text(), {})
+    assert next(item["text"] for item in bundle["objects"] if item["name"] == label) == caption
+    details = bundle["cellDetails"][cell]
+    assert any(line.startswith("Voorwerp: ") and line.endswith(f"({caption})") for line in details)
+
+
+def test_berghut_3_counter_stays_in_the_kitchen_and_clue_describes_a_shared_side():
+    bundle = web._murdoku(example("berghut-murdoku-3.txt").read_text(), {})
+    expected = (
+        "Greta staat op een vakje dat een zijde deelt met het aanrecht "
+        "en staat niet naast de ronde stamtafel."
+    )
+    assert expected in bundle["clues"]
+    for cell in ("r7c4", "r7c5"):
+        assert "Gebied: Keuken" in bundle["cellDetails"][cell]
+
+
+def test_berghut_cell_details_localize_standard_doors_and_windows():
+    text = example("berghut-murdoku-3.txt").read_text()
+    details = web._murdoku(text, {})["cellDetails"]
+    assert all("Raakt: een deur" in details[cell] for cell in ("r1c8", "r2c8"))
+    assert "Raakt: een raam" in details["r2c11"]
+
+    custom = web._murdoku(text.replace("Words:\n", "Words:\ndoor: de houten deur\n"), {})
+    assert "Raakt: de houten deur" in custom["cellDetails"]["r1c8"]
+
+
+def test_berghut_cell_labels_keep_the_authored_article_for_repeated_objects():
+    details = web._murdoku(example("berghut-murdoku-1.txt").read_text(), {})["cellDetails"]
+    for cell in ("r4c7", "r5c8", "r5c9"):
+        assert "Voorwerp: de stinksokken (hier kan niemand staan)" in details[cell]
+
+
 def test_murdoku_cell_details_include_object_count_rules_on_each_matching_object():
     text = example("wie-doet-het-met-wie-4.txt").read_text()
     details = web._murdoku(text, {})["cellDetails"]
