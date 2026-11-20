@@ -1,12 +1,14 @@
 """The berghut series: 9x9, 10x10 and 11x11 Murdokus with axis-distance key clues."""
 
 import re
+from collections.abc import Iterator
 
 import pytest
 
 from csp import audit, clue_search
 from csp.bruteforce import murdoku as murdoku_brute
 from csp.murdoku_expression_file import keyed_expression_clue_numbers
+from csp.murdoku_lang import Atom, Binary, Formula, Name, parse_statement
 from tests.examples import example
 
 FILES = (
@@ -80,6 +82,31 @@ def test_berghut_axis_key_clue_is_necessary(name):
 def test_berghut_answer_appears_in_no_clue(name):
     clues = "\n".join(clue_search.clue_lines(_text(name)))
     assert re.search(rf"\b{ANSWERS[name]}\b", clues) is None, name
+
+
+def _fixed_axes(formula: Formula) -> Iterator[tuple[str, str]]:
+    if isinstance(formula, Binary) and formula.operator.text == "and":
+        yield from _fixed_axes(formula.left)
+        yield from _fixed_axes(formula.right)
+    if (
+        isinstance(formula, Atom)
+        and formula.operator.text == "in"
+        and isinstance(formula.subject, Name)
+        and isinstance(formula.target, Name)
+    ):
+        selector = re.fullmatch(r"(rows|columns):(?:\d+|first|last)", formula.target.token.text)
+        if selector:
+            yield formula.subject.token.text, selector[1]
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_berghut_clues_do_not_give_both_coordinates(name):
+    fixed_axes: dict[str, set[str]] = {}
+    for clue in clue_search.clue_lines(_text(name)):
+        for person, axis in _fixed_axes(parse_statement(clue).formula):
+            fixed_axes.setdefault(person, set()).add(axis)
+    giveaways = sorted(person for person, axes in fixed_axes.items() if len(axes) == 2)
+    assert not giveaways, f"{name} gives both coordinates for {', '.join(giveaways)}"
 
 
 def test_berghut_series_covers_every_axis_form():

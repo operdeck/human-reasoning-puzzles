@@ -152,7 +152,7 @@ Sepp
 Rules:
 count (people on object:kruk) = 3 | Er zitten vanavond precies drie mensen op de bikkelkrukken.
 no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
-no (people except attribute:topganger) on object:kruk | Alleen wie vandaag de top haalde, mag op een bikkelkruk zitten; ook een topganger hoeft geen kruk te kiezen.
+no (people except attribute:topganger) on object:kruk | Alleen topgangers mogen op een bikkelkruk zitten.
 
 Attributes:
 topganger: Greta Siegfried Ute Wolfgang
@@ -169,8 +169,8 @@ Hannelore in rows:4
 Brunhild in area:keuken
 Reinhart in area:stube
 Reinhart in columns:10
-Greta in rows:8
-Greta in columns:4
+Greta touches object:aanrecht | Greta zit direct naast het aanrecht; een muur ertussen telt ook.
+not (Greta beside object:rondetafel) | Greta zit niet direct naast de ronde bikkeltafel.
 Siegfried in rows:9
 
 Sepp on object:bed | Sepp ligt op een bed.
@@ -188,7 +188,7 @@ In de berghut 3: De bikkels
 
 Intro:
 De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de elf kiezen een kruk aan de koude kant in plaats van een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde bikkeltafel, de koude kruk in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen wie vandaag de top haalde, mag op een bikkelkruk zitten; andere topgangers kunnen ook een bed kiezen.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde bikkeltafel, de koude kruk in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen topgangers mogen op een bikkelkruk zitten.
 
 Figures:
 Greta: de materiaalvrouw, haalde vandaag de top ; icon=U+1F469
