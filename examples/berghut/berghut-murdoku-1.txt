@@ -21,8 +21,8 @@ schoenenhok: in het schoenenhok
 keuken: in de keuken
 stube: in de stube
 drooghok: in het drooghok
-kamer_n: in de kleine kamer noord
-kamer_z: in de kleine kamer zuid
+Kamer_Noord: in Kamer Noord
+Kamer_Zuid: in Kamer Zuid
 lager: in het matrassenlager
 was: in het washok
 buitendouche: de koude buitendouche
@@ -51,8 +51,8 @@ schoenen: schoenenhok #C9B79C
 keuken: keuken #F2DCC0
 stube: stube #E8D5B5
 droog: drooghok #CFE0EE
-kamer_n: kamer_n #E3CFC0
-kamer_z: kamer_z #D8D2F0
+kamer_n: Kamer_Noord #E3CFC0
+kamer_z: Kamer_Zuid #D8D2F0
 lager: lager #DCE8D2
 was: was #C8D8CB
 
@@ -144,7 +144,7 @@ Siegfried in area:schoenenhok
 Ute in area:stube
 Reinhart in area:stube
 Waltraud in area:stube
-Hannelore in area:kamer_n
+Hannelore in area:Kamer_Noord
 Hannelore on object:bed
 Gerhard in area:was
 Gunter on object:bed

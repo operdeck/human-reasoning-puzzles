@@ -22,8 +22,8 @@ schoenenhok: in het schoenenhok
 keuken: in de keuken
 stube: in de eetzaal
 drooghok: in het drooghok
-kamer_n: in de tweepersoonskamer
-kamer_z: in de kleine kamer zuid
+Kamer_Noord: in Kamer Noord
+Kamer_Zuid: in Kamer Zuid
 lager: in het matrassenlager
 was: in het washok
 douche: de koude buitendouche
@@ -53,8 +53,8 @@ schoenen: schoenenhok #C9B79C
 keuken: keuken #F2DCC0
 stube: stube #E8D5B5
 droog: drooghok #CFE0EE
-kamer_n: kamer_n #E3CFC0
-kamer_z: kamer_z #D8D2F0
+kamer_n: Kamer_Noord #E3CFC0
+kamer_z: Kamer_Zuid #D8D2F0
 lager: lager #DCE8D2
 was: was #C8D8CB
 
@@ -156,7 +156,7 @@ Wolfgang
 Rules:
 count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op de bikkelstoelen.
 no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
-count (people in area:kamer_n) = 2 | In de tweepersoonskamer slapen precies twee mensen.
+count (people in area:Kamer_Noord) = 2 | In Kamer Noord slapen precies twee mensen.
 every ?p in role:schuldige: ?p beside object:kachel | De schuldige zat naast de kachel.
 
 Attributes:
@@ -194,7 +194,7 @@ In de berghut 2: De kachel
 
 Intro:
 De tweede nacht in Hütte Adlerhorst. De slaapzaal is boven; de eetzaal en de keuken zijn beneden. Een, koude, stoel staat weer op de tocht bij de deur. Om drie uur is de kachel gedoofd en is het ijskoud in de hut.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de stamtafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In de tweepersoonskamer slapen precies twee mensen.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de stamtafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelstoelen en niemand wil naast de stinksokken zitten. In Kamer Noord slapen precies twee mensen.
 De schuldige is een avondmens en zat naast de kachel.
 
 Figures:

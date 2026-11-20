@@ -21,8 +21,8 @@ schoenenhok: in het schoenenhok
 keuken: in de keuken
 stube: in de eetzaal
 drooghok: in het drooghok
-kamer_n: in de kleine kamer noord
-kamer_z: in de kleine kamer zuid
+Kamer_Noord: in Kamer Noord
+Kamer_Zuid: in Kamer Zuid
 lager: in het matrassenlager
 was: in het washok
 douche: de koude buitendouche
@@ -54,23 +54,23 @@ schoenen: schoenenhok #C9B79C
 keuken: keuken #F2DCC0
 stube: stube #E8D5B5
 droog: drooghok #CFE0EE
-kamer_n: kamer_n #E3CFC0
-kamer_z: kamer_z #D8D2F0
+kamer_n: Kamer_Noord #D8D2F0
+kamer_z: Kamer_Zuid #E3CFC0
 lager: lager #DCE8D2
 was: was #C8D8CB
 
 Grid:
 terras terras terras terras terras terras terras terras terras terras terras
 schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
-kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
-kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
-kamer_z kamer_z kamer_z lager lager lager lager droog droog droog droog
+kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
+kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
+kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
 was was keuken keuken keuken keuken stube stube stube stube stube
 was was keuken keuken keuken keuken stube stube stube stube stube
-kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
-kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
-kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
-kamer_n kamer_n kamer_n stube stube stube stube lager lager lager lager
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
 Objects:
 douche: standable r1c1
 terrasbank: standable r1c5 r1c6
