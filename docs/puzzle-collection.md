@@ -112,7 +112,7 @@ excluded.
 ## Known gaps and frontier
 
 Known gaps: no medium Map board; hard Undead and Pattern are beyond deduction.
-15 of the 194 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
+15 of the 197 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
 `tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`,
 `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`, `food-murdoku-3`,
 `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3`, `tamagotchi-murdoku-9x9` and
