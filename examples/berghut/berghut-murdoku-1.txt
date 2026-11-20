@@ -115,6 +115,24 @@ spiegel: blocking r8c9
 emmer: blocking r9c10
 kast: blocking r10c10
 
+EdgeItems:
+door: door r1c8 r2c8
+door: door r2c5 r3c5
+door: door r5c4 r5c5
+door: door r5c7 r6c7
+door: door r6c3 r6c4
+door: door r7c10 r8c10
+door: door r9c2 r9c3
+window: window r2c10 right
+window: window r3c1 left
+window: window r4c10 right
+window: window r7c1 left
+window: window r8c10 right
+window: window r9c1 left
+window: window r10c2 bottom
+window: window r10c3 bottom
+window: window r10c7 bottom
+
 People:
 Greta
 Brunhild

@@ -119,6 +119,28 @@ bed: standable r9c7 r9c8
 helm: blocking r10c6
 bed: standable r10c9 r10c10
 
+EdgeItems:
+door: door r1c8 r2c8
+door: door r2c6 r3c6
+door: door r4c6 r4c7
+door: door r5c4 r6c4
+door: door r5c8 r5c9
+door: door r6c3 r6c4
+door: door r7c8 r7c9
+door: door r8c3 r9c3
+door: door r8c9 r9c9
+door: door r9c3 r9c4
+window: window r2c10 right
+window: window r3c1 left
+window: window r5c10 right
+window: window r7c1 left
+window: window r8c10 right
+window: window r10c1 bottom
+window: window r10c2 bottom
+window: window r10c4 bottom
+window: window r10c7 bottom
+window: window r10c8 bottom
+
 People:
 Greta
 Brunhild

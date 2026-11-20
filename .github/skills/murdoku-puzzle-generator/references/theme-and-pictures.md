@@ -73,3 +73,8 @@ Read this when choosing objects, colours, icons, backdrops or series order.
   original SVG (ribbed cuff, brown and green stains, holes, stink curls) mapped
   through `OBJECT_ICONS`; the clean Noto socks read as new. Use one sock per
   cell so two single cells look like a pair on the line.
+- **Give rooms doors and windows even when no clue uses them.** A door sits on
+  a boundary between two areas (`door: door r2c5 r3c5`); a window sits on an
+  outer wall (`window: window r3c1 left`). They are inert for solving but make
+  the floor plan readable; choose cells a person could plausibly walk through
+  or look out of.
