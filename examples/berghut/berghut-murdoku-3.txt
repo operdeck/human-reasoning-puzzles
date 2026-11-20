@@ -1,7 +1,7 @@
 # In de berghut 3 - "De bikkels" (11x11)
 #
-# Hütte Adlerhorst, laatste nacht. De wind draait, de kachel brandt, en drie van
-# de elf kiezen een kruk bij de koude deur in plaats van een bed. Alleen wie
+# Hütte Adlerhorst, laatste nacht. De wind draait en de kachel brandt; drie van
+# de elf verkiezen een bikkelkruk boven een bed. Alleen wie
 # vandaag de top haalde, is een echte bikkel.
 #
 # Oplossing: Gerhard r1c8, Wolfgang r2c3, Gunter r3c7, Hannelore r4c1,
@@ -188,7 +188,7 @@ Title:
 In de berghut 3: De bikkels
 
 Intro:
-De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de elf kiezen een kruk aan de koude kant in plaats van een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
+De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de elf verkiezen een bikkelkruk boven een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
 Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde stamtafel, de koude kruk in het schoenenhok, de bedden, de zitbank, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen topgangers mogen op een bikkelkruk zitten.
 
 Figures:
