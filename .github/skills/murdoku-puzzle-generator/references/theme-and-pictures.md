@@ -69,3 +69,7 @@ Read this when choosing objects, colours, icons, backdrops or series order.
   `terrasbank`, `houtstapel`/`hout`, `kachel`, `pan`, `krat`, `rugzak`,
   `bergschoen`, `helm`, `touw` and `stinksokken`, plus a `counter` alias for
   `aanrecht`. Reuse them instead of adding one-off names.
+- **Draw the story detail when the emoji is too clean.** `DIRTY_SOCKS` is an
+  original SVG (ribbed cuff, brown and green stains, holes, stink curls) mapped
+  through `OBJECT_ICONS`; the clean Noto socks read as new. Use one sock per
+  cell so two single cells look like a pair on the line.

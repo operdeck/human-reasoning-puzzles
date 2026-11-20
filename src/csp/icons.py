@@ -239,6 +239,23 @@ SLIPPERS = (
     '<path d="M20 53Q31 43 42 53M59 53Q70 43 81 53" fill="none" stroke="#fff4cf"'
     ' stroke-width="5" stroke-linecap="round"/>'
 )
+# One unwashed hiking sock: ribbed cuff, brown and green stains and a hole.
+# Drawn instead of the clean Noto socks so the drying-room joke reads; two
+# single sock cells together look like a pair on the line.
+DIRTY_SOCKS = (
+    '<g stroke="#3d372c" stroke-width="4" stroke-linejoin="round">'
+    '<path d="M26 10H50V58L68 68Q80 74 78 85Q76 96 64 94L36 90Q26 89 26 80Z" fill="#d9d1be"/>'
+    "</g>"
+    '<g stroke="#aaa08a" stroke-width="2.2">'
+    '<path d="M29 17H47M29 24H47"/>'
+    "</g>"
+    '<ellipse cx="38" cy="48" rx="8" ry="10" fill="#8a6a3a" opacity="0.75"/>'
+    '<path d="M30 70Q42 62 54 72Q46 82 34 80Z" fill="#6f7a45" opacity="0.8"/>'
+    '<ellipse cx="44" cy="31" rx="3.6" ry="4.6" fill="#3d372c"/>'
+    '<g fill="none" stroke="#7c8452" stroke-width="2.8" stroke-linecap="round">'
+    '<path d="M60 10Q65 4 70 10"/><path d="M68 18Q73 12 78 18"/>'
+    "</g>"
+)
 TONGUE = "#e86a7e"
 STAIRCASE = (
     '<path d="M12 84h19V66h19V48h19V30h19V12" fill="none" stroke="currentColor"'
@@ -753,6 +770,7 @@ REGISTRY: dict[str, Icon] = {
             bounds=(0, 22, 100, 122),
         ),
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
+        Icon("dirty_socks", "\U0001f9e6", "dirty socks", markup=DIRTY_SOCKS),
         Icon(
             "non_la",
             "\U0001f452",
@@ -798,6 +816,7 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "loempia": "loempia", "spring_roll": "loempia",
                 "tunnel": "tunnel",
                 "sloffen": "slippers", "slippers": "slippers",
+                "stinksokken": "dirty_socks", "sokken": "dirty_socks", "socks": "dirty_socks",
                 "sierui": "allium", "allium": "allium",
                 "info_bord": "info_board", "info_board": "info_board",
                 "lijk": "corpse", "corpse": "corpse",
@@ -920,7 +939,6 @@ CATALOGUE: dict[str, str] = {
     "bergschoen": "1f97e", "bergschoenen": "1f97e", "hiking_boot": "1f97e",
     "helm": "26d1", "helmet": "26d1", "rescue_helmet": "26d1",
     "touw": "1faa2", "rope": "1faa2", "knot": "1faa2",
-    "stinksokken": "1f9e6", "sokken": "1f9e6", "socks": "1f9e6",
     # museum and Halloween
     "sarcofaag": "26b0", "sarcophagus": "26b0", "doodskist": "26b0", "coffin": "26b0",
     "dinosaurus": "1f996", "dinosaur": "1f996", "t_rex": "1f996", "trex": "1f996",
