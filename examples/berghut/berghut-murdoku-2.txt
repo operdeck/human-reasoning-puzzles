@@ -10,7 +10,7 @@
 # Wolfgang r10c9. Reinhart is de kachelschurk: de enige avondmens naast de
 # kachel.
 #
-# Sleutelclues: Gunter/Siegfried hoogstens twee rijen; Hannelore/Gunter minstens
+# Sleutelclues: Gunter/Siegfried hoogstens twee rijen; Hannelore/Gunter precies
 # drie kolommen.
 
 Size: 10
@@ -149,21 +149,21 @@ kachelschurk: attribute:avondmens
 
 Clues:
 Gunter dir:rows Siegfried <= 2 | Gunter en Siegfried deden samen de afwas en blijven binnen twee rijen van elkaar.
-Hannelore dir:cols Gunter >= 3 | Hannelore en Gunter kunnen elkaar niet luchten: minstens drie kolommen ertussen.
+Hannelore dir:cols Gunter = 3 | Hannelore en Gunter kunnen elkaar niet luchten: precies drie kolommen ertussen.
 Brunhild in area:schoenen
 Brunhild on object:stoel
 Gerhard in area:lager
 Ute in area:keuken
 Hannelore on object:bed
 Waltraud beside object:bed
-Hannelore in columns:7
+Hannelore in rows:3
 Greta in columns:1
 Siegfried in columns:10
 Wolfgang in columns:9
 
 Key:
 clue: Gunter dir:rows Siegfried <= 2
-clue: Hannelore dir:cols Gunter >= 3
+clue: Hannelore dir:cols Gunter = 3
 
 Backdrop:
 U+1F3D4
