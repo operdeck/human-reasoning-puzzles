@@ -170,7 +170,7 @@ Hannelore in rows:4
 Brunhild in area:keuken
 Reinhart in area:stube
 Reinhart in columns:10
-Greta dir:manhattan object:aanrecht = 1 | Op de plattegrond ligt Greta’s vakje één stap van het aanrecht: horizontaal of verticaal, niet schuin.
+Greta dir:manhattan object:aanrecht = 1
 not (Greta beside object:rondetafel)
 Siegfried in rows:9
 
