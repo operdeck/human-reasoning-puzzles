@@ -548,8 +548,7 @@ def test_companion_count_and_universal_attribute_membership_are_preserved(
 ):
     (paragraph,) = clue_paragraphs(companion_attribute_puzzle)
     assert (
-        "Akumatchi shares an area with exactly one other person, "
-        "and that person is a friend"
+        "Akumatchi shares an area with exactly one other person, and that person is a friend"
     ) in paragraph
     for fallback in ("plus", "the number of", "every member of", "member of at least one"):
         assert fallback not in paragraph
