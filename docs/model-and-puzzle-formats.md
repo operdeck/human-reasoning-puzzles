@@ -356,11 +356,13 @@ marks and area tags used by the clues; attributes, roles and objects remain
 separate under the board. The layout reserves space for wrapped descriptions,
 clueless figures and portraits, shrinking the board or omitting its backdrop
 on crowded pages. Worked solutions do not refer to clue numbers.
-The game-rules panel contains the unchanged `Intro:` (or default game rules),
-semantic clarifications such as distance and adjacency, and the general
-disclaimer, not a second list of `Rules:` statements. A standard "no clues of
-their own" / "geen eigen aanwijzingen" note is hidden when that figure has a
-displayed rule or clue; the rest of the description is preserved. The web
+The `Intro:` paragraphs are printed on their own: above the board in the web
+player and before the rules heading in the booklet. The game-rules panel then
+holds semantic clarifications such as distance and adjacency and the general
+disclaimer, not a second list of `Intro:` or `Rules:` statements; a puzzle
+without an `Intro:` keeps the default game rules in that list. A standard "no
+clues of their own" / "geen eigen aanwijzingen" note is hidden when that figure
+has a displayed rule or clue; the rest of the description is preserved. The web
 player uses the same grouping and retains distinct `rule:N` and `clue:N`
 source identities. This presentation does not change compilation or solving.
 Counterfactuals name hypothetical people and placements rather than internal
