@@ -23,7 +23,7 @@ from .story import (
     explain,
     family_rules,
     figure_clues,
-    murdoku_rules,
+    murdoku_reference_rules,
     object_list,
     phrase,
     role_list,
@@ -430,13 +430,20 @@ def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | Non
     text = entry.text
     presentation = load_presentation(text)
     _title(document, _puzzle_title(entry), new_page, bookmark, entry.section)
+    for intro in presentation.intro:
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(5)
+        _runs(paragraph, intro)
     document.add_heading(phrase(text, "doc.rules_title"), level=2)
     _, rule_statements, clue_statements = load_expression_board(text)
-    rules = murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
+    rules = murdoku_reference_rules(
+        text, expression_rules=rule_statements, expression_clues=clue_statements
+    )
     clues = figure_clues(text, expressions=clue_statements, expression_rules=rule_statements)
     _, aspect = _picture_stream(text, None, None, expressions=entry.expressions)
     rules_lines = sum(-(-len(line) // CLUE_LINE_CHARS) for line in rules)
     rules_lines += _list_lines(text)
+    rules_lines += sum(-(-len(line) // CLUE_LINE_CHARS) for line in presentation.intro)
     small = (
         _puzzle_board_width(aspect, 0, 0, rules_lines, _figure_clue_height(clues, False))
         <= MIN_BOARD_WIDTH_CM

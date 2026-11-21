@@ -2163,6 +2163,20 @@ def murdoku_rules(
     )
 
 
+def murdoku_reference_rules(
+    text: str,
+    *,
+    expression_rules: Sequence[murdoku_lang.Statement] | None = None,
+    expression_clues: Sequence[murdoku_lang.Statement] = (),
+) -> list[str]:
+    """The rules reference, excluding introductory paragraphs shown separately."""
+    intro = set(load_presentation(text).intro)
+    rules = murdoku_rules(
+        text, expression_rules=expression_rules, expression_clues=expression_clues
+    )
+    return [rule for rule in rules if rule not in intro]
+
+
 def _unique_player_rules(intro_items: list[str], notes: list[str]) -> list[str]:
     # An intro paragraph may already contain a board rule or mark note; do not
     # print that same sentence again as a separate bullet.

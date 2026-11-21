@@ -35,7 +35,7 @@ from .story import (
     figure_clues,
     mark_note,
     murdoku_key_items,
-    murdoku_rules,
+    murdoku_reference_rules,
     object_list,
     object_position_text,
     phrase,
@@ -291,7 +291,9 @@ def _murdoku(
             item["svg"] = picture
         palette.append(item)
     placed = {str(sq): person for person, sq in solution.items() if isinstance(sq, Square)}
-    rules = murdoku_rules(text, expression_rules=rule_statements, expression_clues=clue_statements)
+    rules = murdoku_reference_rules(
+        text, expression_rules=rule_statements, expression_clues=clue_statements
+    )
     return {
         "language": language_of(text),
         "size": [board.size, board.size],
@@ -334,6 +336,7 @@ def _murdoku(
             "extras": phrase(text, "web.extras"),
         },
         "combineExtras": True,
+        "intro": presentation.intro,
         "rules": rules,
         "clues": clue_paragraphs(
             text,
