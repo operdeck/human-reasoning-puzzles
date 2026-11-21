@@ -726,12 +726,23 @@ def test_booklet_uses_display_names_and_keeps_late_reveal_descriptions(tmp_path)
 
 
 def test_vietnam_booklet_combines_figure_rule_with_its_description(tmp_path):
+    from csp.story import phrase
+
     source = example("vietnam-murdoku-3.txt")
+    text = source.read_text()
     out = tmp_path / "vietnam.docx"
-    write_docx(source.read_text(), out, source.parent)
+    write_docx(text, out, source.parent)
     document = Document(str(out))
+    paragraphs = [p.text for p in document.paragraphs]
     rules = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]
-    assert any("precies twee anderen: Pippo en Swena" in rule for rule in rules)
+    intro = next(
+        paragraph
+        for paragraph in load_presentation(text).intro
+        if "precies twee anderen: Pippo en Swena" in paragraph
+    )
+    # The personalized rule stays in the intro, which is printed above the reference.
+    assert paragraphs.index(intro) < paragraphs.index(phrase(text, "doc.rules_title"))
+    assert not any("precies twee anderen: Pippo en Swena" in rule for rule in rules)
     assert not any("allebei reizigers" in rule for rule in rules)
     assert document.tables[0].rows[-1].cells[1].text == (
         "De rau muống (rau muống xào, waterspinazie met knoflook) "
