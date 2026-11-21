@@ -2520,7 +2520,7 @@ Clues:
     ]
     (caption,) = clue_texts(tie)
     assert "Alpha" in caption and "Bravo" in caption
-    assert "is gelijk aan" in caption and "is groter dan" in caption
+    assert "evenveel personen" in caption and "minder personen dan" in caption
 
 
 def test_touching_a_mark_wording_names_the_marked_set():

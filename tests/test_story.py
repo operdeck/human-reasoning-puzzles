@@ -844,7 +844,8 @@ if Ada is role:guide then Ada on mark:altar
         assert attribute in counted and "1" in counted
         words, clues = languages[language]
         companion = words.statement(clues[0])
-        assert guide in companion and ("two" if language == "en" else "twee") in companion
+        assert guide in companion
+        assert ("one other person" if language == "en" else "één ander persoon") in companion
         assert room in words.statement(clues[1])
         conditional = words.statement(clues[2])
         assert guide in conditional and altar in conditional
@@ -969,8 +970,8 @@ if Ada is role:guide then Ada on mark:altar
 """
     story = explain(text)
 
-    assert "the number of people that are in the area of Ada is equal to (1 plus 1)" in story
-    assert "every member of people except Ada that are in the area of Ada" in story
+    assert "Ada shares an area with exactly one other person" in story
+    assert "and that person holds the guide role" in story
     assert "(1), so **Ben has the guide role**" in story
     assert "then (Ada is on a cell marked altar) (2), so **Ada on r1c1**" in story
 
