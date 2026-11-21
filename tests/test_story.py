@@ -16,13 +16,14 @@ import csp
 from csp import bruteforce, cli, murdoku, sudoku
 from csp.core import Kind, Model, Solver, Step, rule_single
 from csp.proof import Episode, Inference, Move, episodes, replay, shortest
-from csp.puzzlefile import detect, load_board_layout
+from csp.puzzlefile import detect, load_board_layout, load_presentation
 from csp.story import (
     Wording,
     board_notes,
     explain,
     family_rules,
     murdoku_key,
+    murdoku_reference_rules,
     murdoku_rules,
 )
 from tests.examples import example, played_examples
@@ -2233,6 +2234,26 @@ def test_intro_sentences_keep_their_own_order_when_none_repeat_a_rule():
         "Precies één persoon staat op een bril.",
     ]
     assert len(rules) == len(dict.fromkeys(rules))
+
+
+def test_reference_rules_leave_the_intro_to_the_block_shown_above():
+    for name in ("wie-doet-het-met-wie-5.txt", "vietnam-murdoku-3.txt"):
+        text = example(name).read_text()
+        intro = load_presentation(text).intro
+        assert intro, name
+        reference = murdoku_reference_rules(text)
+        # Nothing the intro already tells the player is repeated in the reference.
+        assert all(paragraph not in reference for paragraph in intro), name
+        # The rest keeps its place and order, so the booklet and the rules panel agree.
+        assert reference == murdoku_rules(text)[len(intro) :], name
+        assert reference, name
+
+
+def test_a_puzzle_without_an_intro_keeps_its_default_rules():
+    text = example("wie-doet-het-met-wie-5.txt").read_text().split("Intro:")[0]
+    assert load_presentation(text).intro == []
+    assert murdoku_reference_rules(text) == murdoku_rules(text)
+    assert murdoku_reference_rules(text)
 
 
 def test_every_example_has_player_rules_without_duplicates():

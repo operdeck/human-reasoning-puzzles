@@ -798,6 +798,17 @@ def test_the_hotel_lists_wouters_rule_once(exported):
     assert all(wouter not in rule for rule in bundle["rules"])
 
 
+def test_no_puzzle_repeats_the_intro_in_its_rules(exported):
+    """Issue #152: the intro is shown above the puzzle, so the reference must not repeat it."""
+    for path in sorted(exported.glob("*.json")):
+        if path.name == "index.json":
+            continue
+        bundle = json.loads(path.read_text())
+        rules = bundle["rules"]
+        for paragraph in bundle.get("intro", []):
+            assert all(paragraph not in rule and rule not in paragraph for rule in rules), path.stem
+
+
 def test_no_puzzle_lists_the_same_rule_twice(exported):
     for path in sorted(exported.glob("*.json")):
         if path.name == "index.json":
