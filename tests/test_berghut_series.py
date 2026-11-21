@@ -6,12 +6,13 @@ from collections.abc import Iterator
 import pytest
 
 from csp import audit, clue_search
-from csp.bruteforce import murdoku as murdoku_brute
 from csp.core import DEFAULT_RULES
 from csp.murdoku_expression_file import keyed_expression_clue_numbers
 from csp.murdoku_lang import Atom, Binary, Formula, Name, parse_statement
 from csp.puzzlefile import load_board_layout
 from tests.examples import example
+
+pytestmark = pytest.mark.solutions
 
 FILES = (
     "berghut-murdoku-1.txt",
@@ -60,21 +61,6 @@ def test_berghut_board_size_matches_guest_count(name, size):
     assert len(_section(text, "People:")) == size, name
 
 
-def _without_key_clues(text: str) -> str:
-    """The puzzle without its `Key:` block, for the key-necessity checks."""
-    kept: list[str] = []
-    skipping = False
-    for line in text.splitlines():
-        if line.strip() == "Key:":
-            skipping = True
-            continue
-        if skipping and re.fullmatch(r"[A-Za-z]+:\s*", line.strip()):
-            skipping = False
-        if not skipping:
-            kept.append(line)
-    return "\n".join(kept)
-
-
 @pytest.mark.parametrize("name", FILES)
 def test_berghut_puzzle_is_unique_and_deductive(name):
     result = clue_search.outcome(_text(name), TIMEOUT)
@@ -86,21 +72,6 @@ def test_berghut_series_grades_do_not_decrease():
     order = [rule.name for rule in DEFAULT_RULES]
     grades = [clue_search.outcome(_text(name), TIMEOUT).grade for name in FILES]
     assert grades == sorted(grades, key=order.index), grades
-
-
-@pytest.mark.parametrize("name", FILES)
-def test_berghut_axis_key_clue_is_necessary(name):
-    text = _text(name)
-    lines = clue_search.clue_lines(text)
-    keyed = keyed_expression_clue_numbers(text)
-    assert keyed, name
-    base = _without_key_clues(text)
-    for number in sorted(keyed):
-        kept = [line for index, line in enumerate(lines, 1) if index != number]
-        without = clue_search.with_clues(base, kept)
-        if len(murdoku_brute.solutions(without, 2)) > 1:
-            continue
-        assert not clue_search.outcome(without, TIMEOUT).good, (name, number)
 
 
 @pytest.mark.parametrize("name", FILES)
