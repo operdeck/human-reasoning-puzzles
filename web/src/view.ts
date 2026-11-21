@@ -312,8 +312,13 @@ export class PuzzleView {
       play.append(el("p", { className: "note", textContent: b.unsupported ?? "Not playable yet." }));
     }
 
+    const intro = b.intro?.length
+      ? el("div", { className: "puzzle-intro" }, ...b.intro.map((paragraph) =>
+        el("p", {}, this.prose(paragraph))))
+      : null;
     root.replaceChildren(
       header,
+      ...(intro ? [intro] : []),
       el("div", { className: `layout${b.clueEntries ? " with-clue-entries" : ""}` }, play, this.panel()),
       el("footer", {}, ...footerParagraphs(this.bundle.license, this.bundle.family)),
     );

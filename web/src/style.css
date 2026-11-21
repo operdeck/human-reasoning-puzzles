@@ -205,6 +205,19 @@ footer .credit {
   margin: 0.25rem 0;
 }
 
+.puzzle-intro {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.9rem;
+  background: var(--paper);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+}
+
+.puzzle-intro p {
+  margin: 0.25rem 0;
+  line-height: 1.45;
+}
+
 .assist-controls {
   display: flex;
   flex-wrap: wrap;

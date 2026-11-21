@@ -10,6 +10,7 @@ pytest.importorskip("fontTools")
 
 from csp import cli, icons, murdoku, story, svg, web
 from csp.murdoku_expression_file import load_expression_board
+from csp.puzzlefile import load_presentation
 from tests.examples import EXAMPLES, example, played_examples
 
 pytestmark = pytest.mark.solutions
@@ -124,6 +125,7 @@ def test_murdoku_bundle_has_everything_to_play(exported):
     }
     assert bundle["clues"][0] == "Eva staat naast de tafel."
     assert bundle["question"]
+    assert bundle["intro"]
     assert bundle["reveal"].startswith("Wouter doet het met Noor")
     assert bundle["rules"]
     assert any(
@@ -136,11 +138,27 @@ def test_murdoku_bundle_has_everything_to_play(exported):
 
 
 @pytest.mark.parametrize("number", [1, 2, 3])
-def test_zoo_intro_appears_in_player_rules(number):
+def test_zoo_intro_is_separate_from_player_rules(number):
     text = example(f"zoo-murdoku-{number}.txt").read_text()
-    rules = web._murdoku(text, {})["rules"]
-    assert any("Een aap is nooit alleen in zijn verblijf." in rule for rule in rules)
-    assert all("Elke aap deelt zijn verblijf altijd met iemand." not in rule for rule in rules)
+    bundle = web._murdoku(text, {})
+    assert any(
+        "Een aap is nooit alleen in zijn verblijf." in paragraph for paragraph in bundle["intro"]
+    )
+    assert all(
+        "Elke aap deelt zijn verblijf altijd met iemand." not in paragraph
+        for paragraph in bundle["intro"]
+    )
+    assert all("Een aap is nooit alleen in zijn verblijf." not in rule for rule in bundle["rules"])
+
+
+def test_murdoku_intros_are_exported_separately_from_reference_rules(exported):
+    for source in played_examples():
+        bundle = _bundle(exported, source.stem)
+        if bundle["family"] != "murdoku":
+            continue
+        intro = load_presentation(source.read_text()).intro
+        assert bundle.get("intro", []) == intro
+        assert not set(intro) & set(bundle["rules"])
 
 
 def test_every_murdoku_web_bundle_includes_the_character_description_note(exported):
@@ -190,7 +208,7 @@ def test_murdoku_custom_wording_keeps_its_semantic_owner_in_export():
 def test_vietnam_web_groups_pork_dish_clues_with_their_travelers(number):
     text = example(f"vietnam-murdoku-{number}.txt").read_text()
     bundle = web._murdoku(text, {})
-    assert any("De varkensvleesgerechten op het bord" in rule for rule in bundle["rules"])
+    assert any("De varkensvleesgerechten op het bord" in paragraph for paragraph in bundle["intro"])
     for person, clue_number in (("Pippo", 1), ("Swena", 2)):
         entry = next(
             entry for entry in bundle["clueEntries"] if f"clue:{clue_number}" in entry["sources"]
@@ -212,7 +230,7 @@ def test_vietnam_web_combines_figure_rules_with_clues(number, person):
     assert entry["text"] not in bundle["rules"]
     figure = next(item for item in bundle["palette"] if item["id"] == person)
     assert "zonder eigen aanwijzingen" not in figure["description"]
-    assert "precies twee anderen: Pippo en Swena" in " ".join(bundle["rules"])
+    assert "precies twee anderen: Pippo en Swena" in " ".join(bundle["intro"])
 
 
 def test_murdoku_cell_details_describe_board_facts_without_solution():
@@ -770,15 +788,14 @@ def test_every_non_murdoku_bundle_states_its_rules(exported):
 
 
 def test_the_hotel_lists_wouters_rule_once(exported):
-    """Issue #152: the intro repeated the wording of the same board rule."""
-    rules = _bundle(exported, "wie-doet-het-met-wie-5")["rules"]
+    """The intro is prominent and its repeated rule is absent from the reference."""
+    bundle = _bundle(exported, "wie-doet-het-met-wie-5")
     wouter = (
         "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
         "met wie hij het doet: iemand in een badjas."
     )
-    assert sum(wouter in rule for rule in rules) == 1
-    # The intro says it first, so the player reads it there.
-    assert wouter in rules[0]
+    assert any(wouter in paragraph for paragraph in bundle["intro"])
+    assert all(wouter not in rule for rule in bundle["rules"])
 
 
 def test_no_puzzle_lists_the_same_rule_twice(exported):

@@ -64,6 +64,7 @@ export interface Bundle {
   detailTargets?: { x: number; y: number; radius: number; lines: string[] }[];
   textNames?: string[];
   headings?: Record<string, string>;
+  intro?: string[];
   combineExtras?: boolean;
   rules: string[];
   clues: string[];

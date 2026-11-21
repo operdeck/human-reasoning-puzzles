@@ -404,6 +404,23 @@ describe("palette", () => {
     expect(root.querySelector("#r1c1")?.getAttribute("aria-label")).toBe("r1c1");
   });
 
+  it("shows each intro paragraph above the puzzle instead of in the rules reference", () => {
+    const root = mount({
+      intro: ["A story about the house.", "Place each person on a free square."],
+      rules: ["Reference: every person uses a different row and column."],
+    });
+    const intro = root.querySelector<HTMLElement>(".puzzle-intro")!;
+    const layout = root.querySelector<HTMLElement>(".layout")!;
+    const reference = root.querySelector<HTMLElement>("#section-rules")!;
+    expect([...intro.querySelectorAll("p")].map((paragraph) => paragraph.textContent)).toEqual([
+      "A story about the house.",
+      "Place each person on a free square.",
+    ]);
+    expect(intro.compareDocumentPosition(layout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(reference.textContent).not.toContain("A story about the house.");
+    expect(reference.textContent).toContain("Reference: every person uses a different row and column.");
+  });
+
   it("keeps loose clues separate from the figure cards", () => {
     const root = mount({
       clueEntries: [
