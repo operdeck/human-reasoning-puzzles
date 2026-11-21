@@ -271,6 +271,28 @@ def outcome(
     return Outcome(count, *grade)
 
 
+def without_keys(text: str) -> str:
+    """`text` with its `Key:` section removed, for experiments that drop clues.
+
+    A Key entry names a clue by its expression, so removing that clue while the
+    entry stays would make the file invalid. `thin` and `suggest` read the Key
+    entries themselves; this helper is for callers that remove clues and want to
+    test the puzzle without its declared keys.
+    """
+    out: list[str] = []
+    skipping = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line == "Key:":
+            skipping = True
+            continue
+        if skipping and _SECTION.match(line):
+            skipping = False
+        if not skipping:
+            out.append(raw)
+    return "\n".join(out) + "\n"
+
+
 def removal_report(
     text: str, timeout: float = 5.0, *, expressions: bool = False
 ) -> list[tuple[int, str, Outcome]]:
