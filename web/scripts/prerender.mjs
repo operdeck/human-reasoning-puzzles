@@ -470,6 +470,12 @@ export async function prerender({ distDir = "dist", site, built } = {}) {
   const siteRoot = rootPath(siteAddress(site ?? siteFromEnv()));
   const entries = await precacheEntries(siteRoot, root);
   const digest = createHash("sha1");
+  // Generated pages are not all precached (puzzle pages fall back to the shell),
+  // but their content still belongs in the version so an edit cannot go unseen.
+  for (const file of files) {
+    digest.update(file.path);
+    digest.update(file.contents);
+  }
   for (const entry of entries) {
     digest.update(entry.url);
     digest.update(await readFile(entry.file));
