@@ -72,9 +72,16 @@ mode (no Safari bars):
   the dev copy with relative paths.
 - **Safe areas:** `body` pads with `env(safe-area-inset-*)`; every puzzle page
   has a visible "← All puzzles" link, so standalone mode always has a way back.
-- **Offline:** there is no service worker; the issue marks it optional. Adding
-  one means a versioned cache and a registration in the pages, and it is not
-  needed for installing.
+- **Offline:** the build writes `dist/sw.js` with a cache version hashed from the
+  precached files. It precaches the app shell, the `/murdoku/` page, the CSS/JS,
+  the manifest, the icons and every `puzzles/*.json|svg` bundle (419 URLs, about
+  13 MB), so all puzzles are playable offline after the first load/install.
+  Assets and bundles are cache-first; navigations are network-first and fall back
+  to the cached shell, whose path-based route (`puzzleIdFromPath`) loads the
+  cached bundle. A visited `/p/<id>/` page is also cached on the fly. A new build
+  changes the version, so `activate` deletes the old cache. `web/index.html`
+  intentionally has no registration (dev); the prerendered pages register
+  `${root}sw.js` from `head()`.
 
 Test on an iPhone with Safari → Share → Add to Home Screen. iOS caches the icon:
 remove and re-add the shortcut after changing it. Locally, `npm run build`

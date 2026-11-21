@@ -275,9 +275,10 @@ frontier. The player in `web/`
 stays family-agnostic: palettes, scopes, rules and wording come from the bundle,
 so new family knowledge belongs in `web.py`, not in TypeScript. After changing
 `web/`, run `npx tsc --noEmit` and `npm test` there. The site is installable as an
-iPhone home-screen app: `prerender.mjs` writes the manifest and PWA head tags from
-`SITE_URL`, the icons live in `web/public/`, and `prerender.test.ts` checks the
-tags, the manifest and the icon files. `--docx [FILE]` (or a quoted glob) writes
+iPhone home-screen app and plays offline: `prerender.mjs` writes the manifest,
+the PWA head tags and a generated `sw.js` (precaching the shell, assets and every
+puzzle bundle), the icons live in `web/public/`, and `prerender.test.ts` checks
+the tags, the manifest, the worker and the icon files. `--docx [FILE]` (or a quoted glob) writes
 an editable Word booklet, puzzles first and then solutions, one page each, from
 `docx_export`; `--nosolution` writes just the puzzle pages for proof-reading or
 for a puzzle the rules do not close. New Murdoku puzzles
