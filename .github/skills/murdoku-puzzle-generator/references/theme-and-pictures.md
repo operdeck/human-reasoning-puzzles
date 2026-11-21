@@ -76,7 +76,9 @@ Read this when choosing objects, colours, icons, backdrops or series order.
 - **Only the backdrop's ring shows.** A backdrop is stretched behind the board,
   so design its recognisable parts against the outer edges (a snow ridge along
   the top, a glacier snout at the bottom) and judge it from the rendered ring,
-  not the full drawing. `SNOW_MOUNTAIN` is the berghut example.
+  not the full drawing. `SNOW_MOUNTAIN` is the berghut example; the Japan
+  series' `mount_fuji` puts a rising sun and a snow cap in the top strip, a
+  shoulder in each side strip and waves along the bottom.
 - **Vary the furniture inside a series.** Keep the footprint and the
   blocking/standable kind so the model and grades stay put, and change the
   object names and icons: beds vs. floor mattresses vs. double beds, cabinets

@@ -31,10 +31,11 @@ Clues should read like a detective's notes, not like arithmetic.
   flags implied and redundant clues.
 - **The theme's key clue must do work.** Global counts and greedy suggestions
   easily make a themed clue (the bathrobe/slippers clue, a stated trait)
-  redundant. Check it with `report`; if it is removable, rebuild the other
-  clues with `suggest --needs N`, or drop clues that `report` shows are fully
-  redundant until the themed fact is needed. A fact stated in the intro must
-  be needed too.
+  redundant. Declare it in `Key:` so `thin` keeps it and
+  `tests/test_key_clues.py` proves it necessary; while drafting, check it with
+  `report`, and if it is removable, rebuild the other clues with
+  `suggest --needs N`, or drop clues that `report` shows are fully redundant
+  until the themed fact is needed. A fact stated in the intro must be needed too.
 - **Decoys raise the grade.** Extra items let a key clue fit more than one
   pair of squares; even an impossible pair (both squares in one column) can
   force `what_if`. For an easy puzzle, place decoys so the key clue fits

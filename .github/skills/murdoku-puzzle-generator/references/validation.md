@@ -27,7 +27,8 @@ For a finished Murdoku under `examples/`, before reporting done:
   the pages themselves: `--pdf FILE` (via Word) and `pdftoppm -png` give images.
 - The picture legend and booklet rules show no engine syntax (`count people
   on object:...`); author wordings appear on player pages, never in solutions.
-- The themed key clue is necessary (`report`), and the series order follows
+- The themed key clue is declared in `Key:` (so `thin` keeps it and
+  `tests/test_key_clues.py` proves it necessary), and the series order follows
   `--grade`; report any conflict with the requested order instead of hiding it.
 - An independent clue review used only player-facing material; each clue was
   restated as a constraint, alternate readings were checked, and solvability

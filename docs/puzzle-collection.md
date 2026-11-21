@@ -28,7 +28,7 @@ Core syntax and feature cases: `murdoku_1_first_case`, `murdoku_3_house`,
 test files live in `tests/puzzles/`, the rest in `examples/demo/`.
 
 - Japanese food: `food-murdoku-2` 5×5 `chains`; `food-murdoku-1` 6×6 `subsumption`; `food-murdoku-3` 7×7 `what_if`.
-- Japan: `samen-in-japan` 6×6 `cover2` (busiest, quietest and exact count); `samen-onderweg` and `samen-in-de-blauwe-bladeren` use population arguments too.
+- Japan: `samen-in-japan` 6×6 `cover2` (busiest, quietest and exact count); `samen-onderweg` and `samen-in-de-blauwe-bladeren` use population arguments too. The three share a Mount Fuji backdrop: a red rising sun and the snow-capped summit cross the top strip, the shoulders show at the sides and waves fill the bottom strip.
 - Zoo: `zoo-murdoku-1` 5×5 `relations`; `zoo-murdoku-2` 6×6 `subsumption`; `zoo-murdoku-3` 6×6 `cover2`.
 - Menu: `menu-murdoku-1` 6×6 `relations`; `menu-murdoku-2` 7×7 `subsumption`; `menu-murdoku-3` 8×8 `what_if`.
 - Vietnam: `vietnam-murdoku-1` 5×5 `relations`; `vietnam-murdoku-2` 6×6 `subsumption`; `vietnam-murdoku-3` 7×7 `cover2`. Each has a tunnel straddling a city border; the dish is placed last.
@@ -37,7 +37,7 @@ test files live in `tests/puzzles/`, the rest in `examples/demo/`.
 - Halloween at the Museum: `-1` 6×6 and `-2` 7×7 `subsumption`; `-3` 8×8 `cover2`.
 - Orient Express: `murdoku_orient_express` 8×8 `relations`; `_2` 10×10 `subsumption`; `_3` 10×10 `chains`.
 - Wie doet het met wie: `-1` 5×5 `cover2`; `-2` 4×4 and `-3` 5×5 `subsumption`; `-4` 6×6 and `-5` 7×7 `cover2`.
-- Berghut: `berghut-murdoku-1` 9×9 and `-2` 10×10 `relations`; `-3` 11×11 `subsumption`. The puzzles have nine, ten and eleven guests respectively. Each has a necessary `dir:rows`/`dir:cols` key clue; together they cover `>=` and `<=` on both axes plus one exact bound. Three different hut floor plans and a different interior in each: single beds, cabinets and chairs vs. floor mattresses and bookshelves vs. 2×2 double beds, lockers, a bench and stools around a round table. Eight seats around the one-cell bikkeltafel plus a ninth cold seat in the boot room; the non-clued entrance objects are arranged differently per puzzle.
+- Berghut: `berghut-murdoku-1` 6×6 `subsumption`, `-2` 8×8 `cover2`, `-3` 10×10 `cover3`; six, eight and ten guests. Every floor plan is built around a one-cell-wide `gang` that runs from the top row to the bottom row, is a simple path with no branch, stays free of furniture and has a door into every room, so the huts read as a route rather than a grid of rooms. Bikkel chairs scale with the boards: three chairs and one bikkel at 6×6, four chairs and two bikkels at 8×8, and four chairs with four topgangers of whom three are seated at 10×10 — the fourth is the reveal. Distance clues carry the series: each puzzle has a necessary row/column key clue (plus exact bounds among its other clues) and adds manhattan, king and area distances; the two larger puzzles also keep room clues. The three interiors differ (single beds and cabinets, floor mattresses and a bookshelf, double beds around a round table), and generated pictures keep the hallway and the rooms legible.
 - Owner-authored: `prrrdoku1` and `prrrdoku2`; `prrrdoku3` needs `what_if`.
 
 ## Verified non-Murdoku difficulty

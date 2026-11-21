@@ -70,6 +70,9 @@ not (Benjiro beside object:tempel)
 Daiki dir:left Chiaki
 Emi dir:left Fumiko
 
+Backdrop:
+fuji
+
 Figures:
 Chiaki: geen eigen aanwijzingen
 Fumiko: geen eigen aanwijzingen

@@ -71,6 +71,13 @@ When both are given, transcribe first, then build a separate derived puzzle.
   bikkels would fill all three rows and columns; add a ninth chair elsewhere
   (the cold stool in the boot room) to keep the set a deduction rather than a
   line consequence.
+- **A series can live around a route.** A hut, train or ship reads better
+  when one area is a one-cell-wide corridor from the top row to the bottom
+  row, with a door into most rooms (the *In de berghut* series draws it as a
+  `gang` area). Keep it free of furniture so it reads as the route, and check
+  it: `tests/test_berghut_series.py` asserts the corridor is a simple path
+  (two ends, no branch) and that every room is reachable from it through
+  doors. Corridor cells count for clues like any other area.
 - **`thin --max-grade G` is the grade tool.** Without it, thinning can turn a
   `relations` puzzle into `cover3`; with it, clues stay as long as the puzzle
   remains unique, solved and at or below `G`.
