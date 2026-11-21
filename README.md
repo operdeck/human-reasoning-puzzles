@@ -134,6 +134,12 @@ the outer `in` asks that the horse rider is in one of them. See
 truth; the player reads `--export` bundles. See [Web interface](docs/web-interface.md)
 for setup, controls, notes, warnings and ground rules.
 
+The same site installs as an iPhone home-screen app: open it in Safari, tap
+Share and choose *Add to Home Screen*, and it opens without Safari bars. It also
+plays offline after the first load: the build writes the manifest, the icons and
+a service worker that precaches the app shell, the assets and every puzzle
+bundle. See [Installable app](docs/web-interface.md#installable-app-pwa).
+
 ## Licence
 
 The code is Apache 2.0 (see `LICENSE`). The puzzles in `examples/` are **not**: they are
