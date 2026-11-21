@@ -402,7 +402,62 @@ def test_direct_clues_use_an_announced_rule_to_establish_the_line():
     ) in opening
 
 
-def test_hidden_population_work_is_not_cited_for_an_unrelated_directional_deduction():
+EXPRESSION_PROSE = {
+    "food-murdoku-1.txt": (
+        "Jos shares an area with exactly one other person, and that person is a food.",
+    ),
+    "food-murdoku-2.txt": (
+        "Jos shares an area with exactly one other person, and that person is a food.",
+    ),
+    "zoo-murdoku-3.txt": (
+        "De verzorger deelt een gebied met precies één ander persoon, en dat is een dier.",
+        "In het gebied van iedere aap staan minstens twee personen.",
+    ),
+    "samen-in-de-blauwe-bladeren.txt": (
+        "Gebied Hiroshima en gebied Okinawa hebben evenveel personen.",
+        "Gebied Okinawa heeft minder personen dan elk gebied met een vrij vakje "
+        "behalve gebied Hiroshima.",
+    ),
+    "wie-doet-het-met-wie-2.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
+    "wie-doet-het-met-wie-3.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
+    "wie-doet-het-met-wie-4.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
+    "menu-murdoku-1.txt": ("Vla deelt een gebied met precies twee andere personen.",),
+    # Existing authored overrides and readable idioms must keep working.
+    "food-murdoku-3.txt": ("Jos shares an area with exactly two other dishes.",),
+    "wie-doet-het-met-wie-1.txt": ("Wouter deelt een kamer met precies één andere gast.",),
+    "wie-doet-het-met-wie-5.txt": (
+        "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
+        "met wie hij het doet: iemand in een badjas.",
+    ),
+    "menu-murdoku-2.txt": ("De vla deelt haar dag met precies twee andere gerechten.",),
+    "menu-murdoku-3.txt": ("De vla deelt haar dag met precies twee andere gerechten.",),
+}
+FORBIDDEN_PROSE = (
+    "plus",
+    "?p",
+    "?b",
+    "every member",
+    "at least one of",
+    "member of",
+    "the number of",
+    "aantal personen",
+    "ieder lid",
+)
+
+
+def _player_text(name: str) -> str:
+    entries = story.figure_clues(example(name).read_text())
+    lines = [clue.text for figure in entries.figures for clue in figure.clues]
+    return "\n".join([*lines, *(clue.text for clue in entries.other)])
+
+
+@pytest.mark.parametrize("name", sorted(EXPRESSION_PROSE))
+def test_expression_rules_read_as_player_prose(name):
+    text = _player_text(name)
+    for fragment in EXPRESSION_PROSE[name]:
+        assert fragment in text, (name, fragment)
+    for forbidden in FORBIDDEN_PROSE:
+        assert forbidden not in text, (name, forbidden)
     paragraphs = murdoku_story.explain(example("samen-onderweg.txt").read_text()).paragraphs
     deduction = next(paragraph for paragraph in paragraphs if "Haru zit niet in rij 5" in paragraph)
     assert "Haru staat boven Jun" in deduction

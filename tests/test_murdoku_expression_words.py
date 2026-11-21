@@ -148,18 +148,114 @@ def test_area_union_keeps_each_preposition_and_negates_the_whole_alternative(boa
 
 
 @pytest.mark.parametrize("counts", [{0}, {0, 1}, {1}, {2}])
-def test_single_holder_quantifier_is_shortened_only_when_the_person_must_exist(board, counts):
+def test_role_area_quantifier_reads_without_a_bound_variable(board, counts):
     board.roles = [RoleSpec("guard", frozenset(counts))]
     source = parse_statement("every ?p in role:guard: count people in area of ?p >= 2")
     sentence = ExpressionWords(board).statement(source)
     if counts == {1}:
         assert sentence == "at least two people are in the area of the guard"
     else:
-        assert "?p" in sentence
+        assert sentence == "Every guard has at least two people in their area"
+        assert ExpressionWords(board, "nl").statement(source) == (
+            "In het gebied van iedere guard staan minstens twee personen"
+        )
     override = ExpressionWords(
         board, phrases={"quant.every": "FOR {variables} FROM {source}: {body}"}
     )
     assert override.statement(source).startswith("FOR")
+
+
+@pytest.mark.parametrize(
+    ("language", "count", "expected"),
+    [
+        ("en", "1 + 1", "Ada shares an area with exactly one other person"),
+        ("en", "2 + 1", "Ada shares an area with exactly two other people"),
+        ("nl", "1 + 1", "Ada deelt een gebied met precies één ander persoon"),
+        ("nl", "2 + 1", "Ada deelt een gebied met precies twee andere personen"),
+    ],
+)
+def test_shared_area_count_idiom_counts_the_others(board, language, count, expected):
+    board.people = ["Ada", "Ben", "Cid"]
+    formula = parse_statement(f"count (people in area of Ada) = {count}")
+    assert ExpressionWords(board, language).statement(formula) == expected
+
+
+@pytest.mark.parametrize(
+    ("language", "count", "expected"),
+    [
+        (
+            "en",
+            "1 + 1",
+            "Ada shares an area with exactly one other person, and that person is a helper",
+        ),
+        (
+            "en",
+            "2 + 1",
+            "Ada shares an area with exactly two other people, and each of them is a helper",
+        ),
+        ("nl", "1 + 1", "Ada deelt een gebied met precies één ander persoon, en dat is een helper"),
+    ],
+)
+def test_shared_area_attribute_idiom_names_every_companion(board, language, count, expected):
+    board.people = ["Ada", "Ben", "Cid"]
+    formula = (
+        f"count (people in area of Ada) = {count} "
+        "and every ((people except Ada) in area of Ada) is attribute:trained"
+    )
+    words = ExpressionWords(board, language, names={"trained": "helper"})
+    assert words.statement(parse_statement(formula)) == expected
+
+
+@pytest.mark.parametrize(
+    ("language", "operator", "expected"),
+    [
+        ("en", "=", "area hall and area garden have the same number of people"),
+        ("en", ">", "area hall has more people than area garden"),
+        ("en", "<", "area hall has fewer people than area garden"),
+        ("nl", "=", "gebied hall en gebied garden hebben evenveel personen"),
+        ("nl", ">", "gebied hall heeft meer personen dan gebied garden"),
+        ("nl", "<", "gebied hall heeft minder personen dan gebied garden"),
+    ],
+)
+def test_area_population_comparisons_read_as_ties_and_sentences(
+    board, language, operator, expected
+):
+    formula = f"count (people in area:hall) {operator} count (people in area:garden)"
+    assert ExpressionWords(board, language).statement(parse_statement(formula)) == expected
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "area hall has fewer people than every area other than area garden"),
+        ("nl", "gebied hall heeft minder personen dan elk gebied behalve gebied garden"),
+    ],
+)
+def test_population_comparison_excluding_another_area_keeps_the_scope(board, language, expected):
+    formula = (
+        "every ?a in (areas except area:hall, area:garden): "
+        "count (people in ?a) > count (people in area:hall)"
+    )
+    assert ExpressionWords(board, language).statement(parse_statement(formula)) == expected
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Ada shares an area with every helper and nobody else"),
+        ("nl", "Ada deelt een gebied met iedere helper en met niemand anders"),
+    ],
+)
+def test_shared_area_set_equality_names_the_companion_kind(board, language, expected):
+    formula = parse_statement("(people in area of Ada) = (Ada, attribute:trained)")
+    words = ExpressionWords(board, language, names={"trained": "helper"})
+    assert words.statement(formula) == expected
+
+
+def test_constant_arithmetic_in_a_count_reads_as_its_value(board):
+    sentence = ExpressionWords(board).statement(parse_statement("count people = 1 + 1"))
+    assert "plus" not in sentence
+    assert "2" in sentence
 
 
 def test_unique_holder_in_a_single_tag_uses_the_authored_place_caption(board):

@@ -605,6 +605,49 @@ def test_murdoku_web_key_shows_the_symbols_players_see():
     assert "#d0e4f2" in window["svg"]
 
 
+EXPORTED_PROSE = {
+    "food-murdoku-1": (
+        "Jos shares an area with exactly one other person, and that person is a food.",
+    ),
+    "food-murdoku-2": (
+        "Jos shares an area with exactly one other person, and that person is a food.",
+    ),
+    "zoo-murdoku-3": (
+        "De verzorger deelt een gebied met precies één ander persoon, en dat is een dier.",
+        "In het gebied van iedere aap staan minstens twee personen.",
+    ),
+    "samen-in-de-blauwe-bladeren": (
+        "Gebied Hiroshima en gebied Okinawa hebben evenveel personen.",
+        "Gebied Okinawa heeft minder personen dan elk gebied met een vrij vakje "
+        "behalve gebied Hiroshima.",
+    ),
+    "wie-doet-het-met-wie-2": ("Wouter deelt een gebied met precies één ander persoon.",),
+    "menu-murdoku-1": ("Vla deelt een gebied met precies twee andere personen.",),
+}
+
+
+@pytest.mark.parametrize("puzzle", sorted(EXPORTED_PROSE))
+def test_exported_murdoku_prose_has_no_expression_syntax(exported, puzzle):
+    """The player bundle uses the same player prose as the booklet, not fallbacks."""
+    bundle = _bundle(exported, puzzle)
+    cards = bundle.get("clueEntries") or []
+    text = "\n".join([*bundle["rules"], *bundle["clues"], *(card["text"] for card in cards)])
+    for fragment in EXPORTED_PROSE[puzzle]:
+        assert fragment in text, (puzzle, fragment)
+    for forbidden in (
+        "plus",
+        "?p",
+        "?b",
+        "every member",
+        "at least one of",
+        "member of",
+        "the number of",
+        "aantal personen",
+        "ieder lid",
+    ):
+        assert forbidden not in text, (puzzle, forbidden)
+
+
 def test_murdoku_web_key_shows_both_styles_of_window():
     text = (
         example("murdoku_composition.txt")
