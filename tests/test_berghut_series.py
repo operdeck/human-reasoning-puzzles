@@ -1,14 +1,13 @@
-"""The berghut series: 9x9, 10x10 and 11x11 Murdokus with axis-distance key clues."""
+"""The berghut series: 6x6, 8x8 and 10x10 Murdokus with a hallway and distance clues."""
 
 import re
 from collections.abc import Iterator
-from itertools import permutations
 
 import pytest
 
 from csp import audit, clue_search
 from csp.bruteforce import murdoku as murdoku_brute
-from csp.murdoku_eval import grounded_dependencies, holds_grounded
+from csp.core import DEFAULT_RULES
 from csp.murdoku_expression_file import keyed_expression_clue_numbers
 from csp.murdoku_lang import Atom, Binary, Formula, Name, parse_statement
 from csp.puzzlefile import load_board_layout
@@ -26,22 +25,39 @@ ANSWERS = {
 }
 TIMEOUT = 15
 SIZES_AND_GUESTS = (
-    ("berghut-murdoku-1.txt", 9),
-    ("berghut-murdoku-2.txt", 10),
-    ("berghut-murdoku-3.txt", 11),
+    ("berghut-murdoku-1.txt", 6),
+    ("berghut-murdoku-2.txt", 8),
+    ("berghut-murdoku-3.txt", 10),
 )
+# (chair cells, the rule's occupied count, how many people qualify, the trait).
+CHAIRS = {
+    "berghut-murdoku-1.txt": (3, 1, 1, "bikkel"),
+    "berghut-murdoku-2.txt": (4, 2, 2, "bikkel"),
+    "berghut-murdoku-3.txt": (4, 3, 4, "topganger"),
+}
+NON_AXIS_MODES = ("manhattan", "king", "euclidean", "diagonal", "areas", "knight")
 
 
 def _text(name: str) -> str:
     return example(name).read_text()
 
 
+def _section(text: str, name: str) -> list[str]:
+    lines, inside = [], False
+    for line in text.splitlines():
+        if re.fullmatch(r"[A-Za-z]+:\s*", line.strip()):
+            inside = line.strip() == name
+            continue
+        if inside and line.strip():
+            lines.append(line.strip())
+    return lines
+
+
 @pytest.mark.parametrize(("name", "size"), SIZES_AND_GUESTS)
 def test_berghut_board_size_matches_guest_count(name, size):
     text = _text(name)
     assert re.search(rf"(?m)^Size: {size}$", text), name
-    people = text.split("People:", 1)[1].split("\nRules:", 1)[0]
-    assert sum(bool(line.strip()) for line in people.splitlines()) == size, name
+    assert len(_section(text, "People:")) == size, name
 
 
 def _without_key_clues(text: str) -> str:
@@ -63,7 +79,13 @@ def _without_key_clues(text: str) -> str:
 def test_berghut_puzzle_is_unique_and_deductive(name):
     result = clue_search.outcome(_text(name), TIMEOUT)
     assert result.good, (name, result)
-    assert result.grade in {"relations", "subsumption", "cover2"}, (name, result.grade)
+    assert result.grade in {"subsumption", "cover2", "cover3"}, (name, result.grade)
+
+
+def test_berghut_series_grades_do_not_decrease():
+    order = [rule.name for rule in DEFAULT_RULES]
+    grades = [clue_search.outcome(_text(name), TIMEOUT).grade for name in FILES]
+    assert grades == sorted(grades, key=order.index), grades
 
 
 @pytest.mark.parametrize("name", FILES)
@@ -97,7 +119,7 @@ def _fixed_axes(formula: Formula) -> Iterator[tuple[str, str]]:
         and isinstance(formula.subject, Name)
         and isinstance(formula.target, Name)
     ):
-        selector = re.fullmatch(r"(rows|columns):(?:\d+|first|last)", formula.target.token.text)
+        selector = re.fullmatch(r"(rows|columns):(?:\\d+|first|last)", formula.target.token.text)
         if selector:
             yield formula.subject.token.text, selector[1]
 
@@ -112,38 +134,101 @@ def test_berghut_clues_do_not_give_both_coordinates(name):
     assert not giveaways, f"{name} gives both coordinates for {', '.join(giveaways)}"
 
 
-def test_berghut_2_brunhilds_clues_do_not_pin_her_to_one_square():
-    text = _text("berghut-murdoku-2.txt")
-    board = load_board_layout(text)
-    people = {"Brunhild", "Hannelore"}
-    clues = [
-        (clue, deps)
-        for line in clue_search.clue_lines(text)
-        if (deps := grounded_dependencies(board, clue := parse_statement(line)))
-        and "Brunhild" in deps
-    ]
-    assert clues and all(deps <= people for _, deps in clues)
-    candidates = {
-        first
-        for first, second in permutations(board.free, 2)
-        if first.row != second.row
-        and first.col != second.col
-        and all(
-            holds_grounded(clue, board, {"Brunhild": first, "Hannelore": second}, deps)
-            for clue, deps in clues
-        )
-    }
-    assert len(candidates) > 1
+def _corridor_cells(board) -> set:
+    region = next(region for region, label in board.region_names.items() if label == "gang")
+    return {square for square in board.free if board.region_of(square) == region}
 
 
-def test_berghut_series_covers_every_axis_form():
-    keys = "\n".join(
-        line for name in FILES for line in _text(name).splitlines() if line.startswith("clue: ")
+def _neighbours(cell, cells):
+    return [other for other in cells if abs(other.row - cell.row) + abs(other.col - cell.col) == 1]
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_berghut_hallway_is_one_cell_wide_and_runs_from_top_to_bottom(name):
+    board = load_board_layout(_text(name))
+    cells = _corridor_cells(board)
+    assert any(cell.row == 0 for cell in cells), name
+    assert any(cell.row == board.size - 1 for cell in cells), name
+    degrees = {cell: len(_neighbours(cell, cells)) for cell in cells}
+    # A simple path has two ends and no branch, so the hallway is exactly one cell wide.
+    assert max(degrees.values()) <= 2, name
+    ends = [cell for cell, degree in degrees.items() if degree == 1]
+    assert len(ends) == 2, name
+    seen, frontier = {ends[0]}, [ends[0]]
+    while frontier:
+        cell = frontier.pop()
+        for other in _neighbours(cell, cells):
+            if other not in seen:
+                seen.add(other)
+                frontier.append(other)
+    assert seen == cells, name
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_berghut_hallway_reaches_every_room(name):
+    board = load_board_layout(_text(name))
+    corridor = next(region for region, label in board.region_names.items() if label == "gang")
+    graph: dict[int, set[int]] = {}
+    for door in (item for item in board.edge_items if item.kind == "door"):
+        first, second = (board.region_of(cell) for cell in door.cells)
+        if first != second:
+            graph.setdefault(first, set()).add(second)
+            graph.setdefault(second, set()).add(first)
+    seen, frontier = {corridor}, [corridor]
+    while frontier:
+        region = frontier.pop()
+        for other in graph.get(region, set()):
+            if other not in seen:
+                seen.add(other)
+                frontier.append(other)
+    assert seen == set(board.region_names), name
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_berghut_bikkel_chairs_scale_with_the_board(name):
+    text = _text(name)
+    cells, occupied, qualified, trait = CHAIRS[name]
+    chairs = [line for line in _section(text, "Objects:") if line.startswith("stoel:")]
+    assert len(chairs) == cells, name
+    rules = _section(text, "Rules:")
+    counted = next(rule for rule in rules if "count" in rule and "object:stoel" in rule)
+    assert f"= {occupied}" in counted, name
+    restricted = next(
+        rule for rule in rules if "except attribute:" in rule and "object:stoel" in rule
     )
-    for mode in ("dir:rows", "dir:cols"):
-        assert re.search(rf"{mode} \w+ >=", keys), (mode, ">=")
-        assert re.search(rf"{mode} \w+ <=", keys), (mode, "<=")
-    assert re.search(r"dir:cols \w+ = \d", keys)
+    assert f"attribute:{trait}" in restricted, name
+    holders = next(line for line in _section(text, "Attributes:") if line.startswith(f"{trait}:"))
+    names = holders.split(":", 1)[1].split()
+    assert len(names) == qualified, name
+    assert occupied <= qualified, name
+    if occupied < qualified:
+        # The reveal is the qualified person left without a chair.
+        assert ANSWERS[name] in names, name
+
+
+def _distance_mode(clue: str) -> str | None:
+    match = re.search(r"dir:(\w+)", clue)
+    return match[1] if match else None
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_berghut_distance_clues_carry_the_series(name):
+    text = _text(name)
+    clues = clue_search.clue_lines(text)
+    modes = [mode for clue in clues if (mode := _distance_mode(clue))]
+    assert any(mode in {"rows", "cols"} for mode in modes), name
+    assert any(mode in NON_AXIS_MODES for mode in modes), name
+    keyed = [clues[number - 1] for number in keyed_expression_clue_numbers(text)]
+    assert all(_distance_mode(clue) for clue in keyed), (name, keyed)
+
+
+def test_berghut_series_uses_both_axes_and_both_bounds():
+    clues = [clue for name in FILES for clue in clue_search.clue_lines(_text(name))]
+    assert any("dir:rows" in clue for clue in clues)
+    assert any("dir:cols" in clue for clue in clues)
+    assert any(re.search(r"dir:rows \w+ >=", clue) for clue in clues)
+    assert any(re.search(r"dir:rows \w+ <=", clue) for clue in clues)
+    assert any(re.search(r"dir:\w+ \w+ = \d", clue) for clue in clues)
 
 
 def test_berghut_layouts_differ():
@@ -162,14 +247,3 @@ def test_berghut_3_windows_are_on_outside_walls():
             "right": square.col == board.size - 1,
         }
         assert window.side is not None and edge[window.side], window
-
-
-def test_berghut_3_double_beds_cover_two_by_two_squares():
-    board = load_board_layout(_text("berghut-murdoku-3.txt"))
-    beds = [obj for obj in board.objects if obj.name == "tweepersoonsbed"]
-    assert len(beds) == 2
-    for bed in beds:
-        rows = {sq.row for sq in bed.squares}
-        cols = {sq.col for sq in bed.squares}
-        assert len(bed.squares) == 4 and len(rows) == len(cols) == 2
-        assert max(rows) - min(rows) == max(cols) - min(cols) == 1
