@@ -1,5 +1,12 @@
 import type { Bundle } from "./game";
 import { creditLine } from "./credit";
+import {
+  BEYOND_DEDUCTION_NOTE,
+  GLOSSARY_INTRO,
+  GRADES,
+  gradeLabel,
+  isKnownGrade,
+} from "./grades.mjs";
 import { adjacentPuzzles, puzzleIdFromPath, puzzleLink } from "./navigation";
 import { PuzzleView } from "./view";
 
@@ -56,6 +63,26 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+function glossary(): HTMLElement {
+  // A <details> control needs no URL: "#glossary" would look like a puzzle id,
+  // because the app routes puzzles through the hash.
+  return el(
+    "details",
+    { className: "glossary" },
+    el("summary", { textContent: "What do these labels mean?" }),
+    el("p", { textContent: GLOSSARY_INTRO }),
+    el(
+      "dl",
+      {},
+      ...GRADES.flatMap(({ label, meaning }) => [
+        el("dt", { textContent: label }),
+        el("dd", { textContent: meaning }),
+      ]),
+    ),
+    el("p", { className: "glossary-badge", textContent: BEYOND_DEDUCTION_NOTE }),
+  );
+}
+
 async function showIndex(current: () => boolean): Promise<void> {
   const index = await fetchIndex();
   if (!current()) return;
@@ -101,19 +128,23 @@ async function showIndex(current: () => boolean): Promise<void> {
             ...entries.map((entry) => {
               const link = puzzleLink(entry.id);
               link.textContent = `${entry.number}. ${entry.title}`;
+              const meta = el("span", {
+                className: "meta",
+                textContent: `${entry.size[0]}×${entry.size[1]} · ${gradeLabel(entry.grade)}`,
+              });
+              if (!isKnownGrade(entry.grade)) {
+                meta.title = "This solver grade has no player-facing name yet.";
+              }
               return el(
                 "li",
                 {},
                 link,
-                el("span", {
-                  className: "meta",
-                  textContent: `${entry.size[0]}×${entry.size[1]} · ${entry.grade}`,
-                }),
+                meta,
                 ...(entry.deductive === false
                   ? [el("span", {
                       className: "badge",
                       textContent: "beyond deduction",
-                      title: "Only this solver's what_if case analysis closes this puzzle.",
+                      title: "Only this solver's case analysis closes this puzzle.",
                     })]
                   : []),
                 ...(entry.playable
@@ -147,6 +178,7 @@ async function showIndex(current: () => boolean): Promise<void> {
         }),
       ),
     ),
+    glossary(),
     ...sections,
     el(
       "footer",

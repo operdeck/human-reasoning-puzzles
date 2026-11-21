@@ -22,6 +22,14 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import {
+  BEYOND_DEDUCTION_NOTE,
+  GLOSSARY_INTRO,
+  GRADES,
+  gradeLabel,
+  isKnownGrade,
+} from "../src/grades.mjs";
+
 export const SITE_NAME = "Human reasoning puzzles";
 export const REPO = "https://github.com/operdeck/human-reasoning-puzzles";
 export const DEFAULT_SITE = "https://operdeck.github.io/human-reasoning-puzzles";
@@ -252,13 +260,30 @@ function groupBySection(puzzles) {
   return groups;
 }
 
+/** The grade's player-facing label, with the raw value kept as a hint when unknown. */
+function gradeMeta(entry) {
+  const label = esc(gradeLabel(entry.grade));
+  const hint = isKnownGrade(entry.grade)
+    ? ""
+    : ' title="This solver grade has no player-facing name yet."';
+  return `<span class="meta"${hint}>${sizeText(entry)} · ${label}</span>`;
+}
+
 function puzzleList(entries, prefix) {
   return `<ul>${entries
     .map(
       (e) =>
-        `<li><a href="${prefix}p/${encodeURIComponent(e.id)}/">${esc(e.title)}</a> <span class="meta">${sizeText(e)} · ${esc(e.grade)}</span></li>`,
+        `<li><a href="${prefix}p/${encodeURIComponent(e.id)}/">${esc(e.title)}</a> ${gradeMeta(e)}</li>`,
     )
     .join("")}</ul>`;
+}
+
+/** The index's own explanation of the grade labels, shared with the player. */
+function glossaryHtml() {
+  return `<details class="glossary"><summary>What do these labels mean?</summary>
+      <p>${esc(GLOSSARY_INTRO)}</p>
+      <dl>${GRADES.map(({ label, meaning }) => `<dt>${esc(label)}</dt><dd>${esc(meaning)}</dd>`).join("")}</dl>
+      <p>${esc(BEYOND_DEDUCTION_NOTE)}</p></details>`;
 }
 
 function sectionsHtml(puzzles, prefix) {
@@ -273,7 +298,8 @@ function sectionsHtml(puzzles, prefix) {
 const pageStyle = `<style>body{font:16px/1.5 system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:1rem 16px}
 img{max-width:100%;height:auto}.meta{color:#666;font-size:.9em}.credit{color:#555;font-size:.95em}.cta{display:inline-block;padding:.5rem 1rem;background:#2ea44f;color:#fff;border-radius:6px;text-decoration:none;font-weight:600}
 .family{display:grid;grid-template-columns:11rem minmax(0,1fr);gap:1rem;margin:1rem 0}.family-thumbnail{width:100%;height:11rem;object-fit:contain}
-@media(max-width:600px){.family{grid-template-columns:minmax(0,1fr)}}</style>`;
+.glossary{margin:1rem 0;padding:.6rem 1rem;border:1px solid #ddd;border-radius:6px;background:#fff}.glossary summary{cursor:pointer;font-weight:600}.glossary p{font-size:.9em}.glossary dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.3rem 1rem;margin:.6rem 0;font-size:.9em}.glossary dt{font-weight:600}.glossary dd{margin:0}
+@media(max-width:600px){.family{grid-template-columns:minmax(0,1fr)}.glossary dl{grid-template-columns:minmax(0,1fr);gap:.15rem}.glossary dd{margin-bottom:.5rem}}</style>`;
 
 /** A page of its own (the home page keeps the app's own head and assets instead). */
 function page(headHtml, body, assets = []) {
@@ -335,6 +361,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
       Start with the <a href="murdoku/">Murdoku murder mysteries</a>, or browse the full list below.
       The solver behind them is <a href="${REPO}">open source</a>.</p>
       <p class="credit">${MURDOKU_CREDIT}</p></header>
+      ${glossaryHtml()}
       ${sectionsHtml(puzzles, "")}
     </main>`;
   files.push({
@@ -372,6 +399,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
     use the clues to work out who stood where, and find the murderer, who is alone with the victim.
     These original cases play in your browser, with notes, auto-marking and explanations. Every one can be solved by deduction, with no guessing.</p>
     <p class="credit">${MURDOKU_CREDIT}</p>
+    ${glossaryHtml()}
     ${sectionsHtml(murdoku, "../")}
     <p>Curious how it works? The explainable solver and puzzle generator are <a href="${REPO}">open source on GitHub</a>.</p>`,
     ),
@@ -382,8 +410,9 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
     const url = `${address}/p/${encodeURIComponent(entry.id)}/`;
     const image = `${address}/puzzles/${encodeURIComponent(entry.id)}.svg`;
     const what = isMurdoku(entry) ? "Murdoku murder mystery" : `${entry.familyLabel} puzzle`;
+    const label = gradeLabel(entry.grade);
     const description =
-      `Play "${entry.title}" online, a ${sizeText(entry)} ${what} (difficulty: ${entry.grade}). ` +
+      `Play "${entry.title}" online, a ${sizeText(entry)} ${what} (difficulty: ${label}). ` +
       `Free, in your browser, solvable by logic alone.`;
     files.push({
       path: `p/${entry.id}/index.html`,
@@ -409,7 +438,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
         `    <main id="app" data-puzzle-id="${esc(entry.id)}">
     <p><a href="./">← All puzzles</a>${isMurdoku(entry) ? ' · <a href="murdoku/">Murdoku</a>' : ""}</p>
     <h1>${esc(entry.title)}</h1>
-    <p>${esc(entry.section)} · ${sizeText(entry)} · ${esc(entry.grade)}</p>
+    <p>${esc(entry.section)} · ${sizeText(entry)} · ${esc(label)}</p>
     <p><img src="puzzles/${encodeURIComponent(entry.id)}.svg" alt="${esc(`${entry.title}, ${what}`)}" width="480" height="480"></p>
     <p><a class="cta" href="./#${encodeURIComponent(entry.id)}">Play this puzzle</a></p>
     <p>Part of the open-source <a href="${REPO}">human reasoning puzzles</a> collection.</p>${

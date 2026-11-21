@@ -273,8 +273,12 @@ bundle and index entry records `deductive`, whether the ladder closes the puzzle
 without its `what_if` fallback, so the player can flag the beyond-deduction
 frontier. The player in `web/`
 stays family-agnostic: palettes, scopes, rules and wording come from the bundle,
-so new family knowledge belongs in `web.py`, not in TypeScript. After changing
-`web/`, run `npx tsc --noEmit` and `npm test` there. The site is installable as an
+so new family knowledge belongs in `web.py`, not in TypeScript. The index shows a
+player-facing label for each solver grade instead of the internal rule name;
+labels, definitions and the glossary copy live in `web/src/grades.mjs`, shared
+with `prerender.mjs`, so a new ladder rung needs an entry there (the export
+keeps the raw grade). After changing `web/`, run `npx tsc --noEmit` and
+`npm test` there. The site is installable as an
 iPhone home-screen app and plays offline: `prerender.mjs` writes the manifest,
 the PWA head tags and a generated `sw.js` (precaching the shell, assets and every
 puzzle bundle), the icons live in `web/public/`, and `prerender.test.ts` checks

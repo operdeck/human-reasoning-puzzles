@@ -50,6 +50,14 @@ play link remain available when JavaScript is disabled.
   unless the author supplies a name in `Words:`.
 - **Family boundary:** family knowledge lives in `src/csp/web.py`, not in
   TypeScript. After changing `web/`, run `npx tsc --noEmit` and `npm test`.
+- **Grades:** puzzle entries show a player-facing label instead of the solver's
+  internal rule name (`single`, `relations`, …), and a “What do these labels
+  mean?” glossary beside the list defines each label and the “beyond deduction”
+  badge. Labels, definitions and glossary copy live in `web/src/grades.mjs`,
+  which `scripts/prerender.mjs` imports as well, so the static pages, the puzzle
+  descriptions and the player agree; `index.json` keeps the raw grade for
+  tooling. A new rung on the solver's ladder needs an entry there, and an
+  unknown grade stays visible under its raw name.
 
 ## Installable app (PWA)
 
