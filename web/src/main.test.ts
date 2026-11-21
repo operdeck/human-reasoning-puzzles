@@ -85,7 +85,7 @@ describe("puzzle index", () => {
     ]);
     expect(links.every((link) => link.hash === "")).toBe(true);
     expect(links[0].textContent).toBe("1. First case");
-    expect(links[0].parentElement?.textContent).toContain("4×4 · relations");
+    expect(links[0].parentElement?.textContent).toContain("4×4 · Relationship checks");
     const images = [...document.querySelectorAll<HTMLImageElement>(".family-thumbnail")];
     expect(images.map((image) => new URL(image.src).pathname)).toEqual([
       "/human-reasoning-puzzles/puzzles/first-case.svg",
@@ -131,6 +131,38 @@ describe("puzzle index", () => {
     expect(items[0].querySelector(".badge")?.textContent).toBe("beyond deduction");
     expect(items[0].querySelector(".badge")?.getAttribute("title")).toContain("what_if");
     expect(items[1].querySelector(".badge")).toBeNull();
+  });
+
+  it("opens a glossary of the grade labels above the puzzle list", async () => {
+    await openIndex();
+    const glossary = document.querySelector<HTMLDetailsElement>("details.glossary")!;
+    expect(glossary.open).toBe(false);
+    expect(glossary.querySelector("summary")?.textContent).toBe("What do these labels mean?");
+    expect(glossary.textContent).toContain("hardest deduction this solver needed");
+    expect(glossary.textContent).toContain("not how difficult a person will find the puzzle");
+    const terms = [...glossary.querySelectorAll("dt")].map((node) => node.textContent);
+    expect(terms).toContain("Relationship checks");
+    expect(terms).toContain("Case analysis");
+    expect(glossary.querySelectorAll("dd")).toHaveLength(terms.length);
+    expect(glossary.textContent).toContain("beyond deduction");
+    // The app routes puzzles through the hash, so the glossary must stay unlinked.
+    expect(glossary.querySelector("a")).toBeNull();
+    const firstGroup = document.querySelector(".family")!;
+    expect(
+      glossary.compareDocumentPosition(firstGroup) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("keeps an unknown grade visible under its raw name", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      license: "All rights reserved.",
+      puzzles: [{ ...puzzles[0], id: "odd", static: "odd.svg", grade: "mystery" }],
+    }))));
+    await import("./main");
+    await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(1));
+    const meta = document.querySelector(".puzzle-list .meta")!;
+    expect(meta.textContent).toContain("4×4 · mystery");
+    expect(meta.getAttribute("title")).toBe("This solver grade has no player-facing name yet.");
   });
 
   it("uses one preview per group, including each Murdoku series and Binairo/Tango", async () => {

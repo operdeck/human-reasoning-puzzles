@@ -171,6 +171,57 @@ footer .credit {
   color: var(--muted);
 }
 
+/* Player-facing names for the solver grades, explained from the index. */
+.glossary {
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.glossary summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.glossary summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.glossary p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.glossary dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.3rem 1rem;
+  margin: 0.6rem 0;
+  font-size: 0.9rem;
+}
+
+.glossary dt {
+  font-weight: 600;
+}
+
+.glossary dd {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .glossary dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.15rem;
+  }
+
+  .glossary dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
 /* --- puzzle page -------------------------------------------------------- */
 
 .puzzle-header {
