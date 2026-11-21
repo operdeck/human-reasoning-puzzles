@@ -28,7 +28,7 @@ Core syntax and feature cases: `murdoku_1_first_case`, `murdoku_3_house`,
 test files live in `tests/puzzles/`, the rest in `examples/demo/`.
 
 - Japanese food: `food-murdoku-2` 5×5 `chains`; `food-murdoku-1` 6×6 `subsumption`; `food-murdoku-3` 7×7 `what_if`.
-- Japan: `samen-in-japan` 6×6 `cover2` (busiest, quietest and exact count); `samen-onderweg` and `samen-in-de-blauwe-bladeren` use population arguments too.
+- Japan: `samen-in-japan` 6×6 `cover2` (busiest, quietest and exact count); `samen-onderweg` and `samen-in-de-blauwe-bladeren` use population arguments too. The three share a Mount Fuji backdrop: a red rising sun and the snow-capped summit cross the top strip, the shoulders show at the sides and waves fill the bottom strip.
 - Zoo: `zoo-murdoku-1` 5×5 `relations`; `zoo-murdoku-2` 6×6 `subsumption`; `zoo-murdoku-3` 6×6 `cover2`.
 - Menu: `menu-murdoku-1` 6×6 `relations`; `menu-murdoku-2` 7×7 `subsumption`; `menu-murdoku-3` 8×8 `what_if`.
 - Vietnam: `vietnam-murdoku-1` 5×5 `relations`; `vietnam-murdoku-2` 6×6 `subsumption`; `vietnam-murdoku-3` 7×7 `cover2`. Each has a tunnel straddling a city border; the dish is placed last.

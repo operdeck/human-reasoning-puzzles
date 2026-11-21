@@ -3,6 +3,7 @@
 import re
 import socket
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 
@@ -22,9 +23,9 @@ from csp.murdoku import (  # noqa: E402
 )
 from csp.murdoku_expression_file import load_expression_board  # noqa: E402
 from csp.murdoku_lower import object_count_scope  # noqa: E402
-from csp.puzzlefile import load_board_layout, load_presentation  # noqa: E402
+from csp.puzzlefile import detect, load_board_layout, load_presentation  # noqa: E402
 from csp.story import global_count_texts  # noqa: E402
-from tests.examples import all_examples, example  # noqa: E402
+from tests.examples import all_examples, example, played_examples  # noqa: E402
 
 pytestmark = pytest.mark.booklet
 
@@ -1843,6 +1844,23 @@ def test_a_backdrop_is_read_from_the_puzzle_file():
     assert load_board_layout(text).backdrop is None
     text = text.replace("People:", "Backdrop:\nU+1F383\n\nPeople:", 1)
     assert load_board_layout(text).backdrop == "U+1F383"
+
+
+def test_every_published_murdoku_series_shares_a_backdrop():
+    series: dict[Path, list[str]] = {}
+    for path in played_examples():
+        text = path.read_text()
+        if detect(text) != "murdoku":
+            continue
+        backdrop = load_board_layout(text).backdrop
+        if backdrop is not None:
+            assert icons.object_icon(backdrop) is not None, (path.name, backdrop)
+        series.setdefault(path.parent, []).append(backdrop or "")
+    multi = [(folder, backdrops) for folder, backdrops in series.items() if len(backdrops) > 1]
+    assert multi, "expected at least one published Murdoku series"
+    for folder, backdrops in multi:
+        assert backdrops[0], f"{folder.name} has no backdrop"
+        assert len(set(backdrops)) == 1, f"{folder.name} mixes backdrops: {backdrops}"
 
 
 @pytest.mark.parametrize("name", ["prrrdoku1.txt", "halloween-museum-1.txt", "food-murdoku-2.txt"])

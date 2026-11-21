@@ -274,6 +274,25 @@ SNOW_MOUNTAIN = (
     '<path d="M30 86 L34 78"/><path d="M70 86 L66 78"/>'
     "</g>"
 )
+# Mount Fuji over the sea, drawn as a backdrop for the Japan series: the rising
+# sun and the snow-capped summit cross the top strip, the shoulders run down the
+# sides and waves fill the bottom strip; the massif itself stays behind the board.
+FUJI = (
+    '<rect width="100" height="100" fill="#e7f0f6"/>'
+    '<circle cx="30" cy="4" r="7" fill="#d9534f"/>'
+    '<path d="M0 100 L4 80 Q26 22 50 2 Q74 22 96 80 L100 100 Z"'
+    ' fill="#93a7ba" stroke="#7890a5" stroke-width="1"/>'
+    '<path d="M50 2 Q44 14 40 25 L45 22 L48 28 L50 21 L52 28 L55 22 L60 25'
+    ' Q56 14 50 2 Z" fill="#ffffff" stroke="#c9d8e3" stroke-width="1"/>'
+    '<path d="M0 74 L6 62 L11 76 Z" fill="#ffffff" opacity="0.75"/>'
+    '<path d="M100 74 L94 62 L89 76 Z" fill="#ffffff" opacity="0.75"/>'
+    '<rect y="93" width="100" height="7" fill="#8fc3dd"/>'
+    '<g fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round">'
+    '<path d="M0 96 Q8 93 16 96 T32 96"/><path d="M40 96 Q48 93 56 96 T72 96"/>'
+    '<path d="M78 96 Q86 93 94 96 T110 96"/>'
+    "</g>"
+)
+
 # A mattress on the floor seen from above: ticking, two seams and a pillow.
 MATTRESS = (
     '<rect x="6" y="10" width="88" height="80" rx="8" fill="#e8e2d2"'
@@ -871,6 +890,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("slippers", "\U0001f97e", "slippers", markup=SLIPPERS),
         Icon("dirty_socks", "\U0001f9e6", "dirty socks", markup=DIRTY_SOCKS),
         Icon("snow_mountain", "\U0001f3d4", "snow mountain", markup=SNOW_MOUNTAIN),
+        Icon("mount_fuji", "\U0001f5fb", "Mount Fuji over the sea", markup=FUJI),
         Icon("beanie_portrait", "\U0001f474", "person in a beanie", markup=BEANIE_PORTRAIT),
         Icon(
             "climbing_helmet_portrait",
@@ -929,6 +949,8 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "sloffen": "slippers", "slippers": "slippers",
                 "stinksokken": "dirty_socks", "sokken": "dirty_socks", "socks": "dirty_socks",
                 "sneeuwberg": "snow_mountain", "snow_mountain": "snow_mountain",
+                "fuji": "mount_fuji", "fujisan": "mount_fuji", "mount_fuji": "mount_fuji",
+                "fuji_meer": "mount_fuji", "fuji_zee": "mount_fuji",
                 "beanie_portrait": "beanie_portrait",
                 "climbing_helmet_portrait": "climbing_helmet_portrait",
                 "matras": "mattress", "mattress": "mattress",
