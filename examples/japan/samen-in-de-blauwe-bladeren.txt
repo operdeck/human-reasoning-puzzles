@@ -102,6 +102,9 @@ Hideo dir:up Yuki
 Nami dir:left Sora
 Nami dir:up Sora
 
+Backdrop:
+fuji
+
 Figures:
 Yuki: geen eigen aanwijzingen
 Sora: geen eigen aanwijzingen

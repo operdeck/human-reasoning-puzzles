@@ -1,141 +1,138 @@
-# In de berghut 3 - "De bikkels" (11x11)
+# In de berghut 3 - "De bikkels" (10x10)
 #
 # Hütte Adlerhorst, laatste nacht. De wind draait en de kachel brandt; drie van
-# de elf verkiezen een bikkelkruk boven een bed. Alleen wie
-# vandaag de top haalde, is een echte bikkel.
+# de tien verkiezen een bikkelkruk boven een bed. Alleen wie vandaag de top
+# haalde, is een echte bikkel.
 #
-# Oplossing: Gerhard r1c8, Wolfgang r2c3, Gunter r3c7, Hannelore r4c1,
-# Ute r5c2, Brunhild r6c5, Reinhart r7c10, Greta r8c4, Siegfried r9c6,
-# Sepp r10c9, Waltraud r11c11. De drie bikkels zijn Greta, Siegfried en
-# Wolfgang; Ute haalde ook de top, maar zat niet op een bikkelkruk.
+# Oplossing: Sepp r1c1, Greta r2c5, Siegfried r3c6, Waltraud r4c8,
+# Hannelore r5c4, Brunhild r6c3, Gerhard r7c7, Gunter r8c9, Reinhart r9c10,
+# Ute r10c2. De drie bikkels zijn Greta, Siegfried en Waltraud; Ute haalde ook
+# de top, maar zat niet op een bikkelkruk.
 #
-# Sleutelclues: Gunter/Waltraud minstens drie rijen; Hannelore/Brunhild minstens
-# vier kolommen.
+# Sleutelclues: Waltraud/Siegfried precies één rij; Hannelore/Siegfried vier
+# vakjes, horizontaal en verticaal geteld.
 
-Size: 11
+Size: 10
 Language: nl
 
 Words:
 terras: op het terras
-schoenenhok: in het schoenenhok
+schoenen: in het schoenenhok
 keuken: in de keuken
 stube: in de stube
-drooghok: in het drooghok
-Kamer_Noord: in Kamer Noord
-Kamer_Zuid: in Kamer Zuid
+gang: in de gang
+kamer_n: in Kamer Noord
+kamer_z: in Kamer Zuid
+droog: in het drooghok
 lager: in het matrassenlager
 was: in het washok
 douche: de koude buitendouche
 terrasbank: de terrasbank
-bank: de zitbank
 hout: de houtstapel
-bergschoen: de bergschoenen
-helm: de helm
-touw: het touw
 rugzak: de rugzak
-kruk: een bikkelkruk
+helm: de helm
+bergschoen: de bergschoenen
+touw: het touw
 fornuis: het fornuis
-aanrecht: het aanrecht
 pan: de pan
-krat: de krat
+aanrecht: het aanrecht
 rondetafel: de ronde stamtafel
+kruk: een bikkelkruk
 kachel: de kachel
-stinksokken: de stinksokken
-spiegel: de spiegel
 bed: het bed
-tweepersoonsbed: het tweepersoonsbed
-locker: de locker
+matras: het matras
+boekenkast: de boekenkast
+kast: de kast
+spiegel: de spiegel
+stinksokken: de stinksokken
 emmer: de emmer
-topganger: topganger
+krat: de krat
 
 Regions:
 terras: terras #D9E2EA
 schoenen: schoenenhok #C9B79C
 keuken: keuken #F2DCC0
 stube: stube #E8D5B5
+gang: gang #EDE7DE
+kamer_n: Kamer_Noord #E3CFC0
+kamer_z: Kamer_Zuid #D8D2F0
 droog: drooghok #CFE0EE
-kamer_n: Kamer_Noord #D8D2F0
-kamer_z: Kamer_Zuid #E3CFC0
 lager: lager #DCE8D2
 was: was #C8D8CB
 
 Grid:
-terras terras terras terras terras terras terras terras terras terras terras
-schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
-kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
-kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
-kamer_n kamer_n kamer_n lager lager lager lager droog droog droog droog
-was was keuken keuken keuken keuken stube stube stube stube stube
-was was keuken keuken keuken keuken stube stube stube stube stube
-kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
-kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
-kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
-kamer_z kamer_z kamer_z stube stube stube stube lager lager lager lager
+terras terras terras gang schoenen schoenen schoenen schoenen schoenen schoenen
+terras terras terras gang schoenen schoenen schoenen schoenen schoenen schoenen
+keuken gang gang gang stube stube stube stube stube stube
+keuken gang kamer_n kamer_n kamer_n kamer_n stube stube stube stube
+keuken gang kamer_n kamer_n kamer_n kamer_n kamer_z kamer_z kamer_z kamer_z
+keuken gang kamer_n kamer_n kamer_n kamer_n kamer_z kamer_z kamer_z kamer_z
+lager gang droog droog droog droog droog kamer_z kamer_z kamer_z
+lager gang droog droog droog droog droog kamer_z kamer_z kamer_z
+lager gang was was was was was was was was
+lager gang was was was was was was was was
+
 Objects:
 douche: standable r1c1
-terrasbank: standable r1c5 r1c6
-hout: blocking r1c10 r1c11
-touw: blocking r2c1
-bergschoen: blocking r2c2
-kruk: standable r2c3
-helm: blocking r2c4
-rugzak: blocking r2c7
-bergschoen: blocking r2c9
-tweepersoonsbed: standable r3c1 r3c2 r4c1 r4c2
-locker: blocking r3c4
-bed: standable r3c5 r3c6
-bed: standable r4c4 r4c5
-bed: standable r5c6 r5c7
-locker: blocking r5c3
-stinksokken: blocking r4c9
-stinksokken: blocking r4c10
-spiegel: blocking r3c11
-touw: blocking r5c10
-spiegel: blocking r6c1
-emmer: blocking r7c2
-fornuis: blocking r6c3
-pan: blocking r6c6
-aanrecht: blocking r7c4 r7c5
-krat: blocking r7c3
-kachel: blocking r6c7
-stinksokken: blocking r7c7
-rondetafel: blocking r9c5
-kruk: standable r8c4
-kruk: standable r8c5
-kruk: standable r8c6
-kruk: standable r9c4
-kruk: standable r9c6
-kruk: standable r10c4
-kruk: standable r10c5
-kruk: standable r10c6
-tweepersoonsbed: standable r8c1 r8c2 r9c1 r9c2
-locker: blocking r11c3
-bank: standable r11c5 r11c6
-bed: standable r9c8 r9c9
-bed: standable r10c8 r10c9
-helm: blocking r10c11
-bed: standable r11c8 r11c9
+hout: blocking r1c3
+terrasbank: standable r2c2 r2c3
+stoel: standable r2c5
+rugzak: blocking r1c5
+helm: blocking r1c6
+bergschoen: blocking r1c7
+touw: blocking r2c10
+fornuis: blocking r3c1
+aanrecht: blocking r4c1
+pan: blocking r5c1
+stoel: standable r3c6
+kachel: blocking r3c7
+rondetafel: blocking r3c8
+stinksokken: blocking r3c9
+stoel: standable r4c8
+stoel: standable r4c10
+bed: standable r4c3 r4c4
+kast: blocking r4c5
+matras: standable r5c4 r5c5
+boekenkast: blocking r5c3
+bed: standable r6c3 r6c4
+spiegel: blocking r6c5
+matras: standable r5c7 r5c8
+spiegel: blocking r5c10
+matras: standable r6c7 r6c8
+stinksokken: blocking r6c10
+bed: standable r7c8 r7c9
+kast: blocking r8c10
+bed: standable r8c8 r8c9
+touw: blocking r7c3 r7c4
+emmer: blocking r8c3
+matras: standable r9c1 r10c1
+emmer: blocking r9c3
+krat: blocking r9c4
+krat: blocking r10c3
+emmer: blocking r10c4
+
 EdgeItems:
-door: door r1c8 r2c8
-door: door r2c3 r3c3
-door: door r2c5 r3c5
-door: door r2c8 r3c8
-door: door r5c2 r6c2
-door: door r5c4 r6c4
-door: door r5c8 r6c8
-door: door r7c1 r8c1
-door: door r8c3 r8c4
+door: door r1c3 r1c4
+door: door r2c4 r2c5
+door: door r3c1 r3c2
+door: door r3c4 r3c5
+door: door r4c2 r4c3
+door: door r5c6 r5c7
+door: door r4c7 r5c7
 door: door r8c7 r8c8
-window: window r2c11 right
-window: window r4c1 left
-window: window r5c1 left
-window: window r6c11 right
-window: window r7c1 left
-window: window r7c11 right
-window: window r9c1 left
-window: window r9c11 right
-window: window r11c1 bottom
-window: window r11c7 bottom
+door: door r7c2 r7c3
+door: door r9c1 r9c2
+door: door r9c2 r9c3
+door: door r2c5 r3c5
+window: window r1c2 top
+window: window r2c1 left
+window: window r6c1 left
+window: window r8c1 left
+window: window r10c1 bottom
+window: window r10c8 bottom
+window: window r4c10 right
+window: window r6c10 right
+window: window r8c10 right
 
 People:
 Greta
@@ -147,39 +144,29 @@ Gunter
 Reinhart
 Gerhard
 Siegfried
-Wolfgang
-
 Sepp
+
 Rules:
-count (people on object:kruk) = 3 | Er zitten vanavond precies drie mensen op de bikkelkrukken.
+count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op een bikkelkruk.
+no (people except attribute:topganger) on object:stoel | Alleen topgangers mogen op een bikkelkruk zitten.
 no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
-no (people except attribute:topganger) on object:kruk | Alleen topgangers mogen op een bikkelkruk zitten.
 
 Attributes:
-topganger: Greta Siegfried Ute Wolfgang
+topganger: Greta Siegfried Ute Waltraud
 
 Clues:
-Gunter dir:rows Waltraud >= 3
-Hannelore dir:cols Brunhild >= 4
-Gerhard in area:terras
-Gerhard in columns:8
-Wolfgang in area:schoenenhok
-Gunter in area:lager
-Gunter in rows:3
-Hannelore in rows:4
-Brunhild in area:keuken
-Reinhart in area:stube
-Reinhart in columns:10
-Greta dir:manhattan object:aanrecht = 1
-not (Greta beside object:rondetafel)
-Siegfried in rows:9
-
-Sepp on object:bed
-Sepp in rows:10
-Waltraud in columns:11
+Sepp dir:rows Gerhard >= 5 | Sepp en Gerhard staan minstens vijf rijen van elkaar af.
+Hannelore dir:manhattan Siegfried = 4 | Hannelore staat vier vakjes van Siegfried af, horizontaal en verticaal geteld.
+Siegfried dir:manhattan Reinhart = 10 | Siegfried staat tien vakjes van Reinhart af, horizontaal en verticaal geteld.
+Gunter dir:manhattan Sepp = 15 | Gunter staat vijftien vakjes van Sepp af, horizontaal en verticaal geteld.
+Reinhart dir:cols Sepp = 9 | Reinhart en Sepp staan negen kolommen van elkaar af.
+Gerhard dir:manhattan Siegfried = 5 | Gerhard staat vijf vakjes van Siegfried af, horizontaal en verticaal geteld.
+Waltraud dir:rows Siegfried = 1 | Waltraud en Siegfried staan precies één rij van elkaar af.
+Gunter in area:Kamer_Zuid | Gunter slaapt in de grote slaapzaal.
+Greta dir:areas Brunhild = 2 | Greta en Brunhild staan twee ruimtes van elkaar af.
 Key:
-clue: Gunter dir:rows Waltraud >= 3
-clue: Hannelore dir:cols Brunhild >= 4
+clue: Hannelore dir:manhattan Siegfried = 4
+clue: Waltraud dir:rows Siegfried = 1
 
 Backdrop:
 sneeuwberg
@@ -188,22 +175,21 @@ Title:
 In de berghut 3: De bikkels
 
 Intro:
-De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de elf verkiezen een bikkelkruk boven een bed. Alleen wie vandaag de top haalde, is een echte bikkel.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De krukken rond de ronde stamtafel, de koude kruk in het schoenenhok, de bedden, de zitbank, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en niemand wil naast de stinksokken zitten. Alleen topgangers mogen op een bikkelkruk zitten.
+De laatste nacht in Hütte Adlerhorst. De wind draait en de kachel brandt; drie van de tien verkiezen een bikkelkruk boven een bed. De lange gang slingert van de voordeur op het terras via de keuken en de slaapzalen naar het washok. Alleen wie vandaag de top haalde, is een echte bikkel.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De gang, de vier bikkelkrukken, de bedden en matrassen, de zitbank op het terras, de koude buitendouche en de vrije hoeken zijn begaanbaar; de andere meubels blokkeren. Er zitten precies drie mensen op de bikkelkrukken en alleen topgangers mogen daar zitten. Niemand wil naast de stinksokken zitten.
 
 Figures:
 Greta: de materiaalvrouw, haalde vandaag de top ; icon=U+1F469
 Brunhild: de touwpartner van Siegfried ; icon=U+1F9D1
 Hannelore: de lichte slaper ; icon=U+1F471
 Ute: de kokkin van dienst, haalde vandaag de top ; icon=U+1F475
-Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
+Waltraud: de nachtbraker met de zaklamp, haalde vandaag de top ; icon=U+1F469
 Gunter: de man die snurkt als een yeti ; icon=U+1F468
 Reinhart: de weerman zonder bereik ; icon=U+1F468
 Gerhard: de koukleum met de muts op ; icon=beanie_portrait
 Siegfried: de bergführer met de rode helm, haalde vandaag de top ; icon=climbing_helmet_portrait
-Wolfgang: de man met de pickel, haalde vandaag de top ; icon=U+1F468
-
 Sepp: de nieuwste gast ; icon=U+1F468
+
 Pronouns:
 Greta: zij haar haar
 Brunhild: zij haar haar
@@ -214,13 +200,11 @@ Gunter: hij hem zijn
 Reinhart: hij hem zijn
 Gerhard: hij hem zijn
 Siegfried: hij hem zijn
-Wolfgang: hij hem zijn
-
 Sepp: hij hem zijn
 
 Question:
 Wie haalde de top maar zat niet op een bikkelkruk?
 
 Reveal:
-Ute haalde de top, maar zat niet op een bikkelkruk: Greta, Siegfried en Wolfgang waren de drie echte bikkels.
+Ute haalde de top, maar zat niet op een bikkelkruk: Greta, Siegfried en Waltraud waren de drie echte bikkels.
 

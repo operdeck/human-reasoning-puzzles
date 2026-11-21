@@ -61,6 +61,9 @@ Haru dir:up Jun
 Haru dir:left Isamu
 not (Haru beside object:torii)
 
+Backdrop:
+fuji
+
 Figures:
 Isamu: geen eigen aanwijzingen
 Jun: geen eigen aanwijzingen

@@ -276,9 +276,9 @@ def test_murdoku_cell_details_use_dutch_and_author_wording():
     ("name", "cell", "label", "caption"),
     [
         ("berghut-murdoku-1.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
-        ("berghut-murdoku-1.txt", "r1c4", "Terrasbank", "hier kun je op zitten"),
+        ("berghut-murdoku-1.txt", "r2c4", "Bikkelstoel", "hier kun je op staan"),
         ("berghut-murdoku-3.txt", "r1c1", "De koude buitendouche", "hier kun je onder staan"),
-        ("berghut-murdoku-3.txt", "r11c5", "Zitbank", "hier kun je op zitten"),
+        ("berghut-murdoku-3.txt", "r10c1", "Matras", "hier kun je op staan"),
     ],
 )
 def test_berghut_object_position_text_matches_details_and_board(name, cell, label, caption):
@@ -288,30 +288,27 @@ def test_berghut_object_position_text_matches_details_and_board(name, cell, labe
     assert any(line.startswith("Voorwerp: ") and line.endswith(f"({caption})") for line in details)
 
 
-def test_berghut_3_counter_stays_in_the_kitchen_and_clue_describes_a_shared_side():
+def test_berghut_3_uses_the_authored_distance_wording():
     bundle = web._murdoku(example("berghut-murdoku-3.txt").read_text(), {})
-    expected = (
-        "Greta staat op een vakje dat een zijde deelt met het aanrecht "
-        "en staat niet naast de ronde stamtafel."
-    )
-    assert expected in bundle["clues"]
-    for cell in ("r7c4", "r7c5"):
+    assert "Reinhart en Sepp staan negen kolommen van elkaar af." in bundle["clues"]
+    assert "Waltraud en Siegfried staan precies één rij van elkaar af." in bundle["clues"]
+    for cell in ("r3c1", "r6c1"):
         assert "Gebied: Keuken" in bundle["cellDetails"][cell]
 
 
 def test_berghut_cell_details_localize_standard_doors_and_windows():
     text = example("berghut-murdoku-3.txt").read_text()
     details = web._murdoku(text, {})["cellDetails"]
-    assert all("Raakt: een deur" in details[cell] for cell in ("r1c8", "r2c8"))
-    assert "Raakt: een raam" in details["r2c11"]
+    assert all("Raakt: een deur" in details[cell] for cell in ("r1c3", "r1c4"))
+    assert "Raakt: een raam" in details["r2c1"]
 
     custom = web._murdoku(text.replace("Words:\n", "Words:\ndoor: de houten deur\n"), {})
-    assert "Raakt: de houten deur" in custom["cellDetails"]["r1c8"]
+    assert "Raakt: de houten deur" in custom["cellDetails"]["r1c3"]
 
 
 def test_berghut_cell_labels_keep_the_authored_article_for_repeated_objects():
-    details = web._murdoku(example("berghut-murdoku-1.txt").read_text(), {})["cellDetails"]
-    for cell in ("r4c7", "r5c8", "r5c9"):
+    details = web._murdoku(example("berghut-murdoku-3.txt").read_text(), {})["cellDetails"]
+    for cell in ("r3c9", "r6c10"):
         assert "Voorwerp: de stinksokken (hier kan niemand staan)" in details[cell]
 
 

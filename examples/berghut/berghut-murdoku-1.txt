@@ -1,160 +1,133 @@
-# In de berghut 1 - "De koude douche" (9x9)
+# In de berghut 1 - "De koude douche" (6x6)
 #
-# Hütte Adlerhorst, eerste herfstnacht. Negen stamgasten, één storm. De laatste
+# Hütte Adlerhorst, eerste herfstnacht. Zes stamgasten, één storm. De laatste
 # stinkt als een Yeti en moet onder de koude buitendouche; over deze persoon staat
 # geen enkele aanwijzing.
 #
-# Oplossing: Greta r1c1, Siegfried r2c7, Ute r3c5, Reinhart r4c4,
-# Waltraud r5c6, Hannelore r6c2, Brunhild r7c8, Gerhard r8c9, Gunter r9c3.
-# Greta staat onder de buitendouche; de drie bikkels zijn Ute, Reinhart en
-# Waltraud op de stoelen rond de stamtafel.
+# Oplossing: Greta r1c1, Waltraud r2c4, Ute r3c2, Hannelore r4c5,
+# Gerhard r5c3, Siegfried r6c6. Greta staat onder de buitendouche; Waltraud is
+# de enige echte bikkel en zit op een bikkelstoel.
 #
-# Sleutelclues: Gunter/Hannelore minstens drie rijen; Siegfried/Brunhild
-# hoogstens twee kolommen (touwpartners).
+# Sleutelclues: Waltraud/Siegfried minstens vier rijen; Ute/Hannelore minstens
+# vier vakjes, horizontaal en verticaal geteld.
 
-Size: 9
+Size: 6
 Language: nl
 
 Words:
 terras: op het terras
-schoenenhok: in het schoenenhok
+schoenen: in het schoenenhok
 keuken: in de keuken
 stube: in de stube
-drooghok: in het drooghok
-Kamer_Noord: in Kamer Noord
-Kamer_Zuid: in Kamer Zuid
+gang: in de gang
+kamer_n: in Kamer Noord
+kamer_z: in Kamer Zuid
 lager: in het matrassenlager
 was: in het washok
-buitendouche: de koude buitendouche
-terrasbank: de terrasbank
-houtstapel: de houtstapel
-bergschoen: de bergschoenen
-helm: de helm
-touw: het touw
+douche: de koude buitendouche
+hout: de houtstapel
 rugzak: de rugzak
-stoel: een bikkelstoel
+helm: de helm
+bergschoen: de bergschoenen
 fornuis: het fornuis
-aanrecht: het aanrecht
 pan: de pan
-krat: de krat
+aanrecht: het aanrecht
 tafel: de stamtafel
+stoel: een bikkelstoel
 kachel: de kachel
-stinksokken: de stinksokken
-spiegel: de spiegel
 bed: het bed
 kast: de kast
+spiegel: de spiegel
+stinksokken: de stinksokken
+matras: het matras
 emmer: de emmer
+krat: de krat
 
 Regions:
 terras: terras #D9E2EA
 schoenen: schoenenhok #C9B79C
 keuken: keuken #F2DCC0
 stube: stube #E8D5B5
-droog: drooghok #CFE0EE
+gang: gang #EDE7DE
 kamer_n: Kamer_Noord #E3CFC0
 kamer_z: Kamer_Zuid #D8D2F0
 lager: lager #DCE8D2
 was: was #C8D8CB
 
 Grid:
-terras terras terras terras terras terras terras terras terras
-schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen schoenen
-keuken keuken keuken stube stube stube stube droog droog
-keuken keuken keuken stube stube stube stube droog droog
-keuken keuken keuken stube stube stube stube droog droog
-kamer_n kamer_n lager lager lager lager lager droog droog
-kamer_n kamer_n lager lager lager lager lager droog droog
-kamer_z kamer_z lager lager lager lager lager was was
-kamer_z kamer_z lager lager lager lager lager was was
+terras terras gang schoenen schoenen schoenen
+keuken keuken gang stube stube stube
+keuken keuken gang stube stube stube
+kamer_n kamer_n gang kamer_z kamer_z kamer_z
+kamer_n kamer_n gang kamer_z kamer_z kamer_z
+lager lager gang was was was
+
 Objects:
-buitendouche: standable r1c1
-terrasbank: standable r1c4 r1c5
-houtstapel: blocking r1c8 r1c9
-rugzak: blocking r2c1
-helm: blocking r2c2
-bergschoen: blocking r2c3
-bergschoen: blocking r2c6
-touw: blocking r2c8
-fornuis: blocking r3c2
-pan: blocking r3c3
-aanrecht: blocking r4c1 r4c2
-krat: blocking r5c1
-tafel: blocking r4c5
-stoel: standable r3c4
+douche: standable r1c1
+hout: blocking r1c2
+rugzak: blocking r1c4
+helm: blocking r1c5
+fornuis: blocking r2c1
+pan: blocking r2c2
+aanrecht: blocking r3c1
+tafel: blocking r2c5
+stoel: standable r2c4
+stoel: standable r2c6
 stoel: standable r3c5
-stoel: standable r3c6
-stoel: standable r4c4
-stoel: standable r4c6
-stoel: standable r5c4
-stoel: standable r5c5
-stoel: standable r5c6
-kachel: blocking r3c7
-stinksokken: blocking r4c7
-spiegel: blocking r3c9
-stinksokken: blocking r5c8
-stinksokken: blocking r5c9
-touw: blocking r6c9
-bed: standable r6c1 r6c2
-bed: standable r8c1 r8c2
-kast: blocking r9c1
-bed: standable r6c4 r6c5
-bed: standable r7c3 r7c4
-kast: blocking r6c7 r7c7
-bed: standable r8c6 r8c7
-bed: standable r9c3 r9c4
-krat: blocking r9c5
-touw: blocking r9c7
-spiegel: blocking r8c8
-kast: blocking r9c9
+kachel: blocking r3c4
+bed: standable r4c1 r4c2
+kast: blocking r5c1
+spiegel: blocking r5c2
+bed: standable r4c4 r4c5
+kast: blocking r5c4
+spiegel: blocking r5c5
+stinksokken: blocking r5c6
+matras: standable r6c1 r6c2
+emmer: blocking r6c4
+krat: blocking r6c5
 
 EdgeItems:
-door: door r1c7 r2c7
-door: door r2c4 r3c4
-door: door r5c3 r5c4
-door: door r5c6 r6c6
-door: door r7c9 r8c9
-window: window r2c9 right
-window: window r3c1 left
-window: window r4c9 right
-window: window r7c1 left
-window: window r8c9 right
-window: window r9c2 bottom
-window: window r9c6 bottom
+door: door r1c2 r1c3
+door: door r1c3 r1c4
+door: door r2c2 r2c3
+door: door r2c3 r2c4
+door: door r4c2 r4c3
+door: door r4c3 r4c4
+door: door r6c2 r6c3
+door: door r6c3 r6c4
+window: window r1c5 top
+window: window r2c1 left
+window: window r4c1 left
+window: window r5c6 right
+window: window r6c2 bottom
+window: window r6c6 bottom
 
 People:
 Greta
-Brunhild
 Hannelore
 Ute
 Waltraud
-Gunter
-Reinhart
 Gerhard
 Siegfried
 
 Rules:
-count (people on object:stoel) = 3 | Er zitten vanavond precies drie mensen op de bikkelstoelen.
+count (people on object:stoel) = 1 | Er zit vanavond precies één iemand op een bikkelstoel.
+no (people except attribute:bikkel) on object:stoel | Alleen een echte bikkel mag op een bikkelstoel zitten.
+count (people on object:douche) = 1 | Precies één iemand staat onder de koude buitendouche.
 no people beside object:stinksokken | Niemand wil naast de stinksokken zitten.
-count (people on object:buitendouche) = 1 | Precies één iemand staat onder de koude buitendouche.
+
+Attributes:
+bikkel: Waltraud
 
 Clues:
-Gunter dir:rows Hannelore >= 3
-Siegfried dir:cols Brunhild <= 2
-Siegfried in area:schoenenhok
-Ute in area:stube
-Reinhart in area:stube
-Waltraud in area:stube
-Hannelore in area:Kamer_Noord
-Hannelore on object:bed
-Gerhard in area:was
-Gunter on object:bed
-Reinhart dir:up Waltraud
-not (Ute beside object:kachel)
-Ute dir:up Reinhart
+Waltraud dir:rows Siegfried >= 4 | Waltraud en Siegfried staan minstens vier rijen van elkaar af.
+Ute dir:manhattan Hannelore = 4 | Ute staat vier vakjes van Hannelore af, horizontaal en verticaal geteld.
+Hannelore dir:rows Gerhard = 1 | Hannelore en Gerhard zitten precies één rij van elkaar.
+Hannelore dir:cols Siegfried = 1 | Hannelore en Siegfried staan precies één kolom van elkaar af.
 
 Key:
-clue: Gunter dir:rows Hannelore >= 3
-clue: Siegfried dir:cols Brunhild <= 2
+clue: Waltraud dir:rows Siegfried >= 4
+clue: Ute dir:manhattan Hannelore = 4
 
 Backdrop:
 sneeuwberg
@@ -163,28 +136,22 @@ Title:
 In de berghut 1: De koude douche
 
 Intro:
-De eerste herfststorm jaagt negen stamgasten naar Hütte Adlerhorst. Buiten raast de wind; binnen ruikt het naar natte wol, Kaiserschmarrn en stinksokken. De laatste die binnenkomt, ruikt sterk naar berggeit en moet eerst onder de koude buitendouche.
-Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De stoelen rond de stamtafel, de koude stoel in het schoenenhok, de bedden, de terrasbank en de douche zijn begaanbaar; de andere meubels blokkeren. Er zitten vanavond precies drie mensen op de bikkelstoelen. Niemand wil naast de stinksokken zitten.
+De eerste herfststorm jaagt zes stamgasten naar Hütte Adlerhorst. Buiten raast de wind; binnen ruikt het naar natte wol, Kaiserschmarrn en stinksokken. Een smalle gang loopt van de voordeur op het terras langs alle kamers naar het washok. De laatste die binnenkomt, ruikt sterk naar berggeit en moet eerst onder de koude buitendouche.
+Zet iedereen op een vrij vakje, met één persoon per rij en per kolom. De gang, de stoelen rond de stamtafel, de bedden, de matrassen, de koude buitendouche en de vrije hoek van het washok zijn begaanbaar; de andere meubels blokkeren. Er zit vanavond precies één iemand op een bikkelstoel en alleen Waltraud is een echte bikkel. Niemand wil naast de stinksokken zitten.
 
 Figures:
 Greta: de materiaalvrouw ; icon=U+1F469
-Brunhild: de touwpartner van Siegfried ; icon=U+1F9D1
 Hannelore: de lichte slaper ; icon=U+1F471
 Ute: de kokkin van dienst ; icon=U+1F475
-Waltraud: de nachtbraker met de zaklamp ; icon=U+1F469
-Gunter: de man die snurkt als een yeti ; icon=U+1F468
-Reinhart: de weerman zonder bereik ; icon=U+1F468
+Waltraud: de nachtbraker met de zaklamp, de enige echte bikkel ; icon=U+1F469
 Gerhard: de koukleum met de muts op ; icon=beanie_portrait
 Siegfried: de bergführer met de rode helm ; icon=climbing_helmet_portrait
 
 Pronouns:
 Greta: zij haar haar
-Brunhild: zij haar haar
 Hannelore: zij haar haar
 Ute: zij haar haar
 Waltraud: zij haar haar
-Gunter: hij hem zijn
-Reinhart: hij hem zijn
 Gerhard: hij hem zijn
 Siegfried: hij hem zijn
 
@@ -193,4 +160,3 @@ Wie staat er nog onder de koude buitendouche?
 
 Reveal:
 Greta, de materiaalvrouw, staat onder de koude buitendouche: zij kwam als laatste aan en mocht pas naar binnen als ze schoon was.
-
