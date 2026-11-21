@@ -57,6 +57,9 @@ iedere aap staan minstens twee personen"), `count (people in area:A) = count
 (people in area:B)` reads as a tie, and a population comparison may exclude
 further areas. Constant arithmetic is evaluated, so `1 + 1` never reaches the
 player, and a top-level conjunction of two full clauses becomes two sentences.
+A shape without an idiom still falls back to the compositional templates; treat
+that as a gap to fill with a new idiom in `murdoku_expression_words.py`, not with
+per-puzzle `| wording`.
 Alternative areas retain their own prepositions, with negation covering the
 whole alternative. A quantified person is named directly only when exactly one
 must exist; optional and multiple-holder domains keep their quantifiers.
