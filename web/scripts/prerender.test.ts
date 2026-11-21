@@ -90,6 +90,10 @@ describe("renderPages", () => {
     expect(home).toContain('<main id="app">');
     expect(home).toContain('<a href="p/first-case/">The first case</a>');
     expect(home).toContain('<a href="p/sudoku_1/">Sudoku 1 &amp; friends</a>');
+    expect(home).toContain('<span class="meta">4×4 · Forced moves</span>');
+    expect(home).toContain('<span class="meta">9×9 · Relationship checks</span>');
+    expect(home).toContain("<summary>What do these labels mean?</summary>");
+    expect(home).toContain("hardest deduction this solver needed");
     expect(home).toContain('<meta property="og:url" content="https://operdeck.github.io/human-reasoning-puzzles/" />');
     expect(home).toContain('"@type":"WebSite"');
   });
@@ -144,6 +148,20 @@ describe("renderPages", () => {
     expect(appManifest().name).toBe(APP_NAME);
   });
 
+  it("keeps an unknown grade visible and flags it in the static list", () => {
+    const odd = { ...murdoku, id: "odd", grade: "mystery" };
+    const files = renderPages({
+      index: { license: "All rights reserved.", puzzles: [odd] },
+      built: shell,
+      site: DEFAULT_SITE,
+      lastmod: TODAY,
+    });
+    expect(pageFor(files, "index.html")).toContain(
+      '<span class="meta" title="This solver grade has no player-facing name yet.">4×4 · mystery</span>',
+    );
+    expect(pageFor(files, "p/odd/index.html")).toContain("Murdoku · Demo · 4×4 · mystery</p>");
+  });
+
   it("lists only Murdoku cases on the Murdoku landing page", () => {
     const landing = pageFor(render(), "murdoku/index.html");
     expect(landing).toContain(`Play free Murdoku online: 1 original murder-mystery logic puzzle`);
@@ -156,6 +174,8 @@ describe("renderPages", () => {
     expect(page).toContain("<title>The first case – Murdoku murder mystery (4×4) | Human reasoning puzzles</title>");
     expect(page).toContain('<link rel="canonical" href="https://operdeck.github.io/human-reasoning-puzzles/p/first-case/" />');
     expect(page).toContain('<meta name="description" content="Play &quot;The first case&quot; online');
+    expect(page).toContain("(difficulty: Forced moves)");
+    expect(page).toContain("<p>Murdoku · Demo · 4×4 · Forced moves</p>");
     expect(page).toContain('<meta property="og:url" content="https://operdeck.github.io/human-reasoning-puzzles/p/first-case/" />');
     expect(page).toContain('<meta property="og:image" content="https://operdeck.github.io/human-reasoning-puzzles/puzzles/first-case.svg" />');
     expect(page).toContain('<meta name="twitter:card" content="summary_large_image" />');
