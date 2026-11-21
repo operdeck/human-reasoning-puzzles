@@ -51,7 +51,35 @@ play link remain available when JavaScript is disabled.
 - **Family boundary:** family knowledge lives in `src/csp/web.py`, not in
   TypeScript. After changing `web/`, run `npx tsc --noEmit` and `npm test`.
 
-## Web bundles (`--export`)
+## Installable app (PWA)
+
+The published site can be added to an iPhone home screen and opens in standalone
+mode (no Safari bars):
+
+- **Icons** live in `web/public/`: `apple-touch-icon.png` (180×180),
+  `icon-192.png`, `icon-512.png`. They come from the README's first Murdoku case
+  (`docs/images/murdoku_1_first_case.png`), cropped to the board and flattened on
+  white so iOS does not paint the transparent parts black. Keep the board inside
+  the 10% margin; iOS rounds the corners.
+- **Manifest:** `web/public/manifest.json` is the `npm run dev` copy. The build
+  (`web/scripts/prerender.mjs`) writes the published `dist/manifest.json` from
+  `SITE_URL`, with absolute `start_url`, `scope` and icon paths under
+  `/human-reasoning-puzzles/`. Change the site path in one place, not in the
+  icons.
+- **Head:** every prerendered page (home, `/murdoku/`, `/p/<id>/`) gets the
+  manifest, apple-touch-icon, apple-mobile-web-app meta tags and `theme-color`
+  from `head()`; the viewport is `viewport-fit=cover`. `web/index.html` carries
+  the dev copy with relative paths.
+- **Safe areas:** `body` pads with `env(safe-area-inset-*)`; every puzzle page
+  has a visible "← All puzzles" link, so standalone mode always has a way back.
+- **Offline:** there is no service worker; the issue marks it optional. Adding
+  one means a versioned cache and a registration in the pages, and it is not
+  needed for installing.
+
+Test on an iPhone with Safari → Share → Add to Home Screen. iOS caches the icon:
+remove and re-add the shortcut after changing it. Locally, `npm run build`
+followed by `npx vite preview` shows the prerendered pages and the manifest.
+
 
 Peer groups may include a localized `description` of the rule they implement.
 The generic player uses these groups to explain conflicting placements or pencil

@@ -5,6 +5,8 @@
 [![Play the puzzles](https://img.shields.io/badge/%E2%96%B6%20Play%20the%20puzzles-online-2ea44f?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/)
 [![Play Murdoku online](https://img.shields.io/badge/%F0%9F%94%8E%20Play%20Murdoku-murder%20mysteries-8957e5?style=for-the-badge)](https://operdeck.github.io/human-reasoning-puzzles/murdoku/)
 
+**On iPhone:** open the site in Safari, tap Share and choose *Add to Home Screen*; it opens without Safari bars.
+
 Explore playable and printable puzzles, from Sudoku, Queens and Star Battle to
 Zebra grids and Murdoku mystery series. An explainable constraint engine solves the
 way a person would with named deduction rules; Puzzle Lab creates and validates
