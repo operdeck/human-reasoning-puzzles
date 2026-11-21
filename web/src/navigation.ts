@@ -19,6 +19,19 @@ export function puzzleLink(id: string): HTMLAnchorElement {
   return link;
 }
 
+/** The puzzle id in a `/p/<id>/` path, for the offline app-shell fallback. */
+export function puzzleIdFromPath(pathname: string, basePath: string): string | undefined {
+  const root = basePath.endsWith("/") ? basePath : `${basePath}/`;
+  if (!pathname.startsWith(`${root}p/`)) return undefined;
+  const id = pathname.slice(root.length + 2).split("/")[0];
+  if (!id) return undefined;
+  try {
+    return decodeURIComponent(id);
+  } catch {
+    return undefined;
+  }
+}
+
 export function adjacentPuzzles(
   puzzles: readonly PuzzleNavigationEntry[],
   id: string,

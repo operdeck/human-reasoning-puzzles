@@ -1,6 +1,6 @@
 import type { Bundle } from "./game";
 import { creditLine } from "./credit";
-import { adjacentPuzzles, puzzleLink } from "./navigation";
+import { adjacentPuzzles, puzzleIdFromPath, puzzleLink } from "./navigation";
 import { PuzzleView } from "./view";
 
 interface IndexEntry {
@@ -180,7 +180,10 @@ async function showPuzzle(id: string, current: () => boolean): Promise<void> {
 let routing = 0;
 
 async function route(): Promise<void> {
-  const id = decodeURIComponent(location.hash.slice(1) || app.dataset.puzzleId || "");
+  // The app shell served for an offline /p/<id>/ navigation has no data-puzzle-id;
+  // read the id from the path then. A hash or the static page still wins.
+  const fromPath = puzzleIdFromPath(location.pathname, new URL(document.baseURI).pathname);
+  const id = decodeURIComponent(location.hash.slice(1) || app.dataset.puzzleId || fromPath || "");
   const ticket = ++routing;
   // A later hash change wins, even if this page arrives after it.
   const current = () => ticket === routing;

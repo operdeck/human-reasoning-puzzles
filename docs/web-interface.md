@@ -51,7 +51,42 @@ play link remain available when JavaScript is disabled.
 - **Family boundary:** family knowledge lives in `src/csp/web.py`, not in
   TypeScript. After changing `web/`, run `npx tsc --noEmit` and `npm test`.
 
-## Web bundles (`--export`)
+## Installable app (PWA)
+
+The published site can be added to an iPhone home screen and opens in standalone
+mode (no Safari bars):
+
+- **Icons** live in `web/public/`: `apple-touch-icon.png` (180×180),
+  `icon-192.png`, `icon-512.png`. They come from the README's first Murdoku case
+  (`docs/images/murdoku_1_first_case.png`), cropped to the board and flattened on
+  white so iOS does not paint the transparent parts black. Keep the board inside
+  the 10% margin; iOS rounds the corners.
+- **Manifest:** `web/public/manifest.json` is the `npm run dev` copy. The build
+  (`web/scripts/prerender.mjs`) writes the published `dist/manifest.json` from
+  `SITE_URL`, with absolute `start_url`, `scope` and icon paths under
+  `/human-reasoning-puzzles/`. Change the site path in one place, not in the
+  icons.
+- **Head:** every prerendered page (home, `/murdoku/`, `/p/<id>/`) gets the
+  manifest, apple-touch-icon, apple-mobile-web-app meta tags and `theme-color`
+  from `head()`; the viewport is `viewport-fit=cover`. `web/index.html` carries
+  the dev copy with relative paths.
+- **Safe areas:** `body` pads with `env(safe-area-inset-*)`; every puzzle page
+  has a visible "← All puzzles" link, so standalone mode always has a way back.
+- **Offline:** the build writes `dist/sw.js` with a cache version hashed from the
+  precached files. It precaches the app shell, the `/murdoku/` page, the CSS/JS,
+  the manifest, the icons and every `puzzles/*.json|svg` bundle (419 URLs, about
+  13 MB), so all puzzles are playable offline after the first load/install.
+  Assets and bundles are cache-first; navigations are network-first and fall back
+  to the cached shell, whose path-based route (`puzzleIdFromPath`) loads the
+  cached bundle. A visited `/p/<id>/` page is also cached on the fly. A new build
+  changes the version, so `activate` deletes the old cache. `web/index.html`
+  intentionally has no registration (dev); the prerendered pages register
+  `${root}sw.js` from `head()`.
+
+Test on an iPhone with Safari → Share → Add to Home Screen. iOS caches the icon:
+remove and re-add the shortcut after changing it. Locally, `npm run build`
+followed by `npx vite preview` shows the prerendered pages and the manifest.
+
 
 Peer groups may include a localized `description` of the rule they implement.
 The generic player uses these groups to explain conflicting placements or pencil
