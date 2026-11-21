@@ -47,6 +47,16 @@ A role with exactly one holder may use a singular name such as "the murderer";
 optional or multiple-holder roles retain set wording. Worked solutions announce
 a last candidate once, cite a single clue directly, and group remaining role
 exclusions only after every other person's role state is known.
+Shared-area shapes read as prose rather than counts: `count (people in area of P)
+= 1 + 1` says "P shares an area with exactly one other person" (Dutch: "P deelt
+een gebied met precies één ander persoon"), and joining it to `every ((people
+except P) in area of P) is attribute:A` names the companion ("… that person is
+a food", or the puzzle's `Words: name.attribute` wording). `every ?p in role:X:
+count (people in area of ?p) >= 2` hides the bound variable ("In het gebied van
+iedere aap staan minstens twee personen"), `count (people in area:A) = count
+(people in area:B)` reads as a tie, and a population comparison may exclude
+further areas. Constant arithmetic is evaluated, so `1 + 1` never reaches the
+player, and a top-level conjunction of two full clauses becomes two sentences.
 Alternative areas retain their own prepositions, with negation covering the
 whole alternative. A quantified person is named directly only when exactly one
 must exist; optional and multiple-holder domains keep their quantifiers.

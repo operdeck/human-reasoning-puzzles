@@ -534,10 +534,12 @@ count (people in area of Akumatchi) = 1 + 1 and """
 
 
 def test_attribute_target_can_be_reworded(companion_attribute_puzzle):
-    text = companion_attribute_puzzle.replace(" Ichigotchi Hashizotchi", " Ichigotchi", 1)
+    text = companion_attribute_puzzle.replace("a {name}", "one of the {name}s", 1)
     (paragraph,) = clue_paragraphs(text)
-    assert "people except Akumatchi that are in the area of Akumatchi" in paragraph
-    assert "is a member of a friend" in paragraph
+    assert (
+        "Akumatchi shares an area with exactly one other person, "
+        "and that person is one of the friends"
+    ) in paragraph
     assert "attribute friend" not in paragraph
 
 
@@ -546,10 +548,11 @@ def test_companion_count_and_universal_attribute_membership_are_preserved(
 ):
     (paragraph,) = clue_paragraphs(companion_attribute_puzzle)
     assert (
-        "the number of people that are in the area of Akumatchi is equal to (1 plus 1)" in paragraph
-    )
-    assert "every member of people except Akumatchi" in paragraph
-    assert "is a member of at least one of a friend" in paragraph
+        "Akumatchi shares an area with exactly one other person, "
+        "and that person is a friend"
+    ) in paragraph
+    for fallback in ("plus", "the number of", "every member of", "member of at least one"):
+        assert fallback not in paragraph
 
 
 @pytest.mark.parametrize(("size", "mark"), [(6, "quiet"), (9, "social"), (12, "social")])

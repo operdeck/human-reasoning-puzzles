@@ -1212,6 +1212,8 @@ class ExpressionWords:
     def _attribute_predicate(self, name: str) -> str:
         """One attribute holder as a singular noun phrase, e.g. 'a food' or 'een dier'."""
         given = self.names.get(name, name.replace("_", " "))
+        if "name.attribute" in self.phrases:
+            return self._phrase("name.attribute", name=given)
         words = given.split()
         if len(words) > 1 and words[0].lower() in {"de", "het", "the"}:
             given = " ".join(words[1:])

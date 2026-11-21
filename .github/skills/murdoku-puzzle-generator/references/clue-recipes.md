@@ -19,6 +19,13 @@ test**. Compose; do not add a keyword.
    against the reference evaluator. Then run lint, uniqueness and grade checks.
    A unique answer does not prove a faithful transcription.
 
+Shared-area counts, attribute companions, role-owned areas and area population
+ties/comparisons already read as player prose ("shares an area with exactly one
+other person", "In het gebied van iedere aap staan minstens twee personen",
+"hebben evenveel personen"). Write the expression, not a `| wording`, and give an
+attribute its noun through `Words: name.attribute` when the default article is
+not what the story wants.
+
 These are composition recipes, not additional grammar. `P`, `A`, `B`, `C` and
 `J` stand for person names; `?b`, `?p` and `?r` are bound variables.
 Projections are `area of S`, `row of S`, `column of S` and `cell of S`: the
