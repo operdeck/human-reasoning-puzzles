@@ -1257,9 +1257,7 @@ class ExpressionWords:
             return counted, person, atom.target.token.text.partition(":")[2]
         return None
 
-    def _shares_area_idiom(
-        self, formula: lang.Formula, bindings: dict[str, Shape]
-    ) -> str | None:
+    def _shares_area_idiom(self, formula: lang.Formula, bindings: dict[str, Shape]) -> str | None:
         """Say that a named person shares their area with others, instead of counting them."""
         if "number.compare" in self.phrases:
             return None
@@ -1327,9 +1325,7 @@ class ExpressionWords:
             )
         return None
 
-    def _role_area_idiom(
-        self, formula: lang.Quantified, bindings: dict[str, Shape]
-    ) -> str | None:
+    def _role_area_idiom(self, formula: lang.Quantified, bindings: dict[str, Shape]) -> str | None:
         """`every R in role:X: count (people in area of R) <op> n`, with no bound variable."""
         if (
             "quant.every" in self.phrases
@@ -1340,9 +1336,7 @@ class ExpressionWords:
             or not isinstance(formula.body, lang.NumberComparison)
         ):
             return None
-        own = self._own_area_count(
-            formula.body, allowed={formula.variables[0].text}
-        )
+        own = self._own_area_count(formula.body, allowed={formula.variables[0].text})
         if own is None or own[0].token.text != formula.variables[0].text:
             return None
         _, operator, count = own
@@ -1495,9 +1489,7 @@ class ExpressionWords:
             return idiom
         if idiom := self._area_population_idiom(value, bindings):
             return idiom
-        if isinstance(value, lang.Quantified) and (
-            idiom := self._role_area_idiom(value, bindings)
-        ):
+        if isinstance(value, lang.Quantified) and (idiom := self._role_area_idiom(value, bindings)):
             return idiom
         if isinstance(value, lang.NumberComparison) and (
             idiom := self._count_idiom(value, bindings)
