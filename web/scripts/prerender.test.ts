@@ -13,11 +13,13 @@ import {
   buildDate,
   DEFAULT_SITE,
   MURDOKU_CREDIT,
+  precacheEntries,
   prerender,
   puzzleId,
   renderPages,
   REPO,
   rootPath,
+  serviceWorker,
   siteAddress,
   SITE_NAME,
   sitemapDate,
@@ -107,7 +109,15 @@ describe("renderPages", () => {
       expect(page).toContain(`<meta name="apple-mobile-web-app-title" content="${APP_SHORT_NAME}" />`);
       expect(page).toContain('<meta name="apple-mobile-web-app-status-bar-style" content="default" />');
       expect(page).toContain('<meta name="theme-color" content="#ffffff" />');
+      expect(page).toContain(
+        'navigator.serviceWorker.register("/human-reasoning-puzzles/sw.js").catch(() => {});',
+      );
     }
+  });
+
+  it("gives the home page a base so the offline shell keeps its relative assets", () => {
+    const home = pageFor(render(), "index.html");
+    expect(home).toContain('<base href="/human-reasoning-puzzles/" />');
   });
 
   it("writes a manifest whose start, scope and icons follow SITE_URL", () => {
@@ -311,7 +321,7 @@ describe("hostile input", () => {
     });
     const page = pageFor(files, "p/ok/index.html");
     expect(page).not.toContain("<script>alert");
-    expect(page.match(/<script/g)).toHaveLength(2); // metadata and the built player
+    expect(page.match(/<script/g)).toHaveLength(3); // metadata, service-worker registration and the built player
     expect(page).toContain("&lt;/script&gt;");
     expect(page).toContain("\\u003c/script>");
   });
@@ -347,7 +357,7 @@ describe("prerender", () => {
     await writeFile(path.join(dist, "puzzles", "index.json"), JSON.stringify(index));
     const { puzzles, files } = await prerender({ distDir: dist });
     expect(puzzles).toBe(2);
-    expect(files).toHaveLength(7);
+    expect(files).toHaveLength(8);
     expect(await readFile(path.join(dist, "p", "first-case", "index.html"), "utf8")).toContain(
       "The first case",
     );
@@ -355,6 +365,10 @@ describe("prerender", () => {
     expect(JSON.parse(await readFile(path.join(dist, "manifest.json"), "utf8")).start_url).toBe(
       "/human-reasoning-puzzles/",
     );
+    const worker = await readFile(path.join(dist, "sw.js"), "utf8");
+    expect(worker).toContain('const ROOT = "/human-reasoning-puzzles/";');
+    expect(worker).toContain('"/human-reasoning-puzzles/puzzles/index.json"');
+    expect(files.map((file) => file.path)).toContain("sw.js");
     await rm(dist, { recursive: true, force: true });
   });
 });
@@ -375,6 +389,45 @@ describe("app icons", () => {
       // Colour type 4 and 6 carry an alpha channel; iOS paints transparency black.
       expect([4, 6]).not.toContain(view.getUint8(25));
     }
+  });
+});
+
+describe("service worker", () => {
+  it("precaches the shell and every bundle, keyed by a content version", async () => {
+    const dist = await mkdtemp(path.join(tmpdir(), "prerender-sw-"));
+    for (const dir of ["puzzles", "assets", "murdoku", path.join("p", "first-case")]) {
+      await mkdir(path.join(dist, dir), { recursive: true });
+    }
+    await writeFile(path.join(dist, "index.html"), "shell");
+    await writeFile(path.join(dist, "murdoku", "index.html"), "landing");
+    await writeFile(path.join(dist, "p", "first-case", "index.html"), "page");
+    await writeFile(path.join(dist, "puzzles", "index.json"), "{}");
+    await writeFile(path.join(dist, "puzzles", "first-case.svg"), "<svg/>");
+    await writeFile(path.join(dist, "assets", "app.js"), "js");
+    await writeFile(path.join(dist, "manifest.json"), "{}");
+    await writeFile(path.join(dist, "sw.js"), "old");
+    await writeFile(path.join(dist, "sitemap.xml"), "");
+    await writeFile(path.join(dist, "robots.txt"), "");
+    const entries = await precacheEntries("/human-reasoning-puzzles/", dist);
+    expect(entries.map((entry) => entry.url)).toEqual([
+      "/human-reasoning-puzzles/assets/app.js",
+      "/human-reasoning-puzzles/",
+      "/human-reasoning-puzzles/manifest.json",
+      "/human-reasoning-puzzles/murdoku/",
+      "/human-reasoning-puzzles/puzzles/first-case.svg",
+      "/human-reasoning-puzzles/puzzles/index.json",
+    ]);
+    const worker = serviceWorker({
+      root: "/human-reasoning-puzzles/",
+      version: "abc123",
+      precache: entries.map((entry) => entry.url),
+    });
+    expect(worker).toContain('const ROOT = "/human-reasoning-puzzles/";');
+    expect(worker).toContain('const CACHE = "hrp-abc123";');
+    expect(worker).toContain('caches.match(ROOT)');
+    expect(worker).toContain('"/human-reasoning-puzzles/puzzles/index.json"');
+    expect(worker).not.toContain("p/first-case/index.html");
+    await rm(dist, { recursive: true, force: true });
   });
 });
 
