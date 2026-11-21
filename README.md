@@ -126,13 +126,16 @@ the outer `in` asks that the horse rider is in one of them. See
 </tr>
 </table>
 
-## Play in the browser
+## Play Online
 
 `web/` is a TypeScript + Vite player for every example, published to
 [GitHub Pages](https://operdeck.github.io/human-reasoning-puzzles/) by
 `.github/workflows/pages.yml` on pushes to `main`. Python is the single source of
 truth; the player reads `--export` bundles. See [Web interface](docs/web-interface.md)
 for setup, controls, notes, warnings and ground rules.
+
+<img align="right" src="docs/images/iphone-prrrdoku-icon.png" width="180"
+alt="Prrrdoku shown as an iPhone home-screen app">
 
 The same site installs as an iPhone home-screen app: open it in Safari, tap
 Share and choose *Add to Home Screen*, and it opens without Safari bars. It also
