@@ -86,6 +86,9 @@ describe("puzzle index", () => {
     expect(links.every((link) => link.hash === "")).toBe(true);
     expect(links[0].textContent).toBe("1. First case");
     expect(links[0].parentElement?.textContent).toContain("4×4 · Relationship checks");
+    expect(
+      [...document.querySelectorAll(".puzzle-list .meta")].map((node) => node.textContent),
+    ).toEqual(["4×4 · Relationship checks", "3×3 · Forced moves"]);
     const images = [...document.querySelectorAll<HTMLImageElement>(".family-thumbnail")];
     expect(images.map((image) => new URL(image.src).pathname)).toEqual([
       "/human-reasoning-puzzles/puzzles/first-case.svg",
@@ -129,7 +132,7 @@ describe("puzzle index", () => {
     await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(2));
     const items = [...document.querySelectorAll(".puzzle-list li")];
     expect(items[0].querySelector(".badge")?.textContent).toBe("beyond deduction");
-    expect(items[0].querySelector(".badge")?.getAttribute("title")).toContain("what_if");
+    expect(items[0].querySelector(".badge")?.getAttribute("title")).toContain("case analysis");
     expect(items[1].querySelector(".badge")).toBeNull();
   });
 

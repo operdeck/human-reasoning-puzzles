@@ -144,7 +144,7 @@ async function showIndex(current: () => boolean): Promise<void> {
                   ? [el("span", {
                       className: "badge",
                       textContent: "beyond deduction",
-                      title: "Only this solver's what_if case analysis closes this puzzle.",
+                      title: "Only this solver's case analysis closes this puzzle.",
                     })]
                   : []),
                 ...(entry.playable
