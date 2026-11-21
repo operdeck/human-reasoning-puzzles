@@ -24,6 +24,33 @@ import { pathToFileURL } from "node:url";
 export const SITE_NAME = "Human reasoning puzzles";
 export const REPO = "https://github.com/operdeck/human-reasoning-puzzles";
 export const DEFAULT_SITE = "https://operdeck.github.io/human-reasoning-puzzles";
+export const APP_NAME = "Human Reasoning Puzzles";
+export const APP_SHORT_NAME = "Puzzles";
+
+/** The site root path, with one leading and trailing slash: "/human-reasoning-puzzles/". */
+export function rootPath(address) {
+  const pathname = new URL(`${address}/`).pathname.replace(/\/+$/, "");
+  return `${pathname}/`;
+}
+
+/** The web app manifest, with absolute icon paths under `root`. */
+export function appManifest(root = "/human-reasoning-puzzles/") {
+  const at = (name) => `${root}${name}`;
+  return {
+    name: APP_NAME,
+    short_name: APP_SHORT_NAME,
+    start_url: root,
+    scope: root,
+    display: "standalone",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
+    icons: [
+      { src: at("icon-192.png"), sizes: "192x192", type: "image/png" },
+      { src: at("icon-512.png"), sizes: "512x512", type: "image/png" },
+    ],
+  };
+}
+
 // Credit where it is due: Murdoku is Manuel Garand's invention, not ours.
 export const MURDOKU_CREDIT =
   `Murdoku was invented by <a href="https://murdoku.com" ` +
@@ -90,9 +117,17 @@ export function puzzleId(entry, position) {
   return id;
 }
 
-function head({ title, description, canonical, image, jsonLd }, tags) {
+function head({ title, description, canonical, image, jsonLd }, tags, root = "/") {
   return `<meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="manifest" href="${esc(root)}manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="${esc(root)}icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="${esc(root)}apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="${APP_SHORT_NAME}" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#ffffff" />
     ${tags.map((tag) => `${tag}\n    `).join("")}<title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}" />
     <link rel="canonical" href="${esc(canonical)}" />
@@ -151,6 +186,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
     throw new Error("prerender: index.json has no puzzles array");
   }
   const address = siteAddress(site);
+  const root = rootPath(address);
   const buildDay = sitemapDate(lastmod, buildDate());
   const tags = verificationTags(built);
   const puzzles = index.puzzles;
@@ -189,6 +225,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
       },
     },
     tags,
+    root,
   );
   const homeBody = `<main id="app">
       <header><h1>${SITE_NAME}</h1>
@@ -225,6 +262,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
           },
         },
         tags,
+        root,
       ),
       `    <p><a href="../">← All puzzles</a></p>
     <h1>Murdoku online</h1>
@@ -264,6 +302,7 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
             },
           },
           tags,
+          root,
         ),
         `    <main id="app" data-puzzle-id="${esc(entry.id)}">
     <p><a href="./">← All puzzles</a>${isMurdoku(entry) ? ' · <a href="murdoku/">Murdoku</a>' : ""}</p>
@@ -299,6 +338,12 @@ export function renderPages({ index, built, site = DEFAULT_SITE, lastmod = build
   files.push({
     path: "robots.txt",
     contents: `User-agent: *\nAllow: /\n\nSitemap: ${address}/sitemap.xml\n`,
+  });
+  // 5. The web app manifest, so Safari can add the site to the home screen. The
+  // public copy in web/public is only for `npm run dev`; this one uses SITE_URL's path.
+  files.push({
+    path: "manifest.json",
+    contents: `${JSON.stringify(appManifest(root), null, 2)}\n`,
   });
   return files;
 }
