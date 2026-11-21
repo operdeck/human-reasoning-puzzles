@@ -797,7 +797,7 @@ def test_booklet_page_has_the_space_used_by_its_fit_estimates(tmp_path):
 
 
 def test_dense_puzzle_compacts_rules_without_dropping_them_or_the_question(tmp_path):
-    from csp.story import murdoku_rules
+    from csp.story import murdoku_reference_rules
 
     sizes = []
     for name in ("murder-hotel-2.txt", "murdoku_1_first_case.txt"):
@@ -807,7 +807,7 @@ def test_dense_puzzle_compacts_rules_without_dropping_them_or_the_question(tmp_p
         write_docx(text, output, source.parent)
         document = Document(str(output))
         bullets = [p for p in document.paragraphs if p.style.name == "List Bullet"]
-        assert [p.text for p in bullets] == murdoku_rules(text)
+        assert [p.text for p in bullets] == murdoku_reference_rules(text)
         assert load_presentation(text).question in _text(output)
         normal = document.styles["Normal"].font.size.pt
         sizes.append(
@@ -1073,18 +1073,25 @@ def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch, express
     assert seen["count_lines"] is False
 
 
-def test_the_booklet_prints_a_rule_the_intro_already_gave_once(tmp_path):
-    """Issue #152: the hotel's intro repeated Wouter's own rule as a second bullet."""
+def test_the_booklet_prints_intro_before_the_rules_reference(tmp_path):
+    from csp.story import phrase
+
     out = tmp_path / "hotel.docx"
-    assert main([str(example("wie-doet-het-met-wie-5.txt")), "--docx", str(out)]) == 0
+    source = example("wie-doet-het-met-wie-5.txt")
+    text = source.read_text()
+    presentation = load_presentation(text)
+    rules_heading = phrase(text, "doc.rules_title")
+    assert main([str(source), "--docx", str(out)]) == 0
+    document = Document(str(out))
+    paragraphs = [paragraph.text for paragraph in document.paragraphs]
     bullets = [
-        paragraph.text
-        for paragraph in Document(str(out)).paragraphs
-        if paragraph.style.name == "List Bullet"
+        paragraph.text for paragraph in document.paragraphs if paragraph.style.name == "List Bullet"
     ]
     wouter = (
         "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
         "met wie hij het doet: iemand in een badjas."
     )
-    assert sum(wouter in bullet for bullet in bullets) == 1
+    assert any(wouter in paragraph for paragraph in presentation.intro)
+    assert paragraphs.index(presentation.intro[0]) < paragraphs.index(rules_heading)
+    assert all(wouter not in bullet for bullet in bullets)
     assert len(bullets) == len(dict.fromkeys(bullets))
