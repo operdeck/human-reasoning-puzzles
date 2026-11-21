@@ -84,7 +84,9 @@ One or two lines, true for the verified solution (check against --explain).
   self-containedly, because it is printed under "Other clues" without the
   figure heading. Puzzle-specific `Rules:` statements join these
   entries too, under their semantic subject or the sole named figure anywhere in
-  a compound rule; otherwise they join "Other clues". Keep `Intro:` as written. The game-rules
+  a compound rule; otherwise they join "Other clues". Keep `Intro:` as written.
+  The web and mobile player show it above the puzzle, and the booklet prints it
+  before the reference rules; do not repeat it in the game-rules panel. That
   panel adds semantic clarifications and the disclaimer, not another list of
   puzzle-specific statements. Standard no-own-clues notes are hidden when a
   figure has a displayed rule or clue, preserving the rest of the description.
