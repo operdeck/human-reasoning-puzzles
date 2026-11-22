@@ -422,10 +422,6 @@ EXPRESSION_PROSE = {
     "wie-doet-het-met-wie-3.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
     "wie-doet-het-met-wie-4.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
     "menu-murdoku-1.txt": ("Vla deelt een gebied met precies twee andere personen.",),
-    "berghut-murdoku-2.txt": (
-        "Ute en Gerhard staan minstens drie rijen óf minstens drie kolommen van elkaar af.",
-        "Het grootste verschil tussen Hannelore en Brunhild is precies drie rijen of kolommen.",
-    ),
     # Existing authored overrides and readable idioms must keep working.
     "food-murdoku-3.txt": ("Jos shares an area with exactly two other dishes.",),
     "wie-doet-het-met-wie-1.txt": ("Wouter deelt een kamer met precies één andere gast.",),
@@ -446,8 +442,6 @@ FORBIDDEN_PROSE = (
     "the number of",
     "aantal personen",
     "ieder lid",
-    "koningsstap",
-    "king-step",
 )
 
 

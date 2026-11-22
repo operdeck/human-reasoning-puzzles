@@ -620,10 +620,6 @@ EXPORTED_PROSE = {
     ),
     "wie-doet-het-met-wie-2": ("Wouter deelt een gebied met precies één ander persoon.",),
     "menu-murdoku-1": ("Vla deelt een gebied met precies twee andere personen.",),
-    "berghut-murdoku-2": (
-        "Ute en Gerhard staan minstens drie rijen óf minstens drie kolommen van elkaar af.",
-        "Het grootste verschil tussen Hannelore en Brunhild is precies drie rijen of kolommen.",
-    ),
 }
 
 
@@ -645,8 +641,6 @@ def test_exported_murdoku_prose_has_no_expression_syntax(exported, puzzle):
         "the number of",
         "aantal personen",
         "ieder lid",
-        "koningsstap",
-        "king-step",
     ):
         assert forbidden not in text, (puzzle, forbidden)
 

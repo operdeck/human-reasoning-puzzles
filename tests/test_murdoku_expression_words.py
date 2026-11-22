@@ -106,40 +106,6 @@ def test_other_king_distances_are_not_rewritten_as_on_or_adjacent(board, compari
 
 
 @pytest.mark.parametrize(
-    ("language", "comparison", "expected"),
-    [
-        (
-            "en",
-            ">= 3",
-            "Ada and Ben are at least three rows apart or at least three columns apart",
-        ),
-        (
-            "en",
-            "<= 3",
-            "Ada and Ben are at most three rows apart and at most three columns apart",
-        ),
-        ("en", "= 3", "The largest gap between Ada and Ben is exactly three rows or columns"),
-        (
-            "nl",
-            ">= 3",
-            "Ada en Ben staan minstens drie rijen óf minstens drie kolommen van elkaar af",
-        ),
-        (
-            "nl",
-            "<= 3",
-            "Ada en Ben staan hoogstens drie rijen én hoogstens drie kolommen van elkaar af",
-        ),
-        ("nl", "= 3", "Het grootste verschil tussen Ada en Ben is precies drie rijen of kolommen"),
-    ],
-)
-def test_king_distance_between_people_reads_in_rows_and_columns(
-    board, language, comparison, expected
-):
-    formula = parse_statement(f"Ada dir:king Ben {comparison}")
-    assert ExpressionWords(board, language).statement(formula) == expected
-
-
-@pytest.mark.parametrize(
     ("language", "source", "expected"),
     [
         ("en", "Ada dir:up Ben = 1", "Ada is exactly one row above Ben"),

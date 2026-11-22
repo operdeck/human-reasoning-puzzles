@@ -57,9 +57,6 @@ iedere aap staan minstens twee personen"), `count (people in area:A) = count
 (people in area:B)` reads as a tie, and a population comparison may exclude
 further areas. Constant arithmetic is evaluated, so `1 + 1` never reaches the
 player, and a top-level conjunction of two full clauses becomes two sentences.
-Two named people at a king distance read in rows and columns: `P dir:king Q >= 3`
-says they are at least three rows or at least three columns apart, `<= 3` says
-both gaps are at most three, and `= 3` says the larger gap is exactly three.
 A shape without an idiom still falls back to the compositional templates; treat
 that as a gap to fill with a new idiom in `murdoku_expression_words.py`, not with
 per-puzzle `| wording`.
