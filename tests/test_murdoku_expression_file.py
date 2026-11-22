@@ -203,7 +203,7 @@ def test_expression_figure_clues_use_syntax_not_custom_wording_for_ownership():
     assert clue_paragraphs(text, {1: "A replacement"}, expressions=clues) == [
         "Ada is not in row 2.",
         "A replacement.",
-        "(Ada is in row 1) and (Ben is in column 1).",
+        "Ada is in row 1. Ben is in column 1.",
     ]
 
 

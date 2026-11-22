@@ -202,6 +202,45 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.least_populated.free": (
             "{area} has fewer people than every other area containing a free cell"
         ),
+        "idiom.shares_area.one": "{person} shares an area with {quantifier} one other person",
+        "idiom.shares_area.many": (
+            "{person} shares an area with {quantifier} {count} other people"
+        ),
+        "idiom.shares_area.attribute.one": (
+            "{person} shares an area with exactly one other person, and that person is {attribute}"
+        ),
+        "idiom.shares_area.attribute.many": (
+            "{person} shares an area with exactly {count} other people, "
+            "and each of them is {attribute}"
+        ),
+        "idiom.shares_area.role.one": (
+            "{person} shares an area with exactly one other person, "
+            "and that person holds the {role} role"
+        ),
+        "idiom.shares_area.role.many": (
+            "{person} shares an area with exactly {count} other people, "
+            "and each of them holds the {role} role"
+        ),
+        "idiom.shared_area_every": (
+            "{person} shares an area with every {attribute} and nobody else"
+        ),
+        "idiom.role_area.one": "Every {role} has {quantifier} {count} person in their area",
+        "idiom.role_area.many": "Every {role} has {quantifier} {count} people in their area",
+        "idiom.areas_same_population": "{first} and {second} have the same number of people",
+        "idiom.area_more_population": "{first} has more people than {second}",
+        "idiom.area_fewer_population": "{first} has fewer people than {second}",
+        "idiom.population.more.other": (
+            "{area} has more people than every area other than {others}"
+        ),
+        "idiom.population.fewer.other": (
+            "{area} has fewer people than every area other than {others}"
+        ),
+        "idiom.population.more.free.other": (
+            "{area} has more people than every area containing a free cell other than {others}"
+        ),
+        "idiom.population.fewer.free.other": (
+            "{area} has fewer people than every area containing a free cell other than {others}"
+        ),
     },
     "nl": {
         "idiom.every_area_someone": "In elk van de {areas} is minstens één van de {people}",
@@ -390,6 +429,49 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.least_populated.free": (
             "{area} heeft minder personen dan ieder ander gebied met een vrij vakje"
         ),
+        "idiom.shares_area.one": "{person} deelt een gebied met {quantifier} één ander persoon",
+        "idiom.shares_area.many": (
+            "{person} deelt een gebied met {quantifier} {count} andere personen"
+        ),
+        "idiom.shares_area.attribute.one": (
+            "{person} deelt een gebied met precies één ander persoon, en dat is {attribute}"
+        ),
+        "idiom.shares_area.attribute.many": (
+            "{person} deelt een gebied met precies {count} andere personen, "
+            "en elk van hen is {attribute}"
+        ),
+        "idiom.shares_area.role.one": (
+            "{person} deelt een gebied met precies één ander persoon, "
+            "en dat is iemand met de rol {role}"
+        ),
+        "idiom.shares_area.role.many": (
+            "{person} deelt een gebied met precies {count} andere personen, "
+            "en elk van hen heeft de rol {role}"
+        ),
+        "idiom.shared_area_every": (
+            "{person} deelt een gebied met iedere {attribute} en met niemand anders"
+        ),
+        "idiom.role_area.one": (
+            "In het gebied van iedere {role} staat {quantifier} {count} persoon"
+        ),
+        "idiom.role_area.many": (
+            "In het gebied van iedere {role} staan {quantifier} {count} personen"
+        ),
+        "idiom.areas_same_population": "{first} en {second} hebben evenveel personen",
+        "idiom.area_more_population": "{first} heeft meer personen dan {second}",
+        "idiom.area_fewer_population": "{first} heeft minder personen dan {second}",
+        "idiom.population.more.other": (
+            "{area} heeft meer personen dan elk gebied behalve {others}"
+        ),
+        "idiom.population.fewer.other": (
+            "{area} heeft minder personen dan elk gebied behalve {others}"
+        ),
+        "idiom.population.more.free.other": (
+            "{area} heeft meer personen dan elk gebied met een vrij vakje behalve {others}"
+        ),
+        "idiom.population.fewer.free.other": (
+            "{area} heeft minder personen dan elk gebied met een vrij vakje behalve {others}"
+        ),
     },
 }
 
@@ -461,6 +543,17 @@ def feature_name(
             return article(noun, True)
         return given
     return article(name.replace("_", " "), many)
+
+
+def literal_number(value: lang.Number) -> int | None:
+    """The value of a constant number such as `1 + 1`, or None when it counts something."""
+    if isinstance(value, lang.Integer):
+        return int(value.value.text)
+    if isinstance(value, lang.Arithmetic) and value.operator.text in {"+", "-"}:
+        left, right = literal_number(value.left), literal_number(value.right)
+        if left is not None and right is not None:
+            return left + right if value.operator.text == "+" else left - right
+    return None
 
 
 @dataclass
@@ -1017,6 +1110,8 @@ class ExpressionWords:
                 assert_never(value)
 
     def _number(self, value: lang.Number, bindings: dict[str, Shape]) -> str:
+        if (literal := literal_number(value)) is not None:
+            return str(literal)
         match value:
             case lang.Integer(value=token):
                 return token.text
@@ -1091,17 +1186,276 @@ class ExpressionWords:
             target=target,
         )
 
+    def _own_area_person(
+        self, operand: lang.Operand, allowed: Collection[str] = ()
+    ) -> lang.Name | None:
+        """The person (or allowed bound variable) whose own area is counted."""
+        if (
+            isinstance(operand, lang.Filter)
+            and isinstance(operand.source, lang.Name)
+            and operand.source.token.text == "people"
+            and operand.operator.text == "in"
+            and operand.measure is None
+            and isinstance(operand.target, lang.Projection)
+            and operand.target.kind.text == "area"
+            and isinstance(operand.target.operand, lang.Name)
+            and (
+                operand.target.operand.token.text in self.board.people
+                or operand.target.operand.token.text in allowed
+            )
+        ):
+            return operand.target.operand
+        return None
+
+    def _own_area_count(
+        self, formula: lang.NumberComparison, allowed: Collection[str] = ()
+    ) -> tuple[lang.Name, str, int] | None:
+        """`count (people in area of P) <op> n`, with a constant n."""
+        if formula.operator.text not in {"=", ">=", "<="} or not isinstance(
+            formula.left, lang.Count
+        ):
+            return None
+        person = self._own_area_person(formula.left.operand, allowed)
+        count = literal_number(formula.right)
+        if person is None or count is None:
+            return None
+        return person, formula.operator.text, count
+
+    def _count_word(self, count: int) -> str:
+        names = NUMBERS[self.language]
+        return names[count] if 0 <= count < len(names) else str(count)
+
+    def _attribute_predicate(self, name: str) -> str:
+        """One attribute holder as a singular noun phrase, e.g. 'a food' or 'een dier'."""
+        given = self.names.get(name, name.replace("_", " "))
+        if "name.attribute" in self.phrases:
+            return self._phrase("name.attribute", name=given)
+        words = given.split()
+        if len(words) > 1 and words[0].lower() in {"de", "het", "the"}:
+            given = " ".join(words[1:])
+        if self.language == "en" and given[:1].lower() in "aeiou":
+            return self._phrase("noun.an", name=given)
+        return self._phrase("noun.a", name=given)
+
+    def _area_except_person(self, operand: lang.Operand) -> lang.Name | None:
+        """`(people except P) in area of P` or `(people in area of P) except P`."""
+        if (
+            isinstance(operand, lang.Filter)
+            and isinstance(operand.source, lang.Difference)
+            and isinstance(operand.source.left, lang.Name)
+            and operand.source.left.token.text == "people"
+            and isinstance(operand.source.right, lang.Name)
+            and operand.operator.text == "in"
+            and operand.measure is None
+            and isinstance(operand.target, lang.Projection)
+            and operand.target.kind.text == "area"
+            and isinstance(operand.target.operand, lang.Name)
+            and operand.target.operand.token.text == operand.source.right.token.text
+        ):
+            return operand.source.right
+        if (
+            isinstance(operand, lang.Difference)
+            and isinstance(operand.left, lang.Filter)
+            and isinstance(operand.left.source, lang.Name)
+            and operand.left.source.token.text == "people"
+            and operand.left.operator.text == "in"
+            and operand.left.measure is None
+            and isinstance(operand.left.target, lang.Projection)
+            and operand.left.target.kind.text == "area"
+            and isinstance(operand.left.target.operand, lang.Name)
+            and isinstance(operand.right, lang.Name)
+            and operand.right.token.text == operand.left.target.operand.token.text
+        ):
+            return operand.right
+        return None
+
+    def _shared_area_attribute(
+        self, formula: lang.Formula
+    ) -> tuple[lang.NumberComparison, lang.Name, str, str] | None:
+        """`count (people in area of P) = n and every other person there is A or role R`."""
+        if not isinstance(formula, lang.Binary) or formula.operator.text != "and":
+            return None
+        for counted, atom in ((formula.left, formula.right), (formula.right, formula.left)):
+            if (
+                not isinstance(counted, lang.NumberComparison)
+                or not isinstance(atom, lang.Atom)
+                or atom.determiner is None
+                or atom.determiner.text != "every"
+                or atom.operator.text != "is"
+                or atom.measure is not None
+                or not isinstance(atom.target, lang.Name)
+                or not atom.target.token.text.startswith(("attribute:", "role:"))
+                or (isinstance(atom.subject, lang.Filter) and atom.subject.measure is not None)
+            ):
+                continue
+            person = self._area_except_person(atom.subject)
+            if person is None or person.token.text not in self.board.people:
+                continue
+            kind, _, name = atom.target.token.text.partition(":")
+            return counted, person, kind, name
+        return None
+
+    def _shares_area_idiom(self, formula: lang.Formula, bindings: dict[str, Shape]) -> str | None:
+        """Say that a named person shares their area with others, instead of counting them."""
+        if "number.compare" in self.phrases:
+            return None
+        combined = self._shared_area_attribute(formula)
+        if combined is not None:
+            if "bool.and" in self.phrases:
+                return None
+            counted, person, kind, name = combined
+            own = self._own_area_count(counted)
+            if own is None or own[0].token.text != person.token.text or own[1] != "=":
+                return None
+            others = own[2] - 1
+            if others < 1:
+                return None
+            size = "one" if others == 1 else "many"
+            if kind == "role":
+                return self._phrase(
+                    f"idiom.shares_area.role.{size}",
+                    person=self._name(person.token),
+                    count=self._count_word(others),
+                    role=self.names.get(name, name.replace("_", " ")),
+                )
+            return self._phrase(
+                f"idiom.shares_area.attribute.{size}",
+                person=self._name(person.token),
+                count=self._count_word(others),
+                attribute=self._attribute_predicate(name),
+            )
+        if not isinstance(formula, lang.NumberComparison):
+            return None
+        own = self._own_area_count(formula)
+        if own is None:
+            return None
+        person, operator, count = own
+        others = count - 1
+        if others < 1:
+            return None
+        quantifier = {"=": "exactly", ">=": "at_least", "<=": "at_most"}[operator]
+        key = "idiom.shares_area." + ("one" if others == 1 else "many")
+        return self._phrase(
+            key,
+            person=self._name(person.token),
+            quantifier=self._phrase(f"count.{quantifier}"),
+            count=self._count_word(others),
+        )
+
+    def _shared_area_set_idiom(
+        self, formula: lang.Formula, bindings: dict[str, Shape]
+    ) -> str | None:
+        """`(people in area of P) = (P, attribute:A)` says P's area holds only A people."""
+        if "set.equal" in self.phrases or not isinstance(formula, lang.SetComparison):
+            return None
+        if formula.operator.text != "=":
+            return None
+        for occupants, others in ((formula.left, formula.right), (formula.right, formula.left)):
+            person = self._own_area_person(occupants)
+            if person is None or not isinstance(others, lang.Union):
+                continue
+            items = [item.token.text for item in others.items if isinstance(item, lang.Name)]
+            if len(items) != len(others.items) or person.token.text not in items:
+                continue
+            attribute = next(
+                (item.partition(":")[2] for item in items if item.startswith("attribute:")),
+                None,
+            )
+            if attribute is None:
+                continue
+            return self._phrase(
+                "idiom.shared_area_every",
+                person=self._name(person.token),
+                attribute=self.names.get(attribute, attribute.replace("_", " ")),
+            )
+        return None
+
+    def _role_area_idiom(self, formula: lang.Quantified, bindings: dict[str, Shape]) -> str | None:
+        """`every R in role:X: count (people in area of R) <op> n`, with no bound variable."""
+        if (
+            "quant.every" in self.phrases
+            or formula.quantifier.text != "every"
+            or len(formula.variables) != 1
+            or not isinstance(formula.source, lang.Name)
+            or not formula.source.token.text.startswith("role:")
+            or not isinstance(formula.body, lang.NumberComparison)
+        ):
+            return None
+        own = self._own_area_count(formula.body, allowed={formula.variables[0].text})
+        if own is None or own[0].token.text != formula.variables[0].text:
+            return None
+        _, operator, count = own
+        role = formula.source.token.text.partition(":")[2]
+        quantifier = {"=": "exactly", ">=": "at_least", "<=": "at_most"}[operator]
+        key = "idiom.role_area." + ("one" if count == 1 else "many")
+        return self._phrase(
+            key,
+            role=self.names.get(role, role.replace("_", " ")),
+            quantifier=self._phrase(f"count.{quantifier}"),
+            count=self._count_word(count),
+        )
+
+    def _area_people_count(self, number: lang.Number) -> str | None:
+        """`count (people in area:X)` as the rendered area, for population comparisons."""
+        if not isinstance(number, lang.Count) or not isinstance(number.operand, lang.Filter):
+            return None
+        filtered = number.operand
+        if (
+            not isinstance(filtered.source, lang.Name)
+            or filtered.source.token.text != "people"
+            or filtered.operator.text != "in"
+            or filtered.measure is not None
+            or not isinstance(filtered.target, lang.Name)
+            or not filtered.target.token.text.startswith("area:")
+            or infer_operand(self.board, filtered.target).minimum != 1
+        ):
+            return None
+        return self._operand(filtered.target, {})
+
+    def _area_population_idiom(
+        self, formula: lang.Formula, bindings: dict[str, Shape]
+    ) -> str | None:
+        """Compare the populations of two named areas without spelling out both counts."""
+        if "number.compare" in self.phrases or not isinstance(formula, lang.NumberComparison):
+            return None
+        key = {
+            "=": "idiom.areas_same_population",
+            ">": "idiom.area_more_population",
+            "<": "idiom.area_fewer_population",
+        }.get(formula.operator.text)
+        if key is None:
+            return None
+        first = self._area_people_count(formula.left)
+        second = self._area_people_count(formula.right)
+        if first is None or second is None or first == second:
+            return None
+        return self._phrase(key, first=first, second=second)
+
+    def _area_names(self, operand: lang.Operand) -> list[lang.Name] | None:
+        """The named areas of an `area:A` or comma-union exclusion list."""
+        if isinstance(operand, lang.Name) and operand.token.text.startswith("area:"):
+            return [operand]
+        if isinstance(operand, lang.Union):
+            names: list[lang.Name] = []
+            for item in operand.items:
+                part = self._area_names(item)
+                if part is None:
+                    return None
+                names.extend(part)
+            return names
+        return None
+
     def _population_idiom(self, formula: lang.Quantified) -> str | None:
         if (
             formula.quantifier.text != "every"
             or len(formula.variables) != 1
             or not isinstance(formula.source, lang.Difference)
-            or not isinstance(formula.source.right, lang.Name)
-            or not formula.source.right.token.text.startswith("area:")
-            or infer_operand(self.board, formula.source.right).maximum != 1
             or not isinstance(formula.body, lang.NumberComparison)
             or formula.body.operator.text not in {"<", ">"}
         ):
+            return None
+        excluded = self._area_names(formula.source.right)
+        if not excluded:
             return None
         domain = formula.source.left
         all_areas = isinstance(domain, lang.Name) and domain.token.text == "areas"
@@ -1116,28 +1470,38 @@ class ExpressionWords:
         if not (all_areas or free_areas):
             return None
         comparison = formula.body
-        if not isinstance(comparison.left, lang.Count) or not isinstance(
-            comparison.right, lang.Count
+        baseline = self._area_people_count(comparison.right)
+        if baseline is None:
+            return None
+        operand = comparison.left.operand if isinstance(comparison.left, lang.Count) else None
+        if (
+            not isinstance(operand, lang.Filter)
+            or not isinstance(operand.source, lang.Name)
+            or operand.source.token.text != "people"
+            or operand.operator.text != "in"
+            or operand.measure is not None
+            or not isinstance(operand.target, lang.Name)
+            or operand.target.token.text != formula.variables[0].text
         ):
             return None
-        targets = []
-        for count in (comparison.left, comparison.right):
-            operand = count.operand
-            if (
-                not isinstance(operand, lang.Filter)
-                or not isinstance(operand.source, lang.Name)
-                or operand.source.token.text != "people"
-                or operand.operator.text != "in"
-                or not isinstance(operand.target, lang.Name)
-            ):
-                return None
-            targets.append(operand.target.token.text)
-        if targets != [formula.variables[0].text, formula.source.right.token.text]:
+        baseline_name = next(
+            (name for name in excluded if self._operand(name, {}) == baseline), None
+        )
+        if baseline_name is None:
             return None
+        others = [name for name in excluded if name.token.text != baseline_name.token.text]
+        if others:
+            direction = "more" if comparison.operator.text == "<" else "fewer"
+            key = f"idiom.population.{direction}" + (".free" if free_areas else "") + ".other"
+            return self._phrase(
+                key,
+                area=baseline,
+                others=", ".join(self._operand(name, {}) for name in others),
+            )
         key = "idiom.most_populated" if comparison.operator.text == "<" else "idiom.least_populated"
         if free_areas:
             key += ".free"
-        return self._phrase(key, area=self._operand(formula.source.right, {}))
+        return self._phrase(key, area=baseline)
 
     def _formula(self, value: lang.Formula, bindings: dict[str, Shape]) -> str:
         if (
@@ -1163,6 +1527,14 @@ class ExpressionWords:
         if isinstance(value, lang.Atom) and (idiom := self._one_step_from_object(value, bindings)):
             return idiom
         if isinstance(value, lang.Atom) and (idiom := self._near_king(value, bindings)):
+            return idiom
+        if idiom := self._shared_area_set_idiom(value, bindings):
+            return idiom
+        if idiom := self._shares_area_idiom(value, bindings):
+            return idiom
+        if idiom := self._area_population_idiom(value, bindings):
+            return idiom
+        if isinstance(value, lang.Quantified) and (idiom := self._role_area_idiom(value, bindings)):
             return idiom
         if isinstance(value, lang.NumberComparison) and (
             idiom := self._count_idiom(value, bindings)
@@ -1313,6 +1685,16 @@ class ExpressionWords:
         check_formula(self.board, statement.formula)
         if statement.wording is not None:
             return statement.wording
+        if idiom := self._shares_area_idiom(statement.formula, {}):
+            return idiom
+        if (
+            "bool.and" not in self.phrases
+            and isinstance(statement.formula, lang.Binary)
+            and statement.formula.operator.text == "and"
+        ):
+            left = self._formula(statement.formula.left, {}).rstrip(".")
+            right = self._formula(statement.formula.right, {}).rstrip(".")
+            return f"{left}. {right[:1].upper() + right[1:]}"
         formula = statement.formula
         if (
             isinstance(formula, lang.Quantified)
