@@ -101,6 +101,15 @@ PHRASES: dict[str, dict[str, str]] = {
         "rel.dir.king.near": "on or directly next to",
         "idiom.king.near": "{clause} (including diagonals and across area boundaries)",
         "idiom.king.not_near": "{clause} (not even diagonally, including across area boundaries)",
+        "idiom.king.at_least": (
+            "{first} and {second} are at least {count} rows apart or at least {count} columns apart"
+        ),
+        "idiom.king.at_most": (
+            "{first} and {second} are at most {count} rows apart and at most {count} columns apart"
+        ),
+        "idiom.king.exactly": (
+            "The largest gap between {first} and {second} is exactly {count} rows or columns"
+        ),
         "target.object.cell": "a square of {name}",
         "target.corner": "a board corner",
         "target.person.on": "someone on {target}",
@@ -325,6 +334,17 @@ PHRASES: dict[str, dict[str, str]] = {
         "idiom.king.near": "{clause} (ook schuin, en dit geldt zelfs over gebiedsgrenzen heen)",
         "idiom.king.not_near": (
             "{clause} (ook niet schuin, en dit geldt zelfs over gebiedsgrenzen heen)"
+        ),
+        "idiom.king.at_least": (
+            "{first} en {second} staan minstens {count} rijen óf minstens {count} kolommen "
+            "van elkaar af"
+        ),
+        "idiom.king.at_most": (
+            "{first} en {second} staan hoogstens {count} rijen én hoogstens {count} kolommen "
+            "van elkaar af"
+        ),
+        "idiom.king.exactly": (
+            "Het grootste verschil tussen {first} en {second} is precies {count} rijen of kolommen"
         ),
         "target.object.cell": "een vakje van {name}",
         "target.corner": "een rasterhoek",
@@ -922,6 +942,29 @@ class ExpressionWords:
             target=target,
         )
         return self._phrase("idiom.king.not_near" if negated else "idiom.king.near", clause=clause)
+
+    def _king_distance_idiom(self, atom: lang.Atom, bindings: dict[str, Shape]) -> str | None:
+        """A `dir:king` bound between two named people, said in rows and columns."""
+        if (
+            atom.operator.text != "dir:king"
+            or atom.determiner is not None
+            or atom.measure is None
+            or atom.measure.comparison.text not in {"=", "<=", ">="}
+            or not self._distinct_people(atom.subject, atom.target)
+            or {"rel.dir.king", "rel.measure", "metric.king"}.intersection(self.phrases)
+        ):
+            return None
+        key = {
+            ">=": "idiom.king.at_least",
+            "<=": "idiom.king.at_most",
+            "=": "idiom.king.exactly",
+        }[atom.measure.comparison.text]
+        return self._phrase(
+            key,
+            first=self._operand(atom.subject, bindings),
+            second=self._operand(atom.target, bindings),
+            count=self._count_word(int(atom.measure.value.text)),
+        )
 
     def _target(
         self,
@@ -1527,6 +1570,8 @@ class ExpressionWords:
         if isinstance(value, lang.Atom) and (idiom := self._one_step_from_object(value, bindings)):
             return idiom
         if isinstance(value, lang.Atom) and (idiom := self._near_king(value, bindings)):
+            return idiom
+        if isinstance(value, lang.Atom) and (idiom := self._king_distance_idiom(value, bindings)):
             return idiom
         if idiom := self._shared_area_set_idiom(value, bindings):
             return idiom

@@ -9,7 +9,7 @@
 # schuldige: de enige avondmens naast de kachel.
 #
 # Sleutelclue: Hannelore/Gerhard hoogstens twee rijen; verder telt de
-# afstand in rijen, koningsafstand en ruimtes mee.
+# afstand in rijen, kolommen en ruimtes mee.
 
 Size: 8
 Language: nl
@@ -149,8 +149,8 @@ schuldige: attribute:avondmens
 
 Clues:
 Hannelore dir:rows Gerhard <= 2 | Hannelore en Gerhard staan hoogstens twee rijen van elkaar af.
-Ute dir:king Gerhard >= 3 | Ute en Gerhard staan minstens drie vakjes van elkaar af, waarbij de grootste afstand in rijen of kolommen telt.
-Hannelore dir:king Brunhild = 3 | Hannelore en Brunhild staan drie vakjes van elkaar af, waarbij de grootste afstand in rijen of kolommen telt.
+Ute dir:king Gerhard >= 3
+Hannelore dir:king Brunhild = 3
 Greta in area:terras | Greta staat op het terras.
 Ute in area:Kamer_Noord | Ute slaapt in Kamer Noord.
 Gunter dir:areas Gerhard = 1 | Gunter en Gerhard staan in ruimtes die aan elkaar grenzen.
