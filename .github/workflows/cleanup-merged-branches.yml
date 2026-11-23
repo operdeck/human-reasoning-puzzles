@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: Preview eligible deletions without deleting branches
+        description: Preview branches whose latest merged PR is at least 30 days old
         type: boolean
         default: true
 

@@ -9,6 +9,8 @@ async function cleanupMergedBranches({ github, context, core, dryRun }) {
     per_page: 100,
   });
   const mergedByBranch = new Map();
+  const retentionPeriodMs = 30 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
 
   for (const pullRequest of closedPullRequests) {
     if (
@@ -36,10 +38,21 @@ async function cleanupMergedBranches({ github, context, core, dryRun }) {
       .filter((pullRequest) => pullRequest.head.repo?.full_name === repositoryName)
       .map((pullRequest) => pullRequest.head.ref),
   );
+  const eligibleBranches = new Map();
   let deleted = 0;
   let skipped = 0;
 
   for (const [branch, pullRequest] of mergedByBranch) {
+    const mergedAt = Date.parse(pullRequest.merged_at);
+    if (!Number.isFinite(mergedAt) || now - mergedAt < retentionPeriodMs) {
+      core.info(`Keeping ${branch}: its latest merged pull request is less than 30 days old.`);
+      skipped += 1;
+      continue;
+    }
+    eligibleBranches.set(branch, pullRequest);
+  }
+
+  for (const [branch, pullRequest] of eligibleBranches) {
     if (openBranches.has(branch)) {
       core.info(`Keeping ${branch}: an open pull request uses it.`);
       skipped += 1;
