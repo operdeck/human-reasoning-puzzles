@@ -1,0 +1,35 @@
+name: Clean merged branches
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Preview eligible deletions without deleting branches
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-merged-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const { cleanupMergedBranches } = require("./.github/scripts/cleanup_merged_branches.js");
+            await cleanupMergedBranches({
+              github,
+              context,
+              core,
+              dryRun: context.eventName === "workflow_dispatch" && core.getInput("dry-run") === "true",
+            });
