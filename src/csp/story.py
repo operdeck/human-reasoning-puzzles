@@ -1202,6 +1202,9 @@ FAMILY_RULES = {
     "a border have the same colour; the dotted regions are coloured to start with.",
     "logicgrid": "Use the clues to match every item of each category with exactly one "
     "item of every other category.",
+    "rooms": "Give every person one room. Several people may share a room, a room may stay "
+    "empty, and a room never holds more than its capacity; the clues name rooms by their "
+    "properties and say who is together, apart, alone or where.",
 }
 
 # Which explanation (`cond.<key>` in PHRASES) covers each Murdoku clue kind.

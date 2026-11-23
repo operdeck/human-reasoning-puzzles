@@ -24,6 +24,7 @@ from csp import (
     mosaic,
     pattern,
     rectangles,
+    rooms,
     thermometers,
     towers,
     undead,
@@ -64,6 +65,7 @@ FAMILIES = (
     "numbrix",
     "kakuro",
     "kakurasu",
+    "rooms",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -1807,6 +1809,199 @@ def fresh(
         return fresh_kakuro(size, rng, comment)
     if family == "kakurasu":
         return fresh_kakurasu(size, rng, comment=comment)
+    if family == "rooms":
+        return fresh_rooms(size, rng, tier, comment)
     if family in SUDOKU_VARIANTS:
         return fresh_sudoku_variant(family, size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")
+
+
+ROOM_LABELS = (
+    "living room",
+    "kitchen",
+    "hall",
+    "bedroom",
+    "study",
+    "attic",
+    "cellar",
+    "porch",
+    "garden",
+    "shed",
+)
+ROOM_PROPERTIES = ("window", "fireplace", "mirror", "clock", "plant", "radio")
+ROOM_COLOURS = (
+    "#D9EAD3",
+    "#FADFB5",
+    "#F4CBC3",
+    "#C4DCF2",
+    "#E8D5F2",
+    "#FBE7C6",
+    "#CFE8F0",
+    "#E1D5E7",
+    "#FFE6CC",
+    "#D5E8D4",
+)
+ROOM_PEOPLE = ("Ada", "Ben", "Cleo", "Dirk", "Eva", "Finn", "Gus", "Hana", "Iris", "Jonas")
+
+
+def _room_regions(size: int, rng: random.Random, wanted: int) -> tuple[list[set[Cell]], int, int]:
+    """Carve a random plan of `wanted` connected rooms on a three-row grid."""
+    cols = max(3, -(-wanted // 3))
+    while cols * 3 < wanted + 2:  # leave plan cells for people to share a room
+        cols += 1
+    regions: list[set[Cell]] = [{(row, col)} for row in range(3) for col in range(cols)]
+
+    def neighbours(index: int) -> list[int]:
+        touching = set()
+        for row, col in regions[index]:
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                for other, cells in enumerate(regions):
+                    if other != index and (row + dr, col + dc) in cells:
+                        touching.add(other)
+        return sorted(touching)
+
+    while len(regions) > wanted:
+        index = rng.randrange(len(regions))
+        options = [
+            other
+            for other in neighbours(index)
+            if len(regions[index]) + len(regions[other]) <= min(4, size)
+        ]
+        if not options:
+            continue
+        other = rng.choice(options)
+        merged = regions[index] | regions[other]
+        regions[min(index, other)] = merged
+        del regions[max(index, other)]
+    return regions, 3, cols
+
+
+
+
+def fresh_rooms(
+    size: int, rng: random.Random, tier: str = "medium", comment: str = ""
+) -> str | None:
+    """A new rooms puzzle: a random plan, a random placement, and the clues true of it.
+
+    Clues are offered strongest first for an easy puzzle and weakest first for a
+    hard one, and every clue uniqueness does not need is dropped again. Each seed
+    carves its own plan, so two puzzles never share a board.
+    """
+    if not 3 <= size <= len(ROOM_PEOPLE):
+        raise ValueError(f"fresh rooms puzzles hold 3 to {len(ROOM_PEOPLE)} people")
+    people = ROOM_PEOPLE[:size]
+    regions, rows, cols = _room_regions(size, rng, size + 2)
+    keys = [chr(ord("a") + index) for index in range(len(regions))]
+    labels = list(ROOM_LABELS)
+    colours = list(ROOM_COLOURS)
+    rng.shuffle(regions)
+    rng.shuffle(labels)
+    rng.shuffle(colours)
+    room_cells = {key: sorted(cells) for key, cells in zip(keys, regions, strict=True)}
+    capacities = {key: min(len(cells), size) for key, cells in room_cells.items()}
+    plan = [
+        [
+            next(key for key, cells in room_cells.items() if (row, col) in cells)
+            for col in range(cols)
+        ]
+        for row in range(rows)
+    ]
+
+    free = dict(capacities)
+    where: dict[str, str] = {}
+    for person in rng.sample(people, len(people)):
+        room = rng.choice([key for key in keys if free[key]])
+        where[person] = room
+        free[room] -= 1
+
+    tags: dict[str, tuple[str, ...]] = {}
+    for name in rng.sample(ROOM_PROPERTIES, 2):
+        members = tuple(sorted(rng.sample(keys, rng.randint(1, min(3, len(keys) - 1)))))
+        if members not in tags.values():
+            tags[name] = members
+
+    puzzle = rooms.Puzzle(
+        tuple(
+            rooms.Room(key, labels[index], capacities[key], colours[index], tuple(room_cells[key]))
+            for index, key in enumerate(keys)
+        ),
+        tuple(tuple(row) for row in plan),
+        tags,
+        people,
+        (),
+        {},
+        {},
+        "en",
+    )
+
+    def rooms_in(area: str) -> tuple[str, ...]:
+        return tags.get(area, (area,))
+
+    found: set[tuple[int, str]] = set()
+
+    def add(rank: int, clue: rooms.ClueType) -> None:
+        if clue.holds(where, puzzle):
+            found.add((rank, rooms.format_clue(clue)))
+
+    def add_either(rank: int, clue: rooms.InRoom | rooms.Alone) -> None:
+        add(rank, clue if clue.holds(where, puzzle) else rooms.negate(clue))
+
+    for person in people:
+        for room in keys:
+            add_either(0 if where[person] == room else 1, rooms.InRoom(person, room))
+        for tag in tags:
+            add_either(2 if where[person] in tags[tag] else 3, rooms.InRoom(person, tag))
+        alone = sum(other == where[person] for other in where.values()) == 1
+        add_either(5 if alone else 7, rooms.Alone(person))
+        for other in people:
+            if other > person:
+                same = where[other] == where[person]
+                due = rooms.Company(person, other, same)
+                found.add((4 if same else 6, rooms.format_clue(due)))
+        for step in rooms.STEPS:
+            for other in people:
+                if other != person:
+                    add(9, rooms.Direction(person, step, other))
+    for area in (*keys, *tags):
+        total = sum(room in rooms_in(area) for room in where.values())
+        add(3, rooms.Population(area, "=", total))
+        if total:
+            add(8, rooms.Population(area, ">=", total))
+            add(8, rooms.Population(area, "<=", total))
+    for first, second in itertools.combinations(tags, 2):
+        for one, two in itertools.permutations(people, 2):
+            clause = (rooms.InRoom(one, first), rooms.InRoom(two, second))
+            if sum(atom.holds(where, puzzle) for atom in clause) == 1:
+                found.add((7, rooms.format_clue(rooms.Choice(1, clause))))
+
+    candidates = sorted(found)
+    if tier == "easy":
+        candidates.sort(key=lambda item: item[0])
+    elif tier == "hard":
+        candidates.sort(key=lambda item: -item[0])
+    else:
+        rng.shuffle(candidates)
+    order = list(dict.fromkeys(line for _, line in candidates))
+
+    def build(kept: set[str]) -> str:
+        lines = _header(comment, "Family: rooms", "Language: en", "Plan:")
+        lines += [" ".join(row) for row in plan]
+        lines += ["Rooms:"]
+        lines += [
+            f"{key}: {capacities[key]} {colours[index]} {labels[index]}"
+            for index, key in enumerate(keys)
+        ]
+        if tags:
+            lines += ["Tags:", *(f"{name}: {' '.join(members)}" for name, members in tags.items())]
+        lines += ["People:", *people, "Clues:", *sorted(kept, key=order.index)]
+        return "\n".join(lines) + "\n"
+
+    kept: set[str] = set()
+    for line in order:
+        kept.add(line)
+        if is_unique(build(kept)):
+            break
+    else:
+        return None
+    return build(thin(kept, build, rng))
+

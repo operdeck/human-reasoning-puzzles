@@ -46,6 +46,7 @@ FAMILY_LABELS = {
     "numbrix": "Numbrix",
     "thermometers": "Thermometers",
     "logicgrid": "Logic grid",
+    "rooms": "Rooms",
 }
 FIRST_CATEGORY = "demo"
 

@@ -62,6 +62,7 @@ from .pattern import cell_name as pattern_cell
 from .rectangles import Puzzle as Rectangles
 from .rectangles import parse_cell as rectangle_cell
 from .rectangles import parse_rect as rectangle_of
+from .rooms import Puzzle as RoomsPuzzle
 from .starbattle import Puzzle as StarBattle
 from .starbattle import cell_assignment as starbattle_cell_assignment
 from .starbattle import cell_name as starbattle_cell
@@ -1721,6 +1722,93 @@ def logicgrid_picture(
         canvas.text((8, y), clue_line, INK, small, anchor="lt")
         y += row_height
     return canvas
+
+
+def rooms_picture(
+    puzzle: RoomsPuzzle,
+    solution: Mapping[str, str] | None = None,
+    *,
+    cell: int = 88,
+    interactive: bool = False,
+) -> Canvas:
+    """The plan as a floor plan, with the numbered clues printed underneath.
+
+    Each room is filled with its colour, labelled with its capacity, and the
+    solution writes the people's names in their room. Two neighbouring rooms are
+    always drawn apart, so rooms that share a colour still read as separate.
+    """
+    solution = None if interactive else solution
+    margin = max(12, cell // 4)
+    small = max(9, cell // 6)
+    line_height = max(15, cell // 4)
+    board_width = puzzle.width * cell
+    clue_lines = [
+        line
+        for number, sentence in enumerate(puzzle.clue_lines, 1)
+        for line in textwrap.wrap(f"{number}. {sentence}", width=max(24, (board_width - 16) // 8))
+    ]
+    height = margin * 2 + puzzle.height * cell + line_height * (len(clue_lines) + 1)
+    canvas = Canvas(board_width + 2 * margin, height)
+    thick = max(5, cell // 20) | 1
+    for row in range(puzzle.height):
+        for col in range(puzzle.width):
+            key = puzzle.plan[row][col]
+            x, y = margin + col * cell, margin + row * cell
+            fill = (255, 255, 255) if key == "." else _hex_colour(puzzle.room(key).colour)
+            canvas.rectangle((x, y, x + cell - 1, y + cell - 1), fill=fill)
+    for row in range(puzzle.height):
+        for col in range(puzzle.width):
+            key = puzzle.plan[row][col]
+            x, y = margin + col * cell, margin + row * cell
+            if col + 1 < puzzle.width and puzzle.plan[row][col + 1] != key:
+                canvas.line((x + cell, y, x + cell, y + cell), fill=INK, width=thick)
+            if row + 1 < puzzle.height and puzzle.plan[row + 1][col] != key:
+                canvas.line((x, y + cell, x + cell, y + cell), fill=INK, width=thick)
+    for room in puzzle.rooms:
+        top, left = min(room.cells)
+        cols = [col for _, col in room.cells]
+        x, y = margin + left * cell, margin + top * cell
+        span = (max(cols) - min(cols) + 1) * cell
+        size = _fit(canvas, room.title, small, span * 0.9)
+        canvas.text((x + cell * 0.07, y + cell * 0.05), room.title, INK, size, anchor="la")
+        canvas.text(
+            (x + cell * 0.07, y + cell * 0.05 + size * 1.35),
+            f"max {room.capacity}",
+            INK,
+            max(8, int(size * 0.8)),
+            anchor="la",
+        )
+        people = [
+            person
+            for person in puzzle.people
+            if solution and solution.get(person) == room.key
+        ]
+        for index, person in enumerate(people):
+            py = y + cell * 0.5 + index * max(11, cell // 5)
+            canvas.text(
+                (x + cell * 0.09, py), person, SOLVED, max(10, cell // 7), anchor="la"
+            )
+    y = margin + puzzle.height * cell + line_height // 2
+    for line in clue_lines:
+        canvas.text((8, y), line, INK, small, anchor="lt")
+        y += line_height
+    if interactive:
+        _rect_cells(canvas, puzzle.height, puzzle.width, margin, cell)
+    return canvas
+
+
+def _hex_colour(value: str) -> tuple[int, int, int]:
+    """`#RRGGBB` as an RGB triple."""
+    digits = value.lstrip("#")
+    return (int(digits[0:2], 16), int(digits[2:4], 16), int(digits[4:6], 16))
+
+
+def _fit(canvas: Canvas, text: str, size: int, width: float) -> int:
+    """The largest font size at most `size` that keeps `text` inside `width`."""
+    chosen = max(8, size)
+    while chosen > 8 and canvas.textlength(text, chosen) > width:
+        chosen -= 1
+    return chosen
 
 
 def _line_count_picture(
