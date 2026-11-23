@@ -274,16 +274,41 @@ def test_population_comparison_excluding_another_area_keeps_the_scope(board, lan
 
 
 @pytest.mark.parametrize(
+    "formula",
+    [
+        "(people in area of Ada) = (Ada, attribute:trained)",
+        "(attribute:trained, Ada) = (people in area of Ada)",
+    ],
+)
+@pytest.mark.parametrize(
     ("language", "expected"),
     [
         ("en", "Ada shares an area with every helper and nobody else"),
         ("nl", "Ada deelt een gebied met iedere helper en met niemand anders"),
     ],
 )
-def test_shared_area_set_equality_names_the_companion_kind(board, language, expected):
-    formula = parse_statement("(people in area of Ada) = (Ada, attribute:trained)")
+def test_shared_area_set_equality_names_the_companion_kind(board, formula, language, expected):
     words = ExpressionWords(board, language, names={"trained": "helper"})
-    assert words.statement(formula) == expected
+    assert words.statement(parse_statement(formula)) == expected
+
+
+@pytest.mark.parametrize("language", ["en", "nl"])
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "(people in area of Ada) = (Ada, attribute:trained, Ben)",
+        "(Ada, attribute:trained, role:guard) = (people in area of Ada)",
+        "(people in area of Ada) = (Ada, attribute:trained, attribute:swift)",
+    ],
+)
+def test_shared_area_set_equality_keeps_extra_union_members(board, language, formula):
+    board.attributes["swift"] = frozenset({"Ben"})
+    statement = parse_statement(formula)
+    words = ExpressionWords(board, language)
+    compositional = ExpressionWords(
+        board, language, phrases={"set.equal": PHRASES[language]["set.equal"]}
+    )
+    assert words.statement(statement) == compositional.statement(statement)
 
 
 def test_constant_arithmetic_in_a_count_reads_as_its_value(board):
