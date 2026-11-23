@@ -556,6 +556,21 @@ footer .credit {
   color: var(--muted);
 }
 
+.solution-steps .spoiler {
+  border-left: 4px solid var(--accent);
+  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+}
+
+.solution-steps ol {
+  padding-left: 1.4rem;
+}
+
+.solution-steps li {
+  margin-bottom: 0.6rem;
+  overflow-wrap: anywhere;
+}
+
 /* --- panel: clues, rules and details ------------------------------------ */
 
 .panel {

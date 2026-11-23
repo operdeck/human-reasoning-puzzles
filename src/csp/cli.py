@@ -236,6 +236,15 @@ def pattern_story(
     return generic_story.explain(text, start.clone(), fired, kind=kind)
 
 
+def worked_solution(
+    kind: str, text: str, start: Model, fired: Sequence[tuple[str, Sequence[Step]]]
+) -> generic_story.Explanation:
+    """The worked solution shown beside unnumbered clues, as in the booklet and web player."""
+    if kind == "murdoku":
+        return murdoku_story.explain(text, start=start.clone(), fired=fired, numbered=False)
+    return pattern_story(kind, text, start, fired)
+
+
 def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) -> tuple[str, ...]:
     """One line per placement, in solving order, capped at `limit` lines."""
     lines = [
@@ -550,16 +559,14 @@ def _write_booklet(
         )
         if told and placed is not None:
             assert start is not None
-            narrative = murdoku_story.explain(
-                text, start=start.clone(), fired=fired.items, numbered=False
-            )
+            narrative = worked_solution(kind, text, start, fired.items)
             entry = dataclasses.replace(entry, steps=narrative.paragraphs)
         if kind != "murdoku":
             steps = solving_steps(fired.items)
             pattern_first = False
             if placed is not None:
                 assert start is not None
-                narrative = pattern_story(kind, text, start, fired.items)
+                narrative = worked_solution(kind, text, start, fired.items)
                 if narrative.complete:
                     steps = narrative.paragraphs
                     pattern_first = True
@@ -618,6 +625,7 @@ def _export(files: list[Path], out: Path, *, expressions: bool = False) -> int:
                 raise ValueError("not solved by the rules")
             picture = make_image(kind, text, interactive=True, expressions=told).to_svg()
             fired_rules = [rule for rule, _ in fired.items]
+            narrative = worked_solution(kind, text, model, fired.items)
             data = web.bundle(
                 text,
                 kind,
@@ -630,6 +638,8 @@ def _export(files: list[Path], out: Path, *, expressions: bool = False) -> int:
                 number=listed.number,
                 section=listed.section,
                 expressions=told,
+                steps=narrative.paragraphs,
+                steps_complete=narrative.complete,
             )
         except ValueError as exc:
             print(f"could not export {file.name}: {exc}", file=sys.stderr)

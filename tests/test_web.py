@@ -65,6 +65,26 @@ def test_every_example_is_exported_and_indexed(exported):
     assert not list(exported.glob("*-solution.svg"))
 
 
+@pytest.mark.parametrize(
+    "name", ["berghut/berghut-murdoku-1.txt", "sudoku_17_9x9_pointing.txt", "akari_1_6x6.txt"]
+)
+def test_bundles_carry_the_worked_solution_but_the_index_does_not(tmp_path, name):
+    source = example(name)
+    assert cli.main([str(source), "--export", str(tmp_path)]) == 0
+    bundle = _bundle(tmp_path, source.stem)
+    text = source.read_text()
+    kind = cli.detect(text)
+    model = cli._expression_model(text) if kind == "murdoku" else cli.load(text, kind).model
+    fired = cli._Fired()
+    cli.Solver(model.clone()).solve(on_step=fired.append_step)
+    told = cli.worked_solution(kind, text, model, fired.items)
+    assert told.complete
+    assert bundle["solutionSteps"] == {"paragraphs": list(told.paragraphs), "complete": True}
+    assert bundle["headings"]["solution_steps"]
+    index = (tmp_path / "index.json").read_text()
+    assert "solutionSteps" not in index and told.paragraphs[0] not in index
+
+
 def test_rectangles_bundles_make_each_numbered_cell_a_given(exported):
     from csp import rectangles
 

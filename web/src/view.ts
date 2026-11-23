@@ -42,6 +42,31 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+/** Inline Markdown emphasis (`**strong**`, `*em*`) as DOM nodes; never parsed as HTML. */
+export function emphasis(text: string): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  const stack: (DocumentFragment | HTMLElement)[] = [fragment];
+  const open: string[] = [];
+  for (const part of text.split(/(\*\*|\*)/)) {
+    if (part === "**" || part === "*") {
+      if (open[open.length - 1] === part) {
+        open.pop();
+        const closed = stack.pop() as HTMLElement;
+        stack[stack.length - 1].append(closed);
+      } else {
+        open.push(part);
+        stack.push(el(part === "**" ? "strong" : "em"));
+      }
+    } else if (part) {
+      stack[stack.length - 1].append(part);
+    }
+  }
+  if (open.length === 0) return fragment;
+  const plain = document.createDocumentFragment();
+  plain.append(text);
+  return plain;
+}
+
 /** What stands under the board: the licence, plus the credit when the board is a Murdoku. */
 export function footerParagraphs(license: string, family: string): HTMLElement[] {
   const paragraphs = [
@@ -395,10 +420,17 @@ export class PuzzleView {
       }
     }
 
+    const dutch = b.language === "nl";
+    sections.push([
+      "solution",
+      this.heading("solution_steps", dutch ? "Oplossingsstappen" : "Solution steps"),
+      this.solutionSteps(),
+    ]);
+
     const tabs = el("div", { className: "tabs" });
     tabs.setAttribute("role", "tablist");
-    const tabbed = b.combineExtras ? extras.length > 0 : Boolean(b.objects?.length);
-    const aside = el("aside", { className: `panel${tabbed ? " with-details" : ""}` }, tabs);
+    // The solution steps are always a tab of their own, so they never show unasked.
+    const aside = el("aside", { className: "panel with-details" }, tabs);
     const select = (name: string) => {
       for (const node of aside.querySelectorAll<HTMLElement>("[data-tab]")) {
         node.classList.toggle("active", node.dataset.tab === name);
@@ -435,6 +467,39 @@ export class PuzzleView {
     }
     select(sections[0][0]);
     return aside;
+  }
+
+  /** The worked solution, read-only, behind a spoiler warning. */
+  private solutionSteps(): HTMLElement {
+    const b = this.bundle;
+    const dutch = b.language === "nl";
+    const steps = b.solutionSteps;
+    const body = el("div", { className: "solution-steps" });
+    if (!steps?.paragraphs.length) {
+      body.append(el("p", {
+        className: "note",
+        textContent: this.heading("steps_unavailable", dutch
+          ? "Voor deze puzzel zijn geen oplossingsstappen beschikbaar."
+          : "No solution steps are available for this puzzle."),
+      }));
+      return body;
+    }
+    body.append(el("p", {
+      className: "spoiler",
+      textContent: this.heading("spoiler", dutch
+        ? "Spoiler: de stappen hieronder verklappen de oplossing."
+        : "Spoiler: the steps below reveal the solution."),
+    }));
+    if (!steps.complete) {
+      body.append(el("p", {
+        className: "note",
+        textContent: this.heading("steps_incomplete", dutch
+          ? "Deze stappen leiden niet tot de hele oplossing; de rest wordt hier niet uitgelegd."
+          : "These steps do not reach the whole solution; the rest is not explained here."),
+      }));
+    }
+    body.append(el("ol", {}, ...steps.paragraphs.map((paragraph) => el("li", {}, emphasis(paragraph)))));
+    return body;
   }
 
   private clueBox(): HTMLInputElement {

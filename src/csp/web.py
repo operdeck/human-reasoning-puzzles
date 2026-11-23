@@ -12,7 +12,7 @@ bundle, with `playable` false, so the site can show them read-only.
 """
 
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -42,7 +42,9 @@ from .story import (
     role_list,
 )
 
-SCHEMA = 3  # 3 replaced `conditions` with the board `key`; 2 added `deductive`
+SCHEMA = (
+    4  # 4 added `solutionSteps`; 3 replaced `conditions` with the board `key`; 2 added `deductive`
+)
 LICENSE = (
     "\u00a9 Otto Perdeck. All rights reserved. You may play these puzzles on this site; "
     "any other use needs the author's written permission."
@@ -234,10 +236,14 @@ def bundle(
     number: int = 0,
     section: str = "",
     expressions: bool = False,
+    steps: Sequence[str] = (),
+    steps_complete: bool = False,
 ) -> dict[str, Any]:
     """The JSON-ready bundle of one puzzle; `model` is compiled but not yet solved.
 
     `number` and `section` place it in the collection (see `collection.arrange`).
+    `steps` are the worked solution's paragraphs (inline Markdown emphasis only),
+    and `steps_complete` says whether they account for the whole solution.
     """
     display_name = display_family(text, kind)
     family_label = FAMILY_LABELS.get(display_name, FAMILY_LABELS[kind])
@@ -258,6 +264,15 @@ def bundle(
         out |= _murdoku(text, solution, expressions=expressions)
     else:
         out |= _family(text, kind, model, solution, picture)
+    if steps:
+        out["solutionSteps"] = {"paragraphs": list(steps), "complete": steps_complete}
+    out["headings"] = {
+        **out.get("headings", {}),
+        "solution_steps": phrase(text, "web.solution_steps"),
+        "spoiler": phrase(text, "web.spoiler"),
+        "steps_incomplete": phrase(text, "web.steps_incomplete"),
+        "steps_unavailable": phrase(text, "web.steps_unavailable"),
+    }
     return out
 
 

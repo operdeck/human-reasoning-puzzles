@@ -75,6 +75,7 @@ export interface Bundle {
   attributes?: Named[];
   roles?: Named[];
   objects?: Named[];
+  solutionSteps?: { paragraphs: string[]; complete: boolean };
 }
 
 export interface State {

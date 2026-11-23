@@ -461,7 +461,7 @@ describe("palette", () => {
     expect(extras.querySelector("svg circle")).not.toBeNull();
     expect(extras.querySelector("svg path")).not.toBeNull();
     tab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-    expect(document.activeElement?.id).toBe("tab-clues");
+    expect(document.activeElement?.id).toBe("tab-solution");
     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
     expect(document.activeElement?.id).toBe("tab-extras");
     tab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
@@ -494,6 +494,70 @@ describe("palette", () => {
     expect(root.querySelector(`#${tabs[1].getAttribute("aria-controls")}`)?.getAttribute("role")).toBe("tabpanel");
     tabs[1].dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
     expect(document.activeElement).toBe(tabs[0]);
+  });
+
+  describe("solution steps", () => {
+    const steps = {
+      paragraphs: ["**Singles.** **r1c1 = Ada** (the only *free* square)", "Then <b>Bo</b> = r2c2."],
+      complete: true,
+    };
+
+    it("puts them in a last tab behind a spoiler warning, even without other details", () => {
+      const root = mount({ family: "sudoku", solutionSteps: steps });
+      const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+      expect(root.querySelector(".panel.with-details")).not.toBeNull();
+      expect(tabs.map((tab) => tab.id)).toEqual(["tab-rules", "tab-solution"]);
+      expect(tabs[1].textContent).toBe("Solution steps");
+      const solution = root.querySelector<HTMLElement>("#section-solution")!;
+      expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+      expect(solution.classList.contains("active")).toBe(false);
+      tabs[1].click();
+      expect(solution.classList.contains("active")).toBe(true);
+      const first = solution.querySelector(".solution-steps")!.firstElementChild!;
+      expect(first.className).toBe("spoiler");
+      expect(first.textContent).toMatch(/^Spoiler/);
+      const items = solution.querySelectorAll("li");
+      expect(items).toHaveLength(2);
+      expect(items[0].querySelector("strong")?.textContent).toBe("Singles.");
+      expect(items[0].querySelector("em")?.textContent).toBe("free");
+      // Puzzle-authored text is never read as HTML.
+      expect(items[1].querySelector("b")).toBeNull();
+      expect(items[1].textContent).toBe("Then <b>Bo</b> = r2c2.");
+    });
+
+    it("is the last tab after clues, rules and details", () => {
+      const root = mount({
+        combineExtras: true,
+        clueEntries: [],
+        key: [{ name: "Point", text: "fountain" }],
+        solutionSteps: steps,
+      });
+      const ids = [...root.querySelectorAll('[role="tab"]')].map((tab) => tab.id);
+      expect(ids).toEqual(["tab-clues", "tab-rules", "tab-extras", "tab-solution"]);
+    });
+
+    it("never presents incomplete steps as a full solution", () => {
+      const root = mount({ language: "nl", solutionSteps: { ...steps, complete: false } });
+      const solution = root.querySelector<HTMLElement>("#section-solution")!;
+      expect(root.querySelector("#tab-solution")?.textContent).toBe("Oplossingsstappen");
+      expect(solution.textContent).toContain("leiden niet tot de hele oplossing");
+    });
+
+    it("says so when an older bundle has none", () => {
+      const root = mount();
+      expect(root.querySelector("#section-solution")?.textContent).toContain(
+        "No solution steps are available",
+      );
+      expect(root.querySelector("#section-solution .spoiler")).toBeNull();
+    });
+
+    it("leaves the board and progress alone when read", () => {
+      const root = mount({ solutionSteps: steps });
+      const before = localStorage.length;
+      root.querySelector<HTMLButtonElement>("#tab-solution")!.click();
+      expect(root.querySelectorAll(".palette .tool.used")).toHaveLength(0);
+      expect(localStorage.length).toBe(before);
+    });
   });
 
   it("crosses the person that is on the board", () => {

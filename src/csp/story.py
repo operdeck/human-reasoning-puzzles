@@ -81,6 +81,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "web.cell_window": "{name}",
         "web.cell_figure": "Figure",
         "web.extras": "Case details",
+        "web.solution_steps": "Solution steps",
+        "web.spoiler": "Spoiler: the steps below reveal the solution.",
+        "web.steps_incomplete": (
+            "These steps do not reach the whole solution; the rest is not explained here."
+        ),
+        "web.steps_unavailable": "No solution steps are available for this puzzle.",
         "doc.area_tag": "The {tag} are {areas}.",
         "doc.area_tag_one": "The {tag} is {areas}.",
         "doc.attributes": "The attributes",
@@ -535,6 +541,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "web.cell_window": "een raam",
         "web.cell_figure": "Figuur",
         "web.extras": "Bijzonderheden",
+        "web.solution_steps": "Oplossingsstappen",
+        "web.spoiler": "Spoiler: de stappen hieronder verklappen de oplossing.",
+        "web.steps_incomplete": (
+            "Deze stappen leiden niet tot de hele oplossing; de rest wordt hier niet uitgelegd."
+        ),
+        "web.steps_unavailable": "Voor deze puzzel zijn geen oplossingsstappen beschikbaar.",
         "doc.area_tag": "{Tag}: {areas}.",
         "doc.area_tag_one": "{Tag}: {areas}.",
         "doc.attributes": "De kenmerken",
