@@ -1,0 +1,59 @@
+# Rooms 4x5: four people in a five-room flat, on a 2x3 plan.
+# Every clue is needed; drop one and the answer is no longer unique.
+# Solution: Ada and Cleo in the kitchen, Ben in the living room, Dirk in the
+# study; the hall and the bathroom stay empty.
+
+Family: rooms
+Language: en
+
+Title:
+The flat
+
+Intro:
+Four people share a flat with five rooms: a living room, a kitchen, a hall, a
+study and a bathroom. Give every one of them a room. Several people may share a
+room, a room may stay empty, and no room holds more people than its capacity.
+
+Words:
+a: the living room
+b: the hall
+c: the kitchen
+d: the study
+e: the bathroom
+window: a room with a window
+clock: a room with a clock
+
+Plan:
+a a b
+c d e
+
+Rooms:
+a: 2 #D9EAD3 living room
+b: 1 #FADFB5 hall
+c: 2 #C4DCF2 kitchen
+d: 1 #F4CBC3 study
+e: 1 #E8D5F2 bathroom
+
+Tags:
+window: a c e
+clock: a d
+
+People:
+Ada
+Ben
+Cleo
+Dirk
+
+Clues:
+count (people in area:b) = 0
+count (people in area:e) = 0
+count (people in area:a) = 1
+not (Dirk in area:window)
+Ben in area:clock
+
+Question:
+Who is in which room?
+
+Reveal:
+Ada and Cleo are in the kitchen, Ben in the living room and Dirk in the study;
+the hall and the bathroom are empty.

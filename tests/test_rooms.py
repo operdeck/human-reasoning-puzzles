@@ -1,0 +1,190 @@
+"""The rooms family: parsing, clue meaning, the capacity invariant and the examples."""
+
+import pytest
+
+from csp import bruteforce, cli, picture, report, rooms
+from csp.bruteforce import rooms as brute
+from csp.core import Solver
+from tests.examples import example, played_examples
+
+BASE = """Family: rooms
+Language: en
+Plan:
+a a b
+c d e
+Rooms:
+a: 2 #D9EAD3 living room
+b: 1 #FADFB5 hall
+c: 1 #C4DCF2 kitchen
+d: 1 #F4CBC3 study
+e: 2 #E8D5F2 attic
+Tags:
+window: a c e
+clock: a d
+People:
+Ada
+Ben
+Cleo
+Clues:
+"""
+
+PLACEMENT = {"Ada": "c", "Ben": "a", "Cleo": "a"}
+ROOMS_EXAMPLES = [
+    path.name for path in played_examples() if cli.detect(path.read_text()) == "rooms"
+]
+
+
+def puzzle_with(clues: str) -> str:
+    return BASE + clues
+
+
+def test_the_plan_rooms_tags_and_people_are_read():
+    puzzle = rooms.parse(puzzle_with("Ada in area:c\n"))
+    assert [room.key for room in puzzle.rooms] == ["a", "b", "c", "d", "e"]
+    assert puzzle.room("e").capacity == 2
+    assert puzzle.room("e").label == "attic"
+    assert puzzle.room("a").cells == ((0, 0), (0, 1))
+    assert puzzle.areas("window") == ("a", "c", "e")
+    assert puzzle.areas("b") == ("b",)
+    assert puzzle.people == ("Ada", "Ben", "Cleo")
+    assert (puzzle.width, puzzle.height) == (3, 2)
+
+
+def test_every_clue_kind_means_what_it_says():
+    clues = (
+        "Ada in area:window",
+        "not (Ada in area:clock)",
+        "count (people in area:a) = 2",
+        "Ben together Cleo",
+        "Cleo apart Ada",
+        "not (Cleo alone)",
+        "exactly 1 of (Ada in area:window; Ben in area:e)",
+        "Cleo dir:up Ada",
+    )
+    puzzle = rooms.parse(puzzle_with("\n".join(clues) + "\n"))
+    assert len(puzzle.clues) == len(clues)
+    for clue in puzzle.clues:
+        assert clue.holds(PLACEMENT, puzzle), clue.describe(puzzle)
+    wrong = dict(PLACEMENT, Ben="e")
+    assert not all(clue.holds(wrong, puzzle) for clue in puzzle.clues)
+
+
+def test_format_clue_round_trips_every_kind():
+    clues = (
+        "Ada in area:window",
+        "not (Ben in area:window)",
+        "count (people in area:a) >= 2",
+        "Ada together Ben",
+        "Cleo apart Ada",
+        "not (Cleo alone)",
+        "exactly 1 of (Ada in area:e; Ben in area:e)",
+        "Ada dir:up Cleo",
+    )
+    puzzle = rooms.parse(puzzle_with("\n".join(clues) + "\n"))
+    for clue in puzzle.clues:
+        assert rooms.parse_clue(rooms.format_clue(clue), puzzle) == clue
+
+
+def test_capacity_is_an_upper_bound_and_never_forces_a_person():
+    """A room's capacity forbids a second truth; it never fills a room by itself."""
+    text = puzzle_with("Ada in area:c\n")
+    model = cli.load(text, "rooms").model
+    assert len(model.options("Ben")) == len(rooms.parse(text).rooms)
+    assert len(model.options("Cleo")) == len(rooms.parse(text).rooms)
+    (solution,) = bruteforce.solutions(text, "rooms", limit=1)
+    assert solution["Ada"] == "kitchen"
+
+
+def test_an_empty_room_stays_empty():
+    text = puzzle_with("count (people in area:b) = 0\n")
+    for where in bruteforce.solutions(text, limit=20):
+        assert "hall" not in where.values()
+
+
+def test_a_count_about_everyone_is_judged_on_the_whole_placement():
+    """The search may not prune on a count until every person is placed."""
+    text = puzzle_with("count (people in area:d) = 1\n")
+    found = bruteforce.solutions(text, limit=5)
+    assert found
+    for where in found:
+        assert list(where.values()).count("study") == 1
+
+
+def test_alone_needs_one_hidden_literal_per_other_person():
+    """`Alone` counts the rooms shared with the others, never a relation over everyone."""
+    model = cli.load(puzzle_with("not (Ada alone)\n"), "rooms").model
+    hidden = [var for var in model.all_variables if var not in model.variables]
+    assert len(hidden) == 2  # one for each of the other two people
+    assert not any(len(relation.variables) > 3 for relation in model.relations)
+
+
+def test_a_direction_clue_needs_touching_rooms():
+    puzzle = rooms.parse(puzzle_with("Cleo dir:up Ada\n"))
+    up = rooms.Direction("Cleo", "up", "Ada")
+    assert up.holds({"Cleo": "a", "Ada": "c"}, puzzle)
+    assert not up.holds({"Cleo": "c", "Ada": "a"}, puzzle)
+    assert not up.holds({"Cleo": "a", "Ada": "a"}, puzzle)
+    assert not up.holds({"Cleo": "b", "Ada": "c"}, puzzle)
+
+
+def test_render_names_every_room_with_its_capacity_and_occupants():
+    text = puzzle_with("Ada together Ben\nAda in area:a\nBen in area:a\n")
+    model, puzzle = rooms.compile_puzzle(text)
+    Solver(model).solve()
+    living = next(
+        line
+        for line in rooms.render(puzzle, model, "The flat").splitlines()
+        if "Living room" in line
+    )
+    assert "(2)" in living and "Ada" in living and "Ben" in living
+
+
+@pytest.mark.parametrize("name", ROOMS_EXAMPLES)
+def test_every_rooms_example_is_unique_and_solved(name):
+    text = example(name).read_text()
+    (expected,) = bruteforce.solutions(text, "rooms")
+    model = cli.load(text, "rooms").model
+    fired: list[str] = []
+    result = Solver(model).solve(on_step=lambda rule, steps: fired.append(rule))
+    assert result.solved, report.grade(fired)
+    assert result.assignment == expected
+
+
+@pytest.mark.parametrize("name", ROOMS_EXAMPLES)
+def test_every_rooms_example_needs_each_of_its_clues(name):
+    text = example(name).read_text()
+    lines = text.splitlines()
+    start = lines.index("Clues:") + 1
+    end = next(
+        (index for index in range(start, len(lines)) if lines[index].strip().endswith(":")),
+        len(lines),
+    )
+    clues = [line for line in lines[start:end] if line.strip()]
+    for number, clue in enumerate(clues):
+        kept = [item for index, item in enumerate(clues) if index != number]
+        fewer = "\n".join([*lines[:start], *kept, *lines[end:]]) + "\n"
+        assert len(bruteforce.solutions(fewer, "rooms", limit=2)) > 1, clue
+
+
+@pytest.mark.parametrize("name", ROOMS_EXAMPLES)
+def test_every_rooms_example_draws_every_room_and_its_people(name):
+    text = example(name).read_text()
+    puzzle = rooms.parse(text)
+    image = picture.rooms_picture(puzzle, cell=60).to_svg()
+    for room in puzzle.rooms:
+        assert room.title in image
+    (solution,) = bruteforce.solutions(text, "rooms")
+    solved = picture.rooms_picture(puzzle, solution, cell=60).to_svg()
+    for room in solution.values():
+        assert room[:1].upper() + room[1:] in solved
+
+
+def test_bruteforce_count_matches_the_number_of_solutions():
+    text = puzzle_with("count (people in area:window) >= 1\n")
+    assert brute.count(text) == len(bruteforce.solutions(text, "rooms", limit=1000))
+
+
+def test_a_clue_line_can_carry_its_own_wording():
+    puzzle = rooms.parse(puzzle_with("Ada in area:c | Ada zat in de keuken.\n"))
+    assert puzzle.sentence(1) == "Ada zat in de keuken."
+    assert puzzle.clue_lines == ["Ada zat in de keuken."]

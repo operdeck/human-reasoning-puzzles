@@ -3557,7 +3557,7 @@ def test_colour_words_in_region_names_match_their_background():
     checked = 0
     for path in all_examples():
         text = path.read_text()
-        if "People:" not in text:
+        if "People:" not in text or cli.detect(text) != "murdoku":
             continue
         board = load_board_layout(text)
         for rid, name in board.region_names.items():

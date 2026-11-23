@@ -10,6 +10,7 @@ from csp.puzzlefile import KINDS, detect
         ("suguru", "suguru"),
         ("tectonic", "suguru"),
         ("logicgrid", "logicgrid"),
+        ("rooms", "rooms"),
         ("starbattle", "starbattle"),
         ("binairo", "binairo"),
         ("tango", "binairo"),

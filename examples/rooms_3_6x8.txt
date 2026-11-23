@@ -1,0 +1,72 @@
+# Rooms 6x8: six people in an eight-room house on a 3x4 plan.
+# Every clue is needed; the ladder needs its what-if rung to close this one.
+# Solution: Ada and Dirk in the living room, Ben and Cleo in the study, Eva in
+# the bathroom and Finn in the porch; hall, kitchen, bedroom and attic stay empty.
+
+Family: rooms
+Language: en
+
+Title:
+The big house
+
+Intro:
+Six people are somewhere in a house with eight rooms. Give every one of them a
+room. Four rooms stay empty, two pairs share, and two people are on their own.
+
+Words:
+a: the living room
+b: the hall
+c: the kitchen
+d: the bedroom
+e: the study
+f: the bathroom
+g: the attic
+h: the porch
+window: a room with a window
+mirror: a room with a mirror
+plant: a room with a plant
+
+Plan:
+a a b c
+d e e c
+d f g h
+
+Rooms:
+a: 2 #D9EAD3 living room
+b: 1 #FADFB5 hall
+c: 2 #C4DCF2 kitchen
+d: 2 #F4CBC3 bedroom
+e: 2 #E8D5F2 study
+f: 1 #FBE7C6 bathroom
+g: 2 #CFE8F0 attic
+h: 1 #E1D5E7 porch
+
+Tags:
+window: a c e
+mirror: d f
+plant: a g h
+
+People:
+Ada
+Ben
+Cleo
+Dirk
+Eva
+Finn
+
+Clues:
+Finn in area:h
+count (people in area:plant) = 3
+not (Dirk alone)
+exactly 1 of (Cleo in area:window; Dirk in area:mirror)
+exactly 1 of (Eva in area:window; Finn in area:plant)
+Ben dir:up Eva
+Ada in area:plant
+Cleo dir:down Dirk
+
+Question:
+Who is in which room?
+
+Reveal:
+Ada and Dirk share the living room, Ben and Cleo the study, Eva has the
+bathroom and Finn the porch.
