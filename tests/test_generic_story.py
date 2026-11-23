@@ -35,12 +35,33 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
     story = told("futoshiki_3_5x5.txt")
     text = story.markdown()
     assert story.complete
-    assert "*each number once per column*" in text
-    assert "**Chain.** If r5c4 ≠ 4, then r2c4 = 4" in text
+    # Singles cite the board constraint that left them, in deduction order.
+    assert "**r4c4 = 5** by *5 once in col 4*" in text
+    assert "**r5c5 = 5** by *5 once in row 5*; **r5c1 = 3** by *3 once in row 5*" in text
+    assert (
+        "**Chain.** If r5c4 ≠ 4, then only r2c4 = 4 or r5c4 = 4 remain under "
+        "*4 once in col 4*, so r2c4 = 4"
+    ) in text
+    assert (
+        "only r5c3 = 4 or r5c4 = 4 remain under *4 once in row 5*. r5c3 = 2 is ruled out:"
+    ) in text
+    assert text.count("If r1c4 \u2260 3") == 1
+    assert "Continuing the same chain" in text
+    assert "r5c4 = 3 is ruled out" in text and "r2c4 = 3 is ruled out" in text
     assert "**Combined rules.**" in text
     assert "Stalled" not in text
     # Every placement is named; none is left to "follow the same way".
     assert "follow the same way" not in text
+
+
+def test_each_single_cites_its_own_reason():
+    text = told("akari_1_6x6.txt").markdown()
+    assert "**r2c4 = no bulb** by *0 bulbs around wall r2c5*" in text
+    assert "**r1c3\u2013r3c3, r4c4 and r4c5 = no bulb**, ruled out by r4c3 = bulb" in text
+    assert "**r6c2 = no bulb**, ruled out by *1 bulb around wall r6c3*" in text
+    assert "**r4c1 = no bulb**, ruled out by *3 bulbs around wall r4c2*" in text
+    assert "*1 bulb around wall r5c5*" in text
+    assert "every open cell is lit*, one option" not in text
 
 
 def test_boolean_cells_are_grouped_into_runs_in_family_words():
@@ -51,19 +72,57 @@ def test_boolean_cells_are_grouped_into_runs_in_family_words():
     )
 
 
-def test_a_what_if_names_the_rule_it_breaks():
+def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     story = told("calcudoku_6_6x6.txt")
     assert story.complete
     assert (
-        "**Suppose r2c2 = 6.** Then r4c3 = 2, r4c2 = 1, r5c2 = 2, r3c1 = 2, r3c4 = 6, "
-        "r3c2 = 5, r1c2 = 3, r1c4 = 5, r3c3 = 3 and r2c6 = 3 would follow, "
-        "but *9+ cage r1c5 r1c6 r2c6* fails; so r2c2 ≠ 6."
+        "**Suppose r2c2 = 6.** Then r4c3 = 2 by *2 once in col 3*; "
+        "r4c2 = 1 is the only option; r5c2 = 2 is the only option; "
+        "r3c1 = 2 by *2 once in row 3*; r3c4 = 6 by *6 once in row 3*; "
+        "r3c2 = 5 is the only option; r1c2 = 3 is the only option; "
+        "r1c4 = 5 is the only option; r3c3 = 3 by *3 once in row 3*; "
+        "r2c6 = 3 by *3 once in row 2* would follow, "
+        "but the remaining values (r1c5 = 4; r1c6 = 4; r2c6 = 3) do not satisfy "
+        "*9+ cage r1c5 r1c6 r2c6*; so r2c2 ≠ 6."
     ) in story.markdown()
+    assert (
+        "the remaining values (r1c1 = 6; r1c2 = 5; r2c1 = 5) do not satisfy "
+        "*13+ cage r1c1 r1c2 r2c1*"
+    ) in story.markdown()
+    assert (
+        "the remaining values (r1c5 = 4 or 5; r1c6 = 4 or 5; r2c6 = 6) do not satisfy "
+        "*9+ cage r1c5 r1c6 r2c6*"
+    ) in story.markdown()
+
+
+def test_chain_explains_cell_single_and_both_conflicts_with_its_target():
+    text = told("sudoku_33_9x9_chains.txt").markdown()
+
+    assert text.count("If r3c7 \u2260 8") == 1
+    first_chain = next(
+        paragraph for paragraph in text.split("\n\n") if "If r3c7 \u2260 8" in paragraph
+    )
+    assert "Continuing the same chain" in first_chain
+    assert "r5c7 = 8 is ruled out" in first_chain
+    assert "r9c7 = 8 is ruled out" in first_chain
+    assert "only r1c9 = 8 or r3c7 = 8 remain under *8 once in box 1,3*, so r1c9 = 8" in text
+    assert ("so r8c7 = 2; it is the only value left after r8c7 = 8 is ruled out") in text
+    assert (
+        "r5c7 = 2 is ruled out: r5c7 = 1 conflicts with it by *r5c7 holds one digit*, "
+        "and r8c7 = 2 by *2 once in col 7*."
+    ) in text
+    reused_chain = next(paragraph for paragraph in text.split("\n\n") if "If r1c2 ≠ 8" in paragraph)
+    assert "The earlier chain from r5c2 = 8 shows r9c7 = 6" in reused_chain
+    assert reused_chain.count("r5c2 = 8") == 3
+    assert "r5c7 = 1, so only r5c7 = 6" not in reused_chain
 
 
 def test_cli_falls_back_to_the_generic_story_for_sudoku(capsys):
     assert cli.main([str(example("sudoku_33_9x9_chains.txt")), "--explain"]) == 0
-    assert "**Chain.** If r3c7 ≠ 8, then r1c9 = 8" in capsys.readouterr().out
+    assert (
+        "**Chain.** If r3c7 ≠ 8, then only r1c9 = 8 or r3c7 = 8 remain under "
+        "*8 once in box 1,3*, so r1c9 = 8"
+    ) in capsys.readouterr().out
 
 
 @pytest.mark.solutions

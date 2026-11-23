@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Sequence
 from dataclasses import replace
-from itertools import combinations
+from itertools import combinations, product
 from typing import Any
 
 from . import generic_story
@@ -19,10 +19,22 @@ from .murdoku import (
 from .murdoku_eval import grounded_dependencies, holds_grounded
 from .murdoku_expression_file import load_expression_board
 from .murdoku_expression_words import ExpressionWords, only_on
-from .murdoku_lang import Atom, Count, Filter, Integer, Name, NumberComparison, Statement, Token
+from .murdoku_lang import (
+    Atom,
+    Count,
+    Filter,
+    Integer,
+    Name,
+    NumberComparison,
+    Quantified,
+    Statement,
+    Token,
+)
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .proof import Episode, Inference, Move, episodes, essential, replay
-from .story import Places, Wording, _cap
+from .story import MAX_LISTED, Places, Wording, _cap, presentation_reveal
+
+MAX_CANDIDATE_BOUND_LINES = 4
 
 
 class _Narrator(generic_story.Narrator):
@@ -34,6 +46,7 @@ class _Narrator(generic_story.Narrator):
             say = say.unnumbered()
         super().__init__(compilation.model, say)
         self.board = board
+        self.numbered = numbered
         self.compilation = compilation
         self.places = Places(board, say)
         self.options = {person: set(board.free) for person in board.people}
@@ -44,6 +57,10 @@ class _Narrator(generic_story.Narrator):
         }
         self.visible = set(board.people) | self.roles.keys()
         self.told_mark_counts: set[str] = set()
+        self.spoken_placements: set[tuple[str, Square]] = set()
+        self.told_lines: set[tuple[str, str, int]] = set()
+        self.told_area_exclusions: set[tuple[str, str]] = set()
+        self.told_bounds: dict[str, dict[str, frozenset[int]]] = {}
         self.sole_marks = {
             formula.left.operand.target.token.text.removeprefix("mark:")
             for origin in compilation.origins
@@ -161,6 +178,8 @@ class _Narrator(generic_story.Narrator):
         for rule in board_rules(board):
             kind, value = rule.about
             key = {"person": "person", "square": "square", "row": "row", "col": "column"}[kind]
+            if kind in {"row", "col"} and rule.kind is Kind.EXACTLY_ONE:
+                key += "_exact"
             wording = say(
                 f"expression.{key}",
                 person=say.words.get(value, value) if kind == "person" else "",
@@ -169,6 +188,13 @@ class _Narrator(generic_story.Narrator):
             self.source_words[rule.name] = wording
             if kind != "person":
                 self.source_words[rule.family] = say(f"expression.{key}", square="", person="")
+        self.exact_lines = {
+            (kind, index)
+            for rule in board_rules(board)
+            if rule.kind is Kind.EXACTLY_ONE
+            for kind, index in [rule.about]
+            if kind in {"row", "col"}
+        }
         self.board_sources = {rule.name: rule.about for rule in board_rules(board)}
         for variable, (person, role) in self.roles.items():
             name = say.words.get(role, role)
@@ -198,6 +224,19 @@ class _Narrator(generic_story.Narrator):
                     )
 
     def _because(self, sources: Sequence[str], conclusion: str) -> str:
+        useful_sources = [source for source in sources if source not in self.domains]
+        if useful_sources:
+            sources = useful_sources
+        sources = [
+            source
+            for source in sources
+            if not (labels := self.source_origins.get(source, ()))
+            or any(
+                self.statements[label].casefold() not in conclusion.casefold() for label in labels
+            )
+        ]
+        if not sources:
+            return conclusion
         origins = {origin for source in sources for origin in self.source_origins.get(source, ())}
         if (
             len(origins) == 1
@@ -206,7 +245,10 @@ class _Narrator(generic_story.Narrator):
             and "expression.by" not in self.say.phrases
         ):
             (origin,) = origins
-            return f"{_cap(self.statements[origin])}, {self.say('so')} {conclusion}."
+            statement = self.statements[origin]
+            if statement.casefold() in conclusion.casefold():
+                return conclusion
+            return f"{_cap(statement)}, {self.say('so')} {conclusion}."
         return self.say("expression.by", sources=self.names(sources), conclusion=conclusion)
 
     def _direct(
@@ -245,6 +287,7 @@ class _Narrator(generic_story.Narrator):
         if len(squares) == 1:
             square = next(iter(squares))
             where = f"**{self.placed(person, square)}**"
+            self.spoken_placements.add((person, square))
             if region and region != previous_region and region not in clue:
                 where = f"**{region}**: {where}"
             self.told.add((person, square))
@@ -282,6 +325,7 @@ class _Narrator(generic_story.Narrator):
                         "cross_out.one" if len(crossed) == 1 else "cross_out.many",
                         n=self.say.number(len(crossed)),
                         line=self.say(f"cross_out.{kind}"),
+                        squares=self.places.squares(crossed, "and"),
                     )
                     suffix += f", {self.say('so')} **{instruction}**"
                     open_squares.difference_update(crossed)
@@ -296,6 +340,40 @@ class _Narrator(generic_story.Narrator):
         if other:
             said += " " + self._because(sources, other)
         return said
+
+    def _shared_rule_exclusions(
+        self, sources: tuple[str, ...], steps: Sequence[Step]
+    ) -> str | None:
+        if len(sources) != 1 or len({step.var for step in steps}) < 3:
+            return None
+        origins = set(self.source_origins.get(sources[0], ()))
+        if not any(
+            origin.kind == "rule" and origin.label in origins for origin in self.compilation.origins
+        ):
+            return None
+        if any(
+            step.asserted or step.var not in self.board.people or not isinstance(step.value, Square)
+            for step in steps
+        ):
+            return None
+        by_person: dict[str, set[Square]] = {}
+        for step in steps:
+            by_person.setdefault(step.var, set()).add(step.value)
+        squares = next(iter(by_person.values()))
+        if not squares or any(cells != squares for cells in by_person.values()):
+            return None
+        remaining = [person for person in self.board.people if person not in by_person]
+        return (
+            self.say(
+                "murdoku.shared_rule_exclusions_some"
+                if remaining
+                else "murdoku.shared_rule_exclusions_none",
+                source=self.names(sources),
+                people=self.say.join(remaining),
+                squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
+            )
+            + "."
+        )
 
     def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
         if (
@@ -460,6 +538,108 @@ class _Narrator(generic_story.Narrator):
             return f"{reason}, {self.say('so')} **{empty}**."
         return None
 
+    def _relation_with_candidates(self, inference: Inference, conclusion: str) -> str | None:
+        move = inference.move
+        if move is None or not move.sources:
+            return None
+        candidates = self._relation_candidate_summary(inference)
+        if candidates is None:
+            return None
+        return self.say(
+            "generic.clues",
+            items=self.say(
+                "murdoku.relation_with_candidates",
+                candidates=candidates,
+                sources=self.names(move.sources),
+                conclusion=conclusion,
+            ),
+        )
+
+    def _furthest_exclusion(self, inference: Inference, conclusion: str) -> str | None:
+        move = inference.move
+        if move is None or move.rule != "relations" or len(move.sources) != 1:
+            return None
+        labels = self.source_origins.get(move.sources[0], ())
+        origin = next(
+            (
+                item
+                for item in self.compilation.origins
+                if item.label in labels
+                and item.kind == "clue"
+                and isinstance(item.statement.formula, Atom)
+                and item.statement.formula.operator.text == "dir:furthest"
+                and item.statement.formula.measure is None
+                and isinstance(item.statement.formula.subject, Name)
+                and isinstance(item.statement.formula.target, Name)
+            ),
+            None,
+        )
+        if origin is None:
+            return None
+        formula = origin.statement.formula
+        assert isinstance(formula, Atom)
+        if not isinstance(formula.subject, Name) or not isinstance(formula.target, Name):
+            return None
+        subject = formula.subject.token.text
+        target = formula.target.token.text
+        relation = next(
+            (item for item in self.model.relations if item.name == move.sources[0]), None
+        )
+        if relation is None:
+            return None
+        rivals = [
+            person
+            for person in relation.variables
+            if person in self.board.people and person not in {subject, target}
+        ]
+        excluded = [
+            step.value
+            for step in inference.steps
+            if step.var == subject and not step.asserted and isinstance(step.value, Square)
+        ]
+        if len(rivals) != 1 or len(excluded) != 1:
+            return None
+        rival = rivals[0]
+        candidate = excluded[0]
+
+        def squares(person: str) -> list[Square] | None:
+            values = [
+                inference.before.value_of(literal) for literal in inference.before.options(person)
+            ]
+            if not values or len(values) > MAX_LISTED + 1:
+                return None
+            result = [value for value in values if isinstance(value, Square)]
+            return result if len(result) == len(values) else None
+
+        target_options = squares(target)
+        rival_options = squares(rival)
+        if target_options is None or rival_options is None:
+            return None
+
+        def distance(first: Square, second: Square) -> int:
+            return abs(first.row - second.row) + abs(first.col - second.col)
+
+        if any(
+            distance(candidate, other) > distance(position, other)
+            for other in target_options
+            for position in rival_options
+        ):
+            return None
+        return (
+            self.say(
+                "murdoku.furthest_exclusion",
+                clue=self.names([origin.label]),
+                subject=subject,
+                candidate=self.places.square(candidate),
+                rival=rival,
+                rival_squares=self.places.squares(set(rival_options)),
+                target=target,
+                target_squares=self.places.squares(set(target_options)),
+                conclusion=conclusion,
+            )
+            + "."
+        )
+
     def _population_tied(self, inference: Inference) -> str | None:
         """Prove tied sole occupants using only already announced row/column blockers."""
         announced = {
@@ -614,10 +794,32 @@ class _Narrator(generic_story.Narrator):
                         cells.difference_update(others)
         return ". ".join(sentences)
 
-    def conclusion(self, steps: Iterable[Step], *, include_marks: bool = True) -> str | None:
+    def conclusion(
+        self,
+        steps: Iterable[Step],
+        *,
+        include_marks: bool = True,
+        group_candidates: bool = True,
+        include_broad_candidates: bool = False,
+    ) -> str | None:
         steps = list(steps)
         before = {person: set(cells) for person, cells in self.options.items()}
         placed = set()
+        new_placements = {
+            step.var: step.value
+            for step in steps
+            if step.var in self.options
+            and step.asserted
+            and isinstance(step.value, Square)
+            and before[step.var] != {step.value}
+        }
+        announced = {
+            person: square
+            for person in self.board.people
+            for square in self.board.free
+            if (person, square) in self.told
+        }
+        announced.update(new_placements)
         for step in steps:
             if step.var in self.options:
                 if step.asserted:
@@ -625,32 +827,176 @@ class _Narrator(generic_story.Narrator):
                     placed.add(step.var)
                 else:
                     self.options[step.var].discard(step.value)
+        placements_said = []
+        position_said = []
+        position_changes: list[tuple[str, set[Square], set[Square]]] = []
+        suppressed = set()
+        line_claims: dict[str, dict[str, set[int]]] = {}
+        for person, previous in before.items():
+            cells = self.options[person]
+            if person in placed or cells == previous or not cells:
+                continue
+            gone = previous - cells
+            blockers = self.places.blockers(gone, announced) if group_candidates else None
+            if blockers:
+                suppressed.add(person)
+                for blocker, square in announced.items():
+                    rows = {
+                        cell.row
+                        for cell in gone
+                        if cell.row == square.row
+                        and (blocker, "row", cell.row) not in self.told_lines
+                    }
+                    columns = {
+                        cell.col
+                        for cell in gone
+                        if cell.col == square.col
+                        and (blocker, "col", cell.col) not in self.told_lines
+                    }
+                    if rows or columns:
+                        claim = line_claims.setdefault(blocker, {"row": set(), "col": set()})
+                        claim["row"].update(rows)
+                        claim["col"].update(columns)
         said = []
         for person, previous in before.items():
             cells = self.options[person]
             if len(cells) == 1 and (person in placed or cells != previous):
                 (square,) = cells
                 if (person, square) not in self.told:
-                    sentence = f"**{self.placed(person, square)}**"
+                    sentence = (
+                        self._current_single_reason(person, square, previous, steps)
+                        or f"**{self.placed(person, square)}**"
+                    )
                     if include_marks and (meaning := self._mark_placement(person, square)):
                         sentence += f". {meaning}"
-                    said.append(sentence)
+                    placements_said.append(sentence)
+                    self.spoken_placements.add((person, square))
                     self.told.add((person, square))
-            elif cells != previous and cells:
+            elif cells != previous and cells and person not in suppressed:
                 line = self.places.common_line(cells)
                 if line is not None and line != self.places.common_line(previous):
-                    where = self.say("in", what=self.places.line(*line))
-                    said.append(
+                    remaining = self.places.describe(person, cells, previous, placing=False)
+                    position_said.append(
                         "**"
-                        + self.say("can_only_one", who=person, where=where)
-                        + "**, **"
-                        + self.say("nobody_else")
+                        + remaining
+                        + "; "
+                        + self.say("must_occupy_line", who=person, line=self.places.line(*line))
+                        + "; "
+                        + self.say("nobody_else_line")
                         + "**"
                     )
                 else:
-                    said.append(
-                        "**" + self.places.describe(person, cells, previous, placing=False) + "**"
+                    position_changes.append((person, cells, previous))
+        area_exclusions = []
+        for person, previous in before.items():
+            current = self.options[person]
+            for region in {self.board.region_of(square) for square in previous}:
+                area_candidates = {
+                    square for square in previous if self.board.region_of(square) == region
+                }
+                name = self.board.region_names[region]
+                if (
+                    not area_candidates
+                    or any(self.board.region_of(square) == region for square in current)
+                    or (person, name) in self.told_area_exclusions
+                ):
+                    continue
+                evidence = {
+                    step.value: step
+                    for step in steps
+                    if step.var == person and not step.asserted and step.value in area_candidates
+                }
+                if set(evidence) != area_candidates:
+                    continue
+                labels = {
+                    label
+                    for step in evidence.values()
+                    for source in (*step.sources, *step.scope)
+                    for label in self.source_origins.get(source, ())
+                    if any(
+                        origin.label == label and origin.kind == "clue"
+                        for origin in self.compilation.origins
                     )
+                }
+                if not labels:
+                    continue
+                area_exclusions.append(
+                    f"**{self.say('is_not', who=person, where=self.places.region(name))}**"
+                )
+                self.told_area_exclusions.add((person, name))
+        for person in line_claims:
+            square = announced[person]
+            if (person, square) not in self.spoken_placements:
+                placements_said.append(f"**{self.placed(person, square)}**")
+                self.spoken_placements.add((person, square))
+        said.extend(placements_said)
+        if line_claims:
+            blockers = []
+            for person, lines in line_claims.items():
+                occupied = [
+                    self.places.lines(kind, indices) for kind, indices in lines.items() if indices
+                ]
+                blockers.append(
+                    self.say(
+                        "murdoku.line_takes_known",
+                        who=person,
+                        lines=self.say.join(occupied),
+                    )
+                )
+            claimed_lines = {
+                (kind, index)
+                for lines in line_claims.values()
+                for kind, indices in lines.items()
+                for index in indices
+            }
+            exact = bool(claimed_lines) and claimed_lines <= self.exact_lines
+            said.append(
+                "**"
+                + self.say(
+                    "line_exclusions_exact" if exact else "line_exclusions",
+                    blockers=self.say.join(blockers),
+                )
+                + "**"
+            )
+            for person, lines in line_claims.items():
+                self.told_lines.update(
+                    (person, kind, index) for kind, indices in lines.items() for index in indices
+                )
+        said.extend(position_said)
+        grouped: dict[tuple[str, frozenset[int]], list[str]] = {}
+        individual = []
+        for person, cells, previous in position_changes:
+            bounds = []
+            existing_bound = False
+            if group_candidates and len(cells) > MAX_LISTED + 1:
+                for kind in ("row", "col"):
+                    indices = frozenset(
+                        square.row if kind == "row" else square.col for square in cells
+                    )
+                    previous_bound = self.told_bounds.get(person, {}).get(kind)
+                    if len(indices) <= MAX_CANDIDATE_BOUND_LINES and indices != previous_bound:
+                        bounds.append((kind, indices))
+                    elif indices == previous_bound:
+                        existing_bound = True
+            if bounds:
+                kind, indices = min(bounds, key=lambda item: len(item[1]))
+                grouped.setdefault((kind, indices), []).append(person)
+            elif not existing_bound and (len(cells) <= MAX_LISTED or include_broad_candidates):
+                individual.append((person, cells, previous))
+        for (kind, indices), people in grouped.items():
+            said.append(
+                "**"
+                + self.say(
+                    "candidate_bound",
+                    people=self.say.join(people),
+                    lines=self.places.lines(kind, indices),
+                )
+                + "**"
+            )
+            for person in people:
+                self.told_bounds.setdefault(person, {})[kind] = indices
+        for person, cells, previous in individual:
+            said.append("**" + self.places.describe(person, cells, previous, placing=False) + "**")
         role_updates = {
             step.var: step.value if step.asserted else not step.value
             for step in steps
@@ -688,8 +1034,47 @@ class _Narrator(generic_story.Narrator):
                     + "**"
                 )
             else:
-                said.extend(f"**{self.placed(variable, False)}**" for variable in excluded)
-        return self.say.join(said) if said else None
+                excluded_people = [self.roles[variable][0] for variable in excluded]
+                eligible = next(
+                    (
+                        specification.eligible_people
+                        for specification in self.board.roles
+                        if specification.name == role.name
+                    ),
+                    None,
+                )
+                if (
+                    eligible
+                    and len(excluded) > 1
+                    and set(excluded_people) == set(self.board.people) - set(eligible)
+                ):
+                    said.append(
+                        "**"
+                        + self.say(
+                            "role_eligible_only_one"
+                            if len(eligible) == 1
+                            else "role_eligible_only_many",
+                            people=self.say.join(sorted(eligible, key=self.board.people.index)),
+                            role=self.say.words.get(role.name, role.name),
+                        )
+                        + "**"
+                    )
+                elif len(excluded) > 1:
+                    said.append(
+                        "**"
+                        + self.say(
+                            "role_not_many",
+                            people=self.say.join(excluded_people),
+                            role=self.say.words.get(role.name, role.name),
+                        )
+                        + "**"
+                    )
+                else:
+                    said.extend(f"**{self.placed(variable, False)}**" for variable in excluded)
+        conclusion = self.say.join(said)
+        if area_exclusions:
+            return self.say.join(area_exclusions) + (f". {conclusion}" if conclusion else "")
+        return conclusion or None
 
     def _person_case(self, step: Step, history: Sequence[Step]) -> str:
         needed = essential(self.model, history, step)
@@ -937,12 +1322,14 @@ class _Narrator(generic_story.Narrator):
         chain: Sequence[tuple[str, Any]],
         conclusion: str,
         sources: Sequence[str] = (),
+        steps: Sequence[Step] = (),
+        before: Model | None = None,
     ) -> str:
         if not chain or any(
             person not in self.board.people or not isinstance(square, Square)
             for person, square in chain
         ):
-            paragraph = super()._chain(chain, conclusion)
+            paragraph = super()._chain(chain, conclusion, sources, steps, before)
             return self._because(sources, paragraph) if sources else paragraph
         first, a = chain[0]
         last, z = chain[-1]
@@ -956,28 +1343,823 @@ class _Narrator(generic_story.Narrator):
         if len(chain) == 2:
             if sources:
                 ends += self._link_reason(sources[0])
+            if end_reason := self._chain_end_reason(chain, steps):
+                return self.say("generic.chain_either_explained", ends=ends, reason=end_reason)
             return _cap(self.say("chain_either", ends=ends, outcome=conclusion))
         parts = [self.say("chain_if", who=first, square=self.places.square(a))]
         for index, (person, square) in enumerate(chain[1:]):
             key = "chain_on" if index % 2 == 0 else "chain_off"
-            reason = self._link_reason(sources[index]) if index < len(sources) else ""
-            parts.append(self.say(key, who=person, square=self.places.square(square)) + reason)
+            source = sources[index] if index < len(sources) else None
+            previous = chain[index]
+            supported = (
+                self._chain_supported(before, source, previous, (person, square))
+                if before is not None and source is not None and index % 2 == 0
+                else None
+            )
+            if supported is not None:
+                parts.append(supported)
+            elif source is not None and source in self.domains and person == previous[0]:
+                parts.append(
+                    self.say(key, who=person, square=self.places.square(square))
+                    + self.say(
+                        "murdoku.chain_domain_reason",
+                        excluded=self.placed(*previous),
+                    )
+                )
+            else:
+                reason = self._link_reason(source) if source is not None else ""
+                parts.append(self.say(key, who=person, square=self.places.square(square)) + reason)
+        if end_reason := self._chain_end_reason(chain, steps):
+            return f"{', '.join(parts)}. " + self.say(
+                "generic.chain_either_explained", ends=ends, reason=end_reason
+            )
         return f"{', '.join(parts)}. {self.say('chain_so', ends=ends, outcome=conclusion)}"
+
+    def _line_single(self, inference: Inference, history: Sequence[Step] = ()) -> str | None:
+        for step in inference.steps:
+            if (
+                not step.asserted
+                or step.var not in self.board.people
+                or not isinstance(step.value, Square)
+                or (step.var, step.value) in self.spoken_placements
+            ):
+                continue
+            for source in step.sources:
+                if source not in self.board_sources:
+                    continue
+                kind, index = self.board_sources[source]
+                if kind not in {"row", "col"} or (kind, index) not in self.exact_lines:
+                    continue
+                constraint = self.constraints.get(source)
+                if constraint is None or constraint.kind is not Kind.EXACTLY_ONE:
+                    continue
+                live = inference.before.live(constraint.index)
+                if (
+                    len(live) == 1
+                    and inference.before.var_of(live[0]) == step.var
+                    and inference.before.value_of(live[0]) == step.value
+                ):
+                    clues = self._line_single_clues(step.var, kind, index, step.value)
+                    if clues:
+                        self.spoken_placements.add((step.var, step.value))
+                        return self.say(
+                            "murdoku.line_single_with_clues",
+                            clues=self.say.join(clues),
+                            line=self.places.line(kind, index),
+                            placement=f"**{self.placed(step.var, step.value)}**",
+                        )
+                    self.spoken_placements.add((step.var, step.value))
+                    return self.say(
+                        "line_single",
+                        line=self.places.line(kind, index),
+                        placement=f"**{self.placed(step.var, step.value)}**",
+                    )
+            domain = self.model.constraints[self.model.domain_of(step.var)]
+            live = inference.before.live(domain.index)
+            if (
+                len(live) == 1
+                and inference.before.var_of(live[0]) == step.var
+                and inference.before.value_of(live[0]) == step.value
+            ):
+                reason = self._person_single_reason(step, history)
+                self.spoken_placements.add((step.var, step.value))
+                return reason or self.say(
+                    "person_single", placement=f"**{self.placed(step.var, step.value)}**"
+                )
+        return None
+
+    def _person_single_reason(self, step: Step, history: Sequence[Step]) -> str | None:
+        initial = {
+            self.model.value_of(literal)
+            for literal in self.model.options(step.var)
+            if isinstance(self.model.value_of(literal), Square)
+        }
+        if len(initial) <= 1 or step.value not in initial:
+            return None
+
+        labels: set[str] = set()
+        placement_causes: set[Square] = set()
+        placements: dict[str, Square] = {}
+        for square in initial - {step.value}:
+            evidence = [
+                prior
+                for prior in history
+                if prior.var == step.var and not prior.asserted and prior.value == square
+            ]
+            recognized = False
+            for prior in evidence:
+                sources = (*prior.sources, *prior.scope)
+                origins = {
+                    label for source in sources for label in self.source_origins.get(source, ())
+                }
+                known_origins = {
+                    label
+                    for label in origins
+                    if any(origin.label == label for origin in self.compilation.origins)
+                }
+                if known_origins:
+                    labels.update(known_origins)
+                    recognized = True
+                elif (
+                    prior.placing is not None
+                    and prior.placing[0] in self.board.people
+                    and isinstance(prior.placing[1], Square)
+                ):
+                    placements[prior.placing[0]] = prior.placing[1]
+                    placement_causes.add(square)
+                    recognized = True
+                if recognized:
+                    break
+            if not recognized:
+                return None
+
+        if not labels and not placement_causes:
+            return None
+        support = self._origin_references(labels) if labels else ""
+        if placement_causes:
+            blockers = self.places.blockers(
+                placement_causes,
+                placements,
+                max_people=len(placements),
+            )
+            if blockers is None:
+                return None
+            support = self.say.join([item for item in (support, *blockers) if item])
+        return self.say(
+            "murdoku.person_single_explained",
+            support=support,
+            who=step.var,
+            placement=f"**{self.placed(step.var, step.value)}**",
+        )
+
+    def _origin_references(self, labels: set[str]) -> str:
+        references = []
+        for origin in self.compilation.origins:
+            if origin.label not in labels:
+                continue
+            if self.numbered and origin.kind in {"clue", "rule"}:
+                reference = self.say(
+                    f"expression.{origin.kind}",
+                    number=origin.number,
+                )
+                references.append(f"*{reference}*")
+            else:
+                references.append(self.statements[origin.label])
+        return self.say.join(references)
+
+    def _current_single_reason(
+        self, person: str, square: Square, previous: set[Square], steps: Sequence[Step]
+    ) -> str | None:
+        labels: set[str] = set()
+        placement_causes: set[Square] = set()
+        placements: dict[str, Square] = {}
+        for candidate in previous - {square}:
+            recognized = False
+            for evidence in steps:
+                if evidence.var != person or evidence.asserted or evidence.value != candidate:
+                    continue
+                sources = (*evidence.sources, *evidence.scope)
+                origins = {
+                    label for source in sources for label in self.source_origins.get(source, ())
+                }
+                known_origins = {
+                    label
+                    for label in origins
+                    if any(origin.label == label for origin in self.compilation.origins)
+                }
+                if known_origins:
+                    labels.update(known_origins)
+                    recognized = True
+                elif (
+                    evidence.placing is not None
+                    and evidence.placing[0] in self.board.people
+                    and isinstance(evidence.placing[1], Square)
+                ):
+                    placements[evidence.placing[0]] = evidence.placing[1]
+                    placement_causes.add(candidate)
+                    recognized = True
+                if recognized:
+                    break
+            if not recognized:
+                return None
+
+        if not labels and not placement_causes:
+            return None
+        support = self._origin_references(labels) if labels else ""
+        if placement_causes:
+            blockers = self.places.blockers(
+                placement_causes,
+                placements,
+                max_people=len(placements),
+            )
+            if blockers is None:
+                return None
+            support = self.say.join([item for item in (support, *blockers) if item])
+        return self.say(
+            "murdoku.person_single_explained",
+            support=support,
+            who=person,
+            placement=f"**{self.placed(person, square)}**",
+        )
+
+    def _line_single_clues(
+        self, person: str, kind: str, index: int, placement: Square
+    ) -> list[str]:
+        exclusions: dict[str, set[Square]] = {}
+        for log_index, step in enumerate(self.compilation.model.log):
+            if (
+                step.var != person
+                or step.asserted
+                or not isinstance(step.value, Square)
+                or step.value == placement
+                or (step.value.row if kind == "row" else step.value.col) != index
+            ):
+                continue
+            labels = {
+                origin.label
+                for origin in self.compilation.initial_step_origins.get(log_index, ())
+                if origin.kind == "clue"
+            }
+            for label in labels:
+                exclusions.setdefault(label, set()).add(step.value)
+        return [
+            self.say(
+                "murdoku.line_single_excluded",
+                clue=self.names([label]),
+                who=person,
+                squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
+            )
+            for label, squares in exclusions.items()
+        ]
+
+    def _relation_pair(self, inference: Inference) -> str | None:
+        move = inference.move
+        if move is None or move.rule != "relations" or len(move.sources) != 1:
+            return None
+        relation = next(
+            (item for item in self.model.relations if item.name == move.sources[0]), None
+        )
+        if (
+            relation is None
+            or len(relation.variables) != 2
+            or any(variable not in self.board.people for variable in relation.variables)
+        ):
+            return None
+        domains = [
+            [
+                (variable, inference.before.value_of(literal))
+                for literal in inference.before.options(variable)
+            ]
+            for variable in relation.variables
+        ]
+        if len(domains[0]) * len(domains[1]) > 4096:
+            return None
+        pairs = [
+            (first, second)
+            for first, second in product(*domains)
+            if relation.holds(first[1], second[1])
+        ]
+        if len(pairs) != 1:
+            return None
+        pair = self.say.join([self.placed(*candidate) for candidate in pairs[0]])
+        return self.say(
+            "murdoku.relation_pair",
+            pair=f"**{pair}**",
+            source=self.names(move.sources),
+        )
+
+    def _direction_boundary(self, inference: Inference) -> str | None:
+        move = inference.move
+        if move is None or len(move.sources) != 1:
+            return None
+        labels = self.source_origins.get(move.sources[0], ())
+        origin = next(
+            (
+                item
+                for item in self.compilation.origins
+                if item.label in labels and item.kind == "clue"
+            ),
+            None,
+        )
+        if origin is None or not isinstance(origin.statement.formula, Atom):
+            return None
+        formula = origin.statement.formula
+        if (
+            formula.measure is not None
+            or not isinstance(formula.subject, Name)
+            or not isinstance(formula.target, Name)
+            or formula.subject.token.text not in self.board.people
+            or formula.target.token.text not in self.board.people
+        ):
+            return None
+        direction = formula.operator.text
+        boundaries = {
+            "dir:up": ("row", self.board.size - 1, "row", 0),
+            "dir:down": ("row", 0, "row", self.board.size - 1),
+            "dir:left": ("col", self.board.size - 1, "col", 0),
+            "dir:right": ("col", 0, "col", self.board.size - 1),
+        }
+        if direction not in boundaries:
+            return None
+        first_kind, first_index, second_kind, second_index = boundaries[direction]
+        eliminations = {
+            (step.var, step.value)
+            for step in inference.steps
+            if not step.asserted and isinstance(step.value, Square)
+        }
+        for person, kind, index in (
+            (formula.subject.token.text, first_kind, first_index),
+            (formula.target.token.text, second_kind, second_index),
+        ):
+            options = [
+                inference.before.value_of(literal) for literal in inference.before.options(person)
+            ]
+            candidates = {
+                square
+                for square in options
+                if isinstance(square, Square)
+                and (square.row if kind == "row" else square.col) == index
+            }
+            if not candidates or any((person, square) not in eliminations for square in candidates):
+                return None
+        first = self.say(
+            "clue.not_in_row",
+            a=formula.subject.token.text,
+            line=self.places.line(first_kind, first_index),
+        )
+        second = self.say(
+            "clue.not_in_row",
+            a=formula.target.token.text,
+            line=self.places.line(second_kind, second_index),
+        )
+        return self.say(
+            "murdoku.direction_boundaries",
+            clue=self.statements[origin.label],
+            first=first,
+            second=second,
+        )
+
+    def _relation_candidate_summary(self, inference: Inference) -> str | None:
+        move = inference.move
+        if move is None or move.rule != "relations" or len(move.sources) != 1:
+            return None
+        relation = next(
+            (item for item in self.model.relations if item.name == move.sources[0]), None
+        )
+        if (
+            relation is None
+            or len(relation.variables) < 2
+            or any(person not in self.board.people for person in relation.variables)
+        ):
+            return None
+        candidates = [
+            [inference.before.value_of(literal) for literal in inference.before.options(person)]
+            for person in relation.variables
+        ]
+        if any(
+            not values or not all(isinstance(value, Square) for value in values)
+            for values in candidates
+        ):
+            return None
+        for kind, attribute in (("row", "row"), ("col", "col")):
+            lines = [{getattr(square, attribute) for square in values} for values in candidates]
+            if (
+                all(available == lines[0] for available in lines[1:])
+                and len(lines[0]) < self.board.size
+            ):
+                return self.say(
+                    "murdoku.relation_candidate_bound",
+                    people=self.say.join(relation.variables),
+                    lines=self.places.lines(kind, lines[0]),
+                )
+        return None
+
+    def _row_reservation(self, inference: Inference) -> str | None:
+        move = inference.move
+        if move is None or move.rule != "cover2":
+            return None
+        people: list[str] = []
+        for source in move.sources:
+            variables = self.source_variables.get(source, set()) & self.options.keys()
+            if len(variables) == 1:
+                people.extend(variables)
+        people = list(dict.fromkeys(people))
+        if len(people) != 2:
+            return None
+        rows: list[int] = []
+        for source in move.scope:
+            constraint = self.constraints.get(source)
+            if constraint is None or constraint.kind is not Kind.EXACTLY_ONE:
+                return None
+            indices = {
+                square.row
+                for literal in constraint.literals
+                if isinstance((square := self.model.value_of(literal)), Square)
+            }
+            if len(indices) != 1:
+                return None
+            rows.extend(sorted(indices))
+        if len(rows) != 2 or len(set(rows)) != 2:
+            return None
+        return self.say(
+            "row_reservation",
+            people=self.say.join(people),
+            rows=self.places.lines("row", rows),
+        )
+
+    def _line_overlap(self, inference: Inference, conclusion: str) -> str | None:
+        move = inference.move
+        if move is None or move.rule != "subsumption":
+            return None
+        source_lines = [
+            (source, *self.board_sources[source])
+            for source in move.sources
+            if self.board_sources.get(source, ("", None))[0] in {"row", "col"}
+        ]
+        scope_lines = [
+            (source, *self.board_sources[source])
+            for source in move.scope
+            if self.board_sources.get(source, ("", None))[0] in {"row", "col"}
+        ]
+        if len(source_lines) != 1 or len(scope_lines) != 1:
+            return None
+        source, source_kind, source_index = source_lines[0]
+        _, scope_kind, scope_index = scope_lines[0]
+        if source_kind == scope_kind:
+            return None
+        constraint = self.constraints.get(source)
+        if constraint is None or constraint.kind is not Kind.EXACTLY_ONE:
+            return None
+        squares = {
+            inference.before.value_of(literal)
+            for literal in inference.before.live(constraint.index)
+            if inference.before.var_of(literal) in self.board.people
+            and isinstance(inference.before.value_of(literal), Square)
+        }
+        if len(squares) != 1:
+            return None
+        (square,) = squares
+        if (square.row if source_kind == "row" else square.col) != source_index or (
+            square.row if scope_kind == "row" else square.col
+        ) != scope_index:
+            return None
+        return self.say(
+            "murdoku.line_overlap",
+            source_line=self.places.line(source_kind, source_index),
+            square=self.places.square(square),
+            scope_line=self.places.line(scope_kind, scope_index),
+            conclusion=conclusion,
+        )
+
+    def _area_exclusion_details(
+        self, inference: Inference, history: Sequence[Step], person: str, region: str
+    ) -> list[str]:
+        area_squares = {
+            square for square in self.board.free if self.board.region_of(square) == region
+        }
+        first: dict[Square, Step] = {}
+        for step in (*self.compilation.model.log, *history):
+            if (
+                step.var == person
+                and not step.asserted
+                and isinstance(step.value, Square)
+                and step.value in area_squares
+            ):
+                first.setdefault(step.value, step)
+
+        clues: dict[str, set[Square]] = {}
+        occupied: dict[tuple[str, str, int], set[Square]] = {}
+        reserved: dict[tuple[str, str, int], set[Square]] = {}
+        for square, step in first.items():
+            clue_labels = {
+                label
+                for source in step.sources
+                for label in self.source_origins.get(source, ())
+                if label in self.clue_origins
+            }
+            if clue_labels:
+                for label in clue_labels:
+                    clues.setdefault(label, set()).add(square)
+                continue
+            line = next(
+                (
+                    self.board_sources[source]
+                    for source in step.sources
+                    if self.board_sources.get(source, ("", None))[0] in {"row", "col"}
+                ),
+                None,
+            )
+            if step.placing is not None and line is not None:
+                blocker, placed = step.placing
+                kind, index = line
+                if isinstance(placed, Square) and (
+                    (placed.row if kind == "row" else placed.col) == index
+                    and (square.row if kind == "row" else square.col) == index
+                ):
+                    occupied.setdefault((blocker, kind, index), set()).add(square)
+                    continue
+            if step.rule == "subsumption":
+                person_sources = [
+                    source
+                    for source in step.sources
+                    if self.board_sources.get(source, ("", None))[0] == "person"
+                ]
+                line_sources = [
+                    self.board_sources[source]
+                    for source in step.scope
+                    if self.board_sources.get(source, ("", None))[0] in {"row", "col"}
+                ]
+                if len(person_sources) == len(line_sources) == 1:
+                    blocker = self.board_sources[person_sources[0]][1]
+                    kind, index = line_sources[0]
+                    options = {
+                        inference.before.value_of(literal)
+                        for literal in inference.before.options(blocker)
+                    }
+                    if options and all(
+                        (candidate.row if kind == "row" else candidate.col) == index
+                        for candidate in options
+                    ):
+                        reserved.setdefault((blocker, kind, index), set()).add(square)
+
+        details = [
+            self.say(
+                "murdoku.area_excluded_by_clue",
+                clue=self.names([label]),
+                who=person,
+                squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
+            )
+            for label, squares in clues.items()
+        ]
+        details.extend(
+            self.say(
+                "murdoku.area_excluded_by_occupant",
+                blocker=blocker,
+                line=self.places.line(kind, index),
+                who=person,
+                squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
+            )
+            for (blocker, kind, index), squares in occupied.items()
+        )
+        details.extend(
+            self.say(
+                "murdoku.area_excluded_by_reservation",
+                blocker=blocker,
+                line=self.places.line(kind, index),
+                who=person,
+                squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
+            )
+            for (blocker, kind, index), squares in reserved.items()
+        )
+        return details
+
+    def _role_area_reason(self, inference: Inference, history: Sequence[Step]) -> str | None:
+        for step in inference.steps:
+            if step.var not in self.roles or not step.asserted or step.value is not True:
+                continue
+            person, role = self.roles[step.var]
+            specification = next((item for item in self.board.roles if item.name == role), None)
+            if specification is None or specification.allowed_counts != frozenset({1}):
+                continue
+            eligible = set(specification.eligible_people or self.board.people)
+            if person not in eligible:
+                continue
+            for source in step.sources:
+                constraint = self.constraints.get(source)
+                if constraint is None or constraint.kind is not Kind.COUNT:
+                    continue
+                squares = [
+                    self.model.value_of(literal)
+                    for literal in constraint.literals
+                    if self.model.var_of(literal) == person
+                    and isinstance(self.model.value_of(literal), Square)
+                ]
+                regions = {self.board.region_of(square) for square in squares}
+                if len(regions) != 1:
+                    continue
+                (region,) = regions
+                possible = [
+                    candidate
+                    for candidate in eligible
+                    if any(
+                        self.board.region_of(inference.before.value_of(literal)) == region
+                        for literal in inference.before.options(candidate)
+                    )
+                ]
+                if possible != [person]:
+                    continue
+                details = []
+                for candidate in self.board.people:
+                    if candidate not in eligible or candidate == person:
+                        continue
+                    options = {
+                        inference.before.value_of(literal)
+                        for literal in inference.before.options(candidate)
+                    }
+                    candidate_region = self.places.common_region(options)
+                    if candidate_region and self.board.region_of(next(iter(options))) != region:
+                        details.append(
+                            self.say(
+                                "murdoku.area_confined",
+                                who=candidate,
+                                area=candidate_region,
+                            )
+                        )
+                    else:
+                        details.extend(
+                            self._area_exclusion_details(inference, history, candidate, region)
+                        )
+                        if not any(self.board.region_of(square) == region for square in options):
+                            details.append(
+                                self.say(
+                                    "murdoku.area_no_candidate",
+                                    who=candidate,
+                                    area=self.places.region(self.board.region_names[region]),
+                                )
+                            )
+                origin = next(
+                    (
+                        origin
+                        for label in self.source_origins.get(source, ())
+                        for origin in self.compilation.origins
+                        if origin.label == label and origin.kind == "rule"
+                    ),
+                    None,
+                )
+                rule = (
+                    self.source_words[origin.label] if origin is not None else self.names([source])
+                )
+                return self.say(
+                    "murdoku.role_area_unique",
+                    reasons=self.say.join(details),
+                    who=person,
+                    area=self.places.region(self.board.region_names[region]),
+                    rule=_cap(rule),
+                    role=self.say.words.get(role, role),
+                )
+        return None
+
+    def _role_exclusion(self, inference: Inference) -> str | None:
+        visible = [step for step in inference.steps if step.var in self.roles]
+        if len(visible) != 1:
+            return None
+        step = visible[0]
+        if (step.value if step.asserted else not step.value) is not False:
+            return None
+        sources = inference.move.sources if inference.move is not None else ()
+        if len(sources) != 1:
+            return None
+        labels = self.source_origins.get(sources[0], ())
+        origin = next(
+            (
+                origin
+                for origin in self.compilation.origins
+                if origin.label in labels and origin.kind == "rule"
+            ),
+            None,
+        )
+        if origin is None:
+            return None
+        person, role = self.roles[step.var]
+        formula = origin.statement.formula
+        if (
+            isinstance(formula, Quantified)
+            and formula.quantifier.text == "every"
+            and len(formula.variables) == 1
+            and isinstance(formula.source, Name)
+            and formula.source.token.text == f"role:{role}"
+            and isinstance(formula.body, Atom)
+            and isinstance(formula.body.subject, Name)
+            and formula.body.subject.token.text == formula.variables[0].text
+        ):
+            statement = Statement(
+                replace(
+                    formula.body,
+                    subject=Name(
+                        Token(
+                            person,
+                            formula.body.subject.token.line,
+                            formula.body.subject.token.column,
+                        )
+                    ),
+                )
+            )
+            candidates = [
+                inference.before.value_of(literal)
+                for literal in inference.before.options(person)
+                if isinstance(inference.before.value_of(literal), Square)
+            ]
+            dependencies = grounded_dependencies(self.board, statement)
+            if (
+                candidates
+                and len(candidates) <= MAX_LISTED + 1
+                and dependencies == frozenset({person})
+                and all(
+                    not holds_grounded(statement, self.board, {person: square}, dependencies)
+                    for square in candidates
+                )
+            ):
+                return self.say(
+                    "murdoku.role_exclusion_candidates",
+                    rule=self.say("expression.rule", number=origin.number),
+                    statement=self.statements[origin.label],
+                    who=person,
+                    role=self.say.words.get(role, role),
+                    squares=self.say.join(
+                        [self.places.square(square) for square in sorted(candidates)]
+                    ),
+                )
+        return self.say(
+            "murdoku.role_exclusion",
+            rule=self.say("expression.rule", number=origin.number),
+            who=person,
+            role=self.say.words.get(role, role),
+        )
 
     def pattern(self, inference: Inference, history: Sequence[Step]) -> str:
         move = inference.move
+        if line_single := self._line_single(inference, history):
+            self.conclusion(inference.steps)
+            return line_single
         assert move is not None
         if move.rule == "what_if" and inference.steps[0].var in self.visible:
             paragraph = self._what_if(inference, history)
             if conclusion := self.conclusion(inference.steps):
                 paragraph += f" {_cap(self.say('so'))} {conclusion}."
             return paragraph
-        conclusion = self.conclusion(inference.steps)
+        reservation = self._row_reservation(inference)
+        line_reservation = self._line_reservation(inference)
+        conclusion = self.conclusion(
+            inference.steps,
+            group_candidates=move.rule not in {"chains", "what_if"},
+            include_broad_candidates=(
+                move.rule == "relations" and self._relation_candidate_summary(inference) is not None
+            ),
+        )
         if conclusion is None:
-            return ""
+            return reservation + "." if reservation is not None else ""
+        if reservation is not None:
+            return f"{reservation}. {_cap(self.say('so'))} {conclusion}."
+        if line_reservation is not None:
+            return self.say("line_reservation", **line_reservation, conclusion=conclusion) + "."
+        if line_overlap := self._line_overlap(inference, conclusion):
+            return line_overlap + "."
+        if role_exclusion := self._role_exclusion(inference):
+            return role_exclusion + "."
+        if role_area := self._role_area_reason(inference, history):
+            return role_area + "."
+        if relation_pair := self._relation_pair(inference):
+            return relation_pair
+        if furthest := self._furthest_exclusion(inference, conclusion):
+            return furthest
+        if relation := self._relation_with_candidates(inference, conclusion):
+            return relation
         if move.rule == "chains" and all(var in self.visible for var, _ in move.chain):
-            return self._chain(move.chain, conclusion, move.sources)
-        return self._because(move.sources, conclusion)
+            return self._chain(
+                move.chain, conclusion, move.sources, inference.steps, inference.before
+            )
+        sources = (
+            move.sources + move.scope
+            if move.rule in {"subsumption", "cover2", "cover3"}
+            else move.sources
+        )
+        return self._because(sources, conclusion)
+
+    def _line_reservation(self, inference: Inference) -> dict[str, str] | None:
+        move = inference.move
+        if move is None or move.rule != "subsumption":
+            return None
+        person_sources = [
+            source
+            for source in move.sources
+            if self.board_sources.get(source, ("", None))[0] == "person"
+        ]
+        lines = [
+            (source, *self.board_sources[source])
+            for source in move.scope
+            if self.board_sources.get(source, ("", None))[0] in {"row", "col"}
+        ]
+        if len(person_sources) != 1 or len(lines) != 1:
+            return None
+        person = self.board_sources[person_sources[0]][1]
+        source, kind, index = lines[0]
+        if not self.options[person] or any(
+            (square.row if kind == "row" else square.col) != index
+            for square in self.options[person]
+        ):
+            return None
+        if not any(
+            step.var != person
+            and isinstance(step.value, Square)
+            and (step.value.row if kind == "row" else step.value.col) == index
+            for step in inference.steps
+        ):
+            return None
+        return {
+            "person": person,
+            "line": self.places.line(kind, index),
+            "rule": self.source_words[source],
+        }
 
     def tell(
         self, start: Model, groups: Sequence[Episode], solved: bool
@@ -987,15 +2169,44 @@ class _Narrator(generic_story.Narrator):
         for index, step in enumerate(self.compilation.model.log):
             origins = self.compilation.initial_step_origins.get(index, ())
             sources = tuple(origin.label for origin in origins) or step.sources
+            useful_sources = tuple(source for source in sources if source not in self.domains)
+            if useful_sources:
+                sources = useful_sources
+            if sources and all(
+                self.source_words.get(source) == self.say("expression.role_eligibility")
+                for source in sources
+            ):
+                eligibility = self.say("expression.role_eligibility")
+                self.source_words[eligibility] = eligibility
+                sources = (eligibility,)
             initial.setdefault(sources, []).append(step)
         open_squares = set(self.board.free)
         for sources, steps in initial.items():
             if direct := self._direct(sources, steps, open_squares):
                 paragraphs.append(direct)
+            elif compact := self._shared_rule_exclusions(sources, steps):
+                self.conclusion(steps)
+                paragraphs.append(compact)
             elif conclusion := self.conclusion(steps):
                 paragraphs.append(self._because(sources, conclusion))
         if paragraphs:
             paragraphs = [f"**{self.say('direct')}.** " + " ".join(paragraphs)]
+        if not self.numbered:
+            for role in self.board.roles:
+                if role.eligible_people is None:
+                    continue
+                paragraphs.append(
+                    self.say(
+                        "role_eligible_only_one"
+                        if len(role.eligible_people) == 1
+                        else "role_eligible_only_many",
+                        people=self.say.join(
+                            sorted(role.eligible_people, key=self.board.people.index)
+                        ),
+                        role=self.say.words.get(role.name, role.name),
+                    )
+                    + "."
+                )
         history = list(self.compilation.model.log)
         support: dict[str, tuple[str, ...]] = {}
         for group in groups:
@@ -1025,17 +2236,33 @@ class _Narrator(generic_story.Narrator):
                 if paragraph := self._mark_blocked_by_occupant(inference):
                     self.conclusion(inference.steps)
                     paragraphs.append(paragraph + ".")
-                elif paragraph := self._mark_case_deduction(inference, history):
+                elif (paragraph := self._mark_case_deduction(inference, history)) or (
+                    paragraph := self._direction_boundary(inference)
+                ):
                     if conclusion := self.conclusion(inference.steps):
                         paragraph += f" {_cap(self.say('so'))} {conclusion}."
                     paragraphs.append(paragraph)
-                elif paragraph := (
-                    self._population_full(inference)
-                    or self._population_tied(inference)
-                    or self._population_ceiling(inference)
+                elif (
+                    (
+                        paragraph := (
+                            self._population_full(inference)
+                            or self._population_tied(inference)
+                            or self._population_ceiling(inference)
+                        )
+                    )
+                    or (paragraph := self._line_single(inference, history))
+                    or (paragraph := self._relation_pair(inference))
+                    or (paragraph := self._role_area_reason(inference, history))
                 ):
                     self.conclusion(inference.steps)
                     paragraphs.append(paragraph)
+                elif reservation := self._line_reservation(inference):
+                    if conclusion := self.conclusion(inference.steps):
+                        paragraphs.append(
+                            self.say("line_reservation", **reservation, conclusion=conclusion) + "."
+                        )
+                    else:
+                        paragraphs.append(self.say("line_reservation_only", **reservation) + ".")
                 elif not any(step.var in self.visible for step in inference.steps):
                     for step in inference.steps:
                         support[step.var] = tuple(dict.fromkeys((*premises, *sources)))
@@ -1045,7 +2272,16 @@ class _Narrator(generic_story.Narrator):
                 else:
                     conclusion = self.conclusion(inference.steps)
                     if conclusion is not None:
-                        paragraphs.append(self._because([*premises, *sources], conclusion))
+                        paragraph = self._line_overlap(inference, conclusion)
+                        if paragraph is None:
+                            paragraph = self._furthest_exclusion(inference, conclusion)
+                        if paragraph is None:
+                            paragraph = self._relation_with_candidates(inference, conclusion)
+                        paragraphs.append(
+                            paragraph
+                            if paragraph is not None
+                            else self._because([*premises, *sources], conclusion)
+                        )
                 history.extend(inference.steps)
         if not solved:
             paragraphs.append(self.say("generic.stalled"))
@@ -1084,4 +2320,62 @@ def explain(
         moves = generic_story.thin(start, moves, required_values=required)
     result, groups = episodes(start, moves)
     narrator = _Narrator(text, board, compilation, numbered)
-    return narrator.tell(start, groups, result.solution() is not None)
+    explanation = narrator.tell(start, groups, result.solution() is not None)
+    if explanation.complete:
+        existing = "\n".join(explanation.paragraphs)
+        missing_rules = [
+            narrator.source_words[origin.label]
+            for origin in compilation.origins
+            if origin.kind == "rule"
+            and narrator.source_words[origin.label].casefold() not in existing.casefold()
+        ]
+        if missing_rules:
+            paragraphs = list(explanation.paragraphs)
+            direct_heading = f"**{narrator.say('direct')}.**"
+            insert_at = 1 if paragraphs and paragraphs[0].startswith(direct_heading) else 0
+            paragraphs.insert(
+                insert_at,
+                narrator.say("murdoku.rule_context", rules="; ".join(missing_rules)),
+            )
+            explanation = replace(
+                explanation,
+                paragraphs=tuple(paragraphs),
+            )
+        missing = [
+            f"**{narrator.placed(person, square)}**"
+            for person, squares in narrator.options.items()
+            if len(squares) == 1
+            for square in squares
+            if f"**{narrator.placed(person, square)}**" not in existing
+        ]
+        if missing:
+            explanation = replace(
+                explanation,
+                paragraphs=(
+                    *explanation.paragraphs,
+                    narrator.say(
+                        "murdoku.final_placements",
+                        placements=narrator.say.join(missing),
+                    ),
+                ),
+            )
+    if numbered and explanation.complete:
+        reveal = presentation_reveal(text)
+        spoken = "\n".join(explanation.paragraphs)
+        for person in board.people:
+            for role in board.roles:
+                role_name = narrator.say.words.get(role.name, role.name)
+                for title in (role_name, f"the {role_name}", f"de {role_name}", f"het {role_name}"):
+                    assignment = f"{person} is {title}"
+                    if assignment in reveal and f"**{assignment}**" not in spoken:
+                        reveal = reveal.replace(assignment, f"**{assignment}**", 1)
+                        break
+        if reveal:
+            explanation = replace(
+                explanation,
+                paragraphs=(
+                    *explanation.paragraphs,
+                    narrator.say("murdoku.final_answer", reveal=reveal),
+                ),
+            )
+    return explanation

@@ -8,8 +8,8 @@ from .core import Kind, Model, Solver, Step
 from .proof import Episode, Inference, Move, episodes, replay, shortest
 from .story import Wording
 
-SINGLES_PER_PARAGRAPH = 8  # reasons told in one paragraph of singles
-PLACEMENTS_PER_RUN = 9  # placements told under one reason before it is repeated
+SINGLES_PER_PARAGRAPH = 4  # reasons told in one paragraph of singles
+PLACEMENTS_PER_RUN = 5  # placements told under one reason before it is repeated
 
 
 @dataclass(frozen=True)
@@ -128,7 +128,12 @@ class _Narrator:
                     "sudoku.cross_one", digit=source.digit, cell=self.cells[removed[0]]
                 )
             else:
-                conclusion = self.say("sudoku.cross_many", digit=source.digit, target=target.label)
+                conclusion = self.say(
+                    "sudoku.cross_many",
+                    digit=source.digit,
+                    source=source.label,
+                    target=target.label,
+                )
             return self.say(
                 "sudoku.locked",
                 source=source.label,

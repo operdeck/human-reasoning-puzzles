@@ -168,7 +168,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "placed": "**{who} on {square}**",
         "so": "so",
         "cross_out.one": "cross out the other open square in that {line}",
-        "cross_out.many": "cross out the other {n} open squares in that {line}",
+        "cross_out.many": "cross out the other {n} open squares in that {line}: {squares}",
         "cross_out.row": "row",
         "cross_out.col": "column",
         "takes_line": "{who} takes {line}",
@@ -331,11 +331,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.only_place": "{placements} (the only place for {digits} in {house})",
         "sudoku.only_places": "{placements} (the only places for {digits} in {house})",
         "sudoku.locked": (
-            "**Locked candidate.** In {source}, every remaining place for {digit} is in {target}. "
-            "The {digit} in {source} must therefore also occupy {target}, so **{conclusion}**."
+            "**Locked candidate.** Every remaining place for {digit} in {source} is inside "
+            "{target}, so **{conclusion}**."
         ),
         "sudoku.cross_one": "cross {digit} out at {cell}",
-        "sudoku.cross_many": "cross {digit} out from the other candidates in {target}",
+        "sudoku.cross_many": "cross {digit} out of the other cells in {target} outside {source}",
         "sudoku.naked_set": (
             "**Naked set.** In {house}, {cells} can only contain {digits} between them. "
             "They use those digits, so **remove {digits} from the other cells in {house}**."
@@ -397,24 +397,52 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.false.thermometers": "empty",
         "generic.cannot_be": "{where} cannot be {values}",
         "generic.internal": "an intermediate step",
-        "generic.singles": "**Only option.** By {rules}, one option is left each time: "
-        "{placements}.",
-        "generic.singles_plain": "**Only option.** Then: {placements}.",
+        "generic.singles_by": "**Only option.** {parts}.",
+        "generic.by_rule": "{placements} by {rules}",
+        "generic.singles_plain": "**Only option.** Then: {parts}.",
+        "generic.singles_more": "**Only option, continued.** {parts}.",
+        "generic.last_left": "{placements}, each the last value left in its cell",
+        "generic.ruled_out_by": "{placements}, ruled out by {cause}",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
+        "generic.clue_with_candidates": "Given {candidates}, {sources} gives {conclusion}",
         "generic.subsumption": "**Overlap.** Every remaining option of {sources} lies within "
         "{scope}, so {conclusion}.",
         "generic.cover": "**Combined rules.** {sources} take up {scope} between them, "
         "so {conclusion}.",
+        "generic.cover_naked": "**Combined rules.** {cells} can only be {values}. By {rules}, "
+        "those values must go in those cells, so {conclusion}.",
+        "generic.cover_hidden": "**Combined rules.** By {rules}, {values} can only go in {cells}, "
+        "so {conclusion}.",
         "generic.chain": "**Chain.** If {start}, then {links}. So {first} or {last}, "
         "and either way {conclusion}.",
+        "generic.chain_continuation": "Continuing the same chain, {links}. It also shows that "
+        "{conclusion}.",
+        "generic.chain_also": "The same chain also shows that {conclusion}.",
+        "generic.chain_reused": "**Chain.** {start}, then {prefix}. The earlier chain from "
+        "{shared_start} shows {shared_end}; continuing, {continuation}. So {first} or {last}. "
+        "{reason}",
+        "generic.chain_if": "If {assumption}",
+        "generic.chain_explained": "**Chain.** {start}, then {links}. So {first} or {last}. "
+        "{reason}",
+        "generic.chain_either_explained": "{ends}. {reason}",
+        "generic.chain_eliminates": "{target} is ruled out: {first} conflicts with it by "
+        "{first_source}, and {last} by {last_source}.",
+        "generic.chain_domain_reason": "; it is the only value left after {excluded} is ruled out",
         "generic.chain_link": ", so ",
+        "generic.chain_reason": " by {source}",
+        "generic.chain_supported": "only {options} remain under {source}, so {placement}",
+        "generic.chain_supported_either": "only {options} remain under {source}",
         "generic.wing": "**Wing.** One of {options} must hold, so {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
         "generic.what_if": "**Suppose {assumed}.** Then {trail} would follow, but {breaks}; "
         "so {refuted}.",
         "generic.what_if_direct": "**Suppose {assumed}.** Then {breaks}; so {refuted}.",
+        "generic.trail_place": "{placement} by {sources}",
+        "generic.trail_only": "{placement} is the only option",
         "generic.breaks": "{source} fails",
+        "generic.remaining_values": "{variable} = {values}",
+        "generic.breaks_relation": "the remaining values ({options}) do not satisfy {source}",
         "generic.breaks_unknown": "the puzzle gets stuck",
         "generic.stalled": "**Stalled.** The current rules do not finish this puzzle; "
         "use --verbose for the detailed trace.",
@@ -427,6 +455,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "expression.square": "{square} holds at most one person",
         "expression.row": "at most one person per row",
         "expression.column": "at most one person per column",
+        "expression.row_exact": "exactly one person per row",
+        "expression.column_exact": "exactly one person per column",
         "expression.role_count": "the allowed number of people with the {role} role is {counts}",
         "expression.role_eligibility": "the declared role candidates",
         "rule.role_separation": "there is at most one {role} per area ({a}, {b})",
@@ -436,6 +466,63 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_has": "{who} has the {role} role",
         "role_not": "{who} does not have the {role} role",
         "role_others": "nobody else has the {role} role",
+        "role_not_many": "{people} cannot have the {role} role",
+        "role_eligible_only_one": "only {people} is eligible for the {role} role",
+        "role_eligible_only_many": "only {people} are eligible for the {role} role",
+        "murdoku.chain_domain_reason": "; it is the only square left after {excluded} is ruled out",
+        "murdoku.relation_pair": "Of the remaining squares, only {pair} satisfy {source}.",
+        "murdoku.direction_boundaries": "{clue}, so **{first}** and **{second}**.",
+        "line_single": "In {line}, only {placement} remains; since the line requires one person, "
+        "that person must be there.",
+        "murdoku.line_single_excluded": "{clue} rules out {squares} for {who}",
+        "murdoku.line_single_with_clues": "{clues}; in {line} only {placement} remains, and the "
+        "line requires one person, so that person must be there.",
+        "murdoku.line_overlap": "The only remaining place for {source_line} is {square}, in "
+        "{scope_line}; since {source_line} must be occupied, {scope_line} is already occupied, "
+        "so {conclusion}",
+        "murdoku.area_confined": "{who}'s remaining squares are all {area}",
+        "murdoku.area_no_candidate": "{who} has no remaining square {area}",
+        "murdoku.area_excluded_by_clue": "{clue} rules {who} out of {squares}",
+        "murdoku.area_excluded_by_occupant": "{blocker} occupies {line}, so {who} cannot use "
+        "{squares}",
+        "murdoku.area_excluded_by_reservation": "{blocker}'s remaining squares are all in {line}, "
+        "so {who} cannot use {squares}",
+        "murdoku.role_area_unique": "{reasons}. That leaves {who} as the only eligible person who "
+        "can still be {area}. {rule}; since only one {role} is allowed, "
+        "**{who} is the {role}**",
+        "person_single": "Only {placement} is possible now.",
+        "murdoku.person_single_explained": "Given {support}, {placement} is the only remaining "
+        "place for {who}",
+        "murdoku.established_placements": "the placements already established",
+        "murdoku.final_answer": "**Answer.** {reveal}",
+        "murdoku.final_placements": "Final placements not yet named: {placements}.",
+        "murdoku.rule_context": "**Rules.** {rules}.",
+        "murdoku.role_exclusion": "{rule} rules out {who} as the {role}",
+        "murdoku.role_exclusion_candidates": "{rule} says {statement}. {who}'s remaining squares "
+        "are {squares}; none satisfies it, so {who} cannot be the {role}",
+        "line_takes": "{who} occupies {lines}",
+        "murdoku.line_takes_known": "{who} occupies {lines}",
+        "murdoku.shared_rule_exclusions_some": "By {source}, only {people} can use {squares}",
+        "murdoku.shared_rule_exclusions_none": "By {source}, nobody can use {squares}",
+        "line_exclusions": "{blockers}; at most one person can use each row or column, so no one "
+        "else can use those lines",
+        "line_exclusions_exact": "{blockers}; exactly one person occupies each row and column, "
+        "so no one else can use those lines",
+        "must_occupy_line": "{who} must occupy {line}",
+        "nobody_else_line": "the one-person-per-line rule excludes everyone else",
+        "line_reservation": "{person}'s remaining squares are all in {line}, so {person} must be "
+        "there; {rule} leaves no other person in that line, so {conclusion}",
+        "line_reservation_only": "{person}'s remaining squares are all in {line}, so {rule} "
+        "reserves that line for {person}",
+        "candidate_bound": "Only {lines} are available to {people}",
+        "murdoku.relation_candidate_bound": "{people} can only be in {lines}",
+        "murdoku.relation_with_candidates": ("Given {candidates}, {sources} gives {conclusion}"),
+        "murdoku.furthest_exclusion": "{clue} rules out {subject} at {candidate}: each remaining "
+        "square for {rival} ({rival_squares}) is at least as far from every remaining {target} "
+        "square ({target_squares}) as {subject} would be. The clue requires {subject} to be "
+        "uniquely farthest, so {conclusion}",
+        "row_reservation": "{people} are each confined to {rows}; they must occupy different rows, "
+        "so those rows are reserved",
         "role_some": "{who} has at least one role",
         "roleless": "{who} has no roles",
         "role_at_most_one": "{who} has at most one role",
@@ -633,7 +720,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "placed": "**{who} op {square}**",
         "so": "dus",
         "cross_out.one": "streep het andere nog open vakje in die {line} weg",
-        "cross_out.many": "streep de {n} andere nog open vakjes in die {line} weg",
+        "cross_out.many": "streep de {n} andere nog open vakjes in die {line} weg: {squares}",
         "cross_out.row": "rij",
         "cross_out.col": "kolom",
         "takes_line": "{who} bezet {line}",
@@ -806,12 +893,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.only_place": "{placements} (de enige plek voor {digits} in {house})",
         "sudoku.only_places": "{placements} (de enige plekken voor {digits} in {house})",
         "sudoku.locked": (
-            "**Gebonden kandidaat.** In {source} liggen alle overgebleven plekken voor {digit} "
-            "in {target}. De {digit} van {source} staat dus ook in {target}, dus "
-            "**{conclusion}**."
+            "**Gebonden kandidaat.** Alle overgebleven plekken voor {digit} in {source} liggen "
+            "binnen {target}, dus **{conclusion}**."
         ),
         "sudoku.cross_one": "streep {digit} weg op {cell}",
-        "sudoku.cross_many": "streep {digit} weg uit de andere kandidaten in {target}",
+        "sudoku.cross_many": "streep {digit} weg uit de andere vakjes in {target}, buiten {source}",
         "sudoku.naked_set": (
             "**Naked set.** In {house} kunnen {cells} samen alleen {digits} bevatten. "
             "Daarmee zijn die cijfers gebruikt, dus **streep {digits} weg uit de andere vakjes "
@@ -874,24 +960,53 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.false.thermometers": "leeg",
         "generic.cannot_be": "{where}: geen {values}",
         "generic.internal": "een tussenstap",
-        "generic.singles": "**Enige mogelijkheid.** Door {rules} blijft er steeds één optie over: "
-        "{placements}.",
-        "generic.singles_plain": "**Enige mogelijkheid.** Dan: {placements}.",
+        "generic.singles_by": "**Enige mogelijkheid.** {parts}.",
+        "generic.by_rule": "{placements} door {rules}",
+        "generic.singles_plain": "**Enige mogelijkheid.** Dan: {parts}.",
+        "generic.singles_more": "**Enige mogelijkheid, vervolg.** {parts}.",
+        "generic.last_left": "{placements}, steeds de laatste waarde in dat vakje",
+        "generic.ruled_out_by": "{placements}, uitgesloten door {cause}",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
+        "generic.clue_with_candidates": "Met {candidates} over geeft {sources} {conclusion}",
         "generic.subsumption": "**Overlap.** Alle resterende opties van {sources} liggen binnen "
         "{scope}, dus {conclusion}.",
         "generic.cover": "**Combinatie.** {sources} nemen samen {scope} in beslag, "
         "dus {conclusion}.",
+        "generic.cover_naked": "**Gecombineerde regels.** {cells} kunnen alleen {values} zijn. "
+        "Volgens {rules} moeten die waarden dus in die vakjes staan, dus {conclusion}.",
+        "generic.cover_hidden": "**Gecombineerde regels.** Volgens {rules} kunnen {values} alleen "
+        "in {cells} staan, dus {conclusion}.",
         "generic.chain": "**Keten.** Als {start}, dan {links}. Dus {first} of {last}, "
         "en hoe dan ook {conclusion}.",
+        "generic.chain_continuation": "Als we dezelfde keten voortzetten, {links}. De keten laat "
+        "ook zien dat {conclusion}.",
+        "generic.chain_also": "Dezelfde keten laat ook zien dat {conclusion}.",
+        "generic.chain_reused": "**Keten.** {start}, dan {prefix}. De eerdere keten laat vanaf "
+        "{shared_start} {shared_end} zien; daarna {continuation}. Dus {first} of {last}. "
+        "{reason}",
+        "generic.chain_if": "Als {assumption}",
+        "generic.chain_explained": "**Keten.** {start}, dan {links}. Dus {first} of {last}. "
+        "{reason}",
+        "generic.chain_either_explained": "{ends}. {reason}",
+        "generic.chain_eliminates": "{target} valt af: {first} botst ermee door {first_source}, "
+        "en {last} door {last_source}.",
+        "generic.chain_domain_reason": "; dat is het enige cijfer dat overblijft nadat "
+        "{excluded} is uitgesloten",
         "generic.chain_link": ", dus ",
+        "generic.chain_reason": " door {source}",
+        "generic.chain_supported": "onder {source} blijven alleen {options} over, dus {placement}",
+        "generic.chain_supported_either": "onder {source} blijven alleen {options} over",
         "generic.wing": "**Wing.** Een van {options} moet gelden, dus {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
         "generic.what_if": "**Stel {assumed}.** Dan volgt {trail}, maar dan {breaks}; "
         "dus {refuted}.",
         "generic.what_if_direct": "**Stel {assumed}.** Dan {breaks}; dus {refuted}.",
+        "generic.trail_place": "{placement} door {sources}",
+        "generic.trail_only": "{placement} is de enige mogelijkheid",
         "generic.breaks": "klopt {source} niet meer",
+        "generic.remaining_values": "{variable} = {values}",
+        "generic.breaks_relation": "de resterende waarden ({options}) voldoen niet aan {source}",
         "generic.breaks_unknown": "loopt het vast",
         "generic.stalled": "**Gestopt.** De huidige regels lossen deze puzzel niet helemaal op; "
         "met --verbose zie je het technische spoor.",
@@ -904,6 +1019,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "expression.square": "op {square} staat hoogstens één persoon",
         "expression.row": "hoogstens één persoon per rij",
         "expression.column": "hoogstens één persoon per kolom",
+        "expression.row_exact": "precies één persoon per rij",
+        "expression.column_exact": "precies één persoon per kolom",
         "expression.role_count": "het toegestane aantal personen met de rol {role} is {counts}",
         "expression.role_eligibility": "de opgegeven kandidaten voor de rollen",
         "rule.role_separation": "er is hoogstens één {role} per gebied ({a}, {b})",
@@ -913,6 +1030,70 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_has": "{who} heeft de rol {role}",
         "role_not": "{who} heeft de rol {role} niet",
         "role_others": "niemand anders heeft de rol {role}",
+        "role_not_many": "{people} kunnen de rol {role} niet hebben",
+        "role_eligible_only_one": "alleen {people} komt in aanmerking voor de rol {role}",
+        "role_eligible_only_many": "alleen {people} komen in aanmerking voor de rol {role}",
+        "murdoku.chain_domain_reason": "; dat is het enige vakje dat overblijft nadat "
+        "{excluded} is uitgesloten",
+        "murdoku.relation_pair": "Van de overgebleven vakjes voldoen alleen {pair} aan {source}.",
+        "murdoku.direction_boundaries": "{clue}, dus **{first}** en **{second}**.",
+        "line_single": "In {line} is alleen {placement} over; omdat daar precies één persoon moet "
+        "staan, moet die persoon daar staan.",
+        "murdoku.line_single_excluded": "{clue} sluit {squares} voor {who} uit",
+        "murdoku.line_single_with_clues": "{clues}; daardoor is in {line} alleen {placement} "
+        "over, want daar moet precies één persoon staan.",
+        "murdoku.line_overlap": "De enige overgebleven plaats in {source_line} is {square}, in "
+        "{scope_line}; omdat {source_line} bezet moet zijn, is {scope_line} al bezet, dus "
+        "{conclusion}",
+        "murdoku.area_confined": "{who} kan alleen nog op vakjes {area}",
+        "murdoku.area_no_candidate": "{who} heeft geen overgebleven vakje {area}",
+        "murdoku.area_excluded_by_clue": "{clue} sluit {who} uit op {squares}",
+        "murdoku.area_excluded_by_occupant": "{blocker} bezet {line}, dus {who} kan niet op "
+        "{squares}",
+        "murdoku.area_excluded_by_reservation": "{blocker} kan alleen nog in {line} staan, dus "
+        "{who} kan niet op {squares}",
+        "murdoku.role_area_unique": "{reasons}. Daardoor is {who} de enige geschikte persoon die "
+        "nog {area} kan zijn. {rule}; omdat er maar één {role} mag zijn, "
+        "**{who} is de {role}**",
+        "person_single": "Alleen {placement} is nog mogelijk.",
+        "murdoku.person_single_explained": "Met {support} blijft alleen {placement} over "
+        "voor {who}",
+        "murdoku.established_placements": "de plaatsingen die al vaststaan",
+        "murdoku.final_answer": "**Antwoord.** {reveal}",
+        "murdoku.final_placements": "Nog niet expliciet genoemde plaatsingen: {placements}.",
+        "murdoku.rule_context": "**Regels.** {rules}.",
+        "murdoku.role_exclusion": "{rule} sluit {who} uit als {role}",
+        "murdoku.role_exclusion_candidates": "{rule} zegt: {statement}. {who} kan alleen nog op "
+        "{squares} staan; geen daarvan voldoet, dus {who} kan niet de {role} zijn",
+        "line_takes": "{who} bezet {lines}",
+        "murdoku.line_takes_known": "{who} bezet {lines}",
+        "murdoku.shared_rule_exclusions_some": (
+            "Door {source} kunnen alleen {people} op {squares} staan"
+        ),
+        "murdoku.shared_rule_exclusions_none": "Door {source} kan niemand op {squares} staan",
+        "line_exclusions": "{blockers}; per rij en kolom kan hoogstens één persoon staan, dus "
+        "niemand anders kan die lijnen gebruiken",
+        "line_exclusions_exact": "{blockers}; elke rij en kolom heeft precies één persoon, dus "
+        "niemand anders kan die lijnen gebruiken",
+        "must_occupy_line": "{who} moet in {line} staan",
+        "nobody_else_line": "de regel van één persoon per rij of kolom sluit iedereen anders uit",
+        "line_reservation": "de resterende vakjes van {person} liggen allemaal in {line}, dus "
+        "{person} moet daar staan; {rule} sluit iedereen anders in die lijn uit: {conclusion}",
+        "line_reservation_only": "de resterende vakjes van {person} liggen allemaal in {line}, "
+        "dus {rule} reserveert die lijn voor {person}",
+        "candidate_bound": "Voor {people} blijven alleen {lines} over",
+        "murdoku.relation_candidate_bound": "{people} alleen nog in {lines} kunnen staan",
+        "murdoku.relation_with_candidates": (
+            "Omdat {candidates}, leidt {sources} tot {conclusion}"
+        ),
+        "murdoku.furthest_exclusion": "{clue} sluit {subject} op {candidate} uit: ieder "
+        "overgebleven vakje voor {rival} ({rival_squares}) ligt minstens zo ver van elk "
+        "overgebleven vakje voor {target} ({target_squares}) als {subject} zou liggen. De "
+        "aanwijzing vereist dat {subject} als enige het verst staat, dus {conclusion}",
+        "row_reservation": (
+            "{people} kunnen alleen in {rows} staan; ze moeten verschillende rijen bezetten, "
+            "dus die rijen zijn gereserveerd"
+        ),
         "role_some": "{who} heeft minstens één rol",
         "roleless": "{who} heeft geen rollen",
         "role_at_most_one": "{who} heeft hoogstens één rol",
@@ -2304,6 +2485,10 @@ def object_list(text: str) -> list[tuple[str, str, bool]]:
 def phrase(text: str, key: str) -> str:
     """A fixed phrase such as `doc.clues` in the puzzle's language."""
     return Wording.read(text)(key)
+
+
+def presentation_reveal(text: str) -> str:
+    return " ".join(load_presentation(text).reveal)
 
 
 def explain(text: str, numbered: bool = True) -> str:

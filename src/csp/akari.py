@@ -136,7 +136,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
     for wall, count in puzzle.numbered_walls():
         neighbors = puzzle.adjacent_open(wall)
         model.constrain(
-            f"{count} bulbs around wall {cell_name(wall)}",
+            f"{count} bulb{'' if count == 1 else 's'} around wall {cell_name(wall)}",
             Kind.COUNT,
             [model.literal(cell_name(cell), True) for cell in neighbors],
             allowed_counts=(count,),

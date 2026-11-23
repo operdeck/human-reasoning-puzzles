@@ -38,10 +38,13 @@ def test_locked_candidates_and_singles_follow_a_sound_shortened_proof():
 
     narrative = sudoku_story.explain(text)
     assert narrative.complete
-    assert "In column 4, every remaining place for 4 is in the box containing r7c4" in (
+    assert "Every remaining place for 4 in column 4 is inside the box containing r7c4" in (
         narrative.markdown()
     )
-    assert "cross 4 out from the other candidates" in narrative.markdown()
+    assert (
+        "cross 4 out of the other cells in the box containing r7c4 outside column 4"
+        in narrative.markdown()
+    )
     placements = re.findall(r"\*\*(r\d+c\d+) = (\d+)\*\*", narrative.markdown())
     assert all(answer[cell] == int(digit) for cell, digit in placements)
     # Every square the puzzle leaves open is placed by name, none left to "follow".
@@ -59,11 +62,11 @@ def test_locked_candidate_works_from_box_to_column_and_column_to_box():
         narrator.pattern(group.pattern) for group in groups if group.pattern.rule == "subsumption"
     ]
     assert any(
-        text is not None and "In the box containing r4c4" in text and "in column 6" in text
+        text is not None and "in the box containing r4c4 is inside column 6" in text
         for text in patterns
     )
     assert any(
-        text is not None and "In column 4" in text and "in the box containing r7c4" in text
+        text is not None and "in column 4 is inside the box containing r7c4" in text
         for text in patterns
     )
 
@@ -89,7 +92,7 @@ def test_dutch_explanations_use_localized_houses_and_coordinates():
     narrative = sudoku_story.explain(text)
     assert narrative.complete
     assert "**Enkele kandidaten.**" in narrative.markdown()
-    assert "In kolom 4" in narrative.markdown()
+    assert "voor 4 in kolom 4" in narrative.markdown()
     assert "het blok met r7k4" in narrative.markdown()
     assert "streep 4 weg" in narrative.markdown()
 

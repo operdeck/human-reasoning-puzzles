@@ -448,7 +448,7 @@ def test_story_says_area_capacity_the_way_a_person_does():
     ) in story
     assert "Samen zijn dat alle vijf mensen, dus **niemand is in Okinawa**." in story
     assert (
-        "Haru staat boven Jun (5), dus **Haru zit niet in rij 5** en **Jun zit niet in rij 1**."
+        "Haru staat boven Jun (5), dus **Haru staat niet in rij 5** en **Jun staat niet in rij 1**."
     ) in story
     assert "Haru zit niet in Okinawa, Isamu zit niet in Okinawa" not in story
     assert "holds at least" not in story
@@ -538,7 +538,14 @@ def test_story_describes_by_region_and_row_before_squares():
     story = explain((example("prrrdoku3.txt")).read_text())
     assert "Luna is op de woonboot of Luna is in het water" in story
     assert "Otto en Pip staan in hetzelfde gebied" in story
-    assert "**Luna kan alleen in kolom 1**, **daar kan verder niemand**" in story
+    assert "Luna moet in kolom 1 staan" in story
+    assert "de regel van één persoon per rij of kolom sluit iedereen anders uit" in story
+    assert (
+        "sluit Luna op r6k2 uit: ieder overgebleven vakje voor Jos (r8k3 of r8k4) ligt minstens "
+        "zo ver van elk overgebleven vakje voor Mao (r1k8, r1k9, r2k9 of r6k9) als Luna zou liggen"
+        in story
+    )
+    assert story.index("sluit Luna op r6k2 uit:") < story.index("Luna moet in kolom 1 staan")
 
 
 def test_opening_uses_shared_columns_across_regions():
@@ -975,7 +982,10 @@ if Ada is role:guide then Ada on mark:altar
     assert "Ada shares an area with exactly one other person" in story
     assert "and that person holds the guide role" in story
     assert "(1), so **Ben has the guide role**" in story
-    assert "then (Ada is on a cell marked altar) (2), so **Ada on r1c1**" in story
+    assert (
+        "then (Ada is on a cell marked altar) (2), so Given *clue 2*, **Ada on r1c1**"
+        " is the only remaining place for Ada"
+    ) in story
 
 
 def test_explain_includes_static_attribute_and_uniqueness_clues():
@@ -1641,7 +1651,10 @@ if Ada is role:captain then Ada on mark:altar
     assert "Ada has the captain role" in story
     assert "Ada's" not in story
     assert "If (Ada is a member of the captain)" in story
-    assert "then (Ada is on a cell marked altar) (1), so **Ada on r1c1**" in story
+    assert (
+        "then (Ada is on a cell marked altar) (1), so Given *clue 1*, **Ada on r1c1**"
+        " is the only remaining place for Ada"
+    ) in story
 
 
 def test_story_explains_a_reified_count_constraint():
@@ -1755,7 +1768,10 @@ count people on mark:quiet = 1
     explanation = explain(text)
     assert "Ada is in the room (1)." in explanation
     assert "Ada is in the room (1): **in the room**" not in explanation
-    expected = "**Ada on r2c1**. Ada is on a quiet square, so **Ada is alone in the room**"
+    expected = (
+        "Given the placements already established, **Ada on r2c1** is the only remaining "
+        "place for Ada. Ada is on a quiet square, so **Ada is alone in the room**"
+    )
     assert expected in explanation
     assert (
         "That is the only occupied quiet square, so **all other quiet squares are empty**"
@@ -1832,7 +1848,7 @@ def test_english_story_places_everyone_right_and_once(name):
 
 def test_murder_hotel_story_handles_role_rule_covering_rows():
     story = explain(example("murder-hotel-1.txt").read_text())
-    assert "Donatella has the murderer role" in story
+    assert "**Donatella is the murderer**" in story
     assert "murderer holder" not in story
 
 
@@ -1886,11 +1902,11 @@ def test_chains_are_told_as_if_then_with_the_reason_for_each_link():
     assert "Jos dir:manhattan Mao >= 13\n" in text
     original_clues = text.replace("Anna dir:up Mao = 5\n", "Jos in area:keukenwinkel\n")
     story = explain(original_clues.replace("Jos dir:manhattan Mao >= 13\n", ""))
-    assert (
-        "Als Otto niet op r6k5 zit, dan zit Otto op r7k6, dan zit Luna niet op r7k4 (rij 7), "
-        "dan zit Luna op r8k3. Dus Otto zit op r6k5 of Luna zit op r8k3; hoe dan ook"
-    ) in story
-    assert "Tjitske zit op r5k2 of Tjitske zit op r6k1; hoe dan ook" in story
+    assert "Als Otto niet op r6k5 zit" in story
+    assert "blijven alleen Otto op r6k5 of Otto op r7k6 over, dus Otto op r7k6" in story
+    assert "dan zit Luna niet op r7k4 (rij 7)" in story
+    assert "Otto zit op r6k5 of Luna zit op r8k3." in story
+    assert "Tjitske op r6k3 valt af: Otto op r6k5 botst ermee" in story
 
 
 def test_story_cites_clue_numbers():
@@ -1955,7 +1971,7 @@ def test_role_rules_are_told_without_engine_names():
         for paragraph in story.split("\n\n")
         if "**Svetlana is de moordenaar**" in paragraph
     )
-    assert "regel 2: de moordenaar is op de plaats delict" in reveal
+    assert "Regel 2: de moordenaar is op de plaats delict" in reveal
     assert story.count("**Svetlana is de moordenaar**") == 1
     assert "**Svetlana zit op de plaats delict**" in story or "**Svetlana op r3k8**" in story
 

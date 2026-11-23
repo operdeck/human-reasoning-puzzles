@@ -104,6 +104,7 @@ class Step:
     `chain` holds a chain's literals as (var, value), start first: false,
     true, false, ... alternately, ending on one that must then be true; a
     wing's is its pivot then its two helpers, all carrying the excluded value.
+    `end_sources` says why a chain's two endpoints each rule out this step's value.
     """
 
     var: str
@@ -116,6 +117,7 @@ class Step:
     placing: tuple[str, Any] | None = None
     trail: tuple["Step", ...] = ()
     chain: tuple[tuple[str, Any], ...] = ()
+    end_sources: tuple[str, ...] = ()
 
     @property
     def literal(self) -> str:
@@ -362,6 +364,7 @@ class Model:
         placing: tuple[str, Any] | None = None,
         trail: tuple[Step, ...] = (),
         chain: tuple[tuple[str, Any], ...] = (),
+        end_sources: tuple[str, ...] = (),
     ) -> bool:
         """Rule `lit` out. Returns whether that changed anything.
 
@@ -389,6 +392,7 @@ class Model:
                 placing,
                 trail,
                 chain,
+                end_sources,
             )
         )
         return True
@@ -1097,7 +1101,11 @@ def follow_chain(model: Model, chain: Sequence[LiteralId], links: "_Links | None
     why = tuple(links.why[frozenset(link)] for link in itertools.pairwise(chain))
     reason = f"{model.describe(first)} or {model.describe(last)} holds, by a chain of {len(chain)}"
     for lit in targets:
-        model.eliminate(lit, "chains", reason, sources=why, chain=pairs)
+        end_sources = (
+            links.why[frozenset((first, lit))],
+            links.why[frozenset((last, lit))],
+        )
+        model.eliminate(lit, "chains", reason, sources=why, chain=pairs, end_sources=end_sources)
     return True
 
 

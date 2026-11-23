@@ -203,6 +203,90 @@ def test_chain_link_reasons_use_board_metadata_and_expression_origins(language, 
     assert "__" not in reason
 
 
+def test_relation_deduction_shows_the_only_supported_person_pair():
+    text = murdoku_story.explain(example("berghut-murdoku-3.txt").read_text()).markdown()
+
+    assert (
+        "Van de overgebleven vakjes voldoen alleen **Gunter op r8k9 en Sepp op r1k1** aan "
+        "*aanwijzing 4: Gunter staat vijftien vakjes van Sepp af, horizontaal en verticaal "
+        "geteld*."
+    ) in text
+
+
+def test_exact_line_single_names_its_only_remaining_candidate():
+    text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
+
+    assert (
+        "In kolom 1 is alleen **Jun op r3k1** over; omdat daar precies één persoon moet staan, "
+        "moet die persoon daar staan."
+    ) in text
+
+
+def test_exact_line_single_connects_a_direct_clue_to_the_removed_square():
+    text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
+
+    assert (
+        "*aanwijzing 7: Haru staat niet naast de torii* sluit r2k2 voor Haru uit; "
+        "daardoor is in kolom 2 alleen **Haru op r1k2** over"
+    ) in text
+
+
+def test_person_single_is_located_by_the_intersecting_lines():
+    text = murdoku_story.explain(example("halloween-museum-1.txt").read_text()).markdown()
+
+    assert "The only remaining place for row 1 is r1c5" in text
+    assert "Alba occupies row 1 and column 5" in text
+
+
+def test_line_bound_explanation_names_the_remaining_person_squares():
+    text = murdoku_story.explain(example("murder-hotel-3.txt").read_text()).markdown()
+
+    assert (
+        "Beatrice is on r1c10 or r2c10; Beatrice must occupy column 10; "
+        "the one-person-per-line rule excludes everyone else"
+    ) in text
+    assert (
+        "Marcella is on a staircase (6): **in column 5**, so **cross out the other two open "
+        "squares in that column: r1c5 and r2c5**."
+    ) in text
+
+
+def test_line_overlap_explains_why_the_only_headstone_square_is_excluded():
+    text = murdoku_story.explain(example("halloween-museum-1.txt").read_text()).markdown()
+
+    reservation = "Fernando's remaining squares are all in column 2"
+    row_single = "The only remaining place for row 1 is r1c5"
+    assert reservation in text and row_single in text
+    assert text.index(reservation) < text.index(row_single)
+    assert (
+        "The only remaining place for row 1 is r1c5, in column 5; since row 1 must be occupied, "
+        "column 5 is already occupied"
+    ) in text
+
+
+def test_unique_role_in_area_names_the_candidates_and_their_exclusions():
+    text = murdoku_story.explain(example("halloween-museum-1.txt").read_text()).markdown()
+
+    assert "Alba's remaining squares are all in the Goya room" in text
+    assert (
+        "Fernando's remaining squares are all in column 2, so Elena cannot use r3c2 and r5c2"
+        in text
+    )
+    assert "Elena is not beside the scarab case" in text
+    assert "Rule 1: the murderer is in the Egyptian hall" in text
+    assert "Carmen is the murderer" in text
+
+
+def test_numbered_explanation_ends_with_the_authored_reveal():
+    result = murdoku_story.explain(example("berghut-murdoku-3.txt").read_text())
+
+    assert result.complete
+    assert result.paragraphs[-1] == (
+        "**Antwoord.** Ute haalde de top, maar zat niet op een bikkelkruk: Greta, Siegfried en "
+        "Waltraud waren de drie echte bikkels."
+    )
+
+
 def test_what_if_announces_its_upshot_before_marking_a_placement_told(monkeypatch):
     board, rules, clues = load_expression_board(TEXT)
     compilation = compile_statements_with_origins(board, clues, rules=rules)
@@ -227,7 +311,99 @@ def test_new_common_line_is_reserved_instead_of_listing_removed_columns():
     conclusion = narrator.conclusion(
         [Step("Ada", Square(1, column), False, "relations", "") for column in range(2)]
     )
-    assert conclusion == "**Ada can only be in row 1**, **nobody else can be there**"
+    assert conclusion == (
+        "**Ada is not in row 2; Ada must occupy row 1; "
+        "the one-person-per-line rule excludes everyone else**"
+    )
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "**Ada occupies row 1 and column 1; at most one person can use each row or column, so "
+            "no one else can use those lines**",
+        ),
+        (
+            "nl",
+            "**Ada bezet rij 1 en kolom 1; per rij en kolom kan hoogstens één persoon staan, dus "
+            "niemand anders kan die lijnen gebruiken**",
+        ),
+    ],
+)
+def test_occupied_rows_and_columns_are_explained_once_for_all_people(language, expected):
+    board = Board(
+        size=3,
+        regions=[["a"] * 3 for _ in range(3)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben"],
+    )
+    compilation = compile_statements_with_origins(board, [])
+    narrator = murdoku_story._Narrator(
+        f"Language: {language}\n" + TEXT, board, compilation, numbered=True
+    )
+    narrator.conclusion([Step("Ada", Square(0, 0), True, "single", "")])
+
+    text = narrator.conclusion(
+        [
+            Step("Ben", Square(0, 1), False, "single", ""),
+            Step("Ben", Square(1, 0), False, "single", ""),
+        ]
+    )
+    assert text == expected
+
+    assert narrator.conclusion([Step("Ben", Square(0, 2), False, "single", "")]) is None
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "**Ada occupies row 1 and column 1; exactly one person occupies each row and column, "
+            "so no one else can use those lines**",
+        ),
+        (
+            "nl",
+            "**Ada bezet rij 1 en kolom 1; elke rij en kolom heeft precies één persoon, dus "
+            "niemand anders kan die lijnen gebruiken**",
+        ),
+    ],
+)
+def test_full_board_line_reservations_state_exact_occupancy(language, expected):
+    board = Board(
+        size=2,
+        regions=[["a"] * 2 for _ in range(2)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben"],
+    )
+    compilation = compile_statements_with_origins(board, [])
+    narrator = murdoku_story._Narrator(
+        f"Language: {language}\n" + TEXT, board, compilation, numbered=True
+    )
+    narrator.conclusion([Step("Ada", Square(0, 0), True, "single", "")])
+
+    text = narrator.conclusion(
+        [
+            Step("Ben", Square(0, 1), False, "single", ""),
+            Step("Ben", Square(1, 0), False, "single", ""),
+        ]
+    )
+    assert text == expected
+
+
+def test_cover_explains_the_row_reservation_before_its_consequences():
+    text = example("berghut-murdoku-2.txt").read_text()
+    story = murdoku_story.explain(text).markdown()
+    reservation = (
+        "Brunhild en Waltraud kunnen alleen in de rijen 2 en 4 staan; "
+        "ze moeten verschillende rijen bezetten, dus die rijen zijn gereserveerd."
+    )
+    assert reservation in story
+    assert story.index(reservation) < story.index("Greta op r1k1")
 
 
 @pytest.mark.parametrize("language", ["en", "nl"])
@@ -257,6 +433,33 @@ def test_role_exclusions_are_grouped_only_when_every_other_person_is_known(langu
     assert narrator.conclusion(steps) is None
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "**only Ben and Cleo are eligible for the guard role**"),
+        ("nl", "**alleen Ben en Cleo komen in aanmerking voor de rol guard**"),
+    ],
+)
+def test_complete_role_eligibility_exclusions_name_the_remaining_candidates(language, expected):
+    board = Board(
+        size=4,
+        regions=[["a"] * 4 for _ in range(4)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben", "Cleo", "Dex"],
+        roles=[RoleSpec("guard", frozenset({1}), eligible_people=frozenset({"Ben", "Cleo"}))],
+    )
+    compilation = compile_statements_with_origins(board, [])
+    narrator = murdoku_story._Narrator(f"Language: {language}", board, compilation, numbered=True)
+    conclusion = narrator.conclusion(
+        [
+            Step(board.role_variable("Ada", "guard"), False, True, "count", ""),
+            Step(board.role_variable("Dex", "guard"), False, True, "count", ""),
+        ]
+    )
+    assert conclusion == expected
+
+
 @pytest.mark.parametrize(("eligible", "show"), [("Ada", False), ("Ada Ben", True)])
 def test_unnumbered_story_omits_only_role_facts_given_by_the_figure_list(eligible, show):
     text = TEXT.replace("Rules:", f"RoleEligibility:\nguard: {eligible}\nRules:")
@@ -264,8 +467,58 @@ def test_unnumbered_story_omits_only_role_facts_given_by_the_figure_list(eligibl
     unnumbered = murdoku_story.explain(text, numbered=False).markdown()
     assert "Ada has the guard role" in numbered
     assert "Ben does not have the guard role" in numbered
+    expected = (
+        "only Ada is eligible for the guard role"
+        if eligible == "Ada"
+        else "only Ada and Ben are eligible for the guard role"
+    )
+    assert expected in unnumbered
     assert ("Ada has the guard role" in unnumbered) is show
     assert ("Ben does not have the guard role" in unnumbered) is show
+
+
+@pytest.mark.parametrize(
+    ("language", "exact_row", "exact_column"),
+    [
+        ("en", "exactly one person per row", "exactly one person per column"),
+        ("nl", "precies één persoon per rij", "precies één persoon per kolom"),
+    ],
+)
+def test_full_board_row_and_column_sources_say_exactly_one(language, exact_row, exact_column):
+    text = example("berghut-murdoku-2.txt").read_text()
+    board, _, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues)
+    localized = text.replace("Language: nl", f"Language: {language}")
+    narrator = murdoku_story._Narrator(localized, board, compilation, True)
+    row_source = next(name for name, about in narrator.board_sources.items() if about == ("row", 0))
+    column_source = next(
+        name for name, about in narrator.board_sources.items() if about == ("col", 0)
+    )
+    assert narrator.source_words[row_source] == exact_row
+    assert narrator.source_words[column_source] == exact_column
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "Keiko's remaining squares are all in column 5, so Keiko must be there; "
+            "exactly one person per column leaves no other person in that line",
+        ),
+        (
+            "nl",
+            "de resterende vakjes van Keiko liggen allemaal in kolom 5, dus Keiko moet daar staan; "
+            "precies één persoon per kolom sluit iedereen anders in die lijn uit",
+        ),
+    ],
+)
+def test_line_reservation_names_the_persons_shared_column(language, expected):
+    text = (
+        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+    )
+    story = murdoku_story.explain(text).markdown()
+    assert expected in story
 
 
 def test_thinning_preserves_required_role_deductions_not_just_visible_placements():
@@ -307,6 +560,16 @@ def test_expression_narration_names_every_placement_against_independent_solution
         person: (int(row) - 1, int(col) - 1)
         for person, row, col in re.findall(r"\*\*(\w+) (?:on|op) r(\d+)[ck](\d+)\*\*", words)
     }
+    found.update(
+        {
+            person: (int(row) - 1, int(column) - 1)
+            for person, row, column in re.findall(
+                r"\*\*(\w+) (?:occupies row|bezet rij) (\d+) (?:and|en) "
+                r"(?:column|kolom) (\d+);",
+                words,
+            )
+        }
+    )
     (answer,) = solutions(text, "murdoku", limit=2)
     expected = {
         person: (square.row, square.col)
@@ -361,12 +624,14 @@ Ben on point_object:sign
     [
         (
             "en",
-            "**in column 1**, so **cross out the other two open squares in that column**.",
+            "**in column 1**, so **cross out the other two open squares in that column: "
+            "r1c1 and r4c1**.",
             "**in row 1**, so **cross out the other open square in that row**.",
         ),
         (
             "nl",
-            "**in kolom 1**, dus **streep de twee andere nog open vakjes in die kolom weg**.",
+            "**in kolom 1**, dus **streep de twee andere nog open vakjes in die kolom weg: "
+            "r1k1 en r4k1**.",
             "**in rij 1**, dus **streep het andere nog open vakje in die rij weg**.",
         ),
     ],
@@ -398,7 +663,7 @@ def test_direct_clues_use_an_announced_rule_to_establish_the_line():
     assert "rule 1" in opening
     assert (
         "Ada is on a cell touching the beacon (1): **in row 2**, so "
-        "**cross out the other two open squares in that row**."
+        "**cross out the other two open squares in that row: r2c1 and r2c4**."
     ) in opening
 
 
@@ -464,12 +729,23 @@ def test_expression_rules_read_as_player_prose(name):
         assert fragment in text, (name, fragment)
     for forbidden in FORBIDDEN_PROSE:
         assert forbidden not in text, (name, forbidden)
+
+
+def test_samen_onderweg_solution_explains_relative_row_bounds():
     paragraphs = murdoku_story.explain(example("samen-onderweg.txt").read_text()).paragraphs
-    deduction = next(paragraph for paragraph in paragraphs if "Haru zit niet in rij 5" in paragraph)
-    assert "Haru staat boven Jun" in deduction
-    assert "Jun zit niet in rij 1" in deduction
-    assert "meeste mensen" not in deduction
-    assert "minste mensen" not in deduction
+    deduction = next(
+        paragraph
+        for paragraph in paragraphs
+        if "Haru staat boven Jun (5)" in paragraph
+        and "Voor Haru blijven alleen de rijen 1 t/m 4 over" in paragraph
+        and "Voor Jun blijven alleen de rijen 2 t/m 5 over" in paragraph
+    )
+    assert deduction
+    assert any(
+        "Haru staat boven Jun (5)" in paragraph
+        and "Voor Haru blijven alleen de rijen 1 en 2 over" in paragraph
+        for paragraph in paragraphs
+    )
 
 
 def test_role_separation_sources_keep_the_puzzles_thematic_wording():
