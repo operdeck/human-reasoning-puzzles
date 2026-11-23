@@ -54,6 +54,7 @@ and columns. Cosmetic pieces do not create another family.
 - Tectonic / Suguru: easy suguru_1_4x4 (single); medium none; hard suguru_2_8x8 (chains).
 - Queens / Star Battle: easy Queens: queens_1_4x4, queens_2_5x5 (single); Star Battle: starbattle_1_8x8 (count); medium Queens: queens_3_7x7, queens_4_8x8 (subsumption), queens_5_9x9 (cover2); Star Battle: starbattle_2_8x8 (cover2); hard Queens: queens_6_4x4 (chains); Star Battle: starbattle_3_12x12 (cover3).
 - Zebra logic grid: easy logicgrid_1_3x3 (relations); medium logicgrid_2_6x6 (relations); hard none.
+- Rooms: easy rooms_1_4x5 (count); medium rooms_2_5x7 (relations); hard rooms_3_6x8 (what_if).
 - Binairo / Takuzu: easy binairo_1_8x8 (relations); medium binairo_2_8x8 (subsumption); hard binairo_3_4x4 (what_if).
 - Tango: easy tango_1_8x8 (relations); medium tango_3_8x8 (relations); hard tango_4_4x4 (what_if).
 - Tents and Trees: easy tents_1_8x8 (single); medium tents_2_8x8 (cover2); hard tents_3_4x4 (what_if).
@@ -103,6 +104,7 @@ intentionally excluded; a harder example needs stronger deduction or generation.
 - Undead: Monsters in every empty cell, counted along sight lines that bend at mirrors. Examples: 4×4 (four boards) and 5×5, relations and what_if.
 - Pattern: Fill cells to match the run lengths of each row and column. Examples: 4×4 to 12×12, relations and what_if.
 - Map: Four-colour the regions so neighbours differ. Examples: 6×6 to 12×12, single and chains.
+- Rooms: Give every person one room on a small plan; several people may share a room, a room may stay empty, and a room never holds more than its capacity. Clues name rooms by their properties, count the people in a group of rooms, and say who is together, apart, alone or where. Examples: four people in five rooms (`count`), five in seven (`relations`) and six in eight (`what_if`).
 
 The graded Sudoku and Calcudoku examples are generated; newspaper puzzles are
 not copied. `prrrdoku1-3` are based on the owner's Dutch documents, adjusted to
@@ -112,12 +114,13 @@ excluded.
 ## Known gaps and frontier
 
 Known gaps: no medium Map board; hard Undead and Pattern are beyond deduction.
-15 of the 197 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
+16 of the 200 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
 `tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`,
 `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`, `food-murdoku-3`,
-`menu-murdoku-3`, `prrrdoku2`, `prrrdoku3`, `tamagotchi-murdoku-9x9` and
-`tamagotchi-murdoku-12x12`. `puzzle-lab rate` reports them as
-`deductive: false`; the web index badges them, and a test pins the list.
+`menu-murdoku-3`, `prrrdoku2`, `prrrdoku3`, `rooms_3_6x8`,
+`tamagotchi-murdoku-9x9` and `tamagotchi-murdoku-12x12`. `puzzle-lab rate`
+reports them as `deductive: false`; the web index badges them, and a test pins
+the list.
 
 ## External corpora and benchmark
 
