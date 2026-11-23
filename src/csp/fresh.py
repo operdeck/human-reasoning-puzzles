@@ -1876,8 +1876,6 @@ def _room_regions(size: int, rng: random.Random, wanted: int) -> tuple[list[set[
     return regions, 3, cols
 
 
-
-
 def fresh_rooms(
     size: int, rng: random.Random, tier: str = "medium", comment: str = ""
 ) -> str | None:
@@ -1967,4 +1965,3 @@ def fresh_rooms(
     else:
         return None
     return build(thin(kept, build, rng))
-

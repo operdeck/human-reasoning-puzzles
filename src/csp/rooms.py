@@ -255,10 +255,6 @@ class Puzzle:
         """The room with that key."""
         return next(room for room in self.rooms if room.key == key)
 
-    def key_of(self, label: str) -> str:
-        """The room key of a room's label, which is what the solver's values are."""
-        return next(room.key for room in self.rooms if room.label == label)
-
     def areas(self, selector: str) -> tuple[str, ...]:
         """The rooms an area names: one room key, or a group of rooms."""
         if selector in self.tags:

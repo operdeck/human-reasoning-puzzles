@@ -1791,15 +1791,11 @@ def rooms_picture(
             anchor="la",
         )
         people = [
-            person
-            for person in puzzle.people
-            if solution and solution.get(person) == room.label
+            person for person in puzzle.people if solution and solution.get(person) == room.label
         ]
         for index, person in enumerate(people):
             py = y + cell * 0.5 + index * max(11, cell // 5)
-            canvas.text(
-                (x + cell * 0.09, py), person, SOLVED, max(10, cell // 7), anchor="la"
-            )
+            canvas.text((x + cell * 0.09, py), person, SOLVED, max(10, cell // 7), anchor="la")
     y = margin + puzzle.height * cell + line_height // 2
     for line in clue_lines:
         canvas.text((8, y), line, INK, small, anchor="lt")

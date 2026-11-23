@@ -125,7 +125,7 @@ the outer `in` asks that the horse rider is in one of them. See
 <td><strong><a href="examples/killer_2_6x6.txt">Killer Sudoku</a></strong><br>Sudoku with caged sums; Arrow, Even/Odd, Sandwich and Skyscraper variants too.<br><img src="docs/images/killer_2_6x6-solution.png" width="150" alt="Solved Killer Sudoku puzzle"></td>
 </tr>
 <tr>
-<td><strong><a href="examples/rooms_2_5x7.txt">Rooms</a></strong><br>Give every person a room; rooms may share people, stay empty or fill up to their capacity.<br><img src="docs/images/rooms_2_5x7-solution.png" width="150" alt="Solved Rooms puzzle"></td>
+<td><strong><a href="examples/rooms_2_5x7.txt">Rooms</a></strong><br>Give every person a room; people may share a room, rooms may stay empty, and a room never holds more than its capacity.<br><img src="docs/images/rooms_2_5x7-solution.png" width="150" alt="Solved Rooms puzzle"></td>
 </tr>
 </table>
 
