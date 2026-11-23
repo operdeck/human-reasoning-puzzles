@@ -233,7 +233,7 @@ def pattern_story(
             return generic_story.Explanation(told.paragraphs, True)
     if kind == "murdoku":
         return murdoku_story.explain(text, start=start.clone(), fired=fired)
-    return generic_story.explain(text, start.clone(), fired)
+    return generic_story.explain(text, start.clone(), fired, kind=kind)
 
 
 def solving_steps(fired: Sequence[tuple[str, Sequence[Step]]], limit: int = 40) -> tuple[str, ...]:

@@ -371,15 +371,31 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.not_placed": "{var} ≠ {value}",
         "generic.yes": "{var} yes",
         "generic.no": "{var} no",
+        "generic.true.akari": "bulb",
+        "generic.false.akari": "no bulb",
+        "generic.true.battleships": "ship",
+        "generic.false.battleships": "water",
+        "generic.true.binairo": "black",
+        "generic.false.binairo": "white",
+        "generic.true.kakurasu": "shaded",
+        "generic.false.kakurasu": "empty",
+        "generic.true.minesweeper": "mine",
+        "generic.false.minesweeper": "safe",
+        "generic.true.mosaic": "black",
+        "generic.false.mosaic": "white",
+        "generic.true.pattern": "filled",
+        "generic.false.pattern": "empty",
+        "generic.true.starbattle": "star",
+        "generic.false.starbattle": "no star",
+        "generic.true.tents": "tent",
+        "generic.false.tents": "no tent",
+        "generic.true.thermometers": "mercury",
+        "generic.false.thermometers": "empty",
         "generic.cannot_be": "{where} cannot be {values}",
         "generic.internal": "an intermediate step",
         "generic.singles": "**Only option.** By {rules}, one option is left each time: "
         "{placements}.",
         "generic.singles_plain": "**Only option.** Then: {placements}.",
-        "generic.singles_more": "{placements} and {count} more placements",
-        "generic.singles_more_one": "{placements} and one more placement",
-        "generic.singles_rest": "{placements}; the other {count} placements follow the same way",
-        "generic.singles_rest_one": "{placements}; the last placement follows the same way",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
         "generic.subsumption": "**Overlap.** Every remaining option of {sources} lies within "
@@ -394,7 +410,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.what_if": "**Suppose {assumed}.** Then {trail} would follow, but {breaks}; "
         "so {refuted}.",
         "generic.what_if_direct": "**Suppose {assumed}.** Then {breaks}; so {refuted}.",
-        "generic.trail_more": "{placements} and {count} more steps",
         "generic.breaks": "{source} fails",
         "generic.breaks_unknown": "the puzzle gets stuck",
         "generic.stalled": "**Stalled.** The current rules do not finish this puzzle; "
@@ -831,16 +846,31 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.not_placed": "{var} ≠ {value}",
         "generic.yes": "{var} wel",
         "generic.no": "{var} niet",
+        "generic.true.akari": "lamp",
+        "generic.false.akari": "geen lamp",
+        "generic.true.battleships": "schip",
+        "generic.false.battleships": "water",
+        "generic.true.binairo": "zwart",
+        "generic.false.binairo": "wit",
+        "generic.true.kakurasu": "gekleurd",
+        "generic.false.kakurasu": "leeg",
+        "generic.true.minesweeper": "mijn",
+        "generic.false.minesweeper": "veilig",
+        "generic.true.mosaic": "zwart",
+        "generic.false.mosaic": "wit",
+        "generic.true.pattern": "gevuld",
+        "generic.false.pattern": "leeg",
+        "generic.true.starbattle": "ster",
+        "generic.false.starbattle": "geen ster",
+        "generic.true.tents": "tent",
+        "generic.false.tents": "geen tent",
+        "generic.true.thermometers": "kwik",
+        "generic.false.thermometers": "leeg",
         "generic.cannot_be": "{where}: geen {values}",
         "generic.internal": "een tussenstap",
         "generic.singles": "**Enige mogelijkheid.** Door {rules} blijft er steeds één optie over: "
         "{placements}.",
         "generic.singles_plain": "**Enige mogelijkheid.** Dan: {placements}.",
-        "generic.singles_more": "{placements} en nog {count} plaatsingen",
-        "generic.singles_more_one": "{placements} en nog één plaatsing",
-        "generic.singles_rest": "{placements}; de overige {count} plaatsingen volgen "
-        "op dezelfde manier",
-        "generic.singles_rest_one": "{placements}; de laatste plaatsing volgt op dezelfde manier",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
         "generic.subsumption": "**Overlap.** Alle resterende opties van {sources} liggen binnen "
@@ -855,7 +885,6 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.what_if": "**Stel {assumed}.** Dan volgt {trail}, maar dan {breaks}; "
         "dus {refuted}.",
         "generic.what_if_direct": "**Stel {assumed}.** Dan {breaks}; dus {refuted}.",
-        "generic.trail_more": "{placements} en nog {count} stappen",
         "generic.breaks": "klopt {source} niet meer",
         "generic.breaks_unknown": "loopt het vast",
         "generic.stalled": "**Gestopt.** De huidige regels lossen deze puzzel niet helemaal op; "
@@ -1426,6 +1455,10 @@ class Wording:
     def unnumbered(self) -> "Wording":
         """The same wording that never points at clue numbers."""
         return dataclasses.replace(self, numbered=False)
+
+    def has(self, key: str) -> bool:
+        """Whether this language has a phrase for `key`."""
+        return key in self.phrases or key in PHRASES[self.language]
 
     def __call__(self, key: str, **fields: Any) -> str:
         if not self.numbered and key in ("breaks", "breaks_first"):

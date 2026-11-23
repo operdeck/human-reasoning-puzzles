@@ -18,8 +18,6 @@ from .core import Model, Step
 from .proof import HARDEST_FIRST, Episode, Inference, Move, episodes, essential, replay
 from .story import Wording
 
-SHOWN_SINGLES = 4  # placements named in one paragraph of singles
-SHOWN_TRAIL = 4  # placements named on the way to a what-if contradiction
 SHOWN_CLUES = 5  # clue deductions told in one paragraph
 MAX_REPLAYS = 60  # proof replays spent thinning one explanation
 _CELL = re.compile(r"^r(\d+)c(\d+)$")
@@ -75,10 +73,15 @@ class Narrator:
     """Render a generic proof, with overridable vocabulary for a puzzle family."""
 
     def __init__(
-        self, model: Model, say: Wording, source_words: Mapping[str, str] | None = None
+        self,
+        model: Model,
+        say: Wording,
+        source_words: Mapping[str, str] | None = None,
+        kind: str | None = None,
     ) -> None:
         self.model = model
         self.say = say
+        self.kind = kind
         self.source_words = dict(source_words or {})
         self.visible = set(model.variables)
         self.constraints = {c.name: c for c in model.constraints}
@@ -103,6 +106,9 @@ class Narrator:
     def placed(self, var: str, value: Any, name: str | None = None) -> str:
         """`var` takes `value`; `name` says which cells when several share it."""
         if isinstance(value, bool) and self._boolean(var):
+            word = f"generic.{str(value).lower()}.{self.kind}"
+            if self.say.has(word):
+                return self.say("generic.placed", var=name or var, value=self.say(word))
             return self.say("generic.yes" if value else "generic.no", var=name or var)
         return self.say("generic.placed", var=name or var, value=value)
 
@@ -174,7 +180,7 @@ class Narrator:
 
     # --- singles ----------------------------------------------------------
 
-    def singles(self, inferences: Sequence[Inference], final: bool) -> str | None:
+    def singles(self, inferences: Sequence[Inference]) -> str | None:
         found: list[tuple[str, Any]] = []
         rules: list[str] = []
         for inference in inferences:
@@ -196,18 +202,12 @@ class Narrator:
         together: dict[Any, list[str]] = {}
         for var, value in found:
             together.setdefault(value, []).append(var)
-        placements = [
-            f"**{self.placed(where[0], value, compress(where, self.say))}**"
-            for value, where in together.items()
-        ]
-        shown = placements[:SHOWN_SINGLES]
-        more = sum(len(where) for where in list(together.values())[SHOWN_SINGLES:])
-        listed = self.say.join(shown)
-        if more:
-            key = "generic.singles_rest" if final else "generic.singles_more"
-            if more == 1:
-                key += "_one"
-            listed = self.say(key, placements=", ".join(shown), count=more)
+        listed = self.say.join(
+            [
+                f"**{self.placed(where[0], value, compress(where, self.say))}**"
+                for value, where in together.items()
+            ]
+        )
         if not rules:
             return self.say("generic.singles_plain", placements=listed)
         return self.say("generic.singles", rules=self.names(rules), placements=listed)
@@ -291,8 +291,6 @@ class Narrator:
             option = self.placed(inner.var, inner.value)
             if option not in shown:
                 shown.append(option)
-        trail = shown[:SHOWN_TRAIL]
-        more = len(shown) - len(trail)
         broken = step.sources[0] if step.sources else None
         breaks = (
             self.say("generic.breaks", source=self.names([broken]))
@@ -301,16 +299,16 @@ class Narrator:
         )
         assumed = self.placed(step.var, step.value)
         refuted = self.negated(step.var, step.value)
-        if not trail:
+        if not shown:
             return self.say(
                 "generic.what_if_direct", assumed=assumed, breaks=breaks, refuted=refuted
             )
-        if more:
-            listed = self.say("generic.trail_more", placements=", ".join(trail), count=more)
-        else:
-            listed = self.say.join(trail)
         return self.say(
-            "generic.what_if", assumed=assumed, trail=listed, breaks=breaks, refuted=refuted
+            "generic.what_if",
+            assumed=assumed,
+            trail=self.say.join(shown),
+            breaks=breaks,
+            refuted=refuted,
         )
 
     # --- the whole story ---------------------------------------------------
@@ -322,7 +320,7 @@ class Narrator:
         history: list[Step] = list(start.log)
 
         def flush(final: bool) -> None:
-            text = self.singles(pending, final and solved)
+            text = self.singles(pending)
             pending.clear()
             if clues and (text is not None or final or len(clues) >= SHOWN_CLUES):
                 paragraphs.append(self.say("generic.clues", items="; ".join(clues)))
@@ -403,16 +401,18 @@ def explain(
     start: Model,
     fired: Sequence[tuple[str, Sequence[Step]]],
     source_words: Mapping[str, str] | None = None,
+    kind: str | None = None,
 ) -> Explanation:
     """Explain a solve of any compiled model from its rule firings, shortest proof first.
 
     `start` is the compiled model before solving and `fired` what the solver
     reported, rule by rule. `text` gives the puzzle's language, and `source_words`
-    maps a constraint name to how its clue reads.
+    maps a constraint name to how its clue reads. `kind` names the puzzle family, so
+    a yes/no cell can be told in its own words ("r2c3 = bulb") where `story` has them.
     """
     moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
     if replay(start, moves).solution() is not None:
         moves = thin(start, moves)
     result, groups = episodes(start, moves)
-    narrator = Narrator(start, Wording.read(text), source_words)
+    narrator = Narrator(start, Wording.read(text), source_words, kind)
     return narrator.tell(start, groups, result.solution() is not None)

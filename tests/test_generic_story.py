@@ -14,11 +14,12 @@ EXAMPLES = sorted(path for path in Path(__file__).parent.parent.joinpath("exampl
 
 def told(name: str) -> generic_story.Explanation:
     text = example(name).read_text()
-    puzzle = cli.load(text, puzzlefile.detect(text))
+    kind = puzzlefile.detect(text)
+    puzzle = cli.load(text, kind)
     start = puzzle.model.clone()
     fired: list = []
     Solver(puzzle.model).solve(on_step=lambda rule, steps: fired.append((rule, steps)))
-    return generic_story.explain(text, start, fired)
+    return generic_story.explain(text, start, fired, kind=kind)
 
 
 def test_compress_names_runs_along_the_shorter_direction():
@@ -38,21 +39,25 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
     assert "**Chain.** If r5c4 ≠ 4, then r2c4 = 4" in text
     assert "**Combined rules.**" in text
     assert "Stalled" not in text
-    # Hidden singles are counted as placements, not as value groups.
-    assert "the other 5 placements follow the same way" in text
+    # Every placement is named; none is left to "follow the same way".
+    assert "follow the same way" not in text
 
 
-def test_yes_no_cells_are_grouped_into_runs():
+def test_boolean_cells_are_grouped_into_runs_in_family_words():
     text = told("pattern_4_10x10.txt").markdown()
-    assert "**r2c1, r2c2 and r2c7 no** and **r2c4\u2013r2c6 and r2c8\u2013r2c10 yes**" in text
+    assert (
+        "**r2c1, r2c2 and r2c7 = empty** and **r2c4\u2013r2c6 and r2c8\u2013r2c10 = filled**"
+        in text
+    )
 
 
 def test_a_what_if_names_the_rule_it_breaks():
     story = told("calcudoku_6_6x6.txt")
     assert story.complete
     assert (
-        "**Suppose r2c2 = 6.** Then r4c3 = 2, r4c2 = 1, r5c2 = 2, r3c1 = 2 and 6 more steps "
-        "would follow, but *9+ cage r1c5 r1c6 r2c6* fails; so r2c2 ≠ 6."
+        "**Suppose r2c2 = 6.** Then r4c3 = 2, r4c2 = 1, r5c2 = 2, r3c1 = 2, r3c4 = 6, "
+        "r3c2 = 5, r1c2 = 3, r1c4 = 5, r3c3 = 3 and r2c6 = 3 would follow, "
+        "but *9+ cage r1c5 r1c6 r2c6* fails; so r2c2 ≠ 6."
     ) in story.markdown()
 
 
