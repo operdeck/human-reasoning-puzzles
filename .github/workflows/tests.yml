@@ -10,6 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  branch-cleaner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test .github/scripts/cleanup_merged_branches.test.js
+
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 20
