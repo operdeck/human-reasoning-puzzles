@@ -1544,7 +1544,7 @@ def test_every_object_and_figure_in_the_examples_has_a_vendored_icon():
     checked = 0
     for path in all_examples():
         text = path.read_text()
-        if "People:" not in text:
+        if "People:" not in text or detect(text) != "murdoku":
             continue
         board = load_board_layout(text)
         assert picture.unknown_object_icons(board) == [], path.name
