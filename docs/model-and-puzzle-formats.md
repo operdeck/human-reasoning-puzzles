@@ -214,7 +214,7 @@ Ada dir:up Cleo
 exactly 1 of (Ada in area:e; Ben in area:e)
 ```
 
-`Rooms:` gives each room's capacity, colour and label; `Tags:` groups rooms so one clue can name the group. `Words:` renames a room or group in the sentences the solver writes, and a clue line may end in `| wording`. An entry for a group may give a second form after `|` for counts, which speak for the whole group at once: with `radio: a room with a radio | the rooms with a radio`, a person is "in a room with a radio" while a count says "The rooms with a radio hold three people together", never "a room holds three" when no single room can. Clause forms:
+`Rooms:` gives each room's capacity, colour and label; `Tags:` groups rooms so one clue can name the group, and the picture draws a property's icon in every room that has it, with a key under the plan naming each one. `Words:` renames a room or group in the sentences the solver writes, and a clue line may end in `| wording`. An entry for a group may give a second form after `|` for counts, which speak for the whole group at once: with `radio: a room with a radio | the rooms with a radio`, a person is "in a room with a radio" while a count says "The rooms with a radio hold three people together", never "a room holds three" when no single room can. Clause forms:
 
 | Clause | Meaning |
 |---|---|

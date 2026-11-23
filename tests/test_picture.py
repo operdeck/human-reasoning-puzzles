@@ -1450,6 +1450,7 @@ def test_starbattle_picture_distinguishes_given_and_solved_stars():
         "akari_1_6x6.txt",
         "kakurasu_1_4x4.txt",
         "battleships_1_6x6_fleet.txt",
+        "rooms_2_5x7.txt",
     ],
 )
 def test_family_png_cli_writes_nonblank_solution(name, tmp_path):

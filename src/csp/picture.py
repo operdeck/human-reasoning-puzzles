@@ -1731,17 +1731,22 @@ def rooms_picture(
     cell: int = 88,
     interactive: bool = False,
 ) -> Canvas:
-    """The plan as a floor plan, with the numbered clues printed underneath.
+    """The plan as a floor plan: each room with its properties, and the clues underneath.
 
-    Each room is filled with its colour, labelled with its capacity, and the
-    solution writes the people's names in their room. Two neighbouring rooms are
-    always drawn apart, so rooms that share a colour still read as separate.
+    Every room is filled with its colour and labelled with its capacity, with an
+    icon for each property a clue can name (a window, a radio). A key under the
+    plan says what each icon means, and the solution writes the people in their
+    rooms. Two neighbouring rooms are always drawn apart, so rooms that share a
+    colour still read as separate.
     """
     solution = None if interactive else solution
     margin = max(12, cell // 4)
     small = max(9, cell // 6)
     line_height = max(15, cell // 4)
+    icon_size = max(11, int(cell * 0.26))
     board_width = puzzle.width * cell
+    tag_icons = {tag: icons.object_icon(tag) for tag in puzzle.tags}
+    legend = [(tag, tag_icons[tag], puzzle.phrase(tag)) for tag in puzzle.tags]
     clue_lines = [
         line
         for number, sentence in enumerate(puzzle.clue_lines, 1)
@@ -1749,7 +1754,12 @@ def rooms_picture(
             f"{number}. {sentence}", width=max(24, int(board_width / (small * 0.47)))
         )
     ]
-    height = margin * 2 + puzzle.height * cell + line_height * (len(clue_lines) + 1)
+    height = (
+        margin * 2
+        + puzzle.height * cell
+        + len(legend) * line_height
+        + (len(clue_lines) + 1) * line_height
+    )
     canvas = Canvas(board_width + 2 * margin, height)
     thick = max(5, cell // 20) | 1
     for row in range(puzzle.height):
@@ -1778,9 +1788,12 @@ def rooms_picture(
     )
     for room in puzzle.rooms:
         top, left = min(room.cells)
+        rows = [row for row, _ in room.cells]
         cols = [col for _, col in room.cells]
         x, y = margin + left * cell, margin + top * cell
         span = (max(cols) - min(cols) + 1) * cell
+        depth = (max(rows) - min(rows) + 1) * cell
+        properties = [tag for tag in puzzle.tags if room.key in puzzle.tags[tag]]
         size = _fit(canvas, room.title, small, span * 0.9)
         canvas.text((x + cell * 0.07, y + cell * 0.05), room.title, INK, size, anchor="la")
         canvas.text(
@@ -1790,19 +1803,45 @@ def rooms_picture(
             max(8, int(size * 0.8)),
             anchor="la",
         )
+        for index, tag in enumerate(properties):
+            box = (
+                x + cell * 0.08 + index * icon_size * 1.12,
+                y + depth - icon_size - cell * 0.05,
+                x + cell * 0.08 + icon_size + index * icon_size * 1.12,
+                y + depth - cell * 0.05,
+            )
+            _draw_property(canvas, tag, tag_icons[tag], box)
         people = [
             person for person in puzzle.people if solution and solution.get(person) == room.label
         ]
-        for index, person in enumerate(people):
-            py = y + cell * 0.5 + index * max(11, cell // 5)
-            canvas.text((x + cell * 0.09, py), person, SOLVED, max(10, cell // 7), anchor="la")
-    y = margin + puzzle.height * cell + line_height // 2
+        if people:
+            names = ", ".join(people)
+            font = _fit(canvas, names, max(10, cell // 7), span * 0.86)
+            canvas.text((x + span / 2, y + depth * 0.55), names, SOLVED, font, "mm")
+    cursor_y = margin + puzzle.height * cell + line_height * 0.2
+    for tag, icon, phrase in legend:
+        box = (8, cursor_y, 8 + icon_size * 0.85, cursor_y + icon_size * 0.85)
+        _draw_property(canvas, tag, icon, box)
+        canvas.text((8 + icon_size * 1.05, cursor_y + icon_size * 0.42), phrase, INK, small, "lm")
+        cursor_y += line_height
+    cursor_y += line_height * 0.4
     for line in clue_lines:
-        canvas.text((8, y), line, INK, small, anchor="lt")
-        y += line_height
+        canvas.text((8, cursor_y), line, INK, small, anchor="lt")
+        cursor_y += line_height
     if interactive:
         _rect_cells(canvas, puzzle.height, puzzle.width, margin, cell)
     return canvas
+
+
+def _draw_property(
+    canvas: Canvas, tag: str, icon: icons.Icon | None, box: tuple[float, float, float, float]
+) -> None:
+    """A room property's icon, or a lettered badge when the catalogue has none."""
+    if icon is not None and icons.draw(canvas, icon, box):
+        return
+    x0, y0, x1, y1 = box
+    canvas.rectangle(box, outline=INK, width=2, radius=(x1 - x0) * 0.2)
+    canvas.text(((x0 + x1) / 2, (y0 + y1) / 2), tag[:1].upper(), INK, (y1 - y0) * 0.7, "mm")
 
 
 def _hex_colour(value: str) -> tuple[int, int, int]:

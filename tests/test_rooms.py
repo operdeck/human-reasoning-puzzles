@@ -2,7 +2,7 @@
 
 import pytest
 
-from csp import bruteforce, cli, picture, report, rooms
+from csp import bruteforce, cli, icons, picture, report, rooms
 from csp.bruteforce import rooms as brute
 from csp.core import Solver
 from tests.examples import example, played_examples
@@ -169,6 +169,35 @@ def test_every_rooms_example_needs_each_of_its_clues(name):
         kept = [item for index, item in enumerate(clues) if index != number]
         fewer = "\n".join([*lines[:start], *kept, *lines[end:]]) + "\n"
         assert len(bruteforce.solutions(fewer, "rooms", limit=2)) > 1, clue
+
+
+@pytest.mark.parametrize("name", ROOMS_EXAMPLES)
+def test_every_room_property_in_the_examples_has_a_picture(name):
+    puzzle = rooms.parse(example(name).read_text())
+    assert puzzle.tags, name
+    for tag in puzzle.tags:
+        assert icons.object_icon(tag) is not None, tag
+
+
+def test_the_picture_shows_each_rooms_properties_with_a_key():
+    puzzle = rooms.parse(example("rooms_2_5x7.txt").read_text())
+    image = picture.rooms_picture(puzzle, cell=70).to_svg()
+    for tag in puzzle.tags:
+        icon = icons.object_icon(tag)
+        assert icon is not None
+        marker = f"emoji-{icon.emoji}" if icon.emoji else f"icon-{icon.name}"
+        assert marker in image, tag
+        assert puzzle.phrase(tag) in image, tag
+
+
+def test_a_property_the_catalogue_does_not_know_gets_a_lettered_badge():
+    """An unknown property still gets a marker in its rooms and a line in the key."""
+    assert icons.object_icon("zorblax") is None
+    text = puzzle_with("Ada in area:c\n").replace("clock: a d\n", "clock: a d\nzorblax: a c\n")
+    puzzle = rooms.parse(text)
+    image = picture.rooms_picture(puzzle, cell=70).to_svg()
+    assert "zorblax" in puzzle.tags
+    assert "zorblax" in image
 
 
 @pytest.mark.parametrize("name", ROOMS_EXAMPLES)
