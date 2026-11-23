@@ -22,9 +22,9 @@ d: the bathroom
 e: the study
 f: the bedroom
 g: the porch
-window: a room with a window
-plant: a room with a plant
-radio: a room with a radio
+window: a room with a window | the rooms with a window
+plant: a room with a plant | the rooms with a plant
+radio: a room with a radio | the rooms with a radio
 
 Plan:
 a a b

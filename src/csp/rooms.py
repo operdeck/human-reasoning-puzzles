@@ -138,16 +138,23 @@ class Population:
         return compare(sum(room in rooms for room in where.values()), self.operator, self.number)
 
     def describe(self, puzzle: "Puzzle") -> str:
-        place = puzzle.phrase(self.area)
+        group = len(puzzle.areas(self.area)) > 1
+        place = puzzle.group_phrase(self.area) if group else puzzle.phrase(self.area)
         place = place[:1].upper() + place[1:]
         if self.operator == "=" and self.number == 0:
-            return f"{place} is leeg." if puzzle.language == "nl" else f"{place} is empty."
+            if puzzle.language == "nl":
+                return f"{place} zijn leeg." if group else f"{place} is leeg."
+            return f"{place} are empty." if group else f"{place} is empty."
         word = number_word(puzzle.language, self.number)
+        count = COUNT_WORDS[puzzle.language][self.operator]
         if puzzle.language == "nl":
             people = "persoon" if self.number == 1 else "personen"
-            return f"{place} bevat {COUNT_WORDS['nl'][self.operator]} {word} {people}."
+            verb = "bevatten samen" if group else "bevat"
+            return f"{place} {verb} {count} {word} {people}."
         people = "person" if self.number == 1 else "people"
-        return f"{place} holds {COUNT_WORDS['en'][self.operator]} {word} {people}."
+        if group:
+            return f"{place} hold {count} {word} {people} together."
+        return f"{place} holds {count} {word} {people}."
 
 
 @dataclass(frozen=True)
@@ -250,6 +257,7 @@ class Puzzle:
     words: dict[str, str] = field(default_factory=dict)
     wording: dict[int, str] = field(default_factory=dict)
     language: str = "en"
+    group_words: dict[str, str] = field(default_factory=dict)
 
     def room(self, key: str) -> Room:
         """The room with that key."""
@@ -264,13 +272,22 @@ class Puzzle:
         raise ValueError(f"unknown area {selector!r}")
 
     def phrase(self, selector: str) -> str:
-        """How a room or group reads inside a sentence."""
+        """How a room or group reads inside a sentence about one person."""
         if selector in self.words:
             return self.words[selector]
         if selector in self.tags:
             return selector.replace("_", " ")
         article = "de " if self.language == "nl" else "the "
         return article + self.room(selector).label
+
+    def group_phrase(self, selector: str) -> str:
+        """How a group reads in a count, which speaks for several rooms at once."""
+        if selector in self.group_words:
+            return self.group_words[selector]
+        if selector in self.tags:
+            name = selector.replace("_", " ")
+            return f"de {name}kamers" if self.language == "nl" else f"the {name} rooms"
+        return self.phrase(selector)
 
     def sentence(self, number: int) -> str:
         """The clue's own sentence, with the file's `| wording` if it has one."""
@@ -394,15 +411,19 @@ def parse(text: str) -> Puzzle:
     if sum(room.capacity for room in rooms) < len(people):
         raise ValueError("the rooms have less room than the number of people")
     words: dict[str, str] = {}
+    group_words: dict[str, str] = {}
     for line in sections.get("Words", []):
         name, separator, phrase = line.partition(":")
-        if not separator or not name.strip() or not phrase.strip():
-            raise ValueError(f"bad word {line!r}, expected 'name: words'")
-        words[name.strip()] = phrase.strip()
+        single, _, group = phrase.partition("|")
+        if not separator or not name.strip() or not single.strip():
+            raise ValueError(f"bad word {line!r}, expected 'name: words [| words for a group]'")
+        words[name.strip()] = single.strip()
+        if group.strip():
+            group_words[name.strip()] = group.strip()
     language = (sections.get("Language") or ["en"])[0].casefold()
     if language not in NUMBERS:
         raise ValueError(f"unknown Language {language!r}")
-    empty = Puzzle(rooms, plan, tags, people, (), words, {}, language)
+    empty = Puzzle(rooms, plan, tags, people, (), words, {}, language, group_words)
     clues: list[ClueType] = []
     wording: dict[int, str] = {}
     for number, line in enumerate(sections.get("Clues", []), 1):
@@ -414,7 +435,7 @@ def parse(text: str) -> Puzzle:
             wording[number] = text.strip()
     if not clues:
         raise ValueError("Clues: needs at least one clue")
-    return Puzzle(rooms, plan, tags, people, tuple(clues), words, wording, language)
+    return Puzzle(rooms, plan, tags, people, tuple(clues), words, wording, language, group_words)
 
 
 def parse_clue(line: str, puzzle: Puzzle) -> ClueType:

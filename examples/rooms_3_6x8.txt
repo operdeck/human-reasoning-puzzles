@@ -22,9 +22,9 @@ e: the study
 f: the bathroom
 g: the attic
 h: the porch
-window: a room with a window
-mirror: a room with a mirror
-plant: a room with a plant
+window: a room with a window | the rooms with a window
+mirror: a room with a mirror | the rooms with a mirror
+plant: a room with a plant | the rooms with a plant
 
 Plan:
 a a b c

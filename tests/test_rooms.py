@@ -38,6 +38,11 @@ def puzzle_with(clues: str) -> str:
     return BASE + clues
 
 
+def with_words(text: str, *lines: str) -> str:
+    """The puzzle with a `Words:` section, which a group count uses for its wording."""
+    return text.replace("Tags:\n", "Words:\n" + "\n".join(lines) + "\n\nTags:\n")
+
+
 def test_the_plan_rooms_tags_and_people_are_read():
     puzzle = rooms.parse(puzzle_with("Ada in area:c\n"))
     assert [room.key for room in puzzle.rooms] == ["a", "b", "c", "d", "e"]
@@ -188,3 +193,33 @@ def test_a_clue_line_can_carry_its_own_wording():
     puzzle = rooms.parse(puzzle_with("Ada in area:c | Ada zat in de keuken.\n"))
     assert puzzle.sentence(1) == "Ada zat in de keuken."
     assert puzzle.clue_lines == ["Ada zat in de keuken."]
+
+
+def test_a_group_count_speaks_for_all_its_rooms_together():
+    """A count over a tag covers every room of the group, so it reads as a group."""
+    group = with_words(
+        BASE,
+        "window: a room with a window | the rooms with a window",
+        "clock: a room with a clock | the rooms with a clock",
+    )
+    puzzle = rooms.parse(group + "Clues:\ncount (people in area:window) >= 2\n")
+    assert puzzle.sentence(1) == "The rooms with a window hold at least two people together."
+    assert puzzle.areas("window") == ("a", "c", "e")
+    single = rooms.parse(group + "Clues:\ncount (people in area:a) = 1\n")
+    assert single.sentence(1) == "The living room holds exactly one person."
+    membership = rooms.parse(group + "Clues:\nBen in area:window\n")
+    assert membership.sentence(1) == "Ben is in a room with a window."
+
+
+def test_a_group_count_falls_back_to_its_tag_name_and_dutch_reads_right():
+    text = with_words(
+        BASE.replace("Language: en", "Language: nl"),
+        "window: een kamer met een raam | de kamers met een raam",
+    )
+    puzzle = rooms.parse(text + "Clues:\ncount (people in area:window) = 0\n")
+    assert puzzle.sentence(1) == "De kamers met een raam zijn leeg."
+    plain = rooms.parse(
+        BASE.replace("Language: en", "Language: nl")
+        + "Clues:\ncount (people in area:window) >= 1\n"
+    )
+    assert plain.sentence(1) == "De windowkamers bevatten samen minstens één persoon."

@@ -20,8 +20,8 @@ b: the hall
 c: the kitchen
 d: the study
 e: the bathroom
-window: a room with a window
-clock: a room with a clock
+window: a room with a window | the rooms with a window
+clock: a room with a clock | the rooms with a clock
 
 Plan:
 a a b

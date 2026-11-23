@@ -214,12 +214,12 @@ Ada dir:up Cleo
 exactly 1 of (Ada in area:e; Ben in area:e)
 ```
 
-`Rooms:` gives each room's capacity, colour and label; `Tags:` groups rooms so one clue can name the group. `Words:` renames a room or group in the sentences the solver writes, and a clue line may end in `| wording`. Clause forms:
+`Rooms:` gives each room's capacity, colour and label; `Tags:` groups rooms so one clue can name the group. `Words:` renames a room or group in the sentences the solver writes, and a clue line may end in `| wording`. An entry for a group may give a second form after `|` for counts, which speak for the whole group at once: with `radio: a room with a radio | the rooms with a radio`, a person is "in a room with a radio" while a count says "The rooms with a radio hold three people together", never "a room holds three" when no single room can. Clause forms:
 
 | Clause | Meaning |
 |---|---|
 | `X in area:A` / `not (X in area:A)` | X stands in one of A's rooms, or in none of them |
-| `count (people in area:A) <op> n` | how many people A holds (`=`, `<`, `>`, `<=`, `>=`) |
+| `count (people in area:A) <op> n` | how many people A holds (`=`, `<`, `>`, `<=`, `>=`); for a group this counts every room of it together |
 | `X alone` / `not (X alone)` | X shares a room with nobody, or with at least one other |
 | `X together Y` / `X apart Y` | X and Y do or do not share a room |
 | `exactly n of (clause; clause; …)` | how many of these room clauses hold |
