@@ -1397,6 +1397,8 @@ class ExpressionWords:
             person = self._own_area_person(occupants)
             if person is None or not isinstance(others, lang.Union):
                 continue
+            if len(others.items) != 2:
+                continue
             items = [item.token.text for item in others.items if isinstance(item, lang.Name)]
             if len(items) != len(others.items) or person.token.text not in items:
                 continue
