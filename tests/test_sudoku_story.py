@@ -42,9 +42,13 @@ def test_locked_candidates_and_singles_follow_a_sound_shortened_proof():
         narrative.markdown()
     )
     assert "cross 4 out from the other candidates" in narrative.markdown()
-    placements = re.findall(r"place (\d+) in (r\d+c\d+)", narrative.markdown())
-    assert placements and all(answer[cell] == int(digit) for digit, cell in placements)
-    assert narrative.markdown().endswith("The remaining squares then follow by singles.")
+    placements = re.findall(r"\*\*(r\d+c\d+) = (\d+)\*\*", narrative.markdown())
+    assert all(answer[cell] == int(digit) for cell, digit in placements)
+    # Every square the puzzle leaves open is placed by name, none left to "follow".
+    assert {cell for cell, _ in placements} == {
+        cell for cell in answer if len(model.options(cell)) > 1
+    }
+    assert "the only places for 3 and 5 in row 2" in narrative.markdown()
 
 
 def test_locked_candidate_works_from_box_to_column_and_column_to_box():

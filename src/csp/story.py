@@ -320,12 +320,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.box": "the box containing {cell}",
         "sudoku.extra": "the extra house {name}",
         "sudoku.singles": "**Singles.**",
-        "sudoku.single_cell": ("{cell} has only one digit left, so **place {digit} in {cell}**."),
-        "sudoku.single_house": (
-            "In {house}, {digit} has only one possible square, so **place {digit} in {cell}**."
-        ),
-        "sudoku.continue_singles": "Continue filling singles until none remain.",
-        "sudoku.finish_singles": "The remaining squares then follow by singles.",
+        "sudoku.last_digit": "{placements} (the only digit left there)",
+        "sudoku.last_digits": "{placements} (each the only digit left in its square)",
+        "sudoku.only_place": "{placements} (the only place for {digits} in {house})",
+        "sudoku.only_places": "{placements} (the only places for {digits} in {house})",
         "sudoku.locked": (
             "**Locked candidate.** In {source}, every remaining place for {digit} is in {target}. "
             "The {digit} in {source} must therefore also occupy {target}, so **{conclusion}**."
@@ -791,14 +789,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.box": "het blok met {cell}",
         "sudoku.extra": "het extra gebied {name}",
         "sudoku.singles": "**Enkele kandidaten.**",
-        "sudoku.single_cell": (
-            "{cell} heeft nog maar één kandidaat, dus **zet {digit} in {cell}**."
-        ),
-        "sudoku.single_house": (
-            "In {house} kan {digit} nog maar op één vakje, dus **zet {digit} in {cell}**."
-        ),
-        "sudoku.continue_singles": "Vul de enkele kandidaten verder in tot er geen meer zijn.",
-        "sudoku.finish_singles": "De overige vakjes volgen daarna uit enkele kandidaten.",
+        "sudoku.last_digit": "{placements} (het enige cijfer dat daar nog kan)",
+        "sudoku.last_digits": "{placements} (telkens het enige cijfer dat in dat vakje nog kan)",
+        "sudoku.only_place": "{placements} (de enige plek voor {digits} in {house})",
+        "sudoku.only_places": "{placements} (de enige plekken voor {digits} in {house})",
         "sudoku.locked": (
             "**Gebonden kandidaat.** In {source} liggen alle overgebleven plekken voor {digit} "
             "in {target}. De {digit} van {source} staat dus ook in {target}, dus "

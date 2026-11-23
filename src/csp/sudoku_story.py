@@ -8,6 +8,9 @@ from .core import Kind, Model, Solver, Step
 from .proof import Episode, Inference, Move, episodes, replay, shortest
 from .story import Wording
 
+SINGLES_PER_PARAGRAPH = 8  # reasons told in one paragraph of singles
+PLACEMENTS_PER_RUN = 9  # placements told under one reason before it is repeated
+
 
 @dataclass(frozen=True)
 class Explanation:
@@ -63,17 +66,46 @@ class _Narrator:
             and frozenset(constraint.literals) in houses
         }
 
-    def single(self, inference: Inference) -> str | None:
+    def single(self, inference: Inference) -> tuple[str | None, str, int] | None:
+        """A single's reason (its house label, or None for a cell's last digit), cell and digit."""
         step = next((step for step in inference.steps if step.asserted and not step.placing), None)
         if step is None or step.var not in self.cells or not step.sources:
             return None
-        fields = {"cell": self.cells[step.var], "digit": step.value}
         if step.sources[0] in self.domains:
-            return self.say("sudoku.single_cell", **fields)
+            return None, self.cells[step.var], step.value
         house = self.houses.get(step.sources[0])
         if house is not None:
-            return self.say("sudoku.single_house", house=house.label, **fields)
+            return house.label, self.cells[step.var], step.value
         return None
+
+    def singles(self, found: Sequence[tuple[str | None, str, int]]) -> list[str]:
+        """Every single in order, consecutive ones with the same reason told together."""
+        runs: list[list[tuple[str | None, str, int]]] = []
+        for single in found:
+            if runs and runs[-1][0][0] == single[0] and len(runs[-1]) < PLACEMENTS_PER_RUN:
+                runs[-1].append(single)
+            else:
+                runs.append([single])
+        sentences = []
+        for run in runs:
+            placed = self.say.join([f"**{cell} = {digit}**" for _, cell, digit in run])
+            house = run[0][0]
+            if house is None:
+                key = "sudoku.last_digit" if len(run) == 1 else "sudoku.last_digits"
+                sentences.append(self.say(key, placements=placed))
+            else:
+                key = "sudoku.only_place" if len(run) == 1 else "sudoku.only_places"
+                digits = self.say.join([str(digit) for _, _, digit in run])
+                sentences.append(self.say(key, placements=placed, digits=digits, house=house))
+        return [
+            " ".join(
+                [
+                    self.say("sudoku.singles"),
+                    "; ".join(sentences[i : i + SINGLES_PER_PARAGRAPH]) + ".",
+                ]
+            )
+            for i in range(0, len(sentences), SINGLES_PER_PARAGRAPH)
+        ]
 
     def pattern(self, inference: Inference) -> str | None:
         move = inference.move
@@ -194,17 +226,11 @@ class _Narrator:
         paragraphs: list[str] = []
         pending: list[Inference] = []
 
-        def singles(final: bool) -> bool:
-            descriptions = [self.single(inference) for inference in pending]
-            if any(description is None for description in descriptions):
+        def singles() -> bool:
+            found = [self.single(inference) for inference in pending]
+            if any(single is None for single in found):
                 return False
-            if descriptions:
-                shown = [description for description in descriptions[:2] if description]
-                if len(descriptions) > 2:
-                    shown.append(
-                        self.say("sudoku.finish_singles" if final else "sudoku.continue_singles")
-                    )
-                paragraphs.append(" ".join([self.say("sudoku.singles"), *shown]))
+            paragraphs.extend(self.singles([single for single in found if single]))
             pending.clear()
             return True
 
@@ -212,7 +238,7 @@ class _Narrator:
             if group.pattern.rule == "single":
                 pending.append(group.pattern)
                 continue
-            if not singles(False):
+            if not singles():
                 unavailable = "single"
                 break
             description = self.pattern(group.pattern)
@@ -222,7 +248,7 @@ class _Narrator:
             paragraphs.append(description)
             pending.extend(group.consequences)
         else:
-            if not singles(solved and unavailable is None):
+            if not singles():
                 unavailable = "single"
 
         complete = solved and unavailable is None
