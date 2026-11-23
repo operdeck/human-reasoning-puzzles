@@ -1,3 +1,25 @@
+const { execFileSync } = require("node:child_process");
+
+function isDryRun(context) {
+  if (context.eventName !== "workflow_dispatch") return false;
+  const input = context.payload.inputs?.["dry-run"];
+  return input !== false && input !== "false";
+}
+
+function deleteBranch(branch, sha, remote = "origin") {
+  const ref = `refs/heads/${branch}`;
+  execFileSync("git", ["push", `--force-with-lease=${ref}:${sha}`, remote, `:${ref}`], {
+    stdio: "inherit",
+  });
+}
+
+function usedByOpenPullRequest(pullRequest, branch, repositoryName) {
+  return (
+    (pullRequest.head.repo?.full_name === repositoryName && pullRequest.head.ref === branch) ||
+    (pullRequest.base.repo?.full_name === repositoryName && pullRequest.base.ref === branch)
+  );
+}
+
 async function cleanupMergedBranches({ github, context, core, dryRun }) {
   const { owner, repo } = context.repo;
   const repositoryName = `${owner}/${repo}`;
@@ -33,11 +55,6 @@ async function cleanupMergedBranches({ github, context, core, dryRun }) {
     state: "open",
     per_page: 100,
   });
-  const openBranches = new Set(
-    openPullRequests
-      .filter((pullRequest) => pullRequest.head.repo?.full_name === repositoryName)
-      .map((pullRequest) => pullRequest.head.ref),
-  );
   const eligibleBranches = new Map();
   let deleted = 0;
   let skipped = 0;
@@ -53,7 +70,7 @@ async function cleanupMergedBranches({ github, context, core, dryRun }) {
   }
 
   for (const [branch, pullRequest] of eligibleBranches) {
-    if (openBranches.has(branch)) {
+    if (openPullRequests.some((pr) => usedByOpenPullRequest(pr, branch, repositoryName))) {
       core.info(`Keeping ${branch}: an open pull request uses it.`);
       skipped += 1;
       continue;
@@ -85,7 +102,18 @@ async function cleanupMergedBranches({ github, context, core, dryRun }) {
     if (dryRun) {
       core.info(`Dry run: would delete ${branch}.`);
     } else {
-      await github.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` });
+      const currentOpenPullRequests = await github.paginate(github.rest.pulls.list, {
+        owner,
+        repo,
+        state: "open",
+        per_page: 100,
+      });
+      if (currentOpenPullRequests.some((pr) => usedByOpenPullRequest(pr, branch, repositoryName))) {
+        core.info(`Keeping ${branch}: an open pull request uses it.`);
+        skipped += 1;
+        continue;
+      }
+      deleteBranch(branch, branchInfo.commit.sha);
       core.info(`Deleted ${branch}.`);
       deleted += 1;
     }
@@ -96,4 +124,4 @@ async function cleanupMergedBranches({ github, context, core, dryRun }) {
   );
 }
 
-module.exports = { cleanupMergedBranches };
+module.exports = { cleanupMergedBranches, deleteBranch, isDryRun };
