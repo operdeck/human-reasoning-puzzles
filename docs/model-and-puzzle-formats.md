@@ -198,6 +198,7 @@ d: 1 #F4CBC3 study
 e: 1 #E8D5F2 bathroom
 Tags:
 window: a c e
+clock: a d
 People:
 Ada
 Ben

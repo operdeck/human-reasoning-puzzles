@@ -463,6 +463,9 @@ Numbers from actual runs, not estimates:
 | `murdoku_global_counts.txt` | solved, 11 iterations | `single` 8, `count` 2 |
 | `murdoku_composition.txt` | solved, 44 iterations | `single` 25, `count` 15, `relations` 3 |
 | `samen-onderweg.txt` | solved, 29 iterations | `single` 17, `count` 7, `relations` 3, `subsumption` 1 |
+| `rooms_1_4x5.txt` | solved, 8 iterations | `single` 4, `count` 3 |
+| `rooms_2_5x7.txt` | solved, 9 iterations | `single` 5, `count` 1, `relations` 2 |
+| `rooms_3_6x8.txt` | solved, 31 iterations | `single` 15, `count` 2, `relations` 10, `subsumption` 1, `what_if` 2 |
 | `prrrdoku1.txt` | solved, 14 iterations | `single` 7, `relations` 4, `subsumption` 2 |
 | `prrrdoku2.txt` | solved, 36 iterations | `single` 17, `count` 1, `relations` 14, `chains` 2, `what_if` 1 |
 | `prrrdoku3.txt` | solved, 242 iterations | `single` 99, `count` 63, `relations` 67, `subsumption` 5, `cover2` 2, `what_if` 5 |
