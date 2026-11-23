@@ -1937,44 +1937,7 @@ def fresh_rooms(
     def rooms_in(area: str) -> tuple[str, ...]:
         return tags.get(area, (area,))
 
-    found: set[tuple[int, str]] = set()
-
-    def add(rank: int, clue: rooms.ClueType) -> None:
-        if clue.holds(where, puzzle):
-            found.add((rank, rooms.format_clue(clue)))
-
-    def add_either(rank: int, clue: rooms.InRoom | rooms.Alone) -> None:
-        add(rank, clue if clue.holds(where, puzzle) else rooms.negate(clue))
-
-    for person in people:
-        for room in keys:
-            add_either(0 if where[person] == room else 1, rooms.InRoom(person, room))
-        for tag in tags:
-            add_either(2 if where[person] in tags[tag] else 3, rooms.InRoom(person, tag))
-        alone = sum(other == where[person] for other in where.values()) == 1
-        add_either(5 if alone else 7, rooms.Alone(person))
-        for other in people:
-            if other > person:
-                same = where[other] == where[person]
-                due = rooms.Company(person, other, same)
-                found.add((4 if same else 6, rooms.format_clue(due)))
-        for step in rooms.STEPS:
-            for other in people:
-                if other != person:
-                    add(9, rooms.Direction(person, step, other))
-    for area in (*keys, *tags):
-        total = sum(room in rooms_in(area) for room in where.values())
-        add(3, rooms.Population(area, "=", total))
-        if total:
-            add(8, rooms.Population(area, ">=", total))
-            add(8, rooms.Population(area, "<=", total))
-    for first, second in itertools.combinations(tags, 2):
-        for one, two in itertools.permutations(people, 2):
-            clause = (rooms.InRoom(one, first), rooms.InRoom(two, second))
-            if sum(atom.holds(where, puzzle) for atom in clause) == 1:
-                found.add((7, rooms.format_clue(rooms.Choice(1, clause))))
-
-    candidates = sorted(found)
+    candidates = rooms.candidate_clues(puzzle, where)
     if tier == "easy":
         candidates.sort(key=lambda item: item[0])
     elif tier == "hard":

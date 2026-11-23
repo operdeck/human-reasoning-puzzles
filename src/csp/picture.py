@@ -1745,7 +1745,9 @@ def rooms_picture(
     clue_lines = [
         line
         for number, sentence in enumerate(puzzle.clue_lines, 1)
-        for line in textwrap.wrap(f"{number}. {sentence}", width=max(24, (board_width - 16) // 8))
+        for line in textwrap.wrap(
+            f"{number}. {sentence}", width=max(24, int(board_width / (small * 0.47)))
+        )
     ]
     height = margin * 2 + puzzle.height * cell + line_height * (len(clue_lines) + 1)
     canvas = Canvas(board_width + 2 * margin, height)
@@ -1764,6 +1766,16 @@ def rooms_picture(
                 canvas.line((x + cell, y, x + cell, y + cell), fill=INK, width=thick)
             if row + 1 < puzzle.height and puzzle.plan[row + 1][col] != key:
                 canvas.line((x, y + cell, x + cell, y + cell), fill=INK, width=thick)
+    canvas.rectangle(
+        (
+            margin - 1,
+            margin - 1,
+            margin + board_width,
+            margin + puzzle.height * cell,
+        ),
+        outline=INK,
+        width=thick,
+    )
     for room in puzzle.rooms:
         top, left = min(room.cells)
         cols = [col for _, col in room.cells]
@@ -1781,7 +1793,7 @@ def rooms_picture(
         people = [
             person
             for person in puzzle.people
-            if solution and solution.get(person) == room.key
+            if solution and solution.get(person) == room.label
         ]
         for index, person in enumerate(people):
             py = y + cell * 0.5 + index * max(11, cell // 5)

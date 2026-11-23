@@ -40,6 +40,7 @@ sentence, and `Words:` renames a room or a group in the text the solver writes
 ("t: de tuin").
 """
 
+import itertools
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -219,12 +220,12 @@ class Choice:
         return sum(atom.holds(where, puzzle) for atom in self.atoms) == self.number
 
     def describe(self, puzzle: "Puzzle") -> str:
-        parts = [atom.describe(puzzle).removesuffix(".") for atom in self.atoms]
-        body = "; ".join(parts)
+        body = "; ".join(atom.describe(puzzle).removesuffix(".") for atom in self.atoms)
         word = number_word(puzzle.language, self.number)
+        how_many = number_word(puzzle.language, len(self.atoms))
         if puzzle.language == "nl":
-            return f"Van deze {len(self.atoms)} geldt er {word}: {body}."
-        return f"{word[:1].upper() + word[1:]} of these {len(self.atoms)} holds: {body}."
+            return f"Precies {word} van deze {how_many} geldt: {body}."
+        return f"Exactly {word} of these {how_many} holds: {body}."
 
 
 Simple = InRoom | Population | Alone
@@ -253,6 +254,10 @@ class Puzzle:
     def room(self, key: str) -> Room:
         """The room with that key."""
         return next(room for room in self.rooms if room.key == key)
+
+    def key_of(self, label: str) -> str:
+        """The room key of a room's label, which is what the solver's values are."""
+        return next(room.key for room in self.rooms if room.label == label)
 
     def areas(self, selector: str) -> tuple[str, ...]:
         """The rooms an area names: one room key, or a group of rooms."""
@@ -473,8 +478,11 @@ def format_clue(clue: ClueType) -> str:
 
 def _check_names(clue: ClueType, puzzle: Puzzle) -> None:
     """Every person and area a clue names must be declared."""
-    for name in (getattr(clue, "person", None), getattr(clue, "first", None),
-                 getattr(clue, "second", None)):
+    for name in (
+        getattr(clue, "person", None),
+        getattr(clue, "first", None),
+        getattr(clue, "second", None),
+    ):
         if name is not None and name not in puzzle.people:
             raise ValueError(f"unknown person {name!r}")
     if (area := getattr(clue, "area", None)) is not None:
@@ -483,16 +491,19 @@ def _check_names(clue: ClueType, puzzle: Puzzle) -> None:
         _check_names(atom, puzzle)
 
 
-
 def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
-    """Compile a room puzzle: one variable per person, a count per room capacity."""
+    """Compile a room puzzle: one variable per person, a count per room capacity.
+
+    A variable's values are the rooms' labels, so the solver's own output,
+    `--step` and the worked solution all read as rooms rather than as codes.
+    """
     puzzle = parse(text)
     model = Model()
     for person in puzzle.people:
         model.constrain(
             f"{person}'s room",
             Kind.EXACTLY_ONE,
-            [model.literal(person, room.key) for room in puzzle.rooms],
+            [model.literal(person, room.label) for room in puzzle.rooms],
             defines=person,
             family="each person is in one room",
         )
@@ -500,7 +511,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
         model.constrain(
             f"{room.title} holds at most {room.capacity}",
             Kind.COUNT,
-            [model.literal(person, room.key) for person in puzzle.people],
+            [model.literal(person, room.label) for person in puzzle.people],
             allowed_counts=range(room.capacity + 1),
             family="room capacity",
         )
@@ -561,10 +572,11 @@ def _compile_clue(model: Model, puzzle: Puzzle, clue: ClueType, shares: _Shares,
     elif isinstance(clue, Company):
         model.relate(name, (clue.first, clue.second), lambda a, b: (a == b) == clue.together)
     elif isinstance(clue, Direction):
+        labels = {room.label: room.key for room in puzzle.rooms}
         placed: dict[str, str] = {}
 
         def holding(first: str, second: str) -> bool:
-            placed[clue.first], placed[clue.second] = first, second
+            placed[clue.first], placed[clue.second] = labels[first], labels[second]
             return clue.holds(placed, puzzle)
 
         model.relate(name, (clue.first, clue.second), holding)
@@ -584,14 +596,16 @@ def _compile_clue(model: Model, puzzle: Puzzle, clue: ClueType, shares: _Shares,
 
 
 def _room_literals(model: Model, puzzle: Puzzle, area: str, person: str) -> list[int]:
-    """One person's literals for every room an area names."""
-    return [model.literal(person, room) for room in puzzle.areas(area)]
+    """One person's literals for every room an area names, as the solver's values."""
+    return [model.literal(person, puzzle.room(key).label) for key in puzzle.areas(area)]
 
 
 def _population(model: Model, name: str, puzzle: Puzzle, clue: Population) -> None:
     """The count of people in an area, as one `COUNT` over its room literals."""
     rooms = puzzle.areas(clue.area)
-    literals = [model.literal(person, room) for person in puzzle.people for room in rooms]
+    literals = [
+        model.literal(person, puzzle.room(room).label) for person in puzzle.people for room in rooms
+    ]
     _count(model, name, literals, _allowed(literals, clue.operator, clue.number, name))
 
 
@@ -615,7 +629,11 @@ def _reify(model: Model, puzzle: Puzzle, atom: Simple, name: str, shares: _Share
         allowed = {0} if atom.negated else {1}
     elif isinstance(atom, Population):
         rooms = puzzle.areas(atom.area)
-        literals = [model.literal(person, room) for person in puzzle.people for room in rooms]
+        literals = [
+            model.literal(person, puzzle.room(room).label)
+            for person in puzzle.people
+            for room in rooms
+        ]
         allowed = _allowed(literals, atom.operator, atom.number, name)
     else:
         assert isinstance(atom, Alone)
@@ -639,7 +657,7 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
     width = max(len(room.title) for room in puzzle.rooms)
     out = [f"\n{title}"]
     for room in puzzle.rooms:
-        placed = [person for person in puzzle.people if model.chosen(person) == room.key]
+        placed = [person for person in puzzle.people if model.chosen(person) == room.label]
         if placed:
             mark = ", ".join(placed)
         else:
@@ -647,15 +665,14 @@ def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ())
                 person
                 for person in puzzle.people
                 if model.chosen(person) is None
-                and model.literal(person, room.key) in model.options(person)
+                and model.literal(person, room.label) in model.options(person)
             ]
             mark = " ".join(f"{person}?" for person in possible) or "-"
         line = f"  {room.title:<{width}} ({room.capacity})  {mark}"
-        if any((person, room.key) in changed for person in puzzle.people):
+        if any((person, room.label) in changed for person in puzzle.people):
             line = f"\033[38;5;21m{line}\033[0m"
         out.append(line)
     return "\n".join(out)
-
 
 
 def people_of(clue: ClueType) -> frozenset[str]:
@@ -685,3 +702,49 @@ def needs_everyone(clue: ClueType) -> bool:
         return True
     return any(needs_everyone(atom) for atom in getattr(clue, "atoms", ()))
 
+
+def candidate_clues(puzzle: Puzzle, where: Mapping[str, str]) -> list[tuple[int, str]]:
+    """Every clue that is true of a placement, with a rank: 0 is the sharpest.
+
+    The rank is the difficulty dial an author turns. A clue that names one
+    person's room comes first, then a group's, then a count, a pair or being
+    alone; the weakest comparisons and the direction clues, which much of any
+    plan satisfies, come last. Ties keep the puzzle file's own order.
+    """
+    keys = [room.key for room in puzzle.rooms]
+    found: set[tuple[int, str]] = set()
+
+    def add(rank: int, clue: ClueType) -> None:
+        if clue.holds(where, puzzle):
+            found.add((rank, format_clue(clue)))
+
+    def add_either(rank: int, clue: InRoom | Alone) -> None:
+        add(rank, clue if clue.holds(where, puzzle) else negate(clue))
+
+    for person in puzzle.people:
+        for room in keys:
+            add_either(0 if where[person] == room else 1, InRoom(person, room))
+        for tag in puzzle.tags:
+            add_either(2 if where[person] in puzzle.tags[tag] else 3, InRoom(person, tag))
+        alone = sum(other == where[person] for other in where.values()) == 1
+        add_either(5 if alone else 7, Alone(person))
+        for other in puzzle.people:
+            if other > person:
+                same = where[other] == where[person]
+                found.add((4 if same else 6, format_clue(Company(person, other, same))))
+        for step in STEPS:
+            for other in puzzle.people:
+                if other != person:
+                    add(9, Direction(person, step, other))
+    for area in (*keys, *puzzle.tags):
+        total = sum(room in puzzle.areas(area) for room in where.values())
+        add(3, Population(area, "=", total))
+        if total:
+            add(8, Population(area, ">=", total))
+            add(8, Population(area, "<=", total))
+    for first, second in itertools.combinations(puzzle.tags, 2):
+        for one, two in itertools.permutations(puzzle.people, 2):
+            clause = (InRoom(one, first), InRoom(two, second))
+            if sum(atom.holds(where, puzzle) for atom in clause) == 1:
+                found.add((7, format_clue(Choice(1, clause))))
+    return sorted(found)

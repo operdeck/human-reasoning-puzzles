@@ -1,6 +1,6 @@
 """Brute force for the room puzzles: people choose rooms, capacities cap them."""
 
-from ..rooms import Puzzle, needs_everyone, parse, people_of
+from ..rooms import ClueType, Puzzle, needs_everyone, parse, people_of
 
 
 def solutions(text: str, limit: int = 2) -> list[dict[str, str]]:
@@ -22,7 +22,7 @@ def _walk(puzzle: Puzzle, limit: int | None) -> list[dict[str, str]]:
     used = dict.fromkeys((room.key for room in puzzle.rooms), 0)
     whole = len(puzzle.people)
 
-    def ready(clue) -> bool:
+    def ready(clue: ClueType) -> bool:
         """Whether the clue can be judged from the people placed so far."""
         if needs_everyone(clue):
             return len(where) == whole
@@ -30,7 +30,7 @@ def _walk(puzzle: Puzzle, limit: int | None) -> list[dict[str, str]]:
 
     def search() -> None:
         if len(where) == whole:
-            found.append(dict(where))
+            found.append({person: puzzle.room(key).label for person, key in where.items()})
             return
         person = puzzle.people[len(where)]
         for room in puzzle.rooms:
