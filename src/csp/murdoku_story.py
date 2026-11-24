@@ -2208,8 +2208,15 @@ class _Narrator(generic_story.Narrator):
                         self.placed(self.board.role_variable(person, role.name), True)
                         for person in eligible
                     ]
+                    certain = role.allowed_counts == {len(eligible)}
                     paragraphs.append(
-                        self.say("role_eligible_statements", statements=self.say.join(statements))
+                        self.say(
+                            "role_eligible_true" if certain else "role_eligible_statements",
+                            role=self.say.words.get(role.name, role.name),
+                            statements=self.say.join(statements)
+                            if certain
+                            else "; ".join(statements),
+                        )
                         + "."
                     )
                     continue

@@ -478,24 +478,56 @@ def test_unnumbered_story_omits_only_role_facts_given_by_the_figure_list(eligibl
 
 
 @pytest.mark.parametrize(
-    ("language", "phrase", "expected"),
+    ("language", "phrase", "certain", "possible"),
     [
-        ("en", "{who} is a {role}", "only these statements can be true: Ada is a guard"),
-        ("nl", "{who} is een {role}", "alleen deze uitspraken waar zijn: Ada is een guard"),
+        (
+            "en",
+            "{who} is a {role}",
+            "guard: only these assignments are true: Ada is a guard.",
+            "guard: the only possible assignments are: Ada is a guard; Ben is a guard.",
+        ),
+        (
+            "nl",
+            "{who} is een {role}",
+            "guard: alleen deze toewijzingen zijn waar: Ada is een guard.",
+            "guard: dit zijn de enige mogelijke toewijzingen: Ada is een guard; Ben is een guard.",
+        ),
     ],
 )
 @pytest.mark.parametrize("eligible", ["Ada", "Ada Ben"])
 def test_unnumbered_story_keeps_eligibility_with_custom_role_words(
-    language, phrase, expected, eligible
+    language, phrase, certain, possible, eligible
 ):
     text = f"Language: {language}\n" + TEXT.replace(
         "Regions:", f"Words:\nrole_has: {phrase}\nRegions:"
     ).replace("Rules:", f"RoleEligibility:\nguard: {eligible}\nRules:")
     unnumbered = murdoku_story.explain(text, numbered=False).markdown()
-    assert expected in unnumbered
-    assert (f"Ben is {'a' if language == 'en' else 'een'} guard" in unnumbered) == (
-        eligible == "Ada Ben"
+    assert (certain if eligible == "Ada" else possible) in unnumbered
+
+
+def test_custom_role_words_state_fixed_eligibility_without_figure_descriptions():
+    text = (
+        example("zoo-murdoku-1.txt")
+        .read_text()
+        .replace("Makaak: een aap, nooit alleen", "Makaak: nooit alleen")
+        .replace("Berggorilla: een aap, nooit alleen", "Berggorilla: nooit alleen")
     )
+    unnumbered = murdoku_story.explain(text, numbered=False).markdown()
+    assert (
+        "aap: alleen deze toewijzingen zijn waar: de makaak is een aap "
+        "en de berggorilla is een aap." in unnumbered
+    )
+
+
+def test_custom_role_eligibility_statements_are_scoped_to_each_role():
+    text = (
+        TEXT.replace("Regions:", "Words:\nrole_has: {who} is a {role}\nRegions:")
+        .replace("Roles:\nguard: 1", "Roles:\nguard: 1\nhelper: 1")
+        .replace("Rules:", "RoleEligibility:\nguard: Ada\nhelper: Ben\nRules:")
+    )
+    unnumbered = murdoku_story.explain(text, numbered=False).markdown()
+    assert "guard: only these assignments are true: Ada is a guard." in unnumbered
+    assert "helper: only these assignments are true: Ben is a helper." in unnumbered
 
 
 @pytest.mark.parametrize(
