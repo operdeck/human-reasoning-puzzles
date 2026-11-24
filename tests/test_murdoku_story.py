@@ -274,6 +274,21 @@ def test_direction_boundary_candidate_bounds_are_lowercase_after_so():
     assert "Dus **voor Haru blijven alleen de kolommen" in text
 
 
+def test_line_overlap_candidate_bounds_are_lowercase_after_so():
+    text = murdoku_story.explain(example("berghut-murdoku-3.txt").read_text()).markdown()
+    assert "dus **voor Brunhild, Hannelore en Gerhard blijven alleen de kolommen" in text
+
+
+@pytest.mark.parametrize("numbered", [True, False])
+def test_line_reservation_cites_prior_clue_exclusions(numbered):
+    text = murdoku_story.explain(
+        example("berghut-murdoku-2.txt").read_text(), numbered=numbered
+    ).markdown()
+    paragraph = next(p for p in text.split("\n\n") if "alleen Gunter kan in kolom 3" in p)
+    assert "sluit r4k3, r5k3, r7k3 en r8k3 voor Gerhard uit" in paragraph
+    assert "sluit r1k3, r2k3, r4k3, r7k3 en r8k3 voor Hannelore uit" in paragraph
+
+
 def test_exact_line_single_names_its_only_remaining_candidate():
     text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
 
@@ -319,7 +334,7 @@ def test_hut_seat_and_role_deductions_name_candidates():
     assert "**Brunhild op r2k5**" in text
     assert "Tussen r2k5 en de kachel ligt een gebiedsgrens; naast vereist hetzelfde gebied" in text
     assert "Gerhard alleen nog in het drooghok, in Kamer Zuid of in het washok kan staan" in text
-    assert "Alleen Gunter kan in kolom 3 staan (r7k3 of r8k3)" in text
+    assert "alleen Gunter kan in kolom 3 staan (r7k3 of r8k3)" in text
     assert "sluit r5k4 voor Gerhard uit" in text
     assert text.index("**Brunhild op r2k5**") < text.index("**Waltraud op r4k8**")
     reservation = next(p for p in text.split("\n\n") if "Greta moet in rij 1 staan" in p)

@@ -2117,7 +2117,9 @@ class _Narrator(generic_story.Narrator):
             conclusion=conclusion,
         )
 
-    def _line_person(self, inference: Inference, conclusion: str) -> str | None:
+    def _line_person(
+        self, inference: Inference, conclusion: str, history: Sequence[Step]
+    ) -> str | None:
         move = inference.move
         if move is None or move.rule != "subsumption" or len(move.sources) != 1:
             return None
@@ -2144,16 +2146,44 @@ class _Narrator(generic_story.Narrator):
         squares = [inference.before.value_of(literal) for literal in live]
         if len(squares) > MAX_LISTED + 1 or not all(isinstance(sq, Square) for sq in squares):
             return None
-        return (
+        exclusions: dict[tuple[str, str], set[Square]] = {}
+        for step in history:
+            if (
+                step.var not in self.board.people
+                or step.var == person
+                or step.asserted
+                or step.placing is not None
+                or not isinstance(step.value, Square)
+                or (step.value.row if kind == "row" else step.value.col) != index
+            ):
+                continue
+            for source in step.sources:
+                for label in self.source_origins.get(source, ()):
+                    if label in self.clue_origins:
+                        exclusions.setdefault((step.var, label), set()).add(step.value)
+        details = [
             self.say(
-                "murdoku.line_person",
-                who=person,
-                line=self.places.line(kind, index),
-                squares=self.places.squares(set(squares), "or"),
-                conclusion=conclusion,
+                "murdoku.line_single_excluded",
+                clue=self.names([label]),
+                who=who,
+                squares=self.places.squares(values, "and"),
             )
-            + "."
+            for (who, label), values in exclusions.items()
+            if len(values) <= MAX_LISTED + 2
+        ]
+        if len(details) > 2:
+            details = []
+        reservation = self.say(
+            "murdoku.line_person",
+            who=person,
+            line=self.places.line(kind, index),
+            squares=self.places.squares(set(squares), "or"),
+            conclusion=conclusion,
         )
+        if details:
+            reservation = reservation[0].lower() + reservation[1:]
+            return self.say.join(details) + "; " + reservation + "."
+        return reservation + "."
 
     def _area_exclusion_details(
         self, inference: Inference, history: Sequence[Step], person: str, region: str
@@ -2471,7 +2501,7 @@ class _Narrator(generic_story.Narrator):
         conclusion = self.conclusion(
             inference.steps,
             group_candidates=move.rule not in {"chains", "what_if"},
-            embedded=reservation is not None,
+            embedded=reservation is not None or self._line_overlap(inference, None) is not None,
             include_broad_candidates=(
                 (
                     move.rule == "relations"
@@ -2500,7 +2530,7 @@ class _Narrator(generic_story.Narrator):
             )
         if line_overlap := self._line_overlap(inference, conclusion):
             return line_overlap + "."
-        if line_person := self._line_person(inference, conclusion):
+        if line_person := self._line_person(inference, conclusion, history):
             return line_person
         if role_exclusion := self._role_exclusion(inference):
             return role_exclusion + "."
@@ -2703,11 +2733,13 @@ class _Narrator(generic_story.Narrator):
                             paragraph if paragraph.endswith((".", "!", "?")) else paragraph + "."
                         )
                 else:
-                    conclusion = self.conclusion(inference.steps)
+                    conclusion = self.conclusion(
+                        inference.steps, embedded=self._line_overlap(inference, None) is not None
+                    )
                     if conclusion is not None:
                         paragraph = self._line_overlap(inference, conclusion)
                         if paragraph is None:
-                            paragraph = self._line_person(inference, conclusion)
+                            paragraph = self._line_person(inference, conclusion, history)
                         if paragraph is None:
                             paragraph = self._furthest_exclusion(inference, conclusion)
                         if paragraph is None:
