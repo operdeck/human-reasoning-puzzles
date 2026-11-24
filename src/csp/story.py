@@ -409,6 +409,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "exclusions, once {causes}",
         "generic.left_after_previous": "{placements}, the only option left after the earlier "
         "exclusions",
+        "generic.constraint_left_after": "{placements}, the only option left in {source} "
+        "once {causes}",
+        "generic.constraint_left_after_prior": "{placements}, the only option left in {source} "
+        "after the earlier exclusions, once {causes}",
         "generic.rules_out": "{source} rules out {values}",
         "generic.exclusion_by_placements": "{placements} {verb} {values} under {source}",
         "generic.rule_out": "rule out",
@@ -543,6 +547,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "else can use those lines",
         "line_exclusions_exact": "{blockers}; exactly one person occupies each row and column, "
         "so no one else can use those lines",
+        "line_exclusions_followup": "{blockers}, so no one else can use those lines",
         "must_occupy_line": "{who} must occupy {line}",
         "nobody_else_line": "the one-person-per-line rule excludes everyone else",
         "line_reservation": "{person}'s remaining squares are all in {line}, so {person} must be "
@@ -1012,6 +1017,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "uitsluitingen, nu {causes}",
         "generic.left_after_previous": "{placements}, de enige mogelijkheid na de eerdere "
         "uitsluitingen",
+        "generic.constraint_left_after": "{placements}, de enige mogelijkheid in {source} "
+        "die overblijft nu {causes}",
+        "generic.constraint_left_after_prior": "{placements}, de enige mogelijkheid in {source} "
+        "na de eerdere uitsluitingen, nu {causes}",
         "generic.rules_out": "{source} {values} uitsluit",
         "generic.exclusion_by_placements": "{placements} volgens {source} {values} {verb}",
         "generic.rule_out": "uitsluiten",
@@ -1154,6 +1163,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "niemand anders kan die lijnen gebruiken",
         "line_exclusions_exact": "{blockers}; elke rij en kolom heeft precies één persoon, dus "
         "niemand anders kan die lijnen gebruiken",
+        "line_exclusions_followup": "{blockers}, dus niemand anders kan die lijnen gebruiken",
         "must_occupy_line": "{who} moet in {line} staan",
         "nobody_else_line": "de regel van één persoon per rij of kolom sluit iedereen anders uit",
         "line_reservation": "de resterende vakjes van {person} liggen allemaal in {line}, dus "

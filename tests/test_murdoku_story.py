@@ -435,6 +435,34 @@ def test_occupied_rows_and_columns_are_explained_once_for_all_people(language, e
     assert narrator.conclusion([Step("Ben", Square(0, 2), False, "single", "")]) is None
 
 
+def test_later_line_exclusions_do_not_repeat_the_board_rule():
+    board = Board(
+        size=3,
+        regions=[["a"] * 3 for _ in range(3)],
+        region_names={"a": "hall"},
+        objects=[],
+        people=["Ada", "Ben", "Cal"],
+    )
+    compilation = compile_statements_with_origins(board, [])
+    narrator = murdoku_story._Narrator(TEXT, board, compilation, numbered=True)
+    narrator.conclusion([Step("Ada", Square(0, 0), True, "single", "")])
+    first = narrator.conclusion(
+        [
+            Step("Ben", Square(0, 1), False, "single", ""),
+            Step("Ben", Square(1, 0), False, "single", ""),
+        ]
+    )
+    narrator.conclusion([Step("Ben", Square(1, 1), True, "single", "")])
+    second = narrator.conclusion(
+        [
+            Step("Cal", Square(1, 2), False, "single", ""),
+            Step("Cal", Square(2, 1), False, "single", ""),
+        ]
+    )
+    assert first is not None and "exactly one person occupies each row and column" in first
+    assert second == "**Ben occupies row 2 and column 2, so no one else can use those lines**"
+
+
 @pytest.mark.parametrize(
     ("language", "expected"),
     [

@@ -39,9 +39,11 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
     assert story.complete
     # Singles cite the board constraint that left them, in deduction order.
     assert "**r4c4 = 5** by *5 once in col 4*" in text
-    assert text.index("**r5c5 = 5** by *5 once in row 5*") < text.index(
-        "**r5c1 = 3** by *3 once in row 5*"
-    )
+    assert (
+        "**r5c5 = 5**, the only option left in *5 once in row 5* after the earlier exclusions, "
+        "once r2c3 = 5 rules out r5c3 = 5 under *each number once per column*"
+    ) in text
+    assert text.index("**r5c5 = 5**") < text.index("**r5c1 = 3** by *3 once in row 5*")
     assert (
         "**Chain.** If r5c4 ≠ 4, then only r2c4 = 4 or r5c4 = 4 remain under "
         "*4 once in col 4*, so r2c4 = 4"
@@ -159,7 +161,9 @@ def test_queens_story_uses_board_coordinates():
     text = example("queens_1_4x4.txt").read_text()
     kind = puzzlefile.detect(text)
     story = cli.pattern_story(kind, text, cli.load(text, kind).model).markdown()
-    assert "**d = r4c2**" in story
+    assert "**d = r4c2**, the only option left in *one queen in column 2*" in story
+    assert "b = r2c1 rules out a = r1c2 and c = r3c2" in story
+    assert "b = r2c1 rules out a = r2c2" in story
     assert "(3, 1)" not in story
     assert "(2, 1)" not in story
 

@@ -62,6 +62,7 @@ class _Narrator(generic_story.Narrator):
         self.spoken_rule_origins: set[str] = set()
         self.direct_clue_origins: set[str] = set()
         self.told_lines: set[tuple[str, str, int]] = set()
+        self.told_line_exclusion_rule = False
         self.told_reservations: set[tuple[str, str, int]] = set()
         self.told_area_exclusions: set[tuple[str, str]] = set()
         self.told_bounds: dict[str, dict[str, frozenset[int]]] = {}
@@ -290,8 +291,10 @@ class _Narrator(generic_story.Narrator):
         previous = set(self.options[person])
         already_told = set(self.told)
         reservations = set(self.told_reservations)
+        line_rule = self.told_line_exclusion_rule
         self.conclusion(own, include_marks=False)
         self.told_reservations = reservations
+        self.told_line_exclusion_rule = line_rule
         squares = self.options[person]
         if not squares:
             return None
@@ -864,6 +867,10 @@ class _Narrator(generic_story.Narrator):
             blockers = self.places.blockers(gone, announced) if group_candidates else None
             if blockers:
                 suppressed.add(person)
+                if len(cells) == 1 and self._current_single_reason(
+                    person, next(iter(cells)), previous, steps, omit_origins
+                ):
+                    continue
                 for blocker, square in announced.items():
                     rows = {
                         cell.row
@@ -975,14 +982,22 @@ class _Narrator(generic_story.Narrator):
                 for index in indices
             }
             exact = bool(claimed_lines) and claimed_lines <= self.exact_lines
+            wording = (
+                "line_exclusions_followup"
+                if self.told_line_exclusion_rule
+                else "line_exclusions_exact"
+                if exact
+                else "line_exclusions"
+            )
             said.append(
                 "**"
                 + self.say(
-                    "line_exclusions_exact" if exact else "line_exclusions",
+                    wording,
                     blockers=self.say.join(blockers),
                 )
                 + "**"
             )
+            self.told_line_exclusion_rule = True
             for person, lines in line_claims.items():
                 self.told_lines.update(
                     (person, kind, index) for kind, indices in lines.items() for index in indices
@@ -1111,9 +1126,11 @@ class _Narrator(generic_story.Narrator):
     def _advance_without_conclusion(self, steps: Iterable[Step]) -> None:
         spoken = set(self.spoken_placements)
         reservations = set(self.told_reservations)
+        line_rule = self.told_line_exclusion_rule
         self.conclusion(steps)
         self.spoken_placements = spoken
         self.told_reservations = reservations
+        self.told_line_exclusion_rule = line_rule
 
     def _person_case(self, step: Step, history: Sequence[Step]) -> str:
         needed = essential(self.model, history, step)

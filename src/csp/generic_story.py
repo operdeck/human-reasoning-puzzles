@@ -44,6 +44,7 @@ class Exclusions:
 
     causes: tuple[str, ...]
     earlier: bool = False
+    constraint: str | None = None
 
 
 @dataclass(frozen=True)
@@ -277,6 +278,59 @@ class Narrator:
         ]
         return Exclusions(tuple(causes), earlier) if causes or earlier else None
 
+    def _constraint_single_exclusions(
+        self, before: Model, step: Step, source: str, history: Sequence[Step]
+    ) -> Exclusions | None:
+        constraint = self.constraints.get(source)
+        if constraint is None or constraint.kind is not Kind.EXACTLY_ONE:
+            return None
+        live = before.live(constraint.index)
+        if len(live) != 1 or (before.var_of(live[0]), before.value_of(live[0])) != (
+            step.var,
+            step.value,
+        ):
+            return None
+        alternatives: dict[tuple[str, tuple[str, Any]], list[str]] = {}
+        earlier = False
+        for literal in constraint.literals:
+            if literal == live[0]:
+                continue
+            var, value = before.var_of(literal), before.value_of(literal)
+            if var not in self.visible or not before.is_false(literal):
+                return None
+            if (var, value) in self.explained_removals:
+                earlier = True
+                continue
+            prior = next(
+                (
+                    item
+                    for item in history
+                    if item.var == var and item.value == value and not item.asserted
+                ),
+                None,
+            )
+            if prior is None or prior.placing is None or prior.placing[0] not in self.visible:
+                return None
+            sources = [name for name in prior.sources if name not in self.domains]
+            if len(sources) != 1:
+                return None
+            cause = self.constraints.get(sources[0])
+            if cause is None or cause.kind not in (Kind.EXACTLY_ONE, Kind.AT_MOST_ONE):
+                return None
+            key = (cause.family or cause.name, prior.placing)
+            alternatives.setdefault(key, []).append(self.placed(var, value))
+        causes = [
+            self.say(
+                "generic.exclusion_by_placements",
+                placements=self.placed(*placement),
+                source=self.names([name]),
+                values=self.say.join(values),
+                verb=self.say("generic.rules_out_verb"),
+            )
+            for (name, placement), values in alternatives.items()
+        ]
+        return Exclusions(tuple(causes), earlier, source) if causes else None
+
     def singles(self, inferences: Sequence[Inference], history: Sequence[Step]) -> list[str]:
         """Each placement in the order it was found, with the rule that left it.
 
@@ -341,7 +395,11 @@ class Narrator:
                     if reason is None:
                         reason = ""
                 else:
-                    reason = source
+                    reason = (
+                        self._constraint_single_exclusions(inference.before, step, source, history)
+                        if step.asserted
+                        else None
+                    ) or source
                 found.append((reason, *pair))
         paragraphs: list[str] = []
         chunks: list[list[tuple[Any, str, Any]]] = []
@@ -397,7 +455,11 @@ class Narrator:
                     parts.append(self.say(key, placements=listed, causes=ruled_out))
                 elif isinstance(reason, Exclusions):
                     key = (
-                        "generic.left_after_prior"
+                        "generic.constraint_left_after_prior"
+                        if reason.constraint and reason.earlier and reason.causes
+                        else "generic.constraint_left_after"
+                        if reason.constraint
+                        else "generic.left_after_prior"
                         if reason.earlier and reason.causes
                         else "generic.left_after_previous"
                         if reason.earlier
@@ -408,6 +470,7 @@ class Narrator:
                             key,
                             placements=listed,
                             causes=self.say.join(list(reason.causes)),
+                            source=self.names([reason.constraint]) if reason.constraint else "",
                         )
                     )
                 elif isinstance(reason, LostCause):

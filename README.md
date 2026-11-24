@@ -40,14 +40,15 @@ murderer.
 <details>
 <summary>Show the worked solution</summary>
 
-- **The direct clues.** Ingrid is on a chair (1). Joost is next to the tree (2):
-  **beside** means in the same area, and only r1c1 is free on the patio, so
-  **Joost on r1c1**. Lotte is on the bed (3): **in the guest room**.
+- **The direct clues.** Ingrid is on a chair (1). Joost is beside the tree (2): **on the patio**: **Joost on r1c1**. Lotte is on the bed (3): **in the guest room**.
 
-- **Lotte, Ingrid and Wouter.** Joost takes column 1, so **Lotte on r4c2**.
-  Lotte takes row 4 and Joost takes column 1, so **Ingrid on r3c4**. Only r2c3
-  is left for Wouter: **Wouter on r2c3**. **Ingrid did it**: she shares the
-  sitting room with Wouter.
+- By *r1c1 holds at most one person*, *exactly one person per row* and *exactly one person per column*, Joost takes column 1; therefore **Lotte on r4c2** is the only remaining place and **Joost occupies row 1 and column 1; exactly one person occupies each row and column, so no one else can use those lines**.
+
+- By *r4c2 holds at most one person*, *exactly one person per row* and *exactly one person per column*, Lotte takes row 4; therefore **Ingrid on r3c4** is the only remaining place and **Lotte occupies row 4 and column 2, so no one else can use those lines**.
+
+- By *r3c4 holds at most one person* and *exactly one person per row*, Ingrid takes row 3; therefore **Wouter on r2c3** is the only remaining place.
+
+- **Answer.** Ingrid did it: she shares the sitting room with Wouter.
 
 <img src="docs/images/murdoku_1_first_case-solution.png" width="230" alt="Murdoku solution">
 </details>
