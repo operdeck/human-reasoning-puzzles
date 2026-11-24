@@ -172,8 +172,9 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
             family="each empty cell holds one monster",
         )
     for monster in MONSTERS:
+        count = puzzle.totals[monster]
         model.constrain(
-            f"{puzzle.totals[monster]} {NAMES[monster]}s in all",
+            f"{count} {NAMES[monster]}{'' if count == 1 else 's'} in all",
             Kind.COUNT,
             [model.literal(cell_name(cell), monster) for cell in puzzle.empty],
             allowed_counts=(puzzle.totals[monster],),

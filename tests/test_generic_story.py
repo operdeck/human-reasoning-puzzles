@@ -94,19 +94,34 @@ def test_count_cover_names_already_counted_values():
     text = told("minesweeper_2_5x5.txt").markdown()
     assert (
         "With r4c1 = mine and r4c4 = mine already counted, "
-        "*1 mines near r1c5* and *1 mines near r2c1* use the remaining capacity "
+        "*1 mine near r1c5* and *1 mine near r2c1* use the remaining capacity "
         "of *4 mines total*, so **r1c3 = safe**"
     ) in text
 
 
 def test_boolean_and_count_cover_premises_are_in_dutch():
     text = told("minesweeper_2_5x5.txt", "nl").markdown()
-    assert "omdat *1 mines near r4c3* r3c3 = mijn uitsluit" in text
+    assert "omdat *1 mine near r4c3* r3c3 = mijn uitsluit" in text
     assert (
         "Met r4c1 = mijn en r4c4 = mijn al meegeteld, gebruiken "
-        "*1 mines near r1c5* en *1 mines near r2c1* de resterende ruimte "
+        "*1 mine near r1c5* en *1 mine near r2c1* de resterende ruimte "
         "van *4 mines total*"
     ) in text
+
+
+@pytest.mark.parametrize(
+    ("name", "singular", "plural"),
+    [
+        ("battleships_1_6x6_fleet.txt", "1 occupied cell", "0 occupied cells"),
+        ("minesweeper_2_5x5.txt", "1 mine near", "2 mines near"),
+        ("tents_3_4x4.txt", "1 tent in", "tents do not touch"),
+        ("undead_1_4x4.txt", "1 vampire in all", "3 zombies in all"),
+    ],
+)
+def test_count_clue_names_use_singular_and_plural(name, singular, plural):
+    text = told(name).markdown()
+    assert singular in text
+    assert plural in text
 
 
 def test_boolean_cells_are_grouped_into_runs_in_family_words():

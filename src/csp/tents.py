@@ -122,8 +122,9 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
             )
     for row in range(puzzle.size):
         cells = [(row, col) for col in range(puzzle.size)]
+        count = puzzle.row_counts[row]
         model.constrain(
-            f"{puzzle.row_counts[row]} tents in row {row + 1}",
+            f"{count} {'tent' if count == 1 else 'tents'} in row {row + 1}",
             Kind.COUNT,
             [model.literal(cell_name(cell), True) for cell in cells],
             allowed_counts=(puzzle.row_counts[row],),
@@ -131,8 +132,9 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
         )
     for col in range(puzzle.size):
         cells = [(row, col) for row in range(puzzle.size)]
+        count = puzzle.column_counts[col]
         model.constrain(
-            f"{puzzle.column_counts[col]} tents in column {col + 1}",
+            f"{count} {'tent' if count == 1 else 'tents'} in column {col + 1}",
             Kind.COUNT,
             [model.literal(cell_name(cell), True) for cell in cells],
             allowed_counts=(puzzle.column_counts[col],),

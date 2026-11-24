@@ -112,7 +112,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
                 continue
             cells = puzzle.neighbors((row, col))
             model.constrain(
-                f"{clue} mines near {cell_name((row, col))}",
+                f"{clue} {'mine' if clue == 1 else 'mines'} near {cell_name((row, col))}",
                 Kind.COUNT,
                 [model.literal(cell_name(cell), True) for cell in cells],
                 allowed_counts=(clue,),
@@ -120,7 +120,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
             )
     if puzzle.total_mines is not None:
         model.constrain(
-            f"{puzzle.total_mines} mines total",
+            f"{puzzle.total_mines} {'mine' if puzzle.total_mines == 1 else 'mines'} total",
             Kind.COUNT,
             [model.literal(cell_name(cell), True) for cell in puzzle.unknown],
             allowed_counts=(puzzle.total_mines,),

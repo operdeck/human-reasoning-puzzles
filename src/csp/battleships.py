@@ -177,7 +177,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
                 model.assign(model.literal(name, bool(given)), "given", "stated in the puzzle")
     for row, count in enumerate(puzzle.row_counts):
         model.constrain(
-            f"{count} occupied cells in row {row + 1}",
+            f"{count} occupied {'cell' if count == 1 else 'cells'} in row {row + 1}",
             Kind.COUNT,
             [model.literal(cell_name((row, col)), True) for col in range(size)],
             allowed_counts=(count,),
@@ -185,7 +185,7 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
         )
     for col, count in enumerate(puzzle.column_counts):
         model.constrain(
-            f"{count} occupied cells in column {col + 1}",
+            f"{count} occupied {'cell' if count == 1 else 'cells'} in column {col + 1}",
             Kind.COUNT,
             [model.literal(cell_name((row, col)), True) for row in range(size)],
             allowed_counts=(count,),
