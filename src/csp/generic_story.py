@@ -371,12 +371,12 @@ class Narrator:
     def _count_single_support(
         self, before: Model, var: str, value: bool, sources: Sequence[str] = ()
     ) -> CountEvidence | None:
-        """Cite a fixed count only when already-told facts directly force the cell."""
+        """Cite a count only when already-told facts directly force the cell."""
         for constraint in before.constraints:
             if (
                 constraint.kind is not Kind.COUNT
                 or constraint.reified_by is not None
-                or len(constraint.allowed_counts) != 1
+                or not constraint.allowed_counts
                 or any(before.value_of(lit) is not True for lit in constraint.literals)
                 or (sources and constraint.name not in sources)
             ):
@@ -391,15 +391,16 @@ class Narrator:
             )
             if target is None or before.is_true(target) or (value and before.is_false(target)):
                 continue
-            count = next(iter(constraint.allowed_counts))
             if value:
-                if sum(not before.is_false(lit) for lit in constraint.literals) != count:
+                if sum(not before.is_false(lit) for lit in constraint.literals) != min(
+                    constraint.allowed_counts
+                ):
                     continue
                 relevant = [lit for lit in constraint.literals if before.is_false(lit)]
                 facts = [(before.var_of(lit), False) for lit in relevant]
             else:
                 relevant = [lit for lit in constraint.literals if before.is_true(lit)]
-                if len(relevant) != count:
+                if len(relevant) != max(constraint.allowed_counts):
                     continue
                 facts = [(before.var_of(lit), before.value_of(lit)) for lit in relevant]
             if not facts or any(
@@ -730,6 +731,8 @@ class Narrator:
         if move.rule in ("cover2", "cover3"):
             if premise := self._cover_premise(inference):
                 return premise
+            if premise := self._count_cover_premise(inference, conclusion):
+                return premise
             counted = dict.fromkeys(
                 (inference.before.var_of(literal), inference.before.value_of(literal))
                 for name in move.scope
@@ -916,6 +919,84 @@ class Narrator:
             values=self.say.join([self.value_word(value) for value in values]),
             rules=self.names(house_names),
             conclusion=self.conclusion(inference.steps) or self.say("generic.internal"),
+        )
+
+    def _count_cover_premise(self, inference: Inference, conclusion: str) -> str | None:
+        move = inference.move
+        assert move is not None
+        if len(move.scope) != 1:
+            return None
+        scope = self.constraints.get(move.scope[0])
+        sources = [self.constraints.get(name) for name in move.sources]
+        if (
+            scope is None
+            or scope.kind is not Kind.COUNT
+            or scope.reified_by is not None
+            or any(
+                source is None or source.kind is not Kind.COUNT or source.reified_by is not None
+                for source in sources
+            )
+        ):
+            return None
+        before = inference.before
+        counted = [lit for lit in scope.literals if before.is_true(lit)]
+        if (
+            not counted
+            or any(
+                before.var_of(lit) not in self.visible
+                or (
+                    (before.var_of(lit), before.value_of(lit)) not in self.told
+                    and self.model.chosen(before.var_of(lit)) != before.value_of(lit)
+                )
+                for lit in counted
+            )
+            or before.feasible_counts(scope.index) != {len(counted) + len(sources)}
+        ):
+            return None
+        scope_live = set(before.live(scope.index))
+        used: set[int] = set()
+        phrases = []
+        for source in sources:
+            assert source is not None
+            live = before.live(source.index)
+            true_count = sum(before.is_true(lit) for lit in source.literals)
+            if (
+                not 1 <= len(live) <= 4
+                or before.feasible_counts(source.index) != {true_count + 1}
+                or not set(live) <= scope_live
+                or used.intersection(live)
+                or any(
+                    before.var_of(lit) not in self.visible or before.value_of(lit) is not True
+                    for lit in live
+                )
+            ):
+                return None
+            used.update(live)
+            phrases.append(
+                self.say(
+                    "generic.cover_count_option",
+                    source=self.names([source.name]),
+                    options=self.say.join(
+                        [self.placed(before.var_of(lit), before.value_of(lit)) for lit in live],
+                        "or",
+                    ),
+                )
+            )
+        excluded = {
+            before.literal(step.var, step.value)
+            for step in inference.steps
+            if step.placing is None and not step.asserted and step.var in self.visible
+        }
+        if not excluded or not excluded <= scope_live - used:
+            return None
+        return self.say(
+            "generic.cover_count_options",
+            counted=self.say.join(
+                [self.placed(before.var_of(lit), before.value_of(lit)) for lit in counted]
+            ),
+            options=self.say.join(phrases),
+            scope=self.names(move.scope),
+            conclusion=conclusion,
         )
 
     def _sets(self, names: Sequence[str]) -> str:

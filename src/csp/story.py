@@ -430,6 +430,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.count_single_again": "{placements} by {source}, as before",
         "generic.given_single_ship": "{cell} is a given single-cell ship",
         "generic.ships_do_not_touch": "ships do not touch, even diagonally",
+        "generic.akari_lighting": "the requirement to light {cell}",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
         "generic.clue_count_again": "{sources} gives {conclusion}, using the same count as before",
@@ -444,6 +445,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "so {conclusion}.",
         "generic.cover_counted": "**Combined rules.** With {counted} already counted, {sources} "
         "use the remaining capacity of {scope}, so {conclusion}.",
+        "generic.cover_count_option": "under {source}, one of {options} must hold",
+        "generic.cover_count_options": "**Combined rules.** With {counted} already counted, "
+        "{options}. These separate options fill the remaining capacity of {scope}, "
+        "so {conclusion}.",
         "generic.cover_naked": "**Combined rules.** {cells} can only be {values}. By {rules}, "
         "those values must go in those cells, so {conclusion}.",
         "generic.cover_hidden": "**Combined rules.** By {rules}, {values} can only go in {cells}, "
@@ -1054,6 +1059,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.count_single_again": "{placements} door {source}, net als eerder",
         "generic.given_single_ship": "{cell} is een gegeven schip van één vakje",
         "generic.ships_do_not_touch": "schepen raken elkaar niet, ook niet diagonaal",
+        "generic.akari_lighting": "de regel dat {cell} verlicht moet zijn",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
         "generic.clue_count_again": "{sources} geeft {conclusion}, met dezelfde telling als eerder",
@@ -1068,6 +1074,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "dus {conclusion}.",
         "generic.cover_counted": "**Combinatie.** Met {counted} al meegeteld, gebruiken "
         "{sources} de resterende ruimte van {scope}, dus {conclusion}.",
+        "generic.cover_count_option": "onder {source} moet {options} gelden",
+        "generic.cover_count_options": "**Combinatie.** Met {counted} al meegeteld, "
+        "{options}. Deze afzonderlijke mogelijkheden vullen de resterende ruimte van "
+        "{scope}, dus {conclusion}.",
         "generic.cover_naked": "**Gecombineerde regels.** {cells} kunnen alleen {values} zijn. "
         "Volgens {rules} moeten die waarden dus in die vakjes staan, dus {conclusion}.",
         "generic.cover_hidden": "**Gecombineerde regels.** Volgens {rules} kunnen {values} alleen "

@@ -238,6 +238,16 @@ def pattern_story(
         return generic_story.explain(
             text, start.clone(keep_log=True), fired, words.sources, kind, words.hidden
         )
+    if kind == "akari":
+        akari_puzzle = akari.parse(text)
+        wording = story.Wording.read(text)
+        sources = {
+            f"cell {akari.cell_name(cell)} is lit": wording(
+                "generic.akari_lighting", cell=akari.cell_name(cell)
+            )
+            for cell in akari_puzzle.open_cells
+        }
+        return generic_story.explain(text, start.clone(keep_log=True), fired, sources, kind)
     if kind == "battleships":
         battle = battleships.parse(text)
         wording = story.Wording.read(text)

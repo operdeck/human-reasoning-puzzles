@@ -68,6 +68,10 @@ def test_each_single_cites_its_own_reason():
         "rules out r1c3\u2013r3c3, r4c4 and r4c5 = bulb"
     ) in text
     assert (
+        "**r1c4 = bulb**: r2c2\u2013r2c4 = no bulb; with *cell r2c4 is lit*, "
+        "that leaves no alternative"
+    ) in text
+    assert (
         "**r6c2 = no bulb**: r6c4 = bulb; with *1 bulb around wall r6c3*, "
         "that leaves no alternative"
     ) in text
@@ -79,6 +83,19 @@ def test_each_single_cites_its_own_reason():
     assert "r5c6 = bulb and r4c5 = bulb" in text
     assert "*1 bulb around wall r5c5*" in text
     assert "every open cell is lit*, one option" not in text
+
+
+@pytest.mark.parametrize(
+    ("language", "phrase"),
+    [
+        ("en", "*the requirement to light r2c4*"),
+        ("nl", "*de regel dat r2c4 verlicht moet zijn*"),
+    ],
+)
+def test_akari_lighting_sources_read_naturally(language, phrase):
+    text = f"Language: {language}\n" + example("akari_1_6x6.txt").read_text()
+    puzzle = cli.load(text, "akari")
+    assert phrase in cli.pattern_story("akari", text, puzzle.model).markdown()
 
 
 @pytest.mark.parametrize(
@@ -103,8 +120,10 @@ def test_count_cover_names_already_counted_values():
     text = told("minesweeper_2_5x5.txt").markdown()
     assert (
         "With r4c1 = mine and r4c4 = mine already counted, "
-        "*1 mine near r1c5* and *1 mine near r2c1* use the remaining capacity "
-        "of *4 mines total*, so **r1c3 = safe**"
+        "under *1 mine near r1c5*, one of r2c4 = mine or r2c5 = mine must hold "
+        "and under *1 mine near r2c1*, one of r2c2 = mine or r3c1 = mine must hold. "
+        "These separate options fill the remaining capacity of *4 mines total*, "
+        "so **r1c3 = safe**"
     ) in text
 
 
@@ -115,9 +134,10 @@ def test_boolean_and_count_cover_premises_are_in_dutch():
         "blijft er geen andere mogelijkheid over"
     ) in text
     assert (
-        "Met r4c1 = mijn en r4c4 = mijn al meegeteld, gebruiken "
-        "*1 mine near r1c5* en *1 mine near r2c1* de resterende ruimte "
-        "van *4 mines total*"
+        "Met r4c1 = mijn en r4c4 = mijn al meegeteld, onder *1 mine near r1c5* moet "
+        "r2c4 = mijn of r2c5 = mijn gelden en onder *1 mine near r2c1* moet "
+        "r2c2 = mijn of r3c1 = mijn gelden. Deze afzonderlijke mogelijkheden vullen "
+        "de resterende ruimte van *4 mines total*"
     ) in text
 
 
