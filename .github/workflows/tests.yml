@@ -33,7 +33,22 @@ jobs:
       - run: uvx ruff check src tests benchmark
       - run: uvx ruff format --check src tests benchmark
       - run: uv run mypy src
-      - run: uv run pytest -v --override-ini=addopts= --shard=${{ matrix.shard }}/8 --tb=short --durations=20
+      - run: uv run pytest -v --override-ini=addopts= --shard=${{ matrix.shard }}/8 -k 'not test_full_booklet_generates_for_every_published_puzzle' --tb=short --durations=20
+
+  full-booklet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked --all-extras
+      - run: uv run pytest -v --override-ini=addopts= tests/test_docx.py::test_full_booklet_generates_for_every_published_puzzle --tb=short --durations=20
 
   web:
     runs-on: ubuntu-latest
