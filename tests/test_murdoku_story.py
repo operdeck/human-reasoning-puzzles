@@ -120,6 +120,28 @@ def test_direct_beside_clue_explains_different_area(language, boundary, numbered
 
 @pytest.mark.parametrize("numbered", [True, False])
 @pytest.mark.parametrize(
+    ("language", "area", "placement"),
+    [
+        ("en", "on the patio", "**Joost on r1c1** (on the patio)"),
+        ("nl", "op het terras", "**Joost op r1k1** (op het terras)"),
+    ],
+)
+def test_direct_clue_puts_placement_and_area_in_one_conclusion(language, area, placement, numbered):
+    source = (
+        example("murdoku_1_first_case.txt")
+        .read_text()
+        .replace("Language: en", f"Language: {language}")
+        .replace("patio: on the patio", f"patio: {area}")
+    )
+    opening = murdoku_story.explain(source, numbered=numbered).paragraphs[0]
+    assert placement in opening
+    assert f"**{area}**:" not in opening
+    boundary = "area boundary" if language == "en" else "gebiedsgrens"
+    assert opening.index(boundary) < opening.index(placement)
+
+
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
     ("language", "feature", "boundary"),
     [
         (

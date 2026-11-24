@@ -325,7 +325,7 @@ class _Narrator(generic_story.Narrator):
             where = f"**{self.placed(person, square)}**"
             self.spoken_placements.add((person, square))
             if region and region != previous_region and region not in clue:
-                where = f"**{region}**: {where}"
+                where = f"{where} ({region})"
             self.told.add((person, square))
             open_squares.difference_update(
                 {cell for cell in open_squares if cell.row == square.row or cell.col == square.col}
@@ -365,9 +365,15 @@ class _Narrator(generic_story.Narrator):
                     )
                     suffix += f", {self.say('so')} **{instruction}**"
                     open_squares.difference_update(crossed)
-        said = f"{clue}{suffix}."
-        if isinstance(location.formula, Atom):
-            detail = self._beside_different_area(location.formula, previous - squares)
+        detail = (
+            self._beside_different_area(location.formula, previous - squares)
+            if isinstance(location.formula, Atom)
+            else None
+        )
+        if detail and len(squares) == 1:
+            said = f"{clue}. {detail}, {self.say('so')} {where}."
+        else:
+            said = f"{clue}{suffix}."
             if detail:
                 said += f" {detail}."
         if len(squares) == 1:
