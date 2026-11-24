@@ -430,7 +430,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "rule out {alternatives}",
         "generic.count_single_support": "{placements}: {facts}; with {source}, that leaves "
         "no alternative",
-        "generic.count_single_again": "{placements} by {source}, as before",
+        "generic.count_single_again": "{placements}, using the same count from {source}",
         "generic.given_single_ship": "{cell} is a given single-cell ship",
         "generic.ships_do_not_touch": "ships do not touch, even diagonally",
         "generic.akari_lighting": "the requirement to light {cell}",
@@ -525,8 +525,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.with_prior": "Taking the earlier restrictions into account, {conclusion}",
         "murdoku.given_relation": "With {known} already established: {reason}",
         "murdoku.relation_occupied_lines": "If {who} were on {rejected}, {other} would have to "
-        "be on {squares} by {source}. Each of those squares is in {lines}, already occupied "
-        "at another square, so none is available. Therefore {placement}; {other} can only "
+        "be on {squares} by {source}. Each square is in an already occupied row or column "
+        "({lines}), so none is available. Therefore {placement}; {other} can only "
         "be on {remaining}.",
         "line_single": "In {line}, only {placement} remains; since the line requires one person, "
         "that person must be there.",
@@ -1087,7 +1087,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "{alternatives} uitsluiten",
         "generic.count_single_support": "{placements}: {facts}; met {source} blijft er geen "
         "andere mogelijkheid over",
-        "generic.count_single_again": "{placements} door {source}, net als eerder",
+        "generic.count_single_again": "{placements}, met dezelfde telling uit {source}",
         "generic.given_single_ship": "{cell} is een gegeven schip van één vakje",
         "generic.ships_do_not_touch": "schepen raken elkaar niet, ook niet diagonaal",
         "generic.akari_lighting": "de regel dat {cell} verlicht moet zijn",
@@ -1185,10 +1185,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "alleen {pair} aan {source}.",
         "murdoku.direction_boundaries": "{clue}, dus **{first}** en **{second}**.",
         "murdoku.with_prior": "Met de eerdere beperkingen geldt: {conclusion}",
-        "murdoku.given_relation": "Met {known} als uitgangspunt: {reason}",
+        "murdoku.given_relation": "Nu is bekend: {known}. {reason}",
         "murdoku.relation_occupied_lines": "Als {who} op {rejected} stond, moest {other} "
-        "volgens {source} op {squares} staan. Die vakjes liggen in {lines}, al bezet op "
-        "een ander vakje, en vallen dus af. Daarom {placement}; {other} kan alleen nog "
+        "volgens {source} op {squares} staan. Elk vakje ligt in een al bezette rij of kolom "
+        "({lines}) en valt dus af. Daarom {placement}; {other} kan alleen nog "
         "op {remaining} staan.",
         "line_single": "In {line} is alleen {placement} over; omdat daar precies één persoon moet "
         "staan, moet die persoon daar staan.",

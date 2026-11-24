@@ -137,7 +137,9 @@ def test_explain_tells_the_solution_by_puzzle_rules(capsys):
         "*ships do not touch, even diagonally* rule out r5c5 and r5c6 = ship"
     ) in output
     assert ("With r2c3 = water, *5 occupied cells in row 2* gives **r2c1 = ship**") in output
-    assert "**r2c4\u2013r2c6 = ship** by *5 occupied cells in row 2*, as before" in output
+    assert (
+        "**r2c4\u2013r2c6 = ship**, using the same count from *5 occupied cells in row 2*" in output
+    )
     assert (
         "*1 occupied cell in row 4* gives **r4c2 and r4c4 = water**, using the same count as before"
     ) in output

@@ -377,6 +377,10 @@ def test_distance_elimination_explains_occupied_lines(
     assert excluded in paragraph
     assert occupied in paragraph
     assert remaining in paragraph
+    if language == "nl":
+        assert "Elk vakje ligt in een al bezette rij of kolom" in paragraph
+    else:
+        assert "Each square is in an already occupied row or column" in paragraph
 
 
 def test_distance_elimination_does_not_invent_occupied_lines():
@@ -473,7 +477,7 @@ def test_direction_boundary_candidate_bounds_are_lowercase_after_prefix():
 @pytest.mark.parametrize(
     ("language", "known", "consequence"),
     [
-        ("nl", "Met Jun op r3k1 als uitgangspunt", "Haru zit niet in Osaka"),
+        ("nl", "Nu is bekend: Jun op r3k1", "Haru zit niet in Osaka"),
         ("en", "With Jun on r3c1 already established", "Haru is not in Osaka"),
     ],
 )

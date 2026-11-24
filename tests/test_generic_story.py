@@ -79,6 +79,7 @@ def test_each_single_cites_its_own_reason():
         "**r4c1 = no bulb**: r3c2, r4c3 and r5c2 = bulb; with *3 bulbs around wall r4c2*, "
         "that leaves no alternative"
     ) in text
+    assert "**r5c2 = bulb**, using the same count from *2 bulbs around wall r5c3*" in text
     assert "With r3c6 = bulb already counted" in text
     assert "r5c6 = bulb and r4c5 = bulb" in text
     assert "*1 bulb around wall r5c5*" in text
@@ -103,7 +104,7 @@ def test_akari_lighting_sources_read_naturally(language, phrase):
     [
         (
             "battleships_1_6x6_fleet.txt",
-            "**r2c4\u2013r2c6 = ship** by *5 occupied cells in row 2*, as before",
+            "**r2c4\u2013r2c6 = ship**, using the same count from *5 occupied cells in row 2*",
         ),
         (
             "thermometers_1_4x4.txt",
