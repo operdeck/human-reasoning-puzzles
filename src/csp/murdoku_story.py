@@ -64,6 +64,7 @@ class _Narrator(generic_story.Narrator):
         self.told_lines: set[tuple[str, str, int]] = set()
         self.told_line_exclusion_rule = False
         self.told_reservations: set[tuple[str, str, int]] = set()
+        self.told_count_squares: set[tuple[str, frozenset[Square]]] = set()
         self.told_area_exclusions: set[tuple[str, str]] = set()
         self.told_bounds: dict[str, dict[str, frozenset[int]]] = {}
         self.sole_marks = {
@@ -2073,6 +2074,98 @@ class _Narrator(generic_story.Narrator):
             rows=self.places.lines("row", rows),
         )
 
+    def _count_square_reservation(
+        self, inference: Inference
+    ) -> tuple[str | None, Square, str] | None:
+        move = inference.move
+        if move is None or move.rule not in {"cover2", "cover3"} or len(move.sources) != 1:
+            return None
+        source = move.sources[0]
+        constraint = self.constraints.get(source)
+        if (
+            constraint is None
+            or constraint.kind is not Kind.COUNT
+            or constraint.reified_by is not None
+            or len(set(constraint.literals)) != len(constraint.literals)
+            or any(
+                self.model.var_of(literal) not in self.board.people
+                for literal in constraint.literals
+            )
+        ):
+            return None
+        live = [
+            self.model.value_of(literal)
+            for literal in constraint.literals
+            if not inference.before.is_false(literal)
+        ]
+        if not live or not all(isinstance(square, Square) for square in live):
+            return None
+        squares = frozenset(live)
+        key = (source, squares)
+        if not 2 <= len(squares) <= 6 or constraint.allowed_counts != {len(squares)}:
+            return None
+        for scope in move.scope:
+            kind, index = self.board_sources.get(scope, ("", None))
+            if kind not in {"row", "col"} or index is None:
+                continue
+            matching = {
+                square
+                for square in squares
+                if (square.row if kind == "row" else square.col) == index
+            }
+            if len(matching) != 1:
+                continue
+            (square,) = matching
+            if not all(
+                not step.asserted
+                and step.var in self.board.people
+                and isinstance(step.value, Square)
+                and step.value != square
+                and (step.value.row if kind == "row" else step.value.col) == index
+                for step in inference.steps
+            ):
+                continue
+            premise = None
+            if key not in self.told_count_squares:
+                self.told_count_squares.add(key)
+                premise = self.say(
+                    "murdoku.count_square_reservation",
+                    source=self.names([source]),
+                    count=self.say.number(len(squares)),
+                    squares=self.places.squares(squares, "and"),
+                )
+                all_squares = {self.model.value_of(literal) for literal in constraint.literals}
+                excluded = all_squares - squares
+                for person, reserved_kind, reserved_index in sorted(self.told_reservations):
+                    options = {
+                        inference.before.value_of(literal)
+                        for literal in inference.before.options(person)
+                    }
+                    if (
+                        excluded
+                        and len(excluded) <= 6
+                        and options
+                        and all(isinstance(cell, Square) for cell in excluded | options)
+                        and all(
+                            (cell.row if reserved_kind == "row" else cell.col) == reserved_index
+                            for cell in excluded | options
+                        )
+                        and not excluded & options
+                    ):
+                        premise = (
+                            self.say(
+                                "murdoku.reserved_line_excludes_squares",
+                                who=person,
+                                line=self.places.line(reserved_kind, reserved_index),
+                                squares=self.places.squares(excluded, "and"),
+                            )
+                            + " "
+                            + premise
+                        )
+                        break
+            return premise, square, self.places.line(kind, index)
+        return None
+
     def _line_overlap(self, inference: Inference, conclusion: str | None) -> str | None:
         move = inference.move
         if move is None or move.rule != "subsumption":
@@ -2551,6 +2644,15 @@ class _Narrator(generic_story.Narrator):
             if move.rule in {"subsumption", "cover2", "cover3"}
             else move.sources
         )
+        if square_reservation := self._count_square_reservation(inference):
+            premise, square, line = square_reservation
+            reason = self.say(
+                "murdoku.occupied_square_line",
+                square=self.places.square(square),
+                line=line,
+                conclusion=conclusion,
+            )
+            return f"{premise} {reason}" if premise else reason
         return self._because(sources, conclusion)
 
     def _line_reservation(self, inference: Inference) -> dict[str, str] | None:

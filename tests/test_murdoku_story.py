@@ -214,6 +214,61 @@ def test_relation_deduction_shows_the_only_supported_person_pair():
 
 
 @pytest.mark.parametrize(
+    ("language", "excluded", "premise", "row"),
+    [
+        (
+            "nl",
+            "Reinhart moet in kolom 10 staan maar kan niet op r4k10 staan; "
+            "volgens de regel van één persoon per rij of kolom kan daar dus niemand staan.",
+            "alleen r2k5, r3k6 en r4k8 tellen mee. Op elk vakje past hoogstens één persoon, "
+            "dus alle vakjes zijn bezet.",
+            "r4k8 is bezet en in rij 4 past maar één persoon",
+        ),
+        (
+            "en",
+            "Reinhart must be in column 10 but cannot use r4c10; the one-person-per-line "
+            "rule means nobody can stand there.",
+            "only r2c5, r3c6 and r4c8 can count. At most one person can occupy each square, "
+            "so all of them are occupied.",
+            "r4c8 is occupied, and only one person can be in row 4",
+        ),
+    ],
+)
+@pytest.mark.parametrize("numbered", [True, False])
+def test_stool_count_explains_why_each_line_is_reserved(language, excluded, premise, row, numbered):
+    source = (
+        example("berghut-murdoku-3.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    text = murdoku_story.explain(source, numbered=numbered).markdown()
+    assert text.count(premise) == 1
+    assert text.index(excluded) < text.index(premise) < text.index(row)
+
+
+def test_count_reservation_does_not_require_every_square_for_a_lower_count():
+    text = example("berghut-murdoku-3.txt").read_text()
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = murdoku_story._Narrator(text, board, compilation, numbered=True)
+    before = compilation.model.clone()
+    constraint = narrator.constraints["rule 1"]
+    for literal in constraint.literals:
+        if before.value_of(literal) == Square(3, 9) and not before.is_false(literal):
+            before.eliminate(literal, "test", "exclude one stool")
+    move = Move("cover3", ("rule 1",), ("row 4 holds one person",))
+    step = Step("Brunhild", Square(3, 1), False, "cover3", "", sources=move.sources)
+    inference = Inference("cover3", before, (step,), move)
+
+    narrator.constraints["rule 1"] = replace(constraint, allowed_counts=frozenset({2}))
+    assert narrator._count_square_reservation(inference) is None
+    narrator.constraints["rule 1"] = replace(constraint, reified_by=constraint.literals[0])
+    assert narrator._count_square_reservation(inference) is None
+    narrator.constraints["rule 1"] = constraint
+    assert narrator._count_square_reservation(inference) is not None
+
+
+@pytest.mark.parametrize(
     ("language", "expected"),
     [
         (

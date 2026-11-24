@@ -580,6 +580,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.relation_area_bound": "{who} can only be {areas}",
         "murdoku.line_person": "Only {who} can occupy {line} ({squares}); that line must be "
         "occupied, so {conclusion}",
+        "murdoku.count_square_reservation": "According to {source}, {count} people must be "
+        "counted, and only {squares} can count. At most one person can occupy each square, so "
+        "all of them are occupied.",
+        "murdoku.reserved_line_excludes_squares": "{who} must be in {line} but cannot use "
+        "{squares}; the one-person-per-line rule means nobody can stand there.",
+        "murdoku.occupied_square_line": "{square} is occupied, and only one person can be in "
+        "{line}, so {conclusion}.",
         "murdoku.relation_with_candidates": ("Given {candidates}, {sources} gives {conclusion}"),
         "murdoku.relation_exact_candidates": "{who} can only be on {squares}",
         "murdoku.furthest_exclusion": "{clue} rules out {subject} at {candidate}: each remaining "
@@ -1220,6 +1227,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.relation_area_bound": "{who} alleen nog {areas} kan staan",
         "murdoku.line_person": "Alleen {who} kan in {line} staan ({squares}); die lijn moet "
         "bezet zijn, dus {conclusion}",
+        "murdoku.count_square_reservation": "Volgens {source} moeten {count} mensen meetellen, "
+        "en alleen {squares} tellen mee. Op elk vakje past hoogstens één persoon, dus alle vakjes "
+        "zijn bezet.",
+        "murdoku.reserved_line_excludes_squares": "{who} moet in {line} staan maar kan niet op "
+        "{squares} staan; volgens de regel van één persoon per rij of kolom kan daar dus niemand "
+        "staan.",
+        "murdoku.occupied_square_line": "{square} is bezet en in {line} past maar één persoon, "
+        "dus {conclusion}.",
         "murdoku.relation_with_candidates": (
             "Omdat {candidates}, leidt {sources} tot {conclusion}"
         ),
