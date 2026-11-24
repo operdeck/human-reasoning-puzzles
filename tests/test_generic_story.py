@@ -144,7 +144,7 @@ def test_singles_do_not_repeat_previously_explained_eliminations():
     text = told("arrow_1_4x4.txt").markdown()
     assert "**r4c2 cannot be 3 or 4**" in text
     assert (
-        "**r4c2 = 1**, the only option left once "
+        "**r4c2 = 1**, the only option left after the earlier exclusions, once "
         "r2c2 = 2 rules out 2 under *each digit once per column*"
     ) in text
 
@@ -153,6 +153,15 @@ def test_mosaic_count_includes_its_clue_cell_and_uses_singular():
     text = told("mosaic_1_5x5.txt").markdown()
     assert "1 black cell in the 3x3 window centered on" in text
     assert "1 black cells" not in text
+
+
+def test_queens_story_uses_board_coordinates():
+    text = example("queens_1_4x4.txt").read_text()
+    kind = puzzlefile.detect(text)
+    story = cli.pattern_story(kind, text, cli.load(text, kind).model).markdown()
+    assert "**d = r4c2**" in story
+    assert "(3, 1)" not in story
+    assert "(2, 1)" not in story
 
 
 def test_boolean_cells_are_grouped_into_runs_in_family_words():
@@ -196,6 +205,13 @@ def test_tent_case_and_chain_include_their_essential_premises():
     assert (
         "**Chain.** Only r1c3 = tent or r2c2 = tent remain under *one tent beside tree r1c2*"
     ) in text
+
+
+def test_case_does_not_repeat_a_boolean_placement_as_a_single():
+    text = told("binairo_3_4x4.txt").markdown()
+    case = next(paragraph for paragraph in text.split("\n\n") if "Suppose r1c2" in paragraph)
+    assert case.count("r1c4 = white") == 2  # once in the trail, once in the contradiction
+    assert "r1c4 = white is the only option" not in case
 
 
 def test_chain_explains_cell_single_and_both_conflicts_with_its_target():

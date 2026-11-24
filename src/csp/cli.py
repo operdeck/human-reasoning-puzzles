@@ -238,6 +238,17 @@ def pattern_story(
         return generic_story.explain(
             text, start.clone(keep_log=True), fired, words.sources, kind, words.hidden
         )
+    if kind in {"starbattle", "queens"}:
+        layout = starbattle.parse(text)
+        if layout.stars == 1:
+            value_words = {
+                (row, col): starbattle.cell_name((row, col))
+                for row in range(layout.areas.size)
+                for col in range(layout.areas.size)
+            }
+            return generic_story.explain(
+                text, start.clone(keep_log=True), fired, kind=kind, value_words=value_words
+            )
     return generic_story.explain(text, start.clone(keep_log=True), fired, kind=kind)
 
 

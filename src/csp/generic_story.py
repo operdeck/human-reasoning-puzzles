@@ -43,6 +43,7 @@ class Exclusions:
     """Reasons for every other value of a single-valued variable."""
 
     causes: tuple[str, ...]
+    earlier: bool = False
 
 
 @dataclass(frozen=True)
@@ -101,12 +102,14 @@ class Narrator:
         source_words: Mapping[str, str] | None = None,
         kind: str | None = None,
         hidden_words: Mapping[tuple[str, Any], str] | None = None,
+        value_words: Mapping[Any, str] | None = None,
     ) -> None:
         self.model = model
         self.say = say
         self.kind = kind
         self.source_words = dict(source_words or {})
         self.hidden_words = dict(hidden_words or {})
+        self.value_words: dict[Any, str] = dict(value_words or {})
         self.visible = set(model.variables) | {var for var, _ in self.hidden_words}
         self.constraints = {c.name: c for c in model.constraints}
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
@@ -130,6 +133,9 @@ class Narrator:
     def _domain(self, var: str) -> Sequence[int]:
         return self.model.constraints[self.model.domain_of(var)].literals
 
+    def value_word(self, value: Any) -> str:
+        return self.value_words.get(value, str(value))
+
     def placed(self, var: str, value: Any, name: str | None = None) -> str:
         """`var` takes `value`; `name` says which cells when several share it."""
         if (var, value) in self.hidden_words:
@@ -139,12 +145,12 @@ class Narrator:
             if self.say.has(word):
                 return self.say("generic.placed", var=name or var, value=self.say(word))
             return self.say("generic.yes" if value else "generic.no", var=name or var)
-        return self.say("generic.placed", var=name or var, value=value)
+        return self.say("generic.placed", var=name or var, value=self.value_word(value))
 
     def negated(self, var: str, value: Any) -> str:
         if isinstance(value, bool) and self._boolean(var):
             return self.placed(var, not value)
-        return self.say("generic.not_placed", var=var, value=value)
+        return self.say("generic.not_placed", var=var, value=self.value_word(value))
 
     def conclusion(self, steps: Iterable[Step]) -> str | None:
         """What a deduction settled: its placements, then what it ruled out.
@@ -193,7 +199,7 @@ class Narrator:
             + self.say(
                 "generic.cannot_be",
                 where=compress(where, self.say),
-                values=self.say.join([str(v) for v in values], "or"),
+                values=self.say.join([self.value_word(v) for v in values], "or"),
             )
             + "**"
             for values, where in alike.items()
@@ -224,9 +230,11 @@ class Narrator:
             return None
         placements: dict[str, list[tuple[str, Any]]] = {}
         values_by_source: dict[str, list[Any]] = {}
+        earlier = False
         for literal in exclusions:
             value = before.value_of(literal)
             if (var, value) in self.explained_removals:
+                earlier = True
                 continue
             step = next(
                 (
@@ -260,12 +268,14 @@ class Narrator:
                 "generic.exclusion_by_placements",
                 placements=self.say.join([self.placed(*pair) for pair in placed]),
                 source=self.names([source]),
-                values=self.say.join([str(value) for value in values_by_source[source]]),
+                values=self.say.join(
+                    [self.value_word(value) for value in values_by_source[source]]
+                ),
                 verb=self.say("generic.rule_out" if len(placed) > 1 else "generic.rules_out_verb"),
             )
             for source, placed in placements.items()
         ]
-        return Exclusions(tuple(causes)) if causes else None
+        return Exclusions(tuple(causes), earlier) if causes or earlier else None
 
     def singles(self, inferences: Sequence[Inference], history: Sequence[Step]) -> list[str]:
         """Each placement in the order it was found, with the rule that left it.
@@ -377,7 +387,7 @@ class Narrator:
                             self.say(
                                 "generic.rules_out",
                                 source=self.names([name]),
-                                values=self.say.join([str(value) for value in taken]),
+                                values=self.say.join([self.value_word(value) for value in taken]),
                             )
                             for name, taken in reason.causes
                         ]
@@ -386,9 +396,16 @@ class Narrator:
                     key = "generic.left_after_each" if many else "generic.left_after"
                     parts.append(self.say(key, placements=listed, causes=ruled_out))
                 elif isinstance(reason, Exclusions):
+                    key = (
+                        "generic.left_after_prior"
+                        if reason.earlier and reason.causes
+                        else "generic.left_after_previous"
+                        if reason.earlier
+                        else "generic.left_after"
+                    )
                     parts.append(
                         self.say(
-                            "generic.left_after",
+                            key,
                             placements=listed,
                             causes=self.say.join(list(reason.causes)),
                         )
@@ -629,7 +646,7 @@ class Narrator:
         return self.say(
             "generic.remaining_values",
             variable=var,
-            values=self.say.join([str(value) for value in left], "or"),
+            values=self.say.join([self.value_word(value) for value in left], "or"),
         )
 
     def _cover_premise(self, inference: Inference) -> str | None:
@@ -671,7 +688,7 @@ class Narrator:
             return self.say(
                 "generic.cover_naked",
                 cells=self._sets(cells_names),
-                values=self.say.join([str(value) for value in values]),
+                values=self.say.join([self.value_word(value) for value in values]),
                 rules=self.names(house_names),
                 conclusion=self.conclusion(inference.steps) or self.say("generic.internal"),
             )
@@ -689,7 +706,7 @@ class Narrator:
         return self.say(
             "generic.cover_hidden",
             cells=self._sets(cells_names),
-            values=self.say.join([str(value) for value in values]),
+            values=self.say.join([self.value_word(value) for value in values]),
             rules=self.names(house_names),
             conclusion=self.conclusion(inference.steps) or self.say("generic.internal"),
         )
@@ -969,6 +986,7 @@ class Narrator:
         step = next(step for step in inference.steps if step.rule == "what_if")
         needed = essential(self.model, history, step)
         shown: list[str] = []
+        shown_pairs: set[tuple[str, Any]] = set()
         eliminated: list[tuple[str, Any]] = []
         elimination_sources: tuple[str, ...] = ()
 
@@ -979,6 +997,7 @@ class Narrator:
                 for var, value in eliminated:
                     if isinstance(value, bool) and self._boolean(var):
                         boolean.append(self.negated(var, value))
+                        shown_pairs.add((var, not value))
                     else:
                         removed.setdefault(var, []).append(value)
                 alike: dict[tuple[Any, ...], list[str]] = {}
@@ -988,7 +1007,7 @@ class Narrator:
                     self.say(
                         "generic.cannot_be",
                         where=compress(variables, self.say),
-                        values=self.say.join([str(value) for value in values], "or"),
+                        values=self.say.join([self.value_word(value) for value in values], "or"),
                     )
                     for values, variables in alike.items()
                 ]
@@ -1016,8 +1035,9 @@ class Narrator:
                 continue
             flush_eliminations()
             option = self.placed(inner.var, inner.value)
-            if option in shown:
+            if (inner.var, inner.value) in shown_pairs:
                 continue
+            shown_pairs.add((inner.var, inner.value))
             if inner.sources and not all(source in self.domains for source in inner.sources):
                 shown.append(
                     self.say(
@@ -1234,6 +1254,7 @@ def explain(
     source_words: Mapping[str, str] | None = None,
     kind: str | None = None,
     hidden_words: Mapping[tuple[str, Any], str] | None = None,
+    value_words: Mapping[Any, str] | None = None,
 ) -> Explanation:
     """Explain a solve of any compiled model from its rule firings, shortest proof first.
 
@@ -1242,11 +1263,12 @@ def explain(
     maps a constraint name to how its clue reads. `kind` names the puzzle family, so
     a yes/no cell can be told in its own words ("r2c3 = bulb") where `story` has them.
     `hidden_words` gives the sentence for a hidden helper taking a value, so a step
-    that settles one reads as a fact ("Dirk and Ada are together").
+    that settles one reads as a fact ("Dirk and Ada are together"). `value_words`
+    translates model values such as zero-based coordinates into player-facing names.
     """
     moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
     if replay(start, moves).solution() is not None:
         moves = thin(start, moves)
     result, groups = episodes(start, moves)
-    narrator = Narrator(start, Wording.read(text), source_words, kind, hidden_words)
+    narrator = Narrator(start, Wording.read(text), source_words, kind, hidden_words, value_words)
     return narrator.tell(start, groups, result.solution() is not None)

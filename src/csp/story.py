@@ -405,6 +405,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.last_left_each": "{placements}, each the only option left",
         "generic.left_after": "{placements}, the only option left once {causes}",
         "generic.left_after_each": "{placements}, each the only option left once {causes}",
+        "generic.left_after_prior": "{placements}, the only option left after the earlier "
+        "exclusions, once {causes}",
+        "generic.left_after_previous": "{placements}, the only option left after the earlier "
+        "exclusions",
         "generic.rules_out": "{source} rules out {values}",
         "generic.exclusion_by_placements": "{placements} {verb} {values} under {source}",
         "generic.rule_out": "rule out",
@@ -1004,6 +1008,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.left_after_each": (
             "{placements}, telkens de enige mogelijkheid die overblijft nu {causes}"
         ),
+        "generic.left_after_prior": "{placements}, de enige mogelijkheid na de eerdere "
+        "uitsluitingen, nu {causes}",
+        "generic.left_after_previous": "{placements}, de enige mogelijkheid na de eerdere "
+        "uitsluitingen",
         "generic.rules_out": "{source} {values} uitsluit",
         "generic.exclusion_by_placements": "{placements} volgens {source} {values} {verb}",
         "generic.rule_out": "uitsluiten",
