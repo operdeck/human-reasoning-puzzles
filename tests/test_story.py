@@ -31,7 +31,7 @@ from tests.examples import example, played_examples
 pytestmark = pytest.mark.solutions
 
 PRRRDOKUS = ["prrrdoku1.txt", "prrrdoku2.txt", "prrrdoku3.txt"]
-PLACED = re.compile(r"\*\*(\w+) op r(\d+)k(\d+)\*\*")
+PLACED = re.compile(r"(\w+) op r(\d+)k(\d+)")
 
 
 @pytest.mark.parametrize("number,murderer", [(1, "Carmen"), (2, "Diego"), (3, "Gonzalo")])
@@ -374,8 +374,14 @@ def test_every_placement_in_the_story_is_right(name):
     (solution,) = bruteforce.solutions(text)
     story = explain(text)
     placed = {who: f"r{solution[who].row + 1}k{solution[who].col + 1}" for who in solution}
-    stated = {who: f"r{r}k{c}" for who, r, c in PLACED.findall(story)}
-    assert stated == placed
+    stated = [
+        (who, f"r{r}k{c}")
+        for bold in re.findall(r"\*\*(.*?)\*\*", story, flags=re.DOTALL)
+        for who, r, c in PLACED.findall(bold)
+        if who in placed
+    ]
+    assert {who for who, _ in stated} == set(placed)
+    assert all(placed[who] == square for who, square in stated)
 
 
 @pytest.mark.parametrize("name", PRRRDOKUS)

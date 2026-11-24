@@ -231,11 +231,43 @@ def test_exact_line_single_connects_a_direct_clue_to_the_removed_square():
     ) in text
 
 
+def test_zoo_line_single_includes_the_caretaker_exclusion_and_no_duplicate_pair():
+    text = murdoku_story.explain(example("zoo-murdoku-1.txt").read_text()).markdown()
+
+    assert (
+        "*regel 3: De verzorger deelt een verblijf met precies één dier* "
+        "sluit r4k4 en r5k4 voor de verzorger uit"
+    ) in text
+    assert "de leeuw: in de savanne; de makaak: in de bergen" in text
+    assert "de berggorilla: in de bergen; de kameel: in de woestijn" in text
+    assert "kolom 4 alleen **de leeuw op r1k4**" in text
+    assert text.count("de kameel op r4k2") == 1
+    assert "met de kameel bezet" not in text
+
+
+def test_hut_seat_and_role_deductions_name_candidates():
+    text = murdoku_story.explain(example("berghut-murdoku-2.txt").read_text()).markdown()
+
+    assert "**Brunhild zit op een bikkelstoel**" in text
+    assert "**Waltraud zit op een bikkelstoel**" in text
+    for person in ("Brunhild", "Waltraud"):
+        assert (
+            f"{person} kan alleen nog op r2k5, r3k8, r4k7 en r4k8 staan; "
+            f"geen daarvan voldoet, dus {person} kan niet de schuldige zijn"
+        ) in text
+    assert "**Brunhild op r2k5**" in text
+    assert "Tussen r2k5 en de kachel ligt een gebiedsgrens; naast vereist hetzelfde gebied" in text
+    assert "Gerhard alleen nog in het drooghok, in Kamer Zuid of in het washok kan staan" in text
+    assert "Alleen Gunter kan in kolom 3 staan (r7k3 of r8k3)" in text
+    assert "in de Kamer Noord" not in text
+    assert "de resterende vakjes van Greta liggen allemaal in rij 1" not in text
+
+
 def test_person_single_is_located_by_the_intersecting_lines():
     text = murdoku_story.explain(example("halloween-museum-1.txt").read_text()).markdown()
 
     assert "The only remaining place for row 1 is r1c5" in text
-    assert "Alba occupies row 1 and column 5" in text
+    assert "**Alba on r1c5**" in text
 
 
 def test_line_bound_explanation_names_the_remaining_person_squares():
@@ -790,13 +822,13 @@ def test_samen_onderweg_solution_explains_relative_row_bounds():
         paragraph
         for paragraph in paragraphs
         if "Haru staat boven Jun (5)" in paragraph
-        and "Voor Haru blijven alleen de rijen 1 t/m 4 over" in paragraph
-        and "Voor Jun blijven alleen de rijen 2 t/m 5 over" in paragraph
+        and "voor haru blijven alleen de rijen 1 t/m 4 over" in paragraph.casefold()
+        and "voor jun blijven alleen de rijen 2 t/m 5 over" in paragraph.casefold()
     )
     assert deduction
     assert any(
         "Haru staat boven Jun (5)" in paragraph
-        and "Voor Haru blijven alleen de rijen 1 en 2 over" in paragraph
+        and "voor haru blijven alleen de rijen 1 en 2 over" in paragraph.casefold()
         for paragraph in paragraphs
     )
 

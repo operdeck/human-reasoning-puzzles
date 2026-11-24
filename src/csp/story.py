@@ -481,6 +481,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "line_single": "In {line}, only {placement} remains; since the line requires one person, "
         "that person must be there.",
         "murdoku.line_single_excluded": "{clue} rules out {squares} for {who}",
+        "murdoku.region_candidates": "Possible areas: {candidates}",
         "murdoku.line_single_with_clues": "{clues}; in {line} only {placement} remains, and the "
         "line requires one person, so that person must be there.",
         "murdoku.line_overlap": "The only remaining place for {source_line} is {square}, in "
@@ -499,13 +500,18 @@ PHRASES: dict[str, dict[str, str]] = {
         "person_single": "Only {placement} is possible now.",
         "murdoku.person_single_explained": "Given {support}, {placement} is the only remaining "
         "place for {who}",
+        "murdoku.person_single_evidence": "{support}; therefore {placement} is the only "
+        "remaining place",
+        "murdoku.use_sources": "We use {sources}",
         "murdoku.established_placements": "the placements already established",
         "murdoku.final_answer": "**Answer.** {reveal}",
         "murdoku.final_placements": "Final placements not yet named: {placements}.",
         "murdoku.rule_context": "**Rules.** {rules}.",
         "murdoku.role_exclusion": "{rule} rules out {who} as the {role}",
-        "murdoku.role_exclusion_candidates": "{rule} says {statement}. {who}'s remaining squares "
-        "are {squares}; none satisfies it, so {who} cannot be the {role}",
+        "murdoku.role_exclusion_candidates": "{rule} says {statement}.{detail} {who}'s remaining "
+        "squares are {squares}; none satisfies it, so {who} cannot be the {role}",
+        "murdoku.beside_different_area": "An area boundary separates {squares} from {thing}; "
+        "beside requires the same area",
         "line_takes": "{who} occupies {lines}",
         "murdoku.line_takes_known": "{who} occupies {lines}",
         "murdoku.shared_rule_exclusions_some": "By {source}, only {people} can use {squares}",
@@ -522,6 +528,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "reserves that line for {person}",
         "candidate_bound": "Only {lines} are available to {people}",
         "murdoku.relation_candidate_bound": "{people} can only be in {lines}",
+        "murdoku.relation_area_bound": "{who} can only be {areas}",
+        "murdoku.line_person": "Only {who} can occupy {line} ({squares}); that line must be "
+        "occupied, so {conclusion}",
         "murdoku.relation_with_candidates": ("Given {candidates}, {sources} gives {conclusion}"),
         "murdoku.furthest_exclusion": "{clue} rules out {subject} at {candidate}: each remaining "
         "square for {rival} ({rival_squares}) is at least as far from every remaining {target} "
@@ -1056,6 +1065,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "line_single": "In {line} is alleen {placement} over; omdat daar precies één persoon moet "
         "staan, moet die persoon daar staan.",
         "murdoku.line_single_excluded": "{clue} sluit {squares} voor {who} uit",
+        "murdoku.region_candidates": "Mogelijke gebieden: {candidates}",
         "murdoku.line_single_with_clues": "{clues}; daardoor is in {line} alleen {placement} "
         "over, want daar moet precies één persoon staan.",
         "murdoku.line_overlap": "De enige overgebleven plaats in {source_line} is {square}, in "
@@ -1074,13 +1084,17 @@ PHRASES: dict[str, dict[str, str]] = {
         "person_single": "Alleen {placement} is nog mogelijk.",
         "murdoku.person_single_explained": "Met {support} blijft alleen {placement} over "
         "voor {who}",
+        "murdoku.person_single_evidence": "{support}; daardoor blijft alleen {placement} over",
+        "murdoku.use_sources": "We gebruiken {sources}",
         "murdoku.established_placements": "de plaatsingen die al vaststaan",
         "murdoku.final_answer": "**Antwoord.** {reveal}",
         "murdoku.final_placements": "Nog niet expliciet genoemde plaatsingen: {placements}.",
         "murdoku.rule_context": "**Regels.** {rules}.",
         "murdoku.role_exclusion": "{rule} sluit {who} uit als {role}",
-        "murdoku.role_exclusion_candidates": "{rule} zegt: {statement}. {who} kan alleen nog op "
-        "{squares} staan; geen daarvan voldoet, dus {who} kan niet de {role} zijn",
+        "murdoku.role_exclusion_candidates": "{rule} zegt: {statement}.{detail} {who} kan alleen "
+        "nog op {squares} staan; geen daarvan voldoet, dus {who} kan niet de {role} zijn",
+        "murdoku.beside_different_area": "Tussen {squares} en {thing} ligt een gebiedsgrens; "
+        "naast vereist hetzelfde gebied",
         "line_takes": "{who} bezet {lines}",
         "murdoku.line_takes_known": "{who} bezet {lines}",
         "murdoku.shared_rule_exclusions_some": (
@@ -1099,6 +1113,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "dus {rule} reserveert die lijn voor {person}",
         "candidate_bound": "Voor {people} blijven alleen {lines} over",
         "murdoku.relation_candidate_bound": "{people} alleen nog in {lines} kunnen staan",
+        "murdoku.relation_area_bound": "{who} alleen nog {areas} kan staan",
+        "murdoku.line_person": "Alleen {who} kan in {line} staan ({squares}); die lijn moet "
+        "bezet zijn, dus {conclusion}",
         "murdoku.relation_with_candidates": (
             "Omdat {candidates}, leidt {sources} tot {conclusion}"
         ),
@@ -1706,7 +1723,11 @@ class Places:
         return self.say.join([self.square(sq) for sq in sorted(squares)], word)
 
     def region(self, name: str) -> str:
-        return self.say.words.get(name) or self.say("region", name=name.replace("_", " "))
+        ids = [region for region, label in self.board.region_names.items() if label == name]
+        words = self.say.words.get(name) or next(
+            (self.say.words[region] for region in ids if region in self.say.words), None
+        )
+        return words or self.say("region", name=name.replace("_", " "))
 
     def thing(self, name: str, *, as_label: bool = False) -> str:
         """Name a feature; a cell label names the kind, not one of its instances."""
