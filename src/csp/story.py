@@ -403,6 +403,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.singles_more": "**Only option, continued.** {parts}.",
         "generic.last_left": "{placements}, the only option left",
         "generic.last_left_each": "{placements}, each the only option left",
+        "generic.left_after": "{placements}, the only option left once {causes}",
+        "generic.left_after_each": "{placements}, each the only option left once {causes}",
+        "generic.rules_out": "{source} rules out {values}",
         "generic.ruled_out_by": "{placements}, ruled out by {cause}",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
@@ -442,8 +445,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.trail_only": "{placement} is the only option",
         "generic.breaks": "{source} fails",
         "generic.remaining_values": "{variable} = {values}",
-        "generic.breaks_relation": "the remaining values ({options}) do not satisfy {source}",
+        "generic.breaks_relation": "{options} break {source}",
         "generic.breaks_unknown": "the puzzle gets stuck",
+        "generic.breaks_empty": "{cells} would have no value left that fits {source}",
         "generic.stalled": "**Stalled.** The current rules do not finish this puzzle; "
         "use --verbose for the detailed trace.",
         "generic.givens_complete": "The givens already solve the puzzle.",
@@ -966,6 +970,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.singles_more": "**Enige mogelijkheid, vervolg.** {parts}.",
         "generic.last_left": "{placements}, de enige mogelijkheid die overblijft",
         "generic.last_left_each": "{placements}, telkens de enige mogelijkheid die overblijft",
+        "generic.left_after": "{placements}, de enige mogelijkheid die overblijft nu {causes}",
+        "generic.left_after_each": (
+            "{placements}, telkens de enige mogelijkheid die overblijft nu {causes}"
+        ),
+        "generic.rules_out": "{source} {values} uitsluit",
         "generic.ruled_out_by": "{placements}, uitgesloten door {cause}",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
@@ -1007,8 +1016,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.trail_only": "{placement} is de enige mogelijkheid",
         "generic.breaks": "klopt {source} niet meer",
         "generic.remaining_values": "{variable} = {values}",
-        "generic.breaks_relation": "de resterende waarden ({options}) voldoen niet aan {source}",
+        "generic.breaks_relation": "botsen {options} met {source}",
         "generic.breaks_unknown": "loopt het vast",
+        "generic.breaks_empty": "blijft er voor {cells} geen waarde over die past bij {source}",
         "generic.stalled": "**Gestopt.** De huidige regels lossen deze puzzel niet helemaal op; "
         "met --verbose zie je het technische spoor.",
         "generic.givens_complete": "De puzzel is al opgelost door wat gegeven is.",

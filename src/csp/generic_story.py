@@ -32,6 +32,13 @@ class LostCause:
 
 
 @dataclass(frozen=True)
+class Pruned:
+    """Count clues that took values from a variable before it had one left."""
+
+    causes: tuple[tuple[str, tuple[Any, ...]], ...]
+
+
+@dataclass(frozen=True)
 class Explanation:
     """Narrative paragraphs and whether they account for the entire solution."""
 
@@ -98,6 +105,7 @@ class Narrator:
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
         self.told: set[tuple[str, Any]] = set()
         self.lost: dict[tuple[str, Any], LostCause] = {}
+        self.pruned: dict[str, dict[str, list[Any]]] = {}
 
     # --- literals ---------------------------------------------------------
 
@@ -220,7 +228,17 @@ class Narrator:
                 if source is None:
                     reason = self.lost.get((step.var, not step.value)) if step.asserted else None
                 elif source in self.domains:
-                    reason = ""
+                    causes = self.pruned.pop(step.var, {})
+                    for (var, value), lost in self.lost.items():
+                        if var == step.var and lost.source is not None:
+                            taken = causes.setdefault(lost.source, [])
+                            if value not in taken:
+                                taken.append(value)
+                    reason = (
+                        Pruned(tuple((name, tuple(values)) for name, values in causes.items()))
+                        if causes and step.asserted
+                        else ""
+                    )
                 else:
                     reason = source
                 found.append((reason, *pair))
@@ -254,6 +272,20 @@ class Narrator:
                     many = sum(len(where) for _, where in values) > 1
                     key = "generic.last_left_each" if many else "generic.last_left"
                     parts.append(self.say(key, placements=listed))
+                elif isinstance(reason, Pruned):
+                    ruled_out = self.say.join(
+                        [
+                            self.say(
+                                "generic.rules_out",
+                                source=self.names([name]),
+                                values=self.say.join([str(value) for value in taken]),
+                            )
+                            for name, taken in reason.causes
+                        ]
+                    )
+                    many = sum(len(where) for _, where in values) > 1
+                    key = "generic.left_after_each" if many else "generic.left_after"
+                    parts.append(self.say(key, placements=listed, causes=ruled_out))
                 elif isinstance(reason, LostCause):
                     cause = (
                         self.names([reason.source])
@@ -703,14 +735,18 @@ class Narrator:
             for step in steps
         )
 
-    def _relation_options(self, step: Step) -> str | None:
+    def _relation_options(self, step: Step, before: Model) -> tuple[str, bool] | None:
+        """What the broken relation's cells have left once the trail is played on `before`.
+
+        The flag is true when the text names cells left with no value at all.
+        """
         if not step.sources:
             return None
         relation = next((r for r in self.model.relations if r.name == step.sources[0]), None)
         if relation is None or len(relation.variables) > 6:
             return None
         candidate_values = {
-            var: {self.model.value_of(literal) for literal in self.model.options(var)}
+            var: {before.value_of(literal) for literal in before.options(var)}
             for var in relation.variables
         }
         for item in step.trail:
@@ -720,8 +756,11 @@ class Narrator:
                 candidate_values[item.var] = {item.value}
             else:
                 candidate_values[item.var].discard(item.value)
-        if any(not values for values in candidate_values.values()):
-            return None
+        empty = [var for var, values in candidate_values.items() if not values]
+        if empty:
+            if not all(var in self.visible and not self._boolean(var) for var in empty):
+                return None
+            return compress(empty, self.say), True
         combinations = 1
         for values in candidate_values.values():
             combinations *= len(values)
@@ -732,7 +771,7 @@ class Narrator:
             for var in relation.variables
             if (option := self.remaining(var, candidate_values[var]))
         ]
-        return "; ".join(said) if said else None
+        return (self.say.join(said), False) if said else None
 
     def _what_if(self, inference: Inference, history: Sequence[Step]) -> str:
         step = next(step for step in inference.steps if step.rule == "what_if")
@@ -756,13 +795,15 @@ class Narrator:
             else:
                 shown.append(self.say("generic.trail_only", placement=option))
         broken = step.sources[0] if step.sources else None
-        options = self._relation_options(step)
+        options = self._relation_options(step, inference.before)
         if broken is None:
             breaks = self.say("generic.breaks_unknown")
+        elif options is not None and options[1]:
+            breaks = self.say("generic.breaks_empty", cells=options[0], source=self.names([broken]))
         elif options is not None:
             breaks = self.say(
                 "generic.breaks_relation",
-                options=options,
+                options=options[0],
                 source=self.names([broken]),
             )
         else:
@@ -782,6 +823,27 @@ class Narrator:
             breaks=breaks,
             refuted=refuted,
         )
+
+    def _note_pruned(self, rule: str, step: Step) -> None:
+        """Remember a value a count clue took silently, to cite it at the last option."""
+        if rule != "single" or step.asserted or step.placing is not None:
+            return
+        if step.var not in self.visible or self._boolean(step.var):
+            return
+        source = next(
+            (
+                name
+                for name in step.sources
+                if name not in self.domains
+                and (constraint := self.constraints.get(name)) is not None
+                and constraint.kind is Kind.COUNT
+            ),
+            None,
+        )
+        if source is not None:
+            values = self.pruned.setdefault(step.var, {}).setdefault(source, [])
+            if step.value not in values:
+                values.append(step.value)
 
     def clue_list(self, clues: Sequence[str]) -> str:
         """Clue sentences joined by semicolons, "Given" lowercased after the first."""
@@ -866,6 +928,7 @@ class Narrator:
                 chains.append(group.pattern)
             for inference in (group.pattern, *group.consequences):
                 for step in inference.steps:
+                    self._note_pruned(inference.rule, step)
                     if step.placing is not None and not step.asserted:
                         count_source = next(
                             (

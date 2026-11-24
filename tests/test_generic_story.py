@@ -82,16 +82,11 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
         "r3c2 = 5 is the only option; r1c2 = 3 is the only option; "
         "r1c4 = 5 is the only option; r3c3 = 3 by *3 once in row 3*; "
         "r2c6 = 3 by *3 once in row 2*; "
-        "but the remaining values (r1c5 = 4; r1c6 = 4; r2c6 = 3) do not satisfy "
+        "but r1c5 and r1c6 would have no value left that fits "
         "*9+ cage r1c5 r1c6 r2c6*; so r2c2 ≠ 6."
     ) in story.markdown()
     assert (
-        "the remaining values (r1c1 = 6; r1c2 = 5; r2c1 = 5) do not satisfy "
-        "*13+ cage r1c1 r1c2 r2c1*"
-    ) in story.markdown()
-    assert (
-        "the remaining values (r1c5 = 4 or 5; r1c6 = 4 or 5; r2c6 = 6) do not satisfy "
-        "*9+ cage r1c5 r1c6 r2c6*"
+        "but r1c1 = 6, r1c2 = 5 and r2c1 = 5 break *13+ cage r1c1 r1c2 r2c1*"
     ) in story.markdown()
 
 
@@ -153,8 +148,20 @@ def test_rooms_hidden_helpers_read_as_facts_about_people():
     assert story.complete
     assert "**Dirk and Finn are not together**" in told_text
     assert "*people who are together are in the same room* gives" in told_text
-    assert "**Ben = study**, the only option left." in told_text
-    assert "**Ada and Dirk = living room**, each the only option left." in told_text
+    assert (
+        "**Ben = study**, the only option left once *Porch holds at most 1* rules out porch."
+        in told_text
+    )
+    assert (
+        "**Ada and Dirk = living room**, each the only option left once *Porch holds at most 1*"
+        " rules out porch."
+    ) in told_text
+    assert (
+        "**Eva = bathroom**, the only option left once *Exactly one of these two holds: Eva is in"
+        " a room with a window; Finn is in a room with a plant* rules out study, *Porch holds at"
+        " most 1* rules out porch and *The rooms with a plant hold exactly three people together*"
+        " rules out attic."
+    ) in told_text
     assert "Then Dirk = hall is the only option; Dirk and Ben are together by" in told_text
     for leak in ("intermediate step", "rooms 1", "clue 1", " count*", "; Given"):
         assert leak not in told_text
