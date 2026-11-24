@@ -60,6 +60,8 @@ def test_each_single_cites_its_own_reason():
     assert "**r1c3\u2013r3c3, r4c4 and r4c5 = no bulb**, ruled out by r4c3 = bulb" in text
     assert "**r6c2 = no bulb**, ruled out by *1 bulb around wall r6c3*" in text
     assert "**r4c1 = no bulb**, ruled out by *3 bulbs around wall r4c2*" in text
+    assert "With r3c6 = bulb already counted" in text
+    assert "r5c6 = bulb or r4c5 = bulb" in text
     assert "*1 bulb around wall r5c5*" in text
     assert "every open cell is lit*, one option" not in text
 

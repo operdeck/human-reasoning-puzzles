@@ -326,6 +326,49 @@ class Narrator:
             clue = self.say("generic.clue", sources=sources, conclusion=conclusion)
             return self.say("generic.clues", items=clue)
         if move.rule == "subsumption":
+            if (
+                len(move.sources) == 1
+                and (constraint := self.constraints.get(move.sources[0]))
+                and constraint.kind is Kind.COUNT
+            ):
+                placed = [
+                    self.placed(
+                        inference.before.var_of(literal), inference.before.value_of(literal)
+                    )
+                    for literal in constraint.literals
+                    if inference.before.var_of(literal) in self.visible
+                    and inference.before.is_true(literal)
+                ]
+                if placed:
+                    live = inference.before.live(constraint.index)
+                    if 1 <= len(live) <= 4 and all(
+                        inference.before.var_of(literal) in self.visible for literal in live
+                    ):
+                        options = self.say.join(
+                            [
+                                self.placed(
+                                    inference.before.var_of(literal),
+                                    inference.before.value_of(literal),
+                                )
+                                for literal in live
+                            ],
+                            "or",
+                        )
+                        return self.say(
+                            "generic.subsumption_count_options",
+                            placed=self.say.join(placed),
+                            options=options,
+                            sources=sources,
+                            scope=self.names(move.scope),
+                            conclusion=conclusion,
+                        )
+                    return self.say(
+                        "generic.subsumption_count",
+                        placed=self.say.join(placed),
+                        sources=sources,
+                        scope=self.names(move.scope),
+                        conclusion=conclusion,
+                    )
             return self.say(
                 "generic.subsumption",
                 sources=sources,

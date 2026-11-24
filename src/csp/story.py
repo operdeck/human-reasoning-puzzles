@@ -412,6 +412,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.clue_with_candidates": "Given {candidates}, {sources} gives {conclusion}",
         "generic.subsumption": "**Overlap.** Every remaining option of {sources} lies within "
         "{scope}, so {conclusion}.",
+        "generic.subsumption_count": "**Overlap.** With {placed} already counted, every remaining "
+        "option of {sources} lies within {scope}, so {conclusion}.",
+        "generic.subsumption_count_options": "**Overlap.** With {placed} already counted, the "
+        "remaining options of {sources} are {options}; each lies within {scope}, so {conclusion}.",
         "generic.cover": "**Combined rules.** {sources} take up {scope} between them, "
         "so {conclusion}.",
         "generic.cover_naked": "**Combined rules.** {cells} can only be {values}. By {rules}, "
@@ -1002,6 +1006,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.clue_with_candidates": "Met {candidates} over geeft {sources} {conclusion}",
         "generic.subsumption": "**Overlap.** Alle resterende opties van {sources} liggen binnen "
         "{scope}, dus {conclusion}.",
+        "generic.subsumption_count": "**Overlap.** Nu {placed} al meetelt, liggen alle resterende "
+        "opties van {sources} binnen {scope}, dus {conclusion}.",
+        "generic.subsumption_count_options": "**Overlap.** Nu {placed} al meetelt, zijn de "
+        "resterende opties van {sources} {options}; ze liggen binnen {scope}, dus {conclusion}.",
         "generic.cover": "**Combinatie.** {sources} nemen samen {scope} in beslag, "
         "dus {conclusion}.",
         "generic.cover_naked": "**Gecombineerde regels.** {cells} kunnen alleen {values} zijn. "
