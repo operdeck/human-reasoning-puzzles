@@ -104,6 +104,7 @@ class Narrator:
         kind: str | None = None,
         hidden_words: Mapping[tuple[str, Any], str] | None = None,
         value_words: Mapping[Any, str] | None = None,
+        comparisons: Mapping[str, tuple[tuple[str, str], ...]] | None = None,
     ) -> None:
         self.model = model
         self.say = say
@@ -111,6 +112,7 @@ class Narrator:
         self.source_words = dict(source_words or {})
         self.hidden_words = dict(hidden_words or {})
         self.value_words: dict[Any, str] = dict(value_words or {})
+        self.comparisons = dict(comparisons or {})
         self.visible = set(model.variables) | {var for var, _ in self.hidden_words}
         self.constraints = {c.name: c for c in model.constraints}
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
@@ -1113,6 +1115,8 @@ class Narrator:
                 shown.append(self.say("generic.trail_only", placement=option))
         flush_eliminations()
         broken = step.sources[0] if step.sources else None
+        if premise := self._comparison_premise(step, inference.before, broken, needed):
+            shown.append(premise)
         options = self._relation_options(step, inference.before)
         if broken is None:
             breaks = self.say("generic.breaks_unknown")
@@ -1141,6 +1145,40 @@ class Narrator:
             breaks=breaks,
             refuted=refuted,
         )
+
+    def _comparison_premise(
+        self, step: Step, before: Model, broken: str | None, needed: Sequence[int]
+    ) -> str | None:
+        relation = next((item for item in self.model.relations if item.name == broken), None)
+        if relation is None:
+            return None
+        for variable in relation.variables:
+            pairs = self.comparisons.get(variable)
+            if not pairs:
+                continue
+            names = {variable, *(cell for pair in pairs for cell in pair)}
+            values = {
+                name: {before.value_of(literal) for literal in before.options(name)}
+                for name in names
+            }
+            for index in needed:
+                item = step.trail[index]
+                if item.var in values:
+                    if item.asserted:
+                        values[item.var] = {item.value}
+                    else:
+                        values[item.var].discard(item.value)
+            if values[variable] != {False}:
+                continue
+            equal = []
+            for left, right in pairs:
+                if len(values[left]) != 1 or values[left] != values[right]:
+                    break
+                (value,) = values[left]
+                equal.append(self.placed(left, value, self.say.join([left, right])))
+            else:
+                return self.say("generic.compared_equal", pairs=self.say.join(equal))
+        return None
 
     def _note_pruned(self, rule: str, step: Step) -> None:
         """Remember a value a count clue took silently, to cite it at the last option."""
@@ -1318,6 +1356,7 @@ def explain(
     kind: str | None = None,
     hidden_words: Mapping[tuple[str, Any], str] | None = None,
     value_words: Mapping[Any, str] | None = None,
+    comparisons: Mapping[str, tuple[tuple[str, str], ...]] | None = None,
 ) -> Explanation:
     """Explain a solve of any compiled model from its rule firings, shortest proof first.
 
@@ -1328,10 +1367,13 @@ def explain(
     `hidden_words` gives the sentence for a hidden helper taking a value, so a step
     that settles one reads as a fact ("Dirk and Ada are together"). `value_words`
     translates model values such as zero-based coordinates into player-facing names.
+    `comparisons` maps a hidden comparison state to its corresponding visible cell pairs.
     """
     moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
     if replay(start, moves).solution() is not None:
         moves = thin(start, moves)
     result, groups = episodes(start, moves)
-    narrator = Narrator(start, Wording.read(text), source_words, kind, hidden_words, value_words)
+    narrator = Narrator(
+        start, Wording.read(text), source_words, kind, hidden_words, value_words, comparisons
+    )
     return narrator.tell(start, groups, result.solution() is not None)

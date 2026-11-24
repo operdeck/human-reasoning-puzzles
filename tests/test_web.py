@@ -66,7 +66,13 @@ def test_every_example_is_exported_and_indexed(exported):
 
 
 @pytest.mark.parametrize(
-    "name", ["berghut/berghut-murdoku-1.txt", "sudoku_17_9x9_pointing.txt", "akari_1_6x6.txt"]
+    "name",
+    [
+        "berghut/berghut-murdoku-1.txt",
+        "sudoku_17_9x9_pointing.txt",
+        "akari_1_6x6.txt",
+        "binairo_3_4x4.txt",
+    ],
 )
 def test_bundles_carry_the_worked_solution_but_the_index_does_not(tmp_path, name):
     source = example(name)

@@ -415,6 +415,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "after the earlier exclusions, once {causes}",
         "generic.rules_out": "{source} rules out {values}",
         "generic.exclusion_by_placements": "{placements} {verb} {values} under {source}",
+        "generic.compared_equal": "{pairs}; the corresponding cells match",
+        "generic.binairo_legend": "Here 1 is black and 0 is white.",
+        "generic.different_rows": "the rule that rows {first} and {second} must differ",
+        "generic.different_columns": "the rule that columns {first} and {second} must differ",
         "generic.rule_out": "rule out",
         "generic.rules_out_verb": "rules out",
         "generic.opposite_ruled_out_by": "{placements}, because {cause} rules out {alternatives}",
@@ -1023,6 +1027,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "na de eerdere uitsluitingen, nu {causes}",
         "generic.rules_out": "{source} {values} uitsluit",
         "generic.exclusion_by_placements": "{placements} volgens {source} {values} {verb}",
+        "generic.compared_equal": "{pairs}; de overeenkomstige vakjes zijn gelijk",
+        "generic.binairo_legend": "Hier is 1 zwart en 0 wit.",
+        "generic.different_rows": "de regel dat rij {first} en rij {second} moeten verschillen",
+        "generic.different_columns": (
+            "de regel dat kolom {first} en kolom {second} moeten verschillen"
+        ),
         "generic.rule_out": "uitsluiten",
         "generic.rules_out_verb": "uitsluit",
         "generic.opposite_ruled_out_by": "{placements}, omdat {cause} {alternatives} uitsluit",

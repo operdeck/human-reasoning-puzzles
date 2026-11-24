@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from csp import cli, generic_story, puzzlefile
-from csp.core import Solver
+from csp import binairo, cli, generic_story, puzzlefile
+from csp.core import Solver, Step
 from csp.story import Wording
 from tests.examples import example
 
@@ -216,6 +216,45 @@ def test_case_does_not_repeat_a_boolean_placement_as_a_single():
     case = next(paragraph for paragraph in text.split("\n\n") if "Suppose r1c2" in paragraph)
     assert case.count("r1c4 = white") == 2  # once in the trail, once in the contradiction
     assert "r1c4 = white is the only option" not in case
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "en",
+            "r1c1 and r2c1 = white, r1c2 and r2c2 = black and r1c3 and r2c3 = black; "
+            "the corresponding cells match",
+        ),
+        (
+            "nl",
+            "r1c1 en r2c1 = wit, r1c2 en r2c2 = zwart en r1c3 en r2c3 = zwart; "
+            "de overeenkomstige vakjes zijn gelijk",
+        ),
+    ],
+)
+def test_binairo_case_shows_the_matching_cells(language, expected):
+    text = f"Language: {language}\n" + example("binairo_3_4x4.txt").read_text()
+    puzzle = cli.load(text, "binairo")
+    narrative = cli.pattern_story("binairo", text, puzzle.model).markdown()
+    assert expected in narrative
+    if language == "en":
+        assert narrative.startswith("- Here 1 is black and 0 is white.")
+        assert "break *the rule that rows 1 and 2 must differ*" in narrative
+    else:
+        assert narrative.startswith("- Hier is 1 zwart en 0 wit.")
+        assert "de regel dat rij 1 en rij 2 moeten verschillen" in narrative
+
+
+def test_binairo_case_does_not_claim_unsettled_cells_match():
+    text = example("binairo_3_4x4.txt").read_text()
+    model, puzzle = binairo.compile_puzzle(text)
+    narrator = generic_story.Narrator(
+        model, Wording("en"), kind="binairo", comparisons=binairo.story_comparisons(puzzle)
+    )
+    broken = "rows 1 differs from 2 through cell 4"
+    step = Step("r1c2", True, False, "what_if", "", sources=(broken,))
+    assert narrator._comparison_premise(step, model, broken, ()) is None
 
 
 def test_chain_explains_cell_single_and_both_conflicts_with_its_target():

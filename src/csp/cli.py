@@ -238,6 +238,26 @@ def pattern_story(
         return generic_story.explain(
             text, start.clone(keep_log=True), fired, words.sources, kind, words.hidden
         )
+    if kind == "binairo":
+        binairo_puzzle = binairo.parse(text)
+        wording = story.Wording.read(text)
+        sources = {
+            name: wording(f"generic.different_{axis}", first=first, second=second)
+            for name, (axis, first, second) in binairo.story_difference_relations(
+                binairo_puzzle
+            ).items()
+        }
+        explanation = generic_story.explain(
+            text,
+            start.clone(keep_log=True),
+            fired,
+            source_words=sources,
+            kind=kind,
+            comparisons=binairo.story_comparisons(binairo_puzzle),
+        )
+        return generic_story.Explanation(
+            (wording("generic.binairo_legend"), *explanation.paragraphs), explanation.complete
+        )
     if kind in {"starbattle", "queens"}:
         layout = starbattle.parse(text)
         if layout.stars == 1:

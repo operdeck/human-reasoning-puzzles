@@ -37,6 +37,40 @@ def cell_name(cell: Cell) -> str:
     return f"r{cell[0] + 1}c{cell[1] + 1}"
 
 
+def _line_state(axis: str, first: int, second: int, compared: int) -> str:
+    return f"__{axis}_{first + 1}_{second + 1}_diff_{compared}"
+
+
+def _line_comparison(axis: str, first: int, second: int, compared: int) -> str:
+    return f"{axis} {first + 1} differs from {second + 1} through cell {compared}"
+
+
+def story_difference_relations(puzzle: Puzzle) -> dict[str, tuple[str, int, int]]:
+    """The final relation in each line comparison enforces that the lines differ."""
+    return {
+        _line_comparison(axis, first, second, puzzle.size): (axis, first + 1, second + 1)
+        for axis in ("rows", "columns")
+        for first, second in combinations(range(puzzle.size), 2)
+    }
+
+
+def story_comparisons(puzzle: Puzzle) -> dict[str, tuple[tuple[str, str], ...]]:
+    """Cell pairs represented by each cumulative line-comparison state."""
+    result = {}
+    size = puzzle.size
+    for axis in ("rows", "columns"):
+        for first, second in combinations(range(size), 2):
+            pairs = tuple(
+                (cell_name((first, i)), cell_name((second, i)))
+                if axis == "rows"
+                else (cell_name((i, first)), cell_name((i, second)))
+                for i in range(size)
+            )
+            for compared in range(1, size):
+                result[_line_state(axis, first, second, compared)] = pairs[:compared]
+    return result
+
+
 def parse(text: str) -> Puzzle:
     sections = read_sections(text)
     for required in ("Family", "Size"):
@@ -90,7 +124,7 @@ def _sign(line: str, kind: str, size: int) -> Sign:
 def _add_distinct_lines(model: Model, lines: list[list[Cell]], axis: str) -> None:
     """Encode each line pair inequality as a chain of small generic relations."""
     for first_index, second_index in combinations(range(len(lines)), 2):
-        previous = f"__{axis}_{first_index + 1}_{second_index + 1}_diff_0"
+        previous = _line_state(axis, first_index, second_index, 0)
         model.constrain(
             f"{previous} is false",
             Kind.EXACTLY_ONE,
@@ -103,7 +137,7 @@ def _add_distinct_lines(model: Model, lines: list[list[Cell]], axis: str) -> Non
         for index, (left, right) in enumerate(
             zip(lines[first_index], lines[second_index], strict=True), 1
         ):
-            current = f"__{axis}_{first_index + 1}_{second_index + 1}_diff_{index}"
+            current = _line_state(axis, first_index, second_index, index)
             model.constrain(
                 f"{current} is a Boolean state",
                 Kind.EXACTLY_ONE,
@@ -113,7 +147,7 @@ def _add_distinct_lines(model: Model, lines: list[list[Cell]], axis: str) -> Non
                 family="auxiliary line-uniqueness state",
             )
             model.relate(
-                f"{axis} {first_index + 1} differs from {second_index + 1} through cell {index}",
+                _line_comparison(axis, first_index, second_index, index),
                 (previous, cell_name(left), cell_name(right), current),
                 lambda seen, first, second, result: result == (seen or first != second),
             )
