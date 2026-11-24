@@ -259,14 +259,18 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
             "en",
             "Each row and column contains the numbers 1 to 6 exactly once. Whenever a cage is "
             "cited below, use its arithmetic together with those row and column rules; cage "
-            "cells not sharing a row or column may repeat",
+            "cells not sharing a row or column may repeat. A cage label gives its target and "
+            "operation: + is a sum, x a product, - the larger number minus the smaller, and / "
+            "the larger divided by the smaller",
             "r1c2 cannot be 1 and r2c1 cannot be 3 by *13+ cage",
         ),
         (
             "nl",
             "In elke rij en kolom staan de getallen 1 tot en met 6 precies één keer. Gebruik "
             "bij elke kooi hieronder zowel de berekening als deze rij- en kolomregels; "
-            "kooivakjes die geen rij of kolom delen mogen gelijk zijn",
+            "kooivakjes die geen rij of kolom delen mogen gelijk zijn. Een kooilabel vermeldt "
+            "het doel en de bewerking: + betekent optellen, x vermenigvuldigen, - het grootste "
+            "getal min het kleinste en / het grootste getal gedeeld door het kleinste",
             "r1c2: geen 1 en r2c1: geen 3 door *13+ cage",
         ),
     ],

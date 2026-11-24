@@ -416,7 +416,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.rules_out": "{source} rules out {values}",
         "generic.calcudoku_cages": "**Cages.** Each row and column contains the numbers 1 to "
         "{size} exactly once. Whenever a cage is cited below, use its arithmetic together "
-        "with those row and column rules; cage cells not sharing a row or column may repeat.",
+        "with those row and column rules; cage cells not sharing a row or column may repeat. "
+        "A cage label gives its target and operation: + is a sum, x a product, - the larger "
+        "number minus the smaller, and / the larger divided by the smaller. A label without "
+        "an operation gives the cell's value.",
         "generic.exclusion_by_placements": "{placements} {verb} {values} under {source}",
         "generic.compared_equal": "{pairs}; the corresponding cells match",
         "generic.placed_elsewhere": "{variables} are already assigned values other than {value}",
@@ -1084,7 +1087,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.rules_out": "{source} {values} uitsluit",
         "generic.calcudoku_cages": "**Kooien.** In elke rij en kolom staan de getallen 1 tot en "
         "met {size} precies één keer. Gebruik bij elke kooi hieronder zowel de berekening als "
-        "deze rij- en kolomregels; kooivakjes die geen rij of kolom delen mogen gelijk zijn.",
+        "deze rij- en kolomregels; kooivakjes die geen rij of kolom delen mogen gelijk zijn. "
+        "Een kooilabel vermeldt het doel en de bewerking: + betekent optellen, x "
+        "vermenigvuldigen, - het grootste getal min het kleinste en / het grootste getal gedeeld "
+        "door het kleinste. Een label zonder bewerking geeft de waarde van het vakje.",
         "generic.exclusion_by_placements": "{placements} volgens {source} {values} {verb}",
         "generic.compared_equal": "{pairs}; de overeenkomstige vakjes zijn gelijk",
         "generic.placed_elsewhere": "{variables} hebben al een andere waarde dan {value}",
