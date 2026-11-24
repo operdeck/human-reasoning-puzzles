@@ -1,7 +1,7 @@
 """Murdoku explanations from expression origins and the generic engine's proof."""
 
 from collections.abc import Iterable, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from itertools import combinations, product
 from typing import Any
 
@@ -36,6 +36,17 @@ from .proof import Episode, Inference, Move, episodes, essential, replay
 from .story import MAX_LISTED, PHRASES, Places, Wording, _cap, presentation_reveal
 
 MAX_CANDIDATE_BOUND_LINES = 4
+
+
+@dataclass(frozen=True)
+class _RoleExclusion:
+    person: str
+    role: str
+    origin: str
+    rule: str
+    statement: str
+    detail: str
+    candidates: tuple[Square, ...]
 
 
 class _Narrator(generic_story.Narrator):
@@ -2667,7 +2678,7 @@ class _Narrator(generic_story.Narrator):
             thing=self.places.thing(name),
         )
 
-    def _role_exclusion(self, inference: Inference) -> str | None:
+    def _role_exclusion(self, inference: Inference) -> tuple[str, _RoleExclusion | None] | None:
         visible = [step for step in inference.steps if step.var in self.roles]
         if len(visible) != 1:
             return None
@@ -2731,28 +2742,44 @@ class _Narrator(generic_story.Narrator):
                 if explanation := self._beside_different_area(formula.body, set(candidates)):
                     detail = f" {explanation}."
                 self.spoken_rule_origins.add(origin.label)
-                return self.say(
-                    "murdoku.role_exclusion_candidates"
-                    if self.numbered
-                    else "murdoku.role_exclusion_candidates_unnumbered",
+                evidence = _RoleExclusion(
+                    person=person,
+                    role=self.say.words.get(role, role),
+                    origin=origin.label,
                     rule=_cap(self.say("expression.rule", number=origin.number)),
                     statement=_cap(self.statements[origin.label]),
                     detail=detail,
-                    who=person,
-                    role=self.say.words.get(role, role),
-                    squares=self.say.join(
-                        [self.places.square(square) for square in sorted(candidates)]
-                    ),
+                    candidates=tuple(sorted(candidates)),
                 )
-        return self.say(
-            "murdoku.role_exclusion",
-            rule=_cap(
-                self.say("expression.rule", number=origin.number)
-                if self.numbered
-                else self.statements[origin.label]
+                return self._role_exclusion_words(evidence, [person]), evidence
+        return (
+            self.say(
+                "murdoku.role_exclusion",
+                rule=_cap(
+                    self.say("expression.rule", number=origin.number)
+                    if self.numbered
+                    else self.statements[origin.label]
+                ),
+                who=person,
+                role=self.say.words.get(role, role),
             ),
-            who=person,
-            role=self.say.words.get(role, role),
+            None,
+        )
+
+    def _role_exclusion_words(self, evidence: _RoleExclusion, people: Sequence[str]) -> str:
+        key = "murdoku.role_exclusion_candidates"
+        if len(people) > 1:
+            key += "_many"
+        if not self.numbered:
+            key += "_unnumbered"
+        return self.say(
+            key,
+            rule=evidence.rule,
+            statement=evidence.statement,
+            detail=evidence.detail,
+            who=self.say.join(list(people)),
+            role=evidence.role,
+            squares=self.say.join([self.places.square(square) for square in evidence.candidates]),
         )
 
     def pattern(self, inference: Inference, history: Sequence[Step]) -> str:
@@ -2805,7 +2832,7 @@ class _Narrator(generic_story.Narrator):
         if line_person := self._line_person(inference, conclusion, history):
             return line_person
         if role_exclusion := self._role_exclusion(inference):
-            return role_exclusion + "."
+            return role_exclusion[0] + "."
         if role_area := self._role_area_reason(inference, history):
             return role_area + "."
         if relation_pair := self._relation_pair(inference):
@@ -2936,6 +2963,7 @@ class _Narrator(generic_story.Narrator):
                 )
         history = list(self.compilation.model.log)
         support: dict[str, tuple[str, ...]] = {}
+        previous_role: tuple[int, _RoleExclusion, list[str]] | None = None
         for group in groups:
             for inference in (group.pattern, *group.consequences):
                 for _, region, minimum in self._refuted_populations(inference.steps):
@@ -3005,9 +3033,26 @@ class _Narrator(generic_story.Narrator):
                         paragraphs.append(
                             _cap(self.say("line_reservation_only", **reservation)) + "."
                         )
-                elif paragraph := self._role_exclusion(inference):
+                elif exclusion := self._role_exclusion(inference):
                     self._advance_without_conclusion(inference.steps)
-                    paragraphs.append(paragraph + ".")
+                    paragraph, evidence = exclusion
+                    if (
+                        evidence is not None
+                        and previous_role is not None
+                        and previous_role[0] == len(paragraphs) - 1
+                        and replace(previous_role[1], person=evidence.person) == evidence
+                        and evidence.person not in previous_role[2]
+                    ):
+                        people = [*previous_role[2], evidence.person]
+                        paragraphs[-1] = self._role_exclusion_words(evidence, people) + "."
+                        previous_role = (len(paragraphs) - 1, evidence, people)
+                    else:
+                        paragraphs.append(paragraph + ".")
+                        previous_role = (
+                            (len(paragraphs) - 1, evidence, [evidence.person])
+                            if evidence is not None
+                            else None
+                        )
                 elif not any(step.var in self.visible for step in inference.steps):
                     for step in inference.steps:
                         support[step.var] = tuple(dict.fromkeys((*premises, *sources)))

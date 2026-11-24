@@ -521,11 +521,10 @@ def test_hut_seat_and_role_deductions_name_candidates():
 
     assert "**Brunhild zit op een bikkelstoel**" in text
     assert "**Waltraud zit op een bikkelstoel**" in text
-    for person in ("Brunhild", "Waltraud"):
-        assert (
-            f"{person} kan alleen nog op r2k5, r3k8, r4k7 en r4k8 staan; "
-            f"geen daarvan voldoet, dus {person} kan niet de schuldige zijn"
-        ) in text
+    assert (
+        "Brunhild en Waltraud kunnen ieder alleen nog op r2k5, r3k8, r4k7 en r4k8 staan; "
+        "geen daarvan voldoet, dus geen van hen kan de schuldige zijn"
+    ) in text
     assert "**Brunhild op r2k5**" in text
     assert "Tussen r2k5 en de kachel ligt een gebiedsgrens; naast vereist hetzelfde gebied" in text
     assert "Gerhard alleen nog in het drooghok, in Kamer Zuid of in het washok kan staan" in text
@@ -543,8 +542,42 @@ def test_hut_seat_and_role_deductions_name_candidates():
     ).markdown()
     assert "regel 4 zegt" not in unnumbered.casefold()
     assert "De schuldige zat naast de kachel." in unnumbered
-    assert "Brunhild kan niet de schuldige zijn" in unnumbered
-    assert "Waltraud kan niet de schuldige zijn" in unnumbered
+    assert "Brunhild en Waltraud kunnen ieder alleen nog" in unnumbered
+    assert "geen van hen kan de schuldige zijn" in unnumbered
+
+
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
+    ("language", "grouped", "boundary"),
+    [
+        ("nl", "Brunhild en Waltraud kunnen ieder alleen nog", "gebiedsgrens"),
+        ("en", "Brunhild and Waltraud each have only", "area boundary"),
+    ],
+)
+def test_shared_role_exclusion_names_each_person_and_the_common_reason(
+    numbered, language, grouped, boundary
+):
+    source = (
+        example("berghut-murdoku-2.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    text = murdoku_story.explain(source, numbered=numbered).markdown()
+    paragraph = next(paragraph for paragraph in text.split("\n\n") if grouped in paragraph)
+    assert boundary in paragraph
+    assert text.count(boundary) == 1
+
+
+def test_role_exclusions_with_different_candidates_are_not_grouped():
+    source = (
+        example("berghut-murdoku-2.txt")
+        .read_text()
+        .replace("Clues:\n", "Clues:\nnot (Brunhild in rows:4)\n")
+    )
+    text = murdoku_story.explain(source).markdown()
+    assert "Brunhild kan alleen nog op r2k5 en r3k8 staan" in text
+    assert "Waltraud kan alleen nog op r2k5, r3k8, r4k7 en r4k8 staan" in text
+    assert "Brunhild en Waltraud kunnen ieder alleen nog" not in text
 
 
 def test_hut_line_overlaps_are_explained_before_they_are_used():

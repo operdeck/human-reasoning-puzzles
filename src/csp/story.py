@@ -564,6 +564,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "squares are {squares}; none satisfies it, so {who} cannot be the {role}",
         "murdoku.role_exclusion_candidates_unnumbered": "{statement}.{detail} {who}'s remaining "
         "squares are {squares}; none satisfies it, so {who} cannot be the {role}",
+        "murdoku.role_exclusion_candidates_many": "{rule} says {statement}.{detail} "
+        "{who} each have only {squares} left; none satisfies it, so none of them "
+        "can be the {role}",
+        "murdoku.role_exclusion_candidates_many_unnumbered": "{statement}.{detail} "
+        "{who} each have only {squares} left; none satisfies it, so none of them "
+        "can be the {role}",
         "murdoku.beside_different_area": "An area boundary separates {squares} from {thing}; "
         "beside requires the same area",
         "line_takes": "{who} occupies {lines}",
@@ -1215,6 +1221,12 @@ PHRASES: dict[str, dict[str, str]] = {
         "nog op {squares} staan; geen daarvan voldoet, dus {who} kan niet de {role} zijn",
         "murdoku.role_exclusion_candidates_unnumbered": "{statement}.{detail} {who} kan alleen "
         "nog op {squares} staan; geen daarvan voldoet, dus {who} kan niet de {role} zijn",
+        "murdoku.role_exclusion_candidates_many": "{rule} zegt: {statement}.{detail} "
+        "{who} kunnen ieder alleen nog op {squares} staan; geen daarvan voldoet, dus "
+        "geen van hen kan de {role} zijn",
+        "murdoku.role_exclusion_candidates_many_unnumbered": "{statement}.{detail} "
+        "{who} kunnen ieder alleen nog op {squares} staan; geen daarvan voldoet, dus "
+        "geen van hen kan de {role} zijn",
         "murdoku.beside_different_area": "Tussen {squares} en {thing} ligt een gebiedsgrens; "
         "naast vereist hetzelfde gebied",
         "line_takes": "{who} bezet {lines}",
