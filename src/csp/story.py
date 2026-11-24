@@ -416,6 +416,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.rules_out": "{source} rules out {values}",
         "generic.exclusion_by_placements": "{placements} {verb} {values} under {source}",
         "generic.compared_equal": "{pairs}; the corresponding cells match",
+        "generic.placed_elsewhere": "{variables} are already assigned values other than {value}",
         "generic.binairo_legend": "Here 1 is black and 0 is white.",
         "generic.different_rows": "the rule that rows {first} and {second} must differ",
         "generic.different_columns": "the rule that columns {first} and {second} must differ",
@@ -1028,6 +1029,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.rules_out": "{source} {values} uitsluit",
         "generic.exclusion_by_placements": "{placements} volgens {source} {values} {verb}",
         "generic.compared_equal": "{pairs}; de overeenkomstige vakjes zijn gelijk",
+        "generic.placed_elsewhere": "{variables} hebben al een andere waarde dan {value}",
         "generic.binairo_legend": "Hier is 1 zwart en 0 wit.",
         "generic.different_rows": "de regel dat rij {first} en rij {second} moeten verschillen",
         "generic.different_columns": (

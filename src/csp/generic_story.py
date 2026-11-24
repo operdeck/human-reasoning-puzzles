@@ -293,6 +293,7 @@ class Narrator:
         ):
             return None
         alternatives: dict[tuple[str, tuple[str, Any]], list[str]] = {}
+        placed_elsewhere: dict[tuple[str, Any], list[tuple[str, tuple[str, Any]]]] = {}
         earlier = False
         for literal in constraint.literals:
             if literal == live[0]:
@@ -314,13 +315,36 @@ class Narrator:
             if prior is None or prior.placing is None or prior.placing[0] not in self.visible:
                 return None
             sources = [name for name in prior.sources if name not in self.domains]
+            if (
+                not sources
+                and prior.placing[0] == var
+                and prior.placing[1] != value
+                and prior.sources == (self.model.constraints[self.model.domain_of(var)].name,)
+            ):
+                sources = list(prior.sources)
             if len(sources) != 1:
                 return None
             cause = self.constraints.get(sources[0])
             if cause is None or cause.kind not in (Kind.EXACTLY_ONE, Kind.AT_MOST_ONE):
                 return None
-            key = (cause.family or cause.name, prior.placing)
-            alternatives.setdefault(key, []).append(self.placed(var, value))
+            name = cause.family or cause.name
+            if sources[0] in self.domains and prior.placing[0] == var:
+                placed_elsewhere.setdefault((name, value), []).append((var, prior.placing))
+            else:
+                alternatives.setdefault((name, prior.placing), []).append(self.placed(var, value))
+        grouped_causes = []
+        for (name, value), placements in placed_elsewhere.items():
+            if len(placements) > 1 and all(var in self.model.variables for var, _ in placements):
+                grouped_causes.append(
+                    self.say(
+                        "generic.placed_elsewhere",
+                        variables=self.say.join([var for var, _ in placements]),
+                        value=self.value_word(value),
+                    )
+                )
+            else:
+                for var, placement in placements:
+                    alternatives.setdefault((name, placement), []).append(self.placed(var, value))
         causes = [
             self.say(
                 "generic.exclusion_by_placements",
@@ -331,6 +355,7 @@ class Narrator:
             )
             for (name, placement), values in alternatives.items()
         ]
+        causes.extend(grouped_causes)
         return Exclusions(tuple(causes), earlier, source) if causes else None
 
     def singles(self, inferences: Sequence[Inference], history: Sequence[Step]) -> list[str]:

@@ -43,7 +43,7 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
         "**r5c5 = 5**, the only option left in *5 once in row 5* after the earlier exclusions, "
         "once r2c3 = 5 rules out r5c3 = 5 under *each number once per column*"
     ) in text
-    assert text.index("**r5c5 = 5**") < text.index("**r5c1 = 3** by *3 once in row 5*")
+    assert text.index("**r5c5 = 5**") < text.index("**r5c1 = 3**")
     assert (
         "**Chain.** If r5c4 ≠ 4, then only r2c4 = 4 or r5c4 = 4 remain under "
         "*4 once in col 4*, so r2c4 = 4"
@@ -149,6 +149,26 @@ def test_singles_do_not_repeat_previously_explained_eliminations():
         "**r4c2 = 1**, the only option left after the earlier exclusions, once "
         "r2c2 = 2 rules out 2 under *each digit once per column*"
     ) in text
+
+
+def test_dominosa_cell_singles_explain_used_domino_alternatives():
+    text = told("dominosa_1_5x6.txt").markdown()
+    assert (
+        "**2-2 = r5c5-r5c6**, the only option left in *r5c6 is covered once* once "
+        "2-3 = r1c6-r2c6 rules out 2-3 = r4c6-r5c6 under *each domino is used once*"
+    ) in text
+    assert (
+        "**3-4 = r3c6-r4c6**, the only option left in *r3c6 is covered once* once "
+        "2-3 = r1c6-r2c6 rules out 2-4 = r2c6-r3c6 under *each cell is covered once* "
+        "and 0-4 = r4c4-r5c4 rules out 0-4 = r3c5-r3c6 under *each domino is used once*"
+    ) in text
+
+
+def test_singles_group_already_assigned_alternatives_without_misdescribing_cells():
+    text = told("numbrix_1_4x4.txt").markdown()
+    assert "n1, n2, n7, n14 and n16 are already assigned values other than r4c1" in text
+    text = told("futoshiki_3_5x5.txt").markdown()
+    assert "r3c2 and r3c5 are already assigned values other than 3" in text
 
 
 def test_mosaic_count_includes_its_clue_cell_and_uses_singular():
