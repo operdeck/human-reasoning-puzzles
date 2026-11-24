@@ -438,7 +438,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.chain_if": "If {assumption}",
         "generic.chain_explained": "**Chain.** {start}, then {links}. So {first} or {last}. "
         "{reason}",
-        "generic.chain_either_explained": "{ends}. {reason}",
+        "generic.chain_either_explained": "**Chain.** {ends}. {reason}",
         "generic.chain_eliminates": "{target} is ruled out: {first} conflicts with it by "
         "{first_source}, and {last} by {last_source}.",
         "generic.chain_domain_reason": "; it is the only value left after {excluded} is ruled out",
@@ -1037,7 +1037,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.chain_if": "Als {assumption}",
         "generic.chain_explained": "**Keten.** {start}, dan {links}. Dus {first} of {last}. "
         "{reason}",
-        "generic.chain_either_explained": "{ends}. {reason}",
+        "generic.chain_either_explained": "**Keten.** {ends}. {reason}",
         "generic.chain_eliminates": "{target} valt af: {first} botst ermee door {first_source}, "
         "en {last} door {last_source}.",
         "generic.chain_domain_reason": "; dat is het enige cijfer dat overblijft nadat "

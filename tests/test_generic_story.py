@@ -47,7 +47,7 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
         "*4 once in col 4*, so r2c4 = 4"
     ) in text
     assert (
-        "only r5c3 = 4 or r5c4 = 4 remain under *4 once in row 5*. r5c3 = 2 is ruled out:"
+        "Only r5c3 = 4 or r5c4 = 4 remain under *4 once in row 5*. r5c3 = 2 is ruled out:"
     ) in text
     assert text.count("If r1c4 \u2260 3") == 1
     assert "Continuing the same chain" in text
@@ -185,6 +185,17 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     ) in story.markdown()
     assert "so r1c4 ≠ 3" in story.markdown()
     assert "*13+ cage r1c1 r1c2 r2c1* rules out 3" not in story.markdown()
+
+
+def test_tent_case_and_chain_include_their_essential_premises():
+    text = told("tents_3_4x4.txt").markdown()
+    assert "r2c1 = no tent by *1 tent in column 1*" in text
+    assert "r2c2 = no tent by *one tent beside tree r1c2*" in text
+    assert "r3c2 = no tent by *tents do not touch near r2c2*" in text
+    assert "r3c4 = no tent by *one tent beside tree r2c4*" in text
+    assert (
+        "**Chain.** Only r1c3 = tent or r2c2 = tent remain under *one tent beside tree r1c2*"
+    ) in text
 
 
 def test_chain_explains_cell_single_and_both_conflicts_with_its_target():

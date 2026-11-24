@@ -734,6 +734,7 @@ class Narrator:
                         options=ends,
                         source=self.names([sources[0]]),
                     )
+                    ends = ends[:1].upper() + ends[1:]
                 return self.say("generic.chain_either_explained", ends=ends, reason=end_reason)
             return self.say(
                 "generic.chain_explained",
@@ -896,7 +897,10 @@ class Narrator:
         self, before: Model, source: str, options: Sequence[tuple[str, Any]]
     ) -> bool:
         constraint = self.constraints.get(source)
-        if constraint is None or constraint.kind is not Kind.EXACTLY_ONE:
+        if constraint is None or constraint.kind not in (Kind.EXACTLY_ONE, Kind.COUNT):
+            return False
+        true_count = sum(before.is_true(literal) for literal in constraint.literals)
+        if before.feasible_counts(constraint.index) != {true_count + 1}:
             return False
         candidates = [
             (before.var_of(literal), before.value_of(literal))
@@ -1002,11 +1006,7 @@ class Narrator:
             if j == 0 or inner.var not in self.visible:
                 continue
             if not inner.asserted:
-                if (
-                    inner.placing is None
-                    and inner.sources
-                    and not all(source in self.domains for source in inner.sources)
-                ):
+                if inner.sources and not all(source in self.domains for source in inner.sources):
                     if inner.sources != elimination_sources:
                         flush_eliminations()
                         elimination_sources = inner.sources
