@@ -65,6 +65,7 @@ class _Narrator(generic_story.Narrator):
         self.told_line_exclusion_rule = False
         self.told_reservations: set[tuple[str, str, int]] = set()
         self.told_count_squares: set[tuple[str, frozenset[Square]]] = set()
+        self.told_occupied_squares: set[Square] = set()
         self.told_area_exclusions: set[tuple[str, str]] = set()
         self.told_bounds: dict[str, dict[str, frozenset[int]]] = {}
         self.sole_marks = {
@@ -2125,6 +2126,93 @@ class _Narrator(generic_story.Narrator):
             )
         return None
 
+    def _relation_occupied_lines(self, inference: Inference) -> str | None:
+        move = inference.move
+        if move is None or move.rule != "relations" or len(move.sources) != 1:
+            return None
+        relation = next(
+            (item for item in self.model.relations if item.name == move.sources[0]), None
+        )
+        if (
+            relation is None
+            or len(relation.variables) != 2
+            or any(person not in self.board.people for person in relation.variables)
+            or any(step.asserted or step.var not in relation.variables for step in inference.steps)
+        ):
+            return None
+        options = {
+            person: {
+                inference.before.value_of(literal) for literal in inference.before.options(person)
+            }
+            for person in relation.variables
+        }
+        remaining = {
+            person: values
+            - {step.value for step in inference.steps if step.var == person and not step.asserted}
+            for person, values in options.items()
+        }
+        for person, other in (relation.variables, relation.variables[::-1]):
+            if (
+                len(options[person]) != 2
+                or len(remaining[person]) != 1
+                or not 1 < len(remaining[other]) <= MAX_LISTED + 1
+                or not all(
+                    isinstance(value, Square) for values in options.values() for value in values
+                )
+            ):
+                continue
+            (rejected,) = options[person] - remaining[person]
+            (placed,) = remaining[person]
+            possible = {
+                square
+                for square in self.board.free
+                if relation.holds(
+                    *((rejected, square) if relation.variables[0] == person else (square, rejected))
+                )
+            }
+            if not possible or len(possible) > MAX_LISTED + 4 or possible & options[other]:
+                continue
+            occupied = self.told_occupied_squares | {
+                square for _, squares in self.told_count_squares for square in squares
+            }
+            occupied.update(square for owner, square in self.spoken_placements if owner != other)
+            lines: dict[str, set[int]] = {"row": set(), "col": set()}
+            for square in possible:
+                match = next(
+                    (
+                        (kind, index)
+                        for occupied_square in sorted(occupied)
+                        if occupied_square != square
+                        for kind, index in (("row", square.row), ("col", square.col))
+                        if (occupied_square.row if kind == "row" else occupied_square.col) == index
+                    ),
+                    None,
+                )
+                if match is None:
+                    break
+                kind, index = match
+                lines[kind].add(index)
+            else:
+                self.conclusion(inference.steps)
+                return self.say(
+                    "murdoku.relation_occupied_lines",
+                    who=person,
+                    rejected=self.places.square(rejected),
+                    other=other,
+                    squares=self.places.squares(possible, "or"),
+                    source=self.names(move.sources),
+                    lines=self.say.join(
+                        [
+                            self.places.lines(kind, values)
+                            for kind, values in lines.items()
+                            if values
+                        ]
+                    ),
+                    placement=f"**{self.placed(person, placed)}**",
+                    remaining=self.places.squares(remaining[other], "or"),
+                )
+        return None
+
     def _row_reservation(self, inference: Inference) -> str | None:
         move = inference.move
         if move is None or move.rule != "cover2":
@@ -2286,6 +2374,7 @@ class _Narrator(generic_story.Narrator):
             square.row if scope_kind == "row" else square.col
         ) != scope_index:
             return None
+        self.told_occupied_squares.add(square)
         return self.say(
             "murdoku.line_overlap" if conclusion else "murdoku.line_overlap_only",
             source_line=self.places.line(source_kind, source_index),
@@ -2675,6 +2764,8 @@ class _Narrator(generic_story.Narrator):
             if conclusion := self.conclusion(inference.steps):
                 paragraph += f" {_cap(self.say('so'))} {conclusion}."
             return paragraph
+        if occupied_reason := self._relation_occupied_lines(inference):
+            return occupied_reason
         reservation = self._row_reservation(inference)
         line_reservation = self._line_reservation(inference)
         conclusion = self.conclusion(

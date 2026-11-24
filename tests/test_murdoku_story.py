@@ -9,7 +9,7 @@ from csp.core import Kind, Model, Solver, Step
 from csp.murdoku import Board, CellMark, RoleSpec, Square
 from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lower import compile_statements_with_origins
-from csp.proof import Inference, Move, replay
+from csp.proof import Inference, Move, episodes, replay
 from tests.examples import example
 
 TEXT = """\
@@ -339,6 +339,63 @@ def test_distance_deductions_name_the_candidates_used(numbered, language, first,
     text = murdoku_story.explain(source, numbered=numbered).markdown()
     assert first in text
     assert second in text
+
+
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
+    ("language", "opening", "excluded", "occupied", "remaining"),
+    [
+        (
+            "nl",
+            "Als Reinhart op r10k10 stond",
+            "r1k9, r2k8, r4k6, r5k5, r6k4, r8k2 of r9k1",
+            "de rijen 1, 2, 6 en 8 en de kolommen 1, 5 en 6",
+            "Siegfried kan alleen nog op r3k6, r5k4, r6k3 of r7k2 staan",
+        ),
+        (
+            "en",
+            "If Reinhart were on r10c10",
+            "r1c9, r2c8, r4c6, r5c5, r6c4, r8c2 or r9c1",
+            "rows 1, 2, 6 and 8 and columns 1, 5 and 6",
+            "Siegfried can only be on r3c6, r5c4, r6c3 or r7c2",
+        ),
+    ],
+)
+def test_distance_elimination_explains_occupied_lines(
+    numbered, language, opening, excluded, occupied, remaining
+):
+    source = (
+        example("berghut-murdoku-3.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    paragraph = next(
+        paragraph
+        for paragraph in murdoku_story.explain(source, numbered=numbered).paragraphs
+        if opening in paragraph
+    )
+    assert excluded in paragraph
+    assert occupied in paragraph
+    assert remaining in paragraph
+
+
+def test_distance_elimination_does_not_invent_occupied_lines():
+    text = example("berghut-murdoku-3.txt").read_text()
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    fired = []
+    Solver(compilation.model.clone()).solve(on_step=lambda rule, steps: fired.append((rule, steps)))
+    moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
+    moves = generic_story.thin(compilation.model, moves)
+    _, groups = episodes(compilation.model, moves)
+    inference = next(
+        inference
+        for group in groups
+        for inference in (group.pattern, *group.consequences)
+        if inference.move and inference.move.sources == ("clue 3",)
+    )
+    narrator = murdoku_story._Narrator(text, board, compilation, numbered=True)
+    assert narrator._relation_occupied_lines(inference) is None
 
 
 @pytest.mark.parametrize("numbered", [True, False])
