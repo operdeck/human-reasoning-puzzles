@@ -42,6 +42,7 @@ from . import (
     picture,
     rectangles,
     report,
+    rooms,
     starbattle,
     story,
     sudoku,
@@ -108,6 +109,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "logicgrid":
         model, logicgrid_puzzle = logicgrid.compile_puzzle(text)
         return Puzzle(kind, model, partial(logicgrid.render, logicgrid_puzzle))
+    if kind == "rooms":
+        model, rooms_puzzle = rooms.compile_puzzle(text)
+        return Puzzle(kind, model, partial(rooms.render, rooms_puzzle))
     if kind == "starbattle":
         model, starbattle_puzzle = starbattle.compile_puzzle(text)
         return Puzzle(kind, model, partial(starbattle.render, starbattle_puzzle))
@@ -316,6 +320,7 @@ def make_image(
         "towers": (towers.parse, picture.towers_picture),
         "battleships": (battleships.parse, picture.battleships_picture),
         "logicgrid": (logicgrid.parse, picture.logicgrid_picture),
+        "rooms": (rooms.parse, picture.rooms_picture),
         "sudoku": (sudoku.parse, picture.sudoku_picture),
         "calcudoku": (calcudoku.parse, picture.calcudoku_picture),
         "futoshiki": (futoshiki.parse, picture.futoshiki_picture),

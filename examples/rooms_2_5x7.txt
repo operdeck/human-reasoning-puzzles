@@ -1,0 +1,67 @@
+# Rooms 5x7: five people in a seven-room house on a 3x3 plan.
+# Every clue is needed; drop one and the answer is no longer unique.
+# Solution: Ada in the living room, Ben and Cleo in the kitchen, Dirk in the
+# hall and Eva in the bedroom; the bathroom, the study and the porch stay empty.
+
+Family: rooms
+Language: en
+
+Title:
+The house on the corner
+
+Intro:
+Five people are somewhere in a house with seven rooms. Give every one of them a
+room; some rooms hold two people, others stay empty. The clues never name a
+room or a person directly when a property or a direction will do.
+
+Words:
+a: the living room
+b: the kitchen
+c: the hall
+d: the bathroom
+e: the study
+f: the bedroom
+g: the porch
+window: a room with a window | the rooms with a window
+plant: a room with a plant | the rooms with a plant
+radio: a room with a radio | the rooms with a radio
+
+Plan:
+a a b
+c d b
+e f g
+
+Rooms:
+a: 2 #D9EAD3 living room
+b: 2 #C4DCF2 kitchen
+c: 1 #FADFB5 hall
+d: 1 #F4CBC3 bathroom
+e: 1 #E8D5F2 study
+f: 1 #FBE7C6 bedroom
+g: 1 #CFE8F0 porch
+
+Tags:
+window: a b f
+plant: a c
+radio: b f
+
+People:
+Ada
+Ben
+Cleo
+Dirk
+Eva
+
+Clues:
+Cleo dir:right Ada
+count (people in area:radio) >= 3
+count (people in area:d) = 0
+Ada dir:up Dirk
+Eva in area:f
+
+Question:
+Who is in which room?
+
+Reveal:
+Ada is in the living room, Ben and Cleo are together in the kitchen, Dirk is in
+the hall and Eva is in the bedroom.

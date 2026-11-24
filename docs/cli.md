@@ -16,7 +16,7 @@ detected from its sections unless `--type` overrides it.
 | `-v`, `--verbose` | Narrate every deduction. | |
 | `-s`, `--step` | Redraw and pause after each deduction. | |
 | `--track-person P` | Murdoku: trace a person's live squares and area companions. | |
-| `--type KIND` | Force the family (sudoku, murdoku, calcudoku, futoshiki, suguru, logicgrid, starbattle, binairo, tents, minesweeper, akari, kakurasu, battleships, towers, mosaic, dominosa, rectangles, magnets, undead, pattern, map, kakuro, hidato, thermometers). | |
+| `--type KIND` | Force the family (sudoku, murdoku, calcudoku, futoshiki, suguru, logicgrid, rooms, starbattle, binairo, tents, minesweeper, akari, kakurasu, battleships, towers, mosaic, dominosa, rectangles, magnets, undead, pattern, map, kakuro, hidato, thermometers). | |
 | `--expressions` | Compatibility flag; Murdoku always uses the expression grammar. | |
 | `--show-model` | Print the compiled model and solving algorithm, then stop. | |
 | `--brute-force` | Independent search for every solution (uniqueness check). | |
@@ -76,7 +76,7 @@ confirms one solution. Every command accepts `-h/--help`.
 
 | Option | Meaning |
 |---|---|
-| `FAMILY` | binairo, tango, queens, suguru, minesweeper, akari, sudoku, killer, arrow, evenodd, sandwich, skyscrapersudoku, futoshiki, calcudoku, starbattle, tents, battleships, towers, mosaic, dominosa, rectangles, magnets, undead, pattern, map, thermometers, hidato, numbrix, kakuro, kakurasu. |
+| `FAMILY` | binairo, tango, queens, suguru, minesweeper, akari, sudoku, killer, arrow, evenodd, sandwich, skyscrapersudoku, futoshiki, calcudoku, starbattle, tents, battleships, towers, mosaic, dominosa, rectangles, magnets, undead, pattern, map, thermometers, hidato, numbrix, kakuro, kakurasu, rooms. |
 | `--size N`, `--output FILE` | Board size and destination. |
 | `--tier`, `--grade` | Required tier and optional exact rule. |
 | `--open-share X` | Empty share for Binairo/Tango, unknown share for Minesweeper. |

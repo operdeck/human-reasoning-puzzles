@@ -646,6 +646,29 @@ WELL = (
     '<rect x="26" y="21" width="69" height="9"/></g>'
     '<line x1="60.5" y1="31" x2="60.5" y2="92.5" stroke="#e1cf9b" stroke-width="3"/>'
 )
+# A portable radio: an aerial, a speaker grille and two knobs.
+RADIO = (
+    '<line x1="70" y1="34" x2="92" y2="8" stroke="#4a3f33" stroke-width="5"'
+    ' stroke-linecap="round"/>'
+    '<rect x="8" y="34" width="84" height="54" rx="6" fill="#cbb99f" stroke="#4a3f33"'
+    ' stroke-width="4"/>'
+    '<rect x="15" y="42" width="40" height="38" rx="3" fill="#f6f1e6" stroke="#4a3f33"'
+    ' stroke-width="2"/>'
+    '<g stroke="#4a3f33" stroke-width="3" stroke-linecap="round">'
+    '<line x1="21" y1="50" x2="49" y2="50"/><line x1="21" y1="61" x2="49" y2="61"/>'
+    '<line x1="21" y1="72" x2="49" y2="72"/></g>'
+    '<circle cx="70" cy="55" r="11" fill="#f6f1e6" stroke="#4a3f33" stroke-width="3"/>'
+    '<line x1="70" y1="55" x2="77" y2="48" stroke="#4a3f33" stroke-width="3"/>'
+    '<circle cx="76" cy="79" r="5" fill="#4a3f33"/>'
+)
+# A claw hammer, for a room with tools.
+HAMMER = (
+    '<rect x="44" y="26" width="13" height="66" rx="5" fill="#a9773f" stroke="#4f3a24"'
+    ' stroke-width="3"/>'
+    '<path d="M14 22h50a10 10 0 0 1 0 20H42L14 40z" fill="#9aa3ab" stroke="#3f464c"'
+    ' stroke-width="4"/>'
+    '<path d="M64 20l22 4v20l-22 4z" fill="#7d868e" stroke="#3f464c" stroke-width="4"/>'
+)
 # An ornamental onion (allium): a purple ball of florets on a long stem.
 ALLIUM = (
     '<path d="M50 60V96" stroke="#4c8c3a" stroke-width="5" stroke-linecap="round"/>'
@@ -833,6 +856,8 @@ REGISTRY: dict[str, Icon] = {
         Icon("cross", "\u2717", "no", markup=SHAPES["cross"]),
         Icon("carpet", "\u25a6", "carpet", markup=CARPET, view=(0, 0, 121, 121)),
         Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
+        Icon("radio", "\u266b", "radio", markup=RADIO),
+        Icon("hammer", "\u2692", "hammer", markup=HAMMER),
         Icon("staircase", "\u21d7", "staircase", markup=STAIRCASE),
         Icon("counter", "\u25a4", "reception counter", markup=COUNTER),
         Icon("table", "\u25a4", "table", markup=TABLE),
@@ -968,6 +993,9 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "rails": "rails", "spoor": "rails", "track": "rails",
                 "loopplank": "gangplank", "gangplank": "gangplank",
                 "katana": "katana", "zwaard": "katana", "sword": "katana",
+                "radio": "radio",
+                "hamer": "hammer", "hammer": "hammer",
+                "gereedschap": "hammer", "tools": "hammer", "toolbox": "hammer",
                 "jumpsuit": "jumpsuit", "overall": "jumpsuit",
                 "wagen": "van", "busje": "van", "van": "van",
                 "neon": "neon", "neonbord": "neon", "uithangbord": "signboard"}  # fmt: skip
@@ -1041,6 +1069,10 @@ CATALOGUE: dict[str, str] = {
     "toilet": "1f6bd",
     "kast": "1f5c4", "cabinet": "1f5c4",
     "boekenkast": "1f4da", "boeken": "1f4da", "books": "1f4da",
+    "fossiel": "1f9b4", "fossielen": "1f9b4", "fossils": "1f9b4",
+    "keuken": "1f373", "kitchen": "1f373",
+    "buiten": "1f333", "outside": "1f333",
+    "muizenplek": "1f401", "muizen": "1f401", "mice": "1f401",
     "tv": "1f4fa", "televisie": "1f4fa",
     "piano": "1f3b9",
     "gitaar": "1f3b8", "guitar": "1f3b8",

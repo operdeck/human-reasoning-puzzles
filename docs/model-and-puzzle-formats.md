@@ -43,6 +43,7 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | Tectonic / Suguru | Cell | Domain 1 through the size of its region; each value exactly once per region; equal values at most once in every eight-neighbor pair. |
 | Queens / Star Battle | Region for one star; cell for multiple stars | One star: one cell per region, row, and column, with at most one queen per 2×2 window. Multiple stars: Boolean star/empty cells, exact counts per row, column, and region, and at most one star per 2×2 window. One star uses the Queens name and queen piece. |
 | Zebra logic grid | Item | Each item chooses one position; each category has exactly one item per position; pair clues are relations. |
+| Rooms | Person | One room per person; one `COUNT` per room capacity; a count per "in an area" or "how many people" clue; a relation for together, apart and direction; a hidden share literal per pair for "alone". |
 | Binairo / Tango | Cell | Boolean cell; half of each value per row/column; no three equal in a window; all rows and columns differ. Tango adds equal/different relations. |
 | Tents and Trees | Cell | Boolean tent/empty; row/column counts; exactly one orthogonal tent neighbor per tree; tents do not touch, including diagonally. |
 | Minesweeper-style | Cell | Boolean mine/safe; each numbered cell counts mines in its eight-neighbor set; optional total mine count. |
@@ -178,6 +179,53 @@ next_to Ben fox
 ```
 
 Supported relation words are `same`, `different`, `left_of`, `before`, and `next_to`. `left_of`/`before` mean an earlier position; `next_to` means consecutive positions. Every clue names items from different or the same declared categories, as allowed by the relation.
+
+## Rooms
+
+A rooms puzzle has no grid of squares: people choose rooms on a small plan. Several people may share a room, a room may stay empty, and a room never holds more than its capacity. A room covers one or more `Plan:` cells, so two rooms can be compared by direction:
+
+```text
+Family: rooms
+Language: en
+Plan:
+a a b
+c d e
+Rooms:
+a: 2 #D9EAD3 living room
+b: 1 #FADFB5 hall
+c: 2 #C4DCF2 kitchen
+d: 1 #F4CBC3 study
+e: 1 #E8D5F2 bathroom
+Tags:
+window: a c e
+clock: a d
+People:
+Ada
+Ben
+Cleo
+Dirk
+Clues:
+count (people in area:b) = 0
+not (Dirk in area:window)
+Ben in area:clock
+Ada together Cleo
+count (people in area:a) = 1
+Ada dir:up Cleo
+exactly 1 of (Ada in area:e; Ben in area:e)
+```
+
+`Rooms:` gives each room's capacity, colour and label; `Tags:` groups rooms so one clue can name the group, and the picture draws a property's icon in every room that has it, with a key under the plan naming each one. `Words:` renames a room or group in the sentences the solver writes, and a clue line may end in `| wording`. An entry for a group may give a second form after `|` for counts, which speak for the whole group at once: with `radio: a room with a radio | the rooms with a radio`, a person is "in a room with a radio" while a count says "The rooms with a radio hold three people together", never "a room holds three" when no single room can. Clause forms:
+
+| Clause | Meaning |
+|---|---|
+| `X in area:A` / `not (X in area:A)` | X stands in one of A's rooms, or in none of them |
+| `count (people in area:A) <op> n` | how many people A holds (`=`, `<`, `>`, `<=`, `>=`); for a group this counts every room of it together |
+| `X alone` / `not (X alone)` | X shares a room with nobody, or with at least one other |
+| `X together Y` / `X apart Y` | X and Y do or do not share a room |
+| `exactly n of (clause; clause; …)` | how many of these room clauses hold |
+| `X dir:up/down/left/right Y` | X's room touches Y's in that direction; up is the top of the plan |
+
+The variable values are room labels, so `--step` and the worked solution read as rooms.
 
 ## Binary grids
 

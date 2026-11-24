@@ -49,7 +49,10 @@ LICENSE = (
 )
 CELL = re.compile(r'<rect id="r(\d+)c(\d+)" class="cell"')
 DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru", "towers", "kakuro"})
-UNSUPPORTED = {"logicgrid": "The logic grid needs its own matrix view; not playable yet."}
+UNSUPPORTED = {
+    "logicgrid": "The logic grid needs its own matrix view; not playable yet.",
+    "rooms": "The room plan needs its own board view; not playable yet.",
+}
 
 
 @dataclass(frozen=True)
