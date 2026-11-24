@@ -403,21 +403,35 @@ class _Narrator(generic_story.Narrator):
         if not squares or any(cells != squares for cells in by_person.values()):
             return None
         remaining = [person for person in self.board.people if person not in by_person]
-        return (
-            self.say(
-                "murdoku.shared_rule_exclusions_none"
-                if not remaining
-                else (
-                    "murdoku.shared_rule_exclusions_one"
-                    if len(remaining) == 1
-                    else "murdoku.shared_rule_exclusions_some"
-                ),
-                source=self.names(sources),
-                people=self.say.join(remaining),
-                squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
-            )
-            + "."
+        result = self.say(
+            "murdoku.shared_rule_exclusions_none"
+            if not remaining
+            else (
+                "murdoku.shared_rule_exclusions_one"
+                if len(remaining) == 1
+                else "murdoku.shared_rule_exclusions_some"
+            ),
+            source=self.names(sources),
+            people=self.say.join(remaining),
+            squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
         )
+        rule = next(
+            (
+                origin.statement.formula
+                for origin in self.compilation.origins
+                if origin.kind == "rule" and origin.label in origins
+            ),
+            None,
+        )
+        if (
+            len(origins) == 1
+            and isinstance(rule, Atom)
+            and rule.determiner is not None
+            and rule.determiner.text == "no"
+            and (detail := self._beside_different_area(rule, set(self.board.free), rule=True))
+        ):
+            result += f". {detail}"
+        return result + "."
 
     def _population_level(self, constraint: Constraint) -> tuple[str, int] | None:
         if (
@@ -2795,7 +2809,9 @@ class _Narrator(generic_story.Narrator):
                 )
         return None
 
-    def _beside_different_area(self, formula: Atom, candidates: set[Square]) -> str | None:
+    def _beside_different_area(
+        self, formula: Atom, candidates: set[Square], *, rule: bool = False
+    ) -> str | None:
         target = formula.target
         if (
             formula.operator.text != "beside"
@@ -2813,12 +2829,28 @@ class _Narrator(generic_story.Narrator):
             if steps_between(square, feature) == 1
             and self.board.region_of(square) != self.board.region_of(feature)
         }
+        different_area = {
+            square
+            for square in different_area
+            if not any(
+                steps_between(square, feature) == 1
+                and self.board.region_of(square) == self.board.region_of(feature)
+                for obj in self.board.objects
+                if obj.name == name
+                for feature in obj.squares
+            )
+        }
         if not different_area:
             return None
+        phrase = "murdoku.beside_different_area"
+        if rule:
+            phrase = "murdoku.beside_rule_different_area"
+            if len(different_area) > 1:
+                phrase += "_many"
         return self.say(
-            "murdoku.beside_different_area",
+            phrase,
             squares=self.places.squares(different_area, "and"),
-            thing=self.places.thing(name),
+            thing=self.places.thing(name, as_label=rule),
         )
 
     def _role_exclusion(self, inference: Inference) -> tuple[str, _RoleExclusion | None] | None:

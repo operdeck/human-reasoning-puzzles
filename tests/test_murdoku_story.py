@@ -118,6 +118,70 @@ def test_direct_beside_clue_explains_different_area(language, boundary, numbered
     assert boundary in opening
 
 
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
+    ("language", "feature", "boundary"),
+    [
+        (
+            "nl",
+            "de stinksokken",
+            "r2k9 grenst aan een vakje met de stinksokken, maar ligt in een ander gebied; "
+            "naast vereist hetzelfde gebied",
+        ),
+        (
+            "en",
+            "the socks",
+            "r2c9 borders a square containing the socks, but is in a different area; "
+            "beside requires the same area",
+        ),
+    ],
+)
+def test_shared_negative_beside_rule_explains_cross_boundary_square(
+    language, feature, boundary, numbered
+):
+    source = (
+        example("berghut-murdoku-3.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+        .replace("stinksokken: de stinksokken", f"stinksokken: {feature}")
+    )
+    text = murdoku_story.explain(source, numbered=numbered).markdown()
+    assert boundary in text
+    assert "een stinksokken" not in text
+
+
+def test_beside_boundary_does_not_exempt_a_same_area_neighbor():
+    source = """Size: 3
+Regions:
+a: hall
+b: room
+Grid:
+a b a
+a a a
+a a a
+People:
+Ada
+Ben
+Cy
+Objects:
+sock: blocking r1c2
+sock: blocking r2c1
+Rules:
+no people beside object:sock
+"""
+    board, rules, clues = load_expression_board(source)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    narrator = murdoku_story._Narrator(source, board, compilation, numbered=True)
+    candidate = {Square(1, 1)}
+    assert narrator._beside_different_area(rules[0].formula, candidate, rule=True) is None
+    board.objects.pop()
+    assert narrator._beside_different_area(rules[0].formula, candidate, rule=True) is not None
+    pair = {Square(0, 0), Square(0, 2)}
+    assert "Each of r1c1 and r1c3 borders" in narrator._beside_different_area(
+        rules[0].formula, pair, rule=True
+    )
+
+
 @pytest.mark.parametrize(
     ("language", "expected"),
     [
@@ -739,7 +803,7 @@ def test_shared_role_exclusion_names_each_person_and_the_common_reason(
     text = murdoku_story.explain(source, numbered=numbered).markdown()
     paragraph = next(paragraph for paragraph in text.split("\n\n") if grouped in paragraph)
     assert boundary in paragraph
-    assert text.count(boundary) == 1
+    assert paragraph.count(boundary) == 1
 
 
 def test_role_exclusions_with_different_candidates_are_not_grouped():

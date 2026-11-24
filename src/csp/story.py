@@ -590,6 +590,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "can be the {role}",
         "murdoku.beside_different_area": "An area boundary separates {squares} from {thing}; "
         "beside requires the same area",
+        "murdoku.beside_rule_different_area": "{squares} borders a square containing {thing}, "
+        "but is in a different area; beside requires the same area",
+        "murdoku.beside_rule_different_area_many": "Each of {squares} borders a square containing "
+        "{thing}, but is in a different area; beside requires the same area",
         "line_takes": "{who} occupies {lines}",
         "murdoku.line_takes_known": "{who} occupies {lines}",
         "murdoku.shared_rule_exclusions_some": "By {source}, only {people} can use {squares}",
@@ -1268,6 +1272,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "geen van hen kan de {role} zijn",
         "murdoku.beside_different_area": "Tussen {squares} en {thing} ligt een gebiedsgrens; "
         "naast vereist hetzelfde gebied",
+        "murdoku.beside_rule_different_area": "{squares} grenst aan een vakje met {thing}, maar "
+        "ligt in een ander gebied; naast vereist hetzelfde gebied",
+        "murdoku.beside_rule_different_area_many": "Elk van {squares} grenst aan een vakje met "
+        "{thing}, maar ligt in een ander gebied; naast vereist hetzelfde gebied",
         "line_takes": "{who} bezet {lines}",
         "murdoku.line_takes_known": "{who} bezet {lines}",
         "murdoku.shared_rule_exclusions_some": (
