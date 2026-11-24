@@ -1233,7 +1233,9 @@ class Narrator:
             for step in steps
         )
 
-    def _relation_options(self, step: Step, before: Model) -> tuple[str, bool] | None:
+    def _relation_options(
+        self, step: Step, before: Model, needed: Sequence[int]
+    ) -> tuple[str, bool] | None:
         """What the broken relation's cells have left once the trail is played on `before`.
 
         The flag is true when the text names cells left with no value at all.
@@ -1247,6 +1249,30 @@ class Narrator:
             var: {before.value_of(literal) for literal in before.options(var)}
             for var in relation.variables
         }
+        explained_values = {var: set(values) for var, values in candidate_values.items()}
+        for index in needed:
+            item = step.trail[index]
+            if relation.name in item.sources:
+                break
+            if item.var in explained_values:
+                if item.asserted:
+                    explained_values[item.var] = {item.value}
+                else:
+                    explained_values[item.var].discard(item.value)
+        combinations_count = 1
+        for values in explained_values.values():
+            combinations_count *= len(values)
+        if (
+            0 < combinations_count <= 256
+            and all(var in self.visible and not self._boolean(var) for var in relation.variables)
+            and not any(
+                relation.holds(*values)
+                for values in product(*(explained_values[var] for var in relation.variables))
+            )
+        ):
+            premises = [self.remaining(var, explained_values[var]) for var in relation.variables]
+            if all(item is not None for item in premises):
+                return self.say.join([item for item in premises if item is not None]), False
         for item in step.trail:
             if item.var not in candidate_values:
                 continue
@@ -1274,6 +1300,26 @@ class Narrator:
     def _what_if(self, inference: Inference, history: Sequence[Step]) -> str:
         step = next(step for step in inference.steps if step.rule == "what_if")
         needed = essential(self.model, history, step)
+        broken = step.sources[0] if step.sources else None
+        relation = next((item for item in self.model.relations if item.name == broken), None)
+        if relation is not None and len(relation.variables) <= 6:
+            known: set[tuple[str, Any]] = set()
+            extra = []
+            for index, item in enumerate(step.trail):
+                if broken in item.sources:
+                    break
+                if index in needed and item.asserted and item.var in self.visible:
+                    known.add((item.var, item.value))
+                elif (
+                    index not in needed
+                    and not item.asserted
+                    and item.var in relation.variables
+                    and item.var in self.visible
+                    and item.placing in known
+                ):
+                    extra.append(index)
+            if len(extra) <= 8:
+                needed = sorted([*needed, *extra])
         shown: list[str] = []
         shown_pairs: set[tuple[str, Any]] = set()
         eliminated: list[tuple[str, Any]] = []
@@ -1338,10 +1384,9 @@ class Narrator:
             else:
                 shown.append(self.say("generic.trail_only", placement=option))
         flush_eliminations()
-        broken = step.sources[0] if step.sources else None
         if premise := self._comparison_premise(step, inference.before, broken, needed):
             shown.append(premise)
-        options = self._relation_options(step, inference.before)
+        options = self._relation_options(step, inference.before, needed)
         if broken is None:
             breaks = self.say("generic.breaks_unknown")
         elif options is not None and options[1]:

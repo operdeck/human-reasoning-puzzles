@@ -231,9 +231,10 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     assert "r2c3 cannot be 2 by *18x cage r2c2 r2c3 r3c3*; r4c3 = 2" in first
     assert "r4c2 cannot be 4 and r5c2 cannot be 1 by *4x cage" in first
     assert "r4c2 = 1 is the only option" in first
+    assert "r1c4\u2013r1c6 cannot be 3 by *3 once in row 1*" in first
     assert (
-        "but r1c5 and r1c6 would have no value left that fits "
-        "*9+ cage r1c5 r1c6 r2c6*; so r2c2 ≠ 6."
+        "but r1c5 = 1, 2 or 6, r1c6 = 1, 2 or 6 and r2c6 = 3 "
+        "break *9+ cage r1c5 r1c6 r2c6*; so r2c2 ≠ 6."
     ) in first
     second = next(p for p in story.paragraphs if p.startswith("**Suppose r1c4 = 3.**"))
     assert "r2c5 cannot be 1, 4 or 5 by *12+ cage" in second
@@ -246,6 +247,11 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     ) in story.markdown()
     assert "so r1c4 ≠ 3" in story.markdown()
     assert "*13+ cage r1c1 r1c2 r2c1* rules out 3" not in story.markdown()
+
+
+def test_case_contradiction_shows_candidates_in_dutch():
+    text = told("calcudoku_6_6x6.txt", "nl").markdown()
+    assert ("r1c5 = 1, 2 of 6, r1c6 = 1, 2 of 6 en r2c6 = 3 met *9+ cage r1c5 r1c6 r2c6*") in text
 
 
 def test_tent_case_and_chain_include_their_essential_premises():
