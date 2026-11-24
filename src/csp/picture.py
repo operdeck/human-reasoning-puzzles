@@ -1846,12 +1846,13 @@ def _room_caption(
         if font <= 7 or all(canvas.textlength(line, font) <= span * 0.92 for line in lines):
             break
         font -= 1
-    cursor = y + max(2.0, span * 0.03)
+    cursor = y + max(2.0, span * 0.045)
+    inset = x + max(2.0, span * 0.075)
     for line in lines[:2]:
-        canvas.text((x + span * 0.04, cursor), line, INK, font, "la")
+        canvas.text((inset, cursor), line, INK, font, "la")
         cursor += font * 1.15
     capacity = max(7, int(font * 0.8))
-    canvas.text((x + span * 0.04, cursor), f"max {room.capacity}", INK, capacity, "la")
+    canvas.text((inset, cursor), f"max {room.capacity}", INK, capacity, "la")
     return cursor + capacity * 1.2, font
 
 
@@ -1889,10 +1890,10 @@ def _room_properties(
 ) -> None:
     """The room's property icons along its bottom edge, in as many rows as they need."""
     side, columns, rows, gap = _layout_properties(len(properties), span, depth, icon_size)
-    bottom = y + depth - max(2.0, span * 0.03)
+    bottom = y + depth - max(2.0, span * 0.05)
     for index, tag in enumerate(properties):
         row, column = divmod(index, columns)
-        left = x + span * 0.04 + column * (side + gap)
+        left = x + max(2.0, span * 0.075) + column * (side + gap)
         top = bottom - (rows - row) * (side + gap) + gap / 2
         _draw_property(canvas, tag, icons.object_icon(tag), (left, top, left + side, top + side))
 

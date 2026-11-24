@@ -165,6 +165,7 @@ ALLOWED = {
         "picture",
         "puzzlefile",
         "rectangles",
+        "rooms",
         "starbattle",
         "story",
         "svg",

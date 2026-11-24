@@ -287,17 +287,30 @@ def make_image(
     *,
     interactive: bool = False,
     expressions: bool = False,
+    for_web: bool = False,
 ) -> Any:
     """The picture (an `svg.Canvas`) of a puzzle of any family.
 
     `solution` is drawn in if given; `interactive` draws the variant for the
     online game instead: cells as elements with ids, no solution. Murdoku always
     uses the expression grammar; `expressions` is retained for compatibility.
+    `for_web` leaves out what the web page shows as text beside the board, such
+    as a room plan's clue list and its property key.
     """
     from . import picture
 
     if kind == "queens":
         kind = "starbattle"
+
+    if kind == "rooms":
+        puzzle = rooms.parse(text)
+        return picture.rooms_picture(
+            puzzle,
+            None if interactive else solution,
+            interactive=interactive,
+            clue_lines=not for_web,
+            legend=not for_web,
+        )
 
     families: dict[str, tuple[Callable[[str], Any], Callable[..., Any]]] = {
         "suguru": (suguru.parse, picture.suguru_picture),
@@ -616,7 +629,9 @@ def _export(files: list[Path], out: Path, *, expressions: bool = False) -> int:
             result = Solver(model.clone()).solve(on_step=fired.append_step)
             if not result.solved:
                 raise ValueError("not solved by the rules")
-            picture = make_image(kind, text, interactive=True, expressions=told).to_svg()
+            picture = make_image(
+                kind, text, interactive=True, expressions=told, for_web=True
+            ).to_svg()
             fired_rules = [rule for rule, _ in fired.items]
             data = web.bundle(
                 text,
