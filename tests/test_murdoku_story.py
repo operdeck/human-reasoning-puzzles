@@ -259,8 +259,33 @@ def test_hut_seat_and_role_deductions_name_candidates():
     assert "Tussen r2k5 en de kachel ligt een gebiedsgrens; naast vereist hetzelfde gebied" in text
     assert "Gerhard alleen nog in het drooghok, in Kamer Zuid of in het washok kan staan" in text
     assert "Alleen Gunter kan in kolom 3 staan (r7k3 of r8k3)" in text
+    assert "sluit r5k4 voor Gerhard uit" in text
+    assert text.index("**Brunhild op r2k5**") < text.index("**Waltraud op r4k8**")
     assert "in de Kamer Noord" not in text
     assert "de resterende vakjes van Greta liggen allemaal in rij 1" not in text
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("berghut-murdoku-1.txt", "Waltraud Greta Gerhard Hannelore Ute Siegfried"),
+        ("berghut-murdoku-2.txt", "Ute Reinhart Greta Hannelore Gunter Brunhild Waltraud Gerhard"),
+        (
+            "berghut-murdoku-3.txt",
+            "Gunter Sepp Reinhart Gerhard Hannelore Siegfried Greta Brunhild Waltraud Ute",
+        ),
+    ],
+)
+def test_berghut_placements_remain_in_baseline_order(name, expected):
+    text = murdoku_story.explain(example(name).read_text()).markdown()
+    people = expected.split()
+    placements = [
+        person
+        for bold in re.findall(r"\*\*(.*?)\*\*", text)
+        for person in re.findall(r"\b(\w+) op r\d+k\d+", bold)
+        if person in people
+    ]
+    assert placements == people
 
 
 def test_person_single_is_located_by_the_intersecting_lines():

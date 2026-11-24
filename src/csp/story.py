@@ -477,6 +477,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_eligible_true": "{role}: only these assignments are true: {statements}",
         "murdoku.chain_domain_reason": "; it is the only square left after {excluded} is ruled out",
         "murdoku.relation_pair": "Of the remaining squares, only {pair} satisfy {source}.",
+        "murdoku.relation_pair_with_known": "Given {known}, only {pair} among the remaining "
+        "squares satisfies {source}.",
         "murdoku.direction_boundaries": "{clue}, so **{first}** and **{second}**.",
         "line_single": "In {line}, only {placement} remains; since the line requires one person, "
         "that person must be there.",
@@ -484,6 +486,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.region_candidates": "Possible areas: {candidates}",
         "murdoku.line_single_with_clues": "{clues}; in {line} only {placement} remains, and the "
         "line requires one person, so that person must be there.",
+        "murdoku.line_single_consequences": "{line} must be occupied; only {who} can fill it, "
+        "at {square}. That placement excludes the other candidates in its row and column, "
+        "giving {placements}.",
         "murdoku.line_overlap": "The only remaining place for {source_line} is {square}, in "
         "{scope_line}; since {source_line} must be occupied, {scope_line} is already occupied, "
         "so {conclusion}",
@@ -1061,6 +1066,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.chain_domain_reason": "; dat is het enige vakje dat overblijft nadat "
         "{excluded} is uitgesloten",
         "murdoku.relation_pair": "Van de overgebleven vakjes voldoen alleen {pair} aan {source}.",
+        "murdoku.relation_pair_with_known": "Met {known} voldoet van de overgebleven vakjes "
+        "alleen {pair} aan {source}.",
         "murdoku.direction_boundaries": "{clue}, dus **{first}** en **{second}**.",
         "line_single": "In {line} is alleen {placement} over; omdat daar precies één persoon moet "
         "staan, moet die persoon daar staan.",
@@ -1068,6 +1075,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.region_candidates": "Mogelijke gebieden: {candidates}",
         "murdoku.line_single_with_clues": "{clues}; daardoor is in {line} alleen {placement} "
         "over, want daar moet precies één persoon staan.",
+        "murdoku.line_single_consequences": "{line} moet bezet zijn; alleen {who} kan daar "
+        "staan, op {square}. Die plaatsing sluit de andere kandidaten in die rij en kolom uit: "
+        "{placements}.",
         "murdoku.line_overlap": "De enige overgebleven plaats in {source_line} is {square}, in "
         "{scope_line}; omdat {source_line} bezet moet zijn, is {scope_line} al bezet, dus "
         "{conclusion}",

@@ -1434,6 +1434,11 @@ class _Narrator(generic_story.Narrator):
                     context, clues = self._line_single_clues(
                         step.var, kind, index, step.value, history, inference.before
                     )
+                    paired = self._line_single_consequences(inference, step, kind, index)
+                    if paired:
+                        if clues:
+                            paired = f"{self.say.join(clues)}; {paired[0].lower()}{paired[1:]}"
+                        return f"{context}. {paired}" if context else paired
                     if clues:
                         self.spoken_placements.add((step.var, step.value))
                         paragraph = self.say(
@@ -1466,6 +1471,46 @@ class _Narrator(generic_story.Narrator):
                     )
                 )
         return None
+
+    def _line_single_consequences(
+        self, inference: Inference, placement: Step, kind: str, index: int
+    ) -> str | None:
+        others: list[tuple[str, Square]] = []
+        for person in self.board.people:
+            if person == placement.var:
+                continue
+            before = {
+                inference.before.value_of(literal) for literal in inference.before.options(person)
+            }
+            if len(before) <= 1 or not all(isinstance(square, Square) for square in before):
+                continue
+            removed = {
+                step.value
+                for step in inference.steps
+                if step.var == person
+                and not step.asserted
+                and step.placing == (placement.var, placement.value)
+            }
+            remaining = before - removed
+            if len(remaining) == 1:
+                (square,) = remaining
+                if (person, square) not in self.spoken_placements:
+                    others.append((person, square))
+        if not others:
+            return None
+        assert isinstance(placement.value, Square)
+        placements = [*others, (placement.var, placement.value)]
+        placements.sort(key=lambda pair: self.board.people.index(pair[0]))
+        if placements[0][0] == placement.var:
+            return None
+        self.spoken_placements.update(placements)
+        return self.say(
+            "murdoku.line_single_consequences",
+            line=_cap(self.places.line(kind, index)),
+            who=placement.var,
+            square=self.places.square(placement.value),
+            placements=self.say.join([f"**{self.placed(*pair)}**" for pair in placements]),
+        )
 
     def _person_single_reason(self, step: Step, history: Sequence[Step]) -> str | None:
         initial = {
@@ -1653,6 +1698,31 @@ class _Narrator(generic_story.Narrator):
             )
             for label, squares in exclusions.items()
         ]
+        other_clues: dict[tuple[str, str], set[Square]] = {}
+        for step in history:
+            if (
+                step.var not in self.board.people
+                or step.var == person
+                or step.asserted
+                or step.placing is not None
+                or step.value != placement
+                or len(before.options(step.var)) <= 1
+            ):
+                continue
+            for source in step.sources:
+                for label in self.source_origins.get(source, ()):
+                    if label in self.clue_origins:
+                        other_clues.setdefault((step.var, label), set()).add(placement)
+        if len(other_clues) <= 2:
+            clues.extend(
+                self.say(
+                    "murdoku.line_single_excluded",
+                    clue=self.names([label]),
+                    who=who,
+                    squares=self.places.squares(squares, "and"),
+                )
+                for (who, label), squares in other_clues.items()
+            )
         recent = list(history)
         last_placement = next(
             (
@@ -1745,9 +1815,20 @@ class _Narrator(generic_story.Narrator):
         ]
         if len(pairs) != 1:
             return None
+        known = [pair for pair in pairs[0] if pair in self.spoken_placements]
+        new = [pair for pair in pairs[0] if pair not in self.spoken_placements]
+        if not new:
+            return None
         self.spoken_placements.update(
-            (person, square) for person, square in pairs[0] if isinstance(square, Square)
+            (person, square) for person, square in new if isinstance(square, Square)
         )
+        if known:
+            return self.say(
+                "murdoku.relation_pair_with_known",
+                known=self.say.join([self.placed(*pair) for pair in known]),
+                pair=self.say.join([f"**{self.placed(*pair)}**" for pair in new]),
+                source=self.names(move.sources),
+            )
         pair = self.say.join([self.placed(*candidate) for candidate in pairs[0]])
         return self.say(
             "murdoku.relation_pair",
