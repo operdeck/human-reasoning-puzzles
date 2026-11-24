@@ -101,6 +101,24 @@ def test_last_candidate_is_announced_once_before_the_later_assignment():
 
 
 @pytest.mark.parametrize(
+    ("language", "boundary"),
+    [
+        ("en", "An area boundary separates r2c2 from the tree; beside requires the same area"),
+        ("nl", "Tussen r2k2 en de tree ligt een gebiedsgrens; naast vereist hetzelfde gebied"),
+    ],
+)
+@pytest.mark.parametrize("numbered", [True, False])
+def test_direct_beside_clue_explains_different_area(language, boundary, numbered):
+    text = (
+        example("murdoku_1_first_case.txt")
+        .read_text()
+        .replace("Language: en", f"Language: {language}")
+    )
+    opening = murdoku_story.explain(text, numbered=numbered).paragraphs[0]
+    assert boundary in opening
+
+
+@pytest.mark.parametrize(
     ("language", "expected"),
     [
         ("en", "on the squares marked red"),

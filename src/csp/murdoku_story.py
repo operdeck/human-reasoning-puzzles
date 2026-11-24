@@ -352,6 +352,10 @@ class _Narrator(generic_story.Narrator):
                     suffix += f", {self.say('so')} **{instruction}**"
                     open_squares.difference_update(crossed)
         said = f"{clue}{suffix}."
+        if isinstance(location.formula, Atom):
+            detail = self._beside_different_area(location.formula, previous - squares)
+            if detail:
+                said += f" {detail}."
         if len(squares) == 1:
             (square,) = squares
             if (person, square) not in already_told and (
@@ -2466,6 +2470,32 @@ class _Narrator(generic_story.Narrator):
                 )
         return None
 
+    def _beside_different_area(self, formula: Atom, candidates: set[Square]) -> str | None:
+        target = formula.target
+        if (
+            formula.operator.text != "beside"
+            or not isinstance(target, Name)
+            or not target.token.text.startswith("object:")
+        ):
+            return None
+        name = target.token.text.removeprefix("object:")
+        different_area = {
+            square
+            for square in candidates
+            for obj in self.board.objects
+            if obj.name == name
+            for feature in obj.squares
+            if steps_between(square, feature) == 1
+            and self.board.region_of(square) != self.board.region_of(feature)
+        }
+        if not different_area:
+            return None
+        return self.say(
+            "murdoku.beside_different_area",
+            squares=self.places.squares(different_area, "and"),
+            thing=self.places.thing(name),
+        )
+
     def _role_exclusion(self, inference: Inference) -> str | None:
         visible = [step for step in inference.steps if step.var in self.roles]
         if len(visible) != 1:
@@ -2527,32 +2557,8 @@ class _Narrator(generic_story.Narrator):
                 )
             ):
                 detail = ""
-                target = formula.body.target
-                if (
-                    formula.body.operator.text == "beside"
-                    and isinstance(target, Name)
-                    and target.token.text.startswith("object:")
-                ):
-                    name = target.token.text.removeprefix("object:")
-                    different_area = {
-                        square
-                        for square in candidates
-                        for obj in self.board.objects
-                        if obj.name == name
-                        for feature in obj.squares
-                        if steps_between(square, feature) == 1
-                        and self.board.region_of(square) != self.board.region_of(feature)
-                    }
-                    if different_area:
-                        detail = (
-                            " "
-                            + self.say(
-                                "murdoku.beside_different_area",
-                                squares=self.places.squares(different_area, "and"),
-                                thing=self.places.thing(name),
-                            )
-                            + "."
-                        )
+                if explanation := self._beside_different_area(formula.body, set(candidates)):
+                    detail = f" {explanation}."
                 self.spoken_rule_origins.add(origin.label)
                 return self.say(
                     "murdoku.role_exclusion_candidates"

@@ -40,7 +40,7 @@ murderer.
 <details>
 <summary>Show the worked solution</summary>
 
-- **The direct clues.** Ingrid is on a chair (1). Joost is beside the tree (2): **on the patio**: **Joost on r1c1**. Lotte is on the bed (3): **in the guest room**.
+- **The direct clues.** Ingrid is on a chair (1). Joost is beside the tree (2): **on the patio**: **Joost on r1c1**. An area boundary separates r2c2 from the tree; beside requires the same area. Lotte is on the bed (3): **in the guest room**.
 
 - By *r1c1 holds at most one person*, *exactly one person per row* and *exactly one person per column*, Joost takes column 1; therefore **Lotte on r4c2** is the only remaining place and **Joost occupies row 1 and column 1; exactly one person occupies each row and column, so no one else can use those lines**.
 
