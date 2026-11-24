@@ -578,6 +578,35 @@ def test_line_overlap_candidate_bounds_are_lowercase_after_so():
 
 
 @pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
+    ("language", "reason", "remaining"),
+    [
+        (
+            "nl",
+            "In rij 5 past maar één persoon, dus Hannelore moet r5k3 en r5k5 uitsluiten",
+            "**Hannelore zit op r5k4, r7k5 of r7k7**",
+        ),
+        (
+            "en",
+            "Only one person can be in row 5, so Hannelore must rule out r5c3 and r5c5",
+            "**Hannelore is on r5c4, r7c5 or r7c7**",
+        ),
+    ],
+)
+def test_line_overlap_names_removed_candidates_before_remaining(
+    numbered, language, reason, remaining
+):
+    source = (
+        example("berghut-murdoku-2.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    text = murdoku_story.explain(source, numbered=numbered).markdown()
+    assert reason in text and remaining in text
+    assert text.index(reason) < text.index(remaining)
+
+
+@pytest.mark.parametrize("numbered", [True, False])
 def test_line_reservation_cites_prior_clue_exclusions(numbered):
     text = murdoku_story.explain(
         example("berghut-murdoku-2.txt").read_text(), numbered=numbered

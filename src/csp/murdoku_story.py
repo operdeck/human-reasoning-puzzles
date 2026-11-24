@@ -2496,6 +2496,39 @@ class _Narrator(generic_story.Narrator):
         ) != scope_index:
             return None
         self.told_occupied_squares.add(square)
+        if conclusion:
+            excluded: dict[str, set[Square]] = {}
+            for step in inference.steps:
+                if (
+                    step.var in self.board.people
+                    and not step.asserted
+                    and isinstance(step.value, Square)
+                    and step.value != square
+                ):
+                    excluded.setdefault(step.var, set()).add(step.value)
+            relevant = []
+            for person, removed in excluded.items():
+                remaining = {
+                    inference.before.value_of(literal)
+                    for literal in inference.before.options(person)
+                } - removed
+                if (
+                    square in remaining
+                    and len(remaining) <= MAX_LISTED
+                    and len(removed) <= MAX_LISTED
+                ):
+                    relevant.append((person, removed))
+            if len(relevant) == 1:
+                person, removed = relevant[0]
+                return self.say(
+                    "murdoku.line_overlap_with_exclusions",
+                    source_line=self.places.line(source_kind, source_index),
+                    square=self.places.square(square),
+                    scope_line=self.places.line(scope_kind, scope_index),
+                    who=person,
+                    removed=self.places.squares(removed, "and"),
+                    conclusion=conclusion,
+                )
         return self.say(
             "murdoku.line_overlap" if conclusion else "murdoku.line_overlap_only",
             source_line=self.places.line(source_kind, source_index),

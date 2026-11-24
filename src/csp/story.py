@@ -545,6 +545,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.line_overlap": "The only remaining place for {source_line} is {square}, in "
         "{scope_line}; since {source_line} must be occupied, {scope_line} is already occupied, "
         "so {conclusion}",
+        "murdoku.line_overlap_with_exclusions": "The only remaining place for {source_line} "
+        "is {square}, in {scope_line}; it must be occupied there. Only one person can be in "
+        "{scope_line}, so {who} must rule out {removed}; hence {conclusion}",
         "murdoku.line_overlap_only": "The only remaining place for {source_line} is {square}, "
         "in {scope_line}; since {source_line} must be occupied, {scope_line} is already occupied",
         "murdoku.area_confined": "{who}'s remaining squares are all {area}",
@@ -1213,6 +1216,9 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.line_overlap": "De enige overgebleven plaats in {source_line} is {square}, in "
         "{scope_line}; omdat {source_line} bezet moet zijn, is {scope_line} al bezet, dus "
         "{conclusion}",
+        "murdoku.line_overlap_with_exclusions": "De enige overgebleven plaats in {source_line} "
+        "is {square}, in {scope_line}; dat vakje moet bezet zijn. In {scope_line} past maar "
+        "één persoon, dus {who} moet {removed} uitsluiten; daarom {conclusion}",
         "murdoku.line_overlap_only": "De enige overgebleven plaats in {source_line} is {square}, "
         "in {scope_line}; omdat {source_line} bezet moet zijn, is {scope_line} al bezet",
         "murdoku.area_confined": "{who} kan alleen nog op vakjes {area}",
