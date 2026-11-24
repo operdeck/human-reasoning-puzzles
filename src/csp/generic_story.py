@@ -777,10 +777,56 @@ class Narrator:
         step = next(step for step in inference.steps if step.rule == "what_if")
         needed = essential(self.model, history, step)
         shown: list[str] = []
+        eliminated: list[tuple[str, Any]] = []
+        elimination_sources: tuple[str, ...] = ()
+
+        def flush_eliminations() -> None:
+            if eliminated:
+                removed: dict[str, list[Any]] = {}
+                boolean: list[str] = []
+                for var, value in eliminated:
+                    if isinstance(value, bool) and self._boolean(var):
+                        boolean.append(self.negated(var, value))
+                    else:
+                        removed.setdefault(var, []).append(value)
+                alike: dict[tuple[Any, ...], list[str]] = {}
+                for var, values in removed.items():
+                    alike.setdefault(tuple(values), []).append(var)
+                details = boolean + [
+                    self.say(
+                        "generic.cannot_be",
+                        where=compress(variables, self.say),
+                        values=self.say.join([str(value) for value in values], "or"),
+                    )
+                    for values, variables in alike.items()
+                ]
+                shown.append(
+                    self.say(
+                        "generic.trail_place",
+                        placement=self.say.join(details),
+                        sources=self.names(elimination_sources),
+                    )
+                )
+                eliminated.clear()
+
         for j in needed:
             inner = step.trail[j]
-            if j == 0 or not inner.asserted or inner.var not in self.visible:
+            if j == 0 or inner.var not in self.visible:
                 continue
+            if not inner.asserted:
+                if (
+                    inner.placing is None
+                    and inner.sources
+                    and not all(source in self.domains for source in inner.sources)
+                ):
+                    if inner.sources != elimination_sources:
+                        flush_eliminations()
+                        elimination_sources = inner.sources
+                    negation = (inner.var, inner.value)
+                    if negation not in eliminated:
+                        eliminated.append(negation)
+                continue
+            flush_eliminations()
             option = self.placed(inner.var, inner.value)
             if option in shown:
                 continue
@@ -794,6 +840,7 @@ class Narrator:
                 )
             else:
                 shown.append(self.say("generic.trail_only", placement=option))
+        flush_eliminations()
         broken = step.sources[0] if step.sources else None
         options = self._relation_options(step, inference.before)
         if broken is None:

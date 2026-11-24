@@ -75,16 +75,20 @@ def test_boolean_cells_are_grouped_into_runs_in_family_words():
 def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     story = told("calcudoku_6_6x6.txt")
     assert story.complete
+    first = next(p for p in story.paragraphs if p.startswith("**Suppose r2c2 = 6.**"))
+    assert "r2c3 cannot be 2 by *18x cage r2c2 r2c3 r3c3*; r4c3 = 2" in first
+    assert "r4c2 cannot be 4 and r5c2 cannot be 1 by *4x cage" in first
+    assert "r4c2 = 1 is the only option" in first
     assert (
-        "**Suppose r2c2 = 6.** Then r4c3 = 2 by *2 once in col 3*; "
-        "r4c2 = 1 is the only option; r5c2 = 2 is the only option; "
-        "r3c1 = 2 by *2 once in row 3*; r3c4 = 6 by *6 once in row 3*; "
-        "r3c2 = 5 is the only option; r1c2 = 3 is the only option; "
-        "r1c4 = 5 is the only option; r3c3 = 3 by *3 once in row 3*; "
-        "r2c6 = 3 by *3 once in row 2*; "
         "but r1c5 and r1c6 would have no value left that fits "
         "*9+ cage r1c5 r1c6 r2c6*; so r2c2 ≠ 6."
-    ) in story.markdown()
+    ) in first
+    second = next(p for p in story.paragraphs if p.startswith("**Suppose r1c4 = 3.**"))
+    assert "r2c5 cannot be 1, 4 or 5 by *12+ cage" in second
+    assert "r2c5 = 6 is the only option" in second
+    third = next(p for p in story.paragraphs if p.startswith("**Suppose r1c2 = 2.**"))
+    assert "r2c1 cannot be 1, 4 or 6 by *13+ cage" in third
+    assert "r2c1 = 5 is the only option" in third
     assert (
         "but r1c1 = 6, r1c2 = 5 and r2c1 = 5 break *13+ cage r1c1 r1c2 r2c1*"
     ) in story.markdown()
@@ -162,6 +166,7 @@ def test_rooms_hidden_helpers_read_as_facts_about_people():
         " most 1* rules out porch and *The rooms with a plant hold exactly three people together*"
         " rules out attic."
     ) in told_text
-    assert "Then Dirk = hall is the only option; Dirk and Ben are together by" in told_text
+    assert "Then Dirk = hall is the only option;" in told_text
+    assert "Dirk and Ben are together by *Dirk is not alone*" in told_text
     for leak in ("intermediate step", "rooms 1", "clue 1", " count*", "; Given"):
         assert leak not in told_text
