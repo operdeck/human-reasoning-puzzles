@@ -249,6 +249,34 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     assert "*13+ cage r1c1 r1c2 r2c1* rules out 3" not in story.markdown()
 
 
+@pytest.mark.parametrize(
+    ("language", "premise", "case"),
+    [
+        (
+            "en",
+            "Each row and column contains the numbers 1 to 6 exactly once. Whenever a cage is "
+            "cited below, use its arithmetic together with those row and column rules; cage "
+            "cells not sharing a row or column may repeat",
+            "r1c2 cannot be 1 and r2c1 cannot be 3 by *13+ cage",
+        ),
+        (
+            "nl",
+            "In elke rij en kolom staan de getallen 1 tot en met 6 precies één keer. Gebruik "
+            "bij elke kooi hieronder zowel de berekening als deze rij- en kolomregels; "
+            "kooivakjes die geen rij of kolom delen mogen gelijk zijn",
+            "r1c2: geen 1 en r2c1: geen 3 door *13+ cage",
+        ),
+    ],
+)
+def test_calcudoku_case_cites_shared_line_uniqueness(language, premise, case):
+    text = f"Language: {language}\n" + example("calcudoku_6_6x6.txt").read_text()
+    puzzle = cli.load(text, "calcudoku")
+    narrative = cli.pattern_story("calcudoku", text, puzzle.model).markdown()
+    assert premise in narrative
+    assert case in narrative
+    assert narrative.index(premise) < narrative.index(case)
+
+
 def test_case_contradiction_shows_candidates_in_dutch():
     text = told("calcudoku_6_6x6.txt", "nl").markdown()
     assert ("r1c5 = 1, 2 of 6, r1c6 = 1, 2 of 6 en r2c6 = 3 met *9+ cage r1c5 r1c6 r2c6*") in text

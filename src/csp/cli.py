@@ -238,6 +238,16 @@ def pattern_story(
         return generic_story.explain(
             text, start.clone(keep_log=True), fired, words.sources, kind, words.hidden
         )
+    if kind == "calcudoku":
+        wording = story.Wording.read(text)
+        explanation = generic_story.explain(text, start.clone(keep_log=True), fired, kind=kind)
+        puzzle = calcudoku.parse(text)
+        if any(cage.operator is not None for cage in puzzle.cages):
+            return generic_story.Explanation(
+                (wording("generic.calcudoku_cages", size=puzzle.size), *explanation.paragraphs),
+                explanation.complete,
+            )
+        return explanation
     if kind == "akari":
         akari_puzzle = akari.parse(text)
         wording = story.Wording.read(text)
