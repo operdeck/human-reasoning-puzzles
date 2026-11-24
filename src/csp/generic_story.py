@@ -997,6 +997,7 @@ class Narrator:
             "generic.chain_supported",
             options=self.say.join([self.placed(*candidate) for candidate in candidates], "or"),
             source=self.names([source]),
+            excluded=self.placed(*previous),
             placement=self.placed(*current),
         )
 

@@ -45,8 +45,8 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
     ) in text
     assert text.index("**r5c5 = 5**") < text.index("**r5c1 = 3**")
     assert (
-        "**Chain.** If r5c4 ≠ 4, then only r2c4 = 4 or r5c4 = 4 remain under "
-        "*4 once in col 4*, so r2c4 = 4"
+        "**Chain.** If r5c4 ≠ 4, then under *4 once in col 4*, r2c4 = 4 or r5c4 = 4 "
+        "were the only options; with r5c4 = 4 ruled out, r2c4 = 4"
     ) in text
     assert (
         "Only r5c3 = 4 or r5c4 = 4 remain under *4 once in row 5*. r5c3 = 2 is ruled out:"
@@ -288,7 +288,10 @@ def test_chain_explains_cell_single_and_both_conflicts_with_its_target():
     assert "still assuming r3c7 \u2260 8" in first_chain
     assert "r5c7 = 8 is ruled out" in first_chain
     assert "r9c7 = 8 is ruled out" in first_chain
-    assert "only r1c9 = 8 or r3c7 = 8 remain under *8 once in box 1,3*, so r1c9 = 8" in text
+    assert (
+        "under *8 once in box 1,3*, r1c9 = 8 or r3c7 = 8 were the only options; "
+        "with r3c7 = 8 ruled out, r1c9 = 8"
+    ) in text
     assert ("so r8c7 = 2; it is the only value left after r8c7 = 8 is ruled out") in text
     assert (
         "r5c7 = 2 is ruled out: r5c7 = 1 conflicts with it by *r5c7 holds one digit*, "
@@ -303,8 +306,8 @@ def test_chain_explains_cell_single_and_both_conflicts_with_its_target():
 def test_cli_falls_back_to_the_generic_story_for_sudoku(capsys):
     assert cli.main([str(example("sudoku_33_9x9_chains.txt")), "--explain"]) == 0
     assert (
-        "**Chain.** If r3c7 ≠ 8, then only r1c9 = 8 or r3c7 = 8 remain under "
-        "*8 once in box 1,3*, so r1c9 = 8"
+        "**Chain.** If r3c7 ≠ 8, then under *8 once in box 1,3*, r1c9 = 8 or "
+        "r3c7 = 8 were the only options; with r3c7 = 8 ruled out, r1c9 = 8"
     ) in capsys.readouterr().out
 
 

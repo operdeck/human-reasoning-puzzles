@@ -457,7 +457,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.chain_domain_reason": "; it is the only value left after {excluded} is ruled out",
         "generic.chain_link": ", so ",
         "generic.chain_reason": " by {source}",
-        "generic.chain_supported": "only {options} remain under {source}, so {placement}",
+        "generic.chain_supported": "under {source}, {options} were the only options; with "
+        "{excluded} ruled out, {placement}",
         "generic.chain_supported_either": "only {options} remain under {source}",
         "generic.wing": "**Wing.** One of {options} must hold, so {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
@@ -1073,7 +1074,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "{excluded} is uitgesloten",
         "generic.chain_link": ", dus ",
         "generic.chain_reason": " door {source}",
-        "generic.chain_supported": "onder {source} blijven alleen {options} over, dus {placement}",
+        "generic.chain_supported": "onder {source} waren alleen {options} mogelijk; nu {excluded} "
+        "afvalt, geldt {placement}",
         "generic.chain_supported_either": "onder {source} blijven alleen {options} over",
         "generic.wing": "**Wing.** Een van {options} moet gelden, dus {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
