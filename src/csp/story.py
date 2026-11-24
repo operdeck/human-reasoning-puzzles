@@ -479,7 +479,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.wing": "**Wing.** One of {options} must hold, so {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
         "generic.what_if": "**Suppose {assumed}.** Then {trail}; but {breaks}; so {refuted}.",
+        "generic.what_if_segmented": "**Suppose {assumed}.** {trail} But {breaks}, so {refuted}.",
         "generic.what_if_direct": "**Suppose {assumed}.** Then {breaks}; so {refuted}.",
+        "generic.trail_start": "Then {items}.",
+        "generic.trail_continue": "Next {items}.",
         "generic.trail_place": "{placement} by {sources}",
         "generic.trail_only": "{placement} is the only option",
         "generic.breaks": "{source} fails",
@@ -1135,7 +1138,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.other": "**{rule}.** {conclusion}.",
         "generic.what_if": "**Stel {assumed}.** Daaruit volgt: {trail}; maar dan {breaks}; "
         "dus {refuted}.",
+        "generic.what_if_segmented": "**Stel {assumed}.** {trail} Maar dan {breaks}, "
+        "dus {refuted}.",
         "generic.what_if_direct": "**Stel {assumed}.** Dan {breaks}; dus {refuted}.",
+        "generic.trail_start": "Daaruit volgt: {items}.",
+        "generic.trail_continue": "Verder: {items}.",
         "generic.trail_place": "{placement} door {sources}",
         "generic.trail_only": "{placement} is de enige mogelijkheid",
         "generic.breaks": "klopt {source} niet meer",

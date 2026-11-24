@@ -233,9 +233,11 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     assert "r4c2 = 1 is the only option" in first
     assert "r1c4\u2013r1c6 cannot be 3 by *3 once in row 1*" in first
     assert (
-        "but r1c5 = 1, 2 or 6, r1c6 = 1, 2 or 6 and r2c6 = 3 "
-        "break *9+ cage r1c5 r1c6 r2c6*; so r2c2 ≠ 6."
+        "But r1c5 = 1, 2 or 6, r1c6 = 1, 2 or 6 and r2c6 = 3 "
+        "break *9+ cage r1c5 r1c6 r2c6*, so r2c2 ≠ 6."
     ) in first
+    assert first.count(". Next ") >= 2
+    assert first.index("r4c2 = 1 is the only option") < first.index("r1c2 = 3 is the only option")
     second = next(p for p in story.paragraphs if p.startswith("**Suppose r1c4 = 3.**"))
     assert "r2c5 cannot be 1, 4 or 5 by *12+ cage" in second
     assert "r2c5 = 6 is the only option" in second
@@ -243,7 +245,7 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     assert "r2c1 cannot be 1, 4 or 6 by *13+ cage" in third
     assert "r2c1 = 5 is the only option" in third
     assert (
-        "but r1c1 = 6, r1c2 = 5 and r2c1 = 5 break *13+ cage r1c1 r1c2 r2c1*"
+        "But r1c1 = 6, r1c2 = 5 and r2c1 = 5 break *13+ cage r1c1 r1c2 r2c1*"
     ) in story.markdown()
     assert "so r1c4 ≠ 3" in story.markdown()
     assert "*13+ cage r1c1 r1c2 r2c1* rules out 3" not in story.markdown()
@@ -280,6 +282,8 @@ def test_calcudoku_case_cites_shared_line_uniqueness(language, premise, case):
 def test_case_contradiction_shows_candidates_in_dutch():
     text = told("calcudoku_6_6x6.txt", "nl").markdown()
     assert ("r1c5 = 1, 2 of 6, r1c6 = 1, 2 of 6 en r2c6 = 3 met *9+ cage r1c5 r1c6 r2c6*") in text
+    assert ". Verder: " in text
+    assert ". Maar dan " in text
 
 
 def test_tent_case_and_chain_include_their_essential_premises():

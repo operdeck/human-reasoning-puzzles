@@ -21,6 +21,7 @@ from .story import Wording
 
 SHOWN_CLUES = 5  # clue deductions told in one paragraph
 PLACEMENTS_PER_PARAGRAPH = 10  # single placements told in one paragraph
+CASE_STEPS_PER_SENTENCE = 5
 MAX_REPLAYS = 60  # proof replays spent thinning one explanation
 _CELL = re.compile(r"^r(\d+)c(\d+)$")
 
@@ -1406,6 +1407,21 @@ class Narrator:
         if not shown:
             return self.say(
                 "generic.what_if_direct", assumed=assumed, breaks=breaks, refuted=refuted
+            )
+        if len(shown) > CASE_STEPS_PER_SENTENCE:
+            sentences = [
+                self.say(
+                    "generic.trail_start" if index == 0 else "generic.trail_continue",
+                    items="; ".join(shown[index : index + CASE_STEPS_PER_SENTENCE]),
+                )
+                for index in range(0, len(shown), CASE_STEPS_PER_SENTENCE)
+            ]
+            return self.say(
+                "generic.what_if_segmented",
+                assumed=assumed,
+                trail=" ".join(sentences),
+                breaks=breaks,
+                refuted=refuted,
             )
         return self.say(
             "generic.what_if",
