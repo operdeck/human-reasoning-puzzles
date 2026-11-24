@@ -351,8 +351,7 @@ class Narrator:
                                     inference.before.value_of(literal),
                                 )
                                 for literal in live
-                            ],
-                            "or",
+                            ]
                         )
                         return self.say(
                             "generic.subsumption_count_options",
