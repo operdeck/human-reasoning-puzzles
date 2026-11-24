@@ -1731,6 +1731,8 @@ def rooms_picture(
     *,
     cell: int = 88,
     interactive: bool = False,
+    clue_lines: bool = True,
+    legend: bool = True,
 ) -> Canvas:
     """The plan as a floor plan: each room with its properties, and the clues underneath.
 
@@ -1738,7 +1740,8 @@ def rooms_picture(
     icon for each property a clue can name (a window, a radio). A key under the
     plan says what each icon means, and the solution writes the people in their
     rooms. Two neighbouring rooms are always drawn apart, so rooms that share a
-    colour still read as separate.
+    colour still read as separate. `clue_lines=False` leaves the numbered clues
+    out, for a booklet that prints them as text; `legend=False` leaves the key out.
     """
     solution = None if interactive else solution
     margin = max(12, cell // 4)
@@ -1747,8 +1750,8 @@ def rooms_picture(
     icon_size = max(11, int(cell * 0.26))
     board_width = puzzle.width * cell
     tag_icons = {tag: icons.object_icon(tag) for tag in puzzle.tags}
-    legend = [(tag, tag_icons[tag], puzzle.phrase(tag)) for tag in puzzle.tags]
-    clue_lines = [
+    key_entries = [(tag, tag_icons[tag], puzzle.phrase(tag)) for tag in puzzle.tags]
+    clue_rows = [
         line
         for number, sentence in enumerate(puzzle.clue_lines, 1)
         for line in textwrap.wrap(
@@ -1758,8 +1761,8 @@ def rooms_picture(
     height = (
         margin * 2
         + puzzle.height * cell
-        + len(legend) * line_height
-        + (len(clue_lines) + 1) * line_height
+        + (len(key_entries) * line_height if legend else 0)
+        + ((len(clue_rows) + 1) * line_height if clue_lines else int(line_height * 0.3))
     )
     canvas = Canvas(board_width + 2 * margin, height)
     thick = max(5, cell // 20) | 1
@@ -1818,13 +1821,14 @@ def rooms_picture(
                     "mm",
                 )
     cursor_y = margin + puzzle.height * cell + line_height * 0.2
-    for tag, icon, phrase in legend:
+    for tag, icon, phrase in key_entries if legend else ():
         box = (8, cursor_y, 8 + icon_size * 0.85, cursor_y + icon_size * 0.85)
         _draw_property(canvas, tag, icon, box)
         canvas.text((8 + icon_size * 1.05, cursor_y + icon_size * 0.42), phrase, INK, small, "lm")
         cursor_y += line_height
-    cursor_y += line_height * 0.4
-    for line in clue_lines:
+    if clue_lines:
+        cursor_y += line_height * 0.4
+    for line in clue_rows if clue_lines else ():
         canvas.text((8, cursor_y), line, INK, small, anchor="lt")
         cursor_y += line_height
     if interactive:

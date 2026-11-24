@@ -113,6 +113,7 @@ ALLOWED = {
         "murdoku_lower",
         "picture",
         "puzzlefile",
+        "rooms",
         "story",
     },
     "murdoku_board": {
