@@ -72,6 +72,37 @@ NUMBERS = {
     "en": ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"),
     "nl": ("geen", "één", "twee", "drie", "vier", "vijf", "zes", "zeven", "acht", "negen", "tien"),
 }
+# The names the model gives its constraints and relations, in the puzzle's language,
+# so `--show-model`, `--step` and the worked solution read in the same language.
+LABELS = {
+    "en": {
+        "room": "{person}'s room",
+        "capacity": "{room} holds at most {capacity}",
+        "one_room": "each person is in one room",
+        "capacities": "room capacity",
+        "clue": "a clue",
+        "sharing": "sharing a room",
+        "shared": "{first} and {second} share a room",
+        "state": "{name} state",
+    },
+    "nl": {
+        "room": "de kamer van {person}",
+        "capacity": "{room} heeft plaats voor hoogstens {capacity}",
+        "one_room": "iedereen staat in één kamer",
+        "capacities": "capaciteit per kamer",
+        "clue": "een aanwijzing",
+        "sharing": "samen in een kamer",
+        "shared": "{first} en {second} delen een kamer",
+        "state": "{name}: toestand",
+    },
+}
+
+
+def labels(language: str) -> dict[str, str]:
+    """The solver's own names for this family, in the puzzle's language."""
+    return LABELS.get(language, LABELS["en"])
+
+
 _COUNT = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$")
 _IN = re.compile(r"^(\S+)\s+in\s+area:(\S+)$")
 _ALONE = re.compile(r"^(\S+)\s+alone$")
@@ -515,31 +546,32 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
     `--step` and the worked solution all read as rooms rather than as codes.
     """
     puzzle = parse(text)
+    say = labels(puzzle.language)
     model = Model()
     for person in puzzle.people:
         model.constrain(
-            f"{person}'s room",
+            say["room"].format(person=person),
             Kind.EXACTLY_ONE,
             [model.literal(person, room.label) for room in puzzle.rooms],
             defines=person,
-            family="each person is in one room",
+            family=say["one_room"],
         )
     for room in puzzle.rooms:
         model.constrain(
-            f"{room.title} holds at most {room.capacity}",
+            say["capacity"].format(room=room.title, capacity=room.capacity),
             Kind.COUNT,
             [model.literal(person, room.label) for person in puzzle.people],
             allowed_counts=range(room.capacity + 1),
-            family="room capacity",
+            family=say["capacities"],
         )
-    shares = _Shares(model)
+    shares = _Shares(model, say)
     seen: set[str] = set()
     for number, clue in enumerate(puzzle.clues, 1):
         name = puzzle.sentence(number).removesuffix(".")
         if name in seen:
             raise ValueError(f"two clues read the same: {name!r}")
         seen.add(name)
-        _compile_clue(model, puzzle, clue, shares, name)
+        _compile_clue(model, puzzle, clue, shares, name, say)
     return model, puzzle
 
 
@@ -550,8 +582,9 @@ class _Shares:
     clue a small `COUNT` instead of a relation over every person at once.
     """
 
-    def __init__(self, model: Model) -> None:
+    def __init__(self, model: Model, say: dict[str, str]) -> None:
         self._model = model
+        self._say = say
         self._literals: dict[frozenset[str], int] = {}
 
     def literal(self, first: str, second: str) -> int:
@@ -559,14 +592,18 @@ class _Shares:
         pair = frozenset((first, second))
         if pair in self._literals:
             return self._literals[pair]
-        name = f"{first} and {second} share a room"
-        variable, yes, _ = _hidden_boolean(self._model, "rooms", name, "sharing a room")
+        name = self._say["shared"].format(first=first, second=second)
+        variable, yes, _ = _hidden_boolean(
+            self._model, "rooms", name, self._say["sharing"], self._say
+        )
         self._model.relate(name, (first, second, variable), lambda a, b, shared: shared == (a == b))
         self._literals[pair] = yes
         return yes
 
 
-def _hidden_boolean(model: Model, prefix: str, name: str, family: str) -> tuple[str, int, int]:
+def _hidden_boolean(
+    model: Model, prefix: str, name: str, family: str, say: dict[str, str]
+) -> tuple[str, int, int]:
     """A hidden true/false variable, with the constraint that defines it."""
     number = 1
     while f"{prefix} {number}" in model.all_variables:
@@ -574,18 +611,25 @@ def _hidden_boolean(model: Model, prefix: str, name: str, family: str) -> tuple[
     variable = f"{prefix} {number}"
     yes, no = model.literal(variable, True), model.literal(variable, False)
     model.constrain(
-        f"{name} state", Kind.EXACTLY_ONE, [yes, no], defines=variable, hidden=True, family=family
+        say["state"].format(name=name),
+        Kind.EXACTLY_ONE,
+        [yes, no],
+        defines=variable,
+        hidden=True,
+        family=family,
     )
     return variable, yes, no
 
 
-def _compile_clue(model: Model, puzzle: Puzzle, clue: ClueType, shares: _Shares, name: str) -> None:
+def _compile_clue(
+    model: Model, puzzle: Puzzle, clue: ClueType, shares: _Shares, name: str, say: dict[str, str]
+) -> None:
     """Add the constraint a clue states, named after the sentence it reads as."""
     if isinstance(clue, InRoom):
         literals = _room_literals(model, puzzle, clue.area, clue.person)
-        _count(model, name, literals, {0} if clue.negated else {1})
+        _count(model, name, literals, {0} if clue.negated else {1}, say)
     elif isinstance(clue, Population):
-        _population(model, name, puzzle, clue)
+        _population(model, name, puzzle, clue, say)
     elif isinstance(clue, Company):
         model.relate(name, (clue.first, clue.second), lambda a, b: (a == b) == clue.together)
     elif isinstance(clue, Direction):
@@ -600,16 +644,22 @@ def _compile_clue(model: Model, puzzle: Puzzle, clue: ClueType, shares: _Shares,
     elif isinstance(clue, Alone):
         others = [other for other in puzzle.people if other != clue.person]
         literals = [shares.literal(clue.person, other) for other in others]
-        _count(model, name, literals, set(range(1, len(literals) + 1)) if clue.negated else {0})
+        allowed = set(range(1, len(literals) + 1)) if clue.negated else {0}
+        _count(model, name, literals, allowed, say)
     else:
         assert isinstance(clue, Choice)
         truths = [
             _reify(
-                model, puzzle, atom, f"{name}: {atom.describe(puzzle).removesuffix('.')}", shares
+                model,
+                puzzle,
+                atom,
+                f"{name}: {atom.describe(puzzle).removesuffix('.')}",
+                shares,
+                say,
             )
             for atom in clue.atoms
         ]
-        _count(model, name, truths, {clue.number})
+        _count(model, name, truths, {clue.number}, say)
 
 
 def _room_literals(model: Model, puzzle: Puzzle, area: str, person: str) -> list[int]:
@@ -617,13 +667,15 @@ def _room_literals(model: Model, puzzle: Puzzle, area: str, person: str) -> list
     return [model.literal(person, puzzle.room(key).label) for key in puzzle.areas(area)]
 
 
-def _population(model: Model, name: str, puzzle: Puzzle, clue: Population) -> None:
+def _population(
+    model: Model, name: str, puzzle: Puzzle, clue: Population, say: dict[str, str]
+) -> None:
     """The count of people in an area, as one `COUNT` over its room literals."""
     rooms = puzzle.areas(clue.area)
     literals = [
         model.literal(person, puzzle.room(room).label) for person in puzzle.people for room in rooms
     ]
-    _count(model, name, literals, _allowed(literals, clue.operator, clue.number, name))
+    _count(model, name, literals, _allowed(literals, clue.operator, clue.number, name), say)
 
 
 def _allowed(literals: Sequence[int], operator: str, number: int, name: str) -> set[int]:
@@ -634,13 +686,17 @@ def _allowed(literals: Sequence[int], operator: str, number: int, name: str) -> 
     return allowed
 
 
-def _count(model: Model, name: str, literals: Sequence[int], allowed: set[int]) -> None:
-    model.constrain(name, Kind.COUNT, literals, allowed_counts=allowed, family="a clue")
+def _count(
+    model: Model, name: str, literals: Sequence[int], allowed: set[int], say: dict[str, str]
+) -> None:
+    model.constrain(name, Kind.COUNT, literals, allowed_counts=allowed, family=say["clue"])
 
 
-def _reify(model: Model, puzzle: Puzzle, atom: Simple, name: str, shares: _Shares) -> int:
+def _reify(
+    model: Model, puzzle: Puzzle, atom: Simple, name: str, shares: _Shares, say: dict[str, str]
+) -> int:
     """A hidden literal that is true exactly when the clause holds."""
-    _, yes, _ = _hidden_boolean(model, "clue", name, "a clue")
+    _, yes, _ = _hidden_boolean(model, "clue", name, say["clue"], say)
     if isinstance(atom, InRoom):
         literals = _room_literals(model, puzzle, atom.area, atom.person)
         allowed = {0} if atom.negated else {1}

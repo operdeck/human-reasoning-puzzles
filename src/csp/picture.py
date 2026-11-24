@@ -63,6 +63,7 @@ from .rectangles import Puzzle as Rectangles
 from .rectangles import parse_cell as rectangle_cell
 from .rectangles import parse_rect as rectangle_of
 from .rooms import Puzzle as RoomsPuzzle
+from .rooms import Room as RoomPlan
 from .starbattle import Puzzle as StarBattle
 from .starbattle import cell_assignment as starbattle_cell_assignment
 from .starbattle import cell_name as starbattle_cell
@@ -1794,30 +1795,28 @@ def rooms_picture(
         span = (max(cols) - min(cols) + 1) * cell
         depth = (max(rows) - min(rows) + 1) * cell
         properties = [tag for tag in puzzle.tags if room.key in puzzle.tags[tag]]
-        size = _fit(canvas, room.title, small, span * 0.9)
-        canvas.text((x + cell * 0.07, y + cell * 0.05), room.title, INK, size, anchor="la")
-        canvas.text(
-            (x + cell * 0.07, y + cell * 0.05 + size * 1.35),
-            f"max {room.capacity}",
-            INK,
-            max(8, int(size * 0.8)),
-            anchor="la",
-        )
-        for index, tag in enumerate(properties):
-            box = (
-                x + cell * 0.08 + index * icon_size * 1.12,
-                y + depth - icon_size - cell * 0.05,
-                x + cell * 0.08 + icon_size + index * icon_size * 1.12,
-                y + depth - cell * 0.05,
-            )
-            _draw_property(canvas, tag, tag_icons[tag], box)
-        people = [
-            person for person in puzzle.people if solution and solution.get(person) == room.label
-        ]
-        if people:
-            names = ", ".join(people)
-            font = _fit(canvas, names, max(10, cell // 7), span * 0.86)
-            canvas.text((x + span / 2, y + depth * 0.55), names, SOLVED, font, "mm")
+        with canvas.group(clip=[(x, y, x + span - 1, y + depth - 1)]):
+            cursor, _size = _room_caption(canvas, room, x, y, span, small)
+            if properties:
+                _room_properties(canvas, properties, x, y, span, depth, icon_size)
+            people = [
+                person
+                for person in puzzle.people
+                if solution and solution.get(person) == room.label
+            ]
+            if people:
+                names = ", ".join(people)
+                font = _fit(canvas, names, max(9, cell // 8), span * 0.86)
+                lowest = (
+                    y + depth - cell * 0.04 - _icon_height(len(properties), span, depth, icon_size)
+                )
+                canvas.text(
+                    (x + span / 2, min(lowest - font, max(cursor + font, (cursor + lowest) / 2))),
+                    names,
+                    SOLVED,
+                    font,
+                    "mm",
+                )
     cursor_y = margin + puzzle.height * cell + line_height * 0.2
     for tag, icon, phrase in legend:
         box = (8, cursor_y, 8 + icon_size * 0.85, cursor_y + icon_size * 0.85)
@@ -1833,11 +1832,78 @@ def rooms_picture(
     return canvas
 
 
+def _room_caption(
+    canvas: Canvas, room: RoomPlan, x: float, y: float, span: float, size: int
+) -> tuple[float, int]:
+    """Write a room's name, wrapped to fit, then its capacity; return the next free y."""
+    font = size
+    while True:
+        lines = textwrap.wrap(room.title, width=max(4, int(span / (font * 0.55))))[:2]
+        if font <= 7 or all(canvas.textlength(line, font) <= span * 0.92 for line in lines):
+            break
+        font -= 1
+    cursor = y + max(2.0, span * 0.03)
+    for line in lines[:2]:
+        canvas.text((x + span * 0.04, cursor), line, INK, font, "la")
+        cursor += font * 1.15
+    capacity = max(7, int(font * 0.8))
+    canvas.text((x + span * 0.04, cursor), f"max {room.capacity}", INK, capacity, "la")
+    return cursor + capacity * 1.2, font
+
+
+def _layout_properties(
+    count: int, span: float, depth: float, icon_size: int
+) -> tuple[float, int, int, float]:
+    """Side, columns, rows and gap for a room's icons, keeping them off the caption.
+
+    The icons may use at most about two fifths of a room's height, so a small room
+    with many properties gets smaller icons rather than a wall of them.
+    """
+    if not count:
+        return 0.0, 1, 0, 0.0
+    budget = max(icon_size, depth * 0.45)
+    side = float(icon_size)
+    while side > 8:
+        gap = side * 0.14
+        columns = max(1, int((span - side * 0.2) // (side + gap)))
+        if -(-count // columns) * (side + gap) <= budget:
+            return side, columns, -(-count // columns), gap
+        side -= 1
+    gap = side * 0.14
+    columns = max(1, int((span - side * 0.2) // (side + gap)))
+    return side, columns, -(-count // columns), gap
+
+
+def _room_properties(
+    canvas: Canvas,
+    properties: list[str],
+    x: float,
+    y: float,
+    span: float,
+    depth: float,
+    icon_size: int,
+) -> None:
+    """The room's property icons along its bottom edge, in as many rows as they need."""
+    side, columns, rows, gap = _layout_properties(len(properties), span, depth, icon_size)
+    bottom = y + depth - max(2.0, span * 0.03)
+    for index, tag in enumerate(properties):
+        row, column = divmod(index, columns)
+        left = x + span * 0.04 + column * (side + gap)
+        top = bottom - (rows - row) * (side + gap) + gap / 2
+        _draw_property(canvas, tag, icons.object_icon(tag), (left, top, left + side, top + side))
+
+
+def _icon_height(count: int, span: float, depth: float, icon_size: int) -> float:
+    """How much of a room's height its property icons take."""
+    side, _columns, rows, gap = _layout_properties(count, span, depth, icon_size)
+    return rows * (side + gap)
+
+
 def _draw_property(
     canvas: Canvas, tag: str, icon: icons.Icon | None, box: tuple[float, float, float, float]
 ) -> None:
     """A room property's icon, or a lettered badge when the catalogue has none."""
-    if icon is not None and icons.draw(canvas, icon, box):
+    if icon is not None and icons.draw(canvas, icon, box, crop=True):
         return
     x0, y0, x1, y1 = box
     canvas.rectangle(box, outline=INK, width=2, radius=(x1 - x0) * 0.2)

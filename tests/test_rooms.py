@@ -190,6 +190,16 @@ def test_the_picture_shows_each_rooms_properties_with_a_key():
         assert puzzle.phrase(tag) in image, tag
 
 
+def test_property_icons_shrink_to_fit_a_small_room():
+    """A one-room-wide plan with four properties gets icons that fit inside it."""
+    side, columns, rows, gap = picture._layout_properties(4, 150, 150, 39)
+    assert columns >= 1 and rows >= 1
+    assert columns * (side + gap) <= 150
+    assert rows * (side + gap) <= 150 * 0.45 + 1
+    empty = picture._layout_properties(0, 150, 150, 39)
+    assert empty[2] == 0
+
+
 def test_a_property_the_catalogue_does_not_know_gets_a_lettered_badge():
     """An unknown property still gets a marker in its rooms and a line in the key."""
     assert icons.object_icon("zorblax") is None
