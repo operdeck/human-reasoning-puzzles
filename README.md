@@ -44,7 +44,7 @@ murderer.
 
 - By *r1c1 holds at most one person*, *exactly one person per row* and *exactly one person per column*, Joost takes column 1; therefore **Lotte on r4c2** is the only remaining place and **Joost occupies row 1 and column 1; exactly one person occupies each row and column, so no one else can use those lines**.
 
-- By *r4c2 holds at most one person*, *exactly one person per row* and *exactly one person per column*, Lotte takes row 4; therefore **Ingrid on r3c4** is the only remaining place and **Lotte occupies row 4 and column 2, so no one else can use those lines**.
+- By *r4c2 holds at most one person*, *exactly one person per row* and *exactly one person per column*, Lotte takes row 4; therefore **Ingrid on r3c4** is the only remaining place and **Lotte occupies row 4 and column 2; the one-person-per-line rule excludes everyone else**.
 
 - By *r3c4 holds at most one person* and *exactly one person per row*, Ingrid takes row 3; therefore **Wouter on r2c3** is the only remaining place.
 

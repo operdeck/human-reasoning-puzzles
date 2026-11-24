@@ -547,6 +547,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "remaining place",
         "murdoku.use_sources": "We use {sources}",
         "murdoku.established_placements": "the placements already established",
+        "murdoku.group_excluded_squares": "{people} cannot be on {squares}",
         "murdoku.final_answer": "**Answer.** {reveal}",
         "murdoku.final_placements": "Final placements not yet named: {placements}.",
         "murdoku.rule_context": "**Rules.** {rules}.",
@@ -566,7 +567,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "else can use those lines",
         "line_exclusions_exact": "{blockers}; exactly one person occupies each row and column, "
         "so no one else can use those lines",
-        "line_exclusions_followup": "{blockers}, so no one else can use those lines",
+        "line_exclusions_followup": "{blockers}; the one-person-per-line rule excludes everyone "
+        "else",
         "must_occupy_line": "{who} must occupy {line}",
         "nobody_else_line": "the one-person-per-line rule excludes everyone else",
         "line_reservation": "{person}'s remaining squares are all in {line}, so {person} must be "
@@ -579,6 +581,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.line_person": "Only {who} can occupy {line} ({squares}); that line must be "
         "occupied, so {conclusion}",
         "murdoku.relation_with_candidates": ("Given {candidates}, {sources} gives {conclusion}"),
+        "murdoku.relation_exact_candidates": "{who} can only be on {squares}",
         "murdoku.furthest_exclusion": "{clue} rules out {subject} at {candidate}: each remaining "
         "square for {rival} ({rival_squares}) is at least as far from every remaining {target} "
         "square ({target_squares}) as {subject} would be. The clue requires {subject} to be "
@@ -1180,6 +1183,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.person_single_evidence": "{support}; daardoor blijft alleen {placement} over",
         "murdoku.use_sources": "We gebruiken {sources}",
         "murdoku.established_placements": "de plaatsingen die al vaststaan",
+        "murdoku.group_excluded_squares": "{people} kunnen niet op {squares} staan",
         "murdoku.final_answer": "**Antwoord.** {reveal}",
         "murdoku.final_placements": "Nog niet expliciet genoemde plaatsingen: {placements}.",
         "murdoku.rule_context": "**Regels.** {rules}.",
@@ -1203,7 +1207,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "niemand anders kan die lijnen gebruiken",
         "line_exclusions_exact": "{blockers}; elke rij en kolom heeft precies één persoon, dus "
         "niemand anders kan die lijnen gebruiken",
-        "line_exclusions_followup": "{blockers}, dus niemand anders kan die lijnen gebruiken",
+        "line_exclusions_followup": "{blockers}; de regel van één persoon per rij of kolom "
+        "sluit iedereen anders uit",
         "must_occupy_line": "{who} moet in {line} staan",
         "nobody_else_line": "de regel van één persoon per rij of kolom sluit iedereen anders uit",
         "line_reservation": "de resterende vakjes van {person} liggen allemaal in {line}, dus "
@@ -1218,6 +1223,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.relation_with_candidates": (
             "Omdat {candidates}, leidt {sources} tot {conclusion}"
         ),
+        "murdoku.relation_exact_candidates": "{who} alleen nog op {squares} kan staan",
         "murdoku.furthest_exclusion": "{clue} sluit {subject} op {candidate} uit: ieder "
         "overgebleven vakje voor {rival} ({rival_squares}) ligt minstens zo ver van elk "
         "overgebleven vakje voor {target} ({target_squares}) als {subject} zou liggen. De "

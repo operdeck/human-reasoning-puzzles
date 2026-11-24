@@ -1003,6 +1003,7 @@ class _Narrator(generic_story.Narrator):
                     (person, kind, index) for kind, indices in lines.items() for index in indices
                 )
         grouped: dict[tuple[str, frozenset[int]], list[str]] = {}
+        broad_exclusions: dict[frozenset[Square], list[str]] = {}
         individual = []
         for person, cells, previous in position_changes:
             bounds = []
@@ -1020,6 +1021,15 @@ class _Narrator(generic_story.Narrator):
             if bounds:
                 kind, indices = min(bounds, key=lambda item: len(item[1]))
                 grouped.setdefault((kind, indices), []).append(person)
+            elif (
+                not existing_bound
+                and group_candidates
+                and include_broad_candidates
+                and len(cells) > MAX_LISTED + 1
+                and self.places.where(cells, previous) is None
+                and self.places.where(previous - cells, previous, most=1) is None
+            ):
+                broad_exclusions.setdefault(frozenset(previous - cells), []).append(person)
             elif not existing_bound and (len(cells) <= MAX_LISTED or include_broad_candidates):
                 individual.append((person, cells, previous))
         for (kind, indices), people in grouped.items():
@@ -1035,6 +1045,26 @@ class _Narrator(generic_story.Narrator):
                 self.told_bounds.setdefault(person, {})[kind] = indices
         for person, cells, previous in individual:
             said.append("**" + self.places.describe(person, cells, previous, placing=False) + "**")
+        for excluded_squares, people in broad_exclusions.items():
+            if len(people) == 1:
+                person = people[0]
+                said.append(
+                    "**"
+                    + self.places.describe(
+                        person, self.options[person], before[person], placing=False
+                    )
+                    + "**"
+                )
+            else:
+                said.append(
+                    "**"
+                    + self.say(
+                        "murdoku.group_excluded_squares",
+                        people=self.say.join(people),
+                        squares=self.places.squares(excluded_squares),
+                    )
+                    + "**"
+                )
         said.extend(position_said)
         role_updates = {
             step.var: step.value if step.asserted else not step.value
@@ -1997,6 +2027,17 @@ class _Narrator(generic_story.Narrator):
                         )
                     )
                 return summary
+        if all(1 < len(values) <= MAX_LISTED + 5 for values in candidates):
+            return self.say.join(
+                [
+                    self.say(
+                        "murdoku.relation_exact_candidates",
+                        who=person,
+                        squares=self.places.squares(set(values), "or"),
+                    )
+                    for person, values in zip(relation.variables, candidates, strict=True)
+                ]
+            )
         return None
 
     def _row_reservation(self, inference: Inference) -> str | None:
@@ -2454,7 +2495,9 @@ class _Narrator(generic_story.Narrator):
         if reservation is not None:
             return f"{reservation}. {_cap(self.say('so'))} {conclusion}."
         if line_reservation is not None:
-            return self.say("line_reservation", **line_reservation, conclusion=conclusion) + "."
+            return (
+                _cap(self.say("line_reservation", **line_reservation, conclusion=conclusion)) + "."
+            )
         if line_overlap := self._line_overlap(inference, conclusion):
             return line_overlap + "."
         if line_person := self._line_person(inference, conclusion):
@@ -2620,7 +2663,7 @@ class _Narrator(generic_story.Narrator):
                         for label in self.source_origins.get(source, ())
                     )
                     if conclusion := self.conclusion(
-                        inference.steps, omit_origins=direction_origins
+                        inference.steps, omit_origins=direction_origins, embedded=True
                     ):
                         paragraph += f" {_cap(self.say('so'))} {conclusion}."
                     paragraphs.append(paragraph)
@@ -2641,10 +2684,13 @@ class _Narrator(generic_story.Narrator):
                 elif reservation := self._line_reservation(inference):
                     if conclusion := self.conclusion(inference.steps):
                         paragraphs.append(
-                            self.say("line_reservation", **reservation, conclusion=conclusion) + "."
+                            _cap(self.say("line_reservation", **reservation, conclusion=conclusion))
+                            + "."
                         )
                     else:
-                        paragraphs.append(self.say("line_reservation_only", **reservation) + ".")
+                        paragraphs.append(
+                            _cap(self.say("line_reservation_only", **reservation)) + "."
+                        )
                 elif paragraph := self._role_exclusion(inference):
                     self._advance_without_conclusion(inference.steps)
                     paragraphs.append(paragraph + ".")

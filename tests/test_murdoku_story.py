@@ -213,6 +213,67 @@ def test_relation_deduction_shows_the_only_supported_person_pair():
     ) in text
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "nl",
+            "Greta, Ute, Waltraud en Siegfried kunnen niet op r4k2, r4k3, r4k4, r4k6 of r4k7 staan",
+        ),
+        (
+            "en",
+            "Greta, Ute, Waltraud and Siegfried cannot be on r4c2, r4c3, r4c4, r4c6 or r4c7",
+        ),
+    ],
+)
+def test_shared_broad_reductions_name_the_excluded_squares(language, expected):
+    source = (
+        example("berghut-murdoku-3.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    text = murdoku_story.explain(source).markdown()
+    assert expected in text
+    assert "40 vakjes staan" not in text
+
+
+@pytest.mark.parametrize(
+    ("language", "first", "second"),
+    [
+        (
+            "nl",
+            "Hannelore alleen nog op r5k2, r5k4, r5k7, r6k3, r7k2, r7k7, r10k2 of r10k7 "
+            "kan staan en Siegfried alleen nog op r3k6, r5k4, r6k3 of r7k2 kan staan",
+            "Gerhard alleen nog op r5k2, r5k4, r5k7, r6k3, r7k2, r7k7, r10k2 of r10k7 "
+            "kan staan en Siegfried alleen nog op r3k6, r5k4 of r7k2 kan staan",
+        ),
+        (
+            "en",
+            "Hannelore can only be on r5c2, r5c4, r5c7, r6c3, r7c2, r7c7, r10c2 or r10c7 "
+            "and Siegfried can only be on r3c6, r5c4, r6c3 or r7c2",
+            "Gerhard can only be on r5c2, r5c4, r5c7, r6c3, r7c2, r7c7, r10c2 or r10c7 "
+            "and Siegfried can only be on r3c6, r5c4 or r7c2",
+        ),
+    ],
+)
+@pytest.mark.parametrize("numbered", [True, False])
+def test_distance_deductions_name_the_candidates_used(numbered, language, first, second):
+    source = (
+        example("berghut-murdoku-3.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    text = murdoku_story.explain(source, numbered=numbered).markdown()
+    assert first in text
+    assert second in text
+
+
+def test_direction_boundary_candidate_bounds_are_lowercase_after_so():
+    text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
+    assert "Dus **voor Haru blijven alleen de rijen" in text
+    assert "Dus **voor Haru blijven alleen de kolommen" in text
+
+
 def test_exact_line_single_names_its_only_remaining_candidate():
     text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
 
@@ -460,7 +521,9 @@ def test_later_line_exclusions_do_not_repeat_the_board_rule():
         ]
     )
     assert first is not None and "exactly one person occupies each row and column" in first
-    assert second == "**Ben occupies row 2 and column 2, so no one else can use those lines**"
+    assert second == (
+        "**Ben occupies row 2 and column 2; the one-person-per-line rule excludes everyone else**"
+    )
 
 
 @pytest.mark.parametrize(
@@ -667,7 +730,7 @@ def test_full_board_row_and_column_sources_say_exactly_one(language, exact_row, 
         ),
         (
             "nl",
-            "de resterende vakjes van Keiko liggen allemaal in kolom 5, dus Keiko moet daar staan; "
+            "De resterende vakjes van Keiko liggen allemaal in kolom 5, dus Keiko moet daar staan; "
             "precies één persoon per kolom sluit iedereen anders in die lijn uit",
         ),
     ],
