@@ -131,6 +131,7 @@ class _Narrator:
                 conclusion = self.say(
                     "sudoku.cross_many",
                     digit=source.digit,
+                    cells=self.say.join([self.cells[cell] for cell in removed]),
                     source=source.label,
                     target=target.label,
                 )

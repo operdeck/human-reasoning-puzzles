@@ -41,17 +41,15 @@ def test_locked_candidates_and_singles_follow_a_sound_shortened_proof():
     assert "Every remaining place for 4 in column 4 is inside the box containing r7c4" in (
         narrative.markdown()
     )
-    assert (
-        "cross 4 out of the other cells in the box containing r7c4 outside column 4"
-        in narrative.markdown()
-    )
+    assert "cross 4 out at r7c5, r7c6, r8c5, r8c6, r9c5 and r9c6" in narrative.markdown()
+    assert "in order, each is the only digit left in its cell" in narrative.markdown()
     placements = re.findall(r"\*\*(r\d+c\d+) = (\d+)\*\*", narrative.markdown())
     assert all(answer[cell] == int(digit) for cell, digit in placements)
     # Every square the puzzle leaves open is placed by name, none left to "follow".
     assert {cell for cell, _ in placements} == {
         cell for cell in answer if len(model.options(cell)) > 1
     }
-    assert "the only places for 3 and 5 in row 2" in narrative.markdown()
+    assert "in order, the only places for 3 and 5 in row 2" in narrative.markdown()
 
 
 def test_locked_candidate_works_from_box_to_column_and_column_to_box():
@@ -94,7 +92,7 @@ def test_dutch_explanations_use_localized_houses_and_coordinates():
     assert "**Enkele kandidaten.**" in narrative.markdown()
     assert "voor 4 in kolom 4" in narrative.markdown()
     assert "het blok met r7k4" in narrative.markdown()
-    assert "streep 4 weg" in narrative.markdown()
+    assert "streep 4 weg op r7k5, r7k6, r8k5, r8k6, r9k5 en r9k6" in narrative.markdown()
 
 
 def test_unsupported_deductions_do_not_masquerade_as_a_complete_explanation():

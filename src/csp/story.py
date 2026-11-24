@@ -327,15 +327,15 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.extra": "the extra house {name}",
         "sudoku.singles": "**Singles.**",
         "sudoku.last_digit": "{placements} (the only digit left there)",
-        "sudoku.last_digits": "{placements} (each the only digit left in its square)",
+        "sudoku.last_digits": "{placements} (in order, each is the only digit left in its cell)",
         "sudoku.only_place": "{placements} (the only place for {digits} in {house})",
-        "sudoku.only_places": "{placements} (the only places for {digits} in {house})",
+        "sudoku.only_places": "{placements} (in order, the only places for {digits} in {house})",
         "sudoku.locked": (
             "**Locked candidate.** Every remaining place for {digit} in {source} is inside "
             "{target}, so **{conclusion}**."
         ),
         "sudoku.cross_one": "cross {digit} out at {cell}",
-        "sudoku.cross_many": "cross {digit} out of the other cells in {target} outside {source}",
+        "sudoku.cross_many": "cross {digit} out at {cells}",
         "sudoku.naked_set": (
             "**Naked set.** In {house}, {cells} can only contain {digits} between them. "
             "They use those digits, so **remove {digits} from the other cells in {house}**."
@@ -990,15 +990,17 @@ PHRASES: dict[str, dict[str, str]] = {
         "sudoku.extra": "het extra gebied {name}",
         "sudoku.singles": "**Enkele kandidaten.**",
         "sudoku.last_digit": "{placements} (het enige cijfer dat daar nog kan)",
-        "sudoku.last_digits": "{placements} (telkens het enige cijfer dat in dat vakje nog kan)",
+        "sudoku.last_digits": "{placements} (in deze volgorde telkens het enige cijfer dat "
+        "in dat vakje nog kan)",
         "sudoku.only_place": "{placements} (de enige plek voor {digits} in {house})",
-        "sudoku.only_places": "{placements} (de enige plekken voor {digits} in {house})",
+        "sudoku.only_places": "{placements} (in deze volgorde de enige plekken voor {digits} "
+        "in {house})",
         "sudoku.locked": (
             "**Gebonden kandidaat.** Alle overgebleven plekken voor {digit} in {source} liggen "
             "binnen {target}, dus **{conclusion}**."
         ),
         "sudoku.cross_one": "streep {digit} weg op {cell}",
-        "sudoku.cross_many": "streep {digit} weg uit de andere vakjes in {target}, buiten {source}",
+        "sudoku.cross_many": "streep {digit} weg op {cells}",
         "sudoku.naked_set": (
             "**Naked set.** In {house} kunnen {cells} samen alleen {digits} bevatten. "
             "Daarmee zijn die cijfers gebruikt, dus **streep {digits} weg uit de andere vakjes "
