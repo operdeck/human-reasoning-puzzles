@@ -1912,7 +1912,10 @@ def test_chains_are_told_as_if_then_with_the_reason_for_each_link():
     original_clues = text.replace("Anna dir:up Mao = 5\n", "Jos in area:keukenwinkel\n")
     story = explain(original_clues.replace("Jos dir:manhattan Mao >= 13\n", ""))
     assert "Als Otto niet op r6k5 zit" in story
-    assert "blijven alleen Otto op r6k5 of Otto op r7k6 over, dus Otto op r7k6" in story
+    assert (
+        "waren alleen Otto op r6k5 of Otto op r7k6 mogelijk; "
+        "nu Otto op r6k5 afvalt, geldt Otto op r7k6"
+    ) in story
     assert "dan zit Luna niet op r7k4 (rij 7)" in story
     assert "Otto zit op r6k5 of Luna zit op r8k3." in story
     assert "Tjitske op r6k3 valt af: Otto op r6k5 botst ermee" in story
