@@ -67,7 +67,8 @@ class Sight:
 
     @property
     def label(self) -> str:
-        return f"{self.count} monsters seen from the {self.side.lower()} at {self.index + 1}"
+        noun = "monster" if self.count == 1 else "monsters"
+        return f"{self.count} {noun} seen from the {self.side.lower()} at {self.index + 1}"
 
 
 class Puzzle:
