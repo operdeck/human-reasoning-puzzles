@@ -12,6 +12,7 @@ from .murdoku import (
     Board,
     CellMark,
     Square,
+    _area_distances,
     board_rules,
     mark_occupant_name,
     occupant_condition_sources,
@@ -1932,11 +1933,92 @@ class _Narrator(generic_story.Narrator):
                 pair=self.say.join([f"**{self.placed(*pair)}**" for pair in new]),
                 source=self.names(move.sources),
             )
+        area_reason = self._area_pair_reason(inference, domains, pairs[0])
         pair = self.say.join([self.placed(*candidate) for candidate in pairs[0]])
-        return self.say(
+        result = self.say(
             "murdoku.relation_pair",
             pair=f"**{pair}**",
             source=self.names(move.sources),
+        )
+        return f"{area_reason} {result}" if area_reason else result
+
+    def _area_pair_reason(
+        self,
+        inference: Inference,
+        domains: list[list[tuple[str, Any]]],
+        pair: tuple[tuple[str, Any], tuple[str, Any]],
+    ) -> str | None:
+        move = inference.move
+        assert move is not None
+        origins = [
+            origin
+            for origin in self.compilation.origins
+            if origin.label in self.source_origins.get(move.sources[0], ())
+            and origin.kind == "clue"
+        ]
+        if len(origins) != 1 or not isinstance(atom := origins[0].statement.formula, Atom):
+            return None
+        if (
+            atom.operator.text != "dir:areas"
+            or atom.measure is None
+            or atom.measure.comparison.text != "="
+            or atom.measure.value.text != "2"
+            or any(not 1 <= len(domain) <= MAX_LISTED + 1 for domain in domains)
+            or any(not isinstance(square, Square) for domain in domains for _, square in domain)
+            or len(set(self.board.region_names.values())) != len(self.board.region_names)
+        ):
+            return None
+        first = self.board.region_of(pair[0][1])
+        second = self.board.region_of(pair[1][1])
+        distances = _area_distances(self.board)
+        region_pairs = {
+            (self.board.region_of(left[1]), self.board.region_of(right[1]))
+            for left, right in product(*domains)
+        }
+        if distances.get((first, second)) != 2 or any(
+            distances.get(areas, 2) > 1 for areas in region_pairs - {(first, second)}
+        ):
+            return None
+        middle = next(
+            (
+                region
+                for region in sorted(self.board.region_names)
+                if self.board.regions_touch(first, region)
+                and self.board.regions_touch(region, second)
+            ),
+            None,
+        )
+        if middle is None:
+            return None
+        candidates = [
+            self.say(
+                "murdoku.area_pair_candidates",
+                who=domain[0][0],
+                squares=self.say.join(
+                    [
+                        self.say(
+                            "murdoku.area_pair_square",
+                            square=self.places.square(square),
+                            area=self.places.region(
+                                self.board.region_names[self.board.region_of(square)]
+                            ),
+                        )
+                        for _, square in sorted(domain)
+                    ],
+                    "or",
+                ),
+            )
+            for domain in domains
+        ]
+        route = " → ".join(
+            self.places.region(self.board.region_names[region])
+            for region in (first, middle, second)
+        )
+        return self.say(
+            "murdoku.area_pair_reason",
+            candidates="; ".join(candidates),
+            pair=self.say.join([self.placed(*candidate) for candidate in pair]),
+            route=route,
         )
 
     def _direction_boundary(self, inference: Inference) -> str | None:

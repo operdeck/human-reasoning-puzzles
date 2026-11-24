@@ -519,6 +519,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_eligible_true": "{role}: only these assignments are true: {statements}",
         "murdoku.chain_domain_reason": "; it is the only square left after {excluded} is ruled out",
         "murdoku.relation_pair": "Of the remaining squares, only {pair} satisfy {source}.",
+        "murdoku.area_pair_square": "{square} ({area})",
+        "murdoku.area_pair_candidates": "{who} can only be on {squares}",
+        "murdoku.area_pair_reason": "{candidates}. For {pair}, the areas do not share a border; "
+        "a route crossing two borders is {route}. All other possible area pairs are the same "
+        "area or share a border, so their distance is at most one.",
         "murdoku.relation_pair_with_known": "Given {known}, only {pair} among the remaining "
         "squares satisfies {source}.",
         "murdoku.direction_boundaries": "{clue}, so **{first}** and **{second}**.",
@@ -1181,6 +1186,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.chain_domain_reason": "; dat is het enige vakje dat overblijft nadat "
         "{excluded} is uitgesloten",
         "murdoku.relation_pair": "Van de overgebleven vakjes voldoen alleen {pair} aan {source}.",
+        "murdoku.area_pair_square": "{square} ({area})",
+        "murdoku.area_pair_candidates": "{who} kan alleen nog op {squares} staan",
+        "murdoku.area_pair_reason": "{candidates}. Bij {pair} grenzen de gebieden niet aan "
+        "elkaar; een route langs twee grenzen is {route}. Alle andere mogelijke gebiedsparen "
+        "zijn gelijk of grenzen aan elkaar; hun afstand is dus hoogstens één.",
         "murdoku.relation_pair_with_known": "Met {known} voldoet van de overgebleven vakjes "
         "alleen {pair} aan {source}.",
         "murdoku.direction_boundaries": "{clue}, dus **{first}** en **{second}**.",

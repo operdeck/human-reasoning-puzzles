@@ -404,6 +404,83 @@ def test_distance_elimination_does_not_invent_occupied_lines():
 
 @pytest.mark.parametrize("numbered", [True, False])
 @pytest.mark.parametrize(
+    ("language", "candidates", "route", "other"),
+    [
+        (
+            "nl",
+            "Greta kan alleen nog op r2k5 (in het schoenenhok)",
+            "in het schoenenhok → in de gang → in Kamer Noord",
+            "Alle andere mogelijke gebiedsparen zijn gelijk of grenzen aan elkaar",
+        ),
+        (
+            "en",
+            "Greta can only be on r2c5 (in het schoenenhok)",
+            "in het schoenenhok → in de gang → in Kamer Noord",
+            "All other possible area pairs are the same area or share a border",
+        ),
+    ],
+)
+def test_area_distance_pair_explains_candidates_and_route(
+    numbered, language, candidates, route, other
+):
+    source = (
+        example("berghut-murdoku-3.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    paragraph = next(
+        paragraph
+        for paragraph in murdoku_story.explain(source, numbered=numbered).paragraphs
+        if route in paragraph
+    )
+    assert candidates in paragraph
+    assert other in paragraph
+    assert ("r6k3" if language == "nl" else "r6c3") in paragraph
+
+
+def test_area_distance_does_not_claim_distant_alternatives_are_adjacent():
+    text = example("berghut-murdoku-3.txt").read_text()
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    fired = []
+    Solver(compilation.model.clone()).solve(on_step=lambda rule, steps: fired.append((rule, steps)))
+    moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
+    moves = generic_story.thin(compilation.model, moves)
+    _, groups = episodes(compilation.model, moves)
+    inference = next(
+        inference
+        for group in groups
+        for inference in (group.pattern, *group.consequences)
+        if inference.move and inference.move.sources == ("clue 9",)
+    )
+    relation = next(item for item in compilation.model.relations if item.name == "clue 9")
+    domains = [
+        [(variable, inference.before.value_of(lit)) for lit in inference.before.options(variable)]
+        for variable in relation.variables
+    ]
+    pair = next(
+        (left, right)
+        for left in domains[0]
+        for right in domains[1]
+        if relation.holds(left[1], right[1])
+    )
+    narrator = murdoku_story._Narrator(text, board, compilation, numbered=True)
+    assert narrator._area_pair_reason(inference, domains, pair)
+    other_area = board.region_of(domains[1][0][1])
+    winning_area = board.region_of(pair[0][1])
+    extra = next(
+        square
+        for square in board.free
+        if board.region_of(square) not in {other_area, winning_area}
+        and not board.regions_touch(board.region_of(square), other_area)
+    )
+    replace_index = next(index for index, value in enumerate(domains[0]) if value != pair[0])
+    domains[0][replace_index] = (domains[0][0][0], extra)
+    assert narrator._area_pair_reason(inference, domains, pair) is None
+
+
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
     ("language", "beginning", "areas"),
     [
         (
