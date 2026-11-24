@@ -1024,7 +1024,9 @@ class _Narrator(generic_story.Narrator):
                 for variable, (person, name) in self.roles.items()
                 if name == role.name and (variable, True) in self.told
             }
-            if (
+            if excluded and "role_not" in self.say.phrases:
+                said.extend(f"**{self.placed(variable, False)}**" for variable in excluded)
+            elif (
                 len(excluded) > 1
                 and holders
                 and all(
@@ -2196,7 +2198,7 @@ class _Narrator(generic_story.Narrator):
                 paragraphs.append(self._because(sources, conclusion))
         if paragraphs:
             paragraphs = [f"**{self.say('direct')}.** " + " ".join(paragraphs)]
-        if not self.numbered:
+        if not self.numbered and "role_has" not in self.say.phrases:
             for role in self.board.roles:
                 if role.eligible_people is None:
                     continue

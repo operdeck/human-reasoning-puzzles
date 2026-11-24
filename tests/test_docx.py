@@ -904,10 +904,10 @@ def test_booklet_highlights_the_unnumbered_line_and_population_conclusions(tmp_p
     )
     instruction = "streep de zes andere nog open vakjes in die kolom weg"
     assert (
-        f"Mizuki zit op een vakje dat de torii raakt: in kolom 1, dus {instruction}."
-        in paragraph.text
+        f"Mizuki zit op een vakje dat de torii raakt: in kolom 1, dus {instruction}: "
+        "r2k1, r5k1, r6k1, r7k1, r8k1 en r9k1." in paragraph.text
     )
-    assert instruction in [run.text for run in paragraph.runs if run.bold]
+    assert any(instruction in run.text for run in paragraph.runs if run.bold)
     assert "**" not in paragraph.text
     paragraph = next(
         p for p in document.paragraphs if "alle andere vrije vakjes in Hiroshima" in p.text

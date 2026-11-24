@@ -129,8 +129,8 @@ def test_explain_tells_the_solution_by_puzzle_rules(capsys):
 
     assert main([str(example("battleships_1_6x6_fleet.txt")), "--explain"]) == 0
     output = capsys.readouterr().out
-    assert "*occupied cells belong to one straight ship*" in output
-    assert "count" in output
+    assert "**r1c1 = water** by *r1c1 is water or belongs to exactly one straight ship*" in output
+    assert "*5 occupied cells in row 2* gives **r2c1 = ship**" in output
     assert "Stalled" not in output
 
 
