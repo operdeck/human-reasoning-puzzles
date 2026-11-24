@@ -478,6 +478,27 @@ def test_unnumbered_story_omits_only_role_facts_given_by_the_figure_list(eligibl
 
 
 @pytest.mark.parametrize(
+    ("language", "phrase", "expected"),
+    [
+        ("en", "{who} is a {role}", "only these statements can be true: Ada is a guard"),
+        ("nl", "{who} is een {role}", "alleen deze uitspraken waar zijn: Ada is een guard"),
+    ],
+)
+@pytest.mark.parametrize("eligible", ["Ada", "Ada Ben"])
+def test_unnumbered_story_keeps_eligibility_with_custom_role_words(
+    language, phrase, expected, eligible
+):
+    text = f"Language: {language}\n" + TEXT.replace(
+        "Regions:", f"Words:\nrole_has: {phrase}\nRegions:"
+    ).replace("Rules:", f"RoleEligibility:\nguard: {eligible}\nRules:")
+    unnumbered = murdoku_story.explain(text, numbered=False).markdown()
+    assert expected in unnumbered
+    assert (f"Ben is {'a' if language == 'en' else 'een'} guard" in unnumbered) == (
+        eligible == "Ada Ben"
+    )
+
+
+@pytest.mark.parametrize(
     ("language", "exact_row", "exact_column"),
     [
         ("en", "exactly one person per row", "exactly one person per column"),

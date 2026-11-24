@@ -2198,18 +2198,27 @@ class _Narrator(generic_story.Narrator):
                 paragraphs.append(self._because(sources, conclusion))
         if paragraphs:
             paragraphs = [f"**{self.say('direct')}.** " + " ".join(paragraphs)]
-        if not self.numbered and "role_has" not in self.say.phrases:
+        if not self.numbered:
             for role in self.board.roles:
                 if role.eligible_people is None:
+                    continue
+                eligible = sorted(role.eligible_people, key=self.board.people.index)
+                if "role_has" in self.say.phrases and eligible:
+                    statements = [
+                        self.placed(self.board.role_variable(person, role.name), True)
+                        for person in eligible
+                    ]
+                    paragraphs.append(
+                        self.say("role_eligible_statements", statements=self.say.join(statements))
+                        + "."
+                    )
                     continue
                 paragraphs.append(
                     self.say(
                         "role_eligible_only_one"
                         if len(role.eligible_people) == 1
                         else "role_eligible_only_many",
-                        people=self.say.join(
-                            sorted(role.eligible_people, key=self.board.people.index)
-                        ),
+                        people=self.say.join(eligible),
                         role=self.say.words.get(role.name, role.name),
                     )
                     + "."

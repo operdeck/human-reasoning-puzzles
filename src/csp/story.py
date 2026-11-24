@@ -473,6 +473,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_not_many": "{people} cannot have the {role} role",
         "role_eligible_only_one": "only {people} is eligible for the {role} role",
         "role_eligible_only_many": "only {people} are eligible for the {role} role",
+        "role_eligible_statements": "Of the figures, only these statements can be true: "
+        "{statements}",
         "murdoku.chain_domain_reason": "; it is the only square left after {excluded} is ruled out",
         "murdoku.relation_pair": "Of the remaining squares, only {pair} satisfy {source}.",
         "murdoku.direction_boundaries": "{clue}, so **{first}** and **{second}**.",
@@ -1044,6 +1046,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "role_not_many": "{people} kunnen de rol {role} niet hebben",
         "role_eligible_only_one": "alleen {people} komt in aanmerking voor de rol {role}",
         "role_eligible_only_many": "alleen {people} komen in aanmerking voor de rol {role}",
+        "role_eligible_statements": "Van de figuren kunnen alleen deze uitspraken waar zijn: "
+        "{statements}",
         "murdoku.chain_domain_reason": "; dat is het enige vakje dat overblijft nadat "
         "{excluded} is uitgesloten",
         "murdoku.relation_pair": "Van de overgebleven vakjes voldoen alleen {pair} aan {source}.",
