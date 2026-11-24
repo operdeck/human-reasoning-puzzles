@@ -238,6 +238,20 @@ def pattern_story(
         return generic_story.explain(
             text, start.clone(keep_log=True), fired, words.sources, kind, words.hidden
         )
+    if kind == "battleships":
+        battle = battleships.parse(text)
+        wording = story.Wording.read(text)
+        support = {
+            (ship.name, True): wording(
+                "generic.given_single_ship", cell=battleships.cell_name(ship.cells[0])
+            )
+            for ship in battleships.ships(battle)
+            if len(ship.cells) == 1 and battle.segments[ship.cells[0][0]][ship.cells[0][1]] == "O"
+        }
+        sources = {"ships do not touch, even diagonally": wording("generic.ships_do_not_touch")}
+        return generic_story.explain(
+            text, start.clone(keep_log=True), fired, sources, kind, support_words=support
+        )
     if kind == "binairo":
         binairo_puzzle = binairo.parse(text)
         wording = story.Wording.read(text)

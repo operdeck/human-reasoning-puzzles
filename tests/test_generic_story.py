@@ -67,8 +67,14 @@ def test_each_single_cites_its_own_reason():
         "**r1c3\u2013r3c3, r4c4 and r4c5 = no bulb**, because r4c3 = bulb "
         "rules out r1c3\u2013r3c3, r4c4 and r4c5 = bulb"
     ) in text
-    assert "**r6c2 = no bulb**, because *1 bulb around wall r6c3* rules out r6c2 = bulb" in text
-    assert "**r4c1 = no bulb**, because *3 bulbs around wall r4c2* rules out r4c1 = bulb" in text
+    assert (
+        "**r6c2 = no bulb**: r6c4 = bulb; with *1 bulb around wall r6c3*, "
+        "that leaves no alternative"
+    ) in text
+    assert (
+        "**r4c1 = no bulb**: r3c2, r4c3 and r5c2 = bulb; with *3 bulbs around wall r4c2*, "
+        "that leaves no alternative"
+    ) in text
     assert "With r3c6 = bulb already counted" in text
     assert "r5c6 = bulb and r4c5 = bulb" in text
     assert "*1 bulb around wall r5c5*" in text
@@ -80,13 +86,12 @@ def test_each_single_cites_its_own_reason():
     [
         (
             "battleships_1_6x6_fleet.txt",
-            "**r2c4\u2013r2c6 = ship**, because ship 3 r2c4-r2c6 = ship "
-            "rules out r2c4\u2013r2c6 = water",
+            "**r2c4\u2013r2c6 = ship** by *5 occupied cells in row 2*, as before",
         ),
         (
             "thermometers_1_4x4.txt",
-            "**r2c1\u2013r4c1 = empty**, because *1 filled in column 1* "
-            "rules out r2c1\u2013r4c1 = mercury",
+            "**r2c1\u2013r4c1 = empty**: r1c1 = mercury; with *1 filled in column 1*, "
+            "that leaves no alternative",
         ),
     ],
 )
@@ -105,7 +110,10 @@ def test_count_cover_names_already_counted_values():
 
 def test_boolean_and_count_cover_premises_are_in_dutch():
     text = told("minesweeper_2_5x5.txt", "nl").markdown()
-    assert "omdat *1 mine near r4c3* r3c3 = mijn uitsluit" in text
+    assert (
+        "r3c3 = veilig**: r4c4 = mijn; met *1 mine near r4c3* "
+        "blijft er geen andere mogelijkheid over"
+    ) in text
     assert (
         "Met r4c1 = mijn en r4c4 = mijn al meegeteld, gebruiken "
         "*1 mine near r1c5* en *1 mine near r2c1* de resterende ruimte "

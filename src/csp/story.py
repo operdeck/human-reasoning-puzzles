@@ -423,8 +423,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.rule_out": "rule out",
         "generic.rules_out_verb": "rules out",
         "generic.opposite_ruled_out_by": "{placements}, because {cause} rules out {alternatives}",
+        "generic.opposite_ruled_out_by_support": "{placements}, because {cause} and {source} "
+        "rule out {alternatives}",
+        "generic.count_single_support": "{placements}: {facts}; with {source}, that leaves "
+        "no alternative",
+        "generic.count_single_again": "{placements} by {source}, as before",
+        "generic.given_single_ship": "{cell} is a given single-cell ship",
+        "generic.ships_do_not_touch": "ships do not touch, even diagonally",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
+        "generic.clue_count_again": "{sources} gives {conclusion}, using the same count as before",
         "generic.clue_with_candidates": "With {candidates}, {sources} gives {conclusion}",
         "generic.subsumption": "**Overlap.** Every remaining option of {sources} lies within "
         "{scope}, so {conclusion}.",
@@ -1039,8 +1047,16 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.rule_out": "uitsluiten",
         "generic.rules_out_verb": "uitsluit",
         "generic.opposite_ruled_out_by": "{placements}, omdat {cause} {alternatives} uitsluit",
+        "generic.opposite_ruled_out_by_support": "{placements}, omdat {cause} en {source} "
+        "{alternatives} uitsluiten",
+        "generic.count_single_support": "{placements}: {facts}; met {source} blijft er geen "
+        "andere mogelijkheid over",
+        "generic.count_single_again": "{placements} door {source}, net als eerder",
+        "generic.given_single_ship": "{cell} is een gegeven schip van één vakje",
+        "generic.ships_do_not_touch": "schepen raken elkaar niet, ook niet diagonaal",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
+        "generic.clue_count_again": "{sources} geeft {conclusion}, met dezelfde telling als eerder",
         "generic.clue_with_candidates": "Met {candidates} over geeft {sources} {conclusion}",
         "generic.subsumption": "**Overlap.** Alle resterende opties van {sources} liggen binnen "
         "{scope}, dus {conclusion}.",

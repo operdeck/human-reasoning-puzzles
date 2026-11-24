@@ -29,6 +29,13 @@ _CELL = re.compile(r"^r(\d+)c(\d+)$")
 class LostCause:
     source: str | None = None
     placement: tuple[str, Any] | None = None
+    rule: str | None = None
+
+
+@dataclass(frozen=True)
+class CountEvidence:
+    source: str
+    facts: tuple[tuple[str, Any], ...]
 
 
 @dataclass(frozen=True)
@@ -105,6 +112,7 @@ class Narrator:
         hidden_words: Mapping[tuple[str, Any], str] | None = None,
         value_words: Mapping[Any, str] | None = None,
         comparisons: Mapping[str, tuple[tuple[str, str], ...]] | None = None,
+        support_words: Mapping[tuple[str, Any], str] | None = None,
     ) -> None:
         self.model = model
         self.say = say
@@ -113,11 +121,13 @@ class Narrator:
         self.hidden_words = dict(hidden_words or {})
         self.value_words: dict[Any, str] = dict(value_words or {})
         self.comparisons = dict(comparisons or {})
+        self.support_words = dict(support_words or {})
         self.visible = set(model.variables) | {var for var, _ in self.hidden_words}
         self.constraints = {c.name: c for c in model.constraints}
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
         self.told: set[tuple[str, Any]] = set()
         self.explained_removals: set[tuple[str, Any]] = set()
+        self.explained_counts: set[CountEvidence] = set()
         self.lost: dict[tuple[str, Any], LostCause] = {}
         self.pruned: dict[str, dict[str, list[Any]]] = {}
 
@@ -358,6 +368,66 @@ class Narrator:
         causes.extend(grouped_causes)
         return Exclusions(tuple(causes), earlier, source) if causes else None
 
+    def _count_single_support(
+        self, before: Model, var: str, value: bool, sources: Sequence[str] = ()
+    ) -> CountEvidence | None:
+        """Cite a fixed count only when already-told facts directly force the cell."""
+        for constraint in before.constraints:
+            if (
+                constraint.kind is not Kind.COUNT
+                or constraint.reified_by is not None
+                or len(constraint.allowed_counts) != 1
+                or any(before.value_of(lit) is not True for lit in constraint.literals)
+                or (sources and constraint.name not in sources)
+            ):
+                continue
+            target = next(
+                (
+                    literal
+                    for literal in constraint.literals
+                    if before.var_of(literal) == var and before.value_of(literal) is True
+                ),
+                None,
+            )
+            if target is None or before.is_true(target) or (value and before.is_false(target)):
+                continue
+            count = next(iter(constraint.allowed_counts))
+            if value:
+                if sum(not before.is_false(lit) for lit in constraint.literals) != count:
+                    continue
+                relevant = [lit for lit in constraint.literals if before.is_false(lit)]
+                facts = [(before.var_of(lit), False) for lit in relevant]
+            else:
+                relevant = [lit for lit in constraint.literals if before.is_true(lit)]
+                if len(relevant) != count:
+                    continue
+                facts = [(before.var_of(lit), before.value_of(lit)) for lit in relevant]
+            if not facts or any(
+                fact_var not in self.visible
+                or not self._boolean(fact_var)
+                or (
+                    (fact_var, fact_value) not in self.told
+                    and self.model.chosen(fact_var) != fact_value
+                )
+                for fact_var, fact_value in facts
+            ):
+                continue
+            return CountEvidence(constraint.name, tuple(facts))
+        return None
+
+    def _count_facts(self, evidence: CountEvidence) -> str:
+        grouped: dict[tuple[Any, str | None], list[str]] = {}
+        for var, value in evidence.facts:
+            grouped.setdefault(
+                (value, var if (var, value) in self.hidden_words else None), []
+            ).append(var)
+        return self.say.join(
+            [
+                self.placed(variables[0], value, compress(variables, self.say))
+                for (value, _), variables in grouped.items()
+            ]
+        )
+
     def singles(self, inferences: Sequence[Inference], history: Sequence[Step]) -> list[str]:
         """Each placement in the order it was found, with the rule that left it.
 
@@ -427,6 +497,33 @@ class Narrator:
                         if step.asserted
                         else None
                     ) or source
+                hidden_cause = (
+                    isinstance(reason, LostCause)
+                    and reason.placement is not None
+                    and reason.placement[0] not in self.visible
+                )
+                hidden_options = (
+                    isinstance(reason, str)
+                    and (constraint := self.constraints.get(reason)) is not None
+                    and (
+                        len(constraint.literals) == 1
+                        or any(
+                            self.model.var_of(lit) not in self.visible
+                            for lit in constraint.literals
+                        )
+                    )
+                )
+                count_cause = isinstance(reason, LostCause) and reason.source is not None
+                direct_count = (
+                    isinstance(reason, str)
+                    and (constraint := self.constraints.get(reason)) is not None
+                    and constraint.kind is Kind.COUNT
+                )
+                if isinstance(pair[1], bool) and (
+                    hidden_cause or hidden_options or count_cause or direct_count
+                ):
+                    sources = (reason.source,) if count_cause else (reason,) if direct_count else ()
+                    reason = self._count_single_support(inference.before, *pair, sources) or reason
                 found.append((reason, *pair))
         paragraphs: list[str] = []
         chunks: list[list[tuple[Any, str, Any]]] = []
@@ -500,10 +597,27 @@ class Narrator:
                             source=self.names([reason.constraint]) if reason.constraint else "",
                         )
                     )
+                elif isinstance(reason, CountEvidence):
+                    key = (
+                        "generic.count_single_again"
+                        if reason in self.explained_counts
+                        else "generic.count_single_support"
+                    )
+                    parts.append(
+                        self.say(
+                            key,
+                            placements=listed,
+                            facts=self._count_facts(reason),
+                            source=self.names([reason.source]),
+                        )
+                    )
+                    self.explained_counts.add(reason)
                 elif isinstance(reason, LostCause):
                     cause = (
                         self.names([reason.source])
                         if reason.source is not None
+                        else self.support_words[reason.placement]
+                        if reason.placement in self.support_words
                         else self.placed(*reason.placement)
                         if reason.placement is not None
                         else ""
@@ -517,10 +631,13 @@ class Narrator:
                         )
                         parts.append(
                             self.say(
-                                "generic.opposite_ruled_out_by",
+                                "generic.opposite_ruled_out_by_support"
+                                if reason.rule
+                                else "generic.opposite_ruled_out_by",
                                 placements=listed,
                                 alternatives=alternatives,
                                 cause=cause,
+                                source=self.names([reason.rule]) if reason.rule else "",
                             )
                         )
                     else:
@@ -1265,6 +1382,30 @@ class Narrator:
                 candidates = (
                     self._relation_premises(group.pattern) if move.rule == "relations" else None
                 )
+                repeated_count = False
+                if move.rule == "count":
+                    evidence = [
+                        self._count_single_support(
+                            group.pattern.before,
+                            step.var,
+                            step.value if step.asserted else not step.value,
+                            move.sources,
+                        )
+                        for step in group.pattern.steps
+                        if step.placing is None
+                        and step.var in self.visible
+                        and isinstance(step.value, bool)
+                    ]
+                    if (
+                        evidence
+                        and evidence[0] is not None
+                        and all(e == evidence[0] for e in evidence)
+                    ):
+                        if evidence[0] not in self.explained_counts:
+                            candidates = self._count_facts(evidence[0])
+                        else:
+                            repeated_count = True
+                        self.explained_counts.add(evidence[0])
                 if candidates:
                     clues.append(
                         self.say(
@@ -1277,7 +1418,9 @@ class Narrator:
                 else:
                     clues.append(
                         self.say(
-                            "generic.clue", sources=self.names(move.sources), conclusion=conclusion
+                            "generic.clue_count_again" if repeated_count else "generic.clue",
+                            sources=self.names(move.sources),
+                            conclusion=conclusion,
                         )
                     )
                 pending.extend(group.consequences)
@@ -1325,7 +1468,19 @@ class Narrator:
                             (step.var, step.value),
                             LostCause(source=count_source)
                             if count_source is not None
-                            else LostCause(placement=step.placing),
+                            else LostCause(
+                                placement=step.placing,
+                                rule=next(
+                                    (
+                                        constraint.family or constraint.name
+                                        for source in step.sources
+                                        if step.placing in self.support_words
+                                        and (constraint := self.constraints.get(source)) is not None
+                                        and constraint.kind is Kind.AT_MOST_ONE
+                                    ),
+                                    None,
+                                ),
+                            ),
                         )
                 history.extend(inference.steps)
         flush(True)
@@ -1383,6 +1538,7 @@ def explain(
     hidden_words: Mapping[tuple[str, Any], str] | None = None,
     value_words: Mapping[Any, str] | None = None,
     comparisons: Mapping[str, tuple[tuple[str, str], ...]] | None = None,
+    support_words: Mapping[tuple[str, Any], str] | None = None,
 ) -> Explanation:
     """Explain a solve of any compiled model from its rule firings, shortest proof first.
 
@@ -1394,12 +1550,20 @@ def explain(
     that settles one reads as a fact ("Dirk and Ada are together"). `value_words`
     translates model values such as zero-based coordinates into player-facing names.
     `comparisons` maps a hidden comparison state to its corresponding visible cell pairs.
+    `support_words` gives a player-facing premise for a hidden, independently known fact.
     """
     moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
     if replay(start, moves).solution() is not None:
         moves = thin(start, moves)
     result, groups = episodes(start, moves)
     narrator = Narrator(
-        start, Wording.read(text), source_words, kind, hidden_words, value_words, comparisons
+        start,
+        Wording.read(text),
+        source_words,
+        kind,
+        hidden_words,
+        value_words,
+        comparisons,
+        support_words,
     )
     return narrator.tell(start, groups, result.solution() is not None)

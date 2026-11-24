@@ -129,9 +129,31 @@ def test_explain_tells_the_solution_by_puzzle_rules(capsys):
 
     assert main([str(example("battleships_1_6x6_fleet.txt")), "--explain"]) == 0
     output = capsys.readouterr().out
+    assert (
+        "**r4c5 = water**: r4c6 = ship; with *1 occupied cell in row 4*, that leaves no alternative"
+    ) in output
+    assert (
+        "**r5c5 and r5c6 = water**, because r4c6 is a given single-cell ship and "
+        "*ships do not touch, even diagonally* rule out r5c5 and r5c6 = ship"
+    ) in output
+    assert ("With r2c3 = water, *5 occupied cells in row 2* gives **r2c1 = ship**") in output
+    assert "**r2c4\u2013r2c6 = ship** by *5 occupied cells in row 2*, as before" in output
+    assert (
+        "*1 occupied cell in row 4* gives **r4c2 and r4c4 = water**, using the same count as before"
+    ) in output
     assert "**r1c1\u2013r1c6 = water** by *0 occupied cells in row 1*" in output
-    assert "*5 occupied cells in row 2* gives **r2c1 = ship**" in output
     assert "Stalled" not in output
+
+
+def test_explain_translates_the_given_ship_premise():
+    from csp.cli import load, pattern_story
+    from tests.examples import example
+
+    text = "Language: nl\n" + example("battleships_1_6x6_fleet.txt").read_text()
+    puzzle = load(text, "battleships")
+    explanation = pattern_story("battleships", text, puzzle.model).markdown()
+    assert "r4c6 is een gegeven schip van één vakje" in explanation
+    assert "*schepen raken elkaar niet, ook niet diagonaal*" in explanation
 
 
 @pytest.mark.parametrize(
