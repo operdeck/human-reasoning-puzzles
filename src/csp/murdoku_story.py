@@ -2521,7 +2521,9 @@ class _Narrator(generic_story.Narrator):
             if len(relevant) == 1:
                 person, removed = relevant[0]
                 return self.say(
-                    "murdoku.line_overlap_with_exclusions",
+                    "murdoku.line_overlap_with_exclusion"
+                    if len(removed) == 1
+                    else "murdoku.line_overlap_with_exclusions",
                     source_line=self.places.line(source_kind, source_index),
                     square=self.places.square(square),
                     scope_line=self.places.line(scope_kind, scope_index),

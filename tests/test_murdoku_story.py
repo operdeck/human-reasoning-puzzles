@@ -583,12 +583,12 @@ def test_line_overlap_candidate_bounds_are_lowercase_after_so():
     [
         (
             "nl",
-            "In rij 5 past maar één persoon, dus Hannelore moet r5k3 en r5k5 uitsluiten",
+            "In rij 5 past maar één persoon, dus voor Hannelore vallen r5k3 en r5k5 af",
             "**Hannelore zit op r5k4, r7k5 of r7k7**",
         ),
         (
             "en",
-            "Only one person can be in row 5, so Hannelore must rule out r5c3 and r5c5",
+            "Only one person can be in row 5, so r5c3 and r5c5 are unavailable to Hannelore",
             "**Hannelore is on r5c4, r7c5 or r7c7**",
         ),
     ],
@@ -604,6 +604,48 @@ def test_line_overlap_names_removed_candidates_before_remaining(
     text = murdoku_story.explain(source, numbered=numbered).markdown()
     assert reason in text and remaining in text
     assert text.index(reason) < text.index(remaining)
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("nl", "voor Hannelore valt r5k5 af"),
+        ("en", "r5c5 is unavailable to Hannelore"),
+    ],
+)
+def test_line_overlap_names_a_single_removed_candidate(language, expected):
+    text = (
+        example("berghut-murdoku-2.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    board, rules, clues = load_expression_board(text)
+    compilation = compile_statements_with_origins(board, clues, rules=rules)
+    fired = []
+    Solver(compilation.model.clone()).solve(on_step=lambda rule, steps: fired.append((rule, steps)))
+    moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
+    moves = generic_story.thin(compilation.model, moves)
+    _, groups = episodes(compilation.model, moves)
+    inference = next(
+        inference
+        for group in groups
+        for inference in (group.pattern, *group.consequences)
+        if inference.move and inference.move.sources == ("col 4 holds one person",)
+    )
+    previous = inference.before.clone()
+    previous.eliminate(previous.literal("Hannelore", Square(4, 2)), "test", "earlier exclusion")
+    inference = replace(
+        inference,
+        before=previous,
+        steps=tuple(
+            step
+            for step in inference.steps
+            if (step.var, step.value) != ("Hannelore", Square(4, 2))
+        ),
+    )
+    narrator = murdoku_story._Narrator(text, board, compilation, numbered=True)
+    paragraph = narrator._line_overlap(inference, "remaining candidates")
+    assert paragraph is not None and expected in paragraph
 
 
 @pytest.mark.parametrize("numbered", [True, False])
