@@ -599,6 +599,32 @@ class _Narrator(generic_story.Narrator):
             ),
         )
 
+    def _because_with_known(
+        self, inference: Inference, sources: Sequence[str], conclusion: str
+    ) -> str:
+        reason = self._because(sources, conclusion)
+        move = inference.move
+        if move is None or move.rule != "relations" or len(move.sources) != 1:
+            return reason
+        relation = next(
+            (item for item in self.model.relations if item.name == move.sources[0]), None
+        )
+        if relation is None:
+            return reason
+        changed = {step.var for step in inference.steps}
+        known = []
+        for person in relation.variables:
+            if person not in self.board.people or person in changed:
+                continue
+            values = [
+                inference.before.value_of(literal) for literal in inference.before.options(person)
+            ]
+            if len(values) == 1 and (person, values[0]) in self.spoken_placements:
+                known.append(self.placed(person, values[0]))
+        if not known:
+            return reason
+        return self.say("murdoku.given_relation", known=self.say.join(known), reason=reason)
+
     def _furthest_exclusion(self, inference: Inference, conclusion: str) -> str | None:
         move = inference.move
         if move is None or move.rule != "relations" or len(move.sources) != 1:
@@ -2859,7 +2885,7 @@ class _Narrator(generic_story.Narrator):
                 conclusion=conclusion,
             )
             return f"{premise} {reason}" if premise else reason
-        return self._because(sources, conclusion)
+        return self._because_with_known(inference, sources, conclusion)
 
     def _line_reservation(self, inference: Inference) -> dict[str, str] | None:
         move = inference.move
@@ -3076,7 +3102,9 @@ class _Narrator(generic_story.Narrator):
                         paragraph = (
                             paragraph
                             if paragraph is not None
-                            else self._because([*premises, *sources], conclusion)
+                            else self._because_with_known(
+                                inference, [*premises, *sources], conclusion
+                            )
                         )
                         paragraphs.append(
                             paragraph if paragraph.endswith((".", "!", "?")) else paragraph + "."

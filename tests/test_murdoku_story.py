@@ -469,6 +469,28 @@ def test_direction_boundary_candidate_bounds_are_lowercase_after_prefix():
     assert "Met de eerdere beperkingen geldt: **voor Haru blijven alleen de kolommen" in text
 
 
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
+    ("language", "known", "consequence"),
+    [
+        ("nl", "Met Jun op r3k1 als uitgangspunt", "Haru zit niet in Osaka"),
+        ("en", "With Jun on r3c1 already established", "Haru is not in Osaka"),
+    ],
+)
+def test_relation_deduction_names_earlier_placement(numbered, language, known, consequence):
+    source = (
+        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+    )
+    paragraphs = murdoku_story.explain(source, numbered=numbered).paragraphs
+    deduction = next(paragraph for paragraph in paragraphs if consequence in paragraph)
+    assert known in deduction
+    assert paragraphs.index(deduction) > next(
+        index
+        for index, paragraph in enumerate(paragraphs)
+        if "**Jun op r3k1**" in paragraph or "**Jun on r3c1**" in paragraph
+    )
+
+
 def test_line_overlap_candidate_bounds_are_lowercase_after_so():
     text = murdoku_story.explain(example("berghut-murdoku-3.txt").read_text()).markdown()
     assert "dus **voor Brunhild, Hannelore en Gerhard blijven alleen de kolommen" in text

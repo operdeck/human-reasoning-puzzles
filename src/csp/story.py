@@ -520,6 +520,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "squares satisfies {source}.",
         "murdoku.direction_boundaries": "{clue}, so **{first}** and **{second}**.",
         "murdoku.with_prior": "Taking the earlier restrictions into account, {conclusion}",
+        "murdoku.given_relation": "With {known} already established: {reason}",
         "murdoku.relation_occupied_lines": "If {who} were on {rejected}, {other} would have to "
         "be on {squares} by {source}. Each of those squares is in {lines}, already occupied "
         "at another square, so none is available. Therefore {placement}; {other} can only "
@@ -1177,6 +1178,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "alleen {pair} aan {source}.",
         "murdoku.direction_boundaries": "{clue}, dus **{first}** en **{second}**.",
         "murdoku.with_prior": "Met de eerdere beperkingen geldt: {conclusion}",
+        "murdoku.given_relation": "Met {known} als uitgangspunt: {reason}",
         "murdoku.relation_occupied_lines": "Als {who} op {rejected} stond, moest {other} "
         "volgens {source} op {squares} staan. Die vakjes liggen in {lines}, al bezet op "
         "een ander vakje, en vallen dus af. Daarom {placement}; {other} kan alleen nog "
