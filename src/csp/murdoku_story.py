@@ -2805,14 +2805,18 @@ class _Narrator(generic_story.Narrator):
                 rule = (
                     self.source_words[origin.label] if origin is not None else self.names([source])
                 )
-                return self.say(
+                explanation = self.say(
                     "murdoku.role_area_unique",
-                    reasons=self.say.join(details),
+                    reasons=". ".join(
+                        "*" + _cap(detail[1:]) if detail.startswith("*") else _cap(detail)
+                        for detail in details
+                    ),
                     who=person,
                     area=self.places.region(self.board.region_names[region]),
                     rule=_cap(rule),
                     role=self.say.words.get(role, role),
                 )
+                return explanation if explanation.endswith((".", "!", "?")) else explanation + "."
         return None
 
     def _beside_different_area(
@@ -3015,7 +3019,7 @@ class _Narrator(generic_story.Narrator):
         if role_exclusion := self._role_exclusion(inference):
             return role_exclusion[0] + "."
         if role_area := self._role_area_reason(inference, history):
-            return role_area + "."
+            return role_area
         if relation_pair := self._relation_pair(inference):
             return relation_pair
         if furthest := self._furthest_exclusion(inference, conclusion):

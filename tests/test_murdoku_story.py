@@ -919,6 +919,30 @@ def test_unique_role_in_area_names_the_candidates_and_their_exclusions():
     assert "Carmen is the murderer" in text
 
 
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
+    ("language", "area_end", "next_reason", "conclusion"),
+    [
+        ("en", "Goya room. *", "r5c1. Fernando", "**Carmen is the murderer**."),
+        ("nl", "Goya room. *", "r5k1. Fernando", "**Carmen is de murderer**."),
+    ],
+)
+def test_role_area_reasons_are_separate_complete_sentences(
+    numbered, language, area_end, next_reason, conclusion
+):
+    source = (
+        example("halloween-museum-1.txt")
+        .read_text()
+        .replace("Language: en", f"Language: {language}")
+    )
+    paragraph = next(
+        p for p in murdoku_story.explain(source, numbered=numbered).paragraphs if conclusion in p
+    )
+    assert area_end in paragraph
+    assert next_reason in paragraph
+    assert paragraph.endswith(conclusion)
+
+
 def test_numbered_explanation_ends_with_the_authored_reveal():
     result = murdoku_story.explain(example("berghut-murdoku-3.txt").read_text())
 
