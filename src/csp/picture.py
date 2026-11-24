@@ -1843,7 +1843,7 @@ def _room_caption(
     font = size
     while True:
         lines = textwrap.wrap(room.title, width=max(4, int(span / (font * 0.55))))[:2]
-        if font <= 7 or all(canvas.textlength(line, font) <= span * 0.92 for line in lines):
+        if font <= 7 or all(canvas.textlength(line, font) <= span * 0.84 for line in lines):
             break
         font -= 1
     cursor = y + max(2.0, span * 0.045)
@@ -1867,15 +1867,16 @@ def _layout_properties(
     if not count:
         return 0.0, 1, 0, 0.0
     budget = max(icon_size, depth * 0.45)
+    available = span * 0.9  # the room's own margin on both sides
     side = float(icon_size)
     while side > 8:
         gap = side * 0.14
-        columns = max(1, int((span - side * 0.2) // (side + gap)))
+        columns = max(1, int((available + gap) // (side + gap)))
         if -(-count // columns) * (side + gap) <= budget:
             return side, columns, -(-count // columns), gap
         side -= 1
     gap = side * 0.14
-    columns = max(1, int((span - side * 0.2) // (side + gap)))
+    columns = max(1, int((available + gap) // (side + gap)))
     return side, columns, -(-count // columns), gap
 
 
