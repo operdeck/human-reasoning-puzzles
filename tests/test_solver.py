@@ -539,6 +539,18 @@ def test_clone_leaves_the_original_untouched():
     assert twin.is_false(b) and not m.is_false(b) and m.log == []
 
 
+def test_clone_can_preserve_initial_provenance_without_sharing_the_log():
+    model = Model()
+    a, _ = _variable(model, "x", (1, 2))
+    model.assign(a, "given", "stated in the puzzle")
+
+    snapshot = model.clone(keep_log=True)
+    assert snapshot.log == model.log
+    assert model.clone().log == []
+    snapshot.log.clear()
+    assert model.log
+
+
 def test_hidden_domain_participates_in_constraints_but_not_solution_assignments():
     model = Model()
     person = _variable(model, "Ada", ("r1c1", "r1c2"))

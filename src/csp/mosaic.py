@@ -112,7 +112,8 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
         value = puzzle.clues[cell[0]][cell[1]]
         assert value is not None
         model.constrain(
-            f"{value} black cells around {cell_name(cell)}",
+            f"{value} black {'cell' if value == 1 else 'cells'} "
+            f"in the 3x3 window centered on {cell_name(cell)}",
             Kind.COUNT,
             [model.literal(cell_name(near), True) for near in puzzle.window(cell)],
             allowed_counts=(value,),

@@ -230,14 +230,14 @@ class Model:
         """Require `holds(*values)` of the named variables' values, in order."""
         self._relations.append(Relation(name, tuple(variables), holds))
 
-    def clone(self) -> Self:
-        """A copy with its own truth state and an empty log.
+    def clone(self, *, keep_log: bool = False) -> Self:
+        """A copy with its own truth state and, optionally, the earlier log.
 
         Structure is shared, so only clone a model that is fully built.
         """
         twin = copy.copy(self)
         twin._state = list(self._state)
-        twin.log = []
+        twin.log = list(self.log) if keep_log else []
         twin._relation_state = None  # never share incremental scans across states
         return twin
 

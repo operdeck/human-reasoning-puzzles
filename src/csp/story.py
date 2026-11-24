@@ -406,10 +406,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.left_after": "{placements}, the only option left once {causes}",
         "generic.left_after_each": "{placements}, each the only option left once {causes}",
         "generic.rules_out": "{source} rules out {values}",
+        "generic.exclusion_by_placements": "{placements} {verb} {values} under {source}",
+        "generic.rule_out": "rule out",
+        "generic.rules_out_verb": "rules out",
         "generic.opposite_ruled_out_by": "{placements}, because {cause} rules out {alternatives}",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
-        "generic.clue_with_candidates": "Given {candidates}, {sources} gives {conclusion}",
+        "generic.clue_with_candidates": "With {candidates}, {sources} gives {conclusion}",
         "generic.subsumption": "**Overlap.** Every remaining option of {sources} lies within "
         "{scope}, so {conclusion}.",
         "generic.subsumption_count": "**Overlap.** With {placed} already counted, every remaining "
@@ -1002,6 +1005,9 @@ PHRASES: dict[str, dict[str, str]] = {
             "{placements}, telkens de enige mogelijkheid die overblijft nu {causes}"
         ),
         "generic.rules_out": "{source} {values} uitsluit",
+        "generic.exclusion_by_placements": "{placements} volgens {source} {values} {verb}",
+        "generic.rule_out": "uitsluiten",
+        "generic.rules_out_verb": "uitsluit",
         "generic.opposite_ruled_out_by": "{placements}, omdat {cause} {alternatives} uitsluit",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",

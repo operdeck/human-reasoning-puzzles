@@ -235,8 +235,10 @@ def pattern_story(
         return murdoku_story.explain(text, start=start.clone(), fired=fired)
     if kind == "rooms":
         words = rooms.story_words(text)
-        return generic_story.explain(text, start.clone(), fired, words.sources, kind, words.hidden)
-    return generic_story.explain(text, start.clone(), fired, kind=kind)
+        return generic_story.explain(
+            text, start.clone(keep_log=True), fired, words.sources, kind, words.hidden
+        )
+    return generic_story.explain(text, start.clone(keep_log=True), fired, kind=kind)
 
 
 def worked_solution(
@@ -538,7 +540,7 @@ def _write_booklet(
         except ValueError as exc:
             print(f"could not read {file.name}: {exc}", file=sys.stderr)
             return 2
-        start = model.clone() if kind != "murdoku" or told else None
+        start = model.clone(keep_log=True) if kind != "murdoku" or told else None
         fired = _Fired()
         result = Solver(model).solve(on_step=fired.append_step) if solve else None
         placed = None

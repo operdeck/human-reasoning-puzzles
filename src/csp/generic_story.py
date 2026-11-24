@@ -39,6 +39,13 @@ class Pruned:
 
 
 @dataclass(frozen=True)
+class Exclusions:
+    """Reasons for every other value of a single-valued variable."""
+
+    causes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Explanation:
     """Narrative paragraphs and whether they account for the entire solution."""
 
@@ -104,6 +111,7 @@ class Narrator:
         self.constraints = {c.name: c for c in model.constraints}
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
         self.told: set[tuple[str, Any]] = set()
+        self.explained_removals: set[tuple[str, Any]] = set()
         self.lost: dict[tuple[str, Any], LostCause] = {}
         self.pruned: dict[str, dict[str, list[Any]]] = {}
 
@@ -161,6 +169,12 @@ class Narrator:
             if pair not in placements:
                 placements.append(pair)
         settled = {var for var, _ in placements}
+        self.explained_removals.update(
+            (var, value)
+            for var, values in removed.items()
+            if var not in settled
+            for value in values
+        )
         alike: dict[tuple[Any, ...], list[str]] = {}
         for var, values in removed.items():
             if var not in settled:
@@ -202,7 +216,58 @@ class Narrator:
 
     # --- singles ----------------------------------------------------------
 
-    def singles(self, inferences: Sequence[Inference]) -> list[str]:
+    def _single_exclusions(
+        self, before: Model, var: str, history: Sequence[Step]
+    ) -> Exclusions | None:
+        exclusions = [literal for literal in self._domain(var) if before.is_false(literal)]
+        if not exclusions:
+            return None
+        placements: dict[str, list[tuple[str, Any]]] = {}
+        values_by_source: dict[str, list[Any]] = {}
+        for literal in exclusions:
+            value = before.value_of(literal)
+            if (var, value) in self.explained_removals:
+                continue
+            step = next(
+                (
+                    item
+                    for item in history
+                    if item.var == var and item.value == value and not item.asserted
+                ),
+                None,
+            )
+            if step is None:
+                return None
+            sources = [source for source in step.sources if source not in self.domains]
+            if not sources:
+                return None
+            if (
+                step.placing is not None
+                and step.placing[0] in self.visible
+                and len(sources) == 1
+                and (constraint := self.constraints.get(sources[0])) is not None
+                and constraint.kind in (Kind.EXACTLY_ONE, Kind.AT_MOST_ONE)
+            ):
+                source = constraint.family or constraint.name
+                placed = placements.setdefault(source, [])
+                if step.placing not in placed:
+                    placed.append(step.placing)
+                values_by_source.setdefault(source, []).append(value)
+            else:
+                return None
+        causes = [
+            self.say(
+                "generic.exclusion_by_placements",
+                placements=self.say.join([self.placed(*pair) for pair in placed]),
+                source=self.names([source]),
+                values=self.say.join([str(value) for value in values_by_source[source]]),
+                verb=self.say("generic.rule_out" if len(placed) > 1 else "generic.rules_out_verb"),
+            )
+            for source, placed in placements.items()
+        ]
+        return Exclusions(tuple(causes)) if causes else None
+
+    def singles(self, inferences: Sequence[Inference], history: Sequence[Step]) -> list[str]:
         """Each placement in the order it was found, with the rule that left it.
 
         A yes/no cell losing one value is placed on the other, for the reason it
@@ -224,6 +289,28 @@ class Narrator:
                     continue
                 self.told.add(pair)
                 source = next((s for s in step.sources if not self._yes_or_no(s)), None)
+                if isinstance(pair[1], bool) and not pair[1]:
+                    opposite = next(
+                        (
+                            literal
+                            for literal in self._domain(step.var)
+                            if self.model.value_of(literal) is True
+                        ),
+                        None,
+                    )
+                    zero_count = next(
+                        (
+                            constraint.name
+                            for constraint in inference.before.constraints
+                            if constraint.kind is Kind.COUNT
+                            and constraint.reified_by is None
+                            and constraint.allowed_counts == {0}
+                            and opposite in constraint.literals
+                        ),
+                        None,
+                    )
+                    if zero_count is not None:
+                        source = zero_count
                 reason: Any
                 if source is None:
                     reason = self.lost.get((step.var, not step.value)) if step.asserted else None
@@ -237,14 +324,26 @@ class Narrator:
                     reason = (
                         Pruned(tuple((name, tuple(values)) for name, values in causes.items()))
                         if causes and step.asserted
+                        else self._single_exclusions(inference.before, step.var, history)
+                        if step.asserted
                         else ""
                     )
+                    if reason is None:
+                        reason = ""
                 else:
                     reason = source
                 found.append((reason, *pair))
         paragraphs: list[str] = []
-        for start in range(0, len(found), PLACEMENTS_PER_PARAGRAPH):
-            chunk = found[start : start + PLACEMENTS_PER_PARAGRAPH]
+        chunks: list[list[tuple[Any, str, Any]]] = []
+        weight = 0
+        for item in found:
+            size = 4 if isinstance(item[0], Exclusions) else 1
+            if not chunks or weight + size > PLACEMENTS_PER_PARAGRAPH:
+                chunks.append([])
+                weight = 0
+            chunks[-1].append(item)
+            weight += size
+        for index, chunk in enumerate(chunks):
             runs: list[tuple[Any, list[tuple[Any, list[str]]]]] = []
             for reason, var, value in chunk:
                 if not runs or runs[-1][0] != reason:
@@ -286,6 +385,14 @@ class Narrator:
                     many = sum(len(where) for _, where in values) > 1
                     key = "generic.left_after_each" if many else "generic.left_after"
                     parts.append(self.say(key, placements=listed, causes=ruled_out))
+                elif isinstance(reason, Exclusions):
+                    parts.append(
+                        self.say(
+                            "generic.left_after",
+                            placements=listed,
+                            causes=self.say.join(list(reason.causes)),
+                        )
+                    )
                 elif isinstance(reason, LostCause):
                     cause = (
                         self.names([reason.source])
@@ -315,7 +422,7 @@ class Narrator:
                     parts.append(
                         self.say("generic.by_rule", rules=self.names([reason]), placements=listed)
                     )
-            key = "generic.singles_by" if start == 0 else "generic.singles_more"
+            key = "generic.singles_by" if index == 0 else "generic.singles_more"
             if [reason for reason, _ in runs] == [None]:
                 key = "generic.singles_plain"
             paragraphs.append(self.say(key, parts="; ".join(parts)))
@@ -327,7 +434,13 @@ class Narrator:
         move = inference.move
         assert move is not None
         if move.rule == "what_if":
-            return self._what_if(inference, history)
+            paragraph = self._what_if(inference, history)
+            self.explained_removals.update(
+                (step.var, step.value)
+                for step in inference.steps
+                if step.var in self.visible and not step.asserted
+            )
+            return paragraph
         conclusion = self.conclusion(inference.steps) or self.say("generic.internal")
         sources = self.names(move.sources)
         if move.rule in ("count", "relations"):
@@ -988,7 +1101,7 @@ class Narrator:
         chains: list[Inference] = []
 
         def flush(final: bool) -> None:
-            texts = self.singles(pending)
+            texts = self.singles(pending, history)
             pending.clear()
             if clues and (texts or final or len(clues) >= SHOWN_CLUES):
                 paragraphs.append(self.say("generic.clues", items=self.clue_list(clues)))

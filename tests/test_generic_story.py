@@ -18,7 +18,7 @@ def told(name: str, language: str = "en") -> generic_story.Explanation:
         text = f"Language: {language}\n{text}"
     kind = puzzlefile.detect(text)
     puzzle = cli.load(text, kind)
-    start = puzzle.model.clone()
+    start = puzzle.model.clone(keep_log=True)
     fired: list = []
     Solver(puzzle.model).solve(on_step=lambda rule, steps: fired.append((rule, steps)))
     return generic_story.explain(text, start, fired, kind=kind)
@@ -39,7 +39,9 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
     assert story.complete
     # Singles cite the board constraint that left them, in deduction order.
     assert "**r4c4 = 5** by *5 once in col 4*" in text
-    assert "**r5c5 = 5** by *5 once in row 5*; **r5c1 = 3** by *3 once in row 5*" in text
+    assert text.index("**r5c5 = 5** by *5 once in row 5*") < text.index(
+        "**r5c1 = 3** by *3 once in row 5*"
+    )
     assert (
         "**Chain.** If r5c4 ≠ 4, then only r2c4 = 4 or r5c4 = 4 remain under "
         "*4 once in col 4*, so r2c4 = 4"
@@ -124,6 +126,35 @@ def test_count_clue_names_use_singular_and_plural(name, singular, plural):
     assert plural in text
 
 
+def test_singles_explain_eliminations_from_givens_and_earlier_placements():
+    text = told("suguru_1_4x4.txt").markdown()
+    assert (
+        "**r2c2 = 4**, the only option left once r3c3 = 1 rules out 1 "
+        "under *no equal numbers in touching cells* and r1c2 = 2 and r2c1 = 3 "
+        "rule out 2 and 3 under *each number once per region*"
+    ) in text
+    assert (
+        "**r1c1 = 1**, the only option left once r1c2 = 2, r2c1 = 3 and r2c2 = 4 "
+        "rule out 2, 3 and 4 under *each number once per region*"
+    ) in text
+    assert len(text.split("\n\n")) > 2
+
+
+def test_singles_do_not_repeat_previously_explained_eliminations():
+    text = told("arrow_1_4x4.txt").markdown()
+    assert "**r4c2 cannot be 3 or 4**" in text
+    assert (
+        "**r4c2 = 1**, the only option left once "
+        "r2c2 = 2 rules out 2 under *each digit once per column*"
+    ) in text
+
+
+def test_mosaic_count_includes_its_clue_cell_and_uses_singular():
+    text = told("mosaic_1_5x5.txt").markdown()
+    assert "1 black cell in the 3x3 window centered on" in text
+    assert "1 black cells" not in text
+
+
 def test_boolean_cells_are_grouped_into_runs_in_family_words():
     text = told("pattern_4_10x10.txt").markdown()
     assert (
@@ -152,6 +183,8 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
     assert (
         "but r1c1 = 6, r1c2 = 5 and r2c1 = 5 break *13+ cage r1c1 r1c2 r2c1*"
     ) in story.markdown()
+    assert "so r1c4 ≠ 3" in story.markdown()
+    assert "*13+ cage r1c1 r1c2 r2c1* rules out 3" not in story.markdown()
 
 
 def test_chain_explains_cell_single_and_both_conflicts_with_its_target():
@@ -201,7 +234,7 @@ def test_every_example_is_told_completely_with_unique_names(path):
 
 def test_yes_or_no_premises_read_in_the_family_words():
     text = told("thermometers_3_8x8.txt").markdown()
-    assert "Given r5c7 = mercury, *" in text
+    assert "With r5c7 = mercury, *" in text
     assert "= True" not in text and "= False" not in text
 
 
