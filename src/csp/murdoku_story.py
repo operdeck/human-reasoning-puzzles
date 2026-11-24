@@ -32,7 +32,7 @@ from .murdoku_lang import (
 )
 from .murdoku_lower import ExpressionCompilation, compile_statements_with_origins
 from .proof import Episode, Inference, Move, episodes, essential, replay
-from .story import MAX_LISTED, Places, Wording, _cap, presentation_reveal
+from .story import MAX_LISTED, PHRASES, Places, Wording, _cap, presentation_reveal
 
 MAX_CANDIDATE_BOUND_LINES = 4
 
@@ -249,6 +249,11 @@ class _Narrator(generic_story.Narrator):
             if statement.casefold() in conclusion.casefold():
                 return conclusion
             return f"{_cap(statement)}, {self.say('so')} {conclusion}."
+        key = "murdoku.person_single_explained"
+        template = self.say.phrases.get(key) or PHRASES[self.say.language][key]
+        given = template.split(" ", 1)[0] + " "
+        if conclusion.startswith(given):
+            conclusion = conclusion[0].lower() + conclusion[1:]
         return self.say("expression.by", sources=self.names(sources), conclusion=conclusion)
 
     def _direct(

@@ -552,11 +552,13 @@ def test_opening_uses_shared_columns_across_regions():
     opening = explain(example("samen-in-de-blauwe-bladeren.txt").read_text()).split("\n\n")[0]
     assert (
         "Mizuki zit op een vakje dat de torii raakt (5): **in kolom 1**, dus "
-        "**streep de zes andere nog open vakjes in die kolom weg**."
+        "**streep de zes andere nog open vakjes in die kolom weg: "
+        "r2k1, r5k1, r6k1, r7k1, r8k1 en r9k1**."
     ) in opening
     assert (
         "Goro zit op een vakje dat het uithangbord met kanji raakt (7): **in kolom 6**, dus "
-        "**streep de zes andere nog open vakjes in die kolom weg**."
+        "**streep de zes andere nog open vakjes in die kolom weg: "
+        "r2k6, r5k6, r6k6, r7k6, r8k6 en r9k6**."
     ) in opening
 
 
@@ -588,7 +590,7 @@ def test_opening_crosses_out_each_open_square_only_once():
     opening = explain(LINE_RESERVATIONS).split("\n\n")[0]
     assert (
         "Ada is on a cell touching the beacon (1): **in column 1**, so "
-        "**cross out the other two open squares in that column**."
+        "**cross out the other two open squares in that column: r1c1 and r4c1**."
     ) in opening
     assert (
         "Ben is on a cell touching the sign (2): **in row 1**, so "
@@ -652,7 +654,7 @@ def test_opening_does_not_cross_out_from_an_unstated_line_premise():
     premise = "rule 1: Ada is not in row 3"
     deduction = (
         "Ada is on a cell touching the beacon (1): **in row 2**, so "
-        "**cross out the other two open squares in that row**."
+        "**cross out the other two open squares in that row: r2c1 and r2c4**."
     )
     assert deduction in opening
     assert opening.index(premise) < opening.index(deduction)
@@ -675,7 +677,8 @@ def test_opening_does_not_repeat_a_clue_as_its_own_deduction():
         ("food-murdoku-2.txt", "Tempura is in row 4 (3)."),
         (
             "food-murdoku-2.txt",
-            "Ramen is in column 4 (8), so **cross out the other two open squares in that column**.",
+            "Ramen is in column 4 (8), so **cross out the other two open squares in that "
+            "column: r2c4 and r5c4**.",
         ),
         (
             "murdoku_orient_express_3.txt",
@@ -1769,7 +1772,7 @@ count people on mark:quiet = 1
     assert "Ada is in the room (1)." in explanation
     assert "Ada is in the room (1): **in the room**" not in explanation
     expected = (
-        "Given the placements already established, **Ada on r2c1** is the only remaining "
+        "given Ben takes row 1, **Ada on r2c1** is the only remaining "
         "place for Ada. Ada is on a quiet square, so **Ada is alone in the room**"
     )
     assert expected in explanation
