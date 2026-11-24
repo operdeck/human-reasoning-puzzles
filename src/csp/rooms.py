@@ -44,7 +44,7 @@ import itertools
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 from .core import Kind, Model, Step
 from .puzzlefile import read_sections
@@ -84,6 +84,8 @@ LABELS = {
         "sharing": "sharing a room",
         "shared": "{first} and {second} share a room",
         "state": "{name} state",
+        "together_rule": "people who are together are in the same room",
+        "not": "it is not the case that {sentence}",
     },
     "nl": {
         "room": "de kamer van {person}",
@@ -94,6 +96,8 @@ LABELS = {
         "sharing": "samen in een kamer",
         "shared": "{first} en {second} delen een kamer",
         "state": "{name}: toestand",
+        "together_rule": "wie samen zit, zit in dezelfde kamer",
+        "not": "het is niet zo dat {sentence}",
     },
 }
 
@@ -545,8 +549,32 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
     A variable's values are the rooms' labels, so the solver's own output,
     `--step` and the worked solution all read as rooms rather than as codes.
     """
+    model, puzzle, _ = _compile(text)
+    return model, puzzle
+
+
+@dataclass
+class StoryWords:
+    """How a worked solution reads what the model keeps hidden.
+
+    `hidden` maps a hidden yes/no value to its sentence ("Dirk and Ada are
+    together"); `sources` maps a helper constraint's name to the clue or rule
+    a player knows it by.
+    """
+
+    hidden: dict[tuple[str, Any], str] = field(default_factory=dict)
+    sources: dict[str, str] = field(default_factory=dict)
+
+
+def story_words(text: str) -> StoryWords:
+    """The sentences a worked solution uses for this puzzle's hidden helpers."""
+    return _compile(text)[2]
+
+
+def _compile(text: str) -> tuple[Model, Puzzle, StoryWords]:
     puzzle = parse(text)
     say = labels(puzzle.language)
+    words = StoryWords()
     model = Model()
     for person in puzzle.people:
         model.constrain(
@@ -564,15 +592,15 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
             allowed_counts=range(room.capacity + 1),
             family=say["capacities"],
         )
-    shares = _Shares(model, say)
+    shares = _Shares(model, puzzle, say, words)
     seen: set[str] = set()
     for number, clue in enumerate(puzzle.clues, 1):
         name = puzzle.sentence(number).removesuffix(".")
         if name in seen:
             raise ValueError(f"two clues read the same: {name!r}")
         seen.add(name)
-        _compile_clue(model, puzzle, clue, shares, name, say)
-    return model, puzzle
+        _compile_clue(model, puzzle, clue, shares, name, say, words)
+    return model, puzzle, words
 
 
 class _Shares:
@@ -582,9 +610,13 @@ class _Shares:
     clue a small `COUNT` instead of a relation over every person at once.
     """
 
-    def __init__(self, model: Model, say: dict[str, str]) -> None:
+    def __init__(
+        self, model: Model, puzzle: Puzzle, say: dict[str, str], words: StoryWords
+    ) -> None:
         self._model = model
+        self._puzzle = puzzle
         self._say = say
+        self._words = words
         self._literals: dict[frozenset[str], int] = {}
 
     def literal(self, first: str, second: str) -> int:
@@ -597,6 +629,10 @@ class _Shares:
             self._model, "rooms", name, self._say["sharing"], self._say
         )
         self._model.relate(name, (first, second, variable), lambda a, b, shared: shared == (a == b))
+        for together in (True, False):
+            sentence = Company(first, second, together).describe(self._puzzle)
+            self._words.hidden[variable, together] = sentence.removesuffix(".")
+        self._words.sources[name] = self._say["together_rule"]
         self._literals[pair] = yes
         return yes
 
@@ -622,7 +658,13 @@ def _hidden_boolean(
 
 
 def _compile_clue(
-    model: Model, puzzle: Puzzle, clue: ClueType, shares: _Shares, name: str, say: dict[str, str]
+    model: Model,
+    puzzle: Puzzle,
+    clue: ClueType,
+    shares: _Shares,
+    name: str,
+    say: dict[str, str],
+    words: StoryWords,
 ) -> None:
     """Add the constraint a clue states, named after the sentence it reads as."""
     if isinstance(clue, InRoom):
@@ -656,6 +698,8 @@ def _compile_clue(
                 f"{name}: {atom.describe(puzzle).removesuffix('.')}",
                 shares,
                 say,
+                words,
+                clue=name,
             )
             for atom in clue.atoms
         ]
@@ -693,10 +737,25 @@ def _count(
 
 
 def _reify(
-    model: Model, puzzle: Puzzle, atom: Simple, name: str, shares: _Shares, say: dict[str, str]
+    model: Model,
+    puzzle: Puzzle,
+    atom: Simple,
+    name: str,
+    shares: _Shares,
+    say: dict[str, str],
+    words: StoryWords,
+    clue: str,
 ) -> int:
     """A hidden literal that is true exactly when the clause holds."""
-    _, yes, _ = _hidden_boolean(model, "clue", name, say["clue"], say)
+    variable, yes, _ = _hidden_boolean(model, "clue", name, say["clue"], say)
+    sentence = atom.describe(puzzle).removesuffix(".")
+    if isinstance(atom, Population):
+        opposite = say["not"].format(sentence=sentence[:1].lower() + sentence[1:])
+    else:
+        opposite = negate(atom).describe(puzzle).removesuffix(".")
+    words.hidden[variable, True] = sentence
+    words.hidden[variable, False] = opposite
+    words.sources[f"{name} count"] = clue
     if isinstance(atom, InRoom):
         literals = _room_literals(model, puzzle, atom.area, atom.person)
         allowed = {0} if atom.negated else {1}

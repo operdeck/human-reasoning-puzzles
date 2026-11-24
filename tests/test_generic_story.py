@@ -81,7 +81,7 @@ def test_a_what_if_names_the_rule_it_breaks_and_the_intermediate_placements():
         "r3c1 = 2 by *2 once in row 3*; r3c4 = 6 by *6 once in row 3*; "
         "r3c2 = 5 is the only option; r1c2 = 3 is the only option; "
         "r1c4 = 5 is the only option; r3c3 = 3 by *3 once in row 3*; "
-        "r2c6 = 3 by *3 once in row 2* would follow, "
+        "r2c6 = 3 by *3 once in row 2*; "
         "but the remaining values (r1c5 = 4; r1c6 = 4; r2c6 = 3) do not satisfy "
         "*9+ cage r1c5 r1c6 r2c6*; so r2c2 ≠ 6."
     ) in story.markdown()
@@ -137,3 +137,24 @@ def test_every_example_is_told_completely_with_unique_names(path):
     Solver(puzzle.model).solve(on_step=lambda rule, steps: fired.append((rule, steps)))
     story = cli.pattern_story(puzzlefile.detect(text), text, start, fired)
     assert story.complete
+
+
+def test_yes_or_no_premises_read_in_the_family_words():
+    text = told("thermometers_3_8x8.txt").markdown()
+    assert "Given r5c7 = mercury, *" in text
+    assert "= True" not in text and "= False" not in text
+
+
+def test_rooms_hidden_helpers_read_as_facts_about_people():
+    text = example("rooms_3_6x8.txt").read_text()
+    kind = puzzlefile.detect(text)
+    story = cli.pattern_story(kind, text, cli.load(text, kind).model)
+    told_text = story.markdown()
+    assert story.complete
+    assert "**Dirk and Finn are not together**" in told_text
+    assert "*people who are together are in the same room* gives" in told_text
+    assert "**Ben = study**, the only option left." in told_text
+    assert "**Ada and Dirk = living room**, each the only option left." in told_text
+    assert "Then Dirk = hall is the only option; Dirk and Ben are together by" in told_text
+    for leak in ("intermediate step", "rooms 1", "clue 1", " count*", "; Given"):
+        assert leak not in told_text

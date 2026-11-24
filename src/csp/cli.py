@@ -233,6 +233,9 @@ def pattern_story(
             return generic_story.Explanation(told.paragraphs, True)
     if kind == "murdoku":
         return murdoku_story.explain(text, start=start.clone(), fired=fired)
+    if kind == "rooms":
+        words = rooms.story_words(text)
+        return generic_story.explain(text, start.clone(), fired, words.sources, kind, words.hidden)
     return generic_story.explain(text, start.clone(), fired, kind=kind)
 
 

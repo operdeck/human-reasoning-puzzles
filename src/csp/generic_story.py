@@ -86,12 +86,14 @@ class Narrator:
         say: Wording,
         source_words: Mapping[str, str] | None = None,
         kind: str | None = None,
+        hidden_words: Mapping[tuple[str, Any], str] | None = None,
     ) -> None:
         self.model = model
         self.say = say
         self.kind = kind
         self.source_words = dict(source_words or {})
-        self.visible = set(model.variables)
+        self.hidden_words = dict(hidden_words or {})
+        self.visible = set(model.variables) | {var for var, _ in self.hidden_words}
         self.constraints = {c.name: c for c in model.constraints}
         self.domains = {model.constraints[model.domain_of(var)].name for var in model.all_variables}
         self.told: set[tuple[str, Any]] = set()
@@ -114,6 +116,8 @@ class Narrator:
 
     def placed(self, var: str, value: Any, name: str | None = None) -> str:
         """`var` takes `value`; `name` says which cells when several share it."""
+        if (var, value) in self.hidden_words:
+            return str(self.hidden_words[var, value])
         if isinstance(value, bool) and self._boolean(var):
             word = f"generic.{str(value).lower()}.{self.kind}"
             if self.say.has(word):
@@ -154,12 +158,13 @@ class Narrator:
             if var not in settled:
                 alike.setdefault(tuple(values), []).append(var)
         self.told.update(placements)
-        together: dict[Any, list[str]] = {}
+        together: dict[Any, tuple[Any, list[str]]] = {}
         for var, value in placements:
-            together.setdefault(value, []).append(var)
+            key = (var, value) if (var, value) in self.hidden_words else (None, value)
+            together.setdefault(key, (value, []))[1].append(var)
         said = [
             f"**{self.placed(where[0], value, compress(where, self.say))}**"
-            for value, where in together.items()
+            for value, where in together.values()
         ]
         said += [
             "**"
@@ -227,7 +232,11 @@ class Narrator:
                 if not runs or runs[-1][0] != reason:
                     runs.append((reason, []))
                 values = runs[-1][1]
-                if values and values[-1][0] == value:
+                if (
+                    values
+                    and values[-1][0] == value
+                    and not {(var, value), (values[-1][1][0], value)} & self.hidden_words.keys()
+                ):
                     values[-1][1].append(var)
                 else:
                     values.append((value, [var]))
@@ -242,7 +251,9 @@ class Narrator:
                 if reason is None:
                     parts.append(listed)
                 elif reason == "":
-                    parts.append(self.say("generic.last_left", placements=listed))
+                    many = sum(len(where) for _, where in values) > 1
+                    key = "generic.last_left_each" if many else "generic.last_left"
+                    parts.append(self.say(key, placements=listed))
                 elif isinstance(reason, LostCause):
                     cause = (
                         self.names([reason.source])
@@ -379,17 +390,28 @@ class Narrator:
         if not required:
             return None
         candidates = [
-            self.say(
-                "generic.remaining_values",
-                variable=var,
-                values=self.say.join(
-                    [str(value) for value in sorted(current[index], key=repr)], "or"
-                ),
-            )
+            said
             for index, var in enumerate(relation.variables)
-            if index in required
+            if index in required and (said := self.remaining(var, current[index]))
         ]
-        return self.say.join(candidates)
+        return self.say.join(candidates) if candidates else None
+
+    def remaining(self, var: str, values: Iterable[Any]) -> str | None:
+        """The values `var` has left, or None when a player would not see it.
+
+        A helper the puzzle keeps hidden, or a yes/no cell still open, adds
+        nothing; a settled yes/no cell reads as its placement.
+        """
+        left = sorted(set(values), key=repr)
+        if var not in self.visible:
+            return None
+        if self._boolean(var):
+            return self.placed(var, left[0]) if len(left) == 1 else None
+        return self.say(
+            "generic.remaining_values",
+            variable=var,
+            values=self.say.join([str(value) for value in left], "or"),
+        )
 
     def _cover_premise(self, inference: Inference) -> str | None:
         move = inference.move
@@ -705,16 +727,12 @@ class Narrator:
             combinations *= len(values)
             if combinations > 256:
                 return None
-        return "; ".join(
-            self.say(
-                "generic.remaining_values",
-                variable=var,
-                values=self.say.join(
-                    [str(value) for value in sorted(candidate_values[var], key=repr)], "or"
-                ),
-            )
+        said = [
+            option
             for var in relation.variables
-        )
+            if (option := self.remaining(var, candidate_values[var]))
+        ]
+        return "; ".join(said) if said else None
 
     def _what_if(self, inference: Inference, history: Sequence[Step]) -> str:
         step = next(step for step in inference.steps if step.rule == "what_if")
@@ -765,6 +783,16 @@ class Narrator:
             refuted=refuted,
         )
 
+    def clue_list(self, clues: Sequence[str]) -> str:
+        """Clue sentences joined by semicolons, "Given" lowercased after the first."""
+        given = self.say(
+            "generic.clue_with_candidates", candidates="", sources="", conclusion=""
+        ).split()[0]
+        return "; ".join(
+            clue[:1].lower() + clue[1:] if index and clue.startswith(given + " ") else clue
+            for index, clue in enumerate(clues)
+        )
+
     # --- the whole story ---------------------------------------------------
 
     def tell(self, start: Model, groups: Sequence[Episode], solved: bool) -> Explanation:
@@ -779,7 +807,7 @@ class Narrator:
             texts = self.singles(pending)
             pending.clear()
             if clues and (texts or final or len(clues) >= SHOWN_CLUES):
-                paragraphs.append(self.say("generic.clues", items="; ".join(clues)))
+                paragraphs.append(self.say("generic.clues", items=self.clue_list(clues)))
                 clues.clear()
             paragraphs.extend(texts)
 
@@ -812,7 +840,7 @@ class Narrator:
             else:
                 flush(False)
                 if clues:
-                    paragraphs.append(self.say("generic.clues", items="; ".join(clues)))
+                    paragraphs.append(self.say("generic.clues", items=self.clue_list(clues)))
                     clues.clear()
                 continuation = (
                     self._chain_continuation(group.pattern, last_chain)
@@ -907,6 +935,7 @@ def explain(
     fired: Sequence[tuple[str, Sequence[Step]]],
     source_words: Mapping[str, str] | None = None,
     kind: str | None = None,
+    hidden_words: Mapping[tuple[str, Any], str] | None = None,
 ) -> Explanation:
     """Explain a solve of any compiled model from its rule firings, shortest proof first.
 
@@ -914,10 +943,12 @@ def explain(
     reported, rule by rule. `text` gives the puzzle's language, and `source_words`
     maps a constraint name to how its clue reads. `kind` names the puzzle family, so
     a yes/no cell can be told in its own words ("r2c3 = bulb") where `story` has them.
+    `hidden_words` gives the sentence for a hidden helper taking a value, so a step
+    that settles one reads as a fact ("Dirk and Ada are together").
     """
     moves = [move for rule, steps in fired if (move := Move.of(rule, steps)) is not None]
     if replay(start, moves).solution() is not None:
         moves = thin(start, moves)
     result, groups = episodes(start, moves)
-    narrator = Narrator(start, Wording.read(text), source_words, kind)
+    narrator = Narrator(start, Wording.read(text), source_words, kind, hidden_words)
     return narrator.tell(start, groups, result.solution() is not None)

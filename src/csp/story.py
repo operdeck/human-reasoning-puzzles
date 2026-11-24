@@ -401,7 +401,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.by_rule": "{placements} by {rules}",
         "generic.singles_plain": "**Only option.** Then: {parts}.",
         "generic.singles_more": "**Only option, continued.** {parts}.",
-        "generic.last_left": "{placements}, each the last value left in its cell",
+        "generic.last_left": "{placements}, the only option left",
+        "generic.last_left_each": "{placements}, each the only option left",
         "generic.ruled_out_by": "{placements}, ruled out by {cause}",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
@@ -435,8 +436,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.chain_supported_either": "only {options} remain under {source}",
         "generic.wing": "**Wing.** One of {options} must hold, so {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
-        "generic.what_if": "**Suppose {assumed}.** Then {trail} would follow, but {breaks}; "
-        "so {refuted}.",
+        "generic.what_if": "**Suppose {assumed}.** Then {trail}; but {breaks}; so {refuted}.",
         "generic.what_if_direct": "**Suppose {assumed}.** Then {breaks}; so {refuted}.",
         "generic.trail_place": "{placement} by {sources}",
         "generic.trail_only": "{placement} is the only option",
@@ -964,7 +964,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.by_rule": "{placements} door {rules}",
         "generic.singles_plain": "**Enige mogelijkheid.** Dan: {parts}.",
         "generic.singles_more": "**Enige mogelijkheid, vervolg.** {parts}.",
-        "generic.last_left": "{placements}, steeds de laatste waarde in dat vakje",
+        "generic.last_left": "{placements}, de enige mogelijkheid die overblijft",
+        "generic.last_left_each": "{placements}, telkens de enige mogelijkheid die overblijft",
         "generic.ruled_out_by": "{placements}, uitgesloten door {cause}",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
@@ -999,7 +1000,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.chain_supported_either": "onder {source} blijven alleen {options} over",
         "generic.wing": "**Wing.** Een van {options} moet gelden, dus {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
-        "generic.what_if": "**Stel {assumed}.** Dan volgt {trail}, maar dan {breaks}; "
+        "generic.what_if": "**Stel {assumed}.** Daaruit volgt: {trail}; maar dan {breaks}; "
         "dus {refuted}.",
         "generic.what_if_direct": "**Stel {assumed}.** Dan {breaks}; dus {refuted}.",
         "generic.trail_place": "{placement} door {sources}",
