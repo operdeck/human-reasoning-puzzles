@@ -165,6 +165,7 @@ class _Narrator(generic_story.Narrator):
         self.population_variables = {}
         self.told_population_limits: set[tuple[str, int]] = set()
         self.population_bounds: dict[str, int] = {}
+        self.told_empty_regions: set[str] = set()
         for constraint, region, minimum in self.population_levels.values():
             literal = constraint.reified_by
             assert literal is not None
@@ -565,6 +566,7 @@ class _Narrator(generic_story.Narrator):
             empty_cells = {cell for cell in self.board.free if self.board.region_of(cell) == region}
             for cells in self.options.values():
                 cells.difference_update(empty_cells)
+            self.told_empty_regions.add(region)
             return f"{reason}, {self.say('so')} **{empty}**."
         return None
 
@@ -773,6 +775,8 @@ class _Narrator(generic_story.Narrator):
                     where=self.places.region(self.board.region_names[region]),
                     count=self.say.number(maximum),
                 )
+                if maximum == 0:
+                    self.told_empty_regions.add(region)
                 return f"{_cap(reason)}, {self.say('so')} {conclusion}."
         return None
 
@@ -1043,7 +1047,7 @@ class _Narrator(generic_story.Narrator):
                 people=self.say.join(people),
                 lines=self.places.lines(kind, indices),
             )
-            if embedded and not said:
+            if embedded:
                 bound = bound[0].lower() + bound[1:]
             said.append("**" + bound + "**")
             for person in people:
@@ -1966,6 +1970,82 @@ class _Narrator(generic_story.Narrator):
             second=second,
         )
 
+    def _direction_prior_exclusions(
+        self, inference: Inference, history: Sequence[Step]
+    ) -> str | None:
+        move = inference.move
+        if move is None or len(move.sources) != 1:
+            return None
+        origins = self.source_origins.get(move.sources[0], ())
+        origin = next((item for item in self.compilation.origins if item.label in origins), None)
+        if origin is None or not isinstance(origin.statement.formula, Atom):
+            return None
+        formula = origin.statement.formula
+        if not isinstance(formula.subject, Name) or not isinstance(formula.target, Name):
+            return None
+        kind = "row" if formula.operator.text in {"dir:up", "dir:down"} else "col"
+        for person in (formula.subject.token.text, formula.target.token.text):
+            if person not in self.board.people:
+                continue
+            live = {
+                inference.before.value_of(literal) for literal in inference.before.options(person)
+            }
+            for index in range(self.board.size):
+                squares = {
+                    square
+                    for square in self.board.free
+                    if (square.row if kind == "row" else square.col) == index
+                }
+                if not squares or squares & live:
+                    continue
+                clues: dict[str, set[Square]] = {}
+                empty: set[str] = set()
+                for square in squares:
+                    region = self.board.region_of(square)
+                    if region in self.told_empty_regions:
+                        empty.add(region)
+                        continue
+                    labels = {
+                        label
+                        for step in history
+                        if step.var == person and not step.asserted and step.value == square
+                        for source in step.sources
+                        for label in self.source_origins.get(source, ())
+                        if label in self.direct_clue_origins
+                    }
+                    for clue in self.compilation.origins:
+                        if clue.label not in labels:
+                            continue
+                        dependencies = grounded_dependencies(self.board, clue.statement)
+                        if dependencies == frozenset({person}) and not holds_grounded(
+                            clue.statement, self.board, {person: square}, dependencies
+                        ):
+                            clues.setdefault(clue.label, set()).add(square)
+                            break
+                    else:
+                        break
+                else:
+                    if not clues or not empty:
+                        continue
+                    parts = [
+                        self.say(
+                            "murdoku.area_excluded_by_clue",
+                            clue=self.names([label]),
+                            who=person,
+                            squares=self.places.squares(excluded, "and"),
+                        )
+                        for label, excluded in clues.items()
+                    ]
+                    parts.extend(
+                        self.say(
+                            "global_count.area_empty",
+                            where=self.places.region(self.board.region_names[region]),
+                        )
+                        for region in sorted(empty)
+                    )
+                    return _cap("; ".join(parts)) + "."
+        return None
+
     def _relation_candidate_summary(self, inference: Inference) -> str | None:
         move = inference.move
         if move is None or move.rule != "relations" or len(move.sources) != 1:
@@ -2795,6 +2875,7 @@ class _Narrator(generic_story.Narrator):
                         paragraph += f" {_cap(self.say('so'))} {conclusion}."
                     paragraphs.append(paragraph)
                 elif paragraph := self._direction_boundary(inference):
+                    prior = self._direction_prior_exclusions(inference, history)
                     direction_origins = frozenset(
                         label
                         for source in (inference.move.sources if inference.move else ())
@@ -2803,7 +2884,9 @@ class _Narrator(generic_story.Narrator):
                     if conclusion := self.conclusion(
                         inference.steps, omit_origins=direction_origins, embedded=True
                     ):
-                        paragraph += f" {_cap(self.say('so'))} {conclusion}."
+                        if prior:
+                            paragraph += f" {prior}"
+                        paragraph += f" {self.say('murdoku.with_prior', conclusion=conclusion)}."
                     paragraphs.append(paragraph)
                 elif (
                     (

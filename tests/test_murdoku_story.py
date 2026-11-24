@@ -341,10 +341,40 @@ def test_distance_deductions_name_the_candidates_used(numbered, language, first,
     assert second in text
 
 
-def test_direction_boundary_candidate_bounds_are_lowercase_after_so():
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
+    ("language", "clue", "empty", "bound"),
+    [
+        (
+            "nl",
+            "Haru staat niet naast de torii",
+            "niemand is in Okinawa",
+            "voor Haru blijven alleen de kolommen 2 t/m 4 over",
+        ),
+        (
+            "en",
+            "Haru is not beside de torii",
+            "nobody is in Okinawa",
+            "only columns 2 to 4 are available to Haru",
+        ),
+    ],
+)
+def test_direction_boundary_includes_prior_exclusions(numbered, language, clue, empty, bound):
+    source = (
+        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+    )
+    paragraphs = murdoku_story.explain(source, numbered=numbered).paragraphs
+    direction = next(paragraph for paragraph in paragraphs if bound in paragraph)
+    assert clue in direction
+    assert empty in direction
+    assert ("r1k1" if language == "nl" else "r1c1") in direction
+    assert ("r3k1" if language == "nl" else "r3c1") in direction
+
+
+def test_direction_boundary_candidate_bounds_are_lowercase_after_prefix():
     text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
-    assert "Dus **voor Haru blijven alleen de rijen" in text
-    assert "Dus **voor Haru blijven alleen de kolommen" in text
+    assert "Met de eerdere beperkingen geldt: **voor Haru blijven alleen de rijen" in text
+    assert "Met de eerdere beperkingen geldt: **voor Haru blijven alleen de kolommen" in text
 
 
 def test_line_overlap_candidate_bounds_are_lowercase_after_so():

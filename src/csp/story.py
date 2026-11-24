@@ -516,6 +516,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.relation_pair_with_known": "Given {known}, only {pair} among the remaining "
         "squares satisfies {source}.",
         "murdoku.direction_boundaries": "{clue}, so **{first}** and **{second}**.",
+        "murdoku.with_prior": "Taking the earlier restrictions into account, {conclusion}",
         "line_single": "In {line}, only {placement} remains; since the line requires one person, "
         "that person must be there.",
         "murdoku.line_single_excluded": "{clue} rules out {squares} for {who}",
@@ -1159,6 +1160,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.relation_pair_with_known": "Met {known} voldoet van de overgebleven vakjes "
         "alleen {pair} aan {source}.",
         "murdoku.direction_boundaries": "{clue}, dus **{first}** en **{second}**.",
+        "murdoku.with_prior": "Met de eerdere beperkingen geldt: {conclusion}",
         "line_single": "In {line} is alleen {placement} over; omdat daar precies één persoon moet "
         "staan, moet die persoon daar staan.",
         "murdoku.line_single_excluded": "{clue} sluit {squares} voor {who} uit",
