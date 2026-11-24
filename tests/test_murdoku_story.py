@@ -400,6 +400,41 @@ def test_distance_elimination_does_not_invent_occupied_lines():
 
 @pytest.mark.parametrize("numbered", [True, False])
 @pytest.mark.parametrize(
+    ("language", "beginning", "areas"),
+    [
+        (
+            "nl",
+            "Reinhart zit niet",
+            "in Kamer Noord, in Kamer Zuid, in het drooghok, in de gang, "
+            "in het schoenenhok, in de stube of op het terras",
+        ),
+        (
+            "en",
+            "Reinhart is not",
+            "in Kamer Noord, in Kamer Zuid, in het drooghok, in de gang, "
+            "in het schoenenhok, in de stube or op het terras",
+        ),
+    ],
+)
+def test_shared_area_exclusions_are_grouped_without_losing_regions(
+    numbered, language, beginning, areas
+):
+    source = (
+        example("berghut-murdoku-3.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
+    )
+    paragraph = next(
+        paragraph
+        for paragraph in murdoku_story.explain(source, numbered=numbered).paragraphs
+        if beginning in paragraph
+    )
+    assert paragraph.count(beginning) == 1
+    assert areas in paragraph
+
+
+@pytest.mark.parametrize("numbered", [True, False])
+@pytest.mark.parametrize(
     ("language", "clue", "empty", "bound"),
     [
         (

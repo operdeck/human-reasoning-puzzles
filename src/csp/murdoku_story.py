@@ -929,7 +929,7 @@ class _Narrator(generic_story.Narrator):
                     )
                 else:
                     position_changes.append((person, cells, previous))
-        area_exclusions = []
+        excluded_areas: dict[str, set[str]] = {}
         for person, previous in before.items():
             current = self.options[person]
             for region in {self.board.region_of(square) for square in previous}:
@@ -962,10 +962,12 @@ class _Narrator(generic_story.Narrator):
                 }
                 if not labels:
                     continue
-                area_exclusions.append(
-                    f"**{self.say('is_not', who=person, where=self.places.region(name))}**"
-                )
+                excluded_areas.setdefault(person, set()).add(name)
                 self.told_area_exclusions.add((person, name))
+        area_exclusions = [
+            f"**{self.say('is_not', who=person, where=self.places.where_regions(sorted(names)))}**"
+            for person, names in excluded_areas.items()
+        ]
         for person in line_claims:
             square = announced[person]
             if (person, square) not in self.spoken_placements:
