@@ -623,6 +623,7 @@ class Narrator:
         if links:
             return self.say(
                 "generic.chain_continuation",
+                assumption=self.negated(*chain[0]),
                 links=self.say("generic.chain_link").join(links),
                 conclusion=continuation,
             )

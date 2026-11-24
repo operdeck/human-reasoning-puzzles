@@ -261,8 +261,29 @@ def test_hut_seat_and_role_deductions_name_candidates():
     assert "Alleen Gunter kan in kolom 3 staan (r7k3 of r8k3)" in text
     assert "sluit r5k4 voor Gerhard uit" in text
     assert text.index("**Brunhild op r2k5**") < text.index("**Waltraud op r4k8**")
+    reservation = next(p for p in text.split("\n\n") if "Greta moet in rij 1 staan" in p)
+    assert reservation.index("Hannelore blijven alleen de rijen 1, 5 en 7 over") < (
+        reservation.index("Greta moet in rij 1 staan")
+    )
     assert "in de Kamer Noord" not in text
     assert "de resterende vakjes van Greta liggen allemaal in rij 1" not in text
+    unnumbered = murdoku_story.explain(
+        example("berghut-murdoku-2.txt").read_text(), numbered=False
+    ).markdown()
+    assert "regel 4 zegt" not in unnumbered.casefold()
+    assert "De schuldige zat naast de kachel." in unnumbered
+    assert "Brunhild kan niet de schuldige zijn" in unnumbered
+    assert "Waltraud kan niet de schuldige zijn" in unnumbered
+
+
+def test_hut_line_overlaps_are_explained_before_they_are_used():
+    text = murdoku_story.explain(example("berghut-murdoku-1.txt").read_text()).markdown()
+
+    assert "kan alleen Waltraud op r2k4, r2k6 en r3k5 staan" in text
+    row_five = "De enige overgebleven plaats in rij 5 is r5k3, in kolom 3"
+    row_four = "De enige overgebleven plaats in kolom 5 is r4k5, in rij 4"
+    assert text.index(row_five) < text.index("Hannelore en Gerhard alleen nog")
+    assert text.index(row_four) < text.index("**Waltraud op r2k4**")
 
 
 @pytest.mark.parametrize(

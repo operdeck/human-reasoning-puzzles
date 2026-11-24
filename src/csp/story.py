@@ -420,8 +420,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "so {conclusion}.",
         "generic.chain": "**Chain.** If {start}, then {links}. So {first} or {last}, "
         "and either way {conclusion}.",
-        "generic.chain_continuation": "Continuing the same chain, {links}. It also shows that "
-        "{conclusion}.",
+        "generic.chain_continuation": "Continuing the same chain, still assuming {assumption}, "
+        "{links}. It also shows that {conclusion}.",
         "generic.chain_also": "The same chain also shows that {conclusion}.",
         "generic.chain_reused": "**Chain.** {start}, then {prefix}. The earlier chain from "
         "{shared_start} shows {shared_end}; continuing, {continuation}. So {first} or {last}. "
@@ -487,11 +487,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.line_single_with_clues": "{clues}; in {line} only {placement} remains, and the "
         "line requires one person, so that person must be there.",
         "murdoku.line_single_consequences": "{line} must be occupied; only {who} can fill it, "
-        "at {square}. That placement excludes the other candidates in its row and column, "
-        "giving {placements}.",
+        "at {square}. That row and column are then unavailable to others. The placements are "
+        "{placements}.",
         "murdoku.line_overlap": "The only remaining place for {source_line} is {square}, in "
         "{scope_line}; since {source_line} must be occupied, {scope_line} is already occupied, "
         "so {conclusion}",
+        "murdoku.line_overlap_only": "The only remaining place for {source_line} is {square}, "
+        "in {scope_line}; since {source_line} must be occupied, {scope_line} is already occupied",
         "murdoku.area_confined": "{who}'s remaining squares are all {area}",
         "murdoku.area_no_candidate": "{who} has no remaining square {area}",
         "murdoku.area_excluded_by_clue": "{clue} rules {who} out of {squares}",
@@ -515,11 +517,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.role_exclusion": "{rule} rules out {who} as the {role}",
         "murdoku.role_exclusion_candidates": "{rule} says {statement}.{detail} {who}'s remaining "
         "squares are {squares}; none satisfies it, so {who} cannot be the {role}",
+        "murdoku.role_exclusion_candidates_unnumbered": "{statement}.{detail} {who}'s remaining "
+        "squares are {squares}; none satisfies it, so {who} cannot be the {role}",
         "murdoku.beside_different_area": "An area boundary separates {squares} from {thing}; "
         "beside requires the same area",
         "line_takes": "{who} occupies {lines}",
         "murdoku.line_takes_known": "{who} occupies {lines}",
         "murdoku.shared_rule_exclusions_some": "By {source}, only {people} can use {squares}",
+        "murdoku.shared_rule_exclusions_one": "By {source}, only {people} can use {squares}",
         "murdoku.shared_rule_exclusions_none": "By {source}, nobody can use {squares}",
         "line_exclusions": "{blockers}; at most one person can use each row or column, so no one "
         "else can use those lines",
@@ -1005,8 +1010,8 @@ PHRASES: dict[str, dict[str, str]] = {
         "in {cells} staan, dus {conclusion}.",
         "generic.chain": "**Keten.** Als {start}, dan {links}. Dus {first} of {last}, "
         "en hoe dan ook {conclusion}.",
-        "generic.chain_continuation": "Als we dezelfde keten voortzetten, {links}. De keten laat "
-        "ook zien dat {conclusion}.",
+        "generic.chain_continuation": "Als we dezelfde keten voortzetten met nog steeds "
+        "{assumption} als aanname, {links}. De keten laat ook zien dat {conclusion}.",
         "generic.chain_also": "Dezelfde keten laat ook zien dat {conclusion}.",
         "generic.chain_reused": "**Keten.** {start}, dan {prefix}. De eerdere keten laat vanaf "
         "{shared_start} {shared_end} zien; daarna {continuation}. Dus {first} of {last}. "
@@ -1076,11 +1081,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.line_single_with_clues": "{clues}; daardoor is in {line} alleen {placement} "
         "over, want daar moet precies één persoon staan.",
         "murdoku.line_single_consequences": "{line} moet bezet zijn; alleen {who} kan daar "
-        "staan, op {square}. Die plaatsing sluit de andere kandidaten in die rij en kolom uit: "
+        "staan, op {square}. Die rij en kolom zijn daarmee voor anderen bezet. "
+        "Daardoor liggen de plaatsen vast: "
         "{placements}.",
         "murdoku.line_overlap": "De enige overgebleven plaats in {source_line} is {square}, in "
         "{scope_line}; omdat {source_line} bezet moet zijn, is {scope_line} al bezet, dus "
         "{conclusion}",
+        "murdoku.line_overlap_only": "De enige overgebleven plaats in {source_line} is {square}, "
+        "in {scope_line}; omdat {source_line} bezet moet zijn, is {scope_line} al bezet",
         "murdoku.area_confined": "{who} kan alleen nog op vakjes {area}",
         "murdoku.area_no_candidate": "{who} heeft geen overgebleven vakje {area}",
         "murdoku.area_excluded_by_clue": "{clue} sluit {who} uit op {squares}",
@@ -1103,12 +1111,17 @@ PHRASES: dict[str, dict[str, str]] = {
         "murdoku.role_exclusion": "{rule} sluit {who} uit als {role}",
         "murdoku.role_exclusion_candidates": "{rule} zegt: {statement}.{detail} {who} kan alleen "
         "nog op {squares} staan; geen daarvan voldoet, dus {who} kan niet de {role} zijn",
+        "murdoku.role_exclusion_candidates_unnumbered": "{statement}.{detail} {who} kan alleen "
+        "nog op {squares} staan; geen daarvan voldoet, dus {who} kan niet de {role} zijn",
         "murdoku.beside_different_area": "Tussen {squares} en {thing} ligt een gebiedsgrens; "
         "naast vereist hetzelfde gebied",
         "line_takes": "{who} bezet {lines}",
         "murdoku.line_takes_known": "{who} bezet {lines}",
         "murdoku.shared_rule_exclusions_some": (
             "Door {source} kunnen alleen {people} op {squares} staan"
+        ),
+        "murdoku.shared_rule_exclusions_one": (
+            "Door {source} kan alleen {people} op {squares} staan"
         ),
         "murdoku.shared_rule_exclusions_none": "Door {source} kan niemand op {squares} staan",
         "line_exclusions": "{blockers}; per rij en kolom kan hoogstens één persoon staan, dus "

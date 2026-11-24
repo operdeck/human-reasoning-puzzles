@@ -59,6 +59,8 @@ class _Narrator(generic_story.Narrator):
         self.visible = set(board.people) | self.roles.keys()
         self.told_mark_counts: set[str] = set()
         self.spoken_placements: set[tuple[str, Square]] = set()
+        self.spoken_rule_origins: set[str] = set()
+        self.direct_clue_origins: set[str] = set()
         self.told_lines: set[tuple[str, str, int]] = set()
         self.told_reservations: set[tuple[str, str, int]] = set()
         self.told_area_exclusions: set[tuple[str, str]] = set()
@@ -238,7 +240,7 @@ class _Narrator(generic_story.Narrator):
             )
         ]
         if not sources:
-            return conclusion
+            return _cap(conclusion)
         origins = {origin for source in sources for origin in self.source_origins.get(source, ())}
         if (
             origins
@@ -294,6 +296,7 @@ class _Narrator(generic_story.Narrator):
         if not squares:
             return None
         clue = _cap(self.statements[origin.label])
+        self.direct_clue_origins.add(origin.label)
         region = self.places.common_region(squares)
         previous_region = self.places.common_region(previous)
         line = self.places.common_line(squares) if len(squares) > 1 else None
@@ -380,9 +383,13 @@ class _Narrator(generic_story.Narrator):
         remaining = [person for person in self.board.people if person not in by_person]
         return (
             self.say(
-                "murdoku.shared_rule_exclusions_some"
-                if remaining
-                else "murdoku.shared_rule_exclusions_none",
+                "murdoku.shared_rule_exclusions_none"
+                if not remaining
+                else (
+                    "murdoku.shared_rule_exclusions_one"
+                    if len(remaining) == 1
+                    else "murdoku.shared_rule_exclusions_some"
+                ),
                 source=self.names(sources),
                 people=self.say.join(remaining),
                 squares=self.say.join([self.places.square(square) for square in sorted(squares)]),
@@ -817,6 +824,7 @@ class _Narrator(generic_story.Narrator):
         group_candidates: bool = True,
         include_broad_candidates: bool = False,
         omit_origins: frozenset[str] = frozenset(),
+        embedded: bool = False,
     ) -> str | None:
         steps = list(steps)
         before = {person: set(cells) for person, cells in self.options.items()}
@@ -979,7 +987,6 @@ class _Narrator(generic_story.Narrator):
                 self.told_lines.update(
                     (person, kind, index) for kind, indices in lines.items() for index in indices
                 )
-        said.extend(position_said)
         grouped: dict[tuple[str, frozenset[int]], list[str]] = {}
         individual = []
         for person, cells, previous in position_changes:
@@ -1001,19 +1008,19 @@ class _Narrator(generic_story.Narrator):
             elif not existing_bound and (len(cells) <= MAX_LISTED or include_broad_candidates):
                 individual.append((person, cells, previous))
         for (kind, indices), people in grouped.items():
-            said.append(
-                "**"
-                + self.say(
-                    "candidate_bound",
-                    people=self.say.join(people),
-                    lines=self.places.lines(kind, indices),
-                )
-                + "**"
+            bound = self.say(
+                "candidate_bound",
+                people=self.say.join(people),
+                lines=self.places.lines(kind, indices),
             )
+            if embedded and not said:
+                bound = bound[0].lower() + bound[1:]
+            said.append("**" + bound + "**")
             for person in people:
                 self.told_bounds.setdefault(person, {})[kind] = indices
         for person, cells, previous in individual:
             said.append("**" + self.places.describe(person, cells, previous, placing=False) + "**")
+        said.extend(position_said)
         role_updates = {
             step.var: step.value if step.asserted else not step.value
             for step in steps
@@ -1464,7 +1471,7 @@ class _Narrator(generic_story.Narrator):
                 reason = self._person_single_reason(step, history)
                 self.spoken_placements.add((step.var, step.value))
                 return (
-                    reason + "."
+                    _cap(reason) + "."
                     if reason
                     else self.say(
                         "person_single", placement=f"**{self.placed(step.var, step.value)}**"
@@ -1581,7 +1588,7 @@ class _Narrator(generic_story.Narrator):
         for origin in self.compilation.origins:
             if origin.label not in labels:
                 continue
-            if self.numbered and origin.kind in {"clue", "rule"}:
+            if self.numbered and origin.label in self.direct_clue_origins:
                 reference = self.say(
                     f"expression.{origin.kind}",
                     number=origin.number,
@@ -1589,7 +1596,7 @@ class _Narrator(generic_story.Narrator):
                 references.append(f"*{reference}*")
             else:
                 references.append(self.statements[origin.label])
-        if self.numbered:
+        if self.numbered and labels <= self.direct_clue_origins:
             return self.say("murdoku.use_sources", sources=self.say.join(references))
         return "; ".join(
             reference[0].lower() + reference[1:]
@@ -2008,7 +2015,7 @@ class _Narrator(generic_story.Narrator):
             rows=self.places.lines("row", rows),
         )
 
-    def _line_overlap(self, inference: Inference, conclusion: str) -> str | None:
+    def _line_overlap(self, inference: Inference, conclusion: str | None) -> str | None:
         move = inference.move
         if move is None or move.rule != "subsumption":
             return None
@@ -2045,7 +2052,7 @@ class _Narrator(generic_story.Narrator):
         ) != scope_index:
             return None
         return self.say(
-            "murdoku.line_overlap",
+            "murdoku.line_overlap" if conclusion else "murdoku.line_overlap_only",
             source_line=self.places.line(source_kind, source_index),
             square=self.places.square(square),
             scope_line=self.places.line(scope_kind, scope_index),
@@ -2365,10 +2372,13 @@ class _Narrator(generic_story.Narrator):
                             )
                             + "."
                         )
+                self.spoken_rule_origins.add(origin.label)
                 return self.say(
-                    "murdoku.role_exclusion_candidates",
-                    rule=self.say("expression.rule", number=origin.number),
-                    statement=self.statements[origin.label],
+                    "murdoku.role_exclusion_candidates"
+                    if self.numbered
+                    else "murdoku.role_exclusion_candidates_unnumbered",
+                    rule=_cap(self.say("expression.rule", number=origin.number)),
+                    statement=_cap(self.statements[origin.label]),
                     detail=detail,
                     who=person,
                     role=self.say.words.get(role, role),
@@ -2378,7 +2388,11 @@ class _Narrator(generic_story.Narrator):
                 )
         return self.say(
             "murdoku.role_exclusion",
-            rule=self.say("expression.rule", number=origin.number),
+            rule=_cap(
+                self.say("expression.rule", number=origin.number)
+                if self.numbered
+                else self.statements[origin.label]
+            ),
             who=person,
             role=self.say.words.get(role, role),
         )
@@ -2399,6 +2413,7 @@ class _Narrator(generic_story.Narrator):
         conclusion = self.conclusion(
             inference.steps,
             group_candidates=move.rule not in {"chains", "what_if"},
+            embedded=reservation is not None,
             include_broad_candidates=(
                 (
                     move.rule == "relations"
@@ -2416,6 +2431,8 @@ class _Narrator(generic_story.Narrator):
             ),
         )
         if conclusion is None:
+            if line_overlap := self._line_overlap(inference, None):
+                return line_overlap + "."
             return reservation + "." if reservation is not None else ""
         if reservation is not None:
             return f"{reservation}. {_cap(self.say('so'))} {conclusion}."
@@ -2685,6 +2702,7 @@ def explain(
             narrator.source_words[origin.label]
             for origin in compilation.origins
             if origin.kind == "rule"
+            and origin.label not in narrator.spoken_rule_origins
             and narrator.source_words[origin.label].casefold() not in existing.casefold()
         ]
         if missing_rules:

@@ -992,8 +992,8 @@ if Ada is role:guide then Ada on mark:altar
     assert "and that person holds the guide role" in story
     assert "(1), so **Ben has the guide role**" in story
     assert (
-        "then (Ada is on a cell marked altar) (2), so Given *clue 2*, **Ada on r1c1**"
-        " is the only remaining place for Ada"
+        "then (Ada is on a cell marked altar) (2); therefore **Ada on r1c1**"
+        " is the only remaining place"
     ) in story
 
 
@@ -1661,8 +1661,8 @@ if Ada is role:captain then Ada on mark:altar
     assert "Ada's" not in story
     assert "If (Ada is a member of the captain)" in story
     assert (
-        "then (Ada is on a cell marked altar) (1), so Given *clue 1*, **Ada on r1c1**"
-        " is the only remaining place for Ada"
+        "then (Ada is on a cell marked altar) (1); therefore **Ada on r1c1**"
+        " is the only remaining place"
     ) in story
 
 
@@ -1778,8 +1778,8 @@ count people on mark:quiet = 1
     assert "Ada is in the room (1)." in explanation
     assert "Ada is in the room (1): **in the room**" not in explanation
     expected = (
-        "given Ben takes row 1, **Ada on r2c1** is the only remaining "
-        "place for Ada. Ada is on a quiet square, so **Ada is alone in the room**"
+        "Ben takes row 1; therefore **Ada on r2c1** is the only remaining "
+        "place. Ada is on a quiet square, so **Ada is alone in the room**"
     )
     assert expected in explanation
     assert (
@@ -1898,7 +1898,7 @@ def test_counting_clue_is_worded_and_known_placements_are_not_bold_again():
     story = explain((example("murdoku_3_house.txt")).read_text())
     assert (
         "Either Ada is in the study, or Ben is in the hall, but not both (1), "
-        "so **Ada is not in the study**."
+        "so **Ada is not in the study**"
     ) in story
     assert story.index("**Ben on r3c4**") < story.index("**Ada is not in the study**")
     assert story.count("**Ben on r3c4**") == 1

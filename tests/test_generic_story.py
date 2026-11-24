@@ -102,6 +102,7 @@ def test_chain_explains_cell_single_and_both_conflicts_with_its_target():
         paragraph for paragraph in text.split("\n\n") if "If r3c7 \u2260 8" in paragraph
     )
     assert "Continuing the same chain" in first_chain
+    assert "still assuming r3c7 \u2260 8" in first_chain
     assert "r5c7 = 8 is ruled out" in first_chain
     assert "r9c7 = 8 is ruled out" in first_chain
     assert "only r1c9 = 8 or r3c7 = 8 remain under *8 once in box 1,3*, so r1c9 = 8" in text
