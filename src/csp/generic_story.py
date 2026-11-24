@@ -294,7 +294,23 @@ class Narrator:
                         if reason.placement is not None
                         else ""
                     )
-                    parts.append(self.say("generic.ruled_out_by", placements=listed, cause=cause))
+                    if all(isinstance(value, bool) for value, _ in values):
+                        alternatives = self.say.join(
+                            [
+                                self.placed(where[0], not value, compress(where, self.say))
+                                for value, where in values
+                            ]
+                        )
+                        parts.append(
+                            self.say(
+                                "generic.opposite_ruled_out_by",
+                                placements=listed,
+                                alternatives=alternatives,
+                                cause=cause,
+                            )
+                        )
+                    else:
+                        parts.append(self.say("generic.by_rule", rules=cause, placements=listed))
                 else:
                     parts.append(
                         self.say("generic.by_rule", rules=self.names([reason]), placements=listed)
@@ -377,6 +393,22 @@ class Narrator:
         if move.rule in ("cover2", "cover3"):
             if premise := self._cover_premise(inference):
                 return premise
+            counted = dict.fromkeys(
+                (inference.before.var_of(literal), inference.before.value_of(literal))
+                for name in move.scope
+                if (constraint := self.constraints.get(name)) is not None
+                for literal in constraint.literals
+                if inference.before.is_true(literal)
+                and inference.before.var_of(literal) in self.visible
+            )
+            if counted:
+                return self.say(
+                    "generic.cover_counted",
+                    counted=self.say.join([self.placed(*pair) for pair in counted]),
+                    sources=self._sets(move.sources),
+                    scope=self._sets(move.scope),
+                    conclusion=conclusion,
+                )
             return self.say(
                 "generic.cover",
                 sources=self._sets(move.sources),

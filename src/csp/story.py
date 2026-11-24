@@ -406,7 +406,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "generic.left_after": "{placements}, the only option left once {causes}",
         "generic.left_after_each": "{placements}, each the only option left once {causes}",
         "generic.rules_out": "{source} rules out {values}",
-        "generic.ruled_out_by": "{placements}, ruled out by {cause}",
+        "generic.opposite_ruled_out_by": "{placements}, because {cause} rules out {alternatives}",
         "generic.clues": "**Clues.** {items}.",
         "generic.clue": "{sources} gives {conclusion}",
         "generic.clue_with_candidates": "Given {candidates}, {sources} gives {conclusion}",
@@ -416,8 +416,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "option of {sources} lies within {scope}, so {conclusion}.",
         "generic.subsumption_count_options": "**Overlap.** With {placed} already counted, the "
         "remaining options of {sources} are {options}; each lies within {scope}, so {conclusion}.",
-        "generic.cover": "**Combined rules.** {sources} take up {scope} between them, "
+        "generic.cover": "**Combined rules.** {sources} use the remaining capacity of {scope}, "
         "so {conclusion}.",
+        "generic.cover_counted": "**Combined rules.** With {counted} already counted, {sources} "
+        "use the remaining capacity of {scope}, so {conclusion}.",
         "generic.cover_naked": "**Combined rules.** {cells} can only be {values}. By {rules}, "
         "those values must go in those cells, so {conclusion}.",
         "generic.cover_hidden": "**Combined rules.** By {rules}, {values} can only go in {cells}, "
@@ -1000,7 +1002,7 @@ PHRASES: dict[str, dict[str, str]] = {
             "{placements}, telkens de enige mogelijkheid die overblijft nu {causes}"
         ),
         "generic.rules_out": "{source} {values} uitsluit",
-        "generic.ruled_out_by": "{placements}, uitgesloten door {cause}",
+        "generic.opposite_ruled_out_by": "{placements}, omdat {cause} {alternatives} uitsluit",
         "generic.clues": "**Aanwijzingen.** {items}.",
         "generic.clue": "{sources} geeft {conclusion}",
         "generic.clue_with_candidates": "Met {candidates} over geeft {sources} {conclusion}",
@@ -1010,8 +1012,10 @@ PHRASES: dict[str, dict[str, str]] = {
         "opties van {sources} binnen {scope}, dus {conclusion}.",
         "generic.subsumption_count_options": "**Overlap.** Nu {placed} al meetelt, zijn de "
         "resterende opties van {sources} {options}; ze liggen binnen {scope}, dus {conclusion}.",
-        "generic.cover": "**Combinatie.** {sources} nemen samen {scope} in beslag, "
+        "generic.cover": "**Combinatie.** {sources} gebruiken de resterende ruimte van {scope}, "
         "dus {conclusion}.",
+        "generic.cover_counted": "**Combinatie.** Met {counted} al meegeteld, gebruiken "
+        "{sources} de resterende ruimte van {scope}, dus {conclusion}.",
         "generic.cover_naked": "**Gecombineerde regels.** {cells} kunnen alleen {values} zijn. "
         "Volgens {rules} moeten die waarden dus in die vakjes staan, dus {conclusion}.",
         "generic.cover_hidden": "**Gecombineerde regels.** Volgens {rules} kunnen {values} alleen "

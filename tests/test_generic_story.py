@@ -12,8 +12,10 @@ from tests.examples import example
 EXAMPLES = sorted(path for path in Path(__file__).parent.parent.joinpath("examples").rglob("*.txt"))
 
 
-def told(name: str) -> generic_story.Explanation:
+def told(name: str, language: str = "en") -> generic_story.Explanation:
     text = example(name).read_text()
+    if language != "en":
+        text = f"Language: {language}\n{text}"
     kind = puzzlefile.detect(text)
     puzzle = cli.load(text, kind)
     start = puzzle.model.clone()
@@ -57,13 +59,54 @@ def test_futoshiki_is_told_by_its_rules_chains_and_covers():
 def test_each_single_cites_its_own_reason():
     text = told("akari_1_6x6.txt").markdown()
     assert "**r2c4 = no bulb** by *0 bulbs around wall r2c5*" in text
-    assert "**r1c3\u2013r3c3, r4c4 and r4c5 = no bulb**, ruled out by r4c3 = bulb" in text
-    assert "**r6c2 = no bulb**, ruled out by *1 bulb around wall r6c3*" in text
-    assert "**r4c1 = no bulb**, ruled out by *3 bulbs around wall r4c2*" in text
+    assert (
+        "**r1c3\u2013r3c3, r4c4 and r4c5 = no bulb**, because r4c3 = bulb "
+        "rules out r1c3\u2013r3c3, r4c4 and r4c5 = bulb"
+    ) in text
+    assert "**r6c2 = no bulb**, because *1 bulb around wall r6c3* rules out r6c2 = bulb" in text
+    assert "**r4c1 = no bulb**, because *3 bulbs around wall r4c2* rules out r4c1 = bulb" in text
     assert "With r3c6 = bulb already counted" in text
     assert "r5c6 = bulb and r4c5 = bulb" in text
     assert "*1 bulb around wall r5c5*" in text
     assert "every open cell is lit*, one option" not in text
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        (
+            "battleships_1_6x6_fleet.txt",
+            "**r2c4\u2013r2c6 = ship**, because ship 3 r2c4-r2c6 = ship "
+            "rules out r2c4\u2013r2c6 = water",
+        ),
+        (
+            "thermometers_1_4x4.txt",
+            "**r2c1\u2013r4c1 = empty**, because *1 filled in column 1* "
+            "rules out r2c1\u2013r4c1 = mercury",
+        ),
+    ],
+)
+def test_boolean_singles_say_the_alternative_was_ruled_out(name, expected):
+    assert expected in told(name).markdown()
+
+
+def test_count_cover_names_already_counted_values():
+    text = told("minesweeper_2_5x5.txt").markdown()
+    assert (
+        "With r4c1 = mine and r4c4 = mine already counted, "
+        "*1 mines near r1c5* and *1 mines near r2c1* use the remaining capacity "
+        "of *4 mines total*, so **r1c3 = safe**"
+    ) in text
+
+
+def test_boolean_and_count_cover_premises_are_in_dutch():
+    text = told("minesweeper_2_5x5.txt", "nl").markdown()
+    assert "omdat *1 mines near r4c3* r3c3 = mijn uitsluit" in text
+    assert (
+        "Met r4c1 = mijn en r4c4 = mijn al meegeteld, gebruiken "
+        "*1 mines near r1c5* en *1 mines near r2c1* de resterende ruimte "
+        "van *4 mines total*"
+    ) in text
 
 
 def test_boolean_cells_are_grouped_into_runs_in_family_words():
