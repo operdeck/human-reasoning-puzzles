@@ -38,7 +38,10 @@ Full workflow, options and traps: [workflow notes](references/workflow.md).
    ```
    `--open-share` sets empty (Binairo/Tango) or unknown (Minesweeper) cells;
    `--stars 1` makes a Queens board; `--grade` adds exact technique coverage to a
-   tier. `generate` only re-masks/mutates a seed, so use it for variations, never to
+   tier. Bridges has a `fresh` builder: it grows a non-crossing connected network,
+   derives island numbers, and rejects non-unique boards. Its `--open-share`
+   controls the density of extra links, not hidden island numbers.
+   `generate` only re-masks/mutates a seed, so use it for variations, never to
    fill a tier with copies; `--as-family` is only for compatible aliases. Keep
    Towers at 6×6 or smaller, Pattern at 15 cells a line and Magnets at even sides.
 4. Rate before adding or describing a candidate. Only unique, deductively solved,

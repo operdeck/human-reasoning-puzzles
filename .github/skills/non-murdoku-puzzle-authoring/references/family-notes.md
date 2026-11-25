@@ -1,5 +1,20 @@
 Read this when generating or reviewing a board from the newer families.
 
+## Bridges
+
+`fresh bridges` grows a connected network with one or two non-crossing bridges
+per neighbouring island pair, derives the island numbers, and checks uniqueness
+independently. `--open-share` controls extra network links, not clue removal.
+Use sweeps to select a range of techniques, with distinct island layouts and
+seeds. Local counts, `cut`, patterns, chains and `closure` can all be reached
+without the `what_if` fallback.
+
+Two counted Boolean units represent a pair's multiplicity. State their ordering
+explicitly: a second bridge requires a first. A neighbour numbered one cannot
+take a double bridge. These generic count and exclusion constraints expose
+obvious deductions without introducing weighted or puzzle-specific core rules.
+The connected graph uses only the first unit; loops are allowed.
+
 ## Towers, Mosaic, Dominosa, Rectangles, Magnets, Undead, Pattern and Map
 
 These eight families share one authoring loop, and its lessons apply to any new

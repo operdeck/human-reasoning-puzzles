@@ -127,6 +127,7 @@ the outer `in` asks that the horse rider is in one of them. See
 </tr>
 <tr>
 <td><strong><a href="examples/rooms_2_5x7.txt">Rooms</a></strong><br>Give every person a room; people may share a room, rooms may stay empty, and a room never holds more than its capacity.<br><img src="docs/images/rooms_2_5x7-solution.png" width="150" alt="Solved Rooms puzzle"></td>
+<td><strong><a href="examples/bridges_2_7x7.txt">Bridges / Hashiwokakero</a></strong><br>Join every island into one network. Match the numbered bridge totals, with at most two bridges per pair and no crossings.<br><img src="docs/images/bridges_2_7x7.png" width="150" alt="Bridges island puzzle"><img src="docs/images/bridges_2_7x7-solution.png" width="150" alt="Solved Bridges puzzle with single and double bridge decks"></td>
 </tr>
 </table>
 

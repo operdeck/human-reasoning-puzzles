@@ -20,7 +20,7 @@ Read this for the full non-Murdoku generate, rate, name and audit workflow.
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
    layout (Binairo, Tango, Suguru, Minesweeper, Akari, Sudoku, Futoshiki,
    Calcudoku, Kakurasu, Star Battle, Tents, Battleships, Towers, Mosaic,
-   Dominosa, Rectangles, Magnets, Undead, Pattern, Map), so the example does
+   Dominosa, Rectangles, Magnets, Undead, Pattern, Map, Bridges), so the example does
    not share a solution with the rest of the gallery. Before choosing seeds, ask
    `puzzle-lab sweep` what a builder reaches: it rates one fresh board per seed
    and counts the tiers and grades, and `--save DIR` keeps each board named by

@@ -4,7 +4,7 @@ This guide describes the solver's generic model, the rule ladder, and the file f
 
 ## Generic model
 
-The engine in [`src/csp/core.py`](../src/csp/core.py) knows only literals, constraints, relations, and generic deduction rules. A puzzle module parses its family format and compiles it to these primitives. No puzzle-family logic belongs in `core.py`.
+The engine in [`src/csp/core.py`](../src/csp/core.py) knows only literals, constraints, relations, connectivity graphs, and generic deduction rules. A puzzle module parses its family format and compiles it to these primitives. No puzzle-family logic belongs in `core.py`.
 
 - **Literal:** a named variable takes a value, such as `r3c4=7`, `a=r1c1`, or `r2c3=True`.
 - **Variable:** a domain represented by an `EXACTLY_ONE` constraint. The solver reports the selected value when known.
@@ -12,6 +12,7 @@ The engine in [`src/csp/core.py`](../src/csp/core.py) knows only literals, const
 - **`AT_MOST_ONE`:** zero or one listed literal is true. It never forces one to be true.
 - **`COUNT`:** the number of true literals belongs to `allowed_counts`; a reifier is true exactly when the count is allowed.
 - **Relation:** a predicate over the values of two or more named variables. Relations are checked by generalized arc consistency.
+- **Connectivity graph:** `Model.connect` registers a named, immutable graph over existing presence literals. All present nodes must belong to one connected component. Nodes may be fixed present; an unconditional adjacency is usable only when both endpoints are present. A true conditional edge requires both endpoints. Empty and singleton selections are connected; nonemptiness is a separate count constraint. Graph constraints are always active, not reified.
 
 The distinction between `EXACTLY_ONE` and `AT_MOST_ONE` is essential: sparse boards leave cells empty. The solver records every deduction with its rule and supporting constraints or relations; proof replay and narration use that record without adding family knowledge to the engine.
 
@@ -23,12 +24,15 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 |---|---|
 | `single` | Force the last option in an `EXACTLY_ONE` constraint, or the only literal forced by a `COUNT` with one feasible total. |
 | `count` | Propagate allowed count totals, including bounds, gaps, parity, reified counts, whole variables confined to the counted literals, and shared capacity between disjoint scopes of one family. |
+| `reach` | Reject disconnected required nodes and remove optional graph elements that cannot reach them. |
 | `relations` | Generalized arc consistency: remove a value if no combination of the other variables' values supports it. |
 | `subsumption` | Use the remaining capacity of an outer constraint when an inner constraint requires another true literal. |
+| `cut` | Force a node or edge that is the only remaining connection between required parts of a graph. |
 | `cover2`, `cover3` | Combine disjoint inner constraints whose guaranteed demand fills an outer constraint's remaining capacity. |
 | `chains` | Follow strong/weak links from counts and two-variable relations; a contradiction or paired weak links can eliminate a value. |
 | `wing` | A three-option pivot and two two-option helpers force their shared value into one of them, so any option linked "not both true" to all three is false (Sudoku's XYZ-Wing). |
-| `what_if` | On a model copy, assume a value and run only `single`, `count`, `relations`, and `subsumption`; a contradiction proves the assumption false. |
+| `closure` | Reject a graph-related choice when bounded local propagation shows it would disconnect required parts. |
+| `what_if` | On a model copy, assume a value and run only the cheap rules, including `reach` and `cut`; a contradiction proves the assumption false. Trials never nest. |
 
 `--grade` reports the hardest rule actually used, or `unsolved` if the deduction ladder stalls. It is a measure of this solver's deductions, not a universal human difficulty rating. The web index translates these names for players (`web/src/grades.mjs`, shared with its prerenderer) and defines them in a glossary; the export keeps the internal name. Because `what_if` is the ladder's last rung, a grade below it also proves that rung never fired: the same ladder without it finishes the puzzle. `report.beyond_deduction` and the `deductive` field that `puzzle-lab` and the web export carry are that distinction, `false` exactly for puzzles no deduction path closes — the collection's beyond-deduction frontier.
 
@@ -59,11 +63,41 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | Pattern | Cell | Boolean filled/empty; one relation per row and column comparing its runs to the clue. |
 | Map | Region | Four colours per region; `AT_MOST_ONE` per border and colour. |
 | Thermometers | Cell | Boolean filled/empty; a filled-prefix relation per thermometer and a `COUNT` per row and column. |
+| Bridges | Neighbouring island pair | Multiplicity 0, 1 or 2; hidden reified bridge units feed island `COUNT` totals, first units cannot cross, and a connectivity graph joins all islands. |
 | Kakuro | White cell | Digits 1 to 9; one relation per run: distinct digits that add up to the clue. |
 | Hidato / Numbrix | Number | One variable per number, whose values are the open cells; exactly one cell per number and one number per cell; consecutive numbers are a two-variable adjacency relation (corners count for Hidato only). |
 | Killer, Arrow, Even/Odd, Sandwich and Skyscraper Sudoku | Cell | Sudoku exact cover plus one relation per variant rule over its cells (`sudoku.Rule`): a cage's distinct sum, an arrow's sum, a digit's parity, the digits between the 1 and the top digit, or how many digits are seen from an edge. |
 
-The new-family formats below currently use `COUNT`, `AT_MOST_ONE`, `EXACTLY_ONE`, and generic relations. Binairo/Tango row and column uniqueness uses bounded-arity auxiliary relations; performance on larger boards is part of the example and benchmark checks. Kakurasu's weighted equations currently use generic relations rather than a new weighted core constraint.
+The new-family formats below use `COUNT`, `AT_MOST_ONE`, `EXACTLY_ONE`, generic relations, and connectivity graphs. Binairo/Tango row and column uniqueness uses bounded-arity auxiliary relations; performance on larger boards is part of the example and benchmark checks. Kakurasu's weighted equations use generic relations rather than a weighted core constraint.
+
+## Bridges / Hashiwokakero
+
+```text
+Family: bridges
+Size: 3 5
+Islands:
+2 . . . 2
+. . . . .
+2 . . . 2
+```
+
+`Size: N` denotes a square; `Size: HEIGHT WIDTH` a rectangle. Each grid token
+is `.` (water) or an island number from 1 to 8. At least two islands are needed.
+Optional `Title:`, `Language:` and `Intro:` follow the shared presentation format.
+
+Join islands with straight horizontal or vertical bridges to the nearest island
+in that direction. There are zero, one or two bridges per pair; double bridges
+count twice towards both island numbers. Bridges cannot cross or pass through
+an intermediate island, and **all islands must form one connected network**.
+Loops are allowed: Bridges does not impose the no-loop rule.
+
+Visible solver variables name pairs, such as `r1c1-r1c5`, and hold 0, 1 or 2.
+Two hidden Boolean indicators per pair mean at least one and at least two;
+their true counts sum to the multiplicity without needing weighted primitives.
+An explicit exclusion states that the second requires the first; a count
+forbids a second bridge when either endpoint is numbered one.
+The first indicator controls the connectivity edge and crossing exclusions.
+The independent search validates island totals, crossing and connectivity.
 
 ## Sudoku and variants
 

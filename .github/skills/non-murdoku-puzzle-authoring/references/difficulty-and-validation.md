@@ -1,5 +1,16 @@
 Read this when rating, validating, naming or auditing non-Murdoku examples.
 
+Bridges counts individual bridges, not neighbours: two parallel bridges add
+two to each endpoint. Connectivity matters even when every island's total is
+correct; loops are allowed. Publish only unique boards whose solution forms
+one network, and inspect both single and double bridges in the picture and
+player. Rate with the ordinary ladder: `cut` is medium and `closure` hard.
+Fixed islands mean `reach` normally checks disconnection rather than making a
+placement; test that rejection directly rather than claiming a firing.
+Fresh generation creates a new layout and derives numbers from a non-crossing
+connected network, then rejects non-unique candidates. Do not supply bridges
+as givens to manufacture a difficulty tier.
+
 ## Difficulty and validation
 
 Calcudoku cages must contain at least two cells in published examples and

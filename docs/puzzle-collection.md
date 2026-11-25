@@ -55,6 +55,7 @@ and columns. Cosmetic pieces do not create another family.
 - Queens / Star Battle: easy Queens: queens_1_4x4, queens_2_5x5 (single); Star Battle: starbattle_1_8x8 (count); medium Queens: queens_3_7x7, queens_4_8x8 (subsumption), queens_5_9x9 (cover2); Star Battle: starbattle_2_8x8 (cover2); hard Queens: queens_6_4x4 (chains); Star Battle: starbattle_3_12x12 (cover3).
 - Zebra logic grid: easy logicgrid_1_3x3 (relations); medium logicgrid_2_6x6 (relations); hard none.
 - Rooms: easy rooms_1_4x5 (count); medium rooms_2_5x7 (relations); hard rooms_3_6x8 (what_if).
+- Bridges: easy bridges_1_7x7 (count); medium bridges_2_7x7 (cut); hard bridges_3_7x7 (cover3), bridges_4_9x9 (chains), bridges_5_13x13 (closure). All five are unique and finish without `what_if`.
 - Binairo / Takuzu: easy binairo_1_8x8 (relations); medium binairo_2_8x8 (subsumption); hard binairo_3_4x4 (what_if).
 - Tango: easy tango_1_8x8 (relations); medium tango_3_8x8 (relations); hard tango_4_4x4 (what_if).
 - Tents and Trees: easy tents_1_8x8 (single); medium tents_2_8x8 (cover2); hard tents_3_4x4 (what_if).
@@ -86,6 +87,7 @@ intentionally excluded; a harder example needs stronger deduction or generation.
 
 ## Rule-focused examples
 
+- Bridges: five original island layouts, 7x7 to 13x13, from local bridge counts through the only connection, three-set patterns, chains and bounded closure. Single and double bridge decks are drawn distinctly over water. The medium and final boards stall before `cut` and `closure`, respectively. With fixed islands, `reach` detects a disconnection rather than placing an island; generic optional-node tests exercise its pruning.
 - Battleships: five boards, medium `count`/`subsumption` to hard `chains`, never `what_if`; three 8×8 boards exercise every player symbol.
 - Calcudoku: six boards with no single-cell cages; two 4×4 `relations`, two 6×6 (`relations`, `cover2`), one 7×7 `cover3`, one 6×6 `what_if`.
 - Newer families: Mosaic and Dominosa reach `cover3`/`chains`; Magnets `cover3` on 6×6; Towers mostly `relations`; Rectangles hard boards come from `puzzle-lab fresh rectangles --tier hard`; Undead and Pattern have no board between `relations` and `what_if`; Map has no medium board because its pairwise `AT_MOST_ONE` rules jump from `single` to `chains`. Relation-only boards of 16 or fewer variables rate easy.
@@ -114,7 +116,7 @@ excluded.
 ## Known gaps and frontier
 
 Known gaps: no medium Map board; hard Undead and Pattern are beyond deduction.
-16 of the 200 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
+16 of the 205 published puzzles sit there — `binairo_3_4x4`, `tango_4_4x4`,
 `tents_3_4x4`, `calcudoku_6_6x6`, `undead_6_5x5`, `pattern_4_10x10`,
 `killer_5_6x6`, `arrow_4_6x6`, `skyscrapersudoku_3_6x6`, `food-murdoku-3`,
 `menu-murdoku-3`, `prrrdoku2`, `prrrdoku3`, `rooms_3_6x8`,
