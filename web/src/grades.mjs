@@ -27,6 +27,18 @@ export const GRADES = Object.freeze([
       "Deductions from how many items are required: which totals are allowed, their bounds, and the capacity that groups share.",
   },
   {
+    grade: "reach",
+    label: "Reachability",
+    meaning:
+      "An option cannot belong to the connected network when it cannot reach the required nodes; present edges require both endpoints.",
+  },
+  {
+    grade: "cut",
+    label: "Connectivity cuts",
+    meaning:
+      "An edge or node is forced because every possible connection between required nodes passes through it.",
+  },
+  {
     grade: "relations",
     label: "Relationship checks",
     meaning:
@@ -61,6 +73,12 @@ export const GRADES = Object.freeze([
     label: "Three-option pattern",
     meaning:
       "A three-option pivot and two two-option helpers force their shared value into one of them, so an option excluded alongside all three is impossible.",
+  },
+  {
+    grade: "closure",
+    label: "Component closure",
+    meaning:
+      "An edge-related choice is ruled out when its local consequences close off a required component from the rest of the network.",
   },
   {
     grade: "what_if",

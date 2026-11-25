@@ -480,6 +480,13 @@ PHRASES: dict[str, dict[str, str]] = {
         "{excluded} ruled out, {placement}",
         "generic.chain_supported_either": "only {options} remain under {source}",
         "generic.wing": "**Wing.** One of {options} must hold, so {conclusion}.",
+        "generic.reach": "**Reachability.** Under {sources}, a present edge needs its endpoints "
+        "and every present node must reach the required component; therefore {conclusion}.",
+        "generic.cut": "**Connectivity cut.** Under {sources}, every connection between "
+        "required nodes uses {separator}; therefore {conclusion}.",
+        "generic.closure": "**Component closure.** Suppose {assumed}. Its consequences under "
+        "{sources} close off the component containing {component} from required nodes "
+        "{outside}; therefore {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
         "generic.what_if": "**Suppose {assumed}.** Then {trail}; but {breaks}; so {refuted}.",
         "generic.what_if_segmented": "**Suppose {assumed}.** {trail} But {breaks}, so {refuted}.",
@@ -1158,6 +1165,14 @@ PHRASES: dict[str, dict[str, str]] = {
         "afvalt, geldt {placement}",
         "generic.chain_supported_either": "onder {source} blijven alleen {options} over",
         "generic.wing": "**Wing.** Een van {options} moet gelden, dus {conclusion}.",
+        "generic.reach": "**Bereikbaarheid.** Volgens {sources} heeft elke aanwezige verbinding "
+        "zijn eindpunten nodig en moet elk aanwezig knooppunt het vereiste deel bereiken; "
+        "dus {conclusion}.",
+        "generic.cut": "**Verbindingssnede.** Volgens {sources} loopt elke verbinding tussen "
+        "vereiste knooppunten via {separator}; dus {conclusion}.",
+        "generic.closure": "**Afgesloten deel.** Stel {assumed}. De gevolgen volgens {sources} "
+        "sluiten het deel met {component} af van de vereiste knooppunten {outside}; "
+        "dus {conclusion}.",
         "generic.other": "**{rule}.** {conclusion}.",
         "generic.what_if": "**Stel {assumed}.** Daaruit volgt: {trail}; maar dan {breaks}; "
         "dus {refuted}.",
@@ -1506,6 +1521,13 @@ PEER_RULE_LABELS = {
 
 def family_rules(text: str, kind: str) -> list[str]:
     """Player-facing rules from the same parsed variant semantics as the solver."""
+    if kind == "bridges" and Wording.read(text).language == "nl":
+        return [
+            "Verbind genummerde eilanden met hun dichtstbijzijnde horizontale of verticale "
+            "buren. Tussen twee eilanden liggen hoogstens twee bruggen; elk getal geeft het "
+            "totale aantal bruggen bij dat eiland. Bruggen kruisen elkaar niet en lopen niet "
+            "door andere eilanden. Alle eilanden vormen samen één verbonden netwerk."
+        ]
     if kind == "starbattle":
         star_battle = starbattle.parse(text)
         if star_battle.stars == 1:
@@ -1593,6 +1615,9 @@ def family_rules(text: str, kind: str) -> list[str]:
 
 # Base rules for the non-Murdoku families; Sudoku adds its active variants above.
 FAMILY_RULES = {
+    "bridges": "Connect numbered islands to their nearest horizontal or vertical neighbours. "
+    "At most two bridges join a pair; each island's number counts its incident bridges. "
+    "Bridges never cross or pass through other islands. All islands form one connected network.",
     "sudoku": "Fill the grid so every row, column and box contains each digit once.",
     "calcudoku": "Fill the grid so no digit repeats in a row or column, and each cage's "
     "digits combine to its target with its operation.",

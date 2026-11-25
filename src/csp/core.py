@@ -16,10 +16,11 @@ Nothing in this module knows about any particular puzzle.
 import copy
 import itertools
 from bisect import bisect_left
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from itertools import product
+from types import MappingProxyType
 from typing import Any, NamedTuple, Self
 
 type LiteralId = int
@@ -46,9 +47,16 @@ class Contradiction(Exception):
     `source` names the constraint or relation that broke, when known.
     """
 
-    def __init__(self, message: str, source: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        source: str | None = None,
+        *,
+        graph: "GraphEvidence | None" = None,
+    ) -> None:
         super().__init__(message)
         self.source = source
+        self.graph = graph
 
 
 @dataclass(frozen=True)
@@ -93,6 +101,43 @@ class Relation:
 
 
 @dataclass(frozen=True)
+class Graph:
+    """An undirected CONNECTED constraint; None denotes unconditional presence.
+
+    An implicit edge exists when both endpoints exist. An explicit true edge
+    additionally requires both endpoints. Empty and singleton graphs are connected.
+    """
+
+    index: int
+    name: str
+    nodes: Mapping[str, LiteralId | None]
+    edges: tuple[tuple[str, str, LiteralId | None], ...]
+    family: str | None = None
+
+
+@dataclass(frozen=True)
+class GraphEvidence:
+    """Structural witnesses for a reachability, separator or closure deduction."""
+
+    graph: str
+    required: tuple[str, ...] = ()
+    component: tuple[str, ...] = ()
+    cut_nodes: tuple[str, ...] = ()
+    cut_edges: tuple[int, ...] = ()
+    assumption: LiteralId | None = None
+
+
+@dataclass(frozen=True)
+class GraphState:
+    """A read-only snapshot of possible nodes, required nodes and usable edges."""
+
+    possible: frozenset[str]
+    required: frozenset[str]
+    usable_edges: tuple[int, ...]
+    components: tuple[frozenset[str], ...]
+
+
+@dataclass(frozen=True)
 class Step:
     """One logged deduction: `var=value` was asserted or ruled out, and why.
 
@@ -118,6 +163,7 @@ class Step:
     trail: tuple["Step", ...] = ()
     chain: tuple[tuple[str, Any], ...] = ()
     end_sources: tuple[str, ...] = ()
+    graph: GraphEvidence | None = None
 
     @property
     def literal(self) -> str:
@@ -143,6 +189,7 @@ class Model:
         self._in_constraints: list[list[ConstraintId]] = []
         self._constraints: list[Constraint] = []
         self._relations: list[Relation] = []
+        self._graphs: tuple[Graph, ...] = ()
         self._domain_of: dict[str, ConstraintId] = {}
         self._hidden_variables: set[str] = set()
         self.log: list[Step] = []
@@ -185,6 +232,7 @@ class Model:
         """
         if hidden and defines is None:
             raise ValueError("hidden constraints must define a variable")
+        self._check_graph_name(name)
         literals = tuple(literals)
         if kind is Kind.EXACTLY_ONE:
             if allowed_counts is not None or reified_by is not None:
@@ -228,7 +276,50 @@ class Model:
 
     def relate(self, name: str, variables: Iterable[str], holds: Callable[..., bool]) -> None:
         """Require `holds(*values)` of the named variables' values, in order."""
+        self._check_graph_name(name)
         self._relations.append(Relation(name, tuple(variables), holds))
+
+    def _check_graph_name(self, name: str) -> None:
+        if any(graph.name == name for graph in self._graphs):
+            raise ValueError(f"duplicate model name: {name!r}")
+
+    def connect(
+        self,
+        name: str,
+        nodes: Mapping[str, LiteralId | None],
+        edges: Iterable[tuple[str, str, LiteralId | None]],
+        *,
+        family: str | None = None,
+    ) -> int:
+        """Require the present nodes to be connected by present undirected edges.
+
+        Presence literals may be shared. Parallel edges are supported, self-loops
+        are rejected. The registry and each graph's structure are immutable.
+        """
+        self._check_graph_name(name)
+        if any(item.name == name for item in self._constraints) or any(
+            item.name == name for item in self._relations
+        ):
+            raise ValueError(f"duplicate model name: {name!r}")
+        frozen_nodes = dict(nodes)
+        frozen_edges = tuple((left, right, lit) for left, right, lit in edges)
+        for node in frozen_nodes:
+            if not isinstance(node, str):
+                raise ValueError("graph node names must be strings")
+        for left, right, _ in frozen_edges:
+            if left not in frozen_nodes or right not in frozen_nodes:
+                raise ValueError("graph edge endpoint is not a node")
+            if left == right:
+                raise ValueError("graph self-loops are not supported")
+        literals = [*frozen_nodes.values(), *(edge[2] for edge in frozen_edges)]
+        if any(
+            lit is not None and (type(lit) is not int or lit not in range(self.num_literals))
+            for lit in literals
+        ):
+            raise ValueError("graph presence must be a literal in this model or None")
+        index = len(self._graphs)
+        self._graphs += (Graph(index, name, MappingProxyType(frozen_nodes), frozen_edges, family),)
+        return index
 
     def clone(self, *, keep_log: bool = False) -> Self:
         """A copy with its own truth state and, optionally, the earlier log.
@@ -254,6 +345,15 @@ class Model:
     @property
     def relations(self) -> Sequence[Relation]:
         return self._relations
+
+    @property
+    def graphs(self) -> tuple[Graph, ...]:
+        """Immutable CONNECTED constraints, shared safely by clones."""
+        return self._graphs
+
+    def graph_state(self, graph: int) -> GraphState:
+        """Inspect potential connectivity without mutating state."""
+        return _graph_state(self, self._graphs[graph])
 
     @property
     def variables(self) -> list[str]:
@@ -349,7 +449,20 @@ class Model:
     def solution(self) -> dict[str, Any] | None:
         """The full assignment, or None if any variable is still open."""
         decided = self.assignment()
-        return decided if len(decided) == len(self.variables) else None
+        if len(decided) != len(self.variables):
+            return None
+        for graph in self._graphs:
+            literals = [*graph.nodes.values(), *(edge[2] for edge in graph.edges)]
+            if any(
+                lit is not None and not (self.is_true(lit) or self.is_false(lit))
+                for lit in literals
+            ):
+                return None
+            try:
+                _check_graph(self, graph)
+            except Contradiction:
+                return None
+        return decided
 
     # --- mutation ---------------------------------------------------------
 
@@ -365,6 +478,7 @@ class Model:
         trail: tuple[Step, ...] = (),
         chain: tuple[tuple[str, Any], ...] = (),
         end_sources: tuple[str, ...] = (),
+        graph: GraphEvidence | None = None,
     ) -> bool:
         """Rule `lit` out. Returns whether that changed anything.
 
@@ -393,12 +507,19 @@ class Model:
                 trail,
                 chain,
                 end_sources,
+                graph,
             )
         )
         return True
 
     def assign(
-        self, lit: LiteralId, rule: str, reason: str, *, sources: tuple[str, ...] = ()
+        self,
+        lit: LiteralId,
+        rule: str,
+        reason: str,
+        *,
+        sources: tuple[str, ...] = (),
+        graph: GraphEvidence | None = None,
     ) -> bool:
         """Make `lit` true and apply any immediate upper-count consequences.
 
@@ -416,7 +537,7 @@ class Model:
                 )
         self._state[lit] = Truth.TRUE
         literal = self._literals[lit]
-        self.log.append(Step(literal.var, literal.value, True, rule, reason, sources))
+        self.log.append(Step(literal.var, literal.value, True, rule, reason, sources, graph=graph))
         for ci in self._in_constraints[lit]:
             constraint = self._constraints[ci]
             true_count = sum(self.is_true(item) for item in constraint.literals)
@@ -439,6 +560,8 @@ class Model:
 
     def check(self) -> None:
         """Raise Contradiction if a constraint has no feasible true count."""
+        for graph in self._graphs:
+            _check_graph(self, graph)
         for constraint in self._constraints:
             states = [self._state[lit] for lit in constraint.literals]
             if constraint.kind is not Kind.COUNT and states.count(Truth.TRUE) > 1:
@@ -1055,7 +1178,282 @@ class _CoverSearch:
         )
 
 
-_WHAT_IF_INNER = (rule_single, rule_count, rule_relations, rule_subsumption)
+def _graph_state(model: Model, graph: Graph) -> GraphState:
+    possible = frozenset(
+        node for node, lit in graph.nodes.items() if lit is None or not model.is_false(lit)
+    )
+    required = {node for node, lit in graph.nodes.items() if lit is None or model.is_true(lit)}
+    adjacency: dict[str, list[str]] = {node: [] for node in possible}
+    usable: list[int] = []
+    for index, (left, right, lit) in enumerate(graph.edges):
+        if lit is not None and model.is_true(lit):
+            required.update((left, right))
+        if left in possible and right in possible and (lit is None or not model.is_false(lit)):
+            usable.append(index)
+            adjacency[left].append(right)
+            adjacency[right].append(left)
+    components: list[frozenset[str]] = []
+    unseen = set(possible)
+    for first in graph.nodes:
+        if first not in unseen:
+            continue
+        component = {first}
+        unseen.remove(first)
+        todo = [first]
+        while todo:
+            for other in adjacency[todo.pop()]:
+                if other in unseen:
+                    unseen.remove(other)
+                    component.add(other)
+                    todo.append(other)
+        components.append(frozenset(component))
+    return GraphState(possible, frozenset(required), tuple(usable), tuple(components))
+
+
+def _check_graph(model: Model, graph: Graph) -> GraphState:
+    state = _graph_state(model, graph)
+    if not state.required <= state.possible:
+        raise Contradiction(f"{graph.name}: a true edge requires absent endpoints", graph.name)
+    if state.required:
+        first = next(node for node in graph.nodes if node in state.required)
+        component = next(part for part in state.components if first in part)
+        if not state.required <= component:
+            evidence = GraphEvidence(
+                graph.name,
+                tuple(node for node in graph.nodes if node in state.required),
+                tuple(node for node in graph.nodes if node in component),
+            )
+            raise Contradiction(
+                f"{graph.name}: required nodes cannot connect",
+                graph.name,
+                graph=evidence,
+            )
+    return state
+
+
+def rule_reach(model: Model, *, graph_index: int | None = None) -> bool:
+    """Remove optional nodes and edges that cannot reach the required component.
+
+    Every completion's paths lie in the possible graph. Thus required nodes in
+    different possible components contradict connectivity, and nodes outside a
+    required component cannot be present. A true explicit edge requires its
+    endpoints; an implicit edge never forces either endpoint. No component is
+    privileged when nothing is required. Each graph scan is O(V + E).
+    """
+    for graph in model.graphs:
+        if graph_index is not None and graph.index != graph_index:
+            continue
+        state = _check_graph(model, graph)
+        evidence = GraphEvidence(
+            graph.name, tuple(node for node in graph.nodes if node in state.required)
+        )
+        for left, right, lit in graph.edges:
+            if lit is not None and model.is_true(lit):
+                for node in (left, right):
+                    presence = graph.nodes[node]
+                    if presence is not None and model.assign(
+                        presence,
+                        "reach",
+                        f"{graph.name}: a present edge requires endpoint {node}",
+                        sources=(graph.name,),
+                        graph=evidence,
+                    ):
+                        return True
+        reachable = state.possible
+        if state.required:
+            reachable = next(part for part in state.components if part & state.required)
+        evidence = GraphEvidence(
+            graph.name,
+            evidence.required,
+            tuple(node for node in graph.nodes if node in reachable),
+        )
+        for node, lit in graph.nodes.items():
+            if (
+                lit is not None
+                and node not in reachable
+                and model.eliminate(
+                    lit,
+                    "reach",
+                    f"{graph.name}: {node} cannot reach the required component",
+                    sources=(graph.name,),
+                    graph=evidence,
+                )
+            ):
+                return True
+        for left, right, lit in graph.edges:
+            if (
+                lit is not None
+                and (left not in reachable or right not in reachable)
+                and model.eliminate(
+                    lit,
+                    "reach",
+                    f"{graph.name}: this edge cannot reach the required component",
+                    sources=(graph.name,),
+                    graph=evidence,
+                )
+            ):
+                return True
+    return False
+
+
+def rule_cut(model: Model, *, graph_index: int | None = None) -> bool:
+    """Require a bridge or articulation node separating required graph nodes.
+
+    Every path between the separated required nodes uses the separator, so it
+    must exist in every connected completion. Optional-only branches impose no
+    demand. Iterative low-link DFS counts required nodes on each side, handles
+    parallel edges by edge identity, and takes O(V + E), without recursion.
+    """
+    for graph in model.graphs:
+        if graph_index is not None and graph.index != graph_index:
+            continue
+        state = _check_graph(model, graph)
+        total = len(state.required)
+        if total < 2:
+            continue
+        root = next(node for node in graph.nodes if node in state.required)
+        adjacency: dict[str, list[tuple[str, int]]] = {node: [] for node in state.possible}
+        for index in state.usable_edges:
+            left, right, _ = graph.edges[index]
+            adjacency[left].append((right, index))
+            adjacency[right].append((left, index))
+        discovered = {root: 0}
+        low = {root: 0}
+        demand = {root: int(root in state.required)}
+        parent: dict[str, tuple[str, int]] = {}
+        separated: dict[str, list[int]] = {root: []}
+        stack: list[tuple[str, Iterator[tuple[str, int]]]] = [(root, iter(adjacency[root]))]
+        bridges: list[int] = []
+        while stack:
+            node, neighbours = stack[-1]
+            item = next(neighbours, None)
+            if item is not None:
+                other, edge = item
+                if node in parent and edge == parent[node][1]:
+                    continue
+                if other in discovered:
+                    low[node] = min(low[node], discovered[other])
+                else:
+                    parent[other] = (node, edge)
+                    discovered[other] = low[other] = len(discovered)
+                    demand[other] = int(other in state.required)
+                    separated[other] = []
+                    stack.append((other, iter(adjacency[other])))
+                continue
+            stack.pop()
+            if node in parent:
+                above, edge = parent[node]
+                demand[above] += demand[node]
+                low[above] = min(low[above], low[node])
+                if low[node] >= discovered[above]:
+                    separated[above].append(demand[node])
+                if low[node] > discovered[above] and 0 < demand[node] < total:
+                    bridges.append(edge)
+        required = tuple(node for node in graph.nodes if node in state.required)
+        for edge in sorted(bridges):
+            lit = graph.edges[edge][2]
+            if lit is not None and model.assign(
+                lit,
+                "cut",
+                f"{graph.name}: the only edge across a cut between required nodes",
+                sources=(graph.name,),
+                graph=GraphEvidence(graph.name, required, cut_edges=(edge,)),
+            ):
+                return True
+        for node in graph.nodes:
+            if node not in separated:
+                continue
+            parts = separated[node]
+            remainder = total - int(node in state.required) - sum(parts)
+            if sum(part > 0 for part in parts) + int(remainder > 0) < 2:
+                continue
+            lit = graph.nodes[node]
+            if lit is not None and model.assign(
+                lit,
+                "cut",
+                f"{graph.name}: the only node joining required components",
+                sources=(graph.name,),
+                graph=GraphEvidence(graph.name, required, cut_nodes=(node,)),
+            ):
+                return True
+    return False
+
+
+_WHAT_IF_INNER = (
+    rule_single,
+    rule_count,
+    rule_reach,
+    rule_cut,
+    rule_relations,
+    rule_subsumption,
+)
+
+
+def _closure_candidates(model: Model) -> list[LiteralId]:
+    """Edge presences, their domain options and directly linked count options."""
+    candidates: set[LiteralId] = set()
+    for graph in model.graphs:
+        for _, _, lit in graph.edges:
+            if lit is None:
+                continue
+            candidates.add(lit)
+            for ci in model.constraints_of(lit):
+                constraint = model.constraints[ci]
+                if constraint.kind is Kind.COUNT and constraint.reified_by == lit:
+                    candidates.update(constraint.literals)
+    for lit in tuple(candidates):
+        var = model.var_of(lit)
+        if var in model._domain_of:
+            candidates.update(model.options(var))
+    return sorted(lit for lit in candidates if not (model.is_true(lit) or model.is_false(lit)))[
+        :128
+    ]
+
+
+def refute_closure(model: Model, lit: LiteralId) -> bool:
+    """Replay a bounded graph trial, accepting only disconnected required nodes."""
+    if not model.graphs or model.is_true(lit) or model.is_false(lit):
+        return False
+    twin = model.clone()
+    try:
+        twin.assign(lit, "closure", "assumed")
+        twin.check()
+        for _ in range(256):
+            if not any(rule(twin) for rule in _WHAT_IF_INNER):
+                break
+            twin.check()
+    except Contradiction as exc:
+        if exc.graph is None:
+            return False
+        evidence = GraphEvidence(
+            exc.graph.graph,
+            exc.graph.required,
+            exc.graph.component,
+            assumption=lit,
+        )
+        return model.eliminate(
+            lit,
+            "closure",
+            f"{exc.graph.graph}: assumption closes off a required component",
+            sources=(exc.graph.graph,),
+            trail=tuple(twin.log),
+            graph=evidence,
+        )
+    return False
+
+
+def rule_closure(model: Model) -> bool:
+    """Refute an edge-related choice whose cheap consequences strand required nodes.
+
+    Sound because a bounded trial uses only sound rules, and accepts only a
+    graph reachability contradiction, never an unrelated count contradiction.
+    Reified count options are tried as well as edge presences: a stronger count
+    choice may seal a component without changing an already-present edge.
+    No closure or what-if runs inside the trial; bounds only limit deductions.
+    """
+    if not model.graphs:
+        return False
+    return any(refute_closure(model, lit) for lit in _closure_candidates(model))
 
 
 def rule_chains(model: Model) -> bool:
@@ -1428,12 +1826,15 @@ def _refute(model: Model, lit: LiteralId) -> tuple[str, tuple[Step, ...], str | 
 DEFAULT_RULES: tuple[Rule, ...] = (
     Rule("single", rule_single),
     Rule("count", rule_count),
+    Rule("reach", rule_reach),
+    Rule("cut", rule_cut),
     Rule("relations", rule_relations),
     Rule("subsumption", rule_subsumption),
     Rule("cover2", rule_cover(2)),
     Rule("cover3", rule_cover(3)),
     Rule("chains", rule_chains),
     Rule("wing", rule_wing),
+    Rule("closure", rule_closure),
     Rule("what_if", rule_what_if),
 )
 

@@ -29,6 +29,7 @@ def describe(model: Model, rules: Sequence[Rule] = DEFAULT_RULES) -> str:
         _connections(model),
         _compile_time(model),
         _relations(model),
+        _graphs(model),
         _algorithm(rules),
     )
     return "\n\n".join(s for s in sections if s)
@@ -93,6 +94,13 @@ def _overview(model: Model) -> str:
         "that is true exactly when the count is allowed.",
     )
     lines += _define("relation", "a yes/no test on the values of two or more variables.")
+    if model.graphs:
+        lines += _define(
+            "graph",
+            f"a CONNECTED network ({len(model.graphs)} here) with conditional node and edge "
+            "presence. All present nodes must connect; undecided hidden graph presences "
+            "are not a certified final solution.",
+        )
     lines.append("")
     lines += _wrap(
         "Solving only ever marks literals true or false. Nothing below knows what "
@@ -158,6 +166,8 @@ def _variables(model: Model) -> str:
 
 
 def _constraints(model: Model) -> str:
+    if not model.constraints:
+        return ""
     families: dict[str, list[Constraint]] = {}
     for c in model.constraints:
         families.setdefault(_family(c), []).append(c)
@@ -184,6 +194,29 @@ def _constraints(model: Model) -> str:
                 details.append(f"reified by {model.describe(c.reified_by)}")
         label = f"{c.name} ({'; '.join(details)})" if details else c.name
         lines.append(_fit(f"  {label}: ", [model.describe(lit) for lit in c.literals]))
+    return "\n".join(lines)
+
+
+def _graphs(model: Model) -> str:
+    if not model.graphs:
+        return ""
+    lines = _heading(f"Graphs ({len(model.graphs)})")
+    for graph in model.graphs:
+        state = model.graph_state(graph.index)
+        conditional_nodes = sum(lit is not None for lit in graph.nodes.values())
+        conditional_edges = sum(lit is not None for _, _, lit in graph.edges)
+        lines.append(
+            f"  {graph.name}: CONNECTED, {len(graph.nodes)} nodes "
+            f"({conditional_nodes} conditional), {len(graph.edges)} edges "
+            f"({conditional_edges} conditional); {len(state.required)} required nodes, "
+            f"{len(state.components)} possible components."
+        )
+        if graph.family:
+            lines.append(f"    family: {graph.family}")
+    lines += _wrap(
+        "Present edges require their endpoints. Implicit edges join present endpoints "
+        "without requiring them. Empty and singleton graphs are connected."
+    )
     return "\n".join(lines)
 
 

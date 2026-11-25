@@ -13,12 +13,15 @@ import {
 const LADDER = [
   "single",
   "count",
+  "reach",
+  "cut",
   "relations",
   "subsumption",
   "cover2",
   "cover3",
   "chains",
   "wing",
+  "closure",
   "what_if",
 ];
 
@@ -30,6 +33,9 @@ describe("grade labels", () => {
   it("turns each internal rule name into a player-facing label", () => {
     expect(gradeLabel("single")).toBe("Forced moves");
     expect(gradeLabel("relations")).toBe("Relationship checks");
+    expect(gradeLabel("reach")).toBe("Reachability");
+    expect(gradeLabel("cut")).toBe("Connectivity cuts");
+    expect(gradeLabel("closure")).toBe("Component closure");
     expect(gradeLabel("what_if")).toBe("Case analysis");
     expect(GRADES.every((entry) => isKnownGrade(entry.grade))).toBe(true);
   });
