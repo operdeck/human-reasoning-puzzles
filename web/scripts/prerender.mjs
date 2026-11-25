@@ -29,6 +29,7 @@ import {
   gradeLabel,
   isKnownGrade,
 } from "../src/grades.mjs";
+import { sectionAnchor } from "../src/sections.mjs";
 
 export const SITE_NAME = "Human reasoning puzzles";
 export const REPO = "https://github.com/operdeck/human-reasoning-puzzles";
@@ -280,7 +281,7 @@ function puzzleList(entries, prefix) {
 
 /** The index's own explanation of the grade labels, shared with the player. */
 function glossaryHtml() {
-  return `<details class="glossary"><summary>What do these labels mean?</summary>
+  return `<details class="glossary"><summary>Difficulty ratings</summary>
       <p>${esc(GLOSSARY_INTRO)}</p>
       <dl>${GRADES.map(({ label, meaning }) => `<dt>${esc(label)}</dt><dd>${esc(meaning)}</dd>`).join("")}</dl>
       <p>${esc(BEYOND_DEDUCTION_NOTE)}</p></details>`;
@@ -290,7 +291,7 @@ function sectionsHtml(puzzles, prefix) {
   return [...groupBySection(puzzles)]
     .map(([label, entries]) => {
       const preview = entries[0].static ?? `${entries[0].id}.svg`;
-      return `<section class="family"><div class="family-preview"><img class="family-thumbnail" src="${prefix}puzzles/${esc(preview)}" alt="${esc(`${label} puzzle preview`)}" width="180" height="180" loading="lazy"></div><div class="family-puzzles"><h2>${esc(label)}</h2>${puzzleList(entries, prefix)}</div></section>`;
+      return `<section class="family" id="${esc(sectionAnchor(label))}"><div class="family-preview"><img class="family-thumbnail" src="${prefix}puzzles/${esc(preview)}" alt="${esc(`${label} puzzle preview`)}" width="180" height="180" loading="lazy"></div><div class="family-puzzles"><h2>${esc(label)}</h2>${puzzleList(entries, prefix)}</div></section>`;
     })
     .join("\n");
 }

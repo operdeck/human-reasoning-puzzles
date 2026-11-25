@@ -132,20 +132,32 @@ describe("puzzle index", () => {
     await vi.waitFor(() => expect(document.querySelectorAll(".puzzle-list a")).toHaveLength(2));
     const items = [...document.querySelectorAll(".puzzle-list li")];
     expect(items[0].querySelector(".badge")?.textContent).toBe("beyond deduction");
-    expect(items[0].querySelector(".badge")?.getAttribute("title")).toContain("case analysis");
+    expect(items[0].querySelector(".badge")?.getAttribute("title")).toContain("What if trials");
     expect(items[1].querySelector(".badge")).toBeNull();
+  });
+
+  it("anchors each family section and opens the index at a #family- link", async () => {
+    window.history.replaceState(null, "", "/human-reasoning-puzzles/#family-logic-grid");
+    const scrolled = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrolled;
+    await openIndex();
+    expect([...document.querySelectorAll(".family")].map((node) => node.id))
+      .toEqual(["family-murdoku-demo", "family-logic-grid"]);
+    await vi.waitFor(() => expect(scrolled).toHaveBeenCalled());
+    expect(scrolled.mock.contexts[0]).toBe(document.getElementById("family-logic-grid"));
+    expect(renderPuzzle).not.toHaveBeenCalled();
   });
 
   it("opens a glossary of the grade labels above the puzzle list", async () => {
     await openIndex();
     const glossary = document.querySelector<HTMLDetailsElement>("details.glossary")!;
     expect(glossary.open).toBe(false);
-    expect(glossary.querySelector("summary")?.textContent).toBe("What do these labels mean?");
+    expect(glossary.querySelector("summary")?.textContent).toBe("Difficulty ratings");
     expect(glossary.textContent).toContain("hardest deduction this solver needed");
     expect(glossary.textContent).toContain("not how difficult a person will find the puzzle");
     const terms = [...glossary.querySelectorAll("dt")].map((node) => node.textContent);
     expect(terms).toContain("Relationship checks");
-    expect(terms).toContain("Case analysis");
+    expect(terms).toContain("What if");
     expect(glossary.querySelectorAll("dd")).toHaveLength(terms.length);
     expect(glossary.textContent).toContain("beyond deduction");
     // The app routes puzzles through the hash, so the glossary must stay unlinked.

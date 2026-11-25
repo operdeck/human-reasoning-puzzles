@@ -29,6 +29,7 @@ import {
 } from "./game";
 import { puzzleLink, type PuzzleNavigationEntry } from "./navigation";
 import { creditLine } from "./credit";
+import { GRADES, gradeLabel } from "./grades.mjs";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CROSS = "__cross__";
@@ -296,10 +297,21 @@ export class PuzzleView {
       ...(b.deductive === false
         ? [el("p", {
             className: "meta",
-            textContent: "beyond deduction: only this solver's what_if case analysis closes it",
+            textContent: "beyond deduction: only this solver's What if trials close it",
           })]
         : []),
-      el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
+      el(
+        "div",
+        { className: "puzzle-title" },
+        el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
+        ...(b.grade
+          ? [el("p", {
+              className: "puzzle-grade",
+              textContent: `Difficulty: ${gradeLabel(b.grade)}`,
+              title: GRADES.find((entry) => entry.grade === b.grade)?.meaning ?? "",
+            })]
+          : []),
+      ),
     );
     const assists = el("div", { className: "assist-controls" });
     if (b.playable && b.autoMark && (b.autoMark.onPlace.length > 0 || (b.notes && b.peers?.length))) {

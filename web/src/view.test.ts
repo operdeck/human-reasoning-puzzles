@@ -128,6 +128,17 @@ describe("palette", () => {
     expect(next.href).toBe(new URL("p/next/", document.baseURI).href);
   });
 
+  it("shows the difficulty rating under the title, before the assist checkboxes", () => {
+    const root = mount({ grade: "what_if" });
+    const title = root.querySelector(".puzzle-title")!;
+    expect(title.querySelector("h1")?.textContent).toBe("Two people");
+    const grade = title.querySelector<HTMLElement>(".puzzle-grade")!;
+    expect(grade.textContent).toBe("Difficulty: What if");
+    expect(grade.title).toContain("tries an option");
+    const assists = root.querySelector(".assist-controls")!;
+    expect(title.compareDocumentPosition(assists) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("switches compact viewports on resize without losing moves and releases the listener", () => {
     const listeners = new Set<() => void>();
     let mobile = true;

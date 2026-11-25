@@ -92,7 +92,8 @@ describe("renderPages", () => {
     expect(home).toContain('<a href="p/sudoku_1/">Sudoku 1 &amp; friends</a>');
     expect(home).toContain('<span class="meta">4×4 · Forced moves</span>');
     expect(home).toContain('<span class="meta">9×9 · Relationship checks</span>');
-    expect(home).toContain("<summary>What do these labels mean?</summary>");
+    expect(home).toContain("<summary>Difficulty ratings</summary>");
+    expect(home).toMatch(/<section class="family" id="family-[a-z0-9-]+">/);
     expect(home).toContain("hardest deduction this solver needed");
     expect(home).toContain('<meta property="og:url" content="https://operdeck.github.io/human-reasoning-puzzles/" />');
     expect(home).toContain('"@type":"WebSite"');

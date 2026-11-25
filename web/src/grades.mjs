@@ -82,7 +82,7 @@ export const GRADES = Object.freeze([
   },
   {
     grade: "what_if",
-    label: "Case analysis",
+    label: "What if",
     meaning:
       "The solver tries an option and follows only the cheaper rules; if that reaches a contradiction, the option is impossible.",
   },
@@ -96,7 +96,7 @@ export const GLOSSARY_INTRO =
 
 /** The glossary's note about the `what_if` frontier badge. */
 export const BEYOND_DEDUCTION_NOTE =
-  "The \u201cbeyond deduction\u201d badge marks a puzzle labelled Case analysis: " +
+  "The \u201cbeyond deduction\u201d badge marks a puzzle labelled What if: " +
   "only this solver's trial of a guess closes it, so it sits at the edge of what pure deduction can prove.";
 
 /**
