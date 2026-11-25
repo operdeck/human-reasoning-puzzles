@@ -14,6 +14,7 @@ each orthogonal direction can be joined; island numbers count individual bridges
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from . import icons
 from .core import Kind, Model, Step
 from .puzzlefile import read_sections
 
@@ -179,17 +180,30 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
 def render(puzzle: Puzzle, model: Model, title: str, steps: Sequence[Step] = ()) -> str:
     """Island numbers and single/double bridge corridors in a text board."""
     grid = [[" " for _ in range(puzzle.width * 3)] for _ in range(puzzle.height * 2)]
+    changed = {step.var for step in steps}
     for pair in puzzle.pairs:
-        count = model.chosen(pair_name(pair))
+        name = pair_name(pair)
+        count = model.chosen(name)
+        if count is None:
+            count = (
+                2
+                if model.chosen(f"{name} at least 2") is True
+                else int(model.chosen(f"{name} at least 1") is True)
+            )
         if not count:
             continue
         a, b = pair
+        symbol = icons.symbol("bridge_single" if count == 1 else "bridge_double")
+        if a[0] != b[0]:
+            symbol = symbol.translate(str.maketrans("─═", "│║"))
+        if changed.intersection((name, f"{name} at least 1", f"{name} at least 2")):
+            symbol = f"\033[38;5;21m{symbol}\033[0m"
         if a[0] == b[0]:
             for column in range(a[1] * 3 + 1, b[1] * 3):
-                grid[a[0] * 2][column] = "-" if count == 1 else "="
+                grid[a[0] * 2][column] = symbol
         else:
             for row in range(a[0] * 2 + 1, b[0] * 2):
-                grid[row][a[1] * 3] = "|" if count == 1 else "H"
+                grid[row][a[1] * 3] = symbol
     for (row, col), count in puzzle.islands.items():
         grid[row * 2][col * 3] = str(count)
     return "\n".join([f"\n{title}", *("".join(row).rstrip() for row in grid[:-1])])

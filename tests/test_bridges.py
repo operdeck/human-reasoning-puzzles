@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from csp import cli, fresh
-from csp.bridges import compile_puzzle, crosses, pair_name, parse
+from csp.bridges import compile_puzzle, crosses, pair_name, parse, render
 from csp.bruteforce.bridges import solutions
 from csp.core import DEFAULT_RULES, Solver
 
@@ -65,6 +65,14 @@ def test_one_island_capacity_forces_a_single_bridge_without_graph_rules():
     before = next(i for i, rule in enumerate(DEFAULT_RULES) if rule.name == "reach")
     answer = Solver(model, DEFAULT_RULES[:before]).solve()
     assert answer.solved and answer.assignment == {"r1c1-r1c3": 1}
+
+
+def test_text_board_shows_a_forced_first_bridge_before_multiplicity_is_decided():
+    model, puzzle = compile_puzzle(SQUARE)
+    name = pair_name(puzzle.pairs[0])
+    model.assign(model.literal(f"{name} at least 1", True), "cut", "only connection")
+    assert model.chosen(name) is None
+    assert "│" in render(puzzle, model, "Progress") or "─" in render(puzzle, model, "Progress")
 
 
 def test_fresh_generation_is_reproducible_original_and_unique():

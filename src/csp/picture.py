@@ -35,6 +35,9 @@ from .akari import cell_name as akari_cell
 from .battleships import Puzzle as Battleships
 from .binairo import Puzzle as Binairo
 from .binairo import cell_name as binairo_cell
+from .bridges import Puzzle as Bridges
+from .bridges import cell_name as bridges_cell
+from .bridges import pair_name as bridges_pair
 from .calcudoku import Puzzle as Calcudoku
 from .calcudoku import cell_name as calcudoku_cell
 from .dominosa import Puzzle as Dominosa
@@ -830,6 +833,84 @@ def starbattle_picture(
         lambda first, second: region_at[first] == region_at[second],
         interactive=interactive,
     )
+
+
+def bridges_picture(
+    puzzle: Bridges,
+    solution: Mapping[str, Any] | None = None,
+    *,
+    cell: int = 64,
+    interactive: bool = False,
+    steps: Iterable[Any] = (),
+) -> Canvas:
+    """Draw numbered islands on calm water and separate timber bridge decks."""
+    margin = cell // 2
+    width, height = (puzzle.width + 1) * cell, (puzzle.height + 1) * cell
+    canvas = Canvas(
+        width,
+        height,
+        background="#ffffff",
+        compact_view_box=(margin // 2, margin // 2, width - margin, height - margin),
+    )
+    canvas.rounded_rectangle(
+        (margin / 2, margin / 2, width - margin / 2 - 1, height - margin / 2 - 1),
+        cell * 0.22,
+        fill="#edf5f5",
+        outline="#c8dcdd",
+        width=1.5,
+    )
+    for row in range(puzzle.height):
+        for col in range(puzzle.width):
+            x, y = margin + (col + 0.5) * cell, margin + (row + 0.5) * cell
+            if (row, col) not in puzzle.islands:
+                canvas.line(((x - cell * 0.07, y), (x + cell * 0.07, y)), "#d5e5e5", 1)
+    changed = {step.var for step in steps}
+    if solution is not None and not interactive:
+        for pair in puzzle.pairs:
+            name = bridges_pair(pair)
+            count = solution.get(name, 0)
+            first, second = pair
+            points = tuple(
+                (margin + (col + 0.5) * cell, margin + (row + 0.5) * cell)
+                for row, col in (first, second)
+            )
+            icons.bridge(
+                canvas,
+                points[0],
+                points[1],
+                count,
+                scale=cell,
+                tint="#d18a35" if name in changed else "#526b70",
+            )
+    with canvas.above():
+        for (row, col), number in puzzle.islands.items():
+            x, y = margin + (col + 0.5) * cell, margin + (row + 0.5) * cell
+            large = max(puzzle.height, puzzle.width) >= 11
+            radius = cell * (0.33 if large else 0.275)
+            canvas.ellipse(
+                (x - radius, y - radius + 2, x + radius, y + radius + 2),
+                fill="#c5d8d7",
+            )
+            canvas.ellipse(
+                (x - radius, y - radius, x + radius, y + radius),
+                fill="#fffdf5",
+                outline="#516f72",
+                width=max(1.5, cell * 0.026),
+            )
+            canvas.text(
+                (x, y), str(number), "#263f44", cell * (0.42 if large else 0.32), anchor="mm"
+            )
+            if interactive:
+                canvas.cell(
+                    bridges_cell((row, col)),
+                    (
+                        margin + col * cell,
+                        margin + row * cell,
+                        margin + (col + 1) * cell,
+                        margin + (row + 1) * cell,
+                    ),
+                )
+    return canvas
 
 
 def binairo_picture(

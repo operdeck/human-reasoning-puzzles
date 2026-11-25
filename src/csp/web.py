@@ -15,8 +15,20 @@ import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
+from xml.etree import ElementTree
 
-from . import akari, dominosa, hidato, icons, mapcolour, minesweeper, rectangles, starbattle, svg
+from . import (
+    akari,
+    bridges,
+    dominosa,
+    hidato,
+    icons,
+    mapcolour,
+    minesweeper,
+    rectangles,
+    starbattle,
+    svg,
+)
 from .collection import FAMILY_LABELS
 from .core import Kind, Model
 from .murdoku import Board, Square
@@ -492,6 +504,8 @@ def _family(
     }
     if kind in UNSUPPORTED:
         return out | {"playable": False, "unsupported": UNSUPPORTED[kind]}
+    if kind == "bridges":
+        return out | _bridges(text, solution, picture)
     if kind == "minesweeper":
         total_mines = minesweeper.parse(text).total_mines
         if total_mines is not None:
@@ -588,6 +602,79 @@ def _family(
     if kind in DIGITS:
         out["notes"] = True
     return out
+
+
+def _bridges(text: str, solution: Mapping[str, Any], picture: str) -> dict[str, Any]:
+    """Export a generic numbered-node/segment interaction, not cell placements."""
+    puzzle = bridges.parse(text)
+    root = ElementTree.fromstring(picture)
+    boxes = {
+        node.attrib["id"]: tuple(float(node.attrib[key]) for key in ("x", "y", "width", "height"))
+        for node in root.iter()
+        if node.attrib.get("class") == "cell"
+    }
+    width, height = int(root.attrib["width"]), int(root.attrib["height"])
+    scale = next(iter(boxes.values()))[2]
+    nodes = [
+        {"id": bridges.cell_name(cell), "total": total} for cell, total in puzzle.islands.items()
+    ]
+    segments = []
+    for pair in puzzle.pairs:
+        endpoints = [bridges.cell_name(cell) for cell in pair]
+        points = [
+            (boxes[name][0] + boxes[name][2] / 2, boxes[name][1] + boxes[name][3] / 2)
+            for name in endpoints
+        ]
+        drawings = {}
+        for count in (1, 2):
+            drawing = svg.Canvas(width, height, background="none")
+            icons.bridge(drawing, points[0], points[1], count, scale=scale)
+            drawings[str(count)] = drawing.to_svg()
+        conflicts = [
+            bridges.pair_name(other) for other in puzzle.pairs if bridges.crosses(pair, other)
+        ]
+        segments.append(
+            {
+                "id": bridges.pair_name(pair),
+                "endpoints": endpoints,
+                "values": ["0", "1", "2"],
+                "drawings": drawings,
+                "target": [*points[0], *points[1]],
+                "hitWidth": scale * 0.32,
+                "conflicts": conflicts,
+            }
+        )
+    nl = language_of(text) == "nl"
+    return {
+        "size": [puzzle.height, puzzle.width],
+        "playable": True,
+        "palette": [
+            Item("1", "Enkele brug" if nl else "Single bridge", "bridge_single", 1).to_json(),
+            Item("2", "Dubbele brug" if nl else "Double bridge", "bridge_double", 2).to_json(),
+        ],
+        "placement": {"blocked": []},
+        "givens": {},
+        "solution": {
+            bridges.pair_name(pair): str(solution[bridges.pair_name(pair)])
+            for pair in puzzle.pairs
+            if solution.get(bridges.pair_name(pair)) in (1, 2)
+        },
+        "links": {
+            "nodes": nodes,
+            "segments": segments,
+            "connected": True,
+            "instructions": (
+                "Kies een enkele of dubbele brug en tik twee eilanden aan. "
+                "Tik een verbinding om te wisselen tussen geen, één en twee bruggen. "
+                "Tab of pijltjestoetsen kiezen een verbinding; 0, 1 en 2 wijzigen die."
+                if nl
+                else "Choose a single or double bridge and tap two islands. "
+                "Tap a corridor to cycle between no bridge, one and two. "
+                "Tab or arrow keys select a corridor; 0, 1 and 2 change it."
+            ),
+        },
+        "intro": load_presentation(text).intro,
+    }
 
 
 def _domain(model: Model, var: str) -> list[Any]:

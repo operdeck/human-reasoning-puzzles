@@ -16,6 +16,9 @@ import {
   toggleNote,
   cellId,
   usedItems,
+  cycleSegment,
+  segmentConflict,
+  setSegment,
   type Bundle,
   type CellId,
   type ClueEntry,
@@ -204,6 +207,8 @@ export class PuzzleView {
   private working: State | null = null;
   private tool: string;
   private cursor: CellId | null = null;
+  private selectedNode: CellId | null = null;
+  private segmentTargets = new Map<string, SVGElement>();
   private boxes = new Map<CellId, Box>();
   private cells = new Map<CellId, SVGRectElement>();
   private tooltip = el("div", { className: "cell-tooltip", hidden: true });
@@ -304,7 +309,7 @@ export class PuzzleView {
       );
       assists.append(el("label", { className: "auto" }, this.autoBox, " Auto-mark"));
     }
-    if (b.playable && b.peers?.length) {
+    if (b.playable && (b.peers?.length || b.links)) {
       this.warningsBox.checked = this.state.warnings;
       this.warningsBox.addEventListener("change", () =>
         this.commit({ ...this.state, warnings: this.warningsBox.checked }),
@@ -316,7 +321,9 @@ export class PuzzleView {
 
     const board = el("div", { className: "board", tabIndex: 0 });
     board.setAttribute("role", "application");
-    board.setAttribute("aria-label", "Puzzle board; arrow keys move, space places");
+    board.setAttribute("aria-label", b.links
+      ? "Puzzle connections; tab or arrow keys select, space cycles, number keys set a count"
+      : "Puzzle board; arrow keys move, space places");
     board.innerHTML = this.boardSvg;
     if (b.cellDetails || b.detailTargets?.length) {
       this.tooltip.id = `cell-tooltip-${++nextTooltipId}`;
@@ -326,6 +333,7 @@ export class PuzzleView {
       board.append(this.tooltip, this.cellStatus);
     }
     const play = el("section", { className: "play" }, board);
+    if (b.links?.instructions) play.append(el("p", { className: "note" }, b.links.instructions));
     if (b.playable && b.clueEntries) {
       // Figure cards select figures, so only the cross joins the controls.
       const controls = this.controls();
@@ -582,8 +590,11 @@ export class PuzzleView {
         button.title = item.description ? `${item.label}: ${item.description}` : item.label;
         swatch.append(this.usedCross());
       } else {
-        button.append(el("span", { className: "swatch cross", textContent: "✕" }), el("span", { textContent: "Cross" }));
-        button.title = "Cross tool (also right-click or long-press)";
+        const links = this.bundle.links;
+        button.append(el("span", { className: "swatch cross", textContent: "✕" }),
+          el("span", { textContent: links ? (this.bundle.language === "nl" ? "Wissen" : "Erase") : "Cross" }));
+        button.title = links ? "Erase connection (also 0, Delete or right-click)"
+          : "Cross tool (also right-click or long-press)";
       }
       button.dataset.baseTitle = button.title;
       button.addEventListener("click", () => this.selectTool(id));
@@ -641,10 +652,27 @@ export class PuzzleView {
     clear.addEventListener("click", () => this.clearBoard());
     const checkButton = el("button", { type: "button", textContent: "Check", className: "primary" });
     checkButton.addEventListener("click", () => this.showVerdict());
-    return el("div", { className: "controls" }, this.undoButton, this.redoButton, clear, checkButton);
+    const controls = el("div", { className: "controls" }, this.undoButton, this.redoButton, clear, checkButton);
+    if (this.bundle.links) {
+      const nl = this.bundle.language === "nl";
+      const hint = el("button", { type: "button", textContent: nl ? "Hint" : "Hint" });
+      hint.addEventListener("click", () => {
+        const solution = this.bundle.solution ?? {};
+        const segment = this.bundle.links!.segments.find((edge) =>
+          (this.state.placed[edge.id] ?? "0") !== (solution[edge.id] ?? "0"));
+        if (segment) this.commit(setSegment(this.bundle, this.state, segment.id, solution[segment.id] ?? "0"));
+      });
+      const solution = el("button", { type: "button", textContent: nl ? "Toon oplossing" : "Show solution" });
+      solution.addEventListener("click", () => this.commit({
+        ...this.state, placed: { ...this.bundle.solution }, crosses: [], notes: {},
+      }));
+      controls.append(hint, solution);
+    }
+    return controls;
   }
 
   private clearBoard(): void {
+    this.selectedNode = null;
     this.commit({ ...emptyState(this.bundle), auto: this.state.auto, warnings: this.state.warnings });
     this.verdict.textContent = "";
     this.verdict.className = "verdict";
@@ -721,6 +749,29 @@ export class PuzzleView {
     this.overlay = svgEl("g", { class: "overlay", "pointer-events": "none" }) as SVGGElement;
     const cells = svg.querySelector("g.cells");
     svg.insertBefore(this.overlay, cells);
+    if (this.bundle.links) {
+      const targets = svgEl("g", { class: "segment-targets" });
+      for (const segment of this.bundle.links.segments) {
+        const [x1, y1, x2, y2] = segment.target;
+        const target = svgEl("rect", {
+          x: Math.min(x1, x2) - (x1 === x2 ? segment.hitWidth / 2 : 0),
+          y: Math.min(y1, y2) - (y1 === y2 ? segment.hitWidth / 2 : 0),
+          width: Math.abs(x2 - x1) || segment.hitWidth,
+          height: Math.abs(y2 - y1) || segment.hitWidth,
+          fill: "transparent", "pointer-events": "all",
+          "data-segment": segment.id, tabindex: 0, role: "button",
+        });
+        this.segmentTargets.set(segment.id, target);
+        targets.append(target);
+      }
+      svg.insertBefore(targets, cells);
+      for (const [id, rect] of this.cells) {
+        rect.setAttribute("tabindex", "0");
+        rect.setAttribute("role", "button");
+        const total = this.bundle.links.nodes.find((node) => node.id === id)?.total;
+        rect.setAttribute("aria-label", `${id}: ${total}`);
+      }
+    }
     for (const item of this.bundle.palette ?? []) {
       if (!item.svg) continue;
       const parsed = new DOMParser().parseFromString(item.svg, "image/svg+xml").documentElement;
@@ -728,7 +779,89 @@ export class PuzzleView {
     }
     if (!this.bundle.playable) return;
     this.selectTool(this.tool);
-    this.listen(board, svg);
+    if (this.bundle.links) this.listenLinks(board, svg);
+    else this.listen(board, svg);
+  }
+
+  private editSegment(id: string, value?: string): void {
+    const next = value === undefined ? cycleSegment(this.bundle, this.state, id)
+      : setSegment(this.bundle, this.state, id, value);
+    const conflict = segmentConflict(this.bundle, next, id);
+    this.cursor = id;
+    this.selectedNode = null;
+    this.commit(next);
+    if (conflict) {
+      const nl = this.bundle.language === "nl";
+      this.verdict.className = "verdict wrong";
+      this.verdict.textContent = conflict.kind === "crossing"
+        ? (nl ? `Verbinding kruist ${conflict.at}.` : `Connection crosses ${conflict.at}.`)
+        : (nl ? `Te veel verbindingen bij ${conflict.at}.` : `Too many connections at ${conflict.at}.`);
+    }
+  }
+
+  private selectNode(id: CellId): void {
+    const segment = this.bundle.links!.segments.find((edge) =>
+      edge.endpoints.includes(id) && edge.endpoints.includes(this.selectedNode ?? ""));
+    if (this.selectedNode && this.selectedNode !== id && segment) {
+      this.editSegment(segment.id, this.tool === CROSS ? "0" : this.tool);
+    } else {
+      this.selectedNode = this.selectedNode === id ? null : id;
+      this.cursor = id;
+      this.redraw();
+    }
+  }
+
+  private listenLinks(board: HTMLElement, svg: SVGSVGElement): void {
+    const segmentTarget = (target: EventTarget | null) =>
+      target instanceof Element ? target.closest("[data-segment]")?.getAttribute("data-segment") : null;
+    svg.addEventListener("click", (event) => {
+      const segment = segmentTarget(event.target);
+      if (segment) this.editSegment(segment, this.tool === CROSS ? "0" : undefined);
+      else {
+        const node = this.cellForTarget(event.target);
+        if (node) this.selectNode(node);
+      }
+    });
+    svg.addEventListener("contextmenu", (event) => {
+      const segment = segmentTarget(event.target);
+      if (segment) this.editSegment(segment, "0");
+      event.preventDefault();
+    });
+    svg.addEventListener("focusin", (event) => {
+      this.cursor = segmentTarget(event.target) ?? this.cellForTarget(event.target);
+      this.redraw();
+    });
+    board.addEventListener("keydown", (event) => {
+      const mod = event.ctrlKey || event.metaKey;
+      if (mod && event.key.toLowerCase() === "z") {
+        event.shiftKey ? this.redo() : this.undo();
+      } else if (mod && event.key.toLowerCase() === "y") {
+        this.redo();
+      } else if (event.key === "Escape") {
+        this.selectedNode = null;
+        this.redraw();
+      } else if (event.key.startsWith("Arrow")) {
+        const ids = [...this.segmentTargets.keys()];
+        const direction = ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 1;
+        const index = ids.indexOf(this.cursor ?? "");
+        const next = index < 0 ? (direction > 0 ? 0 : ids.length - 1)
+          : (index + direction + ids.length) % ids.length;
+        const id = ids[next];
+        this.segmentTargets.get(id)?.focus();
+      } else if (this.cursor && (event.key === "Enter" || event.key === " ")) {
+        if (this.segmentTargets.has(this.cursor)) this.editSegment(this.cursor);
+        else if (this.cells.has(this.cursor)) this.selectNode(this.cursor);
+      } else if (this.cursor && this.segmentTargets.has(this.cursor)
+        && (this.bundle.links!.segments.find((segment) => segment.id === this.cursor)!.values.includes(event.key)
+          || ["Delete", "Backspace"].includes(event.key))) {
+        this.editSegment(this.cursor, ["Delete", "Backspace"].includes(event.key) ? "0" : event.key);
+      } else if (!mod && this.paletteButtons.has(event.key)) {
+        this.selectTool(event.key);
+      } else {
+        return;
+      }
+      event.preventDefault();
+    });
   }
 
   private cellForTarget(target: EventTarget | null): CellId | null {
@@ -981,6 +1114,10 @@ export class PuzzleView {
       this.refreshCellTooltip();
     }
     if (!this.overlay) return;
+    if (this.bundle.links) {
+      this.redrawLinks();
+      return;
+    }
     const marks = autoMarks(this.bundle, state);
     const parts: SVGElement[] = [];
     if (this.bundle.autoMark?.mark === "light") {
@@ -1009,6 +1146,40 @@ export class PuzzleView {
           height: h - inset,
         }),
       );
+    }
+    this.overlay.replaceChildren(...parts);
+  }
+
+  private redrawLinks(): void {
+    const parts: SVGElement[] = [];
+    for (const segment of this.bundle.links!.segments) {
+      const value = this.state.placed[segment.id] ?? "0";
+      const target = this.segmentTargets.get(segment.id);
+      target?.setAttribute("aria-label", `${segment.endpoints.join(" — ")}: ${value}`);
+      target?.setAttribute("aria-pressed", String(value !== "0"));
+      if (this.cursor === segment.id) {
+        const [x1, y1, x2, y2] = segment.target;
+        parts.push(svgEl("line", {
+          class: "segment-selected", x1, y1, x2, y2,
+          stroke: "#168caa", "stroke-width": segment.hitWidth, opacity: 0.18,
+        }));
+      }
+      const drawing = segment.drawings[value];
+      if (drawing) {
+        const parsed = new DOMParser().parseFromString(drawing, "image/svg+xml").documentElement;
+        if (parsed instanceof SVGSVGElement) {
+          parsed.classList.add("segment-piece");
+          parts.push(parsed);
+        }
+      }
+    }
+    const node = this.selectedNode ?? this.cursor;
+    if (node && this.boxes.has(node)) {
+      const { x, y, w, h } = this.boxes.get(node)!;
+      parts.push(svgEl("ellipse", {
+        class: "node-selected", cx: x + w / 2, cy: y + h / 2,
+        rx: w * 0.35, ry: h * 0.35, fill: "none", stroke: "#168caa", "stroke-width": w * 0.04,
+      }));
     }
     this.overlay.replaceChildren(...parts);
   }

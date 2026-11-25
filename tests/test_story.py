@@ -147,9 +147,11 @@ ALLOWED = {
     "kakuro": {"core", "puzzlefile"},
     "hidato": {"core", "puzzlefile"},
     "thermometers": {"core", "puzzlefile"},
+    "bridges": {"core", "puzzlefile", "icons"},
     "collection": set(),
     "web": {
         "akari",
+        "bridges",
         "murdoku_expression_file",
         "murdoku_expression_words",
         "murdoku_lower",
@@ -170,6 +172,7 @@ ALLOWED = {
     },
     "picture": {
         "murdoku",
+        "bridges",
         "sudoku",
         "calcudoku",
         "futoshiki",
