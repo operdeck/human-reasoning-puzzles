@@ -4,19 +4,9 @@ The reference for Murdoku clue and rule expressions, their wording, and
 the diagnostics that enforce them. Board declarations and booklet
 sections are in [Model and puzzle formats](model-and-puzzle-formats.md#murdoku).
 
-The expression language in [#244](https://github.com/operdeck/human-reasoning-puzzles/issues/244)
-is the only Murdoku clue grammar used by the CLI, web exporter, booklet and authoring tools.
-`load_expression_board` returns the fixed layout, rule statements and clue
-statements separately. `load_board_layout` reads only declarations;
-`compile_board` compiles those declarations, while `murdoku_lower.compile_statements`
-adds the typed expressions. The independent search evaluates those same
-expressions through the reference evaluator. There is no legacy reader,
-predicate compiler or alternate search path.
-In this language, `in` is reflexive footprint containment and `on` is reflexive overlap;
-other spatial operators require distinct entities. An `empty` cell has no
-person even if blocked; migrate the current empty-cell counts using
-`empty free cells` to retain their free-cell-only behavior. A person `is` a
-bound role entity means membership in that role.
+The CLI, web exporter, booklet and authoring tools use this expression
+language. The independent search evaluates expressions through the reference
+evaluator; `murdoku_lower.compile_statements` lowers them to generic constraints.
 
 For expression wording, `| wording` replaces one complete
 statement and `Words:` may replace an expression phrase template. Phrase
@@ -95,14 +85,9 @@ against additions to the language.
 For a draft board with expression `key_clue:` entries, use
 `puzzle-lab murdoku-board SPEC --suggest`; expressions are the default. It uses the same
 limited suggestion templates and reports drafts it cannot close.
-`python -m csp FILE --show-model` shows the compiled model grouped by source
-expressions. Console solving, `--grade`, `--brute-force`, `--verbose`, `--step`,
-expression-native `--explain`, `--svg`/`--png`, `--export`, `--docx`/`--pdf`,
-`--nosolution`, `--interactive` and `--track-person` use the same expression model.
-`--lint` reports board and expression diagnostics, including
-impossible required relations, role-negation and relation-size warnings;
-`--require-forward` adds a forward-only solve check. `--expressions` remains a
-compatibility flag; Murdoku always uses the expression grammar.
+`--show-model` groups the compiled model by source expressions; `--lint`
+checks board and expression diagnostics. See [CLI options](cli.md) for all
+output and validation options.
 
 An operand is a set of entities of one sort. Sorts are people, cells, rows,
 columns, logical areas, features and roles. A person's footprint is their
@@ -131,14 +116,9 @@ empty-cell count, which counts only free squares.
 
 Atoms have the form `[some|every|no] S operator T`. The right side is
 existential. A determiner may be omitted only when the left side can contain
-at most one entity. `in` means footprint containment,
-`on` means footprint overlap, `beside` means a shared side in the same area,
-and `touches` means a shared side regardless of area. `is` tests membership
-or identity; a person `is` a bound role entity when they hold that role.
-Containment and overlap are reflexive; adjacency and directional operators
-exclude the same entity. Distinct entities remain distinct even when their
-footprints coincide.
-`S = T` and `S != T` compare sets of the same sort.
+at most one entity. `S = T` and `S != T` compare sets of the same sort.
+The [spatial operator reference](#spatial-operators-and-measures) defines
+containment, overlap, adjacency and role membership.
 
 Directional operators are `dir:left`, `dir:right`, `dir:up`, `dir:down`,
 their vertical-plus-horizontal combinations, `dir:diagonal`, `dir:rows`,
@@ -262,6 +242,10 @@ and a role entity on the right, such as a `?r` bound from `roles`: this means
 the person holds that role. The operand `role:guard`, in contrast, is a set
 of people. Roles themselves have no footprint and cannot take part in
 spatial relations.
+
+Containment and overlap are reflexive; adjacency and directional operators
+exclude the same entity. Distinct entities remain distinct even when their
+footprints coincide.
 
 | Mode after `dir:` | Meaning |
 |---|---|

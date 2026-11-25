@@ -25,13 +25,10 @@ pages as data (`renderPages`) and only writes them in `prerender`, so
 `web/scripts/prerender.test.ts` checks their HTML from a two-puzzle fixture at build time
 without running vite or the export.
 
-Puzzle pages load the same player assets as the home page, with a base URL
-pointing back to the site root. Their static picture and play link remain for
-crawlers and visitors without JavaScript, but players need no intermediate click.
-The rendered index and previous/next links point to the canonical puzzle pages
-as well, so those links remain crawlable after the player loads.
-The home page and Murdoku landing page retain illustrated previews, one per
-collection section.
+Puzzle pages open the player directly and retain a static fallback without
+JavaScript. Index and previous/next links point to canonical pages. The home
+page and Murdoku landing page keep one illustrated preview per collection
+section.
 
 `robots.txt` is written for completeness but is **inert here**: this is a GitHub Pages
 *project* site, so `robots.txt` is not served from the domain root and crawlers ignore

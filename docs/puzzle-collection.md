@@ -12,14 +12,6 @@ brute-force solution and engine agreement checked by the tests. Full commands
 are in [CLI options](cli.md); syntax is in
 [Model and puzzle formats](model-and-puzzle-formats.md).
 
-## Quick commands
-
-```bash
-uv run csp examples/demo/murdoku_1_first_case.txt --explain
-uv run csp examples/queens_6_4x4.txt --show-model
-uv run csp examples/logicgrid_1_3x3.txt --brute-force
-```
-
 ## Rating and auditing
 
 ```bash
@@ -30,19 +22,17 @@ uv run puzzle-lab sweep bridges --size 7
 ```
 
 `rate` reports the hardest rule a puzzle needs (its grade), the easy, medium or
-hard tier and whether it is `deductive`. `search` lists examples by tier;
-`none` for a tier marks a coverage gap, not a hidden board. Tiers are this
-solver's estimate. `audit` checks that every series rises in difficulty, without exemptions; the
-Japan and *Wie doet het met wie* Murdoku series keep their numbering and report
-a conflict.
-`sweep` shows which tiers and grades a family's generator reaches before an
-example is chosen.
+hard tier and whether it is `deductive`. These are this solver's estimates,
+not universal human difficulty ratings. `search` lists examples by tier;
+`sweep` reports what a generator reaches. `audit` checks series order as well
+as shared layouts and solutions. The Japan and *Wie doet het met wie* Murdoku
+series keep their numbering and report an ordering conflict.
 
 ## Coverage gaps
 
-A tier this engine cannot reach for a family is a gap, not a hidden board:
-Tectonic/Suguru has no medium board, and Kakuro, Kakurasu and the Zebra logic
-grid have no hard one; Minesweeper, Light Up and Battleships have no easy board;
+The published collection has gaps: Tectonic/Suguru has no medium board, and
+Kakuro, Kakurasu and the Zebra logic grid have no hard one; Minesweeper, Light
+Up and Battleships have no easy board;
 Map has no medium board because its pairwise rules jump from `single` to
 `chains`; Undead and Pattern have nothing between `relations` and `what_if`.
 Sandwich and Skyscraper Sudoku stop at 6 × 6.

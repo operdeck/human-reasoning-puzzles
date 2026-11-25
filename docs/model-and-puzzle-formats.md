@@ -1,6 +1,9 @@
 # Model and Puzzle File Formats
 
-This guide describes the solver's generic model, the rule ladder, and the file formats accepted by each puzzle family. Browse the [visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/); Murdoku clues have their own [clue grammar](murdoku-grammar.md).
+This guide describes the solver's generic model, the rule ladder, and the file
+formats accepted by each puzzle family. Browse the
+[visual puzzle index](https://operdeck.github.io/human-reasoning-puzzles/);
+Murdoku clues have their own [clue grammar](murdoku-grammar.md).
 
 ## Generic model
 
@@ -25,16 +28,20 @@ The solver applies these rules cheapest-first and restarts at the first rule tha
 | `single` | Force the last option in an `EXACTLY_ONE` constraint, or the only literal forced by a `COUNT` with one feasible total. |
 | `count` | Propagate allowed count totals, including bounds, gaps, parity, reified counts, whole variables confined to the counted literals, and shared capacity between disjoint scopes of one family. |
 | `reach` | Reject disconnected required nodes and remove optional graph elements that cannot reach them. |
+| `cut` | Force a node or edge that is the only remaining connection between required parts of a graph. |
 | `relations` | Generalized arc consistency: remove a value if no combination of the other variables' values supports it. |
 | `subsumption` | Use the remaining capacity of an outer constraint when an inner constraint requires another true literal. |
-| `cut` | Force a node or edge that is the only remaining connection between required parts of a graph. |
 | `cover2`, `cover3` | Combine disjoint inner constraints whose guaranteed demand fills an outer constraint's remaining capacity. |
 | `chains` | Follow strong/weak links from counts and two-variable relations; a contradiction or paired weak links can eliminate a value. |
 | `wing` | A three-option pivot and two two-option helpers force their shared value into one of them, so any option linked "not both true" to all three is false (Sudoku's XYZ-Wing). |
 | `closure` | Reject a graph-related choice when bounded local propagation shows it would disconnect required parts. |
 | `what_if` | On a model copy, assume a value and run only the cheap rules, including `reach` and `cut`; a contradiction proves the assumption false. Trials never nest. |
 
-`--grade` reports the hardest rule actually used, or `unsolved` if the deduction ladder stalls. It is a measure of this solver's deductions, not a universal human difficulty rating. The web index translates these names for players (`web/src/grades.mjs`, shared with its prerenderer) and defines them in a glossary; the export keeps the internal name. Because `what_if` is the ladder's last rung, a grade below it also proves that rung never fired: the same ladder without it finishes the puzzle. `report.beyond_deduction` and the `deductive` field that `puzzle-lab` and the web export carry are that distinction, `false` exactly for puzzles no deduction path closes — the collection's beyond-deduction frontier.
+`--grade` reports the hardest rule used, or `unsolved` if the ladder stalls.
+`what_if` is the last rung; the `deductive` field says whether this solver
+finished without it. See [grading and auditing](puzzle-collection.md) for the
+commands and the [web index](https://operdeck.github.io/human-reasoning-puzzles/)
+for player-facing ratings.
 
 ## Family mappings
 
@@ -130,11 +137,9 @@ Kropki dots, consecutive-pair bars, and thermometers. Missing Kropki dots impose
 no restriction: only drawn dots constrain pairs. Name all active variants in the
 example's file name and `Title:` so players can identify the rules before playing.
 
-`--explain` groups singles and describes recognized locked candidates, naked
-and hidden sets, and row/column patterns in English or Dutch. It shortens and
-replays the proof before wording it. When a step such as a chain or variant
-relation has no pattern narrative, it stops explicitly with a nonzero exit
-status; `--verbose` still shows the technical trace.
+`--explain` uses Sudoku's pattern narrative when it can explain the complete
+solve; otherwise it falls back to the generic worked solution. `--verbose`
+shows the technical trace.
 
 Optional relation/peer sections are:
 
@@ -183,13 +188,10 @@ d d d d
 `Family: queens` remains a compatibility alias for `Family: starbattle` with one star. Old Queens givens written as `region rNcN` are accepted; new files use the `Stars:` count and matrix `Givens:` (`?` unknown, `.` empty, `*` a piece). There must be N connected regions on an N×N board, each large enough to hold its star count. Region colours are shared by both displays.
 
 Published and freshly generated one-star Queens boards have at least two
-cells per region: a one-cell region gives away its queen. The easy boards and
-the 9x9 use one explicit given queen each; the 7x7, 8x8 and hard 4x4 have no
-givens. `puzzle-lab fresh starbattle --stars 1 --tier easy` makes one-star
-Queens; the compatibility command `fresh queens` uses the same generator.
-The hard board needs chains, not the `what_if` step formerly stated in its
-comment. All examples are independently unique; the collection audit compares
-solutions together with their region maps.
+cells per region: a one-cell region gives away its queen. `puzzle-lab fresh
+starbattle --stars 1` and the compatibility command `fresh queens` use the
+same generator; required size, tier and output options are listed by
+`puzzle-lab fresh --help`.
 
 ### Tectonic / Suguru
 
@@ -424,47 +426,11 @@ can stand there, and `--lint` reports it.
 
 ### Booklet text (`--docx`)
 
-In the booklet the board sits above **The figures and their clues** (Dutch:
-**De figuren en hun aanwijzingen**). Every cast member appears in file order,
-including figures without clues, with their portrait if available, bold name,
-optional description and unnumbered clues together. Ordinary clue predicates
-do not repeat the figure's heading; joint subjects and custom wording retain
-names when needed. Descriptions sit in parentheses beside the name so ordinary
-clues can continue on the same line. Descriptions supplied in `Figures:` are preserved, including
-late-reveal information. Clues are attached by their semantic subject, not by
-guessing from their wording. Puzzle-specific `Rules:` statements appear here
-too: under their semantic subject, or the sole named figure in a compound
-statement. Loose and global rules and clues follow under **Other clues**
-(Dutch: **Overige aanwijzingen**), only when needed. Board notes explain the
-marks and area tags used by the clues; attributes, roles and objects remain
-separate under the board. The layout reserves space for wrapped descriptions,
-clueless figures and portraits, shrinking the board or omitting its backdrop
-on crowded pages. Worked solutions do not refer to clue numbers.
-The `Intro:` paragraphs are printed on their own: above the board in the web
-player and before the rules heading in the booklet. The game-rules panel then
-holds semantic clarifications such as distance and adjacency and the general
-disclaimer, not a second list of `Intro:` or `Rules:` statements; a puzzle
-without an `Intro:` keeps the default game rules in that list. A standard "no
-clues of their own" / "geen eigen aanwijzingen" note is hidden when that figure
-has a displayed rule or clue; the rest of the description is preserved. The web
-player uses the same grouping and retains distinct `rule:N` and `clue:N`
-source identities. This presentation does not change compilation or solving.
-Counterfactuals name hypothetical people and placements rather than internal
-occupancy flags. A refuted mark trigger becomes a case on a person only when
-that person is its only possible occupant and the recorded trail actually
-places them there.
-Booklets use A4 pages, matching the dimensions used by the page-fit estimates.
-`Words:` lines whose name is a phrase key (see `PHRASES` in `story.py` and
-`murdoku_expression_words.py`) reword that phrase for the puzzle, e.g.
-`name.attribute: people with the {name} attribute`, or
-`role_has: {who} is een {role}` / `role_not: {who} is geen {role}` when roles
-are really kinds such as species. A `lint` warning flags a clue already
-implied by another (a person put in one region and also "not in" another).
-
-Every Murdoku booklet puzzle page and web player rules panel also reminds players
-that only stated rules and clues determine what is possible: a kind or trait
-matters only when a rule or clue explicitly uses it. The renderer provides this
-reminder; do not repeat it in each puzzle's `Intro:`.
+The booklet groups figures and clues by semantic subject, with loose clues
+separately. The web player uses the same grouping. For layout and review
+guidance, see [booklet and review](../.github/skills/murdoku-puzzle-generator/references/booklet-and-review.md).
+`Words:` can override phrase templates while retaining their placeholders; see
+the [clue grammar](murdoku-grammar.md) for wording rules.
 
 `--docx [FILE]` writes one editable Word document: the puzzle page(s) first, then a solutions section with the solved board and worked solution of each. Optional sections (all ignored by solving, lint and PNG; `lint` only checks them for typos):
 
@@ -472,19 +438,8 @@ reminder; do not repeat it in each puzzle's `Intro:`.
 * A clue line may end in `| wording` (e.g. `Otto dir:up Tjitske = 1 | Otto zit precies één rij boven Tjitske.`); that text replaces the generated sentence and the solver ignores it. Without it the expression phrasebook supplies English or Dutch wording, e.g. `Ramen dir:left Tempura = 5` → "Ramen is exactly five columns left of Tempura." A `Rules:` line may end in `| wording` as well; that sentence appears with the figure's clues or under **Other clues** (booklet, web player), and in the picture legend. Worked solutions use the same expression wording and overrides; they never infer clue semantics from an author's prose.
 * `Figures:` lines `Name: description [; image=path] [; icon=name]`. A figure gets a small thumbnail from, in order: the `image=` file (relative to the puzzle file); a file named after the person (`Name.png`/`.jpg`) in `<puzzle>-figures/` or `figures/` beside the puzzle; or the built-in emoji `icon=` (a catalogue name or `U+1F35C` whose picture is vendored in `src/csp/assets/emoji/`; `--lint` warns otherwise). Without any of these it is text only. Put licensed artwork in the figures folder; the only bundled third-party images are the vendored Noto Emoji (see `src/csp/assets/NOTICE.md`).
 
-Pass a glob (quoted) such as `"examples/**/*.txt"` to put every matching puzzle in one booklet (`booklet.docx` beside the pattern by default), each on its own numbered page, after a clickable table of contents. The order comes from `collection.arrange`: Murdoku first, grouped by category — the folder below the matched files' common folder, so `examples/japanese-food/` is "Japanese food" and `demo` leads — then the other families; within a group files sort naturally (`6x6` before `12x12`). The web player's index uses the same numbers and sections.
-
-Puzzles of other families (sudoku, starbattle, tents, …) are included generically: title (`Title:` or the file name), the family rules (including every active Sudoku variant), the board, and on a separate solution page the solved board with solving steps. Sudoku uses the pattern narrative when it can explain the entire solution; otherwise it labels the capped technical placement trace as a fallback. A mixed glob such as `"examples/**/*.txt"` therefore works.
-
-Needs `uv sync --extra docx` (python-docx, plus fonttools and resvg for the pictures).
-
-`--nosolution` with `--docx` or `--pdf` writes the puzzle pages only: it skips the
-solver, so a booklet can be proof-read quickly, or made from a puzzle whose rules
-do not close, without the solutions section and without the solved board. The
-same flag skips solving for console, PNG and SVG output, including interactive
-SVGs. It does not delete any previously written solution file. `--show-model`
-and `--lint` remain available; solving options and `--export` cannot be combined
-with `--nosolution`, because web bundles contain the answer for checking.
+For multi-puzzle booklets, output options and `--nosolution`, see
+[CLI options](cli.md).
 
 In the Murdoku picture, blocked squares are shaded clearly darker than their region (standable objects keep the region colour), and area tags (for example `noble_areas`) are named in the legend. Objects that a global `count` clue counts get one faded blue dashed ring each; the ring is drawn only for object counts, not for whole-area, line or empty-area counts, and it is not repeated in a static key.
 
@@ -533,22 +488,11 @@ examples/        small and larger unique examples for each family
 benchmark/       seeded, external-corpus and cross-family benchmark programs
 ```
 
-The project verification commands are:
-
-```bash
-uv run pytest -q
-uvx ruff check src tests benchmark
-uvx ruff format --check src tests benchmark
-uv run mypy src
-```
-
-Continuous integration runs the same gates on Python 3.12 and 3.13. The tests check brute-force uniqueness for every example, engine agreement, and every logged placement/elimination against the independent solution. An unsupported narrative, such as a Sudoku chain explanation, does not imply the solver is incorrect.
-
-Pictures have one renderer: `picture.py` draws every family on an `svg.Canvas`, and every other format derives from it. `--svg [FILE]` writes it (needs `uv sync --extra svg` for fonttools, which turns text into paths from the bundled Noto Sans subset, so output does not depend on installed fonts); `--png [FILE]` rasterises it with resvg (`uv sync --extra png`, no system libraries); `--docx` embeds the PNG. Each has three variants: blank, solution (the `-solution` file), and with `--svg --interactive` the blank board with a transparent `<rect id="r<row>c<col>" class="cell">` over every cell (r1c1 top left) for an app to fill in; the interactive variant never writes a solution picture.
-
+See [CLI options](cli.md#extras-and-checks) for project checks and
+[pictures and icons](web-interface.md#pictures-and-icons) for rendering.
 
 ## Further engine work
 
-Some proposed families remain conditional on generic-core design work. Weighted sums may need a generic primitive if relations are not practical; this is tracked separately from Kakurasu. Reusing chain links could improve large-board performance but is an optimization, not a prerequisite for families expressed by existing primitives. Connectivity, path, and run-length puzzles need separate designs for generic constraints.
-
-Other solver/documentation roadmap items are tracked as [DOCX generation #28](https://github.com/operdeck/human-reasoning-puzzles/issues/28), [weighted-sum support #46](https://github.com/operdeck/human-reasoning-puzzles/issues/46), [chain-link reuse #47](https://github.com/operdeck/human-reasoning-puzzles/issues/47), [large Calcudoku cages #50](https://github.com/operdeck/human-reasoning-puzzles/issues/50), [higher-arity weak links #51](https://github.com/operdeck/human-reasoning-puzzles/issues/51), [advanced covers #52](https://github.com/operdeck/human-reasoning-puzzles/issues/52), and [hybrid search #53](https://github.com/operdeck/human-reasoning-puzzles/issues/53). Plain-language clue interpretation remains an authoring-assistant task; the solver does not parse natural-language clues.
+Future graph kinds and families are tracked in [#266](https://github.com/operdeck/human-reasoning-puzzles/issues/266);
+other engine work is tracked in the [issue list](https://github.com/operdeck/human-reasoning-puzzles/issues).
+The solver does not parse natural-language clues.
