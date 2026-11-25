@@ -137,6 +137,20 @@ def compile_puzzle(text: str) -> tuple[Model, Puzzle]:
             )
             thresholds.append(present)
         units[pair] = thresholds[0], thresholds[1]
+        model.constrain(
+            f"{name} cannot have a second bridge without a first",
+            Kind.AT_MOST_ONE,
+            [thresholds[1], model.literal(f"{name} at least 1", False)],
+            family="a double bridge includes its first bridge",
+        )
+        if min(puzzle.islands[pair[0]], puzzle.islands[pair[1]]) == 1:
+            model.constrain(
+                f"{name} cannot double at an island numbered one",
+                Kind.COUNT,
+                [thresholds[1]],
+                allowed_counts=(0,),
+                family="island capacity limits bridge multiplicity",
+            )
     for island, count in puzzle.islands.items():
         model.constrain(
             f"island {cell_name(island)} has {count} bridges",

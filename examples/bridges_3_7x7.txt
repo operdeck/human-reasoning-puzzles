@@ -1,0 +1,12 @@
+# Original Bridges; seed 1028; hard/cover3
+Family: bridges
+Size: 7
+Title: Hidden routes
+Islands:
+2 . 4 . 1 . .
+. . . . . . .
+2 . 3 . . . 4
+. . . . . . .
+3 . . . 3 . .
+. . . . . . .
+. . . . 4 . 4

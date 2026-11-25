@@ -45,6 +45,7 @@ FAMILY_LABELS = {
     "hidato": "Hidato",
     "numbrix": "Numbrix",
     "thermometers": "Thermometers",
+    "bridges": "Bridges",
     "logicgrid": "Logic grid",
     "rooms": "Rooms",
 }

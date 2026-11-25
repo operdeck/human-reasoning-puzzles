@@ -12,7 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from csp import bruteforce, cli, report
+from csp import bridges, bruteforce, cli, report
 from csp.collection import arrange
 from csp.core import DEFAULT_RULES, Solver
 from csp.puzzle_lab import family_of, rate
@@ -125,6 +125,20 @@ def solution_key(text: str, kind: str) -> object:
     found = bruteforce.solutions(text, kind, limit=1)
     if not found:
         return None
+    if kind == "bridges":
+        puzzle = bridges.parse(text)
+        network = {(2 * r, 2 * c): "island" for r, c in puzzle.islands}
+        for pair in puzzle.pairs:
+            count = found[0][bridges.pair_name(pair)]
+            if not count:
+                continue
+            (r, c), (row, col) = pair
+            dr, dc = (int(row > r), int(col > c))
+            r, c = 2 * r + dr, 2 * c + dc
+            while (r, c) != (2 * row, 2 * col):
+                network[(r, c)] = str(count)
+                r, c = r + dr, c + dc
+        return (kind, _canonical(network))
     cells: dict[tuple[int, int], str] = {}
     other = []
     for key, value in found[0].items():
@@ -171,6 +185,11 @@ def _standard_boxes(rows: list[list[str]]) -> bool:
 def layout_key(text: str, kind: str) -> object:
     """A fingerprint of the board's fixed structure (regions, cages, walls), or None."""
     sections = read_sections(text)
+    if kind == "bridges":
+        return (
+            kind,
+            _canonical({cell: "island" for cell in bridges.parse(text).islands}),
+        )
     parts = []
     for name in LAYOUT_SECTIONS.get(kind, ()):
         lines = [line for line in sections.get(name, []) if line.strip()]

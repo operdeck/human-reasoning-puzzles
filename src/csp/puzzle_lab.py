@@ -23,9 +23,9 @@ from csp.core import Solver
 from csp.puzzlefile import detect, display_family, read_sections
 
 TIERS = {
-    "easy": frozenset({"single", "count"}),
-    "medium": frozenset({"relations", "subsumption", "cover2"}),
-    "hard": frozenset({"cover3", "chains", "what_if"}),
+    "easy": frozenset({"single", "count", "reach"}),
+    "medium": frozenset({"relations", "subsumption", "cut", "cover2"}),
+    "hard": frozenset({"cover3", "chains", "closure", "what_if"}),
 }
 # Families whose clues are all relations, so they grade `relations` whatever their size; a board
 # with at most 16 variables rates easy and a larger one medium.

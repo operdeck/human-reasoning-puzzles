@@ -22,6 +22,7 @@ from . import (
     akari,
     battleships,
     binairo,
+    bridges,
     calcudoku,
     dominosa,
     futoshiki,
@@ -71,6 +72,7 @@ SOLVERS: dict[str, Callable[[str, int], list[dict[str, Any]]]] = {
     "kakuro": kakuro.solutions,
     "hidato": hidato.solutions,
     "thermometers": thermometers.solutions,
+    "bridges": bridges.solutions,
     "calcudoku": calcudoku.solutions,
     "futoshiki": futoshiki.solutions,
 }
