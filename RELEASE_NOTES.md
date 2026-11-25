@@ -40,6 +40,7 @@
 * The puzzles in `examples/` are all rights reserved (`examples/LICENSE.md`): no copying without the author's written permission. The rest of the repo stays Apache 2.0. Every `--docx` booklet carries this notice in its footer.
 
 **Bug Fix(es)**
+* Puzzle-page headers center the family or series above the title, with the difficulty rating below and assistance checkboxes on their own row, instead of squeezing the family beside the title.
 * Murdoku shared-area set equality preserves additional union members in player wording instead of silently omitting them. The short companion idiom remains for a person and exactly one attribute.
 * Murdoku king distances between two people now read in rows and columns — “Ute en Gerhard staan minstens drie rijen óf minstens drie kolommen van elkaar af”, “Het grootste verschil … is precies drie rijen of kolommen” — instead of “koningsstapafstand”. The two hand-written Berg hut overrides are gone, and the player-prose tests now reject the jargon.
 * The Japan Murdoku series now has a shared backdrop like the other series: a custom `mount_fuji` drawing (a rising sun and snow-capped summit above the board, mountain shoulders at the sides, waves below) replaces the stock emoji, which read as a grey blob in the strip that shows around the board. Phones still omit backdrops for compact boards by design, as documented; desktop, booklet pictures and landing previews show it.

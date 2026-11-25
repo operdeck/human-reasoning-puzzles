@@ -56,8 +56,10 @@ repository topics, site verification and sitemap submission.
 - **Grades:** puzzle entries show a player-facing label instead of the solver's
   internal rule name (`single`, `relations`, …), and a “Difficulty ratings”
   glossary beside the list defines each label and the “beyond deduction”
-  badge. Each puzzle page shows the same label in small letters under its
-  title. Labels, definitions and glossary copy live in `web/src/grades.mjs`,
+  badge. Each puzzle page centers its family or series above the title and
+  shows the same difficulty label in small letters below it, before the
+  assistance checkboxes on their own row. Labels, definitions and glossary
+  copy live in `web/src/grades.mjs`,
   which `scripts/prerender.mjs` imports as well, so the static pages, the puzzle
   descriptions and the player agree; `index.json` keeps the raw grade for
   tooling. A new rung on the solver's ladder needs an entry there, and an

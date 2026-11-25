@@ -293,22 +293,22 @@ export class PuzzleView {
       "header",
       { className: "puzzle-header" },
       puzzleNav,
-      ...(b.section ? [el("p", { className: "meta", textContent: b.section })] : []),
-      ...(b.deductive === false
-        ? [el("p", {
-            className: "meta",
-            textContent: "beyond deduction: only this solver's What if trials close it",
-          })]
-        : []),
       el(
         "div",
         { className: "puzzle-title" },
+        ...(b.section ? [el("p", { className: "meta puzzle-section", textContent: b.section })] : []),
         el("h1", { textContent: b.number ? `${b.number}. ${b.title}` : b.title }),
         ...(b.grade
           ? [el("p", {
               className: "puzzle-grade",
               textContent: `Difficulty: ${gradeLabel(b.grade)}`,
               title: GRADES.find((entry) => entry.grade === b.grade)?.meaning ?? "",
+            })]
+          : []),
+        ...(b.deductive === false
+          ? [el("p", {
+              className: "meta",
+              textContent: "beyond deduction: only this solver's What if trials close it",
             })]
           : []),
       ),
