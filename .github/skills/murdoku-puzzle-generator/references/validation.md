@@ -1,6 +1,6 @@
 Read this for the full validation rules, diagnostics and completion checklist.
 
-`examples/japan/samen-onderweg.txt` needs no `what_if`: Mio on the bank and
+`examples/japan/japan-2-samen-onderweg.txt` needs no `what_if`: Mio on the bank and
   Keiko beside the lantern give Osaka two, the busiest clue gives Tokyo three,
   and five travellers leave Okinawa empty. When a population clue grades
   `what_if`, check whether that capacity argument should close it before adding
@@ -33,7 +33,8 @@ For a finished Murdoku under `examples/`, before reporting done:
 - An independent clue review used only player-facing material; each clue was
   restated as a constraint, alternate readings were checked, and solvability
   findings were verified against the source and rendered clue count.
-- `docs/puzzle-collection.md` updated; `uv run pytest -q` and `ruff` pass.
+- The web index shows the new example with its grade; `uv run pytest -q` and
+  `ruff` pass.
 - Report path, solution, grade and any open doubts.
 
 ## Theme, objects and pictures

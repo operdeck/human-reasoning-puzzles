@@ -227,6 +227,9 @@ class Narrator:
         constraint = self.constraints.get(source)
         if constraint is not None and constraint.family:
             return constraint.family
+        graph = next((graph for graph in self.model.graphs if graph.name == source), None)
+        if graph is not None and graph.family:
+            return graph.family
         return source
 
     def names(self, sources: Sequence[str]) -> str:
@@ -669,6 +672,40 @@ class Narrator:
             return paragraph
         conclusion = self.conclusion(inference.steps) or self.say("generic.internal")
         sources = self.names(move.sources)
+        if move.rule in ("reach", "cut", "closure"):
+            evidence = next((step.graph for step in inference.steps if step.graph), None)
+            if move.rule == "closure":
+                assumed = self.placed(*move.target) if move.target else ""
+                return self.say(
+                    "generic.closure",
+                    sources=sources,
+                    assumed=assumed,
+                    component=self.say.join(list(evidence.component)) if evidence else "",
+                    outside=self.say.join(
+                        [node for node in evidence.required if node not in evidence.component]
+                    )
+                    if evidence
+                    else "",
+                    conclusion=conclusion,
+                )
+            if move.rule == "cut":
+                graph = next(graph for graph in self.model.graphs if graph.name == move.sources[0])
+                separator = (
+                    self.say.join(list(evidence.cut_nodes))
+                    if evidence and evidence.cut_nodes
+                    else self.say.join(
+                        [
+                            f"{graph.edges[index][0]}\u2013{graph.edges[index][1]}"
+                            for index in evidence.cut_edges
+                        ]
+                    )
+                    if evidence
+                    else ""
+                )
+                return self.say(
+                    "generic.cut", sources=sources, separator=separator, conclusion=conclusion
+                )
+            return self.say("generic.reach", sources=sources, conclusion=conclusion)
         if move.rule in ("count", "relations"):
             if move.rule == "relations" and (candidates := self._relation_premises(inference)):
                 clue = self.say(

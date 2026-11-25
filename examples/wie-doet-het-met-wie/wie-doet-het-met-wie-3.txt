@@ -1,96 +1,95 @@
-# Wie doet het met wie? Op het strand (5x5, six areas)
+# Wie doet het met wie? De logeeravond (5x5, three rooms)
 #
-# Five people at the beach, one per row and column. Two bathrobes, two pairs
-# of slippers and two pairs of sunglasses lie on the board; exactly one guest
-# wears each (Sanne, Pieter and Daan). Wouter has no clues: he is placed last
-# and is alone with exactly one other person, the one he is doing it with.
+# Five guests stay the night. Three bathrobes and three pairs of slippers lie
+# at fixed places in the house; whoever stands on one is wearing it. Exactly
+# two guests wear a bathrobe and exactly one wears only slippers, but who is
+# not given. Wouter has no clues: he is placed last and is alone with exactly
+# one other person.
 #
-# Solution: Femke r1c4 (zee), Daan r2c3 (strand), Pieter r3c5 (strandtent),
-# Sanne r4c1 (bosjes), Wouter r5c2 (bosjes): Wouter is doing it with Sanne.
+# Intended solution: Wouter r1c1 (bed) and Marloes r2c2 (badjas) in the
+# slaapkamer, Bas r3c4 (badjas, badkamer), Cato r4c3 (sloffen) and Daan r5c5
+# in the gang. Wouter is doing it with Marloes.
 
 Size: 5
 Language: nl
 
 Words:
-zee: in de zee
-strand: op het strand
-duinen: in de duinen
-bosjes: in de bosjes
-helmgras: het helmgras
+slaapkamer: in de slaapkamer
+badkamer: in de badkamer
+gang: in de gang
 badjas: een badjas
 sloffen: een paar sloffen
-zonnebril: een zonnebril
+bed: het bed
+kast: de kast
+toilet: het toilet
+plant: de plant
+tafel: de tafel
 
 Regions:
-z: zee #BFDDF2
-s: strand #FAEDB8
-t: strandtent #F4D7B5
-d: duinen #E3D9A8
-b: bosjes #B5D3A0
-f: fietsenstalling #DCDEE2
+s: slaapkamer #E6D3F0
+b: badkamer #CFE8F0
+g: gang #FADFB5
 
 Grid:
-z z z z z
-s s s t t
-s s d t t
-b b d d f
-b b d f f
+s s s b b
+s s s b b
+g g g b b
+g g g g g
+g g g g g
 
 Objects:
-boot: blocking r1c2
-parasol: blocking r2c2
-tafel: blocking r2c5
-stoel: standable r3c4
-helmgras: standable r4c3
-struik: blocking r5c1
-fiets: blocking r5c5
-zonnebril: standable r2c3
-zonnebril: standable r4c4
-sloffen: standable r3c5
-sloffen: standable r3c2
-badjas: standable r4c1
-badjas: standable r5c3
+bed: standable r1c1
+badjas: standable r2c2
+badjas: standable r3c4
+badjas: standable r1c5
+sloffen: standable r4c3
+sloffen: standable r1c2
+sloffen: standable r5c1
+kast: blocking r1c3
+douche: blocking r1c4
+toilet: blocking r2c4
+plant: blocking r4c1
+tafel: blocking r5c3
 
 Backdrop:
 U+1F6C1
 
 People:
-Sanne
-Pieter
-Femke
+Marloes
+Bas
+Cato
 Daan
 Wouter
 
 Rules:
-count (people in area of Wouter) = 1 + 1
-count people on object:badjas = 1
+count (people in area of Wouter) = 1 + 1 | Wouter deelt een kamer met precies één andere gast.
+count people on object:badjas = 2
 count people on object:sloffen = 1
-count people on object:zonnebril = 1
 
 Clues:
-some (people on object:zonnebril) dir:up Pieter = 1 | De gast met de zonnebril staat precies één rij boven Pieter.
-Sanne on object:badjas | Sanne draagt alleen een badjas.
-Daan on object:zonnebril | Daan heeft een zonnebril op.
-Sanne in area:bosjes
-Femke in area:zee
+some (people on object:badjas) dir:up (people on object:sloffen) = 1 | Een van de gasten met een badjas staat precies één rij boven de gast met sloffen.
+Marloes on object:badjas | Marloes heeft alleen een badjas aan.
+Bas beside object:toilet
+Cato dir:left Daan
+Cato in area:gang
 
 Title:
-Murdoku: Op het strand
+Murdoku: De logeeravond
 
 Intro:
-Een warme dag aan zee. Op het strand liggen twee badjassen, twee paar sloffen en twee zonnebrillen; wie op zo'n vakje staat, heeft het aan. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Op een stoel, het helmgras, de badjassen, de sloffen en de zonnebrillen mag je staan; andere voorwerpen blokkeren hun vakje.
-Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet.
+Vijf gasten blijven logeren. Er liggen drie badjassen en drie paar sloffen in huis; wie op zo'n vakje staat, heeft het aan.
+Zet iedereen op een vrij vakje, één per rij en één per kolom. Op het bed, de badjassen en de sloffen mag je staan; andere voorwerpen blokkeren hun vakje.
+Wouter wordt als laatste geplaatst en is alleen in een kamer met degene met wie hij het doet.
 
 Figures:
-Sanne: ; icon=U+1F469
-Pieter: geen eigen aanwijzingen ; icon=U+1F468
-Femke: ; icon=U+1F471
-Daan: ; icon=U+1F9D4
+Marloes: ; icon=U+1F469
+Bas: ; icon=U+1F468
+Cato: ; icon=U+1F471
+Daan: geen eigen aanwijzingen ; icon=U+1F474
 Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?
 
 Reveal:
-Wouter doet het met Sanne: zij is de enige die met hem in de bosjes is.
+Wouter doet het met Marloes: zij staat in haar badjas met hem in de slaapkamer.

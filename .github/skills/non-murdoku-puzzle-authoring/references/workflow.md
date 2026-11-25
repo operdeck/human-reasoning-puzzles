@@ -3,9 +3,9 @@ Read this for the full non-Murdoku generate, rate, name and audit workflow.
 ## Workflow
 
 1. Read `../../../docs/model-and-puzzle-formats.md` for the exact family syntax and
-   `../../../docs/puzzle-collection.md` for grading notes and the
+   `../../../docs/puzzle-collection.md` for rating commands and coverage gaps, and the
    [web index](https://operdeck.github.io/human-reasoning-puzzles/) for the
-   existing visual collection. Preserve displayed aliases:
+   existing collection and its grades. Preserve displayed aliases:
    Binairo and Tango retain separate names because Tango adds relation signs.
    Queens is the one-star presentation of canonical `Family: starbattle`.
    New one-star files use `Stars: 1`; keep `queens_*` filenames and the
@@ -20,7 +20,7 @@ Read this for the full non-Murdoku generate, rate, name and audit workflow.
    example, prefer `puzzle-lab fresh`: it builds a brand-new solution and
    layout (Binairo, Tango, Suguru, Minesweeper, Akari, Sudoku, Futoshiki,
    Calcudoku, Kakurasu, Star Battle, Tents, Battleships, Towers, Mosaic,
-   Dominosa, Rectangles, Magnets, Undead, Pattern, Map), so the example does
+   Dominosa, Rectangles, Magnets, Undead, Pattern, Map, Bridges), so the example does
    not share a solution with the rest of the gallery. Before choosing seeds, ask
    `puzzle-lab sweep` what a builder reaches: it rates one fresh board per seed
    and counts the tiers and grades, and `--save DIR` keeps each board named by
@@ -100,10 +100,11 @@ Read this for the full non-Murdoku generate, rate, name and audit workflow.
    `<family>_<n>_<size>[_<variant>].txt`, where `n` is the board's place in its
    gallery section from easiest to hardest (for example `sudoku_16_4x4_kropki_consecutive_thermometers`).
    Leave tier words such as `easy` or `hard` out of the name: the number carries
-   the order and `../../../docs/puzzle-collection.md` shows the tier. When a new board lands in
+   the order and the web index shows the grade. When a new board lands in
    the middle, renumber the later files (with their `docs/images` pictures) and
-   update every reference. Give each a short comment, and update the tier table
-   in `../../../docs/puzzle-collection.md`.
+   update every reference. Give each a short comment, and record any tier the
+   family still cannot reach under coverage gaps in
+   `../../../docs/puzzle-collection.md`.
    Re-export the web collection and check its puzzle links and group preview.
    The index shows one representative unsolved `static` SVG per `section`,
    alongside one or two compact link columns, not an image per puzzle.

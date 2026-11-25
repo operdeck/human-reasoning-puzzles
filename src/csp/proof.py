@@ -43,6 +43,9 @@ from .core import (
     propagate_count,
     prune_relation,
     refute,
+    refute_closure,
+    rule_cut,
+    rule_reach,
     rule_single,
 )
 
@@ -50,12 +53,15 @@ type Key = tuple[int, int]  # (0, i): main log step i; (1, j): step j of a trail
 
 HARDEST_FIRST = (
     "what_if",
+    "closure",
     "chains",
     "wing",
     "cover3",
     "cover2",
     "subsumption",
     "relations",
+    "cut",
+    "reach",
     "count",
 )
 
@@ -76,12 +82,17 @@ class Move:
         if rule == "single":
             return None
         first = steps[0]
-        target = (first.var, first.value) if rule == "what_if" else None
+        target = (first.var, first.value) if rule in ("what_if", "closure") else None
         return cls(rule, first.sources, first.scope, target, first.chain)
 
     def apply(self, model: Model) -> bool:
         if self.target is not None:
-            return refute(model, model.literal(*self.target))
+            apply = refute_closure if self.rule == "closure" else refute
+            return apply(model, model.literal(*self.target))
+        if self.rule in ("reach", "cut"):
+            graph = next(graph for graph in model.graphs if graph.name == self.sources[0])
+            apply_graph = rule_reach if self.rule == "reach" else rule_cut
+            return apply_graph(model, graph_index=graph.index)
         if self.rule == "wing":
             return follow_wing(model, [model.literal(*pair) for pair in self.chain])
         if self.chain:
@@ -239,6 +250,7 @@ class _Replay:
         self.placed: dict[LiteralId, Key] = {}
         self.constraints = {c.name: c for c in model.constraints}
         self.relations = {r.name: r for r in model.relations}
+        self.graphs = {graph.name: graph for graph in model.graphs}
         self.supports: dict[tuple[str, LiteralId], list[tuple[LiteralId, ...]]] = {}
 
     def lit(self, var: str, value: Any) -> LiteralId:
@@ -267,6 +279,8 @@ class _Replay:
                 if x not in outside
             )  # fmt: skip
         (source,) = step.sources[:1]
+        if source in self.graphs:
+            return self._graph_state(source)
         if (
             source in self.constraints
             and self.constraints[source].kind is Kind.COUNT
@@ -296,6 +310,18 @@ class _Replay:
         literals = set(constraint.literals)
         if constraint.reified_by is not None:
             literals.add(constraint.reified_by)
+        return {self.out[x] for x in literals if x in self.out} | {
+            self.placed[x] for x in literals if x in self.placed
+        }
+
+    def _graph_state(self, name: str) -> set[Key]:
+        """Conservatively retain facts establishing the graph's possible paths."""
+        graph = self.graphs[name]
+        literals = {
+            lit
+            for lit in (*graph.nodes.values(), *(edge[2] for edge in graph.edges))
+            if lit is not None
+        }
         return {self.out[x] for x in literals if x in self.out} | {
             self.placed[x] for x in literals if x in self.placed
         }
@@ -346,6 +372,8 @@ class _Replay:
 
     def broken(self, source: str | None, trail_length: int) -> set[Key]:
         """What the contradiction that ended a trail needed."""
+        if source in self.graphs:
+            return self._graph_state(source)
         if source in self.constraints:
             constraint = self.constraints[source]
             true = {self.placed[x] for x in constraint.literals if x in self.placed}

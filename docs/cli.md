@@ -16,17 +16,17 @@ detected from its sections unless `--type` overrides it.
 | `-v`, `--verbose` | Narrate every deduction. | |
 | `-s`, `--step` | Redraw and pause after each deduction. | |
 | `--track-person P` | Murdoku: trace a person's live squares and area companions. | |
-| `--type KIND` | Force the family (sudoku, murdoku, calcudoku, futoshiki, suguru, logicgrid, rooms, starbattle, binairo, tents, minesweeper, akari, kakurasu, battleships, towers, mosaic, dominosa, rectangles, magnets, undead, pattern, map, kakuro, hidato, thermometers). | |
+| `--type KIND` | Force a family; `--help` lists the current choices, including `bridges`. | |
 | `--expressions` | Compatibility flag; Murdoku always uses the expression grammar. | |
 | `--show-model` | Print the compiled model and solving algorithm, then stop. | |
 | `--brute-force` | Independent search for every solution (uniqueness check). | |
-| `--explain` | Worked solution told by human patterns; Murdoku/Sudoku have their own narrators, others use `generic_story`. | |
+| `--explain` | Worked solution; Murdoku and Sudoku have their own narrators, with a generic fallback for Sudoku. | |
 | `--grade` | Print only the hardest rule the solve needed, or `unsolved`. | |
 | `--lint` | Murdoku: check declarations, icons, reachable areas, roles and clue expressions. | |
 | `--require-forward` | Murdoku: lint and require a solve without `what_if`. | |
 | `--png [FILE]` | Puzzle as PNG (default beside the input); solved runs also write `FILE-solution.png`. | `uv sync --extra png` |
 | `--svg [FILE]` | Puzzle as SVG; solved runs also write `FILE-solution.svg`. | `uv sync --extra svg` |
-| `--interactive` | With `--svg`: blank interactive board with cell ids, no solution. | `uv sync --extra svg` |
+| `--interactive` | With `--svg`: blank interactive board with ids for playable cells or link nodes, no solution. | `uv sync --extra svg` |
 | `--docx [FILE]` | Word booklet: puzzles then solutions, one page each, grouped and numbered; a glob makes one booklet. | `uv sync --extra docx` |
 | `--pdf [FILE]` | The same booklet as PDF (LibreOffice, Word or Pages). | `uv sync --extra docx` |
 | `--nosolution` | Write only the puzzle, no solving or solution pages. | |
@@ -76,7 +76,7 @@ confirms one solution. Every command accepts `-h/--help`.
 
 | Option | Meaning |
 |---|---|
-| `FAMILY` | binairo, tango, queens, suguru, minesweeper, akari, sudoku, killer, arrow, evenodd, sandwich, skyscrapersudoku, futoshiki, calcudoku, starbattle, tents, battleships, towers, mosaic, dominosa, rectangles, magnets, undead, pattern, map, thermometers, hidato, numbrix, kakuro, kakurasu, rooms. |
+| `FAMILY` | Family to build, including `bridges`; `puzzle-lab fresh --help` lists the current choices. |
 | `--size N`, `--output FILE` | Board size and destination. |
 | `--tier`, `--grade` | Required tier and optional exact rule. |
 | `--open-share X` | Empty share for Binairo/Tango, unknown share for Minesweeper. |
@@ -124,9 +124,6 @@ Project checks: `uv run pytest -q`; `uvx ruff check src tests benchmark`;
 
 ## Grading
 
-Tiers are estimates tied to this solver's rule ladder, not universal human
-difficulty. `--grade` prints the hardest rule a solve used; `unsolved` means the
-ladder stalled. `puzzle-lab rate` and `audit` use the same ladder, and report
-`deductive: false` exactly for puzzles that need `what_if` (the
-beyond-deduction frontier). Per-puzzle grades and known gaps are in
-[the puzzle collection](puzzle-collection.md).
+See [grading and auditing](puzzle-collection.md) for commands, tiers and
+coverage gaps, and the [web puzzle index](https://operdeck.github.io/human-reasoning-puzzles/)
+for each puzzle's player-facing rating.

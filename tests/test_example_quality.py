@@ -2,6 +2,7 @@
 
 import functools
 import re
+import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from csp.collection import arrange
 from csp.murdoku_expression_file import load_expression_board
 from csp.murdoku_lang import format_statement
 from csp.puzzle_lab import Rating, family_of, rate
-from csp.puzzlefile import detect
+from csp.puzzlefile import detect, display_family
 from tests.examples import example, played_examples
 
 pytestmark = pytest.mark.solutions
@@ -70,6 +71,25 @@ def test_documentation_links_and_images_exist(relative):
         target = (markdown or html).split("#", 1)[0]
         if target and "://" not in target:
             assert (source.parent / target).exists(), f"{relative}: {target}"
+
+
+def _section_anchor(label: str) -> str:
+    # Mirrors web/src/sections.mjs.
+    text = "".join(c for c in unicodedata.normalize("NFKD", label) if not unicodedata.combining(c))
+    return "family-" + re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def test_readme_gallery_links_open_existing_web_index_sections():
+    root = Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text()
+    site = r'href="https://operdeck\.github\.io/human-reasoning-puzzles/#([\w-]+)"'
+    anchors = re.findall(site, readme)
+    assert anchors
+    paths = sorted((root / "examples").rglob("*.txt"))
+    kinds = {path: detect(path.read_text()) for path in paths}
+    names = {path: display_family(path.read_text(), kind) for path, kind in kinds.items()}
+    sections = {_section_anchor(listed.section) for listed in arrange(kinds, names)}
+    assert set(anchors) <= sections, sorted(set(anchors) - sections)
 
 
 def test_documentation_and_skills_use_the_web_index_instead_of_the_retired_gallery():
@@ -135,6 +155,15 @@ def test_no_two_examples_share_a_solution_or_a_layout():
     found = audit.audit(audit.boards(played_examples()))
     assert not found.shared_solutions, [[p.name for p in group] for group in found.shared_solutions]
     assert not found.shared_layouts, [[p.name for p in group] for group in found.shared_layouts]
+
+
+@pytest.mark.parametrize("category", ["japan", "wie-doet-het-met-wie"])
+def test_murdoku_series_run_from_easy_to_hard(category):
+    members = audit.profiles(path for path in played_examples() if path.parent.name == category)
+    assert members, category
+    assert not audit.audit(members).out_of_order, [
+        (member.path.name, member.grade) for member in members
+    ]
 
 
 def test_each_section_is_numbered_from_easy_to_hard():

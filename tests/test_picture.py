@@ -1747,7 +1747,7 @@ def test_a_window_with_a_side_is_drawn_against_that_wall():
 
 def test_count_legend_uses_the_given_plain_language_texts():
     text = (
-        example("wie-doet-het-met-wie-1.txt")
+        example("wie-doet-het-met-wie-3.txt")
         .read_text()
         .replace(
             "count people on object:badjas = 2",
@@ -1798,7 +1798,7 @@ def test_the_legend_does_not_explain_the_count_ring():
     from csp.murdoku_expression_file import load_expression_board
     from csp.murdoku_lower import object_count_scope
 
-    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    text = example("wie-doet-het-met-wie-3.txt").read_text()
     board, rules, clues = load_expression_board(text)
     scope = object_count_scope(board, [*rules, *clues])
     dutch = drawing.murdoku_picture(board, count_scope=scope, language="nl").to_svg()
@@ -1811,11 +1811,11 @@ def test_only_object_counts_have_a_scope_ring():
     from csp.murdoku_expression_file import load_expression_board
     from csp.murdoku_lower import object_count_scope
 
-    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    text = example("wie-doet-het-met-wie-3.txt").read_text()
     board, rules, clues = load_expression_board(text)
     assert object_count_scope(board, [*rules, *clues])
 
-    board, rules, clues = load_expression_board(example("samen-in-japan.txt").read_text())
+    board, rules, clues = load_expression_board(example("japan-3-samen-in-japan.txt").read_text())
     assert not object_count_scope(board, [*rules, *clues])
 
 

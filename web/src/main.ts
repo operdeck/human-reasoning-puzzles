@@ -8,6 +8,7 @@ import {
   isKnownGrade,
 } from "./grades.mjs";
 import { adjacentPuzzles, puzzleIdFromPath, puzzleLink } from "./navigation";
+import { SECTION_PREFIX, sectionAnchor } from "./sections.mjs";
 import { PuzzleView } from "./view";
 
 interface IndexEntry {
@@ -69,7 +70,7 @@ function glossary(): HTMLElement {
   return el(
     "details",
     { className: "glossary" },
-    el("summary", { textContent: "What do these labels mean?" }),
+    el("summary", { textContent: "Difficulty ratings" }),
     el("p", { textContent: GLOSSARY_INTRO }),
     el(
       "dl",
@@ -116,7 +117,7 @@ async function showIndex(current: () => boolean): Promise<void> {
       }, { once: true });
       return el(
         "section",
-        { className: "family" },
+        { className: "family", id: sectionAnchor(label) },
         el("div", { className: "family-preview" }, preview),
         el(
           "div",
@@ -144,7 +145,7 @@ async function showIndex(current: () => boolean): Promise<void> {
                   ? [el("span", {
                       className: "badge",
                       textContent: "beyond deduction",
-                      title: "Only this solver's case analysis closes this puzzle.",
+                      title: "Only this solver's What if trials close this puzzle.",
                     })]
                   : []),
                 ...(entry.playable
@@ -219,8 +220,10 @@ async function route(): Promise<void> {
   const ticket = ++routing;
   // A later hash change wins, even if this page arrives after it.
   const current = () => ticket === routing;
+  // `#family-...` names an index section, never a puzzle.
+  const section = id.startsWith(SECTION_PREFIX) ? id : "";
   try {
-    if (id && /^[\w.-]+$/.test(id)) await showPuzzle(id, current);
+    if (!section && id && /^[\w.-]+$/.test(id)) await showPuzzle(id, current);
     else await showIndex(current);
   } catch (error) {
     if (!current()) return;
@@ -231,7 +234,10 @@ async function route(): Promise<void> {
       el("a", { href: "#", textContent: "← All puzzles" }),
     );
   }
-  window.scrollTo(0, 0);
+  if (!current()) return;
+  const target = section ? document.getElementById(section) : null;
+  if (target) target.scrollIntoView();
+  else window.scrollTo(0, 0);
 }
 
 window.addEventListener("hashchange", route);

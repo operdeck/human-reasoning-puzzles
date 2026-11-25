@@ -16,12 +16,9 @@ npm run export   # writes web/public/puzzles from --export bundles
 npm run dev      # or: npm test, npm run build
 ```
 
-`npm run build` also prerenders a static page per puzzle, a Murdoku landing page,
-`sitemap.xml` and `robots.txt`, so search engines see real pages
-(`web/scripts/prerender.mjs`). The one-time repository topics, site verification
-and sitemap submission are in [discoverability notes](discoverability.md).
-Opening a puzzle's own page starts the player directly; its static picture and
-play link remain available when JavaScript is disabled.
+`npm run build` prerenders pages for search engines and visitors without
+JavaScript. See [discoverability](discoverability.md) for the generated pages,
+repository topics, site verification and sitemap submission.
 
 ## Ground rules
 
@@ -38,7 +35,8 @@ play link remain available when JavaScript is disabled.
   placed peer.
 - **Warnings:** independent of auto-mark, on by default, saved per puzzle.
   Mistakes stay editable; conflicting placements show the other cell and the
-  exported rule when available.
+  exported rule when available, without consulting the solution. Clearing
+  the board preserves the setting.
 - **Progress** is saved in the browser.
 - **Solution steps:** the last tab of the side panel holds the worked solution, the
   same text as `--explain` and the booklet, behind a spoiler warning. The panel
@@ -56,13 +54,21 @@ play link remain available when JavaScript is disabled.
 - **Family boundary:** family knowledge lives in `src/csp/web.py`, not in
   TypeScript. After changing `web/`, run `npx tsc --noEmit` and `npm test`.
 - **Grades:** puzzle entries show a player-facing label instead of the solver's
-  internal rule name (`single`, `relations`, …), and a “What do these labels
-  mean?” glossary beside the list defines each label and the “beyond deduction”
-  badge. Labels, definitions and glossary copy live in `web/src/grades.mjs`,
+  internal rule name (`single`, `relations`, …), and a “Difficulty ratings”
+  glossary beside the list defines each label and the “beyond deduction”
+  badge. Each puzzle page centers its family or series above the title and
+  shows the same difficulty label in small letters below it, before the
+  assistance checkboxes on their own row. Labels, definitions and glossary
+  copy live in `web/src/grades.mjs`,
   which `scripts/prerender.mjs` imports as well, so the static pages, the puzzle
   descriptions and the player agree; `index.json` keeps the raw grade for
   tooling. A new rung on the solver's ladder needs an entry there, and an
   unknown grade stays visible under its raw name.
+- **Family anchors:** every index section has an id from `web/src/sections.mjs`
+  (`#family-` plus the section label in lowercase words, e.g.
+  `#family-tents-and-trees`), in both the prerendered and the live index. The
+  router opens the index at such a hash instead of treating it as a puzzle id;
+  the README gallery links to these anchors.
 
 ## Installable app (PWA)
 
@@ -87,8 +93,8 @@ mode (no Safari bars):
   has a visible "← All puzzles" link, so standalone mode always has a way back.
 - **Offline:** the build writes `dist/sw.js` with a cache version hashed from the
   precached files. It precaches the app shell, the `/murdoku/` page, the CSS/JS,
-  the manifest, the icons and every `puzzles/*.json|svg` bundle (419 URLs, about
-  13 MB), so all puzzles are playable offline after the first load/install.
+  the manifest, the icons and every `puzzles/*.json|svg` bundle, so all puzzles
+  are playable offline after the first load/install.
   Assets and bundles are cache-first; navigations are network-first and fall back
   to the cached shell, whose path-based route (`puzzleIdFromPath`) loads the
   cached bundle. A visited `/p/<id>/` page is also cached on the fly. A new build
@@ -100,20 +106,41 @@ Test on an iPhone with Safari → Share → Add to Home Screen. iOS caches the i
 remove and re-add the shortcut after changing it. Locally, `npm run build`
 followed by `npx vite preview` shows the prerendered pages and the manifest.
 
+## Export bundles
 
-Peer groups may include a localized `description` of the rule they implement.
-The generic player uses these groups to explain conflicting placements or pencil
-marks by naming the other occupied cell, without consulting the hidden solution.
-It still allows mistakes; this feedback does not reject or correct placements.
-Players can disable this feedback with the Warnings toggle beside Auto-mark.
-Warnings default to on, including for previously saved games; each puzzle saves
-the choice independently of auto-mark, and clearing the board preserves it.
+`--export DIR` writes an interactive `<stem>.svg` and `<stem>.json` per puzzle,
+plus `index.json`. The index carries `schema`, `license` and entries with
+`id`, `number`, `section`, `title`, `family`, `familyLabel`, `size`, `grade`,
+`deductive` and `playable`;
+`collection.arrange` supplies the booklet's numbering and sections.
 
-`--export DIR` writes, per puzzle, `<stem>.svg` (the interactive board) and `<stem>.json`, plus `DIR/index.json` (`schema`, `license`, and one entry per puzzle with `id`, `number`, `section`, `title`, `family`, `familyLabel`, `size`, `grade`, `deductive`, `playable`, in reading order). `number` and `section` (bundles carry them too) come from `collection.arrange`, as in the booklet. A bundle holds `size` `[rows, cols]`; `palette` (items with `id`, `label`, `symbol`, optional `svg` and `description`); `placement` (`perItem` or `perCell`, and `blocked` cells); `autoMark` (`default`, `mark` — `cross` or, for Akari, `light` — and `onPlace` scopes: `row`, `col`, `region`, `neighbors4`, `neighbors8`, `king`, `knight`, `peers`, each optionally `whenFull: n`); `regions` when a scope needs them; `peers`, the groups of cells that hold a palette item at most once (each `cells`, plus `items` when it binds only some items), read by `web.peers()` from the model's at-most-one and exactly-one constraints, so the player needs no family rules for them; `notes: true` when the player offers pencil marks (digit families); `givens` and `solution` (cell id to palette id); and the reading text: `rules`, `clues`, `key` (`name`, `text`: the door/window/point symbols), `question`, `reveal` (the booklet's `Reveal:` text, which the player shows after "Solved!" or "Opgelost!"), `headings`, `attributes`, `roles`, `language`, `license`, and `solutionSteps` (`paragraphs`, the worked solution with inline `**strong**`/`*em*` emphasis only, and `complete`, whether they reach the whole solution). The index never carries the solution steps. `deductive` is `false` exactly for the puzzles no deduction path closes — the ones graded `what_if` — so an app can flag the beyond-deduction frontier. Families the player cannot yet play have `playable: false` and an `unsupported` reason. Murdoku `key` lists only the board symbols whose meaning is not in the rules; marks, roles, attributes, area tags and the dashed count ring are stated in the rules, listed separately or drawn on the board, and the picture legend underneath a booklet board is the same compact key. The player draws the same grey cross over a palette item that `placement.perItem: 1` shows as already on the board, but only while auto-mark is on; items that may appear more than once (`placement.perCell` boards such as Minesweeper or Star Battle) are never crossed.
+Bundles include:
+
+- `size`, `palette`, `placement`, `givens` and `solution`: board dimensions,
+  available items, placement limits and cell or segment values.
+- `autoMark`, `regions`, `peers` and `notes`: generic interaction metadata.
+  Peer groups derive from model constraints and may include a localized rule
+  `description` for warnings; they do not depend on the solution.
+- `rules`, `clues`, `key`, `question`, `reveal`, `headings`, `attributes`,
+  `roles`, `language` and `license`: the player-facing text.
+- `solutionSteps`: worked-solution paragraphs with limited Markdown emphasis,
+  and `complete`, indicating whether they reach the solution. The index omits
+  these steps.
+
+For published solved puzzles, `deductive: false` marks those graded `what_if`:
+this solver needs its trial rule. Unsupported families have `playable: false`
+and an `unsupported` reason. The TypeScript bundle and link types are defined
+in `web/src/game.ts`.
+
+Bridges exports a generic `links` interaction: numbered `nodes` and `segments`
+with endpoints, allowed values, SVG drawings, hit targets and mutually exclusive
+segments. Click a corridor to cycle zero, one and two bridges; the controls also
+offer explicit single/double choices. Progress, undo, checking and hints refer
+to segment ids rather than water cells. The TypeScript player reads that
+metadata without implementing Bridges rules. Number totals and crossing
+feedback use the player's links, not the stored solution.
 
 Each Murdoku `key` entry also includes the corresponding board symbol as `svg`. If windows with one name use both wall panes and separate icons, the key shows both.
-
-Pieces come from the icon registry in `icons.py`: each `Icon` has a name, a Unicode `symbol` used by the text boards (★ star, ▲ tent, ♣ tree, ✱ mine, ● bulb, ■ wall/shaded, ●/○ Binairo) and either an original vector shape or a vendored Noto Emoji. Murdoku objects and figure `icon=` names are looked up in `icons.CATALOGUE` (Dutch names plus English synonyms, or `U+<code>`); unknown or unvendored icons fall back to a text label and `--lint` warns. All artwork is vendored under `src/csp/assets/` at pinned commits with its licences (`NOTICE.md`); rendering never uses the network. To add a picture, add the name to `CATALOGUE` and run `uv run python scripts/vendor_emoji.py U+<code>`; `scripts/subset_font.py` rebuilds the font subset.
 
 ## Pictures and icons
 
@@ -122,6 +149,7 @@ player derive from it. Text is converted to paths from the bundled Noto Sans
 subset, so output does not depend on installed fonts. Pieces come from
 `icons.py`; Murdoku objects and figure icons use `icons.CATALOGUE`. All artwork
 is vendored under `src/csp/assets/` with its licences (`NOTICE.md`); rendering
-never uses the network. Add an icon to `CATALOGUE`, run
+never uses the network. Unknown or unvendored icons fall back to a text label
+and `--lint` warns. Add an icon to `CATALOGUE`, run
 `uv run python scripts/vendor_emoji.py U+<code>`, and rebuild the font subset with
 `scripts/subset_font.py`.

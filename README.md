@@ -93,40 +93,41 @@ the outer `in` asks that the horse rider is in one of them. See
 
 <table>
 <tr>
-<td><strong><a href="examples/queens_3_7x7.txt">Queens</a></strong><br>Star Battle with one queen per row, column, and region; queens may not touch.<br><img src="docs/images/queens_3_7x7-solution.png" width="150" alt="Solved Queens puzzle"></td>
-<td><strong><a href="examples/sudoku_16_4x4_kropki_consecutive_thermometers.txt">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_16_4x4_kropki_consecutive_thermometers.png" width="150" alt="Kropki Sudoku puzzle"></td>
-<td><strong><a href="examples/starbattle_2_8x8.txt">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_2_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-queens">Queens</a></strong><br>Star Battle with one queen per row, column, and region; queens may not touch.<br><img src="docs/images/queens_3_7x7-solution.png" width="150" alt="Solved Queens puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-sudoku">Kropki Sudoku</a></strong><br>Sudoku with adjacency dots and a thermometer.<br><img src="docs/images/sudoku_16_4x4_kropki_consecutive_thermometers.png" width="150" alt="Kropki Sudoku puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-star-battle">Star Battle</a></strong><br>Place stars by row, column, and region counts without touching.<br><img src="docs/images/starbattle_2_8x8-solution.png" width="150" alt="Solved Star Battle puzzle"></td>
 </tr>
 <tr>
-<td><strong><a href="examples/logicgrid_1_3x3.txt">Zebra logic grid</a></strong><br>Use clues to match items across categories.<br><img src="docs/images/logicgrid_1_3x3-solution.png" width="150" alt="Solved logic grid"></td>
-<td><strong><a href="examples/tents_3_4x4.txt">Tents and Trees</a></strong><br>Pair each tree with a tent, while satisfying line counts.<br><img src="docs/images/tents_3_4x4-solution.png" width="150" alt="Solved Tents and Trees puzzle"></td>
-<td><strong><a href="examples/akari_1_6x6.txt">Light Up / Akari</a></strong><br>Light every open cell without bulbs seeing each other.<br><img src="docs/images/akari_1_6x6-solution.png" width="150" alt="Solved Akari puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-logic-grid">Zebra logic grid</a></strong><br>Use clues to match items across categories.<br><img src="docs/images/logicgrid_1_3x3-solution.png" width="150" alt="Solved logic grid"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-tents-and-trees">Tents and Trees</a></strong><br>Pair each tree with a tent, while satisfying line counts.<br><img src="docs/images/tents_3_4x4-solution.png" width="150" alt="Solved Tents and Trees puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-akari">Light Up / Akari</a></strong><br>Light every open cell without bulbs seeing each other.<br><img src="docs/images/akari_1_6x6-solution.png" width="150" alt="Solved Akari puzzle"></td>
 </tr>
 </table>
 
 <table>
 <tr>
-<td><strong><a href="examples/towers_2_5x5.txt">Towers</a></strong><br>Each height once per row and column; an edge clue counts the towers you can see.<br><img src="docs/images/towers_2_5x5-solution.png" width="150" alt="Solved Towers puzzle"></td>
-<td><strong><a href="examples/mosaic_2_5x5.txt">Mosaic</a></strong><br>Black or white, so every number counts the black cells around it.<br><img src="docs/images/mosaic_2_5x5-solution.png" width="150" alt="Solved Mosaic puzzle"></td>
-<td><strong><a href="examples/dominosa_2_6x7.txt">Dominosa</a></strong><br>Cover the grid with dominoes, each pair of numbers used once; the numbers are pips, as on a stone.<br><img src="docs/images/dominosa_2_6x7-solution.png" width="150" alt="Solved Dominosa puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-towers">Towers</a></strong><br>Each height once per row and column; an edge clue counts the towers you can see.<br><img src="docs/images/towers_2_5x5-solution.png" width="150" alt="Solved Towers puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-mosaic">Mosaic</a></strong><br>Black or white, so every number counts the black cells around it.<br><img src="docs/images/mosaic_2_5x5-solution.png" width="150" alt="Solved Mosaic puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-dominosa">Dominosa</a></strong><br>Cover the grid with dominoes, each pair of numbers used once; the numbers are pips, as on a stone.<br><img src="docs/images/dominosa_2_6x7-solution.png" width="150" alt="Solved Dominosa puzzle"></td>
 </tr>
 <tr>
-<td><strong><a href="examples/rectangles_3_9x9.txt">Rectangles</a></strong><br>Cut the grid into rectangles, each holding one number equal to its area.<br><img src="docs/images/rectangles_3_9x9-solution.png" width="150" alt="Solved Rectangles puzzle"></td>
-<td><strong><a href="examples/magnets_3_6x6.txt">Magnets</a></strong><br>Place plus and minus poles so touching magnets repel and the counts match.<br><img src="docs/images/magnets_3_6x6-solution.png" width="150" alt="Solved Magnets puzzle"></td>
-<td><strong><a href="examples/undead_5_5x5.txt">Undead</a></strong><br>Ghosts, vampires and zombies seen along sight lines that bend at mirrors.<br><img src="docs/images/undead_5_5x5-solution.png" width="150" alt="Solved Undead puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-rectangles">Rectangles</a></strong><br>Cut the grid into rectangles, each holding one number equal to its area.<br><img src="docs/images/rectangles_3_9x9-solution.png" width="150" alt="Solved Rectangles puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-magnets">Magnets</a></strong><br>Place plus and minus poles so touching magnets repel and the counts match.<br><img src="docs/images/magnets_3_6x6-solution.png" width="150" alt="Solved Magnets puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-undead">Undead</a></strong><br>Ghosts, vampires and zombies seen along sight lines that bend at mirrors.<br><img src="docs/images/undead_5_5x5-solution.png" width="150" alt="Solved Undead puzzle"></td>
 </tr>
 <tr>
-<td><strong><a href="examples/pattern_2_8x8.txt">Pattern</a></strong><br>A nonogram: fill cells to match the run lengths of each row and column.<br><img src="docs/images/pattern_2_8x8-solution.png" width="150" alt="Solved Pattern puzzle"></td>
-<td><strong><a href="examples/map_3_9x9.txt">Map</a></strong><br>Four-colour the regions so no two neighbours share a colour.<br><img src="docs/images/map_3_9x9-solution.png" width="150" alt="Solved Map puzzle"></td>
-<td><strong><a href="examples/thermometers_2_5x5.txt">Thermometers</a></strong><br>Fill each thermometer from its bulb so every row and column holds its count.<br><img src="docs/images/thermometers_2_5x5-solution.png" width="150" alt="Solved Thermometers puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-pattern">Pattern</a></strong><br>A nonogram: fill cells to match the run lengths of each row and column.<br><img src="docs/images/pattern_2_8x8-solution.png" width="150" alt="Solved Pattern puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-map">Map</a></strong><br>Four-colour the regions so no two neighbours share a colour.<br><img src="docs/images/map_3_9x9-solution.png" width="150" alt="Solved Map puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-thermometers">Thermometers</a></strong><br>Fill each thermometer from its bulb so every row and column holds its count.<br><img src="docs/images/thermometers_2_5x5-solution.png" width="150" alt="Solved Thermometers puzzle"></td>
 </tr>
 <tr>
-<td><strong><a href="examples/kakuro_2_5x5.txt">Kakuro</a></strong><br>Digits 1 to 9 in runs that add up to their clue without repeating.<br><img src="docs/images/kakuro_2_5x5-solution.png" width="150" alt="Solved Kakuro puzzle"></td>
-<td><strong><a href="examples/hidato_2_5x5.txt">Hidato</a></strong><br>Write 1, 2, 3, … so every number touches the next; Numbrix allows only sides.<br><img src="docs/images/hidato_2_5x5-solution.png" width="150" alt="Solved Hidato puzzle"></td>
-<td><strong><a href="examples/killer_2_6x6.txt">Killer Sudoku</a></strong><br>Sudoku with caged sums; Arrow, Even/Odd, Sandwich and Skyscraper variants too.<br><img src="docs/images/killer_2_6x6-solution.png" width="150" alt="Solved Killer Sudoku puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-kakuro">Kakuro</a></strong><br>Digits 1 to 9 in runs that add up to their clue without repeating.<br><img src="docs/images/kakuro_2_5x5-solution.png" width="150" alt="Solved Kakuro puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-hidato">Hidato</a></strong><br>Write 1, 2, 3, … so every number touches the next; Numbrix allows only sides.<br><img src="docs/images/hidato_2_5x5-solution.png" width="150" alt="Solved Hidato puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-killer-sudoku">Killer Sudoku</a></strong><br>Sudoku with caged sums; Arrow, Even/Odd, Sandwich and Skyscraper variants too.<br><img src="docs/images/killer_2_6x6-solution.png" width="150" alt="Solved Killer Sudoku puzzle"></td>
 </tr>
 <tr>
-<td><strong><a href="examples/rooms_2_5x7.txt">Rooms</a></strong><br>Give every person a room; people may share a room, rooms may stay empty, and a room never holds more than its capacity.<br><img src="docs/images/rooms_2_5x7-solution.png" width="150" alt="Solved Rooms puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-rooms">Rooms</a></strong><br>Give every person a room; people may share a room, rooms may stay empty, and a room never holds more than its capacity.<br><img src="docs/images/rooms_2_5x7-solution.png" width="150" alt="Solved Rooms puzzle"></td>
+<td><strong><a href="https://operdeck.github.io/human-reasoning-puzzles/#family-bridges">Bridges / Hashiwokakero</a></strong><br>Join every island into one network. Match the numbered bridge totals, with at most two bridges per pair and no crossings.<br><img src="docs/images/bridges_2_7x7.png" width="150" alt="Bridges island puzzle"><img src="docs/images/bridges_2_7x7-solution.png" width="150" alt="Solved Bridges puzzle with single and double bridge decks"></td>
 </tr>
 </table>
 

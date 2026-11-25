@@ -1,0 +1,14 @@
+# Original Bridges; seed 2009; hard/chains
+Family: bridges
+Size: 9
+Title: Farther shores
+Islands:
+. . . . . . 2 . .
+. . . . . . . . .
+4 . . . . . 7 . 1
+. . . . . . . . .
+5 . . . 2 . 4 . .
+. . . . . . . . .
+4 . . . . . 6 . .
+. . . . . . . . .
+3 . 4 . . . 6 . 2

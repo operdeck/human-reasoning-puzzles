@@ -1,0 +1,12 @@
+# Original Bridges; seed 1055; easy/count
+Family: bridges
+Size: 7
+Title: Quiet waters
+Islands:
+2 . . . 5 . 4
+. . . . . . .
+. . . . . . 4
+. . . . . . .
+. . . . . . 2
+. . . . . . .
+. . . . 1 . .

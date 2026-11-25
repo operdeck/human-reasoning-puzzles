@@ -13,12 +13,15 @@ import {
 const LADDER = [
   "single",
   "count",
+  "reach",
+  "cut",
   "relations",
   "subsumption",
   "cover2",
   "cover3",
   "chains",
   "wing",
+  "closure",
   "what_if",
 ];
 
@@ -30,7 +33,10 @@ describe("grade labels", () => {
   it("turns each internal rule name into a player-facing label", () => {
     expect(gradeLabel("single")).toBe("Forced moves");
     expect(gradeLabel("relations")).toBe("Relationship checks");
-    expect(gradeLabel("what_if")).toBe("Case analysis");
+    expect(gradeLabel("reach")).toBe("Reachability");
+    expect(gradeLabel("cut")).toBe("Connectivity cuts");
+    expect(gradeLabel("closure")).toBe("Component closure");
+    expect(gradeLabel("what_if")).toBe("What if");
     expect(GRADES.every((entry) => isKnownGrade(entry.grade))).toBe(true);
   });
 
@@ -60,8 +66,8 @@ describe("grade labels", () => {
     expect(GLOSSARY_INTRO).toContain("not how difficult a person will find");
   });
 
-  it("explains the beyond-deduction badge as case analysis", () => {
+  it("explains the beyond-deduction badge as What if", () => {
     expect(BEYOND_DEDUCTION_NOTE).toContain("beyond deduction");
-    expect(BEYOND_DEDUCTION_NOTE).toContain("Case analysis");
+    expect(BEYOND_DEDUCTION_NOTE).toContain("What if");
   });
 });

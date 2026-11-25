@@ -128,6 +128,22 @@ describe("palette", () => {
     expect(next.href).toBe(new URL("p/next/", document.baseURI).href);
   });
 
+  it("shows the difficulty rating under the title, before the assist checkboxes", () => {
+    const root = mount({ section: "Murdoku · Japan", grade: "what_if", deductive: false });
+    const title = root.querySelector(".puzzle-title")!;
+    const section = title.querySelector(".puzzle-section")!;
+    expect(section.textContent).toBe("Murdoku · Japan");
+    expect(section.nextElementSibling?.tagName).toBe("H1");
+    expect(title.querySelector("h1")?.textContent).toBe("Two people");
+    const grade = title.querySelector<HTMLElement>(".puzzle-grade")!;
+    expect(grade.textContent).toBe("Difficulty: What if");
+    expect(grade.title).toContain("tries an option");
+    expect(grade.nextElementSibling?.textContent).toContain("beyond deduction");
+    const assists = root.querySelector(".assist-controls")!;
+    expect(title.nextElementSibling).toBe(assists);
+    expect(title.compareDocumentPosition(assists) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("switches compact viewports on resize without losing moves and releases the listener", () => {
     const listeners = new Set<() => void>();
     let mobile = true;

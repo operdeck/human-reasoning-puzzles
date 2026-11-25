@@ -51,6 +51,7 @@ KINDS = (
     "kakuro",
     "hidato",
     "thermometers",
+    "bridges",
 )
 
 FAMILY_KINDS = {
@@ -89,6 +90,7 @@ FAMILY_KINDS = {
     "hidato": "hidato",
     "numbrix": "hidato",
     "thermometers": "thermometers",
+    "bridges": "bridges",
     "picross": "pattern",
 }
 

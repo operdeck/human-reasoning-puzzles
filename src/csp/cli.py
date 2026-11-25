@@ -18,6 +18,7 @@ from . import (
     akari,
     battleships,
     binairo,
+    bridges,
     bruteforce,
     calcudoku,
     collection,
@@ -133,6 +134,9 @@ def load(text: str, kind: str) -> Puzzle:
     if kind == "thermometers":
         model, thermometers_puzzle = thermometers.compile_puzzle(text)
         return Puzzle(kind, model, partial(thermometers.render, thermometers_puzzle))
+    if kind == "bridges":
+        model, bridges_puzzle = bridges.compile_puzzle(text)
+        return Puzzle(kind, model, partial(bridges.render, bridges_puzzle))
     if kind == "hidato":
         model, hidato_puzzle = hidato.compile_puzzle(text)
         return Puzzle(kind, model, partial(hidato.render, hidato_puzzle))
@@ -238,6 +242,47 @@ def pattern_story(
         return generic_story.explain(
             text, start.clone(keep_log=True), fired, words.sources, kind, words.hidden
         )
+    if kind == "bridges":
+        bridge_board = bridges.parse(text)
+        dutch = language_of(text) == "nl"
+        hidden: dict[tuple[str, Any], str] = {}
+        sources = {}
+        for pair in bridge_board.pairs:
+            name = bridges.pair_name(pair)
+            a, b = map(bridges.cell_name, pair)
+            between = f"tussen {a} en {b}" if dutch else f"between {a} and {b}"
+            counts = (
+                ("geen bruggen", "één brug", "twee bruggen")
+                if dutch
+                else ("no bridges", "one bridge", "two bridges")
+            )
+            for count, label in enumerate(counts):
+                hidden[name, count] = f"{label} {between}"
+            for threshold in (1, 2):
+                variable = f"{name} at least {threshold}"
+                if dutch:
+                    yes = "minstens één brug" if threshold == 1 else "twee bruggen"
+                    no = "geen bruggen" if threshold == 1 else "hoogstens één brug"
+                else:
+                    yes = "at least one bridge" if threshold == 1 else "two bridges"
+                    no = "no bridges" if threshold == 1 else "at most one bridge"
+                hidden[variable, True] = f"{yes} {between}"
+                hidden[variable, False] = f"{no} {between}"
+                label = f"het aantal bruggen {between}" if dutch else f"the bridge count {between}"
+                sources[f"{variable} is true or false"] = label
+                sources[f"{variable} matches its bridge count"] = label
+            sources[f"{name} has zero, one or two bridges"] = (
+                f"hoogstens twee bruggen {between}" if dutch else f"at most two bridges {between}"
+            )
+        for island, count in bridge_board.islands.items():
+            cell = bridges.cell_name(island)
+            unit = "brug" if count == 1 else "bruggen"
+            sources[f"island {cell} has {count} bridges"] = (
+                f"eiland {cell} heeft {count} {unit}"
+                if dutch
+                else f"island {cell} has {count} {'bridge' if count == 1 else 'bridges'}"
+            )
+        return generic_story.explain(text, start.clone(keep_log=True), fired, sources, kind, hidden)
     if kind == "calcudoku":
         wording = story.Wording.read(text)
         explanation = generic_story.explain(text, start.clone(keep_log=True), fired, kind=kind)
@@ -390,6 +435,7 @@ def make_image(
         "kakuro": (kakuro.parse, picture.kakuro_picture),
         "hidato": (hidato.parse, picture.hidato_picture),
         "thermometers": (thermometers.parse, picture.thermometers_picture),
+        "bridges": (bridges.parse, picture.bridges_picture),
         "pattern": (pattern.parse, picture.pattern_picture),
         "undead": (undead.parse, picture.undead_picture),
         "magnets": (magnets.parse, picture.magnets_picture),

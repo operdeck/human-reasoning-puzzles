@@ -126,7 +126,7 @@ def test_parse_solution_reads_one_based_squares():
 
 
 def test_suggest_keeps_needed_clues_necessary():
-    opener = example("wie-doet-het-met-wie-1.txt").read_text()
+    opener = example("wie-doet-het-met-wie-3.txt").read_text()
     lines = clue_search.clue_lines(opener)
     assert lines[0].startswith("some (people on object:badjas) dir:up")
     start = clue_search.with_clues(opener, lines[:2])
@@ -226,7 +226,7 @@ Ben in rows:2
 
 
 def test_occupancy_shows_unused_decoys():
-    beach = example("wie-doet-het-met-wie-3.txt").read_text()
+    beach = example("wie-doet-het-met-wie-2.txt").read_text()
     seen, rows = clue_search.occupancy(clue_search.with_clues(beach, []), sample=2000)
     assert 0 < seen < 2000
     used = {(name, square): times for name, square, times in rows}

@@ -1,0 +1,12 @@
+# Original Bridges; seed 1015; medium/cut
+Family: bridges
+Size: 7
+Title: Island hopping
+Islands:
+3 . . . 3 . .
+. . . . . . .
+. . 4 . 5 . .
+. . . . . . .
+1 . . . . . 2
+. . . . . . .
+. . 4 . 5 . 3

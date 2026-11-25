@@ -1,6 +1,6 @@
 # Murdoku 5x5 -- "Samen onderweg" (area populations, togetherness)
 #
-# A sibling of samen-in-japan.txt: three places, five travellers, a few objects
+# A sibling of japan-3-samen-in-japan.txt: three places, five travellers, a few objects
 # to lean the clues on, and both area comparisons; the busiest-area clue is
 # load-bearing.
 #

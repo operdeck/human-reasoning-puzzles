@@ -2284,7 +2284,7 @@ Clues:
 
 def test_area_population_capacity_solves_samen_onderweg_without_what_if():
     """Issue #224: the count rule finds the human argument, so no case split."""
-    text = (example("samen-onderweg.txt")).read_text()
+    text = (example("japan-2-samen-onderweg.txt")).read_text()
     board = load_board_layout(text)
     model = cli.load(text, "murdoku").model
     fired: list[str] = []

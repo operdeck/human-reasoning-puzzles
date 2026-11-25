@@ -99,8 +99,8 @@ separate derived puzzle.
   boards.
 - `tests/puzzles/` for test-only puzzles; new examples need unique names because
   tests look them up by file name.
-- Write new examples and their size/grade into `docs/puzzle-collection.md`;
-  re-export the web collection and check its category, number and link.
+- Re-export the web collection and check the new example's category, number,
+  link and grade on the index.
 - One canonical file per puzzle; never commit generated `.png` or `.docx` files.
 - Keep a puzzle PR focused; engine, icon and wording fixes may come along with
   tests, but unrelated refactors and skill rewrites go in their own PR.
@@ -144,5 +144,6 @@ For a finished Murdoku under `examples/`, before reporting done:
 - Legend and rules show no engine syntax; authored wording in the solution is
   faithful and does not reveal the answer.
 - The key clue is necessary, series order follows `--grade`, and
-  `docs/puzzle-collection.md` is updated; `uv run pytest -q` and `ruff` pass.
+  `uv run puzzle-lab audit examples` reports no new conflict; `uv run pytest -q`
+  and `ruff` pass.
 - Report the path, solution, grade and open doubts.

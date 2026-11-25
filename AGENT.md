@@ -143,7 +143,7 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
 - **Never force-push** or rewrite history that is on `origin`.
 - **Published puzzles are not copied.** `prrrdoku1-3.txt` are the owner's
   own puzzles. Anything taken from a book or newspaper gets new names or is
-  generated instead, as `wie-doet-het-met-wie-2.txt` and the graded Sudokus and
+  generated instead, as `wie-doet-het-met-wie-1.txt` and the graded Sudokus and
   Calcudokus are.
 - **README pictures and solutions are generated**, never hand-edited: redraw
   `docs/images/*.png` with `--png` (rasterised from the SVG renderer) and re-run `--explain` whenever drawing or
@@ -411,8 +411,9 @@ direction: the benchmark imports `csp`, never the other way round.
 
 For a new family, include small and materially larger original examples and
 check every example for uniqueness and per-step soundness. Add its example and
-solution visual to the root README's compact gallery, with file/grade details
-in `docs/puzzle-collection.md` and its model/file syntax in
+solution visual to the root README's compact gallery, linked to its web index
+section, record any tier it cannot reach in `docs/puzzle-collection.md`, and
+document its model/file syntax in
 `docs/model-and-puzzle-formats.md`. Update the relevant authoring skill. Use
 existing generic primitives; if they are insufficient, open a separate core
 design issue instead of adding puzzle-specific code to `core.py`.
@@ -459,12 +460,12 @@ Numbers from actual runs, not estimates:
 | `sudoku_12_6x6_jigsaw.txt` | solved, 35 iterations | `single` 30, `subsumption` 3, `cover2` 1 |
 | `sudoku_6_9x9_nrc.txt` | solved, 54 iterations | `single` 53 (two solutions without its extra boxes) |
 | `futoshiki_3_5x5.txt` | solved, 49 iterations | `single` 25, `relations` 12, `chains` 8, `cover2` 3 |
-| `wie-doet-het-met-wie-1.txt` | solved, 23 iterations | `single` 10, `relations` 6, `subsumption` 4, `cover2` 2 |
+| `wie-doet-het-met-wie-3.txt` | solved, 23 iterations | `single` 10, `relations` 6, `subsumption` 4, `cover2` 2 |
 | `murdoku_3_house.txt` | solved, 11 iterations | `single` 5, `relations` 4, `subsumption` 1 |
 | `murdoku_sparse_mystery.txt` | solved, 5 iterations | `single` 4 |
 | `murdoku_global_counts.txt` | solved, 11 iterations | `single` 8, `count` 2 |
 | `murdoku_composition.txt` | solved, 44 iterations | `single` 25, `count` 15, `relations` 3 |
-| `samen-onderweg.txt` | solved, 29 iterations | `single` 17, `count` 7, `relations` 3, `subsumption` 1 |
+| `japan-2-samen-onderweg.txt` | solved, 29 iterations | `single` 17, `count` 7, `relations` 3, `subsumption` 1 |
 | `rooms_1_4x5.txt` | solved, 8 iterations | `single` 4, `count` 3 |
 | `rooms_2_5x7.txt` | solved, 9 iterations | `single` 5, `count` 1, `relations` 2 |
 | `rooms_3_6x8.txt` | solved, 31 iterations | `single` 15, `count` 2, `relations` 10, `subsumption` 1, `what_if` 2 |
@@ -484,7 +485,7 @@ and deductive frontier, not the number of auxiliary steps.
 No example in `examples/` needs `rule_wing`; it is in the ladder for models
 that do, and the Norvig benchmark credits it (see `benchmark/`).
 
-`samen-onderweg.txt` shows the count bounds in use. Mio on the bank and Keiko
+`japan-2-samen-onderweg.txt` shows the count bounds in use. Mio on the bank and Keiko
 beside the lantern put two whole variables in Osaka, so `count` raises its
 floor to two; the busiest-area comparison then gives Tokyo three; two plus
 three reserves all five travellers, so Okinawa's ceiling is zero. The puzzle

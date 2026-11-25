@@ -36,6 +36,23 @@ export interface ClueEntry {
   item?: string;
 }
 
+export interface Segment {
+  id: string;
+  endpoints: [CellId, CellId];
+  values: string[];
+  drawings: Record<string, string>;
+  target: [number, number, number, number];
+  hitWidth: number;
+  conflicts: string[];
+}
+
+export interface Links {
+  nodes: { id: CellId; total?: number }[];
+  segments: Segment[];
+  connected?: boolean;
+  instructions?: string;
+}
+
 export interface Bundle {
   schema: number;
   id: string;
@@ -76,6 +93,7 @@ export interface Bundle {
   roles?: Named[];
   objects?: Named[];
   solutionSteps?: { paragraphs: string[]; complete: boolean };
+  links?: Links;
 }
 
 export interface State {
@@ -105,6 +123,7 @@ export function parseCell(id: CellId): [number, number] {
 }
 
 export function allCells(bundle: Bundle): CellId[] {
+  if (bundle.links) return bundle.links.segments.map((segment) => segment.id);
   const [rows, cols] = bundle.size;
   const out: CellId[] = [];
   for (let r = 1; r <= rows; r++) for (let c = 1; c <= cols; c++) out.push(cellId(r, c));
@@ -113,7 +132,43 @@ export function allCells(bundle: Bundle): CellId[] {
 
 /** Cells the player can never change: blocked squares and givens. */
 export function locked(bundle: Bundle, cell: CellId): boolean {
-  return (bundle.placement?.blocked ?? []).includes(cell) || cell in (bundle.givens ?? {});
+  return (bundle.links !== undefined && !bundle.links.segments.some((segment) => segment.id === cell))
+    || (bundle.placement?.blocked ?? []).includes(cell) || cell in (bundle.givens ?? {});
+}
+
+/** Set a segment count; zero is absence, never a stored piece or a cell coordinate. */
+export function setSegment(bundle: Bundle, state: State, id: string, value: string): State {
+  const segment = bundle.links?.segments.find((candidate) => candidate.id === id);
+  if (!segment || !segment.values.includes(value) || locked(bundle, id)) return state;
+  const placed = { ...state.placed };
+  if (value === "0") delete placed[id];
+  else placed[id] = value;
+  return { ...state, placed, crosses: state.crosses.filter((other) => other !== id) };
+}
+
+export function cycleSegment(bundle: Bundle, state: State, id: string): State {
+  const values = bundle.links?.segments.find((segment) => segment.id === id)?.values;
+  if (!values?.length) return state;
+  const next = values[(values.indexOf(state.placed[id] ?? "0") + 1) % values.length];
+  return setSegment(bundle, state, id, next);
+}
+
+/** Crossing and node-capacity feedback from visible rules only, including replacements. */
+export function segmentConflict(bundle: Bundle, state: State, id: string):
+  { kind: "crossing" | "total"; at: string } | null {
+  if (!state.warnings) return null;
+  const links = bundle.links;
+  const segment = links?.segments.find((candidate) => candidate.id === id);
+  if (!links || !segment || !Number(state.placed[id])) return null;
+  const crossing = segment.conflicts.find((other) => Number(state.placed[other]) > 0);
+  if (crossing) return { kind: "crossing", at: crossing };
+  for (const endpoint of segment.endpoints) {
+    const total = links.nodes.find((node) => node.id === endpoint)?.total;
+    const count = links.segments.filter((edge) => edge.endpoints.includes(endpoint))
+      .reduce((sum, edge) => sum + Number(state.placed[edge.id] ?? 0), 0);
+    if (total !== undefined && count > total) return { kind: "total", at: endpoint };
+  }
+  return null;
 }
 
 const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
@@ -258,6 +313,7 @@ export function toggleNote(bundle: Bundle, state: State, cell: CellId, item: str
 /** Place `item` on `cell`, or take it off if it is already there. */
 export function place(bundle: Bundle, state: State, cell: CellId, item: string): State {
   if (locked(bundle, cell)) return state;
+  if (bundle.links) return setSegment(bundle, state, cell, state.placed[cell] === item ? "0" : item);
   const placed = { ...state.placed };
   if (placed[cell] === item) {
     delete placed[cell];

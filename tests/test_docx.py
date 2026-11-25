@@ -148,7 +148,7 @@ def test_sudoku_nosolution_skips_solving_and_narration(tmp_path, monkeypatch):
 
 
 def test_clue_text_override_wins():
-    source = example("wie-doet-het-met-wie-3.txt").read_text()
+    source = example("wie-doet-het-met-wie-2.txt").read_text()
     assert load_presentation(source).clue_text[2].startswith("Sanne draagt alleen een badjas")
 
 
@@ -874,7 +874,7 @@ def test_booklet_solutions_have_no_empty_reasons_or_clue_numbers():
 
 
 def test_booklet_population_explanation_includes_the_unnumbered_comparison(tmp_path):
-    source = example("samen-onderweg.txt")
+    source = example("japan-2-samen-onderweg.txt")
     output = tmp_path / "population.docx"
     assert main([str(source), "--docx", str(output)]) == 0
     rendered = _text(output)
@@ -895,7 +895,7 @@ def test_booklet_population_explanation_includes_the_unnumbered_comparison(tmp_p
 
 
 def test_booklet_highlights_the_unnumbered_line_and_population_conclusions(tmp_path):
-    source = example("samen-in-de-blauwe-bladeren.txt")
+    source = example("japan-1-samen-in-de-blauwe-bladeren.txt")
     output = tmp_path / "line.docx"
     assert main([str(source), "--docx", str(output)]) == 0
     document = Document(str(output))
@@ -1079,7 +1079,7 @@ def test_the_booklet_board_rings_the_objects_a_count_counts(monkeypatch, express
         return original(board, placed, **kwargs)
 
     monkeypatch.setattr(picture, "murdoku_picture", capture)
-    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    text = example("wie-doet-het-met-wie-3.txt").read_text()
     docx_export._picture_stream(text, None, None, expressions=expressions)
     assert seen["count_scope"] == load_board_layout(text).squares_of(["badjas", "sloffen"])
     # The page states the counts itself, so the picture leaves those lines out.

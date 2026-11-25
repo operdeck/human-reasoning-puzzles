@@ -15,6 +15,7 @@ from functools import partial
 
 from csp import (
     battleships,
+    bridges,
     bruteforce,
     dominosa,
     hidato,
@@ -66,6 +67,7 @@ FAMILIES = (
     "kakuro",
     "kakurasu",
     "rooms",
+    "bridges",
 )
 SUDOKU_BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 REGION_NAMES = [
@@ -1811,9 +1813,58 @@ def fresh(
         return fresh_kakurasu(size, rng, comment=comment)
     if family == "rooms":
         return fresh_rooms(size, rng, tier, comment)
+    if family == "bridges":
+        return fresh_bridges(size, rng, open_share, comment)
     if family in SUDOKU_VARIANTS:
         return fresh_sudoku_variant(family, size, rng, open_share, comment)
     raise ValueError(f"no fresh builder for {family}; choose from {', '.join(FAMILIES)}")
+
+
+def fresh_bridges(
+    size: int, rng: random.Random, open_share: float = 0.5, comment: str = ""
+) -> str | None:
+    """Grow a non-crossing connected bridge network and derive its island numbers."""
+    if not 5 <= size <= 25:
+        raise ValueError("fresh Bridges boards are 5 to 25 cells wide")
+    sites = [(row, col) for row in range(0, size, 2) for col in range(0, size, 2)]
+    density = rng.uniform(0.5, 0.85)
+    islands = {cell: 0 for cell in sites if rng.random() < density}
+    if len(islands) < 6:
+        return None
+    pairs = list(bridges.neighbours(islands))
+    rng.shuffle(pairs)
+    roots = {cell: cell for cell in islands}
+
+    def root(cell: Cell) -> Cell:
+        while roots[cell] != cell:
+            cell = roots[cell]
+        return cell
+
+    network: dict[Pair, int] = {}
+    for a, b in pairs:
+        if root(a) == root(b) or any(bridges.crosses((a, b), pair) for pair in network):
+            continue
+        roots[root(a)] = root(b)
+        network[(a, b)] = rng.choice((1, 2, 2))
+    if len({root(cell) for cell in islands}) != 1:
+        return None
+    for pair in pairs:
+        if (
+            pair not in network
+            and rng.random() < 0.15 + 0.35 * (1 - open_share)
+            and not any(bridges.crosses(pair, used) for used in network)
+        ):
+            network[pair] = rng.choice((1, 2))
+    for (a, b), count in network.items():
+        islands[a] += count
+        islands[b] += count
+    lines = _header(comment, "Family: bridges", f"Size: {size}", "Islands:")
+    lines += [
+        " ".join(str(islands[(row, col)]) if (row, col) in islands else "." for col in range(size))
+        for row in range(size)
+    ]
+    text = "\n".join(lines) + "\n"
+    return text if is_unique(text) else None
 
 
 ROOM_LABELS = (

@@ -98,6 +98,51 @@ def _mirror(slash: bool) -> str:
     )
 
 
+def bridge(
+    canvas: svg.Canvas,
+    first: svg.Point,
+    second: svg.Point,
+    count: int,
+    *,
+    scale: float = 64,
+    tint: svg.Colour = "#526b70",
+) -> None:
+    """Draw one or two separate timber decks, with rails and cross-planks."""
+    if count not in (1, 2):
+        return
+    x1, y1 = first
+    x2, y2 = second
+    horizontal = y1 == y2
+    length = abs(x2 - x1) if horizontal else abs(y2 - y1)
+    deck = scale * 0.105
+    offsets = (0.0,) if count == 1 else (-scale * 0.105, scale * 0.105)
+    for offset in offsets:
+        a = (x1, y1 + offset) if horizontal else (x1 + offset, y1)
+        b = (x2, y2 + offset) if horizontal else (x2 + offset, y2)
+        canvas.line((a, b), fill="#dce7e4", width=deck)
+        for side in (-deck / 2, deck / 2):
+            start = (a[0], a[1] + side) if horizontal else (a[0] + side, a[1])
+            end = (b[0], b[1] + side) if horizontal else (b[0] + side, b[1])
+            canvas.line((start, end), fill=tint, width=max(1, scale * 0.024))
+        planks = max(1, round(length / (scale * 0.14)))
+        for index in range(1, planks):
+            fraction = index / planks
+            x, y = a[0] + (b[0] - a[0]) * fraction, a[1] + (b[1] - a[1]) * fraction
+            ends = (
+                ((x, y - deck / 2), (x, y + deck / 2))
+                if horizontal
+                else ((x - deck / 2, y), (x + deck / 2, y))
+            )
+            canvas.line(ends, fill=tint, width=max(0.7, scale * 0.012))
+
+
+def _bridge_icon(count: int) -> str:
+    canvas = svg.Canvas(100, 100, background="none")
+    bridge(canvas, (7, 50), (92, 50), count, scale=130)
+    image = canvas.to_svg()
+    return image[image.index(">") + 1 : image.rindex("</svg>")]
+
+
 CROWN = (
     '<g fill="currentColor"><polygon points="20,75 10,25 33.3,50 50,12.5 66.7,50 90,25 80,75"/>'
     '<rect x="20" y="75" width="60" height="6"/><rect x="25" y="83.3" width="50" height="7.7"/>'
@@ -807,6 +852,8 @@ REGISTRY: dict[str, Icon] = {
     icon.name: icon
     for icon in (
         Icon("star", "\u2605", "star", markup=_star()),
+        Icon("bridge_single", "─", "single bridge", markup=_bridge_icon(1)),
+        Icon("bridge_double", "═", "double bridge", markup=_bridge_icon(2)),
         Icon("queen", "\u265b", "queen", markup=CROWN),
         Icon("dog", "\U0001f415", "dog", markup=DOG),
         Icon("puppy", "\U0001f436", "puppy", markup=PUPPY),

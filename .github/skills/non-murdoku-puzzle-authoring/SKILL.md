@@ -11,8 +11,10 @@ rate a puzzle from agent reasoning alone. This skill covers every supported fami
 except Murdoku; Murdoku keeps its own skill and tools.
 
 Syntax: [Model and puzzle formats](../../../docs/model-and-puzzle-formats.md).
-Commands and grading: [CLI options](../../../docs/cli.md). Coverage and tiers:
-[puzzle collection](../../../docs/puzzle-collection.md). Read
+Commands and grading: [CLI options](../../../docs/cli.md). Rating commands and
+coverage gaps: [grading and auditing](../../../docs/puzzle-collection.md); the
+grades themselves are on the
+[web index](https://operdeck.github.io/human-reasoning-puzzles/). Read
 [family notes](references/family-notes.md) for the newer families and
 [difficulty and validation](references/difficulty-and-validation.md) when rating,
 naming or auditing.
@@ -21,7 +23,7 @@ naming or auditing.
 
 Full workflow, options and traps: [workflow notes](references/workflow.md).
 
-1. Read the family syntax and the [collection](../../../docs/puzzle-collection.md).
+1. Read the family syntax and the [coverage gaps](../../../docs/puzzle-collection.md).
    Preserve display aliases: Binairo and Tango stay separate (Tango adds relation
    signs); Queens is the one-star presentation of `Family: starbattle` (`Stars: 1`,
    `queens_*` files and wording); `Family: queens` remains a compatibility alias.
@@ -38,7 +40,10 @@ Full workflow, options and traps: [workflow notes](references/workflow.md).
    ```
    `--open-share` sets empty (Binairo/Tango) or unknown (Minesweeper) cells;
    `--stars 1` makes a Queens board; `--grade` adds exact technique coverage to a
-   tier. `generate` only re-masks/mutates a seed, so use it for variations, never to
+   tier. Bridges has a `fresh` builder: it grows a non-crossing connected network,
+   derives island numbers, and rejects non-unique boards. Its `--open-share`
+   controls the density of extra links, not hidden island numbers.
+   `generate` only re-masks/mutates a seed, so use it for variations, never to
    fill a tier with copies; `--as-family` is only for compatible aliases. Keep
    Towers at 6×6 or smaller, Pattern at 15 cells a line and Magnets at even sides.
 4. Rate before adding or describing a candidate. Only unique, deductively solved,
@@ -48,8 +53,8 @@ Full workflow, options and traps: [workflow notes](references/workflow.md).
    `uv run puzzle-lab search examples --family tango --tier hard --json`.
 6. Place approved originals as `<family>_<n>_<size>[_<variant>].txt`, numbered from
    easiest to hardest; leave tier words out of names. Renumber later files and
-   pictures when inserting, update the tier table in
-   [the collection](../../../docs/puzzle-collection.md), and re-export the web
+   pictures when inserting, record any unreachable tier under coverage gaps in
+   [grading and auditing](../../../docs/puzzle-collection.md), and re-export the web
    collection. Run `uv run puzzle-lab audit examples`: fix a shared solution or
    layout with a fresh board or new seed, never by turning or relabelling a copy.
    Give every example its own seed. Run `uv run pytest -q
