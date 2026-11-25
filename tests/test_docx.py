@@ -426,6 +426,43 @@ def test_other_families_get_rules_puzzle_and_solution(name, tmp_path):
     assert len(document.inline_shapes) == 2
 
 
+def test_rooms_booklet_prints_intro_rules_clues_question_and_solution(tmp_path):
+    """A rooms page carries the prose itself: the plan picture leaves the clues out."""
+    from csp import rooms
+
+    source = example("rooms_2_5x7.txt")
+    text = source.read_text()
+    presentation = load_presentation(text)
+    puzzle = rooms.parse(text)
+    out = tmp_path / "rooms.docx"
+    assert main([str(source), "--docx", str(out)]) == 0
+    document = Document(str(out))
+    texts = [paragraph.text for paragraph in document.paragraphs]
+    joined = "\n".join(texts)
+    assert presentation.intro and presentation.intro[0] in texts
+    assert "Rules" in texts and "Clues" in texts and "Who is where" in texts
+    for number, sentence in enumerate(puzzle.clue_lines, 1):
+        assert f"{number}. {sentence}" in texts
+    assert presentation.question in texts
+    reveal = " ".join(presentation.reveal)
+    assert reveal and reveal in texts
+    assert joined.index(reveal) > joined.index("Who is where")
+    # One plan per page, plus a key thumbnail for every room property.
+    assert len(document.inline_shapes) == 2 + 2 * len(puzzle.tags)
+
+
+def test_a_rooms_picture_can_leave_its_clues_and_key_out():
+    from csp import picture, rooms
+
+    puzzle = rooms.parse(example("rooms_2_5x7.txt").read_text())
+    full = picture.rooms_picture(puzzle, cell=60)
+    bare = picture.rooms_picture(puzzle, cell=60, clue_lines=False, legend=False)
+    assert bare.size[1] < full.size[1]
+    phrase = puzzle.phrase(next(iter(puzzle.tags)))
+    assert phrase in full.to_svg()
+    assert phrase not in bare.to_svg()
+
+
 def test_sudoku_booklet_uses_readable_bold_pattern_narrative(tmp_path):
     out = tmp_path / "sudoku.docx"
     assert main([str(example("sudoku_17_9x9_pointing.txt")), "--docx", str(out)]) == 0

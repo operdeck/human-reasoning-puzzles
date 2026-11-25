@@ -487,6 +487,34 @@ def test_logic_grids_are_listed_but_not_playable(exported):
     assert bundle["unsupported"]
 
 
+def test_rooms_bundles_carry_the_text_beside_a_bare_plan(exported):
+    """A room puzzle is read-only, so its clues, key and question live in the panel."""
+    from csp import rooms
+
+    bundle = _bundle(exported, "rooms_2_5x7")
+    puzzle = rooms.parse(example("rooms_2_5x7.txt").read_text())
+    assert not bundle["playable"] and bundle["unsupported"]
+    assert bundle["size"] == [puzzle.height, puzzle.width]
+    assert bundle["clues"] == puzzle.clue_lines
+    assert [item["name"] for item in bundle["key"]] == [puzzle.phrase(tag) for tag in puzzle.tags]
+    assert all(item["svg"].startswith("<svg") for item in bundle["key"])
+    assert bundle["intro"] and bundle["question"]
+    assert bundle["headings"] == {
+        "rules_title": "Rules",
+        "clues": "Clues",
+        "question": "Question",
+        "key": "Key",
+    }
+    board = svg.ids((exported / bundle["static"]).read_text())
+    assert {
+        f"r{row}c{col}" for row in range(1, puzzle.height + 1) for col in range(1, puzzle.width + 1)
+    } <= set(board)
+    # The clues and the key are the page's text now, not a picture of them.
+    board_text = (exported / bundle["static"]).read_text()
+    assert puzzle.clue_lines[0] not in board_text
+    assert puzzle.phrase(next(iter(puzzle.tags))) not in board_text
+
+
 def test_calcudoku_cage_targets_are_editable_clues_not_hidden_givens(tmp_path):
     source = example("calcudoku_single_cell_cages.txt")
     assert cli.main([str(source), "--export", str(tmp_path)]) == 0

@@ -113,6 +113,7 @@ ALLOWED = {
         "murdoku_lower",
         "picture",
         "puzzlefile",
+        "rooms",
         "story",
     },
     "murdoku_board": {
@@ -167,6 +168,7 @@ ALLOWED = {
         "picture",
         "puzzlefile",
         "rectangles",
+        "rooms",
         "starbattle",
         "story",
         "svg",
