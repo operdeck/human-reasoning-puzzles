@@ -91,6 +91,15 @@ The repo is **public** (`origin` = `github.com/operdeck/human-reasoning-puzzles`
   single-purpose commits, and push them to the pull request as soon as the
   branch is worth reading instead of holding a long change on your disk until
   it feels finished.
+- **A puzzle's cast is content, never code.** An author's real people (and any
+  private cast) belong in the puzzle file only. Docstrings, tests, examples and
+  docs use neutral stand-ins (Ada, Ben, Cleo, Dirk), and a family's module, its
+  fixtures and its release note never name someone's family.
+- **Puzzle-authoring rules belong in the lab.** When a puzzle needs a rule beyond
+  a correct answer — only certain clue kinds, no alias twice, one person
+  discovered last — add it to the tooling and test it there, not to a one-off
+  script: `csp.rooms_search` with `puzzle-lab rooms-clues` and `rooms-check`
+  searches and verifies such a brief (this generalises to other families).
 - **Keep CI under 20 minutes and relevant local test runs usually under two
   minutes.** CI must still cover every puzzle and suite; optimize or split
   expensive tests rather than dropping coverage or letting CI run indefinitely.

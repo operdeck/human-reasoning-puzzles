@@ -46,6 +46,12 @@ Full workflow, options and traps: [workflow notes](references/workflow.md).
    `generate` only re-masks/mutates a seed, so use it for variations, never to
    fill a tier with copies; `--as-family` is only for compatible aliases. Keep
    Towers at 6×6 or smaller, Pattern at 15 cells a line and Magnets at even sides.
+   Rooms puzzles have their own lab tools: give the plan a `Solution:` line and no
+   clues, then `uv run puzzle-lab rooms-clues plan.txt --clues 10 --kinds
+   in,dir,beside,empty --last Ada --output puzzle.txt` searches for a set that is
+   unique, needs every clue, pins nobody on a single clue, uses only those kinds
+   (emptiness only as empty or not empty) and leaves the named person last;
+   `rooms-check` verifies a finished file against the same brief.
 4. Rate before adding or describing a candidate. Only unique, deductively solved,
    nontrivial boards qualify; preserve family, grade, tier and uniqueness. Check
    structural triviality too (Puzzle Lab marks it). Never promote an unrated board.

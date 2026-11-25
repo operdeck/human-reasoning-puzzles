@@ -72,6 +72,23 @@ confirms one solution. Every command accepts `-h/--help`.
 | `--as-family {queens,binairo,tango}` | Compatible display alias only. |
 | `--seed N`, `--attempts N` | Reproducibility and budget. |
 
+### `rooms-clues` and `rooms-check`
+
+`rooms-clues` searches a rooms plan for a clue set that fits an author's brief;
+`rooms-check` verifies a finished file against the same brief.
+
+| Option | Meaning |
+|---|---|
+| `PLAN` / `PUZZLE` | A rooms file with a `Solution: Ada=a Ben=b` line and no clues, or a finished puzzle. |
+| `--output FILE` | Where `rooms-clues` writes the puzzle. |
+| `--clues N` | The most clues to keep (default 10). |
+| `--kinds a,b` | Allowed clue kinds: `in`, `dir`, `beside`, `empty`, `together`, `alone`, `choice`. Emptiness may only be `= 0` or `>= 1`, never another number. |
+| `--last PERSON` | The person who must be the final placement (a late discovery). |
+| `--seed N`, `--attempts N`, `--seconds S` | Reproducibility and the search budget. |
+
+Both insist that the answer is unique, every clue is needed, no single clue fixes
+anyone in one room and no room or group is named twice.
+
 ### `fresh`
 
 | Option | Meaning |

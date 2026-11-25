@@ -130,6 +130,7 @@ ALLOWED = {
     "starbattle": {"core", "regiongrid", "icons"},
     "logicgrid": {"core", "puzzlefile"},
     "rooms": {"core", "puzzlefile"},
+    "rooms_search": {"bruteforce", "core", "puzzlefile", "rooms"},
     "binairo": {"core", "puzzlefile", "icons"},
     "tents": {"core", "puzzlefile", "icons"},
     "minesweeper": {"core", "puzzlefile", "icons"},
