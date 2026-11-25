@@ -65,6 +65,7 @@ def test_every_clue_kind_means_what_it_says():
         "not (Cleo alone)",
         "exactly 1 of (Ada in area:window; Ben in area:e)",
         "Cleo dir:up Ada",
+        "Ben beside Cleo",
     )
     puzzle = rooms.parse(puzzle_with("\n".join(clues) + "\n"))
     assert len(puzzle.clues) == len(clues)
@@ -72,6 +73,16 @@ def test_every_clue_kind_means_what_it_says():
         assert clue.holds(PLACEMENT, puzzle), clue.describe(puzzle)
     wrong = dict(PLACEMENT, Ben="e")
     assert not all(clue.holds(wrong, puzzle) for clue in puzzle.clues)
+
+
+def test_a_beside_clue_needs_touching_rooms():
+    puzzle = rooms.parse(puzzle_with("Ada beside Ben\n"))
+    beside = rooms.Beside("Ada", "Ben")
+    assert beside.holds({"Ada": "c", "Ben": "a"}, puzzle)  # side by side
+    assert beside.holds({"Ada": "a", "Ben": "a"}, puzzle)  # one room
+    assert not beside.holds({"Ada": "e", "Ben": "a"}, puzzle)  # not touching
+    assert not beside.holds({"Ada": "b", "Ben": "c"}, puzzle)  # diagonal only
+    assert rooms.Beside("Ada", "Ben", True).holds({"Ada": "e", "Ben": "a"}, puzzle)
 
 
 def test_format_clue_round_trips_every_kind():
@@ -84,6 +95,8 @@ def test_format_clue_round_trips_every_kind():
         "not (Cleo alone)",
         "exactly 1 of (Ada in area:e; Ben in area:e)",
         "Ada dir:up Cleo",
+        "Ben beside Cleo",
+        "not (Ada beside Cleo)",
     )
     puzzle = rooms.parse(puzzle_with("\n".join(clues) + "\n"))
     for clue in puzzle.clues:
@@ -257,8 +270,17 @@ def test_a_group_count_falls_back_to_its_tag_name_and_dutch_reads_right():
     )
     puzzle = rooms.parse(text + "Clues:\ncount (people in area:window) = 0\n")
     assert puzzle.sentence(1) == "De kamers met een raam zijn leeg."
+    puzzle = rooms.parse(text + "Clues:\ncount (people in area:window) >= 1\n")
+    assert puzzle.sentence(1) == "De kamers met een raam zijn niet leeg."
     plain = rooms.parse(
-        BASE.replace("Language: en", "Language: nl")
-        + "Clues:\ncount (people in area:window) >= 1\n"
+        BASE.replace("Language: en", "Language: nl") + "Clues:\ncount (people in area:e) >= 1\n"
     )
-    assert plain.sentence(1) == "De windowkamers bevatten samen minstens één persoon."
+    assert plain.sentence(1) == "De attic is niet leeg."
+
+
+def test_an_area_that_may_not_be_empty_reads_as_such():
+    puzzle = rooms.parse(puzzle_with("count (people in area:a) >= 1\n"))
+    assert puzzle.sentence(1) == "The living room is not empty."
+    group = with_words(BASE, "window: a room with a window | the rooms with a window")
+    puzzle = rooms.parse(group + "Clues:\ncount (people in area:window) >= 1\n")
+    assert puzzle.sentence(1) == "The rooms with a window are not empty."

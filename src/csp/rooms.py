@@ -11,33 +11,37 @@ variables: a small model that still asks real questions.
 A puzzle file:
 
     Family: rooms
-    Language: nl
+    Language: en
     Plan:
-    t t s
-    k u w
-    b g w
-    v g w
+    a a b
+    c d e
     Rooms:
-    t: 4 #CBE6B9 tuin
-    s: 1 #FADFB5 schuur
+    a: 3 #CBE6B9 living room
+    b: 1 #FADFB5 hall
+    c: 2 #C4DCF2 kitchen
+    d: 1 #F4CBC3 study
+    e: 2 #E8D5F2 attic
     Tags:
-    spiegel: k b v
+    window: a d e
     People:
-    Otto
-    Tjitske
+    Ada
+    Ben
+    Cleo
+    Dirk
     Clues:
-    Jos in area:keuken
-    not (Otto in area:spiegel)
-    count (people in area:tuin) = 1
-    Tjitske alone
-    Otto together Tjitske
-    Anna dir:up Tim
-    exactly 1 of (Tjitske in area:spiegel; Tjippie in area:spiegel)
+    Ada in area:c
+    not (Ben in area:window)
+    count (people in area:a) = 2
+    Cleo alone
+    Ada together Cleo
+    Ben dir:up Ada
+    Dirk beside Cleo
+    exactly 1 of (Ben in area:e; Dirk in area:e)
 
 `Plan:` positions the rooms on a grid for direction clues; a room may cover
 several plan cells. A clue may end in `| wording` to replace the generated
 sentence, and `Words:` renames a room or a group in the text the solver writes
-("t: de tuin").
+("a: the living room").
 """
 
 import itertools
@@ -111,6 +115,7 @@ _COUNT = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s
 _IN = re.compile(r"^(\S+)\s+in\s+area:(\S+)$")
 _ALONE = re.compile(r"^(\S+)\s+alone$")
 _PAIR = re.compile(r"^(\S+)\s+(together|apart)\s+(\S+)$")
+_BESIDE = re.compile(r"^(\S+)\s+beside\s+(\S+)$")
 _DIRECTION = re.compile(r"^(\S+)\s+dir:(up|down|left|right)\s+(\S+)$")
 _CHOICE = re.compile(r"^exactly\s+(\d+)\s+of\s*\((.*)\)$")
 _ROOM_LINE = re.compile(r"^(\S+)\s*:\s*(\d+)\s+(#[0-9A-Fa-f]{6})\s*(.*)$")
@@ -182,6 +187,10 @@ class Population:
             return f"{place} are empty." if group else f"{place} is empty."
         word = number_word(puzzle.language, self.number)
         count = COUNT_WORDS[puzzle.language][self.operator]
+        if self.operator == ">=" and self.number == 1:
+            if puzzle.language == "nl":
+                return f"{place} {'zijn niet leeg.' if group else 'is niet leeg.'}"
+            return f"{place} {'are not empty.' if group else 'is not empty.'}"
         if puzzle.language == "nl":
             people = "persoon" if self.number == 1 else "personen"
             verb = "bevatten samen" if group else "bevat"
@@ -224,8 +233,33 @@ class Company:
 
     def describe(self, puzzle: "Puzzle") -> str:
         if puzzle.language == "nl":
-            return f"{self.first} en {self.second} zitten {'' if self.together else 'niet '}samen."
+            return f"{self.first} en {self.second} zaten {'' if self.together else 'niet '}samen."
         return f"{self.first} and {self.second} are {'' if self.together else 'not '}together."
+
+
+@dataclass(frozen=True)
+class Beside:
+    """Two people share a room or stand in rooms that touch along a side."""
+
+    first: str
+    second: str
+    negated: bool = False
+
+    def holds(self, where: Mapping[str, str], puzzle: "Puzzle") -> bool:
+        first, second = where[self.first], where[self.second]
+        if first == second:
+            return not self.negated
+        touching = any(
+            (row + dr, col + dc) in puzzle.room(second).cells
+            for row, col in puzzle.room(first).cells
+            for dr, dc in STEPS.values()
+        )
+        return touching != self.negated
+
+    def describe(self, puzzle: "Puzzle") -> str:
+        if puzzle.language == "nl":
+            return f"{self.first} zat {'niet ' if self.negated else ''}naast {self.second}."
+        return f"{self.first} is {'not ' if self.negated else ''}next to {self.second}."
 
 
 @dataclass(frozen=True)
@@ -271,7 +305,7 @@ class Choice:
 
 
 Simple = InRoom | Population | Alone
-ClueType = Simple | Company | Choice | Direction
+ClueType = Simple | Company | Beside | Choice | Direction
 
 
 def number_word(language: str, number: int) -> str:
@@ -488,6 +522,8 @@ def parse_clue(line: str, puzzle: Puzzle) -> ClueType:
         return Alone(match[1])
     if match := _PAIR.match(line):
         return Company(match[1], match[3], match[2] == "together")
+    if match := _BESIDE.match(line):
+        return Beside(match[1], match[2])
     if match := _DIRECTION.match(line):
         return Direction(match[1], match[2], match[3])
     raise ValueError(f"bad room clue {line!r}")
@@ -501,13 +537,17 @@ def parse_clause(line: str, puzzle: Puzzle) -> Simple:
     return clue
 
 
-def negate(clue: ClueType) -> Simple:
-    """The opposite of a room clause that can be negated."""
+def negate(clue: ClueType) -> ClueType:
+    """The opposite of a clue that can be negated."""
     if isinstance(clue, InRoom):
         return InRoom(clue.person, clue.area, True)
     if isinstance(clue, Alone):
         return Alone(clue.person, True)
-    raise ValueError("only a room clause or 'alone' can be negated")
+    if isinstance(clue, Beside):
+        return Beside(clue.first, clue.second, not clue.negated)
+    if isinstance(clue, Company):
+        return Company(clue.first, clue.second, not clue.together)
+    raise ValueError("only a room clause, a pair or 'alone' can be negated")
 
 
 def format_clue(clue: ClueType) -> str:
@@ -522,6 +562,9 @@ def format_clue(clue: ClueType) -> str:
         return f"not ({text})" if clue.negated else text
     if isinstance(clue, Company):
         return f"{clue.first} {'together' if clue.together else 'apart'} {clue.second}"
+    if isinstance(clue, Beside):
+        text = f"{clue.first} beside {clue.second}"
+        return f"not ({text})" if clue.negated else text
     if isinstance(clue, Choice):
         return f"exactly {clue.number} of ({'; '.join(format_clue(atom) for atom in clue.atoms)})"
     assert isinstance(clue, Direction)
@@ -683,6 +726,15 @@ def _compile_clue(
             return clue.holds(placed, puzzle)
 
         model.relate(name, (clue.first, clue.second), holding)
+    elif isinstance(clue, Beside):
+        labels = {room.label: room.key for room in puzzle.rooms}
+        side: dict[str, str] = {}
+
+        def touching(first: str, second: str) -> bool:
+            side[clue.first], side[clue.second] = labels[first], labels[second]
+            return clue.holds(side, puzzle)
+
+        model.relate(name, (clue.first, clue.second), touching)
     elif isinstance(clue, Alone):
         others = [other for other in puzzle.people if other != clue.person]
         literals = [shares.literal(clue.person, other) for other in others]
@@ -864,6 +916,7 @@ def candidate_clues(puzzle: Puzzle, where: Mapping[str, str]) -> list[tuple[int,
             if other > person:
                 same = where[other] == where[person]
                 found.add((4 if same else 6, format_clue(Company(person, other, same))))
+                add(6, Beside(person, other))
         for step in STEPS:
             for other in puzzle.people:
                 if other != person:
