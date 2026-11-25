@@ -56,13 +56,19 @@ play link remain available when JavaScript is disabled.
 - **Family boundary:** family knowledge lives in `src/csp/web.py`, not in
   TypeScript. After changing `web/`, run `npx tsc --noEmit` and `npm test`.
 - **Grades:** puzzle entries show a player-facing label instead of the solver's
-  internal rule name (`single`, `relations`, …), and a “What do these labels
-  mean?” glossary beside the list defines each label and the “beyond deduction”
-  badge. Labels, definitions and glossary copy live in `web/src/grades.mjs`,
+  internal rule name (`single`, `relations`, …), and a “Difficulty ratings”
+  glossary beside the list defines each label and the “beyond deduction”
+  badge. Each puzzle page shows the same label in small letters under its
+  title. Labels, definitions and glossary copy live in `web/src/grades.mjs`,
   which `scripts/prerender.mjs` imports as well, so the static pages, the puzzle
   descriptions and the player agree; `index.json` keeps the raw grade for
   tooling. A new rung on the solver's ladder needs an entry there, and an
   unknown grade stays visible under its raw name.
+- **Family anchors:** every index section has an id from `web/src/sections.mjs`
+  (`#family-` plus the section label in lowercase words, e.g.
+  `#family-tents-and-trees`), in both the prerendered and the live index. The
+  router opens the index at such a hash instead of treating it as a puzzle id;
+  the README gallery links to these anchors.
 
 ## Installable app (PWA)
 
