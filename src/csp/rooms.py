@@ -85,6 +85,7 @@ LABELS = {
         "one_room": "each person is in one room",
         "capacities": "room capacity",
         "clue": "a clue",
+        "rule": "a puzzle rule",
         "sharing": "sharing a room",
         "shared": "{first} and {second} share a room",
         "state": "{name} state",
@@ -97,6 +98,7 @@ LABELS = {
         "one_room": "iedereen staat in één kamer",
         "capacities": "capaciteit per kamer",
         "clue": "een aanwijzing",
+        "rule": "een spelregel",
         "sharing": "samen in een kamer",
         "shared": "{first} en {second} delen een kamer",
         "state": "{name}: toestand",
@@ -112,6 +114,7 @@ def labels(language: str) -> dict[str, str]:
 
 
 _COUNT = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$")
+_ALLOWED = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s+in\s+([\d,\s]+)$")
 _IN = re.compile(r"^(\S+)\s+in\s+area:(\S+)$")
 _ALONE = re.compile(r"^(\S+)\s+alone$")
 _PAIR = re.compile(r"^(\S+)\s+(together|apart)\s+(\S+)$")
@@ -220,6 +223,32 @@ class Alone:
 
 
 @dataclass(frozen=True)
+class Allowed:
+    """How many people an area holds, chosen from a set of counts."""
+
+    area: str
+    numbers: tuple[int, ...]
+
+    def holds(self, where: Mapping[str, str], puzzle: "Puzzle") -> bool:
+        rooms = puzzle.areas(self.area)
+        return sum(room in rooms for room in where.values()) in self.numbers
+
+    def describe(self, puzzle: "Puzzle") -> str:
+        group = len(puzzle.areas(self.area)) > 1
+        place = puzzle.group_phrase(self.area) if group else puzzle.phrase(self.area)
+        place = place[:1].upper() + place[1:]
+        joiner = " of " if puzzle.language == "nl" else " or "
+        joined = joiner.join(number_word(puzzle.language, number) for number in self.numbers)
+        if puzzle.language == "nl":
+            people = "persoon" if self.numbers == (1,) else "personen"
+            verb = "bevatten" if group else "bevat"
+            return f"{place} {verb} {joined} {people}."
+        people = "person" if self.numbers == (1,) else "people"
+        verb = "hold" if group else "holds"
+        return f"{place} {verb} {joined} {people}."
+
+
+@dataclass(frozen=True)
 class Company:
     """Two people share a room, or they do not."""
 
@@ -305,7 +334,7 @@ class Choice:
 
 
 Simple = InRoom | Population | Alone
-ClueType = Simple | Company | Beside | Choice | Direction
+ClueType = Simple | Company | Beside | Choice | Direction | Allowed
 
 
 def number_word(language: str, number: int) -> str:
@@ -327,6 +356,8 @@ class Puzzle:
     wording: dict[int, str] = field(default_factory=dict)
     language: str = "en"
     group_words: dict[str, str] = field(default_factory=dict)
+    rules: tuple[ClueType, ...] = ()
+    rule_wording: dict[int, str] = field(default_factory=dict)
 
     def room(self, key: str) -> Room:
         """The room with that key."""
@@ -363,6 +394,17 @@ class Puzzle:
         if number in self.wording:
             return self.wording[number]
         return self.clues[number - 1].describe(self)
+
+    def rule_sentence(self, number: int) -> str:
+        """A puzzle rule as a sentence, with the file's `| wording` if it has one."""
+        if number in self.rule_wording:
+            return self.rule_wording[number]
+        return self.rules[number - 1].describe(self)
+
+    @property
+    def rule_lines(self) -> list[str]:
+        """Every puzzle rule as a sentence, numbered from one."""
+        return [self.rule_sentence(number) for number in range(1, len(self.rules) + 1)]
 
     @property
     def clue_lines(self) -> list[str]:
@@ -493,6 +535,15 @@ def parse(text: str) -> Puzzle:
     if language not in NUMBERS:
         raise ValueError(f"unknown Language {language!r}")
     empty = Puzzle(rooms, plan, tags, people, (), words, {}, language, group_words)
+    rules: list[ClueType] = []
+    rule_wording: dict[int, str] = {}
+    for number, line in enumerate(sections.get("Rules", []), 1):
+        written, _, text = line.partition("|")
+        rule = parse_clue(written.strip(), empty)
+        _check_names(rule, empty)
+        rules.append(rule)
+        if text.strip():
+            rule_wording[number] = text.strip()
     clues: list[ClueType] = []
     wording: dict[int, str] = {}
     for number, line in enumerate(sections.get("Clues", []), 1):
@@ -504,7 +555,19 @@ def parse(text: str) -> Puzzle:
             wording[number] = text.strip()
     if not clues:
         raise ValueError("Clues: needs at least one clue")
-    return Puzzle(rooms, plan, tags, people, tuple(clues), words, wording, language, group_words)
+    return Puzzle(
+        rooms,
+        plan,
+        tags,
+        people,
+        tuple(clues),
+        words,
+        wording,
+        language,
+        group_words,
+        tuple(rules),
+        rule_wording,
+    )
 
 
 def parse_clue(line: str, puzzle: Puzzle) -> ClueType:
@@ -514,6 +577,11 @@ def parse_clue(line: str, puzzle: Puzzle) -> ClueType:
         return Choice(int(match[1]), atoms)
     if line.startswith("not (") and line.endswith(")"):
         return negate(parse_clue(line[5:-1].strip(), puzzle))
+    if match := _ALLOWED.match(line):
+        numbers = tuple(sorted({int(number) for number in match[2].replace(" ", "").split(",")}))
+        if not numbers:
+            raise ValueError(f"bad room clue {line!r}")
+        return Allowed(match[1], numbers)
     if match := _COUNT.match(line):
         return Population(match[1], match[2], int(match[3]))
     if match := _IN.match(line):
@@ -557,6 +625,9 @@ def format_clue(clue: ClueType) -> str:
         return f"not ({text})" if clue.negated else text
     if isinstance(clue, Population):
         return f"count (people in area:{clue.area}) {clue.operator} {clue.number}"
+    if isinstance(clue, Allowed):
+        numbers = ", ".join(str(number) for number in clue.numbers)
+        return f"count (people in area:{clue.area}) in {numbers}"
     if isinstance(clue, Alone):
         text = f"{clue.person} alone"
         return f"not ({text})" if clue.negated else text
@@ -637,6 +708,12 @@ def _compile(text: str) -> tuple[Model, Puzzle, StoryWords]:
         )
     shares = _Shares(model, puzzle, say, words)
     seen: set[str] = set()
+    for number, rule in enumerate(puzzle.rules, 1):
+        name = puzzle.rule_sentence(number).removesuffix(".")
+        if name in seen:
+            raise ValueError(f"two rules read the same: {name!r}")
+        seen.add(name)
+        _compile_clue(model, puzzle, rule, shares, name, say, words, rule=True)
     for number, clue in enumerate(puzzle.clues, 1):
         name = puzzle.sentence(number).removesuffix(".")
         if name in seen:
@@ -708,13 +785,24 @@ def _compile_clue(
     name: str,
     say: dict[str, str],
     words: StoryWords,
+    *,
+    rule: bool = False,
 ) -> None:
     """Add the constraint a clue states, named after the sentence it reads as."""
+    family = say["rule"] if rule else say["clue"]
     if isinstance(clue, InRoom):
         literals = _room_literals(model, puzzle, clue.area, clue.person)
-        _count(model, name, literals, {0} if clue.negated else {1}, say)
+        _count(model, name, literals, {0} if clue.negated else {1}, say, family)
     elif isinstance(clue, Population):
-        _population(model, name, puzzle, clue, say)
+        _population(model, name, puzzle, clue, say, family)
+    elif isinstance(clue, Allowed):
+        rooms = puzzle.areas(clue.area)
+        literals = [
+            model.literal(person, puzzle.room(room).label)
+            for person in puzzle.people
+            for room in rooms
+        ]
+        _count(model, name, literals, set(clue.numbers), say, family)
     elif isinstance(clue, Company):
         model.relate(name, (clue.first, clue.second), lambda a, b: (a == b) == clue.together)
     elif isinstance(clue, Direction):
@@ -764,14 +852,14 @@ def _room_literals(model: Model, puzzle: Puzzle, area: str, person: str) -> list
 
 
 def _population(
-    model: Model, name: str, puzzle: Puzzle, clue: Population, say: dict[str, str]
+    model: Model, name: str, puzzle: Puzzle, clue: Population, say: dict[str, str], family: str
 ) -> None:
     """The count of people in an area, as one `COUNT` over its room literals."""
     rooms = puzzle.areas(clue.area)
     literals = [
         model.literal(person, puzzle.room(room).label) for person in puzzle.people for room in rooms
     ]
-    _count(model, name, literals, _allowed(literals, clue.operator, clue.number, name), say)
+    _count(model, name, literals, _allowed(literals, clue.operator, clue.number, name), say, family)
 
 
 def _allowed(literals: Sequence[int], operator: str, number: int, name: str) -> set[int]:
@@ -783,9 +871,16 @@ def _allowed(literals: Sequence[int], operator: str, number: int, name: str) -> 
 
 
 def _count(
-    model: Model, name: str, literals: Sequence[int], allowed: set[int], say: dict[str, str]
+    model: Model,
+    name: str,
+    literals: Sequence[int],
+    allowed: set[int],
+    say: dict[str, str],
+    family: str | None = None,
 ) -> None:
-    model.constrain(name, Kind.COUNT, literals, allowed_counts=allowed, family=say["clue"])
+    model.constrain(
+        name, Kind.COUNT, literals, allowed_counts=allowed, family=family or say["clue"]
+    )
 
 
 def _reify(
@@ -882,7 +977,7 @@ def needs_everyone(clue: ClueType) -> bool:
     only judge them once the whole placement is known; a membership, a pair or a
     direction mentions everyone it depends on.
     """
-    if isinstance(clue, (Population, Alone)):
+    if isinstance(clue, (Population, Alone, Allowed)):
         return True
     return any(needs_everyone(atom) for atom in getattr(clue, "atoms", ()))
 

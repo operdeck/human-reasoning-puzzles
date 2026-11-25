@@ -1042,7 +1042,8 @@ def _rooms_clues_command(args: argparse.Namespace) -> int:
         return 1
     Path(args.output).write_text(found)
     findings, problems = rooms_search.check(found, brief)
-    print(f"wrote {args.output}: {len(findings)} clues")
+    _closed, grade, _fired = rooms_search.solve_report(found)
+    print(f"wrote {args.output}: {len(findings)} clues, grade {grade}")
     for finding in findings:
         print(f"  {finding.share:5.0%}  {finding.kind:8}  {finding.line}")
     for problem in problems:
@@ -1055,7 +1056,8 @@ def _rooms_check_command(args: argparse.Namespace) -> int:
     brief = _rooms_brief(args)
     text = Path(args.puzzle).read_text()
     findings, problems = rooms_search.check(text, brief)
-    print(f"{args.puzzle}: {len(findings)} clues")
+    _closed, grade, _fired = rooms_search.solve_report(text)
+    print(f"{args.puzzle}: {len(findings)} clues, grade {grade}")
     for finding in findings:
         state = "needed" if finding.needed else "NOT NEEDED"
         pins = f"pins {', '.join(finding.pins)}" if finding.pins else "no pin"
@@ -1206,7 +1208,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--kinds",
         help=f"comma-separated clue kinds to allow: {', '.join(sorted(rooms_search.BRIEF_KINDS))}",
     )
-    rooms_parser.add_argument("--last", help="a person who must be the final placement")
+    rooms_parser.add_argument("--last", help="a person a clue must settle last (late discovery)")
     rooms_parser.add_argument("--seed", type=int, default=0)
     rooms_parser.add_argument("--attempts", type=int, default=200)
     rooms_parser.add_argument("--seconds", type=float, default=120.0)
@@ -1221,7 +1223,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--kinds",
         help=f"comma-separated clue kinds to allow: {', '.join(sorted(rooms_search.BRIEF_KINDS))}",
     )
-    check_parser.add_argument("--last", help="a person who must be the final placement")
+    check_parser.add_argument("--last", help="a person a clue must settle last (late discovery)")
     check_parser.set_defaults(run=_rooms_check_command)
 
     args = parser.parse_args(argv)

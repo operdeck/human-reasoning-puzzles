@@ -75,7 +75,26 @@ def test_every_clue_kind_means_what_it_says():
     assert not all(clue.holds(wrong, puzzle) for clue in puzzle.clues)
 
 
-def test_a_beside_clue_needs_touching_rooms():
+def test_a_rule_holds_for_every_answer_and_can_be_worded():
+    rule = "count (people in area:e) in 0, 2 | De zolder is leeg of telt twee mensen."
+    text = BASE.replace("Clues:\n", f"Rules:\n{rule}\nClues:\n")
+    puzzle = rooms.parse(text + "Ada in area:c\n")
+    assert len(puzzle.rules) == 1
+    assert isinstance(puzzle.rules[0], rooms.Allowed)
+    assert puzzle.rules[0].numbers == (0, 2)
+    assert puzzle.rule_lines == ["De zolder is leeg of telt twee mensen."]
+    assert rooms.format_clue(puzzle.rules[0]) == "count (people in area:e) in 0, 2"
+    assert rooms.parse_clue(rooms.format_clue(puzzle.rules[0]), puzzle) == puzzle.rules[0]
+    for where in bruteforce.solutions(text + "Ada in area:c\n", "rooms", limit=20):
+        assert list(where.values()).count("attic") in (0, 2)
+
+
+def test_a_rule_reads_as_a_sentence_without_its_own_wording():
+    text = BASE.replace("Clues:\n", "Rules:\ncount (people in area:window) in 0, 2\nClues:\n")
+    puzzle = rooms.parse(text + "Ada in area:c\n")
+    assert puzzle.rule_lines == ["The window rooms hold no or two people."]
+    model, _ = rooms.compile_puzzle(text + "Ada in area:c\n")
+    assert any(constraint.family == "a puzzle rule" for constraint in model.constraints)
     puzzle = rooms.parse(puzzle_with("Ada beside Ben\n"))
     beside = rooms.Beside("Ada", "Ben")
     assert beside.holds({"Ada": "c", "Ben": "a"}, puzzle)  # side by side

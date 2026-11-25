@@ -65,7 +65,6 @@ def test_the_search_fits_a_brief_and_the_check_agrees():
     brief = rooms_search.Brief(
         clues=6,
         kinds=frozenset({"in", "dir", "beside", "empty"}),
-        last="Ben",
         attempts=20,
         seconds=30.0,
         seed=3,
@@ -77,6 +76,16 @@ def test_the_search_fits_a_brief_and_the_check_agrees():
     assert 1 <= len(findings) <= 6
     assert all(finding.needed and not finding.pins for finding in findings)
     assert all(finding.kind in brief.kinds for finding in findings)
+
+
+def test_a_late_discovery_names_the_last_person_a_clue_settles():
+    """The ladder's order tells which clue-named person is discovered last."""
+    surface, _ = rooms_search.read_plan(PLAN)
+    clues = ["Ada in area:c", "count (people in area:a) = 2", "Ben in area:clock"]
+    order = rooms_search.placement_order(surface, clues)
+    assert order, "the ladder should place someone"
+    assert rooms_search.placements_last(surface, clues, order[-1])
+    assert not rooms_search.placements_last(surface, clues, "Dirk")
 
 
 def test_the_check_names_a_number_a_reused_area_and_a_missing_room_alias():

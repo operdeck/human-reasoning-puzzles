@@ -38,7 +38,9 @@ def _walk(puzzle: Puzzle, limit: int | None) -> list[dict[str, str]]:
                 continue
             where[person] = room.key
             used[room.key] += 1
-            if all(clue.holds(where, puzzle) for clue in puzzle.clues if ready(clue)):
+            if all(
+                clue.holds(where, puzzle) for clue in (*puzzle.rules, *puzzle.clues) if ready(clue)
+            ):
                 search()
             used[room.key] -= 1
             del where[person]

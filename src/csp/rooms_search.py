@@ -15,9 +15,9 @@ A plan file is a rooms puzzle with a `Solution: Ada=a Ben=b` line and no clues.
 import random
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
-from . import bruteforce, rooms
+from . import bruteforce, report, rooms
 from .bruteforce import rooms as brute
 from .core import Model, Solver
 from .puzzlefile import read_sections
@@ -74,20 +74,11 @@ def plan_puzzle(text: str) -> tuple[str, dict[str, str], rooms.Puzzle]:
     surface, solution = read_plan(text)
     first = surface.split("Plan:\n")[1].split()[0]
     parsed = rooms.parse(surface + f"Clues:\ncount (people in area:{first}) >= 0\n")
-    return (
-        surface,
-        solution,
-        rooms.Puzzle(
-            parsed.rooms,
-            parsed.plan,
-            parsed.tags,
-            parsed.people,
-            (),
-            parsed.words,
-            {},
-            parsed.language,
-        ),
-    )
+    puzzle = replace(parsed, clues=(), wording={})
+    for rule in puzzle.rules:
+        if not rule.holds(solution, puzzle):
+            raise ValueError(f"the plan breaks the rule {rule.describe(puzzle)!r}")
+    return surface, solution, puzzle
 
 
 def with_clues(surface: str, clues: list[str]) -> str:
@@ -168,10 +159,41 @@ def solved(surface: str, clues: list[str]) -> Model:
     return model
 
 
-def placements_last(model: Model, person: str) -> bool:
-    """Whether `person` is the final person the ladder places."""
-    placed = [step.var for step in model.log if step.asserted and step.var in model.variables]
-    return bool(placed) and placed[-1] == person and person not in placed[:-1]
+def solve_report(text: str) -> tuple[bool, str, list[str]]:
+    """Whether the ladder closes the puzzle, its grade, and the rules it fired."""
+    model = rooms.compile_puzzle(text)[0]
+    fired: list[str] = []
+    result = Solver(model).solve(on_step=lambda rule, steps: fired.append(rule))
+    return result.solved, (report.grade(fired) if result.solved else "unsolved"), fired
+
+
+def placement_order(surface: str, clues: list[str]) -> list[str]:
+    """The people the ladder fixes, in the order it fixes them."""
+    model = rooms.compile_puzzle(with_clues(surface, clues))[0]
+    order: list[str] = []
+
+    def watch(rule: str, steps: object) -> None:
+        for person in model.variables:
+            if model.chosen(person) is not None and person not in order:
+                order.append(person)
+
+    Solver(model).solve(on_step=watch)
+    return order
+
+
+def placements_last(surface: str, clues: list[str], person: str) -> bool:
+    """Whether `person` is the last clue-named person the ladder fixes.
+
+    A seat can also fall to whoever is left over, or to a puzzle rule that fills a
+    room. A late discovery means the answer itself is the last thing a clue
+    settles, so only people some clue names are counted.
+    """
+    text = with_clues(surface, clues)
+    named: set[str] = set()
+    for clue in rooms.parse(text).clues:
+        named |= rooms.people_of(clue)
+    determined = [name for name in placement_order(surface, clues) if name in named]
+    return bool(determined) and determined[-1] == person
 
 
 def fits(brief: Brief, surface: str, puzzle: rooms.Puzzle, clues: list[str]) -> bool:
@@ -182,7 +204,7 @@ def fits(brief: Brief, surface: str, puzzle: rooms.Puzzle, clues: list[str]) -> 
         return False
     if not unique(surface, clues) or not needed(surface, clues):
         return False
-    return not brief.last or placements_last(solved(surface, clues), brief.last)
+    return not brief.last or placements_last(surface, clues, brief.last)
 
 
 def search(text: str, brief: Brief = Brief()) -> str | None:
@@ -238,6 +260,9 @@ def check(text: str, brief: Brief = Brief()) -> tuple[list[Finding], list[str]]:
     problems = []
     if len(findings) > brief.clues:
         problems.append(f"{len(findings)} clues; the brief allows at most {brief.clues}")
+    closed, _grade, _fired = solve_report(text)
+    if not closed:
+        problems.append("the ladder stalls on this clue set")
     for finding in findings:
         if finding.kind not in brief.kinds:
             problems.append(f"{finding.line!r} uses the kind {finding.kind!r}")
@@ -249,6 +274,6 @@ def check(text: str, brief: Brief = Brief()) -> tuple[list[Finding], list[str]]:
             problems.append(f"{finding.line!r} pins {', '.join(finding.pins)} on its own")
     if brief.aliases_once and not areas_once(clues):
         problems.append("an area is named by more than one clue")
-    if brief.last and not placements_last(solved(header, clues), brief.last):
+    if brief.last and not placements_last(header, clues, brief.last):
         problems.append(f"{brief.last} is not the last person placed")
     return findings, problems
