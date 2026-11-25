@@ -148,7 +148,7 @@ def test_every_playable_cell_is_on_the_board(exported):
 
 
 def test_murdoku_bundle_has_everything_to_play(exported):
-    bundle = _bundle(exported, "wie-doet-het-met-wie-2")
+    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
     assert bundle["family"] == "murdoku"
     assert bundle["playable"]
     assert bundle["placement"]["perItem"] == 1
@@ -614,7 +614,7 @@ def test_murdoku_web_key_lists_board_symbols_only(exported):
         for item in point["key"]
     )
 
-    counted = _bundle(exported, "samen-in-japan")
+    counted = _bundle(exported, "japan-3-samen-in-japan")
     assert counted["key"] == []
 
 
@@ -649,12 +649,12 @@ EXPORTED_PROSE = {
         "De verzorger deelt een gebied met precies één ander persoon, en dat is een dier.",
         "In het gebied van iedere aap staan minstens twee personen.",
     ),
-    "samen-in-de-blauwe-bladeren": (
+    "japan-1-samen-in-de-blauwe-bladeren": (
         "Gebied Hiroshima en gebied Okinawa hebben evenveel personen.",
         "Gebied Okinawa heeft minder personen dan elk gebied met een vrij vakje "
         "behalve gebied Hiroshima.",
     ),
-    "wie-doet-het-met-wie-2": ("Wouter deelt een gebied met precies één ander persoon.",),
+    "wie-doet-het-met-wie-1": ("Wouter deelt een gebied met precies één ander persoon.",),
     "menu-murdoku-1": ("Vla deelt een gebied met precies twee andere personen.",),
     "berghut-murdoku-2": (
         "Ute en Gerhard staan minstens drie rijen óf minstens drie kolommen van elkaar af.",
@@ -817,7 +817,7 @@ def test_dutch_sudoku_web_rules_are_localized():
 
 
 def test_placement_puzzles_without_at_most_one_rules_get_no_peers(exported):
-    bundle = _bundle(exported, "wie-doet-het-met-wie-2")
+    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
     assert "peers" not in bundle
     assert "notes" not in bundle
 
@@ -853,7 +853,7 @@ def test_index_is_numbered_in_reading_order_with_category_sections(exported):
 
 
 def test_author_wordings_reach_the_web_player(exported):
-    bundle = _bundle(exported, "wie-doet-het-met-wie-1")
+    bundle = _bundle(exported, "wie-doet-het-met-wie-3")
     texts = [entry["text"] for entry in bundle["clueEntries"]]
     assert "Precies twee mensen staan op een badjas." in texts
     assert "Precies één persoon staat op een paar sloffen." in texts

@@ -259,7 +259,7 @@ Ada
         ("food-murdoku-3.txt", ("Jos shares an area with exactly two other dishes",)),
         ("menu-murdoku-2.txt", ("De vla deelt haar dag met precies twee andere gerechten",)),
         ("menu-murdoku-3.txt", ("De vla deelt haar dag met precies twee andere gerechten",)),
-        ("wie-doet-het-met-wie-1.txt", ("Wouter deelt een kamer met precies één andere gast",)),
+        ("wie-doet-het-met-wie-3.txt", ("Wouter deelt een kamer met precies één andere gast",)),
         (
             "zoo-murdoku-1.txt",
             (
@@ -620,7 +620,9 @@ def test_shared_area_exclusions_are_grouped_without_losing_regions(
 )
 def test_direction_boundary_includes_prior_exclusions(numbered, language, clue, empty, bound):
     source = (
-        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+        example("japan-2-samen-onderweg.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
     )
     paragraphs = murdoku_story.explain(source, numbered=numbered).paragraphs
     direction = next(paragraph for paragraph in paragraphs if bound in paragraph)
@@ -631,7 +633,7 @@ def test_direction_boundary_includes_prior_exclusions(numbered, language, clue, 
 
 
 def test_direction_boundary_candidate_bounds_are_lowercase_after_prefix():
-    text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
+    text = murdoku_story.explain(example("japan-2-samen-onderweg.txt").read_text()).markdown()
     assert "Met de eerdere beperkingen geldt: **voor Haru blijven alleen de rijen" in text
     assert "Met de eerdere beperkingen geldt: **voor Haru blijven alleen de kolommen" in text
 
@@ -646,7 +648,9 @@ def test_direction_boundary_candidate_bounds_are_lowercase_after_prefix():
 )
 def test_relation_deduction_names_earlier_placement(numbered, language, known, consequence):
     source = (
-        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+        example("japan-2-samen-onderweg.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
     )
     paragraphs = murdoku_story.explain(source, numbered=numbered).paragraphs
     deduction = next(paragraph for paragraph in paragraphs if consequence in paragraph)
@@ -745,7 +749,7 @@ def test_line_reservation_cites_prior_clue_exclusions(numbered):
 
 
 def test_exact_line_single_names_its_only_remaining_candidate():
-    text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
+    text = murdoku_story.explain(example("japan-2-samen-onderweg.txt").read_text()).markdown()
 
     assert (
         "In kolom 1 is alleen **Jun op r3k1** over; omdat daar precies één persoon moet staan, "
@@ -754,7 +758,7 @@ def test_exact_line_single_names_its_only_remaining_candidate():
 
 
 def test_exact_line_single_connects_a_direct_clue_to_the_removed_square():
-    text = murdoku_story.explain(example("samen-onderweg.txt").read_text()).markdown()
+    text = murdoku_story.explain(example("japan-2-samen-onderweg.txt").read_text()).markdown()
 
     assert (
         "*aanwijzing 7: Haru staat niet naast de torii* sluit r2k2 voor Haru uit; "
@@ -1264,7 +1268,9 @@ def test_full_board_row_and_column_sources_say_exactly_one(language, exact_row, 
 )
 def test_line_reservation_names_the_persons_shared_column(language, expected):
     text = (
-        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+        example("japan-2-samen-onderweg.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
     )
     story = murdoku_story.explain(text).markdown()
     assert expected in story
@@ -1297,7 +1303,7 @@ def test_thinning_preserves_required_role_deductions_not_just_visible_placements
         "murdoku_3_house.txt",
         "murdoku_composition.txt",
         "halloween-museum-1.txt",
-        "samen-onderweg.txt",
+        "japan-2-samen-onderweg.txt",
     ],
 )
 def test_expression_narration_names_every_placement_against_independent_solution(name):
@@ -1427,13 +1433,13 @@ EXPRESSION_PROSE = {
         "De verzorger deelt een gebied met precies één ander persoon, en dat is een dier.",
         "In het gebied van iedere aap staan minstens twee personen.",
     ),
-    "samen-in-de-blauwe-bladeren.txt": (
+    "japan-1-samen-in-de-blauwe-bladeren.txt": (
         "Gebied Hiroshima en gebied Okinawa hebben evenveel personen.",
         "Gebied Okinawa heeft minder personen dan elk gebied met een vrij vakje "
         "behalve gebied Hiroshima.",
     ),
+    "wie-doet-het-met-wie-1.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
     "wie-doet-het-met-wie-2.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
-    "wie-doet-het-met-wie-3.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
     "wie-doet-het-met-wie-4.txt": ("Wouter deelt een gebied met precies één ander persoon.",),
     "menu-murdoku-1.txt": ("Vla deelt een gebied met precies twee andere personen.",),
     "berghut-murdoku-2.txt": (
@@ -1442,7 +1448,7 @@ EXPRESSION_PROSE = {
     ),
     # Existing authored overrides and readable idioms must keep working.
     "food-murdoku-3.txt": ("Jos shares an area with exactly two other dishes.",),
-    "wie-doet-het-met-wie-1.txt": ("Wouter deelt een kamer met precies één andere gast.",),
+    "wie-doet-het-met-wie-3.txt": ("Wouter deelt een kamer met precies één andere gast.",),
     "wie-doet-het-met-wie-5.txt": (
         "Wouter wordt als laatste geplaatst en is alleen in een gebied met degene "
         "met wie hij het doet: iemand in een badjas.",
@@ -1481,7 +1487,7 @@ def test_expression_rules_read_as_player_prose(name):
 
 
 def test_samen_onderweg_solution_explains_relative_row_bounds():
-    paragraphs = murdoku_story.explain(example("samen-onderweg.txt").read_text()).paragraphs
+    paragraphs = murdoku_story.explain(example("japan-2-samen-onderweg.txt").read_text()).paragraphs
     deduction = next(
         paragraph
         for paragraph in paragraphs
@@ -1574,7 +1580,9 @@ def test_population_capacity_explains_the_people_comparison_and_empty_area(
     language, known, minimum, empty
 ):
     text = (
-        example("samen-onderweg.txt").read_text().replace("Language: nl", f"Language: {language}")
+        example("japan-2-samen-onderweg.txt")
+        .read_text()
+        .replace("Language: nl", f"Language: {language}")
     )
     result = murdoku_story.explain(text)
     paragraph = next(paragraph for paragraph in result.paragraphs if empty in paragraph)
@@ -1589,7 +1597,7 @@ def test_population_capacity_explains_the_people_comparison_and_empty_area(
 
 def test_population_capacity_fallback_still_names_the_floors_not_hidden_literals(monkeypatch):
     monkeypatch.setattr(murdoku_story._Narrator, "_population_evidence", lambda *_args: None)
-    text = example("samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
+    text = example("japan-2-samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
     words = murdoku_story.explain(text).markdown()
     assert "Tokyo area holding at least three people" in words
     assert "Osaka area holding at least two people" in words
@@ -1620,7 +1628,7 @@ def test_tied_populations_explain_geometric_capacity_before_using_the_equality(
     language, blocked, tied
 ):
     text = (
-        example("samen-in-de-blauwe-bladeren.txt")
+        example("japan-1-samen-in-de-blauwe-bladeren.txt")
         .read_text()
         .replace("Language: nl", f"Language: {language}")
     )
@@ -1644,7 +1652,7 @@ def test_population_ceiling_fallback_explains_the_bound_without_auxiliary_names(
 ):
     monkeypatch.setattr(murdoku_story._Narrator, "_population_tied", lambda *_args: None)
     text = (
-        example("samen-in-de-blauwe-bladeren.txt")
+        example("japan-1-samen-in-de-blauwe-bladeren.txt")
         .read_text()
         .replace("Language: nl", f"Language: {language}")
     )
@@ -1657,7 +1665,7 @@ def test_population_ceiling_fallback_explains_the_bound_without_auxiliary_names(
 
 @pytest.mark.parametrize("case", ["unannounced", "untied", "outside", "placement"])
 def test_tied_population_argument_requires_announced_blockers_and_matching_effects(case):
-    text = example("samen-in-de-blauwe-bladeren.txt").read_text()
+    text = example("japan-1-samen-in-de-blauwe-bladeren.txt").read_text()
     board, rules, clues = load_expression_board(text)
     compilation = compile_statements_with_origins(board, clues, rules=rules)
     if case == "untied":

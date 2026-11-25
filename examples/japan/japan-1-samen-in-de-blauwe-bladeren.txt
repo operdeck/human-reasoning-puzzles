@@ -1,6 +1,6 @@
 # Murdoku 9x9 -- "Samen in de Blauwe Bladeren" (area populations, a late reveal)
 #
-# The big sibling of samen-in-japan.txt and samen-onderweg.txt: nine clubbers,
+# The big sibling of japan-3-samen-in-japan.txt and japan-2-samen-onderweg.txt: nine clubbers,
 # five places, the same population theme on a board with room for more areas,
 # and one question instead of "where is everyone". Tokyo is the busiest and
 # Okinawa is one of the two quietest, so the pair only says "Tokyo holds the

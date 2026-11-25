@@ -4,7 +4,7 @@
 # needs a layout in which each of them rules something out; csp.clue_search
 # suggests the placement clues around the bonsai, temple, sushi bar and tatami.
 #
-# Reproduces the board of examples/japan/samen-in-japan.txt: seed 241,
+# Reproduces the board of examples/japan/japan-3-samen-in-japan.txt: seed 241,
 # candidate 22 (blobs).
 theme: japan-6x6
 size: 6

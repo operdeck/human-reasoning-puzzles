@@ -157,6 +157,15 @@ def test_no_two_examples_share_a_solution_or_a_layout():
     assert not found.shared_layouts, [[p.name for p in group] for group in found.shared_layouts]
 
 
+@pytest.mark.parametrize("category", ["japan", "wie-doet-het-met-wie"])
+def test_murdoku_series_run_from_easy_to_hard(category):
+    members = audit.profiles(path for path in played_examples() if path.parent.name == category)
+    assert members, category
+    assert not audit.audit(members).out_of_order, [
+        (member.path.name, member.grade) for member in members
+    ]
+
+
 def test_each_section_is_numbered_from_easy_to_hard():
     """`<family>_<n>_<size>...`: n counts up through a section, and difficulty never drops."""
     texts = {path: path.read_text() for path in NON_MURDOKU_FILES}

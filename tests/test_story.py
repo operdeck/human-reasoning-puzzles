@@ -401,7 +401,7 @@ def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal(
     Their names are engine labels, so a Dutch explanation has to say them in Dutch
     instead of quoting "Voor Hiroshima holds at least 2 ...".
     """
-    story = explain(example("samen-in-de-blauwe-bladeren.txt").read_text())
+    story = explain(example("japan-1-samen-in-de-blauwe-bladeren.txt").read_text())
     assert "holds at least" not in story
     assert "toegestane aantallen" not in story
     assert (
@@ -416,7 +416,7 @@ def test_story_never_reads_out_the_english_label_of_a_hidden_population_literal(
 
 def test_tied_population_explanation_uses_the_puzzles_own_names_and_language():
     text = (
-        example("samen-in-de-blauwe-bladeren.txt")
+        example("japan-1-samen-in-de-blauwe-bladeren.txt")
         .read_text()
         .replace("Language: nl", "Language: en")
         .replace("Hiroshima", "Harbor")
@@ -436,7 +436,7 @@ def test_tied_population_explanation_uses_the_puzzles_own_names_and_language():
 
 def test_tied_population_explanation_accepts_an_unnumbered_rule():
     text = _move_clue_to_rules(
-        example("samen-in-de-blauwe-bladeren.txt").read_text(), TIED_QUIETEST
+        example("japan-1-samen-in-de-blauwe-bladeren.txt").read_text(), TIED_QUIETEST
     )
     story = explain(text)
     assert (
@@ -447,7 +447,7 @@ def test_tied_population_explanation_accepts_an_unnumbered_rule():
 
 def test_story_says_area_capacity_the_way_a_person_does():
     """The count rule's shared-capacity step reads as the counting argument."""
-    story = explain(example("samen-onderweg.txt").read_text())
+    story = explain(example("japan-2-samen-onderweg.txt").read_text())
     assert "Keiko staat naast de lantaarn (3): **in Osaka**." in story
     assert "Mio zit op de bank (4): **in Osaka**." in story
     assert "Keiko en Mio zijn in Osaka, dus **daar zijn minstens twee mensen**." in story
@@ -465,7 +465,7 @@ def test_story_says_area_capacity_the_way_a_person_does():
 
 
 def test_story_explains_the_area_comparison_in_english():
-    text = example("samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
+    text = example("japan-2-samen-onderweg.txt").read_text().replace("Language: nl", "Language: en")
     story = explain(text)
     assert "Keiko and Mio are in Osaka, so **at least two people are there**." in story
     assert (
@@ -475,7 +475,7 @@ def test_story_explains_the_area_comparison_in_english():
 
 
 def test_story_uses_the_actual_population_clue_number():
-    text = example("samen-onderweg.txt").read_text()
+    text = example("japan-2-samen-onderweg.txt").read_text()
     original = MOST_TOKYO + "\n" + LEAST_OKINAWA
     assert original in text
     text = text.replace(original, LEAST_OKINAWA + "\n" + MOST_TOKYO)
@@ -485,7 +485,7 @@ def test_story_uses_the_actual_population_clue_number():
 
 def test_story_population_reason_uses_the_puzzles_own_areas():
     text = (
-        example("samen-onderweg.txt")
+        example("japan-2-samen-onderweg.txt")
         .read_text()
         .replace("Tokyo", "North")
         .replace("Osaka", "West")
@@ -499,7 +499,7 @@ def test_story_population_reason_uses_the_puzzles_own_areas():
 
 def test_story_does_not_invent_population_witnesses():
     text = (
-        example("samen-onderweg.txt")
+        example("japan-2-samen-onderweg.txt")
         .read_text()
         .replace("Keiko beside object:lantaarn", "Keiko beside object:torii")
     )
@@ -509,7 +509,7 @@ def test_story_does_not_invent_population_witnesses():
 
 
 def test_story_does_not_treat_tied_busiest_areas_as_strictly_ordered():
-    text = example("samen-onderweg.txt").read_text()
+    text = example("japan-2-samen-onderweg.txt").read_text()
     assert MOST_TOKYO in text
     text = text.replace(
         MOST_TOKYO,
@@ -526,7 +526,7 @@ def test_story_does_not_treat_tied_busiest_areas_as_strictly_ordered():
 
 
 def test_story_can_explain_an_unnumbered_population_rule():
-    text = _move_clue_to_rules(example("samen-onderweg.txt").read_text(), MOST_TOKYO)
+    text = _move_clue_to_rules(example("japan-2-samen-onderweg.txt").read_text(), MOST_TOKYO)
     story = explain(text)
     assert (
         "Het gebied met de meeste mensen is Tokyo, dus **zijn er in Tokyo minstens drie mensen**."
@@ -535,7 +535,7 @@ def test_story_can_explain_an_unnumbered_population_rule():
 
 
 def test_story_omits_population_clue_numbers_in_unnumbered_explanations():
-    story = explain(example("samen-onderweg.txt").read_text(), numbered=False)
+    story = explain(example("japan-2-samen-onderweg.txt").read_text(), numbered=False)
     assert (
         "Het gebied met de meeste mensen is Tokyo, dus **zijn er in Tokyo minstens drie mensen**."
         in story
@@ -558,7 +558,9 @@ def test_story_describes_by_region_and_row_before_squares():
 
 
 def test_opening_uses_shared_columns_across_regions():
-    opening = explain(example("samen-in-de-blauwe-bladeren.txt").read_text()).split("\n\n")[0]
+    opening = explain(example("japan-1-samen-in-de-blauwe-bladeren.txt").read_text()).split("\n\n")[
+        0
+    ]
     assert (
         "Mizuki zit op een vakje dat de torii raakt (5): **in kolom 1**, dus "
         "**streep de zes andere nog open vakjes in die kolom weg: "
@@ -2207,7 +2209,7 @@ def test_figure_clues_attach_a_compound_direction_clue_naming_the_target():
 def test_count_rules_and_author_garment_clues_use_expression_wording():
     from csp.story import board_notes, clue_paragraphs, global_count_texts
 
-    text = example("wie-doet-het-met-wie-1.txt").read_text()
+    text = example("wie-doet-het-met-wie-3.txt").read_text()
     counts = global_count_texts(text)
     assert len(counts) == 3
     assert counts[-2:] == [
@@ -2580,7 +2582,7 @@ def test_legacy_phrasebook_word_keys_are_rejected(legacy_key, replacement):
 
 
 def test_dutch_player_rules_explain_object_adjacency():
-    rules = murdoku_rules(example("samen-in-japan.txt").read_text())
+    rules = murdoku_rules(example("japan-3-samen-in-japan.txt").read_text())
     assert (
         "Naast een voorwerp in een vakje betekent een zijde delen met een vakje van het "
         "voorwerp in hetzelfde gebied; schuin telt niet."
@@ -2615,7 +2617,7 @@ Clues:
 
 
 def test_wrapped_intro_lines_stay_one_rule():
-    rules = murdoku_rules(example("samen-in-japan.txt").read_text())
+    rules = murdoku_rules(example("japan-3-samen-in-japan.txt").read_text())
     assert rules[0].startswith("Zes reizigers zijn neergestreken")
     assert rules[0].endswith("per kolom.")
 

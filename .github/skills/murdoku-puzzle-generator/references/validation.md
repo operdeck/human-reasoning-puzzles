@@ -1,6 +1,6 @@
 Read this for the full validation rules, diagnostics and completion checklist.
 
-`examples/japan/samen-onderweg.txt` needs no `what_if`: Mio on the bank and
+`examples/japan/japan-2-samen-onderweg.txt` needs no `what_if`: Mio on the bank and
   Keiko beside the lantern give Osaka two, the busiest clue gives Tokyo three,
   and five travellers leave Okinawa empty. When a population clue grades
   `what_if`, check whether that capacity argument should close it before adding

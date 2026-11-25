@@ -1,83 +1,96 @@
-# Wie doet het met wie? Na het tuinfeest (4x4, four areas)
+# Wie doet het met wie? Op het strand (5x5, six areas)
 #
-# Four people after a garden party, one per row and column. Two bathrobes and
-# two pairs of slippers lie on the board; exactly one guest wears a bathrobe
-# and one has slippers on (Bram and Noor). Wouter has no clues: he is placed
-# last and is alone with exactly one other person.
+# Five people at the beach, one per row and column. Two bathrobes, two pairs
+# of slippers and two pairs of sunglasses lie on the board; exactly one guest
+# wears each (Sanne, Pieter and Daan). Wouter has no clues: he is placed last
+# and is alone with exactly one other person, the one he is doing it with.
 #
-# Intended solution: Eva r1c1, Bram r2c3, Noor r3c4, Wouter r4c2.
-# Wouter is doing it with Noor in the garden.
+# Solution: Femke r1c4 (zee), Daan r2c3 (strand), Pieter r3c5 (strandtent),
+# Sanne r4c1 (bosjes), Wouter r5c2 (bosjes): Wouter is doing it with Sanne.
 
-Size: 4
+Size: 5
 Language: nl
 
 Words:
-keuken: in de keuken
-woonkamer: in de woonkamer
-hal: in de hal
-tuin: in de tuin
-bankje: het tuinbankje
+zee: in de zee
+strand: op het strand
+duinen: in de duinen
+bosjes: in de bosjes
+helmgras: het helmgras
 badjas: een badjas
 sloffen: een paar sloffen
+zonnebril: een zonnebril
 
 Regions:
-k: keuken #E8DCC8
-w: woonkamer #FADFB5
-h: hal #E6D3F0
-t: tuin #CBE6B9
+z: zee #BFDDF2
+s: strand #FAEDB8
+t: strandtent #F4D7B5
+d: duinen #E3D9A8
+b: bosjes #B5D3A0
+f: fietsenstalling #DCDEE2
 
 Grid:
-k k h h
-k w w t
-t w w t
-t t t t
+z z z z z
+s s s t t
+s s d t t
+b b d d f
+b b d f f
 
 Objects:
-tafel: blocking r1c2
-kast: blocking r1c4
-plant: blocking r3c3
-struik: blocking r2c4
-bankje: standable r4c1 r4c2
-badjas: standable r2c3
-badjas: standable r4c4
-sloffen: standable r3c4
+boot: blocking r1c2
+parasol: blocking r2c2
+tafel: blocking r2c5
+stoel: standable r3c4
+helmgras: standable r4c3
+struik: blocking r5c1
+fiets: blocking r5c5
+zonnebril: standable r2c3
+zonnebril: standable r4c4
+sloffen: standable r3c5
 sloffen: standable r3c2
+badjas: standable r4c1
+badjas: standable r5c3
 
 Backdrop:
 U+1F6C1
 
 People:
-Eva
-Bram
-Noor
+Sanne
+Pieter
+Femke
+Daan
 Wouter
 
 Rules:
 count (people in area of Wouter) = 1 + 1
 count people on object:badjas = 1
 count people on object:sloffen = 1
+count people on object:zonnebril = 1
 
 Clues:
-Bram on object:badjas | Bram draagt slechts een badjas.
-some (people on object:badjas) dir:left Noor | Noor staat ergens rechts van de gast met de badjas.
-Eva beside object:tafel
+some (people on object:zonnebril) dir:up Pieter = 1 | De gast met de zonnebril staat precies één rij boven Pieter.
+Sanne on object:badjas | Sanne draagt alleen een badjas.
+Daan on object:zonnebril | Daan heeft een zonnebril op.
+Sanne in area:bosjes
+Femke in area:zee
 
 Title:
-Murdoku: Na het tuinfeest
+Murdoku: Op het strand
 
 Intro:
-Na een tuinfeest blijven vier gasten slapen. Er liggen twee badjassen en twee paar sloffen klaar; wie op zo'n vakje staat, heeft het aan. Zet iedereen op een vrij vakje, één per rij en één per kolom.
-Op het tuinbankje, de badjassen en de sloffen mag je staan; andere voorwerpen blokkeren hun vakje.
+Een warme dag aan zee. Op het strand liggen twee badjassen, twee paar sloffen en twee zonnebrillen; wie op zo'n vakje staat, heeft het aan. Zet iedereen op een vrij vakje, één per rij en één per kolom.
+Op een stoel, het helmgras, de badjassen, de sloffen en de zonnebrillen mag je staan; andere voorwerpen blokkeren hun vakje.
 Wouter wordt als laatste geplaatst en is alleen in een gebied met degene met wie hij het doet.
 
 Figures:
-Eva: ; icon=U+1F469
-Bram: ; icon=U+1F468
-Noor: geen eigen aanwijzingen ; icon=U+1F471
+Sanne: ; icon=U+1F469
+Pieter: geen eigen aanwijzingen ; icon=U+1F468
+Femke: ; icon=U+1F471
+Daan: ; icon=U+1F9D4
 Wouter: geen eigen aanwijzingen ; icon=U+1F9D1
 
 Question:
 Met wie doet Wouter het?
 
 Reveal:
-Wouter doet het met Noor: ze staan samen in de tuin.
+Wouter doet het met Sanne: zij is de enige die met hem in de bosjes is.

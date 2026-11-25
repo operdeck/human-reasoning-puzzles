@@ -25,8 +25,8 @@ uv run puzzle-lab sweep bridges --size 7
 hard tier and whether it is `deductive`. These are this solver's estimates,
 not universal human difficulty ratings. `search` lists examples by tier;
 `sweep` reports what a generator reaches. `audit` checks series order as well
-as shared layouts and solutions. The Japan and *Wie doet het met wie* Murdoku
-series keep their numbering and report an ordering conflict.
+as shared layouts and solutions. Numbered filenames put each series in
+nondecreasing measured difficulty in both the web index and the booklet.
 
 ## Coverage gaps
 
