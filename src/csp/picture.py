@@ -835,6 +835,16 @@ def starbattle_picture(
     )
 
 
+def _wave(canvas: Canvas, x: float, y: float, cell: float) -> None:
+    """Draw a small decorative ripple centred on (x, y)."""
+    half, height = cell * 0.17, cell * 0.035
+    points = [
+        (x - half + 2 * half * i / 16, y + height * math.sin(3 * math.pi * i / 16))
+        for i in range(17)
+    ]
+    canvas.line(points, "#a9cdd0", max(1.0, cell * 0.024), joint="curve")
+
+
 def bridges_picture(
     puzzle: Bridges,
     solution: Mapping[str, Any] | None = None,
@@ -843,7 +853,7 @@ def bridges_picture(
     interactive: bool = False,
     steps: Iterable[Any] = (),
 ) -> Canvas:
-    """Draw numbered islands on calm water and separate timber bridge decks."""
+    """Draw numbered islands on rippled water and separate timber bridge decks."""
     margin = cell // 2
     width, height = (puzzle.width + 1) * cell, (puzzle.height + 1) * cell
     canvas = Canvas(
@@ -863,7 +873,9 @@ def bridges_picture(
         for col in range(puzzle.width):
             x, y = margin + (col + 0.5) * cell, margin + (row + 0.5) * cell
             if (row, col) not in puzzle.islands:
-                canvas.line(((x - cell * 0.07, y), (x + cell * 0.07, y)), "#d5e5e5", 1)
+                dx = ((row * 37 + col * 17) % 7 - 3) / 3 * cell * 0.1
+                dy = ((row * 11 + col * 29) % 5 - 2) / 2 * cell * 0.08
+                _wave(canvas, x + dx, y + dy, cell)
     changed = {step.var for step in steps}
     if solution is not None and not interactive:
         for pair in puzzle.pairs:
