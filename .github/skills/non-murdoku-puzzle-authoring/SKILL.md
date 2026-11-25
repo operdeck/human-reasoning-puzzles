@@ -52,6 +52,22 @@ Full workflow, options and traps: [workflow notes](references/workflow.md).
    unique, needs every clue, pins nobody on a single clue, uses only those kinds
    (emptiness only as empty or not empty) and leaves the named person last;
    `rooms-check` verifies a finished file against the same brief.
+   * A fact that holds for the whole puzzle — "the garden is empty or holds two",
+     a pair that always shares — is a `Rules:` line, not a clue: it uses the same
+     grammar, is compiled as an always-on constraint and is left out of the
+     numbering. Put the author's brief in the puzzle file's comments, and keep the
+     clues to one plain kind each (a room or group, a compass direction, beside,
+     empty or not empty, together or alone). No counts other than empty/not-empty,
+     no king or knight distances: that is a house style for authored house
+     puzzles, not a limit of the family.
+   * Use each room and group alias in at most one clue, and each person alias in
+     at most one clue; reuse across the puzzles of one set is what makes a set feel
+     samey. A person left without a clue is fine when a rule or the other clues
+     force their seat — that is a late discovery, and `--last` measures the last
+     person *a clue* settles.
+   * The published `rooms_*` examples are the family's showcase: they use counts
+     and single-room aliases on purpose, so `rooms-check` reports house-style
+     deviations there. Do not "fix" them into the house style.
 4. Rate before adding or describing a candidate. Only unique, deductively solved,
    nontrivial boards qualify; preserve family, grade, tier and uniqueness. Check
    structural triviality too (Puzzle Lab marks it). Never promote an unrated board.
