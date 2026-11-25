@@ -127,6 +127,15 @@ def test_every_playable_cell_is_on_the_board(exported):
         rows, cols = bundle["size"]
         ids = set(svg.ids((exported / bundle["static"]).read_text()))
         board = {f"r{r}c{c}" for r in range(1, rows + 1) for c in range(1, cols + 1)}
+        if links := bundle.get("links"):
+            # Link puzzles are played between drawn nodes, not on every cell.
+            nodes = {node["id"] for node in links["nodes"]}
+            assert nodes <= ids & board, bundle["id"]
+            segments = {segment["id"]: segment for segment in links["segments"]}
+            for link, value in bundle["solution"].items():
+                assert set(segments[link]["endpoints"]) <= nodes, bundle["id"]
+                assert value in segments[link]["values"], bundle["id"]
+            continue
         assert board <= ids, bundle["id"]
         cells = (
             set(bundle["solution"]) | set(bundle["givens"]) | set(bundle["placement"]["blocked"])
