@@ -128,5 +128,6 @@ Tiers are estimates tied to this solver's rule ladder, not universal human
 difficulty. `--grade` prints the hardest rule a solve used; `unsolved` means the
 ladder stalled. `puzzle-lab rate` and `audit` use the same ladder, and report
 `deductive: false` exactly for puzzles that need `what_if` (the
-beyond-deduction frontier). Per-puzzle grades and known gaps are in
-[the puzzle collection](puzzle-collection.md).
+beyond-deduction frontier). Per-puzzle grades are on the
+[web puzzle index](https://operdeck.github.io/human-reasoning-puzzles/); rating
+commands and coverage gaps are in [grading and auditing](puzzle-collection.md).

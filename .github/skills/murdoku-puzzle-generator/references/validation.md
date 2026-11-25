@@ -33,7 +33,8 @@ For a finished Murdoku under `examples/`, before reporting done:
 - An independent clue review used only player-facing material; each clue was
   restated as a constraint, alternate readings were checked, and solvability
   findings were verified against the source and rendered clue count.
-- `docs/puzzle-collection.md` updated; `uv run pytest -q` and `ruff` pass.
+- The web index shows the new example with its grade; `uv run pytest -q` and
+  `ruff` pass.
 - Report path, solution, grade and any open doubts.
 
 ## Theme, objects and pictures

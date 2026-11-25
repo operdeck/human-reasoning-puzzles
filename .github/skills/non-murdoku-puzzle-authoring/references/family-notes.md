@@ -33,7 +33,8 @@ family:
    mutates a unique board (`climb.rectangles` moves numbers, merges and splits
    pieces) and keeps only unique, ladder-solved boards until the grade lands in
    the tier; `puzzle-lab fresh ... --tier hard` and `sweep --tier hard` call it.
-   If it cannot, the tier stays an em dash in `docs/puzzle-collection.md` with the
+   If it cannot, record the missing tier under coverage gaps in
+   `docs/puzzle-collection.md` with the
    reason. Do not hand-edit a board, and do not relabel a neighbouring tier.
 3. A hard board that only `what_if` closes is allowed, but it joins the
    beyond-deduction frontier: add it to `BEYOND_DEDUCTION` in `tests/test_web.py`

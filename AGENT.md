@@ -411,8 +411,9 @@ direction: the benchmark imports `csp`, never the other way round.
 
 For a new family, include small and materially larger original examples and
 check every example for uniqueness and per-step soundness. Add its example and
-solution visual to the root README's compact gallery, with file/grade details
-in `docs/puzzle-collection.md` and its model/file syntax in
+solution visual to the root README's compact gallery, linked to its web index
+section, record any tier it cannot reach in `docs/puzzle-collection.md`, and
+document its model/file syntax in
 `docs/model-and-puzzle-formats.md`. Update the relevant authoring skill. Use
 existing generic primitives; if they are insufficient, open a separate core
 design issue instead of adding puzzle-specific code to `core.py`.
