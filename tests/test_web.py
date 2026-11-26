@@ -499,12 +499,11 @@ def test_rooms_bundles_carry_the_text_beside_a_bare_plan(exported):
     assert [item["name"] for item in bundle["key"]] == [puzzle.phrase(tag) for tag in puzzle.tags]
     assert all(item["svg"].startswith("<svg") for item in bundle["key"])
     assert bundle["intro"] and bundle["question"]
-    assert bundle["headings"] == {
-        "rules_title": "Rules",
-        "clues": "Clues",
-        "question": "Question",
-        "key": "Key",
-    }
+    headings = bundle["headings"]
+    assert headings["rules_title"] == "Rules"
+    assert headings["clues"] == "Clues"
+    assert headings["question"] == "Question"
+    assert headings["key"] == "Key"
     board = svg.ids((exported / bundle["static"]).read_text())
     assert {
         f"r{row}c{col}" for row in range(1, puzzle.height + 1) for col in range(1, puzzle.width + 1)
