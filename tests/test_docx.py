@@ -463,6 +463,22 @@ def test_a_rooms_picture_can_leave_its_clues_and_key_out():
     assert phrase not in bare.to_svg()
 
 
+def test_a_rooms_picture_can_leave_its_properties_out():
+    """A hand-out hides where the mirror and the pepernoten are: no icons, no key."""
+    from csp import icons, picture, rooms
+
+    puzzle = rooms.parse(example("rooms_2_5x7.txt").read_text())
+    tag = next(iter(puzzle.tags))
+    icon = icons.object_icon(tag)
+    assert icon is not None
+    marker = f"emoji-{icon.emoji}" if icon.emoji else f"icon-{icon.name}"
+    with_properties = picture.rooms_picture(puzzle, cell=60).to_svg()
+    bare = picture.rooms_picture(puzzle, cell=60, clue_lines=False, properties=False).to_svg()
+    assert marker in with_properties
+    assert marker not in bare
+    assert puzzle.phrase(tag) not in bare
+
+
 def test_sudoku_booklet_uses_readable_bold_pattern_narrative(tmp_path):
     out = tmp_path / "sudoku.docx"
     assert main([str(example("sudoku_17_9x9_pointing.txt")), "--docx", str(out)]) == 0

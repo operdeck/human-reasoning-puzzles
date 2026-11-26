@@ -1826,6 +1826,7 @@ def rooms_picture(
     interactive: bool = False,
     clue_lines: bool = True,
     legend: bool = True,
+    properties: bool = True,
 ) -> Canvas:
     """The plan as a floor plan: each room with its properties, and the clues underneath.
 
@@ -1834,7 +1835,9 @@ def rooms_picture(
     plan says what each icon means, and the solution writes the people in their
     rooms. Two neighbouring rooms are always drawn apart, so rooms that share a
     colour still read as separate. `clue_lines=False` leaves the numbered clues
-    out, for a booklet that prints them as text; `legend=False` leaves the key out.
+    out, for a booklet that prints them as text; `legend=False` leaves the key out;
+    `properties=False` leaves the icons out as well, for a hand-out where finding
+    the mirror or the pepernoten is part of the game.
     """
     solution = None if interactive else solution
     margin = max(12, cell // 4)
@@ -1843,7 +1846,9 @@ def rooms_picture(
     icon_size = max(11, int(cell * 0.26))
     board_width = puzzle.width * cell
     tag_icons = {tag: icons.object_icon(tag) for tag in puzzle.tags}
-    key_entries = [(tag, tag_icons[tag], puzzle.phrase(tag)) for tag in puzzle.tags]
+    key_entries = (
+        [(tag, tag_icons[tag], puzzle.phrase(tag)) for tag in puzzle.tags] if properties else []
+    )
     rule_rows = [
         line
         for rule in puzzle.rule_lines
@@ -1914,11 +1919,11 @@ def rooms_picture(
         x, y = margin + left * cell, margin + top * cell
         span = (max(cols) - min(cols) + 1) * cell
         depth = (max(rows) - min(rows) + 1) * cell
-        properties = [tag for tag in puzzle.tags if room.key in puzzle.tags[tag]]
+        here = [tag for tag in puzzle.tags if room.key in puzzle.tags[tag]] if properties else []
         with canvas.group(clip=[(x, y, x + span - 1, y + depth - 1)]):
             cursor, _size = _room_caption(canvas, room, x, y, span, small)
-            if properties:
-                _room_properties(canvas, properties, x, y, span, depth, icon_size)
+            if here:
+                _room_properties(canvas, here, x, y, span, depth, icon_size)
             people = [
                 person
                 for person in puzzle.people
@@ -1927,9 +1932,7 @@ def rooms_picture(
             if people:
                 names = ", ".join(people)
                 font = _fit(canvas, names, max(9, cell // 8), span * 0.86)
-                lowest = (
-                    y + depth - cell * 0.04 - _icon_height(len(properties), span, depth, icon_size)
-                )
+                lowest = y + depth - cell * 0.04 - _icon_height(len(here), span, depth, icon_size)
                 canvas.text(
                     (x + span / 2, min(lowest - font, max(cursor + font, (cursor + lowest) / 2))),
                     names,
