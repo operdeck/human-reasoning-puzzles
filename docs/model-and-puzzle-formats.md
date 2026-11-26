@@ -246,7 +246,7 @@ not (Dirk in area:window)
 Ben in area:clock
 Ada together Cleo
 count (people in area:a) = 1
-Ada dir:up Cleo
+Ada dir:north Cleo
 exactly 1 of (Ada in area:e; Ben in area:e)
 ```
 

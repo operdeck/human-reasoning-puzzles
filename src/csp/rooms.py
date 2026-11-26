@@ -35,7 +35,7 @@ A puzzle file:
     count (people in area:a) = 2
     Cleo alone
     Ada together Cleo
-    Ben dir:up Ada
+    Ben dir:north Ada
     Dirk beside Cleo
     exactly 1 of (Ben in area:e; Dirk in area:e)
 
