@@ -1592,7 +1592,7 @@ def family_rules(text: str, kind: str) -> list[str]:
                 "Geef iedereen één kamer. Meerdere personen mogen één kamer delen, een "
                 "kamer mag leeg blijven, en in een kamer passen nooit meer personen dan de "
                 "capaciteit die erbij staat. De aanwijzingen noemen kamers bij hun "
-                "eigenschappen en zeggen wie samen, apart of alleen zat, of waar iemand zat."
+                "eigenschappen en zeggen wie samen, apart of alleen zit, of waar iemand zit."
             ]
         return [FAMILY_RULES[kind]]
     if kind != "sudoku":

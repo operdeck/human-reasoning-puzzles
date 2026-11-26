@@ -266,7 +266,7 @@ class Company:
 
     def describe(self, puzzle: "Puzzle") -> str:
         if puzzle.language == "nl":
-            return f"{self.first} en {self.second} zaten {'' if self.together else 'niet '}samen."
+            return f"{self.first} en {self.second} zitten {'' if self.together else 'niet '}samen."
         return f"{self.first} and {self.second} are {'' if self.together else 'not '}together."
 
 
@@ -291,7 +291,7 @@ class Beside:
 
     def describe(self, puzzle: "Puzzle") -> str:
         if puzzle.language == "nl":
-            return f"{self.first} zat {'niet ' if self.negated else ''}naast {self.second}."
+            return f"{self.first} zit {'niet ' if self.negated else ''}naast {self.second}."
         return f"{self.first} is {'not ' if self.negated else ''}next to {self.second}."
 
 
