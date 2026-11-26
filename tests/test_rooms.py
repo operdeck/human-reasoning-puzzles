@@ -156,12 +156,23 @@ def test_alone_needs_one_hidden_literal_per_other_person():
 
 
 def test_a_direction_clue_needs_touching_rooms():
-    puzzle = rooms.parse(puzzle_with("Cleo dir:up Ada\n"))
-    up = rooms.Direction("Cleo", "up", "Ada")
+    puzzle = rooms.parse(puzzle_with("Cleo dir:north Ada\n"))
+    up = rooms.Direction("Cleo", "north", "Ada")
     assert up.holds({"Cleo": "a", "Ada": "c"}, puzzle)
     assert not up.holds({"Cleo": "c", "Ada": "a"}, puzzle)
     assert not up.holds({"Cleo": "a", "Ada": "a"}, puzzle)
     assert not up.holds({"Cleo": "b", "Ada": "c"}, puzzle)
+    assert puzzle.sentence(1) == "Cleo is directly north of Ada."
+
+
+def test_the_plan_top_is_north_so_compass_and_side_words_agree():
+    """`dir:up` and `dir:north` are one side, and the compass word is the canonical one."""
+    puzzle = rooms.parse(puzzle_with("Cleo dir:up Ada\n"))
+    assert puzzle.clues[0] == rooms.Direction("Cleo", "north", "Ada")
+    assert rooms.format_clue(puzzle.clues[0]) == "Cleo dir:north Ada"
+    assert puzzle.sentence(1) == "Cleo is directly north of Ada."
+    dutch = rooms.parse(puzzle_with("Cleo dir:right Ada\n").replace("Language: en", "Language: nl"))
+    assert dutch.sentence(1) == "Cleo zit direct ten oosten van Ada."
 
 
 def test_render_names_every_room_with_its_capacity_and_occupants():

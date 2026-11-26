@@ -123,7 +123,10 @@ containment, overlap, adjacency and role membership.
 Directional operators are `dir:left`, `dir:right`, `dir:up`, `dir:down`,
 their vertical-plus-horizontal combinations, `dir:diagonal`, `dir:rows`,
 `dir:cols`, `dir:manhattan`, `dir:king`, `dir:euclidean`, `dir:areas`,
-`dir:knight`, `dir:nearest` and `dir:furthest`. An optional `= n`, `<= n`
+`dir:knight`, `dir:nearest` and `dir:furthest`. **The top of the board is
+north**, so `dir:up` is north, `dir:right` east, `dir:down` south and
+`dir:left` west (the `rooms` family uses the compass names directly).
+An optional `= n`, `<= n`
 or `>= n` measures the gap where supported; a compound direction applies
 the measure to each axis of the same cell pair. Nearest and furthest use
 strict comparisons against other people outside the target set, so a tie

@@ -4,7 +4,8 @@ The board is a plan of rooms rather than a grid of squares. Several people may
 share a room, a room may stay empty, and a room's capacity caps how many fit.
 Clues talk about rooms through their properties ("a room with a mirror"), about
 company ("was not alone"), about counts ("exactly one person in the garden")
-and about direction ("directly behind"). The people are the variables and a
+and about direction ("directly north of" — the top of the plan is north). The
+people are the variables and a
 room is a value, so every clue becomes a count or a relation over a handful of
 variables: a small model that still asks real questions.
 
@@ -53,19 +54,22 @@ from typing import Any, Protocol
 from .core import Kind, Model, Step
 from .puzzlefile import read_sections
 
-STEPS = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+STEPS = {"north": (-1, 0), "south": (1, 0), "west": (0, -1), "east": (0, 1)}
+# The plan's top is north, so `up`/`down`/`left`/`right` in a clue are the same
+# sides as north/south/west/east; the compass spellings are the canonical ones.
+STEP_ALIASES = {"up": "north", "down": "south", "left": "west", "right": "east"}
 STEP_WORDS = {
     "en": {
-        "up": "directly behind",
-        "down": "directly in front of",
-        "left": "directly to the left of",
-        "right": "directly to the right of",
+        "north": "directly north of",
+        "south": "directly south of",
+        "west": "directly west of",
+        "east": "directly east of",
     },
     "nl": {
-        "up": "direct achter",
-        "down": "direct voor",
-        "left": "direct links van",
-        "right": "direct rechts van",
+        "north": "direct ten noorden van",
+        "south": "direct ten zuiden van",
+        "west": "direct ten westen van",
+        "east": "direct ten oosten van",
     },
 }
 COUNT_WORDS = {
@@ -119,7 +123,7 @@ _IN = re.compile(r"^(\S+)\s+in\s+area:(\S+)$")
 _ALONE = re.compile(r"^(\S+)\s+alone$")
 _PAIR = re.compile(r"^(\S+)\s+(together|apart)\s+(\S+)$")
 _BESIDE = re.compile(r"^(\S+)\s+beside\s+(\S+)$")
-_DIRECTION = re.compile(r"^(\S+)\s+dir:(up|down|left|right)\s+(\S+)$")
+_DIRECTION = re.compile(r"^(\S+)\s+dir:(north|south|east|west|up|down|left|right)\s+(\S+)$")
 _CHOICE = re.compile(r"^exactly\s+(\d+)\s+of\s*\((.*)\)$")
 _ROOM_LINE = re.compile(r"^(\S+)\s*:\s*(\d+)\s+(#[0-9A-Fa-f]{6})\s*(.*)$")
 
@@ -593,7 +597,7 @@ def parse_clue(line: str, puzzle: Puzzle) -> ClueType:
     if match := _BESIDE.match(line):
         return Beside(match[1], match[2])
     if match := _DIRECTION.match(line):
-        return Direction(match[1], match[2], match[3])
+        return Direction(match[1], STEP_ALIASES.get(match[2], match[2]), match[3])
     raise ValueError(f"bad room clue {line!r}")
 
 

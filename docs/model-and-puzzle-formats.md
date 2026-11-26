@@ -259,7 +259,7 @@ exactly 1 of (Ada in area:e; Ben in area:e)
 | `X alone` / `not (X alone)` | X shares a room with nobody, or with at least one other |
 | `X together Y` / `X apart Y` | X and Y do or do not share a room |
 | `exactly n of (clause; clause; …)` | how many of these room clauses hold |
-| `X dir:up/down/left/right Y` | X's room touches Y's in that direction; up is the top of the plan |
+| `X dir:north/south/east/west Y` | X's room touches Y's in that direction; the top of the plan is north, and `dir:up`, `dir:down`, `dir:left` and `dir:right` are the same sides |
 
 The variable values are room labels, so `--step` and the worked solution read as rooms.
 
