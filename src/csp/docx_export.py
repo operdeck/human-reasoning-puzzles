@@ -356,7 +356,7 @@ def _add_rooms(
             paragraph = document.add_paragraph()
             paragraph.paragraph_format.space_after = Pt(5)
             _runs(paragraph, intro)
-        rules = family_rules(entry.text, "rooms")
+        rules = family_rules(entry.text, "rooms") + puzzle.rule_lines
         document.add_heading(phrase(entry.text, "doc.rules_title"), level=2)
         for rule in rules:
             paragraph = document.add_paragraph(rule, style="List Bullet")

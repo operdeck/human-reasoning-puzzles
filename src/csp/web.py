@@ -526,6 +526,7 @@ def _family(
             "question": presentation.question,
             "intro": presentation.intro,
             "key": _rooms_key(room_plan),
+            "rules": out["rules"] + room_plan.rule_lines,
             "headings": {
                 "rules_title": phrase(text, "doc.rules_title"),
                 "clues": phrase(text, "doc.clues"),

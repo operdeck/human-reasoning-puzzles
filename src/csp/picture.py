@@ -1844,6 +1844,23 @@ def rooms_picture(
     board_width = puzzle.width * cell
     tag_icons = {tag: icons.object_icon(tag) for tag in puzzle.tags}
     key_entries = [(tag, tag_icons[tag], puzzle.phrase(tag)) for tag in puzzle.tags]
+    rule_rows = [
+        line
+        for rule in puzzle.rule_lines
+        for line in textwrap.wrap(
+            f"{'Regel' if puzzle.language == 'nl' else 'Rule'}: {rule}",
+            width=max(24, int(board_width / (small * 0.47))),
+        )
+    ]
+
+    rule_rows = [
+        line
+        for rule in puzzle.rule_lines
+        for line in textwrap.wrap(
+            f"{'Regel' if puzzle.language == 'nl' else 'Rule'}: {rule}",
+            width=max(24, int(board_width / (small * 0.47))),
+        )
+    ]
     clue_rows = [
         line
         for number, sentence in enumerate(puzzle.clue_lines, 1)
@@ -1855,6 +1872,7 @@ def rooms_picture(
         margin * 2
         + puzzle.height * cell
         + (len(key_entries) * line_height if legend else 0)
+        + (len(rule_rows) * line_height if rule_rows else 0)
         + ((len(clue_rows) + 1) * line_height if clue_lines else int(line_height * 0.3))
     )
     canvas = Canvas(board_width + 2 * margin, height)
@@ -1918,6 +1936,9 @@ def rooms_picture(
         box = (8, cursor_y, 8 + icon_size * 0.85, cursor_y + icon_size * 0.85)
         _draw_property(canvas, tag, icon, box)
         canvas.text((8 + icon_size * 1.05, cursor_y + icon_size * 0.42), phrase, INK, small, "lm")
+        cursor_y += line_height
+    for line in rule_rows:
+        canvas.text((8, cursor_y), line, INK, small, anchor="lt")
         cursor_y += line_height
     if clue_lines:
         cursor_y += line_height * 0.4
