@@ -1877,30 +1877,36 @@ def rooms_picture(
     )
     canvas = Canvas(board_width + 2 * margin, height)
     thick = max(5, cell // 20) | 1
+
+    def wall(row: int, col: int, dr: int, dc: int) -> bool:
+        """Whether an edge of this cell faces paper, the plan's edge or another room."""
+        row2, col2 = row + dr, col + dc
+        if not (0 <= row2 < puzzle.height and 0 <= col2 < puzzle.width):
+            return True
+        here, there = puzzle.plan[row][col], puzzle.plan[row2][col2]
+        return here != there and (here != "." or there != ".")
+
     for row in range(puzzle.height):
         for col in range(puzzle.width):
             key = puzzle.plan[row][col]
             x, y = margin + col * cell, margin + row * cell
-            fill = (255, 255, 255) if key == "." else _hex_colour(puzzle.room(key).colour)
+            if key == ".":
+                continue
+            fill = _hex_colour(puzzle.room(key).colour)
             canvas.rectangle((x, y, x + cell - 1, y + cell - 1), fill=fill)
     for row in range(puzzle.height):
         for col in range(puzzle.width):
-            key = puzzle.plan[row][col]
+            if puzzle.plan[row][col] == ".":
+                continue  # paper, not part of the plan
             x, y = margin + col * cell, margin + row * cell
-            if col + 1 < puzzle.width and puzzle.plan[row][col + 1] != key:
+            if wall(row, col, 0, 1):
                 canvas.line((x + cell, y, x + cell, y + cell), fill=INK, width=thick)
-            if row + 1 < puzzle.height and puzzle.plan[row + 1][col] != key:
+            if wall(row, col, 1, 0):
                 canvas.line((x, y + cell, x + cell, y + cell), fill=INK, width=thick)
-    canvas.rectangle(
-        (
-            margin - 1,
-            margin - 1,
-            margin + board_width,
-            margin + puzzle.height * cell,
-        ),
-        outline=INK,
-        width=thick,
-    )
+            if wall(row, col, 0, -1):
+                canvas.line((x, y, x, y + cell), fill=INK, width=thick)
+            if wall(row, col, -1, 0):
+                canvas.line((x, y, x + cell, y), fill=INK, width=thick)
     for room in puzzle.rooms:
         top, left = min(room.cells)
         rows = [row for row, _ in room.cells]
