@@ -71,7 +71,12 @@ Read this for the full non-Murdoku generate, rate, name and audit workflow.
    `puzzle-lab generate` only re-masks or mutates a seed and keeps its
    solution, so use it for variations, never to fill a gallery tier with
    copies of one board. Use `--as-family` only for compatible aliases. Do not
-   use it to disguise a puzzle from another rule family.
+   use it to disguise a puzzle from another rule family. For a non-grid family
+   (Rooms), `npm run export` writes the plan and the generic `assign` bundle;
+   open `npm run dev` with `web/public/puzzles` and check the tray, a room tap,
+   capacity warnings, keyboard flow, a phone-width plan and the solution tab.
+   Every family must be playable or carry an explicit `UNSUPPORTED` reason;
+   "not yet" is not an answer.
 4. Rate before adding or describing a candidate:
 
    ```bash
