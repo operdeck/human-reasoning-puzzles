@@ -49,6 +49,9 @@ class Brief:
     seed: int = 0
 
 
+DEFAULT_BRIEF = Brief()
+
+
 @dataclass
 class Finding:
     """One clue of a finished puzzle, with what it leaves and whether it is needed."""
@@ -210,8 +213,9 @@ def fits(brief: Brief, surface: str, puzzle: rooms.Puzzle, clues: list[str]) -> 
     return not brief.last or placements_last(surface, clues, brief.last)
 
 
-def search(text: str, brief: Brief = Brief()) -> str | None:
+def search(text: str, brief: Brief | None = None) -> str | None:
     """Grow and thin a clue set until it fits the brief, or give up."""
+    brief = DEFAULT_BRIEF if brief is None else brief
     surface, placement, puzzle = plan_puzzle(text)
     pool = [
         line for _rank, line in rooms.candidate_clues(puzzle, placement) if allowed(line, brief)
@@ -243,8 +247,9 @@ def search(text: str, brief: Brief = Brief()) -> str | None:
     return None
 
 
-def check(text: str, brief: Brief = Brief()) -> tuple[list[Finding], list[str]]:
+def check(text: str, brief: Brief | None = None) -> tuple[list[Finding], list[str]]:
     """Report every clue of a finished puzzle, and what the brief makes of it."""
+    brief = DEFAULT_BRIEF if brief is None else brief
     puzzle = rooms.parse(text)
     header, _, rest = text.partition("Clues:")
     lines = [line.strip() for line in rest.splitlines() if line.strip()]

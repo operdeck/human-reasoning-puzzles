@@ -29,9 +29,7 @@ Clues:
 """
 
 PLACEMENT = {"Ada": "c", "Ben": "a", "Cleo": "a"}
-AGE_BASE = BASE.replace(
-    "Clues:\n", "Ages:\nAda: 60\nBen: 26\nCleo: 28\n\nClues:\n"
-)
+AGE_BASE = BASE.replace("Clues:\n", "Ages:\nAda: 60\nBen: 26\nCleo: 28\n\nClues:\n")
 ROOMS_EXAMPLES = [
     path.name for path in played_examples() if cli.detect(path.read_text()) == "rooms"
 ]
@@ -281,9 +279,7 @@ def test_a_clue_line_can_carry_its_own_wording():
 
 
 def test_age_clues_use_the_declared_ages():
-    puzzle = rooms.parse(
-        AGE_BASE + "sum (ages in area:a) = 54\nmax (age in area:a) = 28\n"
-    )
+    puzzle = rooms.parse(AGE_BASE + "sum (ages in area:a) = 54\nmax (age in area:a) = 28\n")
     assert puzzle.ages == {"Ada": 60, "Ben": 26, "Cleo": 28}
     assert puzzle.age_lines == ["Ages: Ada 60, Ben 26, Cleo 28."]
     assert puzzle.clue_lines == [
@@ -317,9 +313,7 @@ def test_an_age_total_can_be_compared_to_two_or_three_people():
 
 
 def test_the_oldest_of_an_empty_area_is_vacuously_young():
-    puzzle = rooms.parse(
-        AGE_BASE + "max (age in area:b) <= 60\nmax (age in area:b) >= 1\n"
-    )
+    puzzle = rooms.parse(AGE_BASE + "max (age in area:b) <= 60\nmax (age in area:b) >= 1\n")
     assert puzzle.clues[0].holds(PLACEMENT, puzzle)  # nobody in an empty hall
     assert not puzzle.clues[1].holds(PLACEMENT, puzzle)
 

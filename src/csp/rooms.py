@@ -119,12 +119,8 @@ def labels(language: str) -> dict[str, str]:
 
 _COUNT = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$")
 _ALLOWED = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s+in\s+([\d,\s]+)$")
-_AGE_TOTAL = re.compile(
-    r"^sum\s*\(\s*ages in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$"
-)
-_AGE_OLDEST = re.compile(
-    r"^max\s*\(\s*age in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$"
-)
+_AGE_TOTAL = re.compile(r"^sum\s*\(\s*ages in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$")
+_AGE_OLDEST = re.compile(r"^max\s*\(\s*age in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$")
 _AGE_COMPARE = re.compile(
     r"^sum\s*\(\s*ages in area:(\S+?)\s*\)\s*(<=|>=|<|>)\s*sum\s*\(\s*ages of ([^)]+?)\s*\)$"
 )
@@ -271,9 +267,7 @@ class AgeTotal:
 
     def holds(self, where: Mapping[str, str], puzzle: "Puzzle") -> bool:
         rooms = puzzle.areas(self.area)
-        total = sum(
-            puzzle.ages[person] for person, room in where.items() if room in rooms
-        )
+        total = sum(puzzle.ages[person] for person, room in where.items() if room in rooms)
         return compare(total, self.operator, self.number)
 
     def describe(self, puzzle: "Puzzle") -> str:
@@ -338,9 +332,7 @@ class AgeCompare:
 
     def holds(self, where: Mapping[str, str], puzzle: "Puzzle") -> bool:
         rooms = puzzle.areas(self.area)
-        total = sum(
-            puzzle.ages[person] for person, room in where.items() if room in rooms
-        )
+        total = sum(puzzle.ages[person] for person, room in where.items() if room in rooms)
         other = sum(puzzle.ages[person] for person in self.people)
         return compare(total, self.operator, other)
 
@@ -457,15 +449,7 @@ class Choice:
 
 Simple = InRoom | Population | Alone
 ClueType = (
-    Simple
-    | Company
-    | Beside
-    | Choice
-    | Direction
-    | Allowed
-    | AgeTotal
-    | AgeOldest
-    | AgeCompare
+    Simple | Company | Beside | Choice | Direction | Allowed | AgeTotal | AgeOldest | AgeCompare
 )
 
 
@@ -758,9 +742,7 @@ def parse_clue(line: str, puzzle: Puzzle) -> ClueType:
     if match := _AGE_COMPARE.match(line):
         names = tuple(part.strip() for part in match[3].split(",") if part.strip())
         if len(names) not in (2, 3) or len(set(names)) != len(names):
-            raise ValueError(
-                f"bad age comparison {line!r}: name two or three different people"
-            )
+            raise ValueError(f"bad age comparison {line!r}: name two or three different people")
         return AgeCompare(match[1], match[2], names)
     if match := _IN.match(line):
         return InRoom(match[1], match[2])
@@ -988,8 +970,7 @@ def _compile_clue(
 
         def aging(*values: str) -> bool:
             placed = {
-                person: labels[value]
-                for person, value in zip(puzzle.people, values, strict=True)
+                person: labels[value] for person, value in zip(puzzle.people, values, strict=True)
             }
             return clue.holds(placed, puzzle)
 
