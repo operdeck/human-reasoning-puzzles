@@ -1873,11 +1873,17 @@ def rooms_picture(
             f"{number}. {sentence}", width=max(24, int(board_width / (small * 0.47)))
         )
     ]
+    age_rows = [
+        line
+        for sentence in puzzle.age_lines
+        for line in textwrap.wrap(sentence, width=max(24, int(board_width / (small * 0.47))))
+    ]
     height = (
         margin * 2
         + puzzle.height * cell
         + (len(key_entries) * line_height if legend else 0)
         + (len(rule_rows) * line_height if rule_rows else 0)
+        + (len(age_rows) * line_height if clue_lines else 0)
         + ((len(clue_rows) + 1) * line_height if clue_lines else int(line_height * 0.3))
     )
     canvas = Canvas(board_width + 2 * margin, height)
@@ -1951,6 +1957,11 @@ def rooms_picture(
         cursor_y += line_height
     if clue_lines:
         cursor_y += line_height * 0.4
+    for line in age_rows if clue_lines else ():
+        canvas.text((8, cursor_y), line, INK, small, anchor="lt")
+        cursor_y += line_height
+    if age_rows and clue_lines:
+        cursor_y += line_height * 0.2
     for line in clue_rows if clue_lines else ():
         canvas.text((8, cursor_y), line, INK, small, anchor="lt")
         cursor_y += line_height

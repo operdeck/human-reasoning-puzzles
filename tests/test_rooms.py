@@ -29,6 +29,9 @@ Clues:
 """
 
 PLACEMENT = {"Ada": "c", "Ben": "a", "Cleo": "a"}
+AGE_BASE = BASE.replace(
+    "Clues:\n", "Ages:\nAda: 60\nBen: 26\nCleo: 28\n\nClues:\n"
+)
 ROOMS_EXAMPLES = [
     path.name for path in played_examples() if cli.detect(path.read_text()) == "rooms"
 ]
@@ -275,6 +278,72 @@ def test_a_clue_line_can_carry_its_own_wording():
     puzzle = rooms.parse(puzzle_with("Ada in area:c | Ada zat in de keuken.\n"))
     assert puzzle.sentence(1) == "Ada zat in de keuken."
     assert puzzle.clue_lines == ["Ada zat in de keuken."]
+
+
+def test_age_clues_use_the_declared_ages():
+    puzzle = rooms.parse(
+        AGE_BASE + "sum (ages in area:a) = 54\nmax (age in area:a) = 28\n"
+    )
+    assert puzzle.ages == {"Ada": 60, "Ben": 26, "Cleo": 28}
+    assert puzzle.age_lines == ["Ages: Ada 60, Ben 26, Cleo 28."]
+    assert puzzle.clue_lines == [
+        "The people in the living room are 54 years old together.",
+        "The oldest person in the living room is 28.",
+    ]
+    for clue in puzzle.clues:
+        assert clue.holds(PLACEMENT, puzzle), clue.describe(puzzle)
+        assert rooms.parse_clue(rooms.format_clue(clue), puzzle) == clue
+
+
+def test_an_age_total_can_be_compared_to_two_or_three_people():
+    puzzle = rooms.parse(
+        AGE_BASE
+        + "sum (ages in area:a) < sum (ages of Ada, Cleo)\n"
+        + "sum (ages in area:c) > sum (ages of Ben, Cleo)\n"
+        + "sum (ages in area:a) < sum (ages of Ada, Ben, Cleo)\n"
+    )
+    assert puzzle.clue_lines == [
+        "The people in the living room are younger together than Ada and Cleo.",
+        "The people in the kitchen are older together than Ben and Cleo.",
+        "The people in the living room are younger together than Ada, Ben and Cleo.",
+    ]
+    for clue in puzzle.clues:
+        assert clue.holds(PLACEMENT, puzzle), clue.describe(puzzle)
+        assert rooms.parse_clue(rooms.format_clue(clue), puzzle) == clue
+    with pytest.raises(ValueError):
+        rooms.parse(AGE_BASE + "sum (ages in area:a) < sum (ages of Ada)\n")
+    with pytest.raises(ValueError):
+        rooms.parse(AGE_BASE + "sum (ages in area:a) < sum (ages of Ada, Ada)\n")
+
+
+def test_the_oldest_of_an_empty_area_is_vacuously_young():
+    puzzle = rooms.parse(
+        AGE_BASE + "max (age in area:b) <= 60\nmax (age in area:b) >= 1\n"
+    )
+    assert puzzle.clues[0].holds(PLACEMENT, puzzle)  # nobody in an empty hall
+    assert not puzzle.clues[1].holds(PLACEMENT, puzzle)
+
+
+def test_age_clues_constrain_the_brute_force():
+    text = AGE_BASE + "Ada in area:c\nBen in area:a\nsum (ages in area:a) = 54\n"
+    (solution,) = bruteforce.solutions(text, "rooms", limit=2)
+    assert solution["Cleo"] == "living room"
+    assert solution["Ben"] == "living room"
+
+
+def test_age_clues_need_one_age_for_every_person():
+    with pytest.raises(ValueError):
+        rooms.parse(AGE_BASE.replace("Ada: 60\n", "") + "sum (ages in area:a) = 54\n")
+    with pytest.raises(ValueError):
+        rooms.parse(BASE.replace("Clues:\n", "Ages:\nZed: 40\n\nClues:\n") + "Ada in area:c\n")
+    with pytest.raises(ValueError):
+        rooms.parse(AGE_BASE.replace("Ben: 26\n", "Ben: 26\nBen: 26\n") + "Ada in area:c\n")
+
+
+def test_the_picture_prints_the_ages_above_the_clues():
+    puzzle = rooms.parse(AGE_BASE + "Ada in area:c\n")
+    image = picture.rooms_picture(puzzle, cell=60).to_svg()
+    assert "Ada 60" in image
 
 
 def test_a_group_count_speaks_for_all_its_rooms_together():

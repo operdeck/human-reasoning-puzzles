@@ -119,6 +119,15 @@ def labels(language: str) -> dict[str, str]:
 
 _COUNT = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$")
 _ALLOWED = re.compile(r"^count\s*\(\s*people in area:(\S+?)\s*\)\s+in\s+([\d,\s]+)$")
+_AGE_TOTAL = re.compile(
+    r"^sum\s*\(\s*ages in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$"
+)
+_AGE_OLDEST = re.compile(
+    r"^max\s*\(\s*age in area:(\S+?)\s*\)\s*(<=|>=|=|<|>)\s*(\d+)$"
+)
+_AGE_COMPARE = re.compile(
+    r"^sum\s*\(\s*ages in area:(\S+?)\s*\)\s*(<=|>=|<|>)\s*sum\s*\(\s*ages of ([^)]+?)\s*\)$"
+)
 _IN = re.compile(r"^(\S+)\s+in\s+area:(\S+)$")
 _ALONE = re.compile(r"^(\S+)\s+alone$")
 _PAIR = re.compile(r"^(\S+)\s+(together|apart)\s+(\S+)$")
@@ -253,6 +262,115 @@ class Allowed:
 
 
 @dataclass(frozen=True)
+class AgeTotal:
+    """The ages of the people in an area add up to a total."""
+
+    area: str
+    operator: str
+    number: int
+
+    def holds(self, where: Mapping[str, str], puzzle: "Puzzle") -> bool:
+        rooms = puzzle.areas(self.area)
+        total = sum(
+            puzzle.ages[person] for person, room in where.items() if room in rooms
+        )
+        return compare(total, self.operator, self.number)
+
+    def describe(self, puzzle: "Puzzle") -> str:
+        group = len(puzzle.areas(self.area)) > 1
+        place = puzzle.group_phrase(self.area) if group else puzzle.phrase(self.area)
+        if self.operator == "=":
+            if puzzle.language == "nl":
+                return f"De personen in {place} zijn samen {self.number} jaar."
+            return f"The people in {place} are {self.number} years old together."
+        word = COUNT_WORDS[puzzle.language][self.operator]
+        if puzzle.language == "nl":
+            return f"De personen in {place} zijn samen {word} {self.number} jaar."
+        return f"The people in {place} are {word} {self.number} years old together."
+
+
+@dataclass(frozen=True)
+class AgeOldest:
+    """How the oldest person in an area compares to an age."""
+
+    area: str
+    operator: str
+    number: int
+
+    def holds(self, where: Mapping[str, str], puzzle: "Puzzle") -> bool:
+        rooms = puzzle.areas(self.area)
+        ages = [puzzle.ages[person] for person, room in where.items() if room in rooms]
+        if not ages:
+            return self.operator in ("<", "<=")
+        return compare(max(ages), self.operator, self.number)
+
+    def describe(self, puzzle: "Puzzle") -> str:
+        group = len(puzzle.areas(self.area)) > 1
+        place = puzzle.group_phrase(self.area) if group else puzzle.phrase(self.area)
+        if puzzle.language == "nl":
+            if self.operator == "<=":
+                return f"In {place} is niemand ouder dan {self.number}."
+            if self.operator == "<":
+                return f"In {place} is niemand {self.number} of ouder."
+            if self.operator == "=":
+                return f"De oudste persoon in {place} is {self.number}."
+            if self.operator == ">":
+                return f"In {place} is iemand ouder dan {self.number}."
+            return f"In {place} is iemand {self.number} of ouder."
+        if self.operator == "<=":
+            return f"Nobody in {place} is older than {self.number}."
+        if self.operator == "<":
+            return f"Nobody in {place} is {self.number} or older."
+        if self.operator == "=":
+            return f"The oldest person in {place} is {self.number}."
+        if self.operator == ">":
+            return f"Someone in {place} is older than {self.number}."
+        return f"Someone in {place} is {self.number} or older."
+
+
+@dataclass(frozen=True)
+class AgeCompare:
+    """An area's total age compared to the sum of two or three people."""
+
+    area: str
+    operator: str
+    people: tuple[str, ...]
+
+    def holds(self, where: Mapping[str, str], puzzle: "Puzzle") -> bool:
+        rooms = puzzle.areas(self.area)
+        total = sum(
+            puzzle.ages[person] for person, room in where.items() if room in rooms
+        )
+        other = sum(puzzle.ages[person] for person in self.people)
+        return compare(total, self.operator, other)
+
+    def describe(self, puzzle: "Puzzle") -> str:
+        group = len(puzzle.areas(self.area)) > 1
+        place = puzzle.group_phrase(self.area) if group else puzzle.phrase(self.area)
+        conjunction = "en" if puzzle.language == "nl" else "and"
+        names = (
+            f"{self.people[0]} {conjunction} {self.people[1]}"
+            if len(self.people) == 2
+            else f"{self.people[0]}, {self.people[1]} {conjunction} {self.people[2]}"
+        )
+        if puzzle.language == "nl":
+            if self.operator == "<":
+                return f"De personen in {place} zijn samen jonger dan {names} samen."
+            if self.operator == "<=":
+                return f"De personen in {place} zijn samen hoogstens zo oud als {names} samen."
+            if self.operator == ">":
+                return f"De personen in {place} zijn samen ouder dan {names} samen."
+            return f"De personen in {place} zijn samen minstens zo oud als {names} samen."
+        if self.operator == "<":
+            return f"The people in {place} are younger together than {names}."
+        if self.operator == "<=":
+            return f"The people in {place} are at most as old together as {names}."
+        if self.operator == ">":
+            return f"The people in {place} are older together than {names}."
+        return f"The people in {place} are at least as old together as {names}."
+
+
+@dataclass(frozen=True)
 class Company:
     """Two people share a room, or they do not."""
 
@@ -338,7 +456,17 @@ class Choice:
 
 
 Simple = InRoom | Population | Alone
-ClueType = Simple | Company | Beside | Choice | Direction | Allowed
+ClueType = (
+    Simple
+    | Company
+    | Beside
+    | Choice
+    | Direction
+    | Allowed
+    | AgeTotal
+    | AgeOldest
+    | AgeCompare
+)
 
 
 def number_word(language: str, number: int) -> str:
@@ -362,6 +490,7 @@ class Puzzle:
     group_words: dict[str, str] = field(default_factory=dict)
     rules: tuple[ClueType, ...] = ()
     rule_wording: dict[int, str] = field(default_factory=dict)
+    ages: dict[str, int] = field(default_factory=dict)
 
     def room(self, key: str) -> Room:
         """The room with that key."""
@@ -414,6 +543,18 @@ class Puzzle:
     def clue_lines(self) -> list[str]:
         """Every clue as a sentence, numbered from one."""
         return [self.sentence(number) for number in range(1, len(self.clues) + 1)]
+
+    @property
+    def age_lines(self) -> list[str]:
+        """The declared ages as a line the puzzle sheet can show."""
+        if not self.ages:
+            return []
+        listed = ", ".join(
+            f"{person} {self.ages[person]}" for person in self.people if person in self.ages
+        )
+        if self.language == "nl":
+            return [f"Leeftijden: {listed}."]
+        return [f"Ages: {listed}."]
 
     @property
     def width(self) -> int:
@@ -489,6 +630,22 @@ def read_tags(lines: Sequence[str], rooms: Sequence[Room]) -> dict[str, tuple[st
     return tags
 
 
+def read_ages(lines: Sequence[str], people: Sequence[str]) -> dict[str, int]:
+    """`Ages:` lines give a person's age; an age clue needs all of them."""
+    ages: dict[str, int] = {}
+    for line in lines:
+        name, separator, value = line.partition(":")
+        name, value = name.strip(), value.strip()
+        if not separator or not name or not value.isdigit():
+            raise ValueError(f"bad age {line!r}, expected 'person: years'")
+        if name not in people:
+            raise ValueError(f"age for unknown person {name!r}")
+        if name in ages:
+            raise ValueError(f"age for {name!r} is given more than once")
+        ages[name] = int(value)
+    return ages
+
+
 def compare(count: int, operator: str, number: int) -> bool:
     """Whether `count` satisfies `count operator number`."""
     if operator == "=":
@@ -525,6 +682,7 @@ def parse(text: str) -> Puzzle:
             )
     if sum(room.capacity for room in rooms) < len(people):
         raise ValueError("the rooms have less room than the number of people")
+    ages = read_ages(sections.get("Ages", []), people)
     words: dict[str, str] = {}
     group_words: dict[str, str] = {}
     for line in sections.get("Words", []):
@@ -538,7 +696,7 @@ def parse(text: str) -> Puzzle:
     language = (sections.get("Language") or ["en"])[0].casefold()
     if language not in NUMBERS:
         raise ValueError(f"unknown Language {language!r}")
-    empty = Puzzle(rooms, plan, tags, people, (), words, {}, language, group_words)
+    empty = Puzzle(rooms, plan, tags, people, (), words, {}, language, group_words, ages=ages)
     rules: list[ClueType] = []
     rule_wording: dict[int, str] = {}
     for number, line in enumerate(sections.get("Rules", []), 1):
@@ -559,6 +717,10 @@ def parse(text: str) -> Puzzle:
             wording[number] = text.strip()
     if not clues:
         raise ValueError("Clues: needs at least one clue")
+    if any(
+        isinstance(clue, (AgeTotal, AgeOldest, AgeCompare)) for clue in (*rules, *clues)
+    ) and set(ages) != set(people):
+        raise ValueError("age clues need an age for every person")
     return Puzzle(
         rooms,
         plan,
@@ -571,6 +733,7 @@ def parse(text: str) -> Puzzle:
         group_words,
         tuple(rules),
         rule_wording,
+        ages=ages,
     )
 
 
@@ -588,6 +751,17 @@ def parse_clue(line: str, puzzle: Puzzle) -> ClueType:
         return Allowed(match[1], numbers)
     if match := _COUNT.match(line):
         return Population(match[1], match[2], int(match[3]))
+    if match := _AGE_TOTAL.match(line):
+        return AgeTotal(match[1], match[2], int(match[3]))
+    if match := _AGE_OLDEST.match(line):
+        return AgeOldest(match[1], match[2], int(match[3]))
+    if match := _AGE_COMPARE.match(line):
+        names = tuple(part.strip() for part in match[3].split(",") if part.strip())
+        if len(names) not in (2, 3) or len(set(names)) != len(names):
+            raise ValueError(
+                f"bad age comparison {line!r}: name two or three different people"
+            )
+        return AgeCompare(match[1], match[2], names)
     if match := _IN.match(line):
         return InRoom(match[1], match[2])
     if match := _ALONE.match(line):
@@ -632,6 +806,13 @@ def format_clue(clue: ClueType) -> str:
     if isinstance(clue, Allowed):
         numbers = ", ".join(str(number) for number in clue.numbers)
         return f"count (people in area:{clue.area}) in {numbers}"
+    if isinstance(clue, AgeTotal):
+        return f"sum (ages in area:{clue.area}) {clue.operator} {clue.number}"
+    if isinstance(clue, AgeOldest):
+        return f"max (age in area:{clue.area}) {clue.operator} {clue.number}"
+    if isinstance(clue, AgeCompare):
+        names = ", ".join(clue.people)
+        return f"sum (ages in area:{clue.area}) {clue.operator} sum (ages of {names})"
     if isinstance(clue, Alone):
         text = f"{clue.person} alone"
         return f"not ({text})" if clue.negated else text
@@ -657,6 +838,9 @@ def _check_names(clue: ClueType, puzzle: Puzzle) -> None:
             raise ValueError(f"unknown person {name!r}")
     if (area := getattr(clue, "area", None)) is not None:
         puzzle.areas(area)
+    for name in getattr(clue, "people", ()):
+        if name not in puzzle.people:
+            raise ValueError(f"unknown person {name!r}")
     for atom in getattr(clue, "atoms", ()):
         _check_names(atom, puzzle)
 
@@ -799,6 +983,17 @@ def _compile_clue(
         _count(model, name, literals, {0} if clue.negated else {1}, say, family)
     elif isinstance(clue, Population):
         _population(model, name, puzzle, clue, say, family)
+    elif isinstance(clue, (AgeTotal, AgeOldest, AgeCompare)):
+        labels = {room.label: room.key for room in puzzle.rooms}
+
+        def aging(*values: str) -> bool:
+            placed = {
+                person: labels[value]
+                for person, value in zip(puzzle.people, values, strict=True)
+            }
+            return clue.holds(placed, puzzle)
+
+        model.relate(name, puzzle.people, aging)
     elif isinstance(clue, Allowed):
         rooms = puzzle.areas(clue.area)
         literals = [
@@ -981,7 +1176,7 @@ def needs_everyone(clue: ClueType) -> bool:
     only judge them once the whole placement is known; a membership, a pair or a
     direction mentions everyone it depends on.
     """
-    if isinstance(clue, (Population, Alone, Allowed)):
+    if isinstance(clue, (Population, Alone, Allowed, AgeTotal, AgeOldest, AgeCompare)):
         return True
     return any(needs_everyone(atom) for atom in getattr(clue, "atoms", ()))
 
@@ -1026,6 +1221,19 @@ def candidate_clues(puzzle: Puzzle, where: Mapping[str, str]) -> list[tuple[int,
         if total:
             add(8, Population(area, ">=", total))
             add(8, Population(area, "<=", total))
+    if puzzle.ages:
+        for area in (*keys, *puzzle.tags):
+            rooms = puzzle.areas(area)
+            ages = [puzzle.ages[person] for person, room in where.items() if room in rooms]
+            total = sum(ages)
+            add(3, AgeTotal(area, "=", total))
+            add(8, AgeTotal(area, ">=", total))
+            add(8, AgeTotal(area, "<=", total))
+            if ages:
+                oldest = max(ages)
+                add(3, AgeOldest(area, "=", oldest))
+                add(8, AgeOldest(area, "<=", oldest))
+                add(8, AgeOldest(area, ">=", oldest))
     for first, second in itertools.combinations(puzzle.tags, 2):
         for one, two in itertools.permutations(puzzle.people, 2):
             clause = (InRoom(one, first), InRoom(two, second))

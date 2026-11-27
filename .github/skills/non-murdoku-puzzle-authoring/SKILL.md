@@ -57,9 +57,13 @@ Full workflow, options and traps: [workflow notes](references/workflow.md).
      grammar, is compiled as an always-on constraint and is left out of the
      numbering. Put the author's brief in the puzzle file's comments, and keep the
      clues to one plain kind each (a room or group, a compass direction, beside,
-     empty or not empty, together or alone). No counts other than empty/not-empty,
-     no king or knight distances: that is a house style for authored house
-     puzzles, not a limit of the family.
+     empty or not empty, together or alone). Age clues are their own kind: give
+     the puzzle an `Ages:` block with one age per person and compare an area's
+     total with the sum of two or three named people, as in
+     `sum (ages in area:A) < sum (ages of X, Y)`; avoid `=` in age clues. The
+     picture and the booklet print the ages. No other counts and no king or
+     knight distances: that is a house style for authored house puzzles, not a
+     limit of the family.
    * Use each room and group alias in at most one clue, and each person alias in
      at most one clue; reuse across the puzzles of one set is what makes a set feel
      samey. A person left without a clue is fine when a rule or the other clues

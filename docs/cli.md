@@ -82,7 +82,7 @@ confirms one solution. Every command accepts `-h/--help`.
 | `PLAN` / `PUZZLE` | A rooms file with a `Solution: Ada=a Ben=b` line and no clues, or a finished puzzle. |
 | `--output FILE` | Where `rooms-clues` writes the puzzle. |
 | `--clues N` | The most clues to keep (default 10). |
-| `--kinds a,b` | Allowed clue kinds: `in`, `dir`, `beside`, `empty`, `together`, `alone`, `choice`. Emptiness may only be `= 0` or `>= 1`, never another number. |
+| `--kinds a,b` | Allowed clue kinds: `in`, `dir`, `beside`, `empty`, `together`, `alone`, `choice`, `age`. Emptiness may only be `= 0` or `>= 1`, never another number. |
 | `--last PERSON` | The person who must be the final placement (a late discovery). |
 | `--seed N`, `--attempts N`, `--seconds S` | Reproducibility and the search budget. |
 

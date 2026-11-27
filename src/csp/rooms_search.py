@@ -30,6 +30,7 @@ KINDS = {
     "together": "two people are together or apart",
     "alone": "a person stands alone or does not",
     "choice": "exactly one of two room clauses holds",
+    "age": "the total or oldest age of the people in an area",
 }
 BRIEF_KINDS = frozenset(KINDS)
 _AREA = re.compile(r"area:(\S+?)[\s);]|area:(\S+)$")
@@ -93,6 +94,8 @@ def placement_count(surface: str) -> int:
 
 def kind_of(line: str) -> str:
     """The clue kind a line uses, named as `KINDS` names it."""
+    if line.startswith("sum (") or line.startswith("max ("):
+        return "age"
     if "dir:" in line:
         return "dir"
     if " beside " in line:

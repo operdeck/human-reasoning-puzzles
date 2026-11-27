@@ -46,7 +46,10 @@ def test_clue_kinds_and_areas_are_recognised():
     assert rooms_search.kind_of("Ada alone") == "alone"
     assert rooms_search.kind_of("Ada apart Ben") == "together"
     assert rooms_search.kind_of("count (people in area:a) = 0") == "empty"
+    assert rooms_search.kind_of("sum (ages in area:a) = 54") == "age"
+    assert rooms_search.kind_of("max (age in area:a) <= 27") == "age"
     assert rooms_search.area_of("count (people in area:window) = 0") == "window"
+    assert rooms_search.area_of("sum (ages in area:window) = 54") == "window"
     assert rooms_search.area_of("Ada dir:up Ben") is None
 
 
