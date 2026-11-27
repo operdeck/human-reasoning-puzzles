@@ -279,6 +279,12 @@ repeat them for the hand-out.
 
 The variable values are room labels, so `--step` and the worked solution read as rooms.
 
+For the web player a room puzzle exports a generic `assign` block: `items` are
+people, `targets` are rooms with their capacity, plan box and cells, colour,
+properties and one slot per capacity unit, and the solution maps people to room
+keys. The player does not know the room rules; it keeps the assignment, shows
+capacity feedback and compares it with the solved assignment.
+
 ## Binary grids
 
 Binairo/Takuzu and Tango use an even board size from 4 through 16. `Givens:` is an N×N grid of `.`, `0`, and `1`. Each row and column has equal numbers of 0 and 1, contains no run of three equal values, and is distinct from every other row/column. Tango adds neighboring-cell signs:
