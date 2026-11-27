@@ -356,6 +356,10 @@ def _add_rooms(
             paragraph = document.add_paragraph()
             paragraph.paragraph_format.space_after = Pt(5)
             _runs(paragraph, intro)
+        for line in puzzle.age_lines:
+            paragraph = document.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(5)
+            _runs(paragraph, line)
         rules = family_rules(entry.text, "rooms") + puzzle.rule_lines
         document.add_heading(phrase(entry.text, "doc.rules_title"), level=2)
         for rule in rules:
@@ -365,9 +369,13 @@ def _add_rooms(
         stream, aspect = _rooms_stream(entry.text, None)
         clue_rows = sum(-(-len(line) // CLUE_LINE_CHARS) for line in puzzle.clue_lines)
         intro_rows = sum(-(-len(line) // CLUE_LINE_CHARS) for line in presentation.intro)
+        age_rows = sum(-(-len(line) // CLUE_LINE_CHARS) for line in puzzle.age_lines)
         key_rows = -(-sum(len(puzzle.phrase(tag)) + 8 for tag in puzzle.tags) // CLUE_LINE_CHARS)
         width = _puzzle_board_width(
-            aspect, clue_rows, len(puzzle.clues), len(rules) + intro_rows + key_rows
+            aspect,
+            clue_rows,
+            len(puzzle.clues),
+            len(rules) + intro_rows + age_rows + key_rows,
         )
     document.add_picture(stream, width=Cm(max(width, MIN_BOARD_WIDTH_CM)))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
