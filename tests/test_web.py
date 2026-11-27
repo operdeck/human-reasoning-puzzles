@@ -529,6 +529,10 @@ def test_rooms_bundles_are_playable_and_assign_every_person(exported):
         assert len(target["slots"]) == target["capacity"]
         assert len(target["box"]) == 4
         assert target["box"][2] > 0 and target["box"][3] > 0
+        left, top, width, height = target["box"]
+        for slot_x, slot_y, size in target["slots"]:
+            assert left <= slot_x <= left + width - size
+            assert top <= slot_y <= top + height - size
         assert len(target["cells"]) > 0
 
     board = svg.ids((exported / bundle["static"]).read_text())

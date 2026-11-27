@@ -432,6 +432,9 @@ export type Verdict =
 
 /** Compare the player's pieces with the solution; crosses count as empty. */
 export function check(bundle: Bundle, state: State): Verdict {
+  // Assignment bundles compare the stored person -> container solution. The
+  // solver proves the solution unique, so an equal assignment is the only valid
+  // answer; there is no alternative-looking arrangement to accept.
   const solution = bundle.solution ?? {};
   const givens = bundle.givens ?? {};
   let wrong = 0;
