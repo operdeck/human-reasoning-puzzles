@@ -53,6 +53,31 @@ export interface Links {
   instructions?: string;
 }
 
+export interface AssignItem {
+  id: string;
+  label: string;
+  symbol?: string;
+  svg?: string;
+}
+
+export interface AssignTarget {
+  id: string;
+  label: string;
+  capacity: number;
+  box: [number, number, number, number];
+  cells: CellId[];
+  colour?: string;
+  properties?: string[];
+  slots?: [number, number, number][];
+}
+
+/** Containers (targets) for items (people), independent of a cell grid. */
+export interface Assign {
+  items: AssignItem[];
+  targets: AssignTarget[];
+  instructions?: string;
+}
+
 export interface Bundle {
   schema: number;
   id: string;
@@ -94,6 +119,7 @@ export interface Bundle {
   objects?: Named[];
   solutionSteps?: { paragraphs: string[]; complete: boolean };
   links?: Links;
+  assign?: Assign;
 }
 
 export interface State {
@@ -123,6 +149,7 @@ export function parseCell(id: CellId): [number, number] {
 }
 
 export function allCells(bundle: Bundle): CellId[] {
+  if (bundle.assign) return bundle.assign.items.map((item) => item.id);
   if (bundle.links) return bundle.links.segments.map((segment) => segment.id);
   const [rows, cols] = bundle.size;
   const out: CellId[] = [];
@@ -132,7 +159,8 @@ export function allCells(bundle: Bundle): CellId[] {
 
 /** Cells the player can never change: blocked squares and givens. */
 export function locked(bundle: Bundle, cell: CellId): boolean {
-  return (bundle.links !== undefined && !bundle.links.segments.some((segment) => segment.id === cell))
+  return (bundle.assign !== undefined && !bundle.assign.items.some((item) => item.id === cell))
+    || (bundle.links !== undefined && !bundle.links.segments.some((segment) => segment.id === cell))
     || (bundle.placement?.blocked ?? []).includes(cell) || cell in (bundle.givens ?? {});
 }
 
@@ -240,6 +268,45 @@ export function occupied(bundle: Bundle, state: State): Record<CellId, string> {
   return { ...state.placed, ...(bundle.givens ?? {}) };
 }
 
+export function roomOccupants(bundle: Bundle, state: State, room: string): string[] {
+  return bundle.assign?.items
+    .map((item) => item.id)
+    .filter((item) => state.placed[item] === room) ?? [];
+}
+
+export interface CapacityConflict {
+  room: string;
+  count: number;
+  capacity: number;
+}
+
+/** Capacity feedback from the visible bundle only, never the stored solution. */
+export function capacityConflict(
+  bundle: Bundle,
+  state: State,
+  room: string,
+): CapacityConflict | null {
+  const target = bundle.assign?.targets.find((candidate) => candidate.id === room);
+  if (!target || !state.warnings) return null;
+  const count = roomOccupants(bundle, state, room).length;
+  return count > target.capacity ? { room, count, capacity: target.capacity } : null;
+}
+
+/** Give `person` to `room`, or take them out if they are already there. */
+export function assignPerson(
+  bundle: Bundle,
+  state: State,
+  person: string,
+  room: string,
+): State {
+  if (!bundle.assign || locked(bundle, person)
+    || !bundle.assign.targets.some((target) => target.id === room)) return state;
+  const placed = { ...state.placed };
+  if (placed[person] === room) delete placed[person];
+  else placed[person] = room;
+  return { ...state, placed };
+}
+
 /**
  * The cells auto-marked with a cross: derived from the placements, never stored,
  * so removing a piece or undoing a move cleans up its crosses by itself.
@@ -272,6 +339,7 @@ export function autoMarks(bundle: Bundle, state: State): Set<CellId> {
  * mine or a star may be placed many times, so its button is never crossed.
  */
 export function usedItems(bundle: Bundle, state: State): Set<string> {
+  if (bundle.assign) return new Set();
   if (!state.auto || !bundle.autoMark || bundle.placement?.perItem !== 1) return new Set();
   return new Set(Object.values(occupied(bundle, state)));
 }
@@ -313,6 +381,7 @@ export function toggleNote(bundle: Bundle, state: State, cell: CellId, item: str
 /** Place `item` on `cell`, or take it off if it is already there. */
 export function place(bundle: Bundle, state: State, cell: CellId, item: string): State {
   if (locked(bundle, cell)) return state;
+  if (bundle.assign) return assignPerson(bundle, state, cell, item);
   if (bundle.links) return setSegment(bundle, state, cell, state.placed[cell] === item ? "0" : item);
   const placed = { ...state.placed };
   if (placed[cell] === item) {
@@ -338,7 +407,7 @@ export function clearCell(bundle: Bundle, state: State, cell: CellId): State {
 
 /** Set or remove a manual cross; `on` undefined toggles it and replaces any piece. */
 export function setCross(bundle: Bundle, state: State, cell: CellId, on?: boolean): State {
-  if (locked(bundle, cell)) return state;
+  if (bundle.assign || locked(bundle, cell)) return state;
   const has = state.crosses.includes(cell);
   const want = on ?? !has;
   if (want === has && (!want || !(cell in state.placed))) return state;
@@ -425,22 +494,25 @@ export function restore(bundle: Bundle, saved: unknown): State {
   const state = emptyState(bundle);
   if (typeof saved !== "object" || saved === null) return state;
   const raw = saved as Record<keyof State, unknown>;
-  const cells = new Set(allCells(bundle));
-  const items = new Set((bundle.palette ?? []).map((item) => item.id));
-  const free = (cell: unknown): cell is CellId =>
-    typeof cell === "string" && cells.has(cell) && !locked(bundle, cell);
+  const assign = bundle.assign;
+  const keys = new Set(assign ? assign.items.map((item) => item.id) : allCells(bundle));
+  const values = new Set(
+    assign ? assign.targets.map((target) => target.id) : (bundle.palette ?? []).map((item) => item.id),
+  );
+  const free = (key: unknown): key is CellId =>
+    typeof key === "string" && keys.has(key) && !locked(bundle, key);
   if (typeof raw.placed === "object" && raw.placed !== null) {
-    for (const [cell, item] of Object.entries(raw.placed)) {
-      if (free(cell) && typeof item === "string" && items.has(item)) state.placed[cell] = item;
+    for (const [key, value] of Object.entries(raw.placed)) {
+      if (free(key) && typeof value === "string" && values.has(value)) state.placed[key] = value;
     }
   }
-  if (Array.isArray(raw.crosses)) {
+  if (!assign && Array.isArray(raw.crosses)) {
     state.crosses = [...new Set(raw.crosses)].filter((cell) => free(cell) && !(cell in state.placed));
   }
-  if (bundle.notes && typeof raw.notes === "object" && raw.notes !== null) {
+  if (!assign && bundle.notes && typeof raw.notes === "object" && raw.notes !== null) {
     for (const [cell, noted] of Object.entries(raw.notes)) {
-      if (!cells.has(cell) || locked(bundle, cell) || !Array.isArray(noted)) continue;
-      const kept = [...items].filter((item) => noted.includes(item));
+      if (!keys.has(cell) || locked(bundle, cell) || !Array.isArray(noted)) continue;
+      const kept = [...values].filter((item) => noted.includes(item));
       if (kept.length > 0) state.notes[cell] = kept;
     }
   }
