@@ -136,6 +136,16 @@ def test_every_playable_cell_is_on_the_board(exported):
                 assert set(segments[link]["endpoints"]) <= nodes, bundle["id"]
                 assert value in segments[link]["values"], bundle["id"]
             continue
+        if assign := bundle.get("assign"):
+            # Assignment puzzles key the state by item and value it by container.
+            items = {item["id"] for item in assign["items"]}
+            targets = {target["id"]: target for target in assign["targets"]}
+            assert set(bundle["solution"]) == items, bundle["id"]
+            assert set(bundle["solution"].values()) <= set(targets), bundle["id"]
+            for target in targets.values():
+                assert set(target["cells"]) <= ids, bundle["id"]
+                assert len(target["slots"]) == target["capacity"], bundle["id"]
+            continue
         assert board <= ids, bundle["id"]
         cells = (
             set(bundle["solution"]) | set(bundle["givens"]) | set(bundle["placement"]["blocked"])
@@ -487,13 +497,13 @@ def test_logic_grids_are_listed_but_not_playable(exported):
     assert bundle["unsupported"]
 
 
-def test_rooms_bundles_carry_the_text_beside_a_bare_plan(exported):
-    """A room puzzle is read-only, so its clues, key and question live in the panel."""
+def test_rooms_bundles_are_playable_and_assign_every_person(exported):
+    """A room puzzle exports the plan, its containers and a person-by-person solution."""
     from csp import rooms
 
     bundle = _bundle(exported, "rooms_2_5x7")
     puzzle = rooms.parse(example("rooms_2_5x7.txt").read_text())
-    assert not bundle["playable"] and bundle["unsupported"]
+    assert bundle["playable"] and "unsupported" not in bundle
     assert bundle["size"] == [puzzle.height, puzzle.width]
     assert bundle["clues"] == puzzle.clue_lines
     assert [item["name"] for item in bundle["key"]] == [puzzle.phrase(tag) for tag in puzzle.tags]
@@ -504,14 +514,38 @@ def test_rooms_bundles_carry_the_text_beside_a_bare_plan(exported):
     assert headings["clues"] == "Clues"
     assert headings["question"] == "Question"
     assert headings["key"] == "Key"
+
+    assign = bundle["assign"]
+    items = {item["id"] for item in assign["items"]}
+    targets = {target["id"]: target for target in assign["targets"]}
+    assert items == set(puzzle.people)
+    assert set(targets) == {room.key for room in puzzle.rooms}
+    assert assign["instructions"]
+    assert set(bundle["solution"]) == items
+    assert set(bundle["solution"].values()) <= set(targets)
+    for target in targets.values():
+        occupants = [person for person, room in bundle["solution"].items() if room == target["id"]]
+        assert len(occupants) <= target["capacity"]
+        assert len(target["slots"]) == target["capacity"]
+        assert len(target["box"]) == 4
+        assert target["box"][2] > 0 and target["box"][3] > 0
+        left, top, width, height = target["box"]
+        for slot_x, slot_y, size in target["slots"]:
+            assert left <= slot_x <= left + width - size
+            assert top <= slot_y <= top + height - size
+        assert len(target["cells"]) > 0
+
     board = svg.ids((exported / bundle["static"]).read_text())
-    assert {
-        f"r{row}c{col}" for row in range(1, puzzle.height + 1) for col in range(1, puzzle.width + 1)
-    } <= set(board)
+    cells = {cell for target in targets.values() for cell in target["cells"]}
+    assert cells <= set(board)
     # The clues and the key are the page's text now, not a picture of them.
     board_text = (exported / bundle["static"]).read_text()
     assert puzzle.clue_lines[0] not in board_text
     assert puzzle.phrase(next(iter(puzzle.tags))) not in board_text
+
+    index = json.loads((exported / "index.json").read_text())
+    entry = next(item for item in index["puzzles"] if item["id"] == "rooms_2_5x7")
+    assert entry["playable"] is True and "unsupported" not in entry
 
 
 def test_calcudoku_cage_targets_are_editable_clues_not_hidden_givens(tmp_path):

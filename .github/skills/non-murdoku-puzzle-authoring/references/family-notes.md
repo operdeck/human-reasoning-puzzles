@@ -1,5 +1,18 @@
 Read this when generating or reviewing a board from the newer families.
 
+## Rooms
+
+Rooms is not a cell grid: people choose a value (a room) from a plan. A room may
+hold several people up to its capacity and may span several plan cells; the
+kitchen example has one cell and capacity two, which is valid. Author with
+`puzzle-lab rooms-clues` / `rooms-check` (see the skill) and keep each plain clue
+kind to one alias. The plan picture and the booklet page carry the property key;
+the web export turns people into `assign.items` and rooms into `assign.targets`
+with capacity, box, cells, properties and one slot per capacity unit. The player
+state is person -> room; slots are display only. Preview the tray, a room tap,
+capacity warnings, keyboard flow and a phone-width plan before calling the UI
+done.
+
 ## Bridges
 
 `fresh bridges` grows a connected network with one or two non-crossing bridges

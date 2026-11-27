@@ -56,7 +56,8 @@ from .story import (
 )
 
 SCHEMA = (
-    4  # 4 added `solutionSteps`; 3 replaced `conditions` with the board `key`; 2 added `deductive`
+    5  # 5 added the generic `assign` block; 4 added `solutionSteps`; 3 replaced
+    # `conditions` with the board `key`; 2 added `deductive`
 )
 LICENSE = (
     "\u00a9 Otto Perdeck. All rights reserved. You may play these puzzles on this site; "
@@ -66,8 +67,6 @@ CELL = re.compile(r'<rect id="r(\d+)c(\d+)" class="cell"')
 DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru", "towers", "kakuro"})
 UNSUPPORTED = {
     "logicgrid": "The logic grid needs its own matrix view; not playable yet.",
-    "rooms": "Read-only for now: the plan is shown with its clues and key beside it, so you "
-    "can solve it on paper.",
 }
 
 
@@ -504,6 +503,110 @@ def _rooms_key(puzzle: rooms.Puzzle) -> list[dict[str, Any]]:
     return out
 
 
+def _cell_boxes(picture: str) -> dict[str, tuple[float, float, float, float]]:
+    """The interactive plan's cell rectangles, by plan cell id."""
+    root = ElementTree.fromstring(picture)
+    return {
+        node.attrib["id"]: (
+            float(node.attrib["x"]),
+            float(node.attrib["y"]),
+            float(node.attrib["width"]),
+            float(node.attrib["height"]),
+        )
+        for node in root.iter()
+        if node.attrib.get("class") == "cell" and "id" in node.attrib
+    }
+
+
+def _room_slots(box: tuple[float, float, float, float], capacity: int) -> list[list[float]]:
+    """A tidy row of slots inside a room box, independent of its cell count."""
+    if capacity < 1:
+        return []
+    x, y, width, height = box
+    pad = max(4.0, min(width, height) * 0.08)
+    gap_ratio = 0.18
+    available = max(width - 2 * pad, 1.0)
+    size = min(max(8.0, min(width, height) * 0.18), height * 0.18)
+    size = min(size, available / (capacity * (1 + gap_ratio)))
+    size = max(6.0, size)
+    gap = size * gap_ratio
+    total = capacity * size + (capacity - 1) * gap
+    start = x + (width - total) / 2
+    top = y + height * 0.40
+    top = min(top, y + height * 0.62 - size)
+    top = max(top, y + pad)
+    return [
+        [round(start + index * (size + gap), 1), round(top, 1), round(size, 1)]
+        for index in range(capacity)
+    ]
+
+
+def _rooms(text: str, solution: Mapping[str, Any], picture: str) -> dict[str, Any]:
+    """The generic assignment interaction for a room plan.
+
+    People are the items, rooms are the targets: a room is a multi-cell container
+    with a capacity, so the player state is keyed by person and valued by room.
+    """
+    puzzle = rooms.parse(text)
+    boxes = _cell_boxes(picture)
+    label_to_key = {room.label: room.key for room in puzzle.rooms}
+    room_keys = set(label_to_key.values())
+    items = [{"id": person, "label": person, "symbol": person[:2]} for person in puzzle.people]
+    targets = []
+    for room in puzzle.rooms:
+        cells = [f"r{row + 1}c{col + 1}" for row, col in room.cells]
+        rects = [boxes[cell] for cell in cells if cell in boxes]
+        if not rects:
+            continue
+        left = min(rect[0] for rect in rects)
+        top = min(rect[1] for rect in rects)
+        right = max(rect[0] + rect[2] for rect in rects)
+        bottom = max(rect[1] + rect[3] for rect in rects)
+        box = (left, top, right - left, bottom - top)
+        properties = [puzzle.phrase(tag) for tag in puzzle.tags if room.key in puzzle.tags[tag]]
+        targets.append(
+            {
+                "id": room.key,
+                "label": room.title,
+                "capacity": room.capacity,
+                "box": [round(value, 1) for value in box],
+                "cells": cells,
+                "colour": room.colour,
+                "properties": properties,
+                "slots": _room_slots(box, room.capacity),
+            }
+        )
+    placed: dict[str, str] = {}
+    for person, value in solution.items():
+        if not isinstance(value, str):
+            continue
+        key = label_to_key.get(value)
+        if key is None and value in room_keys:
+            key = value
+        if key is not None:
+            placed[person] = key
+    nl = language_of(text) == "nl"
+    return {
+        "playable": True,
+        "assign": {
+            "items": items,
+            "targets": targets,
+            "instructions": (
+                "Kies een persoon en tik een kamer aan. Tik een kamer en daarna een "
+                "persoon om ze te koppelen. Cijfertoetsen kiezen een persoon, Delete "
+                "haalt iemand weg; Tab of pijltjes gaan langs de kamers."
+                if nl
+                else "Choose a person and tap a room. Tap a room and then a person to "
+                "pair them. Number keys choose a person, Delete removes one; Tab or "
+                "arrow keys move between rooms."
+            ),
+        },
+        "givens": {},
+        "solution": placed,
+        "placement": {"blocked": []},
+    }
+
+
 def _family(
     text: str, kind: str, model: Model, solution: Mapping[str, Any], picture: str
 ) -> dict[str, Any]:
@@ -534,6 +637,7 @@ def _family(
                 "key": phrase(text, "doc.key"),
             },
         }
+        return out | _rooms(text, solution, picture)
     if kind in UNSUPPORTED:
         return out | {"playable": False, "unsupported": UNSUPPORTED[kind]}
     if kind == "bridges":

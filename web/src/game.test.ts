@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignPerson,
+  allCells,
   autoMarks,
+  capacityConflict,
   check,
   clearCell,
   emptyState,
@@ -10,6 +13,7 @@ import {
   place,
   placementConflict,
   restore,
+  roomOccupants,
   scopeCells,
   setCross,
   struckNotes,
@@ -210,6 +214,73 @@ describe("check", () => {
     expect(check(b, state)).toEqual({ status: "wrong", wrong: 1 });
     state = place(b, state, "r3c4", "Ingrid");
     expect(check(b, state)).toEqual({ status: "solved" });
+  });
+});
+
+function assignment(): Bundle {
+  return {
+    ...murdoku(),
+    family: "rooms",
+    size: [2, 2],
+    palette: undefined,
+    placement: { blocked: [] },
+    autoMark: undefined,
+    givens: {},
+    solution: { Ada: "a", Ben: "b" },
+    assign: {
+      items: [
+        { id: "Ada", label: "Ada", symbol: "Ad" },
+        { id: "Ben", label: "Ben", symbol: "Be" },
+      ],
+      targets: [
+        {
+          id: "a", label: "Living room", capacity: 2,
+          box: [0, 0, 100, 50], cells: ["r1c1", "r1c2"], slots: [[10, 20, 12], [26, 20, 12]],
+        },
+        {
+          id: "b", label: "Hall", capacity: 1,
+          box: [0, 50, 100, 50], cells: ["r2c1", "r2c2"], slots: [[10, 70, 12]],
+        },
+      ],
+      instructions: "Assign people.",
+    },
+  };
+}
+
+describe("assignment puzzles", () => {
+  it("keys the board by item and values it by container", () => {
+    const b = assignment();
+    expect(allCells(b)).toEqual(["Ada", "Ben"]);
+    expect(locked(b, "Ada")).toBe(false);
+    expect(locked(b, "Zed")).toBe(true);
+    let state = assignPerson(b, emptyState(b), "Ada", "a");
+    expect(state.placed).toEqual({ Ada: "a" });
+    expect(roomOccupants(b, state, "a")).toEqual(["Ada"]);
+    state = assignPerson(b, state, "Ada", "b");
+    expect(state.placed).toEqual({ Ada: "b" });
+    expect(assignPerson(b, state, "Ada", "b").placed).toEqual({});
+    expect(place(b, state, "Ben", "a").placed).toEqual({ Ada: "b", Ben: "a" });
+  });
+
+  it("reports capacity from the visible state and warnings setting only", () => {
+    const b = assignment();
+    let state = assignPerson(b, emptyState(b), "Ada", "b");
+    expect(capacityConflict(b, state, "b")).toBeNull();
+    state = assignPerson(b, state, "Ben", "b");
+    expect(capacityConflict(b, state, "b")).toEqual({ room: "b", count: 2, capacity: 1 });
+    expect(capacityConflict(b, { ...state, warnings: false }, "b")).toBeNull();
+  });
+
+  it("checks against the stored solution and restores only real items and rooms", () => {
+    const b = assignment();
+    let state = assignPerson(b, emptyState(b), "Ada", "a");
+    expect(check(b, state)).toEqual({ status: "incomplete", missing: 1 });
+    state = assignPerson(b, state, "Ben", "a");
+    expect(check(b, state)).toEqual({ status: "wrong", wrong: 1 });
+    state = assignPerson(b, state, "Ben", "b");
+    expect(check(b, state)).toEqual({ status: "solved" });
+    const restored = restore(b, { placed: { Ada: "a", Ben: "nope", Zed: "b" } });
+    expect(restored.placed).toEqual({ Ada: "a" });
   });
 });
 

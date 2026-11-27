@@ -51,6 +51,11 @@ repository topics, site verification and sitemap submission.
   supplied by the puzzle author even when the object occurs in multiple cells.
   The standard `door` and `window` symbols are localized in Dutch tooltips
   unless the author supplies a name in `Words:`.
+- **Rooms:** choose a person in the tray and tap a room, or tap a room and then
+  a person. Number keys pick a person, Tab or the arrow keys move between rooms,
+  Delete removes an occupant, right-click or long-press unassigns and Ctrl+Z
+  undoes. Each room shows one slot per capacity unit; with warnings on a full
+  room is greyed as a drop target. Hint and Show solution work as for links.
 - **Family boundary:** family knowledge lives in `src/csp/web.py`, not in
   TypeScript. After changing `web/`, run `npx tsc --noEmit` and `npm test`.
 - **Grades:** puzzle entries show a player-facing label instead of the solver's
@@ -139,6 +144,15 @@ offer explicit single/double choices. Progress, undo, checking and hints refer
 to segment ids rather than water cells. The TypeScript player reads that
 metadata without implementing Bridges rules. Number totals and crossing
 feedback use the player's links, not the stored solution.
+
+Rooms exports a generic `assign` interaction: `items` are people, `targets` are
+rooms with a capacity, a plan `box`, plan `cells`, colour, properties and one
+slot per capacity unit; `solution` maps item ids to target ids. The player keys
+`state.placed` by item and values it by target, so undo, saving, checking and
+the worked solution use the same plumbing. The hit area is the room box, so a tap
+anywhere in a multi-cell room targets the room. Slots are display only; a room's
+capacity never has to match its number of plan cells. Capacity feedback uses the
+visible capacity and the warnings setting, never the stored solution.
 
 Each Murdoku `key` entry also includes the corresponding board symbol as `svg`. If windows with one name use both wall panes and separate icons, the key shows both.
 

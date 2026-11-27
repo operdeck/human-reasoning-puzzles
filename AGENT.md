@@ -384,7 +384,14 @@ direction: the benchmark imports `csp`, never the other way round.
 7. Test against an **independent** source of truth — a published solution,
    the brute force, or a property check (permutation, givens preserved).
    Self-consistency is not verification.
-8. Pitfalls every new family has met, each now covered by a shared tool:
+8. If people choose containers instead of cells, do not force the player's
+   cell state. Add a family-agnostic bundle block (like `links` or `assign`) and
+   a matching pure state branch in `web/src/game.ts` and `view.ts`; key
+   `placed` by item when the containers are not cells. The plan's hit areas and
+   slot geometry come from the exporter; no family name or rule may appear in
+   `web/src/*.ts`. Every family must be playable or carry an explicit
+   `UNSUPPORTED` reason.
+9. Pitfalls every new family has met, each now covered by a shared tool:
    - **Assign givens last.** `Model.assign` only propagates through the
      constraints that exist when it runs, so givens set while the cells are
      still being declared never reach the line counts or "not both" rules, and
