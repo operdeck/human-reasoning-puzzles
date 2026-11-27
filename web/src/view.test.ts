@@ -645,3 +645,136 @@ describe("mineCounter", () => {
     expect(mineCounter({ language: "en" }, { placed: {} })).toBeNull();
   });
 });
+
+describe("room assignment", () => {
+  const BOARD = `<svg viewBox="0 0 200 100"><g class="cells">
+    <rect class="cell" id="r1c1" x="0" y="0" width="100" height="100"/>
+    <rect class="cell" id="r1c2" x="100" y="0" width="100" height="100"/>
+  </g></svg>`;
+
+  function bundle(overrides: Partial<Bundle> = {}): Bundle {
+    return {
+      schema: 5,
+      id: "rooms-play",
+      family: "rooms",
+      title: "Two rooms",
+      grade: "single",
+      deductive: true,
+      static: "rooms-play.svg",
+      license: "",
+      language: "en",
+      size: [1, 2],
+      playable: true,
+      placement: { blocked: [] },
+      givens: {},
+      solution: { Ada: "a", Ben: "b" },
+      rules: [],
+      clues: ["Ada is in the left room.", "Ben is in the right room."],
+      key: [],
+      question: "Who is where?",
+      assign: {
+        items: [
+          { id: "Ada", label: "Ada", symbol: "Ad" },
+          { id: "Ben", label: "Ben", symbol: "Be" },
+        ],
+        targets: [
+          {
+            id: "a", label: "Left room", capacity: 1, box: [0, 0, 100, 100],
+            cells: ["r1c1"], slots: [[30, 60, 20]],
+          },
+          {
+            id: "b", label: "Right room", capacity: 2, box: [100, 0, 100, 100],
+            cells: ["r1c2"], slots: [[130, 60, 20], [154, 60, 20]],
+          },
+        ],
+        instructions: "Choose a person, then a room.",
+      },
+      ...overrides,
+    };
+  }
+
+  function mount(overrides: Partial<Bundle> = {}): HTMLElement {
+    const root = document.createElement("main");
+    document.body.append(root);
+    new PuzzleView(bundle(overrides), BOARD).render(root);
+    return root;
+  }
+
+  function press(root: HTMLElement, key: string): void {
+    const board = root.querySelector<HTMLElement>(".board");
+    if (!board) throw new Error("no board");
+    board.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    document.body.replaceChildren();
+  });
+
+  it("assigns a person to a room and checks the solution", () => {
+    const root = mount();
+    const tray = root.querySelector<HTMLElement>(".assign-tray")!;
+    expect(tray.querySelectorAll("button")).toHaveLength(2);
+    tray.querySelector<HTMLButtonElement>('[data-item="Ada"]')!.click();
+    root.querySelector<SVGElement>('[data-room="a"]')!.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(root.querySelector(".assign-chips")?.textContent).toContain("Ad");
+    expect(root.querySelector('[data-room="a"]')?.getAttribute("aria-label")).toContain("1/1");
+
+    tray.querySelector<HTMLButtonElement>('[data-item="Ben"]')!.click();
+    root.querySelector<SVGElement>('[data-room="b"]')!.dispatchEvent(new Event("click", { bubbles: true }));
+    root.querySelector<HTMLButtonElement>(".controls .primary")!.click();
+    expect(root.querySelector(".verdict")?.textContent).toContain("Solved!");
+  });
+
+  it("refuses a full room with warnings on and overflows with them off", () => {
+    const root = mount({
+      assign: {
+        ...bundle().assign!,
+        targets: [
+          { id: "a", label: "Left room", capacity: 1, box: [0, 0, 100, 100], cells: ["r1c1"], slots: [[30, 60, 20]] },
+          { id: "b", label: "Right room", capacity: 1, box: [100, 0, 100, 100], cells: ["r1c2"], slots: [[130, 60, 20]] },
+        ],
+      },
+    });
+    const tray = root.querySelector<HTMLElement>(".assign-tray")!;
+    tray.querySelector<HTMLButtonElement>('[data-item="Ada"]')!.click();
+    root.querySelector<SVGElement>('[data-room="b"]')!.dispatchEvent(new Event("click", { bubbles: true }));
+    tray.querySelector<HTMLButtonElement>('[data-item="Ben"]')!.click();
+    root.querySelector<SVGElement>('[data-room="b"]')!.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(root.querySelector(".verdict")?.textContent).toContain("full");
+    expect(root.querySelectorAll(".assign-chip")).toHaveLength(1);
+
+    const warnings = root.querySelector<HTMLInputElement>(".assist-controls input")!;
+    warnings.checked = false;
+    warnings.dispatchEvent(new Event("change"));
+    root.querySelector<SVGElement>('[data-room="b"]')!.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(root.querySelectorAll(".assign-chip.overflow")).toHaveLength(1);
+  });
+
+  it("supports room selection, number keys, delete and undo", () => {
+    const root = mount();
+    const room = root.querySelector<SVGElement>('[data-room="a"]')!;
+    room.dispatchEvent(new FocusEvent("focus"));
+    press(root, "1");
+    expect(root.querySelector(".assign-chips")?.textContent).toContain("Ad");
+    room.dispatchEvent(new FocusEvent("focus"));
+    press(root, "Delete");
+    expect(root.querySelector(".assign-chips")?.textContent).not.toContain("Ad");
+    root.querySelector<HTMLElement>(".board")!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    );
+    expect(root.querySelector(".assign-chips")?.textContent).toContain("Ad");
+  });
+
+  it("offers a hint and the full solution", () => {
+    const root = mount();
+    root.querySelector<HTMLButtonElement>(".controls button:nth-child(5)")!.click();
+    expect(root.querySelector(".assign-chips")?.textContent).toContain("Ad");
+    const solution = [...root.querySelectorAll<HTMLButtonElement>(".controls button")]
+      .find((button) => button.textContent === "Show solution")!;
+    solution.click();
+    expect(root.querySelector(".assign-chips")?.textContent).toContain("Ad");
+    expect(root.querySelector(".assign-chips")?.textContent).toContain("Be");
+  });
+});
+

@@ -904,3 +904,63 @@ dt .icon svg {
   width: 100%;
   height: 100%;
 }
+
+/* Assignment puzzles: people are items, rooms are containers with slots. */
+.assign-target {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.assign-target.selected {
+  fill: rgba(41, 128, 185, 0.16);
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+
+.assign-target.full {
+  fill: rgba(0, 0, 0, 0.04);
+}
+
+.assign-target.over {
+  stroke: #c0392b;
+}
+
+.assign-slot {
+  fill: #fff;
+  fill-opacity: 0.55;
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.assign-chip rect {
+  fill: #fff;
+  stroke: #333;
+  stroke-width: 1;
+}
+
+.assign-chip text {
+  fill: #111;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.assign-chip.overflow rect {
+  stroke: #c0392b;
+  stroke-width: 2;
+}
+
+.assign-tray .tool.placed {
+  opacity: 0.55;
+}
+
+.assign-tray .tool.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+@media (max-width: 760px) {
+  .assign-tray .tool {
+    min-height: 44px;
+  }
+}
+

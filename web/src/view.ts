@@ -1,5 +1,7 @@
 import {
+  assignPerson,
   autoMarks,
+  capacityConflict,
   check,
   clearCell,
   emptyState,
@@ -10,6 +12,7 @@ import {
   place,
   placementConflict,
   restore,
+  roomOccupants,
   setCross,
   struckNotes,
   toggleClue,
@@ -19,6 +22,7 @@ import {
   cycleSegment,
   segmentConflict,
   setSegment,
+  type AssignTarget,
   type Bundle,
   type CellId,
   type ClueEntry,
@@ -210,6 +214,11 @@ export class PuzzleView {
   private cursor: CellId | null = null;
   private selectedNode: CellId | null = null;
   private segmentTargets = new Map<string, SVGElement>();
+  private assignTargets = new Map<string, { rect: SVGRectElement; target: AssignTarget }>();
+  private assignChips: SVGGElement | null = null;
+  private assignTrayButtons = new Map<string, HTMLButtonElement>();
+  private selectedItem: string | null = null;
+  private selectedRoom: string | null = null;
   private boxes = new Map<CellId, Box>();
   private cells = new Map<CellId, SVGRectElement>();
   private tooltip = el("div", { className: "cell-tooltip", hidden: true });
@@ -321,7 +330,7 @@ export class PuzzleView {
       );
       assists.append(el("label", { className: "auto" }, this.autoBox, " Auto-mark"));
     }
-    if (b.playable && (b.peers?.length || b.links)) {
+    if (b.playable && (b.peers?.length || b.links || b.assign)) {
       this.warningsBox.checked = this.state.warnings;
       this.warningsBox.addEventListener("change", () =>
         this.commit({ ...this.state, warnings: this.warningsBox.checked }),
@@ -333,9 +342,11 @@ export class PuzzleView {
 
     const board = el("div", { className: "board", tabIndex: 0 });
     board.setAttribute("role", "application");
-    board.setAttribute("aria-label", b.links
-      ? "Puzzle connections; tab or arrow keys select, space cycles, number keys set a count"
-      : "Puzzle board; arrow keys move, space places");
+    board.setAttribute("aria-label", b.assign
+      ? "Room assignment board; choose a person and a room"
+      : b.links
+        ? "Puzzle connections; tab or arrow keys select, space cycles, number keys set a count"
+        : "Puzzle board; arrow keys move, space places");
     board.innerHTML = this.boardSvg;
     if (b.cellDetails || b.detailTargets?.length) {
       this.tooltip.id = `cell-tooltip-${++nextTooltipId}`;
@@ -345,8 +356,13 @@ export class PuzzleView {
       board.append(this.tooltip, this.cellStatus);
     }
     const play = el("section", { className: "play" }, board);
-    if (b.links?.instructions) play.append(el("p", { className: "note" }, b.links.instructions));
-    if (b.playable && b.clueEntries) {
+    if (b.assign) {
+      if (b.assign.instructions) play.append(el("p", { className: "note" }, b.assign.instructions));
+      play.append(this.assignTray(), this.controls(), this.verdict);
+    } else if (b.links?.instructions) {
+      play.append(el("p", { className: "note" }, b.links.instructions));
+      play.append(this.paletteBar(), this.mineCount, this.controls(), this.verdict);
+    } else if (b.playable && b.clueEntries) {
       // Figure cards select figures, so only the cross joins the controls.
       const controls = this.controls();
       controls.prepend(this.paletteBar());
@@ -680,11 +696,28 @@ export class PuzzleView {
       }));
       controls.append(hint, solution);
     }
+    if (this.bundle.assign) {
+      const nl = this.bundle.language === "nl";
+      const hint = el("button", { type: "button", textContent: nl ? "Hint" : "Hint" });
+      hint.addEventListener("click", () => {
+        const solution = this.bundle.solution ?? {};
+        const item = this.bundle.assign!.items.find((candidate) =>
+          this.state.placed[candidate.id] !== solution[candidate.id]);
+        if (item && solution[item.id]) this.commit(assignPerson(this.bundle, this.state, item.id, solution[item.id]));
+      });
+      const solution = el("button", { type: "button", textContent: nl ? "Toon oplossing" : "Show solution" });
+      solution.addEventListener("click", () => this.commit({
+        ...this.state, placed: { ...this.bundle.solution }, crosses: [], notes: {},
+      }));
+      controls.append(hint, solution);
+    }
     return controls;
   }
 
   private clearBoard(): void {
     this.selectedNode = null;
+    this.selectedItem = null;
+    this.selectedRoom = null;
     this.commit({ ...emptyState(this.bundle), auto: this.state.auto, warnings: this.state.warnings });
     this.verdict.textContent = "";
     this.verdict.className = "verdict";
@@ -726,6 +759,187 @@ export class PuzzleView {
     this.verdict.textContent = "";
     this.verdict.className = "verdict";
     this.redraw();
+  }
+
+  // --- assignment puzzles -------------------------------------------------
+
+  private assignTray(): HTMLElement {
+    const bar = el("div", { className: "palette assign-tray" });
+    bar.setAttribute("role", "group");
+    bar.setAttribute("aria-label", this.bundle.language === "nl" ? "Personen" : "People");
+    for (const item of this.bundle.assign?.items ?? []) {
+      const button = el("button", { type: "button", className: "tool assign-item" });
+      button.dataset.item = item.id;
+      button.setAttribute("aria-pressed", "false");
+      const swatch = el("span", { className: "swatch", textContent: item.symbol ?? item.label.slice(0, 2) });
+      button.append(swatch, el("span", { textContent: item.label }));
+      button.title = item.label;
+      button.addEventListener("click", () => {
+        if (this.selectedRoom) this.editAssign(item.id, this.selectedRoom);
+        else {
+          this.selectedItem = this.selectedItem === item.id ? null : item.id;
+          this.redraw();
+        }
+      });
+      this.assignTrayButtons.set(item.id, button);
+      bar.append(button);
+    }
+    return bar;
+  }
+
+  private setUpAssign(svg: SVGSVGElement): void {
+    const assign = this.bundle.assign;
+    if (!assign) return;
+    const targets = svgEl("g", { class: "assign-targets" });
+    const slotBacks = svgEl("g", { class: "assign-slot-backs", "pointer-events": "none" });
+    const chips = svgEl("g", { class: "assign-chips", "pointer-events": "none" }) as SVGGElement;
+    for (const target of assign.targets) {
+      const [x, y, width, height] = target.box;
+      const rect = svgEl("rect", {
+        class: "assign-target", x, y, width, height, fill: "transparent",
+        tabindex: 0, role: "button",
+      }) as SVGRectElement;
+      rect.dataset.room = target.id;
+      this.assignTargets.set(target.id, { rect, target });
+      targets.append(rect);
+      for (const [slotX, slotY, size] of target.slots ?? []) {
+        slotBacks.append(svgEl("rect", {
+          class: "assign-slot", x: slotX, y: slotY, width: size, height: size,
+          rx: size * 0.2,
+        }));
+      }
+    }
+    svg.append(targets, slotBacks, chips);
+    this.assignChips = chips;
+  }
+
+  private listenAssign(board: HTMLElement, svg: SVGSVGElement): void {
+    const roomOf = (node: EventTarget | null) =>
+      node instanceof Element ? node.closest("[data-room]")?.getAttribute("data-room") ?? null : null;
+    let timer: number | null = null;
+    let longPress = false;
+    const endPress = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = null;
+    };
+    svg.addEventListener("click", (event) => {
+      if (longPress) {
+        longPress = false;
+        return;
+      }
+      const room = roomOf(event.target);
+      if (!room) return;
+      if (this.selectedItem) this.editAssign(this.selectedItem, room);
+      else {
+        this.selectedRoom = this.selectedRoom === room ? null : room;
+        this.redraw();
+      }
+    });
+    svg.addEventListener("contextmenu", (event) => {
+      const room = roomOf(event.target);
+      if (!room) return;
+      event.preventDefault();
+      this.unassignRoom(room);
+    });
+    svg.addEventListener("pointerdown", (event) => {
+      const room = roomOf(event.target);
+      if (!room || event.pointerType === "mouse") return;
+      endPress();
+      longPress = false;
+      timer = window.setTimeout(() => {
+        timer = null;
+        longPress = true;
+        this.unassignRoom(room);
+        navigator.vibrate?.(15);
+      }, LONG_PRESS_MS);
+    });
+    for (const event of ["pointerup", "pointercancel", "pointerleave"]) {
+      svg.addEventListener(event, endPress);
+    }
+    for (const [room, { rect }] of this.assignTargets) {
+      rect.addEventListener("focus", () => {
+        this.selectedRoom = room;
+        this.redraw();
+      });
+    }
+    board.addEventListener("keydown", (event) => this.assignKey(event));
+    svg.style.touchAction = "none";
+  }
+
+  private editAssign(person: string, room: string): void {
+    const assign = this.bundle.assign;
+    const target = assign?.targets.find((candidate) => candidate.id === room);
+    if (!assign || !target) return;
+    const same = this.state.placed[person] === room;
+    const occupants = roomOccupants(this.bundle, this.state, room);
+    if (!same && this.state.warnings && occupants.length >= target.capacity) {
+      const nl = this.bundle.language === "nl";
+      this.verdict.className = "verdict wrong";
+      this.verdict.textContent = nl
+        ? `${target.label} is vol (${occupants.length}/${target.capacity}).`
+        : `${target.label} is full (${occupants.length}/${target.capacity}).`;
+      return;
+    }
+    this.selectedItem = null;
+    this.selectedRoom = null;
+    const next = assignPerson(this.bundle, this.state, person, room);
+    this.commit(next);
+    const conflict = capacityConflict(this.bundle, next, room);
+    if (conflict) {
+      const nl = this.bundle.language === "nl";
+      this.verdict.className = "verdict wrong";
+      this.verdict.textContent = nl
+        ? `${target.label} heeft te veel mensen (${conflict.count}/${conflict.capacity}).`
+        : `${target.label} holds too many people (${conflict.count}/${conflict.capacity}).`;
+    }
+  }
+
+  private unassignRoom(room: string): void {
+    const occupants = roomOccupants(this.bundle, this.state, room);
+    const person = this.selectedItem && this.state.placed[this.selectedItem] === room
+      ? this.selectedItem
+      : occupants[occupants.length - 1];
+    if (!person) return;
+    this.selectedItem = null;
+    this.selectedRoom = null;
+    this.commit(assignPerson(this.bundle, this.state, person, room));
+  }
+
+  private assignKey(event: KeyboardEvent): void {
+    const assign = this.bundle.assign;
+    if (!assign) return;
+    const mod = event.ctrlKey || event.metaKey;
+    if (mod && event.key.toLowerCase() === "z") {
+      event.shiftKey ? this.redo() : this.undo();
+    } else if (mod && event.key.toLowerCase() === "y") {
+      this.redo();
+    } else if (event.key.startsWith("Arrow")) {
+      const current = assign.targets.findIndex((target) => target.id === this.selectedRoom);
+      const step = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+      const next = current < 0 ? 0 : (current + step + assign.targets.length) % assign.targets.length;
+      this.selectedRoom = assign.targets[next]?.id ?? null;
+      this.redraw();
+    } else if (/^[1-9]$/.test(event.key)) {
+      const item = assign.items[Number(event.key) - 1];
+      if (item) {
+        if (this.selectedRoom) this.editAssign(item.id, this.selectedRoom);
+        else {
+          this.selectedItem = item.id;
+          this.redraw();
+        }
+      }
+    } else if ((event.key === " " || event.key === "Enter") && this.selectedItem && this.selectedRoom) {
+      this.editAssign(this.selectedItem, this.selectedRoom);
+    } else if ((event.key === "Delete" || event.key === "Backspace") && this.selectedRoom) {
+      this.unassignRoom(this.selectedRoom);
+    } else if (event.key === "Escape") {
+      this.selectedItem = null;
+      this.selectedRoom = null;
+      this.redraw();
+    } else {
+      return;
+    }
+    event.preventDefault();
   }
 
   // --- board ---------------------------------------------------------------
@@ -788,6 +1002,12 @@ export class PuzzleView {
       if (!item.svg) continue;
       const parsed = new DOMParser().parseFromString(item.svg, "image/svg+xml").documentElement;
       if (parsed instanceof SVGSVGElement) this.icons.set(item.id, parsed);
+    }
+    if (this.bundle.assign) {
+      this.setUpAssign(svg);
+      if (!this.bundle.playable) return;
+      this.listenAssign(board, svg);
+      return;
     }
     if (!this.bundle.playable) return;
     this.selectTool(this.tool);
@@ -1087,7 +1307,76 @@ export class PuzzleView {
     event.preventDefault();
   }
 
+  private redrawAssign(): void {
+    const state = this.state;
+    const assign = this.bundle.assign;
+    if (!assign) return;
+    this.mineCount.hidden = true;
+    this.undoButton.disabled = !this.history.canUndo;
+    this.redoButton.disabled = !this.history.canRedo;
+    this.autoBox.checked = state.auto;
+    this.warningsBox.checked = state.warnings;
+    this.clueBoxes.forEach(({ box, index }) => {
+      box.checked = state.usedClues.includes(index);
+      box.closest("li")?.classList.toggle("used", box.checked);
+    });
+    for (const [room, { rect, target }] of this.assignTargets) {
+      const occupants = roomOccupants(this.bundle, state, room);
+      rect.classList.toggle("selected", this.selectedRoom === room);
+      rect.classList.toggle("full", state.warnings && occupants.length >= target.capacity);
+      rect.classList.toggle("over", occupants.length > target.capacity);
+      const who = occupants
+        .map((person) => assign.items.find((item) => item.id === person)?.label ?? person)
+        .join(", ");
+      rect.setAttribute("aria-label", `${target.label}: ${occupants.length}/${target.capacity}${who ? ` — ${who}` : ""}`);
+    }
+    for (const [id, button] of this.assignTrayButtons) {
+      button.classList.toggle("placed", id in state.placed);
+      button.classList.toggle("selected", id === this.selectedItem);
+      button.setAttribute("aria-pressed", String(id === this.selectedItem));
+    }
+    if (!this.assignChips) return;
+    const chips: SVGElement[] = [];
+    for (const target of assign.targets) {
+      const occupants = roomOccupants(this.bundle, state, target.id);
+      occupants.forEach((person, index) => chips.push(this.assignChip(target, person, index)));
+    }
+    this.assignChips.replaceChildren(...chips);
+  }
+
+  private assignChip(target: AssignTarget, person: string, index: number): SVGElement {
+    const item = this.bundle.assign?.items.find((candidate) => candidate.id === person);
+    const slots = target.slots ?? [];
+    let x: number;
+    let y: number;
+    let size: number;
+    if (index < slots.length) {
+      [x, y, size] = slots[index];
+    } else {
+      const [bx, by, bw, bh] = target.box;
+      size = Math.max(8, Math.min(16, bw * 0.16));
+      const extra = index - target.capacity;
+      x = bx + bw - size - extra * (size + 2);
+      y = by + bh - size - 2;
+    }
+    const group = svgEl("g", { class: `assign-chip${index >= target.capacity ? " overflow" : ""}` });
+    group.append(svgEl("rect", { x, y, width: size, height: size, rx: size * 0.2 }));
+    const text = svgEl("text", {
+      x: x + size / 2, y: y + size * 0.7, "font-size": size * 0.5,
+    });
+    text.textContent = item?.symbol ?? person.slice(0, 2);
+    group.append(text);
+    const title = svgEl("title");
+    title.textContent = item?.label ?? person;
+    group.append(title);
+    return group;
+  }
+
   private redraw(): void {
+    if (this.bundle.assign) {
+      this.redrawAssign();
+      return;
+    }
     const state = this.state;
     const mineCount = mineCounter(this.bundle, state);
     this.mineCount.hidden = mineCount === null;
