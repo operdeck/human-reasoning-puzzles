@@ -706,6 +706,24 @@ RADIO = (
     '<line x1="70" y1="55" x2="77" y2="48" stroke="#4a3f33" stroke-width="3"/>'
     '<circle cx="76" cy="79" r="5" fill="#4a3f33"/>'
 )
+# A bowl of pepernoten: brown spiced sweets heaped on a small ceramic bowl.
+PEPERNOTEN = (
+    '<path d="M14 58Q14 94 50 94Q86 94 86 58Z" fill="#e3e9ed" stroke="#6b7a86"'
+    ' stroke-width="3"/>'
+    '<path d="M24 70Q26 84 42 87" fill="none" stroke="#f7fafb" stroke-width="3"'
+    ' stroke-linecap="round"/>'
+    '<ellipse cx="50" cy="58" rx="36" ry="9" fill="#f4f8fa" stroke="#6b7a86"'
+    ' stroke-width="3"/>'
+    '<g fill="#a9713c" stroke="#6d4520" stroke-width="2">'
+    '<circle cx="30" cy="48" r="9"/><circle cx="50" cy="42" r="10"/>'
+    '<circle cx="69" cy="49" r="9"/><circle cx="40" cy="56" r="8"/>'
+    '<circle cx="60" cy="57" r="8"/><circle cx="50" cy="53" r="7"/></g>'
+    '<g fill="#c98f54">'
+    '<circle cx="27" cy="45" r="2.6"/><circle cx="47" cy="38" r="2.8"/>'
+    '<circle cx="66" cy="46" r="2.6"/><circle cx="37" cy="53" r="2.2"/>'
+    '<circle cx="57" cy="54" r="2.2"/></g>'
+)
+
 # A claw hammer, for a room with tools.
 HAMMER = (
     '<rect x="44" y="26" width="13" height="66" rx="5" fill="#a9773f" stroke="#4f3a24"'
@@ -905,6 +923,7 @@ REGISTRY: dict[str, Icon] = {
         Icon("well", "\u25ce", "well", markup=WELL, view=(0, 0, 121, 121)),
         Icon("radio", "\u266b", "radio", markup=RADIO),
         Icon("hammer", "\u2692", "hammer", markup=HAMMER),
+        Icon("pepernoten", "\u25cf", "pepernoten", markup=PEPERNOTEN),
         Icon("staircase", "\u21d7", "staircase", markup=STAIRCASE),
         Icon("counter", "\u25a4", "reception counter", markup=COUNTER),
         Icon("table", "\u25a4", "table", markup=TABLE),
@@ -1041,6 +1060,8 @@ OBJECT_ICONS = {"bench": "bench", "bankje": "bench", "parkbank": "bench",
                 "loopplank": "gangplank", "gangplank": "gangplank",
                 "katana": "katana", "zwaard": "katana", "sword": "katana",
                 "radio": "radio",
+                "pepernoten": "pepernoten", "pepernoot": "pepernoten",
+                "kruidnoten": "pepernoten", "kruidnoot": "pepernoten",
                 "hamer": "hammer", "hammer": "hammer",
                 "gereedschap": "hammer", "tools": "hammer", "toolbox": "hammer",
                 "jumpsuit": "jumpsuit", "overall": "jumpsuit",

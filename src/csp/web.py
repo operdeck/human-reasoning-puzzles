@@ -26,6 +26,7 @@ from . import (
     mapcolour,
     minesweeper,
     rectangles,
+    rooms,
     starbattle,
     svg,
 )
@@ -65,7 +66,8 @@ CELL = re.compile(r'<rect id="r(\d+)c(\d+)" class="cell"')
 DIGITS = frozenset({"sudoku", "calcudoku", "futoshiki", "suguru", "towers", "kakuro"})
 UNSUPPORTED = {
     "logicgrid": "The logic grid needs its own matrix view; not playable yet.",
-    "rooms": "The room plan needs its own board view; not playable yet.",
+    "rooms": "Read-only for now: the plan is shown with its clues and key beside it, so you "
+    "can solve it on paper.",
 }
 
 
@@ -489,6 +491,19 @@ def _objects(text: str) -> list[dict[str, Any]]:
     return out
 
 
+def _rooms_key(puzzle: rooms.Puzzle) -> list[dict[str, Any]]:
+    """A room puzzle's properties: the words its clues use, with the plan's icons."""
+    out = []
+    for tag in puzzle.tags:
+        entry: dict[str, Any] = {"name": puzzle.phrase(tag), "text": ""}
+        icon = icons.object_icon(tag)
+        markup = icons.to_svg(icon) if icon is not None else None
+        if markup:
+            entry["svg"] = markup
+        out.append(entry)
+    return out
+
+
 def _family(
     text: str, kind: str, model: Model, solution: Mapping[str, Any], picture: str
 ) -> dict[str, Any]:
@@ -502,6 +517,23 @@ def _family(
         "key": [],
         "question": "",
     }
+    if kind == "rooms":
+        room_plan = rooms.parse(text)
+        presentation = load_presentation(text)
+        out |= {
+            "size": [room_plan.height, room_plan.width],
+            "clues": room_plan.clue_lines,
+            "question": presentation.question,
+            "intro": presentation.intro,
+            "key": _rooms_key(room_plan),
+            "rules": out["rules"] + room_plan.rule_lines,
+            "headings": {
+                "rules_title": phrase(text, "doc.rules_title"),
+                "clues": phrase(text, "doc.clues"),
+                "question": phrase(text, "doc.question"),
+                "key": phrase(text, "doc.key"),
+            },
+        }
     if kind in UNSUPPORTED:
         return out | {"playable": False, "unsupported": UNSUPPORTED[kind]}
     if kind == "bridges":

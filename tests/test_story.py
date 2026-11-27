@@ -113,6 +113,7 @@ ALLOWED = {
         "murdoku_lower",
         "picture",
         "puzzlefile",
+        "rooms",
         "story",
     },
     "murdoku_board": {
@@ -130,6 +131,7 @@ ALLOWED = {
     "starbattle": {"core", "regiongrid", "icons"},
     "logicgrid": {"core", "puzzlefile"},
     "rooms": {"core", "puzzlefile"},
+    "rooms_search": {"bruteforce", "core", "puzzlefile", "report", "rooms"},
     "binairo": {"core", "puzzlefile", "icons"},
     "tents": {"core", "puzzlefile", "icons"},
     "minesweeper": {"core", "puzzlefile", "icons"},
@@ -166,6 +168,7 @@ ALLOWED = {
         "picture",
         "puzzlefile",
         "rectangles",
+        "rooms",
         "starbattle",
         "story",
         "svg",

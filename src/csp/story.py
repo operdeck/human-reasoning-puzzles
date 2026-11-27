@@ -59,6 +59,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.rules_title": "Rules",
         "doc.how": "How to get there.",
         "doc.clues": "Clues",
+        "doc.where": "Who is where",
         "doc.question": "Question",
         "doc.solution": "Solution",
         "doc.contents": "Contents",
@@ -721,6 +722,7 @@ PHRASES: dict[str, dict[str, str]] = {
         "doc.rules_title": "Spelregels",
         "doc.how": "Zo kom je erop.",
         "doc.clues": "Aanwijzingen",
+        "doc.where": "Wie staat waar",
         "doc.question": "Vraag",
         "doc.solution": "Oplossing",
         "doc.contents": "Inhoud",
@@ -1583,6 +1585,16 @@ def family_rules(text: str, kind: str) -> list[str]:
             f"Mark the mines: each number tells how many of its eight neighbours are mines. "
             f"There are {total_mines} mines in total."
         ]
+    if kind == "rooms":
+        language = Wording.read(text).language
+        if language == "nl":
+            return [
+                "Geef iedereen één kamer. Meerdere personen mogen één kamer delen, een "
+                "kamer mag leeg blijven, en in een kamer passen nooit meer personen dan de "
+                "capaciteit die erbij staat. De aanwijzingen noemen kamers bij hun "
+                "eigenschappen en zeggen wie samen, apart of alleen zit, of waar iemand zit."
+            ]
+        return [FAMILY_RULES[kind]]
     if kind != "sudoku":
         display_family = (read_sections(text).get("Family") or [kind])[0].casefold()
         return [FAMILY_RULES.get(display_family, FAMILY_RULES[kind])]

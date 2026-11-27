@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import icons, picture
+from . import icons, picture, rooms
 from .murdoku_expression_file import load_expression_board
 from .murdoku_lower import object_count_scope
 from .puzzlefile import Figure, Presentation, language_of, load_presentation
@@ -294,6 +294,107 @@ class Entry:
         return f"{self.number}. {title}" if self.number else title
 
 
+def _rooms_stream(text: str, solution: dict[str, Any] | None) -> tuple[io.BytesIO, float]:
+    """The floor plan and its height/width ratio, without the clue lines the page prints."""
+    image = picture.rooms_picture(rooms.parse(text), solution, clue_lines=False, legend=False)
+    return io.BytesIO(image.to_png()), image.height / image.width
+
+
+def _rooms_where(puzzle: rooms.Puzzle, solution: dict[str, Any]) -> str:
+    """One line naming each room's occupants, for the solution page."""
+    parts = []
+    for room in puzzle.rooms:
+        people = [person for person in puzzle.people if solution.get(person) == room.label]
+        parts.append(f"{room.title}: {', '.join(people) if people else '-'}")
+    return "  \u00b7  ".join(parts)
+
+
+def _rooms_key(document: Any, entry: Entry, puzzle: rooms.Puzzle) -> None:
+    """A one-line key: each property's icon and the words the clues use for it."""
+    from docx.shared import Cm, Pt
+
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(0)
+    paragraph.paragraph_format.space_after = Pt(3)
+    _section_run(paragraph.add_run(phrase(entry.text, "doc.key") + "  "))
+    for index, tag in enumerate(puzzle.tags):
+        if index:
+            paragraph.add_run("   ")
+        icon = icons.object_icon(tag)
+        thumbnail = None if icon is None else icons.png(icon, 128)
+        if thumbnail is not None:
+            paragraph.add_run().add_picture(io.BytesIO(thumbnail), height=Cm(0.42))
+            paragraph.add_run("\u00a0")
+        # Non-breaking spaces keep a property's words together next to its icon.
+        paragraph.add_run(puzzle.phrase(tag).replace(" ", "\u00a0"))
+
+
+def _add_rooms(
+    document: Any,
+    entry: Entry,
+    title: str,
+    *,
+    solved: bool,
+    new_page: bool = True,
+    bookmark: str | None = None,
+) -> None:
+    """A rooms booklet page: the plan, its clues and the question, then the solution."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Cm, Pt
+
+    puzzle = rooms.parse(entry.text)
+    presentation = load_presentation(entry.text)
+    _title(document, title, new_page, bookmark, entry.section)
+    if solved:
+        stream, aspect = _rooms_stream(entry.text, entry.solution)
+        steps = [step.strip().removeprefix("- ") for step in entry.steps]
+        rows = -(-len(_rooms_where(puzzle, entry.solution or {})) // CLUE_LINE_CHARS)
+        rows += sum(-(-len(BOLD.sub(r"\1", step)) // CLUE_LINE_CHARS) for step in steps)
+        width = _puzzle_board_width(aspect, rows, 0, 0)
+    else:
+        for intro in presentation.intro:
+            paragraph = document.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(5)
+            _runs(paragraph, intro)
+        rules = family_rules(entry.text, "rooms") + puzzle.rule_lines
+        document.add_heading(phrase(entry.text, "doc.rules_title"), level=2)
+        for rule in rules:
+            paragraph = document.add_paragraph(rule, style="List Bullet")
+            for run in paragraph.runs:
+                run.font.size = Pt(9)
+        stream, aspect = _rooms_stream(entry.text, None)
+        clue_rows = sum(-(-len(line) // CLUE_LINE_CHARS) for line in puzzle.clue_lines)
+        intro_rows = sum(-(-len(line) // CLUE_LINE_CHARS) for line in presentation.intro)
+        key_rows = -(-sum(len(puzzle.phrase(tag)) + 8 for tag in puzzle.tags) // CLUE_LINE_CHARS)
+        width = _puzzle_board_width(
+            aspect, clue_rows, len(puzzle.clues), len(rules) + intro_rows + key_rows
+        )
+    document.add_picture(stream, width=Cm(max(width, MIN_BOARD_WIDTH_CM)))
+    document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _rooms_key(document, entry, puzzle)
+    if solved:
+        document.add_heading(phrase(entry.text, "doc.where"), level=2)
+        document.add_paragraph(_rooms_where(puzzle, entry.solution or {}))
+        if steps:
+            document.add_heading(phrase(entry.text, "generic.doc_how"), level=2)
+            for step in steps:
+                paragraph = document.add_paragraph(style="List Bullet")
+                _runs(paragraph, step)
+                for run in paragraph.runs:
+                    run.font.size = Pt(9)
+        if presentation.reveal:
+            _boxed(document, " ".join(presentation.reveal))
+        return
+    document.add_heading(phrase(entry.text, "doc.clues"), level=2)
+    for number, sentence in enumerate(puzzle.clue_lines, 1):
+        paragraph = document.add_paragraph(f"{number}. {sentence}")
+        paragraph.paragraph_format.space_after = Pt(2)
+        for run in paragraph.runs:
+            run.font.size = Pt(9.5)
+    if presentation.question:
+        _boxed(document, presentation.question)
+
+
 def _generic_title(entry: Entry) -> str:
     return load_presentation(entry.text).title or entry.path.stem.replace("_", " ").capitalize()
 
@@ -409,7 +510,7 @@ def _puzzle_title(entry: Entry) -> str:
 
 def _solution_title(entry: Entry) -> str:
     title = _generic_title(entry) if entry.kind != "murdoku" else _murdoku_title(entry)
-    label = "Solution" if entry.kind != "murdoku" else phrase(entry.text, "doc.solution")
+    label = phrase(entry.text, "doc.solution")
     if entry.number:
         label = f"{label} {entry.number}"
     return f"{label}: {title}"
@@ -422,6 +523,12 @@ def _murdoku_title(entry: Entry) -> str:
 def _add_puzzle(document: Any, entry: Entry, new_page: bool, bookmark: str | None = None) -> None:
     from docx.shared import Pt
 
+    if entry.kind == "rooms":
+        _add_rooms(
+            document, entry, _puzzle_title(entry), solved=False, new_page=new_page,
+            bookmark=bookmark,
+        )  # fmt: skip
+        return
     if entry.kind != "murdoku":
         _add_generic(
             document, entry, _puzzle_title(entry), new_page, solved=False, bookmark=bookmark
@@ -471,6 +578,9 @@ def _add_solution(document: Any, entry: Entry, title: str, bookmark: str | None 
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt
 
+    if entry.kind == "rooms":
+        _add_rooms(document, entry, title, solved=True, bookmark=bookmark)
+        return
     if entry.kind != "murdoku":
         _add_generic(document, entry, title, True, solved=True, bookmark=bookmark)
         return

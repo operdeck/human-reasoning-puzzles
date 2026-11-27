@@ -18,7 +18,7 @@ from itertools import product
 from pathlib import Path
 from typing import Any, cast
 
-from csp import binairo, bruteforce, cli, fresh, kakurasu, report
+from csp import binairo, bruteforce, cli, fresh, kakurasu, report, rooms_search
 from csp.core import Solver
 from csp.puzzlefile import detect, display_family, read_sections
 
@@ -1012,6 +1012,61 @@ def _sweep_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _rooms_brief(args: argparse.Namespace) -> rooms_search.Brief:
+    """The brief the two rooms commands share, read from the command line."""
+    kinds = (
+        frozenset(kind.strip() for kind in args.kinds.split(","))
+        if args.kinds
+        else rooms_search.BRIEF_KINDS
+    )
+    unknown = kinds - rooms_search.BRIEF_KINDS
+    if unknown:
+        raise ValueError(f"unknown clue kinds {', '.join(sorted(unknown))}")
+    return rooms_search.Brief(
+        clues=args.clues,
+        kinds=kinds,
+        last=args.last,
+        seed=getattr(args, "seed", 0),
+        attempts=getattr(args, "attempts", 200),
+        seconds=getattr(args, "seconds", 120.0),
+    )
+
+
+def _rooms_clues_command(args: argparse.Namespace) -> int:
+    """Search a plan for a clue set that fits the brief, and write the puzzle."""
+    brief = _rooms_brief(args)
+    plan = Path(args.plan).read_text()
+    found = rooms_search.search(plan, brief)
+    if found is None:
+        print("no clue set fits the brief; raise --attempts or widen --kinds", file=sys.stderr)
+        return 1
+    Path(args.output).write_text(found)
+    findings, problems = rooms_search.check(found, brief)
+    _closed, grade, _fired = rooms_search.solve_report(found)
+    print(f"wrote {args.output}: {len(findings)} clues, grade {grade}")
+    for finding in findings:
+        print(f"  {finding.share:5.0%}  {finding.kind:8}  {finding.line}")
+    for problem in problems:
+        print(f"problem: {problem}", file=sys.stderr)
+    return 0 if not problems else 1
+
+
+def _rooms_check_command(args: argparse.Namespace) -> int:
+    """Check a finished room puzzle against an author's brief."""
+    brief = _rooms_brief(args)
+    text = Path(args.puzzle).read_text()
+    findings, problems = rooms_search.check(text, brief)
+    _closed, grade, _fired = rooms_search.solve_report(text)
+    print(f"{args.puzzle}: {len(findings)} clues, grade {grade}")
+    for finding in findings:
+        state = "needed" if finding.needed else "NOT NEEDED"
+        pins = f"pins {', '.join(finding.pins)}" if finding.pins else "no pin"
+        print(f"  {finding.share:5.0%}  {finding.kind:8}  {state:10}  {pins:20}  {finding.line}")
+    for problem in problems:
+        print(f"problem: {problem}", file=sys.stderr)
+    return 0 if not problems else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -1141,6 +1196,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="close each kept draft with csp.clue_search suggest and report clue count and grade",
     )
     board_parser.set_defaults(run=_murdoku_board_command)
+
+    rooms_parser = commands.add_parser(
+        "rooms-clues",
+        help="search a rooms plan for a clue set that fits an author's brief",
+    )
+    rooms_parser.add_argument("plan", help="a rooms file with a Solution: line and no clues")
+    rooms_parser.add_argument("--output", required=True)
+    rooms_parser.add_argument("--clues", type=int, default=10, help="the most clues to keep")
+    rooms_parser.add_argument(
+        "--kinds",
+        help=f"comma-separated clue kinds to allow: {', '.join(sorted(rooms_search.BRIEF_KINDS))}",
+    )
+    rooms_parser.add_argument("--last", help="a person a clue must settle last (late discovery)")
+    rooms_parser.add_argument("--seed", type=int, default=0)
+    rooms_parser.add_argument("--attempts", type=int, default=200)
+    rooms_parser.add_argument("--seconds", type=float, default=120.0)
+    rooms_parser.set_defaults(run=_rooms_clues_command)
+
+    check_parser = commands.add_parser(
+        "rooms-check", help="check a finished room puzzle against an author's brief"
+    )
+    check_parser.add_argument("puzzle")
+    check_parser.add_argument("--clues", type=int, default=10)
+    check_parser.add_argument(
+        "--kinds",
+        help=f"comma-separated clue kinds to allow: {', '.join(sorted(rooms_search.BRIEF_KINDS))}",
+    )
+    check_parser.add_argument("--last", help="a person a clue must settle last (late discovery)")
+    check_parser.set_defaults(run=_rooms_check_command)
 
     args = parser.parse_args(argv)
     return cast(Callable[[argparse.Namespace], int], args.run)(args)

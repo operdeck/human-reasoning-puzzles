@@ -240,14 +240,21 @@ Ada
 Ben
 Cleo
 Dirk
+Ages:
+Ada: 60
+Ben: 26
+Cleo: 28
+Dirk: 34
 Clues:
 count (people in area:b) = 0
 not (Dirk in area:window)
 Ben in area:clock
 Ada together Cleo
 count (people in area:a) = 1
-Ada dir:up Cleo
+Ada dir:north Cleo
 exactly 1 of (Ada in area:e; Ben in area:e)
+sum (ages in area:a) < sum (ages of Ada, Ben)
+sum (ages in area:c) > sum (ages of Ben, Cleo)
 ```
 
 `Rooms:` gives each room's capacity, colour and label; `Tags:` groups rooms so one clue can name the group, and the picture draws a property's icon in every room that has it, with a key under the plan naming each one. `Words:` renames a room or group in the sentences the solver writes, and a clue line may end in `| wording`. An entry for a group may give a second form after `|` for counts, which speak for the whole group at once: with `radio: a room with a radio | the rooms with a radio`, a person is "in a room with a radio" while a count says "The rooms with a radio hold three people together", never "a room holds three" when no single room can. Clause forms:
@@ -259,7 +266,16 @@ exactly 1 of (Ada in area:e; Ben in area:e)
 | `X alone` / `not (X alone)` | X shares a room with nobody, or with at least one other |
 | `X together Y` / `X apart Y` | X and Y do or do not share a room |
 | `exactly n of (clause; clause; …)` | how many of these room clauses hold |
-| `X dir:up/down/left/right Y` | X's room touches Y's in that direction; up is the top of the plan |
+| `X dir:north/south/east/west Y` | X's room touches Y's in that direction; the top of the plan is north, and `dir:up`, `dir:down`, `dir:left` and `dir:right` are the same sides |
+| `sum (ages in area:A) <op> n` | the ages of the people in A add up to `n` (an empty A sums to 0) |
+| `max (age in area:A) <op> n` | how the oldest person in A compares to `n`; an empty A satisfies `<` and `<=` |
+| `sum (ages in area:A) <op> sum (ages of X, Y[, Z])` | the area's total compared with the sum of two or three named people; the house puzzles use this form, never `=` |
+
+`Ages:` gives each person's age for the age clauses; when a puzzle uses an age
+clause, every person needs an age. The house puzzles compare an area's total with
+the sum of two or three people rather than a bare number, and avoid `=`. The plan
+picture prints the declared ages above the clues, and the puzzle's `Intro:` can
+repeat them for the hand-out.
 
 The variable values are room labels, so `--step` and the worked solution read as rooms.
 
